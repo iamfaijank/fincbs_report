@@ -1,0 +1,210 @@
+frappe.pages['finacle-report-portal'].on_page_load = function(wrapper) {
+    const page = frappe.ui.make_app_page({
+        parent: wrapper,
+        title: 'Finacle Report Portal',
+        single_column: true
+    });
+
+    // Include flatpickr CSS & JS
+    if (!document.querySelector('#flatpickr-css')) {
+        const link = document.createElement('link');
+        link.id = 'flatpickr-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css';
+        document.head.appendChild(link);
+    }
+    if (!document.querySelector('#flatpickr-js')) {
+        const script = document.createElement('script');
+        script.id = 'flatpickr-js';
+        script.src = 'https://cdn.jsdelivr.net/npm/flatpickr';
+        document.head.appendChild(script);
+    }
+
+    // Page HTML
+    $(page.body).html(`
+        <div style="max-width:480px;margin:40px auto;font-family:sans-serif;">
+            <div style="padding:20px;background:#fff;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,0.1);">
+                <h3 style="text-align:center;color:#196767;margin-bottom:25px;">Finacle CBS Report</h3>
+                <form id="finacle-report-form" style="display:flex;flex-direction:column;gap:15px;">
+                    <div>
+                        <label style="font-weight:600;color:#196767;margin-bottom:5px;">Select Report</label>
+                        <select id="report_name" class="form-control" required>
+                            <option value="" disabled selected>Loading reports...</option>
+                        </select>
+                        <div id="report_error" style="color:red;font-size:12px;display:none;margin-top:3px;"></div>
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                        <div style="flex:1;">
+                            <label style="font-weight:600;color:#196767;margin-bottom:5px;">Start Date</label>
+                            <input type="text" id="start_date" class="form-control" required placeholder="DD/MM/YYYY">
+                        </div>
+                        <div style="flex:1;">
+                            <label style="font-weight:600;color:#196767;margin-bottom:5px;">End Date</label>
+                            <input type="text" id="end_date" class="form-control" required placeholder="DD/MM/YYYY">
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                        <button type="button" id="download_csv" style="flex:1;background:#196767;color:white;border:none;padding:12px;font-weight:600;border-radius:5px;cursor:pointer;">
+                             Download
+                        </button>
+                        <button type="button" id="cancel_download" style="flex:1;background:#b71c1c;color:white;border:none;padding:12px;font-weight:600;border-radius:5px;cursor:pointer;display:none;">
+                             Cancel
+                        </button>
+                    </div>
+                    <div id="progress_container" style="display:none;width:100%;height:12px;background:#eee;border-radius:6px;overflow:hidden;margin-top:10px;position:relative;">
+                        <div id="progress_bar" style="width:0%;height:100%;background:linear-gradient(90deg,#196767,#00bfa5);transition:width 0.3s ease;"></div>
+                        <div id="progress_percent" style="position:absolute;right:10px;top:-18px;font-size:12px;color:#196767;font-weight:600;"></div>
+                    </div>
+                    <div id="progress_text" style="display:none;font-size:13px;color:#555;text-align:right;margin-top:3px;"></div>
+                    <div id="robot_msg" style="display:none;font-size:13px;color:#196767;text-align:left;margin-top:3px;font-style:italic;"></div>
+                </form>
+            </div>
+        </div>
+    `);
+
+    const $reportSelect = $('#report_name');
+    let expectedDuration = 2;
+    let currentXhr = null;
+
+    // Initialize datepickers
+    function initDatepickers() {
+        if (!window.flatpickr) return setTimeout(initDatepickers, 50);
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+
+        flatpickr("#start_date", { dateFormat: "d/m/Y", defaultDate: firstDay });
+        flatpickr("#end_date", { dateFormat: "d/m/Y", defaultDate: yesterday });
+    }
+    initDatepickers();
+
+    // Load reports
+    function loadReports() {
+        frappe.call({
+            method: 'custom_report.api.get_user_reports',
+            callback: function(res) {
+                const reports = res.message || [];
+                if (!reports.length) return $reportSelect.html(`<option disabled selected>No reports available</option>`);
+                $reportSelect.html(`<option value="" disabled selected>Select Report</option>`);
+                reports.forEach(r => {
+                    const dur = r.last_duration ? parseFloat(r.last_duration) : '';
+                    $reportSelect.append(`<option value="${r.name}" data-duration="${dur}">${r.report_name}</option>`);
+                });
+            }
+        });
+    }
+    loadReports();
+
+    $reportSelect.on('change', function() {
+        const lastDuration = parseFloat($(this).find('option:selected').data('duration'));
+        expectedDuration = lastDuration && lastDuration >= 2 ? lastDuration : 2;
+        if (lastDuration) {
+            $('#progress_text').show().text(`Time Required: ${humanReadableTime(lastDuration)}`);
+            $('#robot_msg').show().text('🤖 Ready to download.');
+        } else {
+            $('#progress_text').hide();
+            $('#robot_msg').hide();
+        }
+    });
+
+    function formatForAPI(val){ const [d,m,y]=val.split('/'); return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`; }
+    function humanReadableTime(sec){ const m=Math.floor(sec/60), s=Math.floor(sec%60); return m>0?`${m} Minutes ${s} Seconds`:`${s} Seconds`; }
+
+    $('#download_csv').on('click',()=>downloadReport('csv'));
+    $('#cancel_download').on('click',function(){
+        if(currentXhr){ currentXhr.abort(); }
+        $(this).prop('disabled',true).text('Cancelling...');
+    });
+
+    function downloadReport(file_type){
+        const reportDocName=$reportSelect.val(),
+              start_date_val=$('#start_date').val(),
+              end_date_val=$('#end_date').val();
+
+        if(!reportDocName||!start_date_val||!end_date_val){
+            $('#report_error').text('⚠️ Please complete all fields.').show();
+            return;
+        } else $('#report_error').hide();
+
+        const start_date=formatForAPI(start_date_val), end_date=formatForAPI(end_date_val);
+        const url=`/api/method/custom_report.api.report_download?report_docname=${encodeURIComponent(reportDocName)}&start_date=${encodeURIComponent(start_date)}&end_date=${encodeURIComponent(end_date)}&file_type=${file_type}`;
+
+        const xhr=new XMLHttpRequest();
+        currentXhr = xhr;
+        xhr.open("GET",url,true);
+        xhr.responseType="blob";
+
+        // Show progress UI
+        $('#progress_container,#progress_text,#robot_msg').show();
+        $('#progress_bar').width("0%"); 
+        $('#progress_percent').text("0%");
+        $('#download_csv').prop('disabled',true).text('Downloading...');
+        $('#cancel_download').show().prop('disabled',false).text('❌ Cancel');
+
+        const startTime=Date.now();
+        const interval=setInterval(()=>{
+            const elapsed=(Date.now()-startTime)/1000;
+            const percent=Math.min(99,Math.floor((elapsed/expectedDuration)*100));
+            $('#progress_bar').width(percent+"%");
+            $('#progress_percent').text(percent+"%");
+            $('#progress_text').text(`⏱ ${humanReadableTime(elapsed)} | ${percent}%`);
+            $('#robot_msg').text(elapsed>expectedDuration?'🤖 Large data, please wait…':`⏳ About ${humanReadableTime(expectedDuration-elapsed)} remaining`);
+        },200);
+
+        xhr.onload=function(){
+            clearInterval(interval);
+            $('#cancel_download').hide();
+            $('#download_csv').prop('disabled',false).text('Download');
+
+            if(xhr.status===200){
+                const blob=new Blob([xhr.response],{type:"text/csv"});
+                const link=document.createElement("a"); 
+                link.href=URL.createObjectURL(blob); 
+                link.download="finacle_report.csv"; 
+                link.click();
+                $('#progress_bar').width("100%"); 
+                $('#progress_percent').text("100%");
+                $('#progress_text').text('✅ Download complete');
+                $('#robot_msg').text('🤖 Done!');
+                loadReports();
+                setTimeout(()=>$('#progress_container,#progress_text,#robot_msg').fadeOut(),3000);
+
+            } else {
+                // DB connection failure message
+                let errorMsg = '❌ Failed to download.';
+                try {
+                    const reader = new FileReader();
+                    reader.onload = function() {
+                        const msg = reader.result;
+                        if(msg && msg.includes("Database connection failed")) {
+                            errorMsg = "❌ Database connection is down. Please try later.";
+                        }
+                        $('#robot_msg').text(errorMsg);
+                    };
+                    reader.readAsText(xhr.response);
+                } catch(e){
+                    $('#robot_msg').text(errorMsg);
+                }
+                $('#progress_container,#progress_text').hide();
+            }
+        };
+
+        xhr.onabort=function(){
+            clearInterval(interval);
+            $('#cancel_download').hide();
+            $('#progress_container,#progress_text').hide();
+            $('#robot_msg').text('⚠️ Download cancelled by user');
+            $('#download_csv').prop('disabled',false).text('Download');
+        };
+
+        xhr.onerror=function(){
+            clearInterval(interval);
+            $('#cancel_download').hide();
+            $('#progress_container,#progress_text').hide();
+            $('#robot_msg').text('❌ Error during download'); 
+            $('#download_csv').prop('disabled',false).text('Download'); 
+        };
+
+        xhr.send();
+    }
+};
