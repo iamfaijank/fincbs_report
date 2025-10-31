@@ -37,10 +37,12 @@ frappe.pages['finacle-report-portal'].on_page_load = function(wrapper) {
                         <div style="flex:1;">
                             <label style="font-weight:600;color:#196767;margin-bottom:5px;">Start Date</label>
                             <input type="text" id="start_date" class="form-control" required placeholder="DD/MM/YYYY">
+                            <div id="start_date_error" style="color:red;font-size:11px;display:none;margin-top:3px;"></div>
                         </div>
                         <div style="flex:1;">
                             <label style="font-weight:600;color:#196767;margin-bottom:5px;">End Date</label>
                             <input type="text" id="end_date" class="form-control" required placeholder="DD/MM/YYYY">
+                            <div id="end_date_error" style="color:red;font-size:11px;display:none;margin-top:3px;"></div>
                         </div>
                     </div>
                     <div style="display:flex;gap:10px;">
@@ -65,18 +67,79 @@ frappe.pages['finacle-report-portal'].on_page_load = function(wrapper) {
     const $reportSelect = $('#report_name');
     let expectedDuration = 2;
     let currentXhr = null;
+    let startDatePicker = null;
+    let endDatePicker = null;
 
-    // Initialize datepickers
+    // Initialize datepickers with validation
     function initDatepickers() {
         if (!window.flatpickr) return setTimeout(initDatepickers, 50);
+        
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-        const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+        const yesterday = new Date(today); 
+        yesterday.setDate(today.getDate() - 1);
 
-        flatpickr("#start_date", { dateFormat: "d/m/Y", defaultDate: firstDay });
-        flatpickr("#end_date", { dateFormat: "d/m/Y", defaultDate: yesterday });
+        // Start Date Picker
+        startDatePicker = flatpickr("#start_date", { 
+            dateFormat: "d/m/Y", 
+            defaultDate: firstDay,
+            onChange: function(selectedDates, dateStr, instance) {
+                // Clear previous errors
+                $('#start_date_error').hide();
+                $('#end_date_error').hide();
+                
+                // Update end date minimum to selected start date
+                if (endDatePicker && selectedDates.length > 0) {
+                    endDatePicker.set('minDate', selectedDates[0]);
+                }
+                
+                // Validate if end date is already selected
+                validateDateRange();
+            }
+        });
+
+        // End Date Picker
+        endDatePicker = flatpickr("#end_date", { 
+            dateFormat: "d/m/Y", 
+            defaultDate: yesterday,
+            minDate: firstDay, // Initially set to first day
+            onChange: function(selectedDates, dateStr, instance) {
+                // Clear previous errors
+                $('#end_date_error').hide();
+                
+                // Validate date range
+                validateDateRange();
+            }
+        });
     }
     initDatepickers();
+
+    // Date validation function
+    function validateDateRange() {
+        const start_date_val = $('#start_date').val();
+        const end_date_val = $('#end_date').val();
+
+        // If both dates are selected, validate
+        if (start_date_val && end_date_val) {
+            const startDate = parseDateFromDDMMYYYY(start_date_val);
+            const endDate = parseDateFromDDMMYYYY(end_date_val);
+
+            if (endDate < startDate) {
+                $('#end_date_error').text('❌ End date cannot be before start date').show();
+                return false;
+            } else {
+                $('#end_date_error').hide();
+                return true;
+            }
+        }
+        return true;
+    }
+
+    // Helper function to parse DD/MM/YYYY to Date object
+    function parseDateFromDDMMYYYY(dateStr) {
+        const [day, month, year] = dateStr.split('/').map(Number);
+        return new Date(year, month - 1, day); // month is 0-indexed
+    }
 
     // Load reports
     function loadReports() {
@@ -107,8 +170,15 @@ frappe.pages['finacle-report-portal'].on_page_load = function(wrapper) {
         }
     });
 
-    function formatForAPI(val){ const [d,m,y]=val.split('/'); return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`; }
-    function humanReadableTime(sec){ const m=Math.floor(sec/60), s=Math.floor(sec%60); return m>0?`${m} Minutes ${s} Seconds`:`${s} Seconds`; }
+    function formatForAPI(val){ 
+        const [d,m,y]=val.split('/'); 
+        return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`; 
+    }
+    
+    function humanReadableTime(sec){ 
+        const m=Math.floor(sec/60), s=Math.floor(sec%60); 
+        return m>0?`${m} Minutes ${s} Seconds`:`${s} Seconds`; 
+    }
 
     $('#download_csv').on('click',()=>downloadReport('csv'));
     $('#cancel_download').on('click',function(){
@@ -121,10 +191,21 @@ frappe.pages['finacle-report-portal'].on_page_load = function(wrapper) {
               start_date_val=$('#start_date').val(),
               end_date_val=$('#end_date').val();
 
+        // Clear all previous errors
+        $('#report_error').hide();
+        $('#start_date_error').hide();
+        $('#end_date_error').hide();
+
+        // Validate all fields are filled
         if(!reportDocName||!start_date_val||!end_date_val){
             $('#report_error').text('⚠️ Please complete all fields.').show();
             return;
-        } else $('#report_error').hide();
+        }
+
+        // Validate date range
+        if (!validateDateRange()) {
+            return; // Stop if validation fails
+        }
 
         const start_date=formatForAPI(start_date_val), end_date=formatForAPI(end_date_val);
         const url=`/api/method/custom_report.api.report_download?report_docname=${encodeURIComponent(reportDocName)}&start_date=${encodeURIComponent(start_date)}&end_date=${encodeURIComponent(end_date)}&file_type=${file_type}`;
@@ -157,7 +238,7 @@ frappe.pages['finacle-report-portal'].on_page_load = function(wrapper) {
             $('#download_csv').prop('disabled',false).text('Download');
 
             if(xhr.status===200){
-                // ✅ CRITICAL FIX: Extract filename from Content-Disposition header
+                // Extract filename from Content-Disposition header
                 let filename = "finacle_report.csv"; // Default fallback
                 
                 const contentDisposition = xhr.getResponseHeader('Content-Disposition');
@@ -172,7 +253,7 @@ frappe.pages['finacle-report-portal'].on_page_load = function(wrapper) {
                 const blob=new Blob([xhr.response],{type:"text/csv"});
                 const link=document.createElement("a"); 
                 link.href=URL.createObjectURL(blob); 
-                link.download=filename; // ✅ Use dynamic filename from backend
+                link.download=filename; // Use dynamic filename from backend
                 link.click();
                 
                 $('#progress_bar').width("100%"); 
