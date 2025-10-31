@@ -157,11 +157,24 @@ frappe.pages['finacle-report-portal'].on_page_load = function(wrapper) {
             $('#download_csv').prop('disabled',false).text('Download');
 
             if(xhr.status===200){
+                // ✅ CRITICAL FIX: Extract filename from Content-Disposition header
+                let filename = "finacle_report.csv"; // Default fallback
+                
+                const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+                if (contentDisposition) {
+                    // Parse filename from header: attachment; filename="Report_31-10-2025 12-30 PM.csv"
+                    const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                    if (filenameMatch && filenameMatch[1]) {
+                        filename = filenameMatch[1].replace(/['"]/g, '');
+                    }
+                }
+
                 const blob=new Blob([xhr.response],{type:"text/csv"});
                 const link=document.createElement("a"); 
                 link.href=URL.createObjectURL(blob); 
-                link.download="finacle_report.csv"; 
+                link.download=filename; // ✅ Use dynamic filename from backend
                 link.click();
+                
                 $('#progress_bar').width("100%"); 
                 $('#progress_percent').text("100%");
                 $('#progress_text').text('✅ Download complete');
