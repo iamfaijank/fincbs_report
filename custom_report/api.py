@@ -3,6 +3,7 @@ import io
 import os
 import time
 import tempfile
+import re
 from custom_report.db_utils import get_pg_connection
 
 
@@ -21,6 +22,7 @@ def get_user_reports():
                 fields=["role"]
             )
             allowed_roles = [r.role for r in roles]
+
             if user_roles.intersection(allowed_roles):
                 report_doc = frappe.get_doc("Finacle Report", report.name)
                 last_duration = getattr(report_doc, "last_download_duration", None)
@@ -38,106 +40,97 @@ def get_user_reports():
 
 
 @frappe.whitelist()
-def report_download(report_docname, start_date, end_date, file_type="csv"):
-    """
-    High-performance report download:
-    - Uses PostgreSQL COPY for fast CSV generation
-    - Automatically names file as <Report Name>_<Start>_to_<End>.csv
-    """
-
-    # Step 1: Load report doc
-    report_doc = frappe.get_doc("Finacle Report", report_docname)
-    if not report_doc or not report_doc.sql_query:
-        frappe.throw("❌ SQL query not defined for this report")
-
-    # Step 2: Role-based filter (Branch Report)
-    sol_id = None
-    user = frappe.session.user
-    user_roles = frappe.get_roles(user)
-
-    if "Branch Report" in user_roles:
-        sol_id = frappe.get_value("Employee", {"user_id": user}, "sahayog_branch")
-        if not sol_id:
-            frappe.throw("❌ No sahayog_branch found in your Employee record.")
-
-    # Step 3: Check DB connection
+def report_download(report_docname, start_date=None, end_date=None, file_type="csv"):
+    """Download the report data filtered by user's sol_id, date, and placeholders."""
     try:
+        user = frappe.session.user
+        sol_id = None
+
+        # Step 1: Try fetching sol_id if column exists in User
+        try:
+            sol_id = frappe.db.get_value("User", user, "sol_id")
+        except Exception as e:
+            frappe.log_error(f"sol_id column not found in User table: {str(e)}", "report_download")
+
+        # Step 2: Get report details
+        report_doc = frappe.get_doc("Finacle Report", report_docname)
+        raw_sql = report_doc.sql_query.strip()
+
+        # Step 3: Connect to Postgres
         conn = get_pg_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT 1")
-    except Exception as db_exc:
-        frappe.log_error(frappe.get_traceback(), "Database Connection Failed")
-        frappe.throw(f"❌ Database connection failed.\n{db_exc}")
 
-    # Step 4: Prepare SQL
-    raw_sql = report_doc.sql_query.strip().rstrip(';')
-    if sol_id:
-        if "where" in raw_sql.lower():
-            raw_sql += " AND g.sol_id = %(sol_id)s"
-        else:
-            raw_sql += " WHERE g.sol_id = %(sol_id)s"
+        # Step 4: Detect if sol_id column exists in query result
+        has_sol_id_column = False
+        try:
+            preview_sql = f"SELECT * FROM ({raw_sql}) AS subq LIMIT 1"
+            cursor.execute(preview_sql)
+            colnames = [desc[0].lower() for desc in cursor.description]
+            has_sol_id_column = "sol_id" in colnames
+        except Exception as e:
+            has_sol_id_column = False
+            conn.rollback()
+            frappe.log_error(f"Preview check failed: {str(e)}", "report_download")
 
-    try:
-        params = {"start_date": start_date, "end_date": end_date}
+        # Step 5: Apply sol_id filter if applicable
         if sol_id:
+            if has_sol_id_column:
+                if re.search(r"\bwhere\b", raw_sql, flags=re.IGNORECASE):
+                    raw_sql = f"{raw_sql} AND sol_id = %(sol_id)s"
+                else:
+                    raw_sql = f"{raw_sql} WHERE sol_id = %(sol_id)s"
+        else:
+            if has_sol_id_column:
+                frappe.throw("❌ You don't have a valid sol_id assigned. Access denied.")
+
+        # Step 6: Add date filter placeholders dynamically (if needed)
+        params = {}
+        if "%(start_date)s" in raw_sql or "%(end_date)s" in raw_sql:
+            params["start_date"] = start_date
+            params["end_date"] = end_date
+
+        if "%(sol_id)s" in raw_sql and sol_id:
             params["sol_id"] = sol_id
 
-        final_sql = cursor.mogrify(raw_sql, params).decode("utf-8")
-    except Exception as sql_exc:
-        frappe.log_error(frappe.get_traceback(), "SQL Mogrify Failed")
-        frappe.throw(f"❌ SQL preparation failed: {sql_exc}")
+        # Step 7: Execute final SQL
+        frappe.log_error(raw_sql, "Final SQL Executed")  # Debug log
+        cursor.execute(raw_sql, params if params else None)
+        rows = cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description]
 
-    # Step 5: Generate temp CSV file
-    tmp_csv = tempfile.NamedTemporaryFile(
-        delete=False, prefix="frp_report_", suffix=".csv",
-        mode="w", encoding="utf-8", newline=''
-    )
-    tmp_csv_name = tmp_csv.name
-    tmp_csv.close()
+        # Step 8: Generate CSV
+        import csv
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(columns)
+        writer.writerows(rows)
+        csv_data = output.getvalue()
+        output.close()
 
-    start_time = time.time()
+        # Step 9: Save temporarily
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        filename = f"{report_doc.report_name}_{timestamp}.csv"
+        temp_path = os.path.join(tempfile.gettempdir(), filename)
+        with open(temp_path, "w", encoding="utf-8", newline="") as f:
+            f.write(csv_data)
 
-    try:
-        # Write directly from DB using COPY
-        with open(tmp_csv_name, "w", encoding="utf-8", newline='') as f_out:
-            cursor.copy_expert(f"COPY ({final_sql}) TO STDOUT WITH CSV HEADER", f_out)
+        cursor.close()
+        conn.close()
 
-        duration_seconds = max(2.0, time.time() - start_time)
+        # Step 10: Serve file
+        with open(temp_path, "rb") as f:
+            filedata = f.read()
 
-        # Save duration
-        frappe.db.set_value(
-            "Finacle Report",
-            report_docname,
-            "last_download_duration",
-            duration_seconds,
-            update_modified=True
-        )
-        frappe.db.commit()
+        frappe.local.response.filename = filename
+        frappe.local.response.filecontent = filedata
+        frappe.local.response.type = "download"
 
-        # Step 6: Build proper filename — ✅ EXACT report name + date range
-        clean_name = report_doc.report_name.strip().replace(" ", "_").replace("/", "_")
-        final_filename = f"{clean_name}_{start_date}_to_{end_date}.csv"
+        return {"status": "success", "filename": filename}
 
-        # Step 7: Prepare response (this part forces the correct filename)
-        with open(tmp_csv_name, "rb") as f:
-            file_bytes = f.read()
+    except Exception as e:
+        frappe.log_error(f"Error in report_download: {str(e)}", "report_download")
+        raise e
 
-        frappe.local.response["type"] = "binary"
-        frappe.local.response["filename"] = final_filename
-        frappe.local.response["filecontent"] = file_bytes
-        frappe.local.response["display_content_as"] = "attachment"
-        frappe.local.response["headers"] = [
-            ("Content-Type", "text/csv"),
-            ("Content-Disposition", f'attachment; filename="{final_filename}"'),
-        ]
 
-    except Exception as exc:
-        frappe.log_error(frappe.get_traceback(), f"Report Download Error ({report_docname})")
-        frappe.throw(f"❌ Something went wrong during report download: {exc}")
 
-    finally:
-        try:
-            if os.path.exists(tmp_csv_name):
-                os.remove(tmp_csv_name)
-        except Exception:
-            pass
+
