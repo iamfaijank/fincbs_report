@@ -10,8 +10,37 @@ from custom_report.db_utils import get_pg_connection
 
 
 # ============================================================================
+# ANSI COLOR CODES FOR CONSOLE OUTPUT
+# ============================================================================
+
+class Colors:
+    """ANSI color codes for terminal output."""
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+    
+    # Foreground colors
+    BLACK = '\033[30m'
+    RED = '\033[31m'
+    GREEN = '\033[32m'
+    YELLOW = '\033[33m'
+    BLUE = '\033[34m'
+    MAGENTA = '\033[35m'
+    CYAN = '\033[36m'
+    WHITE = '\033[37m'
+    
+    # Bright colors
+    BRIGHT_RED = '\033[91m'
+    BRIGHT_GREEN = '\033[92m'
+    BRIGHT_YELLOW = '\033[93m'
+    BRIGHT_BLUE = '\033[94m'
+    BRIGHT_MAGENTA = '\033[95m'
+    BRIGHT_CYAN = '\033[96m'
+
+
+# ============================================================================
 # PUBLIC API METHODS
 # ============================================================================
+
 
 @frappe.whitelist()
 def get_user_reports():
@@ -60,9 +89,25 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         frappe.ValidationError: If user doesn't have valid sol_id when required
     """
     try:
+        _print_header("REPORT DOWNLOAD STARTED")
+        
         # Step 1: Get user context and fetch sol_id
         user = frappe.session.user
-        sol_id = _get_user_sol_id(user)
+        user_roles = set(frappe.get_roles())
+        
+        _print_info(f"Session User: {user}")
+        _print_info(f"User Roles: {', '.join(sorted(user_roles))}")
+        
+        # Step 1.1: Check if user has "Branch Report" role and get sol_id
+        sol_id, is_branch_user = _get_user_sol_id_with_branch_check(user, user_roles)
+        
+        if is_branch_user:
+            _print_success(f"Final Sol ID to use: {sol_id or 'None'}")
+            _print_info(f"Branch Report User: YES ✓")
+            _print_warning("⚠️  Sol ID filter will be applied to query")
+        else:
+            _print_info(f"Branch Report User: NO ✗")
+            _print_success("ℹ️  No Sol ID filter will be applied (original query)")
         
         # Step 2: Fetch report configuration
         report_doc = frappe.get_doc("Finacle Report", report_docname)
@@ -72,20 +117,42 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         conn = get_pg_connection()
         cursor = conn.cursor()
         
-        # Step 4: Check if query result contains sol_id column
-        has_sol_id_column = _check_sol_id_column_exists(cursor, raw_sql)
+        # Step 4: Apply Branch Report filter ONLY if user has "Branch Report" role
+        if is_branch_user:
+            filtered_sql, branch_filter_applied = _apply_branch_report_filter(
+                raw_sql, sol_id, is_branch_user
+            )
+        else:
+            # No modification - use original query
+            filtered_sql = raw_sql
+            branch_filter_applied = False
         
-        # Step 5: Apply sol_id filter if applicable
-        filtered_sql = _apply_sol_id_filter(raw_sql, sol_id, has_sol_id_column)
-        
-        # Step 6: Prepare query parameters for date range and sol_id
+        # Step 5: Prepare query parameters for date range and sol_id
         query_params = _build_query_parameters(filtered_sql, start_date, end_date, sol_id)
+        
+        # Step 6: Display final SQL and parameters
+        _print_sql_debug(filtered_sql, query_params, branch_filter_applied, is_branch_user)
         
         # Step 7: Execute SQL query and fetch results
         frappe.log_error(filtered_sql, "Final SQL Executed")
+        
+        _print_info("Executing query...")
+        start_time = time.time()
         cursor.execute(filtered_sql, query_params if query_params else None)
         rows = cursor.fetchall()
+        execution_time = time.time() - start_time
+        
         columns = [desc[0] for desc in cursor.description]
+        
+        # Calculate performance metrics
+        rows_per_sec = len(rows) / execution_time if execution_time > 0 else 0
+        
+        print()
+        _print_success("Query executed successfully!")
+        _print_metric("Execution Time", f"{execution_time:.2f} seconds")
+        _print_metric("Rows Fetched", f"{len(rows):,}")
+        _print_metric("Columns", f"{len(columns)}")
+        _print_metric("Performance", f"{rows_per_sec:.2f} rows/sec")
         
         # Step 8: Generate CSV file content
         csv_data = _generate_csv_content(columns, rows)
@@ -101,9 +168,16 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         # Step 11: Serve file for download
         _prepare_file_download(temp_path, filename)
         
+        print()
+        _print_success(f"File ready for download: {filename}")
+        _print_footer("REPORT DOWNLOAD COMPLETED")
+        
         return {"status": "success", "filename": filename}
 
     except Exception as e:
+        print()
+        _print_error(f"ERROR in report_download: {str(e)}")
+        _print_footer("REPORT DOWNLOAD FAILED", success=False)
         frappe.log_error(f"Error in report_download: {str(e)}", "report_download")
         raise e
 
@@ -111,6 +185,7 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
 # ============================================================================
 # PRIVATE HELPER METHODS - USER & ROLE MANAGEMENT
 # ============================================================================
+
 
 def _user_has_report_access(report_name, user_roles):
     """
@@ -152,86 +227,151 @@ def _get_report_metadata(report):
     }
 
 
-def _get_user_sol_id(user):
+def _get_user_sol_id_with_branch_check(user, user_roles):
     """
-    Retrieve sol_id associated with the given user.
+    Retrieve sol_id for the user with branch-specific logic.
+    
+    If user has "Branch Report" role, fetch sahayog_branch from Employee doctype.
+    Otherwise, return None (no filtering needed).
     
     Args:
         user (str): Username/email of the user
+        user_roles (set): Set of roles assigned to current user
     
     Returns:
-        str or None: sol_id if exists, None otherwise
+        tuple: (sol_id, is_branch_user)
+            - sol_id (str or None): sol_id value to use for filtering
+            - is_branch_user (bool): True if user has Branch Report role
     """
     sol_id = None
+    is_branch_user = False
+    
     try:
-        sol_id = frappe.db.get_value("User", user, "sol_id")
+        _print_section_header("CHECKING USER ROLE & SOL_ID")
+        
+        # Check if user has "Branch Report" role
+        if "Branch Report" in user_roles:
+            is_branch_user = True
+            _print_success("User has 'Branch Report' role")
+            _print_info("Fetching 'sahayog_branch' from Employee doctype...")
+            
+            # Fetch sahayog_branch from Employee doctype linked to this user
+            sol_id = frappe.db.get_value(
+                "Employee", 
+                {"user_id": user}, 
+                "sahayog_branch"
+            )
+            
+            if sol_id:
+                _print_success(f"Found sahayog_branch: {sol_id}")
+            else:
+                _print_warning("sahayog_branch NOT FOUND in Employee doctype")
+            
+            print()
+            _print_highlight("BRANCH REPORT USER INFO:")
+            _print_data("User", user)
+            _print_data("Sol ID (Employee.sahayog_branch)", sol_id or 'NOT FOUND')
+            _print_data("Filter Applied", 'YES ✓' if sol_id else 'NO ✗')
+            _print_data("All Roles", ', '.join(sorted(user_roles)))
+            
+            # Log for debugging
+            frappe.log_error(
+                f"Branch Report User - User: {user}, Roles: {user_roles}, Sol ID: {sol_id}",
+                "Branch Report Sol ID Check"
+            )
+            
+        else:
+            _print_info("User does NOT have 'Branch Report' role")
+            _print_success("No sol_id filtering required - using original query")
+            
+            print()
+            _print_highlight("STANDARD USER INFO:")
+            _print_data("User", user)
+            _print_data("Sol ID Filter", 'NOT APPLIED')
+            _print_data("Query Modification", 'NONE (Original Query)')
+            _print_data("All Roles", ', '.join(sorted(user_roles)))
+        
+        _print_section_footer()
+            
     except Exception as e:
+        _print_error(f"ERROR fetching sol_id for user {user}: {str(e)}")
+        _print_section_footer()
         frappe.log_error(
-            f"sol_id column not found in User table: {str(e)}", 
+            f"Error fetching sol_id for user {user}: {str(e)}", 
             "report_download"
         )
-    return sol_id
+    
+    return sol_id, is_branch_user
 
 
 # ============================================================================
 # PRIVATE HELPER METHODS - SQL QUERY MANIPULATION
 # ============================================================================
 
-def _check_sol_id_column_exists(cursor, sql_query):
-    """
-    Check if the SQL query result contains a sol_id column.
-    
-    Args:
-        cursor: Database cursor object
-        sql_query (str): SQL query to check
-    
-    Returns:
-        bool: True if sol_id column exists, False otherwise
-    """
-    has_sol_id_column = False
-    try:
-        # Execute preview query to get column names
-        preview_sql = f"SELECT * FROM ({sql_query}) AS subq LIMIT 1"
-        cursor.execute(preview_sql)
-        colnames = [desc[0].lower() for desc in cursor.description]
-        has_sol_id_column = "sol_id" in colnames
-    except Exception as e:
-        has_sol_id_column = False
-        cursor.connection.rollback()
-        frappe.log_error(f"Preview check failed: {str(e)}", "report_download")
-    
-    return has_sol_id_column
 
-
-def _apply_sol_id_filter(sql_query, sol_id, has_sol_id_column):
+def _apply_branch_report_filter(sql_query, sol_id, is_branch_user):
     """
-    Apply sol_id filter to SQL query if applicable.
+    Apply sol_id filter for Branch Report users ONLY.
+    
+    This function dynamically adds a WHERE condition to filter by sol_id
+    ONLY if the user has the "Branch Report" role.
     
     Args:
         sql_query (str): Original SQL query
-        sol_id (str): User's sol_id value
-        has_sol_id_column (bool): Whether query result has sol_id column
+        sol_id (str): User's sol_id value from Employee.sahayog_branch
+        is_branch_user (bool): Whether user has Branch Report role
     
     Returns:
-        str: Modified SQL query with sol_id filter
-        
-    Raises:
-        frappe.ValidationError: If sol_id is required but not available
+        tuple: (modified_sql, filter_applied)
+            - modified_sql (str): SQL query with sol_id filter (if applicable)
+            - filter_applied (bool): True if filter was added
     """
-    if not has_sol_id_column:
-        return sql_query
+    # If not a branch user, return original query without modification
+    if not is_branch_user:
+        return sql_query, False
     
-    # If query has sol_id column but user doesn't have sol_id, deny access
+    # If branch user but no sol_id found, throw error
     if not sol_id:
-        frappe.throw("❌ You don't have a valid sol_id assigned. Access denied.")
+        frappe.throw(
+            "❌ You have 'Branch Report' role but no sahayog_branch assigned in Employee record. "
+            "Please contact administrator."
+        )
     
-    # Add sol_id filter to WHERE clause
+    # Add sol_id filter to WHERE clause (safe parameterized approach)
+    # Check if query already has WHERE clause
     if re.search(r"\bwhere\b", sql_query, flags=re.IGNORECASE):
-        sql_query = f"{sql_query} AND sol_id = %(sol_id)s"
+        # Find the position of WHERE clause and add condition after it
+        modified_sql = re.sub(
+            r"(\bwhere\b)",
+            r"\1 g.sol_id = %(branch_sol_id)s AND",
+            sql_query,
+            count=1,
+            flags=re.IGNORECASE
+        )
     else:
-        sql_query = f"{sql_query} WHERE sol_id = %(sol_id)s"
+        # No WHERE clause exists, add one
+        # Find the position before ORDER BY, LIMIT, or end of query
+        if re.search(r"\border\s+by\b", sql_query, flags=re.IGNORECASE):
+            modified_sql = re.sub(
+                r"(\border\s+by\b)",
+                r"WHERE g.sol_id = %(branch_sol_id)s \1",
+                sql_query,
+                count=1,
+                flags=re.IGNORECASE
+            )
+        elif re.search(r"\blimit\b", sql_query, flags=re.IGNORECASE):
+            modified_sql = re.sub(
+                r"(\blimit\b)",
+                r"WHERE g.sol_id = %(branch_sol_id)s \1",
+                sql_query,
+                count=1,
+                flags=re.IGNORECASE
+            )
+        else:
+            # Add WHERE at the end
+            modified_sql = f"{sql_query.rstrip(';')} WHERE g.sol_id = %(branch_sol_id)s"
     
-    return sql_query
+    return modified_sql, True
 
 
 def _build_query_parameters(sql_query, start_date, end_date, sol_id):
@@ -250,13 +390,15 @@ def _build_query_parameters(sql_query, start_date, end_date, sol_id):
     params = {}
     
     # Add date parameters if placeholders exist in query
-    if "%(start_date)s" in sql_query or "%(end_date)s" in sql_query:
+    if "%(start_date)s" in sql_query:
         params["start_date"] = start_date
+    
+    if "%(end_date)s" in sql_query:
         params["end_date"] = end_date
     
-    # Add sol_id parameter if placeholder exists
-    if "%(sol_id)s" in sql_query and sol_id:
-        params["sol_id"] = sol_id
+    # Add branch sol_id parameter ONLY if placeholder exists
+    if "%(branch_sol_id)s" in sql_query and sol_id:
+        params["branch_sol_id"] = sol_id
     
     return params if params else None
 
@@ -264,6 +406,7 @@ def _build_query_parameters(sql_query, start_date, end_date, sol_id):
 # ============================================================================
 # PRIVATE HELPER METHODS - FILE GENERATION & DOWNLOAD
 # ============================================================================
+
 
 def _generate_csv_content(columns, rows):
     """
@@ -315,7 +458,6 @@ def _generate_filename(report_name, file_type):
     return filename
 
 
-
 def _save_temp_file(filename, content):
     """
     Save content to a temporary file.
@@ -348,3 +490,105 @@ def _prepare_file_download(temp_path, filename):
     frappe.local.response.filename = filename
     frappe.local.response.filecontent = filedata
     frappe.local.response.type = "download"
+
+
+# ============================================================================
+# UTILITY METHODS - COLORED CONSOLE PRINTING
+# ============================================================================
+
+
+def _print_header(title):
+    """Print formatted header for console output."""
+    print(f"\n{Colors.BOLD}{Colors.BRIGHT_CYAN}{'=' * 80}{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.BRIGHT_CYAN}🚀 {title}{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.BRIGHT_CYAN}{'=' * 80}{Colors.RESET}\n")
+
+
+def _print_footer(title, success=True):
+    """Print formatted footer for console output."""
+    color = Colors.BRIGHT_GREEN if success else Colors.BRIGHT_RED
+    icon = "✅" if success else "❌"
+    print(f"{Colors.BOLD}{color}{'=' * 80}{Colors.RESET}")
+    print(f"{Colors.BOLD}{color}{icon} {title}{Colors.RESET}")
+    print(f"{Colors.BOLD}{color}{'=' * 80}{Colors.RESET}\n")
+
+
+def _print_section_header(title):
+    """Print section header."""
+    print(f"{Colors.BRIGHT_BLUE}{'─' * 80}{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.BRIGHT_BLUE}🔐 {title}{Colors.RESET}")
+    print(f"{Colors.BRIGHT_BLUE}{'─' * 80}{Colors.RESET}")
+
+
+def _print_section_footer():
+    """Print section footer."""
+    print(f"{Colors.BRIGHT_BLUE}{'─' * 80}{Colors.RESET}\n")
+
+
+def _print_success(message):
+    """Print success message."""
+    print(f"{Colors.BRIGHT_GREEN}✅ {message}{Colors.RESET}")
+
+
+def _print_error(message):
+    """Print error message."""
+    print(f"{Colors.BRIGHT_RED}❌ {message}{Colors.RESET}")
+
+
+def _print_warning(message):
+    """Print warning message."""
+    print(f"{Colors.BRIGHT_YELLOW}⚠️  {message}{Colors.RESET}")
+
+
+def _print_info(message):
+    """Print info message."""
+    print(f"{Colors.BRIGHT_CYAN}ℹ️  {message}{Colors.RESET}")
+
+
+def _print_highlight(message):
+    """Print highlighted message."""
+    print(f"{Colors.BOLD}{Colors.BRIGHT_MAGENTA}📊 {message}{Colors.RESET}")
+
+
+def _print_data(label, value):
+    """Print data in key-value format."""
+    print(f"{Colors.CYAN}   • {label}:{Colors.RESET} {Colors.WHITE}{value}{Colors.RESET}")
+
+
+def _print_metric(label, value):
+    """Print performance metric."""
+    print(f"{Colors.YELLOW}⏱️  {label}:{Colors.RESET} {Colors.BOLD}{Colors.WHITE}{value}{Colors.RESET}")
+
+
+def _print_sql_debug(sql_query, params, filter_applied, is_branch_user):
+    """
+    Print SQL query and parameters in a formatted way.
+    
+    Args:
+        sql_query (str): The SQL query to display
+        params (dict): Query parameters
+        filter_applied (bool): Whether Branch Report filter was applied
+        is_branch_user (bool): Whether user has Branch Report role
+    """
+    print(f"{Colors.BRIGHT_MAGENTA}{'─' * 80}{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.BRIGHT_MAGENTA}📝 FINAL SQL QUERY{Colors.RESET}")
+    print(f"{Colors.BRIGHT_MAGENTA}{'─' * 80}{Colors.RESET}")
+    
+    if is_branch_user and filter_applied:
+        print(f"{Colors.BRIGHT_GREEN}🔒 BRANCH REPORT FILTER APPLIED{Colors.RESET}")
+        print(f"{Colors.GREEN}   → sol_id filter added to WHERE clause{Colors.RESET}")
+    elif not is_branch_user:
+        print(f"{Colors.BRIGHT_BLUE}ℹ️  NO FILTER APPLIED{Colors.RESET}")
+        print(f"{Colors.BLUE}   → Using original query (user doesn't have Branch Report role){Colors.RESET}")
+    
+    print(f"\n{Colors.BOLD}{Colors.CYAN}📄 Query:{Colors.RESET}")
+    print(f"{Colors.WHITE}{sql_query}{Colors.RESET}")
+    
+    print(f"\n{Colors.BOLD}{Colors.CYAN}📊 Parameters:{Colors.RESET}")
+    if params:
+        for key, value in params.items():
+            print(f"{Colors.YELLOW}   • {key}:{Colors.RESET} {Colors.WHITE}{value}{Colors.RESET}")
+    else:
+        print(f"{Colors.YELLOW}   (No parameters){Colors.RESET}")
+    
+    print(f"{Colors.BRIGHT_MAGENTA}{'─' * 80}{Colors.RESET}\n")
