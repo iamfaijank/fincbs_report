@@ -1,4 +1,81 @@
 frappe.pages['finacle-report-portal'].on_page_load = function(wrapper) {
+    // ============================================================================
+    // ROLE-BASED ACCESS CONTROL
+    // ============================================================================
+    
+    const ALLOWED_ROLES = [
+        "HR Department Report",
+        "JLL Department Report",
+        "MIS Department Report",
+        "Loan Department Report",
+        "Audit Department Report",
+        "Finance Department Report",
+        "Operation Department Report",
+        "Two Wheeler Department Report",
+        "Branch Report",
+        "System Manager",
+        "Finacle Report Admin"
+    ];
+    
+    // Check if user has any of the allowed roles
+    const userRoles = frappe.user_roles || [];
+    const hasAccess = ALLOWED_ROLES.some(role => userRoles.includes(role));
+    
+    // If user doesn't have access, show denial message
+    if (!hasAccess) {
+        showAccessDeniedPage(wrapper);
+        return; // Stop page initialization
+    }
+    
+    // If access granted, initialize the page normally
+    initializeReportPortal(wrapper);
+};
+
+
+// ============================================================================
+// ACCESS DENIED PAGE
+// ============================================================================
+
+function showAccessDeniedPage(wrapper) {
+    const page = frappe.ui.make_app_page({
+        parent: wrapper,
+        title: 'Access Denied',
+        single_column: true
+    });
+    
+    $(page.body).html(`
+        <div style="display:flex;justify-content:center;align-items:center;min-height:60vh;font-family:sans-serif;">
+            <div style="max-width:600px;text-align:center;padding:40px;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+                <div style="font-size:80px;color:#b71c1c;margin-bottom:20px;">🚫</div>
+                <h2 style="color:#b71c1c;margin-bottom:15px;font-size:28px;">Access Denied</h2>
+                <p style="color:#555;font-size:16px;line-height:1.6;margin-bottom:25px;">
+                    You do not have permission to access the <strong>Finacle Report Portal</strong>.
+                </p>
+                <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:20px;margin-bottom:25px;">
+                    <p style="color:#856404;font-size:14px;margin:0;line-height:1.6;">
+                        <strong>ℹ️ Need Access?</strong><br>
+                        To request access to this page, please contact the IT administrator at:
+                    </p>
+                    <div style="margin-top:15px;padding:12px;background:#fff;border-radius:6px;border:1px dashed #ffc107;">
+                        <a href="mailto:atul.n@sahayogmultistate.com" style="color:#196767;font-weight:600;font-size:15px;text-decoration:none;">
+                            📧 atul.n@sahayogmultistate.com
+                        </a>
+                    </div>
+                </div>
+                <button onclick="window.history.back()" style="margin-top:25px;background:#196767;color:white;border:none;padding:12px 30px;font-weight:600;border-radius:6px;cursor:pointer;font-size:14px;">
+                    ← Go Back
+                </button>
+            </div>
+        </div>
+    `);
+}
+
+
+// ============================================================================
+// MAIN REPORT PORTAL INITIALIZATION
+// ============================================================================
+
+function initializeReportPortal(wrapper) {
     const page = frappe.ui.make_app_page({
         parent: wrapper,
         title: 'Finacle Report Portal',
@@ -301,4 +378,4 @@ frappe.pages['finacle-report-portal'].on_page_load = function(wrapper) {
 
         xhr.send();
     }
-};
+}
