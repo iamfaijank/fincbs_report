@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"VlI9Y53xII\",\"type\":\"paragraph\",\"data\":{\"text\":\"<span class=\\\"h1\\\"><b>Finacle Report Admin</b></span>\",\"col\":12}},{\"id\":\"ZBuEkG06rv\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Portal\",\"col\":3}},{\"id\":\"i-_8X57Yad\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Branch Report\",\"col\":3}},{\"id\":\"dO3uUvcL3U\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Finacle CBS Report\",\"col\":3}}]",
+ "content": "[{\"id\":\"VlI9Y53xII\",\"type\":\"paragraph\",\"data\":{\"text\":\"<span class=\\\"h1\\\"><b>Finacle Report Admin</b></span>\",\"col\":12}},{\"id\":\"ZBuEkG06rv\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Portal\",\"col\":3}},{\"id\":\"i-_8X57Yad\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Branch Report\",\"col\":3}},{\"id\":\"dO3uUvcL3U\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Finacle CBS Report\",\"col\":3}},{\"id\":\"aZr0RTzNnF\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Finacle DR Credentials\",\"col\":3}}]",
  "creation": "2025-11-03 14:00:34.765148",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "Finacle Report Admin",
  "links": [],
- "modified": "2025-11-03 14:19:05.151315",
+ "modified": "2025-11-03 16:11:34.679785",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Finacle Report Admin",
@@ -43,6 +43,13 @@
    "label": "Branch Report",
    "link_to": "Finacle Report",
    "stats_filter": "[[\"Finacle Report User\",\"role\",\"=\",\"Branch Report\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Finacle DR Credentials",
+   "link_to": "Finacle DB Credentials",
    "type": "DocType"
   },
   {
