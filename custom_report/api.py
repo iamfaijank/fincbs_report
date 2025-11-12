@@ -67,7 +67,7 @@ def get_user_reports():
         return allowed_reports
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Error fetching user reports")
+        frappe.log_error(message=frappe.get_traceback(), title="User Reports Error")
         return []
 
 
@@ -134,7 +134,7 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         _print_sql_debug(filtered_sql, query_params, branch_filter_applied, is_branch_user)
         
         # Step 7: Execute SQL query and fetch results
-        frappe.log_error(filtered_sql, "Final SQL Executed")
+        frappe.log_error(message=filtered_sql, title="SQL Query Executed")
         
         _print_info("Executing query...")
         start_time = time.time()
@@ -178,7 +178,12 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         print()
         _print_error(f"ERROR in report_download: {str(e)}")
         _print_footer("REPORT DOWNLOAD FAILED", success=False)
-        frappe.log_error(f"Error in report_download: {str(e)}", "report_download")
+        
+        # Fixed: Short title with detailed message
+        frappe.log_error(
+            message=f"Error in report_download: {str(e)}\n\n{frappe.get_traceback()}", 
+            title="Report Download Error"
+        )
         raise e
 
 
@@ -272,12 +277,12 @@ def _get_user_sol_id_with_branch_check(user, user_roles):
             _print_data("User", user)
             _print_data("Sol ID (Employee.sahayog_branch)", sol_id or 'NOT FOUND')
             _print_data("Filter Applied", 'YES ✓' if sol_id else 'NO ✗')
-            _print_data("All Roles", ', '.join(sorted(user_roles)))
+            _print_data("Roles Count", len(user_roles))
             
-            # Log for debugging
+            # Fixed: Short title with detailed message
             frappe.log_error(
-                f"Branch Report User - User: {user}, Roles: {user_roles}, Sol ID: {sol_id}",
-                "Branch Report Sol ID Check"
+                message=f"Branch Report User Check\nUser: {user}\nSol ID: {sol_id}\nRoles: {', '.join(user_roles)}", 
+                title="Branch User Sol ID"
             )
             
         else:
@@ -289,16 +294,18 @@ def _get_user_sol_id_with_branch_check(user, user_roles):
             _print_data("User", user)
             _print_data("Sol ID Filter", 'NOT APPLIED')
             _print_data("Query Modification", 'NONE (Original Query)')
-            _print_data("All Roles", ', '.join(sorted(user_roles)))
+            _print_data("Roles Count", len(user_roles))
         
         _print_section_footer()
             
     except Exception as e:
         _print_error(f"ERROR fetching sol_id for user {user}: {str(e)}")
         _print_section_footer()
+        
+        # Fixed: Short title with detailed message
         frappe.log_error(
-            f"Error fetching sol_id for user {user}: {str(e)}", 
-            "report_download"
+            message=f"Sol ID Fetch Error\nUser: {user}\nError: {str(e)}\n\n{frappe.get_traceback()}", 
+            title="Sol ID Error"
         )
     
     return sol_id, is_branch_user
