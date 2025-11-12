@@ -138,7 +138,13 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         
         _print_info("Executing query...")
         start_time = time.time()
-        cursor.execute(filtered_sql, query_params if query_params else None)
+        
+        # FIXED: Handle parameters correctly to avoid syntax error
+        if query_params:
+            cursor.execute(filtered_sql, query_params)
+        else:
+            cursor.execute(filtered_sql)
+        
         rows = cursor.fetchall()
         execution_time = time.time() - start_time
         
@@ -179,7 +185,6 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         _print_error(f"ERROR in report_download: {str(e)}")
         _print_footer("REPORT DOWNLOAD FAILED", success=False)
         
-        # Fixed: Short title with detailed message
         frappe.log_error(
             message=f"Error in report_download: {str(e)}\n\n{frappe.get_traceback()}", 
             title="Report Download Error"
@@ -279,7 +284,6 @@ def _get_user_sol_id_with_branch_check(user, user_roles):
             _print_data("Filter Applied", 'YES ✓' if sol_id else 'NO ✗')
             _print_data("Roles Count", len(user_roles))
             
-            # Fixed: Short title with detailed message
             frappe.log_error(
                 message=f"Branch Report User Check\nUser: {user}\nSol ID: {sol_id}\nRoles: {', '.join(user_roles)}", 
                 title="Branch User Sol ID"
@@ -302,7 +306,6 @@ def _get_user_sol_id_with_branch_check(user, user_roles):
         _print_error(f"ERROR fetching sol_id for user {user}: {str(e)}")
         _print_section_footer()
         
-        # Fixed: Short title with detailed message
         frappe.log_error(
             message=f"Sol ID Fetch Error\nUser: {user}\nError: {str(e)}\n\n{frappe.get_traceback()}", 
             title="Sol ID Error"
