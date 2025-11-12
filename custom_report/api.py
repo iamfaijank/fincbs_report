@@ -139,12 +139,11 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         _print_info("Executing query...")
         start_time = time.time()
         
-        # FIXED: Handle parameters correctly to avoid syntax error
-        if query_params:
-            cursor.execute(filtered_sql, query_params)
-        else:
-            cursor.execute(filtered_sql)
+        # FIXED: Always pass query_params (empty dict if None)
+        if query_params is None:
+            query_params = {}
         
+        cursor.execute(filtered_sql, query_params)
         rows = cursor.fetchall()
         execution_time = time.time() - start_time
         
@@ -395,7 +394,7 @@ def _build_query_parameters(sql_query, start_date, end_date, sol_id):
         sol_id (str): User's sol_id value
     
     Returns:
-        dict: Dictionary of query parameters, or None if no parameters needed
+        dict: Dictionary of query parameters (never returns None)
     """
     params = {}
     
@@ -406,11 +405,17 @@ def _build_query_parameters(sql_query, start_date, end_date, sol_id):
     if "%(end_date)s" in sql_query:
         params["end_date"] = end_date
     
+    # FIXED: Check for alternative date placeholder names
+    if "%(tran_date)s" in sql_query:
+        # Use start_date as tran_date if exists
+        params["tran_date"] = start_date
+    
     # Add branch sol_id parameter ONLY if placeholder exists
     if "%(branch_sol_id)s" in sql_query and sol_id:
         params["branch_sol_id"] = sol_id
     
-    return params if params else None
+    # Always return dictionary (empty if no params)
+    return params
 
 
 # ============================================================================
