@@ -97,7 +97,7 @@ function initializeReportPortal(wrapper) {
         document.head.appendChild(script);
     }
 
-    // Page HTML
+    // Page HTML with search input (NEW)
     $(page.body).html(`
         <div style="max-width:480px;margin:40px auto;font-family:sans-serif;">
             <div style="padding:20px;background:#fff;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,0.1);">
@@ -105,9 +105,17 @@ function initializeReportPortal(wrapper) {
                 <form id="finacle-report-form" style="display:flex;flex-direction:column;gap:15px;">
                     <div>
                         <label style="font-weight:600;color:#196767;margin-bottom:5px;">Select Report</label>
-                        <select id="report_name" class="form-control" required>
-                            <option value="" disabled selected>Loading reports...</option>
-                        </select>
+                        <div style="position:relative;">
+                            <input type="text" id="report_search" class="form-control" placeholder="🔍 Search or select report..." autocomplete="off" style="padding-right:35px;">
+                            <span id="search_clear" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:#999;display:none;font-size:18px;" title="Clear search">✕</span>
+                            <select id="report_name" class="form-control" required style="display:none;">
+                                <option value="" disabled selected>Loading reports...</option>
+                            </select>
+                            <div id="report_dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #ddd;border-radius:5px;max-height:250px;overflow-y:auto;z-index:1000;box-shadow:0 4px 8px rgba(0,0,0,0.1);margin-top:2px;">
+                                <!-- Dropdown items will be populated here -->
+                            </div>
+                        </div>
+                        <input type="hidden" id="selected_report_value" value="">
                         <div id="report_error" style="color:red;font-size:12px;display:none;margin-top:3px;"></div>
                     </div>
                     <div style="display:flex;gap:10px;">
@@ -142,10 +150,16 @@ function initializeReportPortal(wrapper) {
     `);
 
     const $reportSelect = $('#report_name');
+    const $reportSearch = $('#report_search');
+    const $reportDropdown = $('#report_dropdown');
+    const $selectedReportValue = $('#selected_report_value');
+    const $searchClear = $('#search_clear');
+    
     let expectedDuration = 2;
     let currentXhr = null;
     let startDatePicker = null;
     let endDatePicker = null;
+    let allReports = []; // Store all reports for searching
 
     // Initialize datepickers with validation
     function initDatepickers() {
@@ -224,27 +238,105 @@ function initializeReportPortal(wrapper) {
             method: 'custom_report.api.get_user_reports',
             callback: function(res) {
                 const reports = res.message || [];
-                if (!reports.length) return $reportSelect.html(`<option disabled selected>No reports available</option>`);
+                if (!reports.length) {
+                    $reportSelect.html(`<option disabled selected>No reports available</option>`);
+                    $reportSearch.prop('disabled', true).attr('placeholder', 'No reports available');
+                    return;
+                }
+                
+                // Store all reports
+                allReports = reports;
+                
+                // Populate hidden select
                 $reportSelect.html(`<option value="" disabled selected>Select Report</option>`);
                 reports.forEach(r => {
                     const dur = r.last_duration ? parseFloat(r.last_duration) : '';
                     $reportSelect.append(`<option value="${r.name}" data-duration="${dur}">${r.report_name}</option>`);
                 });
+                
+                // Enable search
+                $reportSearch.prop('disabled', false);
             }
         });
     }
     loadReports();
 
-    $reportSelect.on('change', function() {
-        const lastDuration = parseFloat($(this).find('option:selected').data('duration'));
-        expectedDuration = lastDuration && lastDuration >= 2 ? lastDuration : 2;
-        if (lastDuration) {
-            $('#progress_text').show().text(`Time Required: ${humanReadableTime(lastDuration)}`);
-            $('#robot_msg').show().text('🤖 Ready to download.');
+    // NEW: Search functionality
+    $reportSearch.on('input focus', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        
+        // Show clear button if there's text
+        if (searchTerm.length > 0) {
+            $searchClear.show();
         } else {
-            $('#progress_text').hide();
-            $('#robot_msg').hide();
+            $searchClear.hide();
         }
+        
+        // Filter reports
+        const filteredReports = allReports.filter(r => 
+            r.report_name.toLowerCase().includes(searchTerm)
+        );
+        
+        // Populate dropdown
+        if (filteredReports.length > 0) {
+            let html = '';
+            filteredReports.forEach(r => {
+                html += `<div class="report-item" data-value="${r.name}" data-duration="${r.last_duration || ''}" style="padding:10px;cursor:pointer;border-bottom:1px solid #f0f0f0;transition:background 0.2s;">
+                    <div style="font-weight:500;color:#333;">${r.report_name}</div>
+                </div>`;
+            });
+            $reportDropdown.html(html).show();
+            
+            // Add hover effect
+            $('.report-item').hover(
+                function() { $(this).css('background', '#f5f5f5'); },
+                function() { $(this).css('background', 'white'); }
+            );
+            
+            // Handle selection
+            $('.report-item').on('click', function() {
+                const value = $(this).data('value');
+                const text = $(this).find('div').first().text();
+                const duration = $(this).data('duration');
+                
+                // Set values
+                $selectedReportValue.val(value);
+                $reportSearch.val(text);
+                $reportSelect.val(value);
+                $reportDropdown.hide();
+                $searchClear.show();
+                
+                // Update duration
+                expectedDuration = duration && duration >= 2 ? duration : 2;
+                if (duration) {
+                    $('#progress_text').show().text(`Time Required: ${humanReadableTime(duration)}`);
+                    $('#robot_msg').show().text('🤖 Ready to download.');
+                } else {
+                    $('#progress_text').hide();
+                    $('#robot_msg').hide();
+                }
+            });
+        } else {
+            $reportDropdown.html('<div style="padding:10px;color:#999;text-align:center;">No reports found</div>').show();
+        }
+    });
+
+    // Close dropdown when clicking outside
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('#report_search, #report_dropdown').length) {
+            $reportDropdown.hide();
+        }
+    });
+
+    // Clear search
+    $searchClear.on('click', function() {
+        $reportSearch.val('');
+        $selectedReportValue.val('');
+        $reportSelect.val('');
+        $(this).hide();
+        $reportDropdown.hide();
+        $('#progress_text').hide();
+        $('#robot_msg').hide();
     });
 
     function formatForAPI(val){ 
@@ -264,9 +356,9 @@ function initializeReportPortal(wrapper) {
     });
 
     function downloadReport(file_type){
-        const reportDocName=$reportSelect.val(),
-              start_date_val=$('#start_date').val(),
-              end_date_val=$('#end_date').val();
+        const reportDocName = $selectedReportValue.val(); // Use hidden input value
+        const start_date_val=$('#start_date').val();
+        const end_date_val=$('#end_date').val();
 
         // Clear all previous errors
         $('#report_error').hide();
