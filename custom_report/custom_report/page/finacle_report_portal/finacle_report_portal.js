@@ -12,6 +12,7 @@ frappe.pages['finacle-report-portal'].on_page_load = function(wrapper) {
         "Finance Department Report",
         "Operation Department Report",
         "Two Wheeler Department Report",
+        "Head Office Report",
         "Branch Report",
         "System Manager",
         "Finacle Report Admin"
