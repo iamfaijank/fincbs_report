@@ -1,5 +1,78 @@
 frappe.pages['finacle-report-portal'].on_page_load = function(wrapper) {
     // ============================================================================
+    // ADVANCED MOBILE DETECTION (WORKS EVEN IN DESKTOP MODE)
+    // ============================================================================
+    
+    function isMobileDevice() {
+        // Method 1: Check User Agent
+        const ua = navigator.userAgent || navigator.vendor || window.opera;
+        const mobileUA = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(ua);
+        
+        // Method 2: Check Touch Capability
+        const hasTouch = (
+            'ontouchstart' in window ||
+            navigator.maxTouchPoints > 0 ||
+            navigator.msMaxTouchPoints > 0
+        );
+        
+        // Method 3: Check Screen Size (actual device screen, not viewport)
+        const smallScreen = (
+            window.screen.width <= 768 ||
+            window.screen.height <= 768
+        );
+        
+        // Method 4: Check Device Pixel Ratio (mobile devices usually have higher DPR)
+        const highDPR = window.devicePixelRatio > 1;
+        
+        // Method 5: Check for mobile-specific orientation API
+        const hasOrientation = typeof window.orientation !== 'undefined';
+        
+        // Combine all checks (if ANY 2+ are true, it's mobile)
+        let mobileIndicators = 0;
+        if (mobileUA) mobileIndicators++;
+        if (hasTouch) mobileIndicators++;
+        if (smallScreen) mobileIndicators++;
+        if (hasOrientation) mobileIndicators++;
+        
+        // Final decision: if 2 or more indicators say mobile, treat as mobile
+        return mobileIndicators >= 2;
+    }
+    
+    // Block mobile access (even in desktop mode)
+    if (isMobileDevice()) {
+        const page = frappe.ui.make_app_page({
+            parent: wrapper,
+            title: 'Not Supported on Mobile',
+            single_column: true
+        });
+
+        $(page.body).html(`
+            <div style="display:flex;justify-content:center;align-items:center;min-height:60vh;font-family:sans-serif;">
+                <div style="max-width:600px;text-align:center;padding:40px;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+                    <div style="font-size:70px;color:#b71c1c;margin-bottom:20px;">📵</div>
+                    <h2 style="color:#b71c1c;margin-bottom:15px;font-size:26px;">This App Is Not Supported on Mobile</h2>
+                    <p style="color:#555;font-size:15px;line-height:1.6;margin-bottom:20px;">
+                        The <strong>Finacle Report Portal</strong> can only be accessed from a Desktop or Laptop browser.
+                    </p>
+                    <p style="color:#777;font-size:14px;line-height:1.6;margin-bottom:25px;">
+                        Please open this URL on your Desktop or Laptop to continue.
+                    </p>
+                    <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:15px;margin-bottom:20px;">
+                        <p style="color:#856404;font-size:13px;margin:0;line-height:1.5;">
+                            <strong>⚠️ Note:</strong> This restriction applies even if you enable "Desktop Mode" in your mobile browser.
+                        </p>
+                    </div>
+                    <button onclick="window.location.href='/'" style="margin-top:10px;background:#196767;color:white;border:none;padding:10px 26px;font-weight:600;border-radius:6px;cursor:pointer;font-size:14px;">
+                        ⬅ Back to Home
+                    </button>
+                </div>
+            </div>
+        `);
+
+        return; // Stop further initialization on mobile
+    }
+
+    // ============================================================================
     // ROLE-BASED ACCESS CONTROL
     // ============================================================================
     
@@ -98,7 +171,7 @@ function initializeReportPortal(wrapper) {
         document.head.appendChild(script);
     }
 
-    // Page HTML with search input (NEW)
+    // Page HTML with search input
     $(page.body).html(`
         <div style="max-width:480px;margin:40px auto;font-family:sans-serif;">
             <div style="padding:20px;background:#fff;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,0.1);">
@@ -262,7 +335,7 @@ function initializeReportPortal(wrapper) {
     }
     loadReports();
 
-    // NEW: Search functionality
+    // Search functionality
     $reportSearch.on('input focus', function() {
         const searchTerm = $(this).val().toLowerCase();
         
