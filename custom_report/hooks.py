@@ -241,4 +241,6 @@ override_whitelisted_methods = {
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
-
+fixtures = [
+    {"dt": "DocType", "filters": [["name", "in", ["Branch Category Report"]]]}
+]
