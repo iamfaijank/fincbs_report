@@ -1,0 +1,86 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{sol_id}-{financial_year}",
+ "creation": "2025-12-11 14:51:48.058713",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "sol_id",
+  "target",
+  "achivement",
+  "financial_year",
+  "type"
+ ],
+ "fields": [
+  {
+   "fieldname": "sol_id",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sol Id",
+   "options": "Sahayog Branch",
+   "reqd": 1
+  },
+  {
+   "fieldname": "target",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "\u20b9 Target",
+   "reqd": 1
+  },
+  {
+   "fieldname": "achivement",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "\u20b9 Achivement",
+   "reqd": 1
+  },
+  {
+   "default": "2025-2026",
+   "fieldname": "financial_year",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Financial Year",
+   "options": "2025-2026",
+   "reqd": 1
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type",
+   "options": "\nYearly\nHalf-Yearly\nQuarterly\nMonthly",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-11 15:06:47.358713",
+ "modified_by": "Administrator",
+ "module": "custom_report",
+ "name": "Target Vs Achivement",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "sol_id"
+}
