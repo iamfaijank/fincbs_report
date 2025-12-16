@@ -1,114 +1,241 @@
+# sahayog_dashboard.py
+
 import frappe
+from frappe import _
+from frappe.utils import getdate
+
 
 @frappe.whitelist()
-def get_dashboard_data():
+def get_dashboard_data(time_period="daily", from_date=None, to_date=None):
     """
-    Phase 1: Returns dummy data
-    Phase 2: Will connect to PostgreSQL via db_utils
+    Fetch dashboard data with Yearly targets from Target Vs Achievement
+    Returns: List of zone-wise and category-wise aggregated data
     """
-    return get_dummy_data()
+    settings = frappe.get_single("Report Settings")
+    
+    if not settings.is_active:
+        frappe.throw(_("Data source is not active"))
+    
+    # Build filters
+    filters = {}
+    
+    if from_date and to_date:
+        filters['date'] = ['between', [from_date, to_date]]
+    
+    # Fetch branch data from Branch Category Report
+    doctype_name = settings.master_doctype or "Branch Category Report"
+    branch_data = frappe.get_all(
+        doctype_name,
+        filters=filters,
+        fields=[
+            'zone', 'region', 'district', 'branches', 'sol',
+            'ytd_target', 'ytd', 'ytd_achi', 'branch_score', 'date'
+        ]
+    )
+    
+    # Get Yearly targets for the relevant financial year
+    financial_year = get_financial_year(to_date)
+    yearly_targets = get_yearly_targets(financial_year)
+    
+    # Aggregate data
+    aggregated = aggregate_with_targets(branch_data, yearly_targets)
+    
+    return aggregated
 
-def get_dummy_data():
-    """Dummy data matching the Finacle structure"""
-    return {
-        "zones": [
-            {
-                "zone_name": "ZONE-1",
-                "branch_score": 108,
-                "dec_tgt": 102970500,
-                "jan_tgt": 109671000,
-                "feb_tgt": 116371500,
-                "mar_tgt": 123072000,
-                "djfm_total": 452085000,
-                "categories": [
-                    {"category": "Accelerator", "branch_score": 21, "dec_tgt": 27615000, "jan_tgt": 28930000, "feb_tgt": 30245000, "mar_tgt": 31560000, "djfm_total": 118350000},
-                    {"category": "Learner", "branch_score": 20, "dec_tgt": 5652000, "jan_tgt": 6594000, "feb_tgt": 7536000, "mar_tgt": 8478000, "djfm_total": 28260000},
-                    {"category": "Master", "branch_score": 21, "dec_tgt": 27394500, "jan_tgt": 28699000, "feb_tgt": 30003500, "mar_tgt": 31308000, "djfm_total": 117405000},
-                    {"category": "Pinacle", "branch_score": 16, "dec_tgt": 32865000, "jan_tgt": 34430000, "feb_tgt": 35995000, "mar_tgt": 37560000, "djfm_total": 140850000},
-                    {"category": "Starter", "branch_score": 20, "dec_tgt": 7644000, "jan_tgt": 8918000, "feb_tgt": 10192000, "mar_tgt": 11466000, "djfm_total": 38220000},
-                    {"category": "Zero Level", "branch_score": 10, "dec_tgt": 1800000, "jan_tgt": 2100000, "feb_tgt": 2400000, "mar_tgt": 2700000, "djfm_total": 9000000}
-                ]
-            },
-            {
-                "zone_name": "ZONE-2",
-                "branch_score": 30,
-                "dec_tgt": 10716000,
-                "jan_tgt": 12502000,
-                "feb_tgt": 14288000,
-                "mar_tgt": 16074000,
-                "djfm_total": 53580000,
-                "categories": [
-                    {"category": "Accelerator", "branch_score": 1, "dec_tgt": 3240000, "jan_tgt": 3780000, "feb_tgt": 4320000, "mar_tgt": 4860000, "djfm_total": 16200000},
-                    {"category": "Learner", "branch_score": 7, "dec_tgt": 2520000, "jan_tgt": 2940000, "feb_tgt": 3360000, "mar_tgt": 3780000, "djfm_total": 12600000},
-                    {"category": "Master", "branch_score": 1, "dec_tgt": 312000, "jan_tgt": 364000, "feb_tgt": 416000, "mar_tgt": 468000, "djfm_total": 1560000},
-                    {"category": "Starter", "branch_score": 4, "dec_tgt": 1440000, "jan_tgt": 1680000, "feb_tgt": 1920000, "mar_tgt": 2160000, "djfm_total": 7200000},
-                    {"category": "Zero Level", "branch_score": 17, "dec_tgt": 5120000, "jan_tgt": 7140000, "feb_tgt": 8160000, "mar_tgt": 9180000, "djfm_total": 30600000}
-                ]
-            },
-            {
-                "zone_name": "ZONE-3",
-                "branch_score": 28,
-                "dec_tgt": 6120000,
-                "jan_tgt": 7140000,
-                "feb_tgt": 8160000,
-                "mar_tgt": 9180000,
-                "djfm_total": 30600000,
-                "categories": [
-                    {"category": "Learner", "branch_score": 5, "dec_tgt": 960000, "jan_tgt": 1120000, "feb_tgt": 1280000, "mar_tgt": 1440000, "djfm_total": 4800000},
-                    {"category": "Starter", "branch_score": 2, "dec_tgt": 480000, "jan_tgt": 560000, "feb_tgt": 640000, "mar_tgt": 720000, "djfm_total": 2400000},
-                    {"category": "Zero Level", "branch_score": 21, "dec_tgt": 4680000, "jan_tgt": 5460000, "feb_tgt": 6240000, "mar_tgt": 7020000, "djfm_total": 23400000}
-                ]
-            },
-            {
-                "zone_name": "ZONE-4",
-                "branch_score": 20,
-                "dec_tgt": 4500000,
-                "jan_tgt": 5250000,
-                "feb_tgt": 6000000,
-                "mar_tgt": 6750000,
-                "djfm_total": 22500000,
-                "categories": [
-                    {"category": "Learner", "branch_score": 6, "dec_tgt": 1440000, "jan_tgt": 1680000, "feb_tgt": 1920000, "mar_tgt": 2160000, "djfm_total": 7200000},
-                    {"category": "Zero Level", "branch_score": 14, "dec_tgt": 4060000, "jan_tgt": 3570000, "feb_tgt": 4080000, "mar_tgt": 4590000, "djfm_total": 15300000}
-                ]
-            },
-            {
-                "zone_name": "ZONE-5",
-                "branch_score": 19,
-                "dec_tgt": 4716000,
-                "jan_tgt": 5502000,
-                "feb_tgt": 6288000,
-                "mar_tgt": 7074000,
-                "djfm_total": 23580000,
-                "categories": [
-                    {"category": "Learner", "branch_score": 11, "dec_tgt": 2760000, "jan_tgt": 3220000, "feb_tgt": 3680000, "mar_tgt": 4140000, "djfm_total": 13800000},
-                    {"category": "Master", "branch_score": 2, "dec_tgt": 576000, "jan_tgt": 672000, "feb_tgt": 768000, "mar_tgt": 864000, "djfm_total": 2880000},
-                    {"category": "Starter", "branch_score": 1, "dec_tgt": 240000, "jan_tgt": 280000, "feb_tgt": 320000, "mar_tgt": 360000, "djfm_total": 1200000},
-                    {"category": "Zero Level", "branch_score": 5, "dec_tgt": 1140000, "jan_tgt": 1330000, "feb_tgt": 1520000, "mar_tgt": 1710000, "djfm_total": 5700000}
-                ]
-            },
-            {
-                "zone_name": "ZONE-6",
-                "branch_score": 15,
-                "dec_tgt": 3492000,
-                "jan_tgt": 4074000,
-                "feb_tgt": 4656000,
-                "mar_tgt": 5238000,
-                "djfm_total": 17460000,
-                "categories": [
-                    {"category": "Learner", "branch_score": 5, "dec_tgt": 1260000, "jan_tgt": 1470000, "feb_tgt": 1680000, "mar_tgt": 1890000, "djfm_total": 6300000},
-                    {"category": "Master", "branch_score": 1, "dec_tgt": 252000, "jan_tgt": 294000, "feb_tgt": 336000, "mar_tgt": 378000, "djfm_total": 1260000},
-                    {"category": "Starter", "branch_score": 1, "dec_tgt": 180000, "jan_tgt": 210000, "feb_tgt": 240000, "mar_tgt": 270000, "djfm_total": 900000},
-                    {"category": "Zero Level", "branch_score": 8, "dec_tgt": 1800000, "jan_tgt": 2100000, "feb_tgt": 2400000, "mar_tgt": 2700000, "djfm_total": 9000000}
-                ]
+
+def get_financial_year(date_str=None):
+    """
+    Get financial year from date.
+    Example: 2025-2026
+    """
+    if not date_str:
+        date = getdate()
+    else:
+        date = getdate(date_str)
+    
+    if date.month > 3:
+        return f"{date.year}-{date.year + 1}"
+    else:
+        return f"{date.year - 1}-{date.year}"
+
+
+def get_yearly_targets(financial_year):
+    """
+    Fetch Yearly targets from Target Vs Achievement
+    For a specific financial year
+    Returns: {sol_id: target_amount}
+    """
+    targets = frappe.get_all(
+        "Target Vs Achivement",
+        filters={
+            'type': 'Yearly',
+            'financial_year': financial_year
+        },
+        fields=['sol_id', 'target']
+    )
+    
+    targets_map = {}
+    for t in targets:
+        # Convert sol_id to string for consistent matching
+        sol_id = str(t.sol_id) if t.sol_id else None
+        if sol_id:
+            targets_map[sol_id] = float(t.target or 0)
+    
+    return targets_map
+
+
+def aggregate_with_targets(data, yearly_targets):
+    """
+    Aggregate by Zone → Category
+    Total target: From Target Vs Achievement (Yearly)
+    Returns: Flattened list for frontend consumption
+    """
+    zone_map = {}
+    
+    for row in data:
+        zone_name = row.get('zone', 'Unknown')
+        category = row.get('branch_score', 'Unknown')
+        sol_id = str(row.get('sol', '')) if row.get('sol') else None
+        
+        # Initialize zone
+        if zone_name not in zone_map:
+            zone_map[zone_name] = {}
+        
+        # Initialize category within zone
+        if category not in zone_map[zone_name]:
+            zone_map[zone_name][category] = {
+                'zone': zone_name,
+                'category': category,
+                'branch_count': 0,
+                'loan_target': 0,
+                'dep_target': 0,
+                'loan_ach': 0,
+                'dep_ach': 0,
             }
+        
+        # Get yearly target from Target Vs Achievement using sol_id
+        yearly_target = 0
+        if sol_id and sol_id in yearly_targets:
+            yearly_target = yearly_targets[sol_id]
+        
+        # Total achievement from Branch Category Report (ytd field)
+        total_ach = float(row.get('ytd') or 0)
+        
+        # Split target equally between loan and deposit (assumption)
+        # You can modify this logic based on your business rules
+        loan_target = yearly_target * 0.5
+        dep_target = yearly_target * 0.5
+        loan_ach = total_ach * 0.5
+        dep_ach = total_ach * 0.5
+        
+        # Update category aggregation
+        cat_data = zone_map[zone_name][category]
+        cat_data['branch_count'] += 1
+        cat_data['loan_target'] += loan_target
+        cat_data['dep_target'] += dep_target
+        cat_data['loan_ach'] += loan_ach
+        cat_data['dep_ach'] += dep_ach
+    
+    # Flatten the nested dictionary into a list
+    result = []
+    for zone_name, categories in zone_map.items():
+        for category, cat_data in categories.items():
+            result.append(cat_data)
+    
+    return result
+
+
+@frappe.whitelist()
+def get_drill_down_data(zone, category, time_period="daily", from_date=None, to_date=None):
+    """
+    Drill down with branch-level data
+    Target from Target Vs Achievement (matched by sol_id)
+    """
+    settings = frappe.get_single("Report Settings")
+    doctype_name = settings.master_doctype or "Branch Category Report"
+    
+    filters = {'zone': zone, 'branch_score': category}
+    
+    if from_date and to_date:
+        filters['date'] = ['between', [from_date, to_date]]
+    
+    branches = frappe.get_all(
+        doctype_name,
+        filters=filters,
+        fields=[
+            'branches', 'sol', 'region', 'district',
+            'ytd_target', 'ytd', 'ytd_achi', 'date'
         ],
-        "grand_total": {
-            "branch_score": 220,
-            "dec_tgt": 132514500,
-            "jan_tgt": 144139000,
-            "feb_tgt": 155763500,
-            "mar_tgt": 167388000,
-            "djfm_total": 599805000
-        }
-    }
+        order_by='branches asc'
+    )
+    
+    # Get yearly targets for these branches
+    sol_ids = [str(b.get('sol')) for b in branches if b.get('sol')]
+    yearly_targets = {}
+    financial_year = get_financial_year(to_date)
+    
+    if sol_ids:
+        targets = frappe.get_all(
+            "Target Vs Achivement",
+            filters={
+                'sol_id': ['in', sol_ids],
+                'type': 'Yearly',
+                'financial_year': financial_year
+            },
+            fields=['sol_id', 'target']
+        )
+        
+        for t in targets:
+            sol_id = str(t.sol_id) if t.sol_id else None
+            if sol_id:
+                yearly_targets[sol_id] = float(t.target or 0)
+    
+    # Enhance branch data
+    for branch in branches:
+        sol_id = str(branch.get('sol', '')) if branch.get('sol') else None
+        
+        # Get yearly target from Target Vs Achievement
+        yearly_target = 0
+        if sol_id and sol_id in yearly_targets:
+            yearly_target = yearly_targets[sol_id]
+        
+        # Split targets (assumption: 50-50)
+        loan_target = yearly_target * 0.5
+        dep_target = yearly_target * 0.5
+        
+        # Achievement (from ytd field)
+        total_ach = float(branch.get('ytd') or 0)
+        loan_ach = total_ach * 0.5
+        dep_ach = total_ach * 0.5
+        
+        # Add to branch data
+        branch['zone'] = zone
+        branch['category'] = category
+        branch['branch'] = branch.get('branches', '')
+        branch['loan_target'] = loan_target
+        branch['dep_target'] = dep_target
+        branch['loan_ach'] = loan_ach
+        branch['dep_ach'] = dep_ach
+        branch['ytd_achi_pct'] = round(float(branch.get('ytd_achi') or 0) * 100, 2)
+    
+    return branches
+
+
+@frappe.whitelist()
+def get_branch_targets(from_date=None, to_date=None):
+    """
+    Branch Targets tab - show all targets (filtered by Yearly for now)
+    """
+    financial_year = get_financial_year(to_date)
+    targets = frappe.get_all(
+        "Target Vs Achivement",
+        filters={
+            'type': 'Yearly',
+            'financial_year': financial_year
+        },
+        fields=['sol_id', 'target', 'financial_year', 'type'],
+        order_by='sol_id asc',
+        limit=1000
+    )
+    
+    return targets
