@@ -1175,6 +1175,21 @@ class SahayogDashboard {
                     color: white;
                 }
 
+				/* Per-segment Column Header - highlighted and toggled with segment */
+				.segment-column-header td {
+					background: linear-gradient(90deg, #f8fafc 0%, #eef2ff 100%);
+					color: #0f172a;
+					font-weight: 800;
+					padding: 10px 14px;
+					border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+					text-transform: uppercase;
+					font-size: 12px;
+				}
+
+				.segment-column-header td.row-label {
+					font-weight: 900;
+				}
+
                 /* TOP Segment: 75% - 100%+ (Green) */
                 .segment-top {
                     background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
@@ -2684,6 +2699,22 @@ class SahayogDashboard {
 					<strong>${segment.name}</strong>
 					<span style="margin-left: 10px; color: #64748b;">(${branchCount} branches)</span>
 				</td>
+			</tr>
+		`);
+
+			// Per-segment column headers (inserted as a child row so it toggles with segment)
+			tbody.append(`
+			<tr class="segment-column-header segment-child-${key}" data-segment="${key}" style="display: none;">
+				<td class="row-label">Branch</td>
+				<td>Zone</td>
+				<td>SOL</td>
+				<td>Region</td>
+				<td>District</td>
+				<td>DEC-25</td>
+				<td>JAN-26</td>
+				<td>FEB-26</td>
+				<td>MAR-26</td>
+				<td>Total</td>
 			</tr>
 		`);
 
