@@ -1144,6 +1144,113 @@ class SahayogDashboard {
                 .drill-reset-btn:hover {
                     background: #2d2d2d;
                 }
+
+                /* Performance Segment Styles */
+                .segment-header-row {
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    border-top: 2px solid #cbd5e1 !important;
+                }
+
+                .segment-header-row:hover {
+                    opacity: 0.9;
+                }
+
+                .segment-header-row td {
+                    padding: 14px 16px !important;
+                    font-size: 13px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    color: white !important;
+                }
+
+                .segment-header-row .collapse-icon {
+                    display: inline-block;
+                    margin-right: 10px;
+                    transition: all 0.2s;
+                    font-size: 14px;
+                    width: 15px;
+                    text-align: center;
+                    color: white;
+                }
+
+                /* TOP Segment: 75% - 100%+ (Green) */
+                .segment-top {
+                    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+                    border-left: 5px solid #15803d !important;
+                    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+                }
+
+                .segment-top:hover {
+                    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+                }
+
+                /* NEXT Segment: 50% - 75% (Blue) */
+                .segment-next {
+                    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+                    border-left: 5px solid #0369a1 !important;
+                    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+                }
+
+                .segment-next:hover {
+                    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+                }
+
+                /* MID Segment: 25% - 50% (Orange) */
+                .segment-mid {
+                    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                    border-left: 5px solid #b45309 !important;
+                    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+                }
+
+                .segment-mid:hover {
+                    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+                }
+
+                /* BOTTOM Segment: 0% - 25% (Red) */
+                .segment-bottom {
+                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                    border-left: 5px solid #b91c1c !important;
+                    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+                }
+
+                .segment-bottom:hover {
+                    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+                }
+
+                /* Segment Children Rows */
+                .segment-child-1,
+                .segment-child-2,
+                .segment-child-3,
+                .segment-child-4 {
+                    transition: all 0.2s;
+                }
+
+                .segment-child-1:hover,
+                .segment-child-2:hover,
+                .segment-child-3:hover,
+                .segment-child-4:hover {
+                    transform: scale(1.001);
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                }
+
+                /* Add subtle background tint to child rows */
+                .segment-child-1 {
+                    background: linear-gradient(90deg, rgba(34, 197, 94, 0.05) 0%, transparent 100%);
+                }
+
+                .segment-child-2 {
+                    background: linear-gradient(90deg, rgba(14, 165, 233, 0.05) 0%, transparent 100%);
+                }
+
+                .segment-child-3 {
+                    background: linear-gradient(90deg, rgba(245, 158, 11, 0.05) 0%, transparent 100%);
+                }
+
+                .segment-child-4 {
+                    background: linear-gradient(90deg, rgba(239, 68, 68, 0.05) 0%, transparent 100%);
+                }
                 
                 @media (max-width: 768px) {
                     .table-header-controls {
@@ -1165,6 +1272,7 @@ class SahayogDashboard {
                     }
                 }
             </style>
+
         `;
 		$(styles).appendTo("head");
 	}
@@ -1261,6 +1369,21 @@ class SahayogDashboard {
 			const chip = $(e.currentTarget);
 			const category = chip.data("category");
 			this.toggleCategoryFilter(category, chip);
+		});
+
+		// Allow clicking on the small count inside the category chip to open category-level drilldown
+		$(document).on("click", ".filter-chip[data-category] .chip-count", (e) => {
+			e.stopPropagation();
+			const chip = $(e.currentTarget).closest(".filter-chip");
+			const category = chip.data("category");
+			if (!category || category === "all") {
+				frappe.show_alert({
+					message: "Please select a specific category to drill down",
+					indicator: "orange",
+				});
+				return;
+			}
+			this.openDrillDown("ALL", category);
 		});
 
 		$("#clear-all-filters").on("click", () => this.clearAllFilters());
@@ -2222,6 +2345,28 @@ class SahayogDashboard {
 				this.toggleGroup(idx);
 			});
 
+		// Clicking the group's branch count should open category-level drilldown when grouped by category
+		$(".group-row td:nth-child(2)")
+			.off("click")
+			.on("click", (e) => {
+				e.stopPropagation();
+				if (this.groupBy === "category") {
+					const groupRow = $(e.currentTarget).closest("tr");
+					// Extract label text without collapse icon
+					const category = groupRow
+						.find(".row-label")
+						.clone()
+						.children()
+						.remove()
+						.end()
+						.text()
+						.trim();
+					if (category) {
+						this.openDrillDown("ALL", category);
+					}
+				}
+			});
+
 		$(".child-row td:nth-child(2)")
 			.off("click")
 			.on("click", (e) => {
@@ -2294,9 +2439,10 @@ class SahayogDashboard {
                         <table class="sahayog-table">
                             <thead>
                                 <tr>
-                                    <th class="row-label">Branch</th>
-                                    <th>SOL</th>
-                                    <th>Region</th>
+											<th class="row-label">Branch</th>
+											<th>Zone</th>
+											<th>SOL</th>
+											<th>Region</th>
                                     <th>District</th>
                                     <th>DEC-25</th>
                                     <th>JAN-26</th>
@@ -2322,7 +2468,8 @@ class SahayogDashboard {
 		this.currentZone = zone;
 		this.currentCategory = category;
 
-		$("#drill-title").text(`${zone} - ${category}`);
+		const titleText = zone === "ALL" ? `${category} - All Zones` : `${zone} - ${category}`;
+		$("#drill-title").text(titleText);
 		$("#drill-down-view").addClass("active");
 		$(".filter-panel, .combined-filters, .active-filter-indicator, .sahayog-content").hide();
 
@@ -2353,11 +2500,17 @@ class SahayogDashboard {
 	}
 
 	loadDrillFilterOptions() {
+		// Build filters for branch list depending on whether we're viewing ALL zones or a specific zone
+		let branchFilters = { branch_score: this.currentCategory };
+		if (this.currentZone && this.currentZone !== "ALL") {
+			branchFilters.zone = this.currentZone;
+		}
+
 		frappe.call({
 			method: "frappe.client.get_list",
 			args: {
 				doctype: "Branch Category Report",
-				filters: { zone: this.currentZone, branch_score: this.currentCategory },
+				filters: branchFilters,
 				fields: ["branches"],
 				order_by: "branches asc",
 				limit_page_length: 0,
@@ -2447,48 +2600,156 @@ class SahayogDashboard {
 
 		if (!branches || branches.length === 0) {
 			tbody.html(
-				`<tr><td colspan="9" style="text-align:center; padding:40px; color:var(--text-muted);">No branches found</td></tr>`
+				`<tr><td colspan="10" style="text-align:center; padding:40px; color:var(--text-muted);">No branches found</td></tr>`
 			);
 			return;
 		}
 
-		branches.forEach((b) => {
-			// Transform loan/deposit data into monthly (equal distribution)
+		// Calculate achievement percentage for each branch
+		const branchesWithSegment = branches.map((b) => {
 			const loanTgt = b.loan_target || 0;
 			const loanAch = b.loan_ach || 0;
 			const depTgt = b.dep_target || 0;
 			const depAch = b.dep_ach || 0;
 
-			const monthlyLoanTgt = loanTgt / 4;
-			const monthlyLoanAch = loanAch / 4;
-			const monthlyDepTgt = depTgt / 4;
-			const monthlyDepAch = depAch / 4;
-
-			const decTgt = monthlyLoanTgt + monthlyDepTgt;
-			const decAch = monthlyLoanAch + monthlyDepAch;
-			const janTgt = monthlyLoanTgt + monthlyDepTgt;
-			const janAch = monthlyLoanAch + monthlyDepAch;
-			const febTgt = monthlyLoanTgt + monthlyDepTgt;
-			const febAch = monthlyLoanAch + monthlyDepAch;
-			const marTgt = monthlyLoanTgt + monthlyDepTgt;
-			const marAch = monthlyLoanAch + monthlyDepAch;
 			const totalTgt = loanTgt + depTgt;
 			const totalAch = loanAch + depAch;
 
-			tbody.append(`
-                <tr class="child-row">
-                    <td class="row-label">${b.branch || b.branches}</td>
-                    <td>${b.sol}</td>
-                    <td>${b.region}</td>
-                    <td>${b.district}</td>
-                    <td>${this.formatTgtAch({ tgt: decTgt, ach: decAch })}</td>
-                    <td>${this.formatTgtAch({ tgt: janTgt, ach: janAch })}</td>
-                    <td>${this.formatTgtAch({ tgt: febTgt, ach: febAch })}</td>
-                    <td>${this.formatTgtAch({ tgt: marTgt, ach: marAch })}</td>
-                    <td>${this.formatTgtAch({ tgt: totalTgt, ach: totalAch })}</td>
-                </tr>
-            `);
+			// Calculate achievement percentage
+			const achPct = totalTgt > 0 ? (totalAch / totalTgt) * 100 : 0;
+
+			// Assign performance segment
+			let segment = "";
+			let segmentOrder = 0;
+
+			if (achPct >= 75) {
+				segment = "TOP (75% - 100%+)";
+				segmentOrder = 1;
+			} else if (achPct >= 50) {
+				segment = "NEXT (50% - 75%)";
+				segmentOrder = 2;
+			} else if (achPct >= 25) {
+				segment = "MID (25% - 50%)";
+				segmentOrder = 3;
+			} else {
+				segment = "BOTTOM (0% - 25%)";
+				segmentOrder = 4;
+			}
+
+			return {
+				...b,
+				totalTgt,
+				totalAch,
+				achPct,
+				segment,
+				segmentOrder,
+				loanTgt,
+				loanAch,
+				depTgt,
+				depAch,
+			};
 		});
+
+		// Sort by segment order, then by achievement percentage descending
+		branchesWithSegment.sort((a, b) => {
+			if (a.segmentOrder !== b.segmentOrder) {
+				return a.segmentOrder - b.segmentOrder;
+			}
+			return b.achPct - a.achPct;
+		});
+
+		// Define all 4 segments (always show them)
+		const segments = {
+			1: { name: "TOP (75% - 100%+)", branches: [], class: "segment-top" },
+			2: { name: "NEXT (50% - 75%)", branches: [], class: "segment-next" },
+			3: { name: "MID (25% - 50%)", branches: [], class: "segment-mid" },
+			4: { name: "BOTTOM (0% - 25%)", branches: [], class: "segment-bottom" },
+		};
+
+		// Group branches into segments
+		branchesWithSegment.forEach((b) => {
+			segments[b.segmentOrder].branches.push(b);
+		});
+
+		// Render all 4 segments (even if empty)
+		Object.keys(segments).forEach((key) => {
+			const segment = segments[key];
+			const branchCount = segment.branches.length;
+
+			// Segment header row (always visible)
+			tbody.append(`
+			<tr class="segment-header-row ${segment.class}" data-segment="${key}">
+				<td class="row-label" colspan="10">
+					<span class="collapse-icon">▸</span>
+					<strong>${segment.name}</strong>
+					<span style="margin-left: 10px; color: #64748b;">(${branchCount} branches)</span>
+				</td>
+			</tr>
+		`);
+
+			// Branch rows (initially hidden - collapsed)
+			segment.branches.forEach((b) => {
+				const monthlyLoanTgt = b.loanTgt / 4;
+				const monthlyLoanAch = b.loanAch / 4;
+				const monthlyDepTgt = b.depTgt / 4;
+				const monthlyDepAch = b.depAch / 4;
+
+				const decTgt = monthlyLoanTgt + monthlyDepTgt;
+				const decAch = monthlyLoanAch + monthlyDepAch;
+				const janTgt = monthlyLoanTgt + monthlyDepTgt;
+				const janAch = monthlyLoanAch + monthlyDepAch;
+				const febTgt = monthlyLoanTgt + monthlyDepTgt;
+				const febAch = monthlyLoanAch + monthlyDepAch;
+				const marTgt = monthlyLoanTgt + monthlyDepTgt;
+				const marAch = monthlyLoanAch + monthlyDepAch;
+
+				tbody.append(`
+				<tr class="child-row segment-child-${key}" data-segment="${key}" style="display: none;">
+					<td class="row-label" style="padding-left: 36px;">
+						${b.branch || b.branches}
+						<span style="color: #64748b; font-size: 10px; margin-left: 8px;">${b.achPct.toFixed(1)}%</span>
+					</td>
+					<td>${b.zone}</td>
+					<td>${b.sol}</td>
+					<td>${b.region}</td>
+					<td>${b.district}</td>
+					<td>${this.formatTgtAch({ tgt: decTgt, ach: decAch })}</td>
+					<td>${this.formatTgtAch({ tgt: janTgt, ach: janAch })}</td>
+					<td>${this.formatTgtAch({ tgt: febTgt, ach: febAch })}</td>
+					<td>${this.formatTgtAch({ tgt: marTgt, ach: marAch })}</td>
+					<td>${this.formatTgtAch({ tgt: b.totalTgt, ach: b.totalAch })}</td>
+				</tr>
+			`);
+			});
+		});
+
+		// Attach segment collapse/expand events
+		this.attachSegmentEvents();
+	}
+
+	attachSegmentEvents() {
+		$(".segment-header-row")
+			.off("click")
+			.on("click", (e) => {
+				const segment = $(e.currentTarget).data("segment");
+				this.toggleSegment(segment);
+			});
+	}
+
+	toggleSegment(segment) {
+		const headerRow = $(`.segment-header-row[data-segment="${segment}"]`);
+		const childRows = $(`.segment-child-${segment}`);
+		const icon = headerRow.find(".collapse-icon");
+
+		if (childRows.first().is(":visible")) {
+			// Collapse
+			childRows.hide();
+			icon.text("▸");
+		} else {
+			// Expand
+			childRows.show();
+			icon.text("▾");
+		}
 	}
 
 	loadBranchTargets() {

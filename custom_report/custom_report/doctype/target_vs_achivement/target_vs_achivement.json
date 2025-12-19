@@ -1,214 +1,224 @@
 {
-  "actions": [],
-  "allow_import": 1,
-  "allow_rename": 1,
-  "autoname": "format:{sol_id}-{financial_year}-{type}",
-  "creation": "2025-12-11 14:51:48.058713",
-  "doctype": "DocType",
-  "engine": "InnoDB",
-  "field_order": [
-    "sol_id",
-    "financial_year",
-    "type",
-    "column_break_1",
-    "valid_from",
-    "valid_till",
-    "status",
-    "section_break_2",
-    "target",
-    "achievement",
-    "column_break_3",
-    "achievement_percentage",
-    "performance_segment",
-    "variance",
-    "days_remaining",
-    "section_break_4",
-    "enable_segment_notifications",
-    "alert_before_expiry_days",
-    "column_break_5",
-    "bottom_segment_notified",
-    "mid_segment_notified",
-    "next_segment_notified",
-    "top_segment_notified"
-  ],
-  "fields": [
-    {
-      "fieldname": "sol_id",
-      "fieldtype": "Link",
-      "in_list_view": 1,
-      "in_standard_filter": 1,
-      "label": "Sol ID",
-      "options": "Sahayog Branch",
-      "reqd": 1
-    },
-    {
-      "default": "2025-2026",
-      "fieldname": "financial_year",
-      "fieldtype": "Select",
-      "in_list_view": 1,
-      "label": "Financial Year",
-      "options": "2025-2026\n2026-2027\n2027-2028",
-      "reqd": 1
-    },
-    {
-      "fieldname": "type",
-      "fieldtype": "Select",
-      "in_list_view": 1,
-      "label": "Type",
-      "options": "\nYearly\nHalf-Yearly\nQuarterly\nMonthly",
-      "reqd": 1
-    },
-    {
-      "fieldname": "column_break_1",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "valid_from",
-      "fieldtype": "Date",
-      "label": "Valid From",
-      "reqd": 1
-    },
-    {
-      "fieldname": "valid_till",
-      "fieldtype": "Date",
-      "label": "Valid Till",
-      "reqd": 1
-    },
-    {
-      "default": "Inactive",
-      "fieldname": "status",
-      "fieldtype": "Select",
-      "in_list_view": 1,
-      "label": "Status",
-      "options": "Inactive\nActive\nExpired",
-      "read_only": 1
-    },
-    {
-      "fieldname": "section_break_2",
-      "fieldtype": "Section Break",
-      "label": "Target & Achievement"
-    },
-    {
-      "fieldname": "target",
-      "fieldtype": "Currency",
-      "in_list_view": 1,
-      "label": "Target",
-      "precision": "0",
-      "reqd": 1
-    },
-    {
-      "fieldname": "achievement",
-      "fieldtype": "Currency",
-      "in_list_view": 1,
-      "label": "Achievement",
-      "precision": "0"
-    },
-    {
-      "fieldname": "column_break_3",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "achievement_percentage",
-      "fieldtype": "Percent",
-      "label": "Achievement %",
-      "read_only": 1
-    },
-    {
-      "fieldname": "performance_segment",
-      "fieldtype": "Select",
-      "in_list_view": 1,
-      "label": "Performance Segment",
-      "options": "\nBottom 25% (0-25%)\nMid 25% (25-50%)\nNext 25% (50-75%)\nTop 25% (75-100%)\nExceeded (>100%)",
-      "read_only": 1
-    },
-    {
-      "fieldname": "variance",
-      "fieldtype": "Currency",
-      "label": "Variance",
-      "precision": "0",
-      "read_only": 1
-    },
-    {
-      "fieldname": "days_remaining",
-      "fieldtype": "Int",
-      "label": "Days Remaining",
-      "read_only": 1
-    },
-    {
-      "collapsible": 1,
-      "fieldname": "section_break_4",
-      "fieldtype": "Section Break",
-      "label": "Notifications"
-    },
-    {
-      "default": "1",
-      "fieldname": "enable_segment_notifications",
-      "fieldtype": "Check",
-      "label": "Enable Notifications"
-    },
-    {
-      "default": "7",
-      "fieldname": "alert_before_expiry_days",
-      "fieldtype": "Int",
-      "label": "Alert Before Expiry (Days)"
-    },
-    {
-      "fieldname": "column_break_5",
-      "fieldtype": "Column Break"
-    },
-    {
-      "default": "0",
-      "fieldname": "bottom_segment_notified",
-      "fieldtype": "Check",
-      "hidden": 1,
-      "label": "25% Notified"
-    },
-    {
-      "default": "0",
-      "fieldname": "mid_segment_notified",
-      "fieldtype": "Check",
-      "hidden": 1,
-      "label": "50% Notified"
-    },
-    {
-      "default": "0",
-      "fieldname": "next_segment_notified",
-      "fieldtype": "Check",
-      "hidden": 1,
-      "label": "75% Notified"
-    },
-    {
-      "default": "0",
-      "fieldname": "top_segment_notified",
-      "fieldtype": "Check",
-      "hidden": 1,
-      "label": "100% Notified"
-    }
-  ],
-  "index_web_pages_for_search": 1,
-  "links": [],
-  "modified": "2025-12-12 16:11:00.000000",
-  "modified_by": "Administrator",
-  "module": "custom_report",
-  "name": "Target Vs Achivement",
-  "naming_rule": "Expression",
-  "owner": "Administrator",
-  "permissions": [
-    {
-      "create": 1,
-      "delete": 1,
-      "email": 1,
-      "export": 1,
-      "read": 1,
-      "report": 1,
-      "role": "System Manager",
-      "share": 1,
-      "write": 1
-    }
-  ],
-  "sort_field": "modified",
-  "sort_order": "DESC",
-  "states": [],
-  "title_field": "sol_id",
-  "track_changes": 1
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "format:{sol_id}-{financial_year}-{type}",
+ "creation": "2025-12-11 14:51:48.058713",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "sol_id",
+  "financial_year",
+  "type",
+  "month",
+  "column_break_1",
+  "valid_from",
+  "valid_till",
+  "status",
+  "section_break_2",
+  "target",
+  "achievement",
+  "column_break_3",
+  "achievement_percentage",
+  "performance_segment",
+  "variance",
+  "days_remaining",
+  "section_break_4",
+  "enable_segment_notifications",
+  "alert_before_expiry_days",
+  "column_break_5",
+  "bottom_segment_notified",
+  "mid_segment_notified",
+  "next_segment_notified",
+  "top_segment_notified"
+ ],
+ "fields": [
+  {
+   "fieldname": "sol_id",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Sol ID",
+   "options": "Sahayog Branch",
+   "reqd": 1
+  },
+  {
+   "default": "2025-2026",
+   "fieldname": "financial_year",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Financial Year",
+   "options": "2025-2026\n2026-2027\n2027-2028",
+   "reqd": 1
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type",
+   "options": "\nMonthly\nYearly\nHalf-Yearly\nQuarterly",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "valid_from",
+   "fieldtype": "Date",
+   "label": "Valid From",
+   "reqd": 1
+  },
+  {
+   "fieldname": "valid_till",
+   "fieldtype": "Date",
+   "label": "Valid Till",
+   "reqd": 1
+  },
+  {
+   "default": "Inactive",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Inactive\nActive\nExpired",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break",
+   "label": "Target & Achievement"
+  },
+  {
+   "fieldname": "target",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Target",
+   "precision": "0",
+   "reqd": 1
+  },
+  {
+   "fieldname": "achievement",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Achievement",
+   "precision": "0"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "achievement_percentage",
+   "fieldtype": "Percent",
+   "label": "Achievement %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "performance_segment",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Performance Segment",
+   "options": "\nBottom 25% (0-25%)\nMid 25% (25-50%)\nNext 25% (50-75%)\nTop 25% (75-100%)\nExceeded (>100%)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "variance",
+   "fieldtype": "Currency",
+   "label": "Variance",
+   "precision": "0",
+   "read_only": 1
+  },
+  {
+   "fieldname": "days_remaining",
+   "fieldtype": "Int",
+   "label": "Days Remaining",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_4",
+   "fieldtype": "Section Break",
+   "label": "Notifications"
+  },
+  {
+   "default": "1",
+   "fieldname": "enable_segment_notifications",
+   "fieldtype": "Check",
+   "label": "Enable Notifications"
+  },
+  {
+   "default": "7",
+   "fieldname": "alert_before_expiry_days",
+   "fieldtype": "Int",
+   "label": "Alert Before Expiry (Days)"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "bottom_segment_notified",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "25% Notified"
+  },
+  {
+   "default": "0",
+   "fieldname": "mid_segment_notified",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "50% Notified"
+  },
+  {
+   "default": "0",
+   "fieldname": "next_segment_notified",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "75% Notified"
+  },
+  {
+   "default": "0",
+   "fieldname": "top_segment_notified",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "100% Notified"
+  },
+  {
+   "depends_on": "eval:doc.type=='Monthly'",
+   "fieldname": "month",
+   "fieldtype": "Select",
+   "label": "Month",
+   "mandatory_depends_on": "eval:doc.type=='Monthly'",
+   "options": "\nJAN\nFEB\nMAR\nAPR\nMAY\nJUN\nJUL\nAUG\nSEP\nOCT\nNOV\nDEC"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-17 16:34:24.663016",
+ "modified_by": "Administrator",
+ "module": "custom_report",
+ "name": "Target Vs Achivement",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "sol_id",
+ "track_changes": 1
 }
