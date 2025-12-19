@@ -24,6 +24,14 @@ frappe.ui.form.on("Target Vs Achivement", {
 		if (frm.doc.valid_from && frm.doc.type) {
 			auto_set_dates(frm);
 		}
+		if (frm.doc.type == "Monthly") {
+			// current month short name (JAN, FEB, ...)
+			const current_month = moment().format("MMM").toUpperCase();
+
+			frm.set_value("month", current_month);
+		} else {
+			frm.set_value("month", "");
+		}
 	},
 
 	target: function (frm) {
