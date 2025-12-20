@@ -1,5 +1,5 @@
 frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
-	var page = frappe.ui.make_app_page({
+	const page = frappe.ui.make_app_page({
 		parent: wrapper,
 		title: "MIS Dashboard",
 		single_column: true,
@@ -11,19 +11,30 @@ frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 class SahayogDashboard {
 	constructor(page) {
 		this.page = page;
+
+		// Data state
 		this.data = null;
 		this.rawData = null;
+		this.allDrillData = [];
+		this.availableDates = [];
+		this.selectedDate = null;
+
+		// UI state
 		this.collapsedGroups = new Set();
+		this.collapsedSegments = new Set([1, 2, 3, 4]); // All segments collapsed by default
 		this.currentView = "dashboard";
 		this.groupBy = "zone";
 		this.activeCategories = new Set();
 		this.activeZones = new Set();
-		this.filterCollapsed = true;
-		this.timePeriod = "daily";
-		this.allDrillData = [];
+		this.allExpanded = false;
+		this.chartInstance = null;
+
+		// Drill-down context
 		this.currentZone = null;
 		this.currentCategory = null;
-		this.allExpanded = false;
+
+		// Helpers
+		this.dateSelectTimer = null;
 		this.chartInstance = null;
 
 		this.loadState();
@@ -35,146 +46,192 @@ class SahayogDashboard {
 		if (!window.echarts) {
 			const script = document.createElement("script");
 			script.src = "https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js";
-			script.onload = () => {
-				console.log("ECharts loaded successfully");
-			};
+			script.onload = () => console.log("ECharts loaded");
 			document.head.appendChild(script);
 		}
 	}
 
 	init() {
 		this.setupStyles();
-		this.createFilterPanel();
-		this.createCombinedFilters();
-		this.createActiveFilterIndicator();
-		this.createContentArea();
-		this.createChartModal();
-		this.createDrillDownView();
-		this.loadView("dashboard");
+		this.loadAvailableDates();
 	}
 
 	saveState() {
 		const state = {
-			timePeriod: this.timePeriod,
+			selectedDate: this.selectedDate,
 			groupBy: this.groupBy,
 			activeCategories: Array.from(this.activeCategories),
 			activeZones: Array.from(this.activeZones),
-			filterCollapsed: this.filterCollapsed,
-			fromDate: $("#from-date-filter").val(),
-			toDate: $("#to-date-filter").val(),
 		};
 		localStorage.setItem("sahayog_dashboard_state", JSON.stringify(state));
 	}
 
 	loadState() {
 		const saved = localStorage.getItem("sahayog_dashboard_state");
-		if (saved) {
-			try {
-				const state = JSON.parse(saved);
-				this.timePeriod = state.timePeriod || "daily";
-				this.groupBy = state.groupBy || "zone";
-				this.activeCategories = new Set(state.activeCategories || []);
-				this.activeZones = new Set(state.activeZones || []);
-				this.filterCollapsed = state.filterCollapsed !== false;
+		if (!saved) return;
 
-				setTimeout(() => {
-					if (state.fromDate) $("#from-date-filter").val(state.fromDate);
-					if (state.toDate) $("#to-date-filter").val(state.toDate);
-				}, 100);
-			} catch (e) {
-				console.error("Failed to load state:", e);
-			}
+		try {
+			const state = JSON.parse(saved);
+			this.selectedDate = state.selectedDate || null;
+			this.groupBy = state.groupBy || "zone";
+			this.activeCategories = new Set(state.activeCategories || []);
+			this.activeZones = new Set(state.activeZones || []);
+		} catch (e) {
+			console.error("Failed to load state:", e);
 		}
 	}
 
-	/**
-	 * Transform flat data from Python backend into nested structure
-	 * Python returns: [{zone, category, branch_count, loan_target, dep_target, loan_ach, dep_ach}, ...]
-	 * We need: {zones: [{zone, categories: [...]}], grand_total: {...}}
-	 */
+	loadAvailableDates() {
+		frappe.call({
+			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_available_dates",
+			callback: (r) => {
+				if (r.message && r.message.length > 0) {
+					this.availableDates = r.message;
+
+					if (!this.selectedDate) {
+						this.selectedDate = this.availableDates[0].date;
+					}
+
+					this.createCombinedFilters();
+					this.createActiveFilterIndicator();
+					this.createContentArea();
+					this.createChartModal();
+					this.createDrillDownView();
+					this.loadView("dashboard");
+				} else {
+					frappe.msgprint(
+						"No data available. Please import Branch Category Report records."
+					);
+				}
+			},
+		});
+	}
+
+	// Create compact timeline in table header
+	createCompactTimeline() {
+		const timelineHtml = `
+            <div class="timeline-container">
+                <div class="compact-timeline">
+                    <div class="timeline-dates-compact" id="timeline-dates-compact"></div>
+                </div>
+            </div>
+        `;
+
+		const container = $(timelineHtml);
+		const datesContainer = container.find("#timeline-dates-compact");
+
+		this.availableDates.forEach((dateObj) => {
+			const isSelected = dateObj.date === this.selectedDate;
+			const dateItem = $(`
+                <div class="timeline-date-compact ${isSelected ? "selected" : ""}" data-date="${
+				dateObj.date
+			}" title="${dateObj.display_full}">
+                    <div class="timeline-day-compact">${dateObj.day_name}</div>
+                    <div class="timeline-num-compact">${dateObj.day_num}</div>
+                </div>
+            `);
+
+			dateItem.on("click", () => this.selectDate(dateObj.date));
+			datesContainer.append(dateItem);
+		});
+
+		// Smooth-scroll the selected date into center
+		setTimeout(() => {
+			const parent = datesContainer.get(0);
+			const sel = datesContainer.find(".timeline-date-compact.selected").get(0);
+			if (parent && sel) {
+				const parentWidth = parent.clientWidth;
+				const targetLeft = sel.offsetLeft + sel.offsetWidth / 2 - parentWidth / 2;
+				parent.scrollTo({ left: targetLeft, behavior: "smooth" });
+			}
+		}, 80);
+
+		return container;
+	}
+
+	selectDate(date) {
+		this.selectedDate = date;
+
+		$(".timeline-date-compact").removeClass("selected");
+		$(`.timeline-date-compact[data-date="${date}"]`).addClass("selected");
+
+		// Debounce rapid clicks to avoid multiple API calls
+		if (this.dateSelectTimer) clearTimeout(this.dateSelectTimer);
+		this.dateSelectTimer = setTimeout(() => {
+			this.saveState();
+			this.updateFilterIndicator();
+			this.loadDashboardData();
+			this.dateSelectTimer = null;
+		}, 220);
+	}
+
 	transformPythonData(flatData) {
 		const zoneMap = {};
 
-		// Group by zone and category
 		flatData.forEach((row) => {
 			const zoneName = row.zone;
 			const categoryName = row.category;
 
-			// Initialize zone if not exists
 			if (!zoneMap[zoneName]) {
 				zoneMap[zoneName] = {
 					zone: zoneName,
 					branch_count: 0,
-					dec: { tgt: 0, ach: 0 },
-					jan: { tgt: 0, ach: 0 },
-					feb: { tgt: 0, ach: 0 },
-					mar: { tgt: 0, ach: 0 },
+					dec: { tgt: 0, ach: 0, available: false },
+					jan: { tgt: 0, ach: 0, available: false },
+					feb: { tgt: 0, ach: 0, available: false },
+					mar: { tgt: 0, ach: 0, available: false },
 					total: { tgt: 0, ach: 0 },
 					categories: {},
 				};
 			}
 
-			// Initialize category within zone if not exists
 			if (!zoneMap[zoneName].categories[categoryName]) {
 				zoneMap[zoneName].categories[categoryName] = {
 					category: categoryName,
 					branch_count: 0,
-					dec: { tgt: 0, ach: 0 },
-					jan: { tgt: 0, ach: 0 },
-					feb: { tgt: 0, ach: 0 },
-					mar: { tgt: 0, ach: 0 },
+					dec: { tgt: 0, ach: 0, available: false },
+					jan: { tgt: 0, ach: 0, available: false },
+					feb: { tgt: 0, ach: 0, available: false },
+					mar: { tgt: 0, ach: 0, available: false },
 					total: { tgt: 0, ach: 0 },
 				};
 			}
 
-			// Split loan/deposit into monthly breakdown (equal distribution for now)
-			const loanTgt = row.loan_target || 0;
-			const loanAch = row.loan_ach || 0;
-			const depTgt = row.dep_target || 0;
-			const depAch = row.dep_ach || 0;
-
-			// Divide equally across 4 months (DEC, JAN, FEB, MAR)
-			const monthlyLoanTgt = loanTgt / 4;
-			const monthlyLoanAch = loanAch / 4;
-			const monthlyDepTgt = depTgt / 4;
-			const monthlyDepAch = depAch / 4;
-
-			const monthlyTgt = monthlyLoanTgt + monthlyDepTgt;
-			const monthlyAch = monthlyLoanAch + monthlyDepAch;
-
-			// Update zone totals
 			zoneMap[zoneName].branch_count += row.branch_count || 0;
 			["dec", "jan", "feb", "mar"].forEach((month) => {
-				zoneMap[zoneName][month].tgt += monthlyTgt;
-				zoneMap[zoneName][month].ach += monthlyAch;
+				zoneMap[zoneName][month].tgt += row[month].tgt || 0;
+				zoneMap[zoneName][month].ach += row[month].ach || 0;
+				if (row[month].available) {
+					zoneMap[zoneName][month].available = true;
+				}
 			});
-			zoneMap[zoneName].total.tgt += loanTgt + depTgt;
-			zoneMap[zoneName].total.ach += loanAch + depAch;
+			zoneMap[zoneName].total.tgt += row.total.tgt || 0;
+			zoneMap[zoneName].total.ach += row.total.ach || 0;
 
-			// Update category within zone
 			const cat = zoneMap[zoneName].categories[categoryName];
 			cat.branch_count += row.branch_count || 0;
 			["dec", "jan", "feb", "mar"].forEach((month) => {
-				cat[month].tgt += monthlyTgt;
-				cat[month].ach += monthlyAch;
+				cat[month].tgt += row[month].tgt || 0;
+				cat[month].ach += row[month].ach || 0;
+				if (row[month].available) {
+					cat[month].available = true;
+				}
 			});
-			cat.total.tgt += loanTgt + depTgt;
-			cat.total.ach += loanAch + depAch;
+			cat.total.tgt += row.total.tgt || 0;
+			cat.total.ach += row.total.ach || 0;
 		});
 
-		// Convert to array format
 		const zones = Object.values(zoneMap).map((zone) => ({
 			...zone,
 			categories: Object.values(zone.categories),
 		}));
 
-		// Calculate grand totals
 		const grand_total = {
 			branch_count: 0,
-			dec: { tgt: 0, ach: 0 },
-			jan: { tgt: 0, ach: 0 },
-			feb: { tgt: 0, ach: 0 },
-			mar: { tgt: 0, ach: 0 },
+			dec: { tgt: 0, ach: 0, available: false },
+			jan: { tgt: 0, ach: 0, available: false },
+			feb: { tgt: 0, ach: 0, available: false },
+			mar: { tgt: 0, ach: 0, available: false },
 			total: { tgt: 0, ach: 0 },
 		};
 
@@ -183,6 +240,9 @@ class SahayogDashboard {
 			["dec", "jan", "feb", "mar"].forEach((month) => {
 				grand_total[month].tgt += zone[month].tgt;
 				grand_total[month].ach += zone[month].ach;
+				if (zone[month].available) {
+					grand_total[month].available = true;
+				}
 			});
 			grand_total.total.tgt += zone.total.tgt;
 			grand_total.total.ach += zone.total.ach;
@@ -194,78 +254,67 @@ class SahayogDashboard {
 	setupStyles() {
 		const styles = `
             <style>
-                /* Filter Panel */
-                .filter-panel {
-                    background: var(--card-bg);
-                    border: 1px solid var(--border-color);
-                    border-radius: 6px;
-                    padding: 0;
-                    margin-bottom: 10px;
-                    max-height: 0;
-                    overflow: hidden;
-                    transition: all 0.3s ease;
+                /* Compact Timeline in Table Header */
+                .compact-timeline {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
                 }
-                
-                .filter-panel.expanded {
-                    max-height: 120px;
-                    padding: 12px;
+                .timeline-dates-compact {
+                    display: inline-flex;
+                    gap: 4px;
+                    overflow-x: auto;
+                    max-width: 100%;
+                    padding: 2px;
                 }
-                
-                .filter-row {
+                .timeline-dates-compact::-webkit-scrollbar {
+                    height: 4px;
+                }
+                .timeline-dates-compact::-webkit-scrollbar-thumb {
+                    background: rgba(0,0,0,0.2);
+                    border-radius: 2px;
+                }
+                .timeline-date-compact {
                     display: flex;
-                    gap: 10px;
-                    align-items: flex-end;
-                    flex-wrap: wrap;
-                }
-                
-                .filter-group {
-                    flex: 1;
-                    min-width: 140px;
-                }
-                
-                .filter-group label {
-                    display: block;
-                    color: var(--text-muted);
-                    font-size: 11px;
-                    font-weight: 600;
-                    margin-bottom: 4px;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                }
-                
-                .filter-group input {
-                    width: 100%;
-                    padding: 6px 10px;
-                    background: var(--control-bg);
-                    border: 1px solid var(--border-color);
-                    border-radius: 4px;
-                    color: var(--text-color);
-                    font-size: 12px;
-                }
-                
-                .filter-group input:focus {
-                    outline: none;
-                    border-color: #000;
-                }
-                
-                .apply-filter-btn {
-                    background: #000;
-                    color: white;
-                    border: none;
-                    padding: 7px 16px;
-                    border-radius: 4px;
-                    font-size: 12px;
-                    font-weight: 600;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    min-width: 42px;
+                    padding: 4px 6px;
+                    background: rgba(255,255,255,0.7);
+                    border: 1.5px solid #cbd5e1;
+                    border-radius: 6px;
                     cursor: pointer;
                     transition: all 0.2s;
-                    white-space: nowrap;
                 }
-                
-                .apply-filter-btn:hover {
-                    background: #2d2d2d;
+                .timeline-date-compact:hover {
+                    background: white;
+                    border-color: #94a3b8;
+                    transform: translateY(-1px);
                 }
-                
-                /* COMBINED FILTERS */
+                .timeline-date-compact.selected {
+                    background: #000;
+                    border-color: #000;
+                    color: white;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                }
+                .timeline-day-compact {
+                    font-size: 8px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.3px;
+                    opacity: 0.7;
+                }
+                .timeline-date-compact.selected .timeline-day-compact {
+                    opacity: 1;
+                }
+                .timeline-num-compact {
+                    font-size: 14px;
+                    font-weight: 700;
+                    line-height: 1;
+                }
+
+                /* Combined Filters */
                 .combined-filters {
                     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
                     border: 1px solid #e2e8f0;
@@ -274,15 +323,8 @@ class SahayogDashboard {
                     margin-bottom: 12px;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.06);
                 }
-                
-                .filter-section {
-                    margin-bottom: 8px;
-                }
-                
-                .filter-section:last-child {
-                    margin-bottom: 0;
-                }
-                
+                .filter-section { margin-bottom: 8px; }
+                .filter-section:last-child { margin-bottom: 0; }
                 .filter-section-label {
                     color: #64748b;
                     font-size: 10px;
@@ -294,13 +336,7 @@ class SahayogDashboard {
                     align-items: center;
                     gap: 5px;
                 }
-                
-                .filter-chips {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 6px;
-                }
-                
+                .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
                 .filter-chip {
                     padding: 6px 14px;
                     border-radius: 6px;
@@ -310,17 +346,14 @@ class SahayogDashboard {
                     transition: all 0.2s;
                     border: 2px solid transparent;
                     color: #1e293b;
-                    position: relative;
                     display: flex;
                     align-items: center;
                     gap: 6px;
                 }
-                
                 .filter-chip:hover {
                     transform: translateY(-2px);
                     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
                 }
-
                 .chip-count {
                     background: rgba(0, 0, 0, 0.15);
                     color: inherit;
@@ -331,107 +364,86 @@ class SahayogDashboard {
                     min-width: 20px;
                     text-align: center;
                 }
-
-                .filter-chip.active .chip-count {
-                    background: rgba(255, 255, 255, 0.3);
-                }
-                
+                .filter-chip.active .chip-count { background: rgba(255, 255, 255, 0.3); }
                 .filter-chip[data-zone] {
                     background: rgba(255, 255, 255, 0.8);
                     border: 1px solid #cbd5e1;
                     color: #475569;
                 }
-                
                 .filter-chip[data-zone]:hover {
                     background: white;
                     border-color: #94a3b8;
                 }
-                
                 .filter-chip[data-zone].active {
                     background: #000;
                     color: white;
                     border-color: #000;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                 }
-                
                 .filter-chip[data-category="all"] {
                     background: white;
                     border: 1px solid #cbd5e1;
                     color: #475569;
                 }
-                
                 .filter-chip[data-category="all"].active {
                     background: #000;
                     color: white;
                     border-color: #000;
                 }
-                
                 .filter-chip[data-category="Pinacle"] {
                     background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
                     color: white;
                     border-color: #16a34a;
                 }
-                
                 .filter-chip[data-category="Pinacle"].active {
                     border: 2px dashed white;
                     box-shadow: 0 0 0 3px #22c55e, 0 4px 12px rgba(34, 197, 94, 0.4);
                 }
-                
                 .filter-chip[data-category="Master"] {
                     background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
                     color: white;
                     border-color: #0d9488;
                 }
-                
                 .filter-chip[data-category="Master"].active {
                     border: 2px dashed white;
                     box-shadow: 0 0 0 3px #14b8a6, 0 4px 12px rgba(20, 184, 166, 0.4);
                 }
-                
                 .filter-chip[data-category="Accelerator"] {
                     background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
                     color: white;
                     border-color: #0284c7;
                 }
-                
                 .filter-chip[data-category="Accelerator"].active {
                     border: 2px dashed white;
                     box-shadow: 0 0 0 3px #0ea5e9, 0 4px 12px rgba(14, 165, 233, 0.4);
                 }
-                
                 .filter-chip[data-category="Starter"] {
                     background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
                     color: white;
                     border-color: #d97706;
                 }
-                
                 .filter-chip[data-category="Starter"].active {
                     border: 2px dashed white;
                     box-shadow: 0 0 0 3px #f59e0b, 0 4px 12px rgba(245, 158, 11, 0.4);
                 }
-                
                 .filter-chip[data-category="Learner"] {
                     background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
                     color: white;
                     border-color: #ea580c;
                 }
-                
                 .filter-chip[data-category="Learner"].active {
                     border: 2px dashed white;
                     box-shadow: 0 0 0 3px #f97316, 0 4px 12px rgba(249, 115, 22, 0.4);
                 }
-                
                 .filter-chip[data-category="Zero Level"] {
                     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
                     color: white;
                     border-color: #dc2626;
                 }
-                
                 .filter-chip[data-category="Zero Level"].active {
                     border: 2px dashed white;
                     box-shadow: 0 0 0 3px #ef4444, 0 4px 12px rgba(239, 68, 68, 0.4);
                 }
-                
                 .clear-filters-btn {
                     background: rgba(239, 68, 68, 0.1);
                     border: 1px solid rgba(239, 68, 68, 0.3);
@@ -446,18 +458,13 @@ class SahayogDashboard {
                     align-items: center;
                     gap: 5px;
                 }
-                
                 .clear-filters-btn:hover {
                     background: rgba(239, 68, 68, 0.2);
                     border-color: rgba(239, 68, 68, 0.5);
                     color: #b91c1c;
                     transform: translateY(-1px);
                 }
-                
-                .clear-filters-btn i {
-                    font-size: 10px;
-                }
-                
+
                 /* Active Filter Indicator */
                 .active-filter-indicator {
                     background: linear-gradient(90deg, #000 0%, #1a1a1a 100%);
@@ -468,18 +475,13 @@ class SahayogDashboard {
                     display: none;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                 }
-                
-                .active-filter-indicator.show {
-                    display: block;
-                }
-                
+                .active-filter-indicator.show { display: block; }
                 .filter-indicator-text {
                     color: #e0e0e0;
                     font-size: 12px;
                     font-weight: 600;
                     line-height: 1.4;
                 }
-                
                 .filter-badge {
                     display: inline-block;
                     background: rgba(255, 255, 255, 0.15);
@@ -490,21 +492,12 @@ class SahayogDashboard {
                     font-weight: 700;
                     margin: 0 3px;
                 }
-                
-                /* Content Views */
-                .sahayog-content {
-                    position: relative;
-                }
-                
-                .view-container {
-                    display: none;
-                }
-                
-                .view-container.active {
-                    display: block;
-                }
 
-                /* Table Header Controls */
+                /* Table Styles */
+                .sahayog-content { position: relative; }
+                .view-container { display: none; }
+                .view-container.active { display: block; }
+
                 .table-header-controls {
                     display: flex;
                     justify-content: space-between;
@@ -517,21 +510,12 @@ class SahayogDashboard {
                     gap: 16px;
                     flex-wrap: wrap;
                 }
-
-                .table-header-left {
+                .table-header-left, .table-header-right {
                     display: flex;
                     align-items: center;
                     gap: 12px;
                     flex-wrap: wrap;
                 }
-
-                .table-header-right {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    flex-wrap: wrap;
-                }
-
                 .table-header-title {
                     font-size: 13px;
                     font-weight: 700;
@@ -540,40 +524,6 @@ class SahayogDashboard {
                     letter-spacing: 0.5px;
                 }
 
-                /* Time Period Toggle */
-                .time-period-toggle {
-                    display: inline-flex;
-                    gap: 0;
-                    background: white;
-                    border-radius: 5px;
-                    padding: 2px;
-                    border: 1px solid #cbd5e1;
-                }
-                
-                .time-period-btn {
-                    padding: 5px 12px;
-                    border: none;
-                    background: transparent;
-                    color: #64748b;
-                    font-size: 11px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    border-radius: 4px;
-                    transition: all 0.2s;
-                }
-                
-                .time-period-btn:hover {
-                    background: #f1f5f9;
-                    color: #334155;
-                }
-                
-                .time-period-btn.active {
-                    background: #000;
-                    color: white;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-                }
-
-                /* Grouping Toggle */
                 .grouping-toggle {
                     display: inline-flex;
                     gap: 0;
@@ -582,7 +532,6 @@ class SahayogDashboard {
                     padding: 2px;
                     border: 1px solid #cbd5e1;
                 }
-                
                 .grouping-btn {
                     padding: 5px 12px;
                     border: none;
@@ -597,27 +546,18 @@ class SahayogDashboard {
                     align-items: center;
                     gap: 5px;
                 }
-                
                 .grouping-btn:hover {
                     background: #f1f5f9;
                     color: #334155;
                 }
-                
                 .grouping-btn.active {
                     background: #000;
                     color: white;
                     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
                 }
 
-                .grouping-btn i {
-                    font-size: 10px;
-                }
-
-                /* Chart Visualize Button with Dropdown */
-                .chart-visualize-wrapper {
-                    position: relative;
-                }
-
+                /* Chart Visualize Button */
+                .chart-visualize-wrapper { position: relative; }
                 .chart-visualize-btn {
                     background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
                     color: white;
@@ -632,21 +572,11 @@ class SahayogDashboard {
                     align-items: center;
                     gap: 6px;
                 }
-
                 .chart-visualize-btn:hover {
                     background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
                     transform: translateY(-1px);
                     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
                 }
-
-                .chart-visualize-btn i:first-child {
-                    font-size: 11px;
-                }
-
-                .chart-visualize-btn i:last-child {
-                    font-size: 8px;
-                }
-
                 .chart-dropdown {
                     position: absolute;
                     top: 100%;
@@ -660,11 +590,7 @@ class SahayogDashboard {
                     z-index: 1000;
                     display: none;
                 }
-
-                .chart-dropdown.show {
-                    display: block;
-                }
-
+                .chart-dropdown.show { display: block; }
                 .chart-dropdown-item {
                     padding: 10px 14px;
                     cursor: pointer;
@@ -676,58 +602,18 @@ class SahayogDashboard {
                     color: #475569;
                     border-bottom: 1px solid #f1f5f9;
                 }
-
-                .chart-dropdown-item:last-child {
-                    border-bottom: none;
-                }
-
+                .chart-dropdown-item:last-child { border-bottom: none; }
                 .chart-dropdown-item:hover {
                     background: #f8fafc;
                     color: #000;
                 }
-
                 .chart-dropdown-item i {
                     font-size: 14px;
                     width: 20px;
                     text-align: center;
                 }
-
-                .chart-dropdown-item.bar-chart i {
-                    color: #6366f1;
-                }
-
-                .chart-dropdown-item.bubble-chart i {
-                    color: #ec4899;
-                }
-
-                /* Filter Toggle Button */
-                .filter-toggle-btn {
-                    background: white;
-                    color: #475569;
-                    border: 1px solid #cbd5e1;
-                    padding: 5px 12px;
-                    border-radius: 5px;
-                    font-size: 11px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    transition: all 0.2s;
-                }
-                
-                .filter-toggle-btn:hover {
-                    background: #f1f5f9;
-                    border-color: #94a3b8;
-                }
-
-                .filter-toggle-btn i:first-child {
-                    font-size: 10px;
-                }
-
-                .filter-toggle-btn i:last-child {
-                    font-size: 8px;
-                }
+                .chart-dropdown-item.bar-chart i { color: #6366f1; }
+                .chart-dropdown-item.bubble-chart i { color: #ec4899; }
 
                 .toggle-all-btn {
                     background: #000;
@@ -743,16 +629,11 @@ class SahayogDashboard {
                     align-items: center;
                     gap: 6px;
                 }
-
                 .toggle-all-btn:hover {
                     background: #2d2d2d;
                     transform: translateY(-1px);
                 }
 
-                .toggle-all-btn i {
-                    font-size: 10px;
-                }
-                
                 /* Chart Modal */
                 .chart-modal {
                     display: none;
@@ -767,11 +648,7 @@ class SahayogDashboard {
                     justify-content: center;
                     padding: 20px;
                 }
-
-                .chart-modal.show {
-                    display: flex;
-                }
-
+                .chart-modal.show { display: flex; }
                 .chart-modal-content {
                     background: white;
                     border-radius: 8px;
@@ -781,7 +658,6 @@ class SahayogDashboard {
                     overflow: auto;
                     box-shadow: 0 10px 40px rgba(0,0,0,0.3);
                 }
-
                 .chart-modal-header {
                     background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
                     color: white;
@@ -791,7 +667,6 @@ class SahayogDashboard {
                     align-items: center;
                     border-radius: 8px 8px 0 0;
                 }
-
                 .chart-modal-title {
                     font-size: 16px;
                     font-weight: 700;
@@ -799,7 +674,6 @@ class SahayogDashboard {
                     align-items: center;
                     gap: 10px;
                 }
-
                 .chart-modal-close {
                     background: rgba(255, 255, 255, 0.2);
                     border: none;
@@ -811,21 +685,12 @@ class SahayogDashboard {
                     cursor: pointer;
                     transition: all 0.2s;
                 }
-
                 .chart-modal-close:hover {
                     background: rgba(255, 255, 255, 0.3);
                 }
+                .chart-modal-body { padding: 20px; }
+                #chart-container { width: 100%; height: 500px; }
 
-                .chart-modal-body {
-                    padding: 20px;
-                }
-
-                #chart-container {
-                    width: 100%;
-                    height: 500px;
-                }
-                
-                /* Table Styling */
                 .table-container-wrapper {
                     position: relative;
                     max-height: 600px;
@@ -834,30 +699,21 @@ class SahayogDashboard {
                     border: 1px solid var(--border-color);
                     border-radius: 0 0 6px 6px;
                 }
-
-                .table-container {
-                    background: var(--card-bg);
-                    overflow: visible;
-                }
-                
                 .sahayog-table {
                     width: 100%;
                     border-collapse: collapse;
                     font-size: 13px;
                 }
-                
                 .sahayog-table th,
                 .sahayog-table td {
                     padding: 12px 14px;
                     text-align: right;
                     border-bottom: 1px solid var(--table-border-color);
                 }
-                
                 .sahayog-table .row-label {
                     text-align: left;
                     font-weight: 500;
                 }
-                
                 .sahayog-table thead th {
                     background: #000;
                     color: white;
@@ -870,32 +726,13 @@ class SahayogDashboard {
                     z-index: 10;
                     border: none;
                 }
-
-                .sahayog-table tfoot {
-                    position: sticky;
-                    bottom: 0;
-                    z-index: 10;
-                }
-                
-                .sahayog-table tbody tr:last-child td {
-                    border-bottom: none;
-                }
-                
                 .group-row {
                     background: var(--bg-light-gray);
                     font-weight: 600;
                     cursor: pointer;
                     transition: background 0.2s;
                 }
-                
-                .group-row:hover {
-                    background: var(--bg-color);
-                }
-                
-                .group-row td {
-                    color: var(--text-color);
-                }
-                
+                .group-row:hover { background: var(--bg-color); }
                 .collapse-icon {
                     display: inline-block;
                     margin-right: 8px;
@@ -903,122 +740,87 @@ class SahayogDashboard {
                     color: #000;
                     font-size: 10px;
                 }
-                
-                .group-row.collapsed .collapse-icon {
-                    transform: rotate(-90deg);
-                }
-                
-                .child-row {
-                    transition: all 0.2s;
-                }
-                
+                .group-row.collapsed .collapse-icon { transform: rotate(-90deg); }
+                .child-row { transition: all 0.2s; }
                 .child-row:hover {
                     transform: scale(1.002);
                     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
                 }
-                
-                .child-row td {
-                    color: var(--text-color);
-                }
-                
                 .child-row td.row-label {
                     padding-left: 36px;
                     font-weight: 600;
                 }
-                
-                .child-row.hidden {
-                    display: none;
-                }
-                
-                .child-row.filtered-out {
-                    display: none !important;
-                }
-                
-                /* Category Row Colors */
+                .child-row.hidden { display: none; }
+                .child-row.filtered-out { display: none !important; }
+
+                /* Category Colors */
                 .cat-pinacle {
                     background: linear-gradient(90deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.05) 100%);
                     border-left: 5px solid #22c55e;
                 }
-                
                 .cat-pinacle:hover {
                     background: linear-gradient(90deg, rgba(34, 197, 94, 0.25) 0%, rgba(34, 197, 94, 0.10) 100%);
                 }
-                
                 .cat-master {
                     background: linear-gradient(90deg, rgba(20, 184, 166, 0.15) 0%, rgba(20, 184, 166, 0.05) 100%);
                     border-left: 5px solid #14b8a6;
                 }
-                
                 .cat-master:hover {
                     background: linear-gradient(90deg, rgba(20, 184, 166, 0.25) 0%, rgba(20, 184, 166, 0.10) 100%);
                 }
-                
                 .cat-accelerator {
                     background: linear-gradient(90deg, rgba(14, 165, 233, 0.15) 0%, rgba(14, 165, 233, 0.05) 100%);
                     border-left: 5px solid #0ea5e9;
                 }
-                
                 .cat-accelerator:hover {
                     background: linear-gradient(90deg, rgba(14, 165, 233, 0.25) 0%, rgba(14, 165, 233, 0.10) 100%);
                 }
-                
                 .cat-starter {
                     background: linear-gradient(90deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
                     border-left: 5px solid #f59e0b;
                 }
-                
                 .cat-starter:hover {
                     background: linear-gradient(90deg, rgba(245, 158, 11, 0.25) 0%, rgba(245, 158, 11, 0.10) 100%);
                 }
-                
                 .cat-learner {
                     background: linear-gradient(90deg, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0.05) 100%);
                     border-left: 5px solid #f97316;
                 }
-                
                 .cat-learner:hover {
                     background: linear-gradient(90deg, rgba(249, 115, 22, 0.25) 0%, rgba(249, 115, 22, 0.10) 100%);
                 }
-                
                 .cat-zero {
                     background: linear-gradient(90deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);
                     border-left: 5px solid #ef4444;
                 }
-                
                 .cat-zero:hover {
                     background: linear-gradient(90deg, rgba(239, 68, 68, 0.25) 0%, rgba(239, 68, 68, 0.10) 100%);
                 }
-                
+
                 .tgt-ach-cell { font-size: 12px; line-height: 1.5; }
                 .tgt-line { color: var(--text-muted); font-weight: 500; }
                 .ach-line { color: #000; font-weight: 700; }
-                .na-text { color: var(--gray-500); font-style: italic; }
-                
+                .na-text {
+                    color: #94a3b8;
+                    font-style: italic;
+                    font-size: 11px;
+                    font-weight: 600;
+                    letter-spacing: 0.5px;
+                }
+
                 .grand-total-row {
                     background: linear-gradient(135deg, #000 0%, #1a1a1a 100%) !important;
                     font-weight: 700;
                     border-top: 3px solid #fff !important;
                     box-shadow: 0 -4px 12px rgba(0,0,0,0.3);
                 }
-                
                 .grand-total-row td {
                     color: #ffffff !important;
                     border-bottom: none !important;
                     padding: 14px !important;
                 }
 
-                .grand-total-row .tgt-line,
-                .grand-total-row .ach-line {
-                    color: #ffffff !important;
-                }
-                
-                .loading-row td {
-                    text-align: center !important;
-                    padding: 40px;
-                    color: var(--text-muted);
-                }
-
-                /* DRILL DOWN */
+                /* Drill-down Segment Styles */
                 .drill-down-view {
                     display: none;
                     position: fixed;
@@ -1030,11 +832,7 @@ class SahayogDashboard {
                     z-index: 1050;
                     overflow: auto;
                 }
-                
-                .drill-down-view.active {
-                    display: block;
-                }
-                
+                .drill-down-view.active { display: block; }
                 .drill-down-header {
                     background: #000;
                     color: white;
@@ -1047,7 +845,6 @@ class SahayogDashboard {
                     z-index: 100;
                     box-shadow: 0 2px 10px rgba(0,0,0,0.3);
                 }
-                
                 .drill-down-title {
                     font-size: 15px;
                     font-weight: 600;
@@ -1055,7 +852,6 @@ class SahayogDashboard {
                     align-items: center;
                     gap: 10px;
                 }
-                
                 .drill-close-btn {
                     background: rgba(255, 255, 255, 0.15);
                     border: none;
@@ -1070,93 +866,23 @@ class SahayogDashboard {
                     align-items: center;
                     gap: 6px;
                 }
-                
                 .drill-close-btn:hover {
                     background: rgba(255, 255, 255, 0.25);
                 }
-                
                 .drill-down-body {
                     padding: 20px;
                     max-width: 1600px;
                     margin: 0 auto;
                 }
 
-                .drill-filters {
-                    background: var(--card-bg);
-                    border: 1px solid var(--border-color);
-                    border-radius: 6px;
-                    padding: 12px;
-                    margin-bottom: 15px;
-                }
-                
-                .drill-filters-row {
-                    display: flex;
-                    gap: 12px;
-                    flex-wrap: wrap;
-                    align-items: flex-end;
-                }
-                
-                .drill-filter-group {
-                    flex: 1;
-                    min-width: 180px;
-                }
-                
-                .drill-filter-group label {
-                    display: block;
-                    color: var(--text-muted);
-                    font-size: 11px;
-                    font-weight: 600;
-                    margin-bottom: 5px;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                }
-                
-                .drill-filter-group select,
-                .drill-filter-group input {
-                    width: 100%;
-                    padding: 7px 10px;
-                    background: var(--control-bg);
-                    border: 1px solid var(--border-color);
-                    border-radius: 4px;
-                    color: var(--text-color);
-                    font-size: 12px;
-                }
-                
-                .drill-filter-group select:focus,
-                .drill-filter-group input:focus {
-                    outline: none;
-                    border-color: #000;
-                }
-                
-                .drill-reset-btn {
-                    background: #1a1a1a;
-                    color: white;
-                    border: none;
-                    padding: 8px 16px;
-                    border-radius: 4px;
-                    font-size: 12px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    white-space: nowrap;
-                }
-                
-                .drill-reset-btn:hover {
-                    background: #2d2d2d;
-                }
-
-                /* Performance Segment Styles */
+                /* Performance Segments */
                 .segment-header-row {
                     font-weight: 700;
                     cursor: pointer;
                     transition: all 0.2s;
                     border-top: 2px solid #cbd5e1 !important;
                 }
-
-                .segment-header-row:hover {
-                    opacity: 0.9;
-                }
-
+                .segment-header-row:hover { opacity: 0.9; }
                 .segment-header-row td {
                     padding: 14px 16px !important;
                     font-size: 13px;
@@ -1164,7 +890,6 @@ class SahayogDashboard {
                     letter-spacing: 0.5px;
                     color: white !important;
                 }
-
                 .segment-header-row .collapse-icon {
                     display: inline-block;
                     margin-right: 10px;
@@ -1175,73 +900,48 @@ class SahayogDashboard {
                     color: white;
                 }
 
-				/* Per-segment Column Header - highlighted and toggled with segment */
-				.segment-column-header td {
-					background: linear-gradient(90deg, #f8fafc 0%, #eef2ff 100%);
-					color: #0f172a;
-					font-weight: 800;
-					padding: 10px 14px;
-					border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-					text-transform: uppercase;
-					font-size: 12px;
-				}
-
-				.segment-column-header td.row-label {
-					font-weight: 900;
-				}
-
-                /* TOP Segment: 75% - 100%+ (Green) */
                 .segment-top {
                     background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
                     border-left: 5px solid #15803d !important;
                     box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
                 }
-
                 .segment-top:hover {
                     background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
                 }
 
-                /* NEXT Segment: 50% - 75% (Blue) */
                 .segment-next {
                     background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
                     border-left: 5px solid #0369a1 !important;
                     box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
                 }
-
                 .segment-next:hover {
                     background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
                 }
 
-                /* MID Segment: 25% - 50% (Orange) */
                 .segment-mid {
                     background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
                     border-left: 5px solid #b45309 !important;
                     box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
                 }
-
                 .segment-mid:hover {
                     background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
                 }
 
-                /* BOTTOM Segment: 0% - 25% (Red) */
                 .segment-bottom {
                     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
                     border-left: 5px solid #b91c1c !important;
                     box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
                 }
-
                 .segment-bottom:hover {
                     background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
                 }
 
-                /* Segment Children Rows */
                 .segment-child-1,
                 .segment-child-2,
                 .segment-child-3,
                 .segment-child-4 {
                     transition: all 0.2s;
                 }
-
                 .segment-child-1:hover,
                 .segment-child-2:hover,
                 .segment-child-3:hover,
@@ -1250,82 +950,25 @@ class SahayogDashboard {
                     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
                 }
 
-                /* Add subtle background tint to child rows */
                 .segment-child-1 {
                     background: linear-gradient(90deg, rgba(34, 197, 94, 0.05) 0%, transparent 100%);
                 }
-
                 .segment-child-2 {
                     background: linear-gradient(90deg, rgba(14, 165, 233, 0.05) 0%, transparent 100%);
                 }
-
                 .segment-child-3 {
                     background: linear-gradient(90deg, rgba(245, 158, 11, 0.05) 0%, transparent 100%);
                 }
-
                 .segment-child-4 {
                     background: linear-gradient(90deg, rgba(239, 68, 68, 0.05) 0%, transparent 100%);
                 }
-                
-                @media (max-width: 768px) {
-                    .table-header-controls {
-                        flex-direction: column;
-                        align-items: stretch;
-                    }
 
-                    .table-header-left,
-                    .table-header-right {
-                        justify-content: center;
-                    }
-                    
-                    .filter-row {
-                        flex-direction: column;
-                    }
-                    
-                    .filter-group {
-                        width: 100%;
-                    }
+                @media (max-width: 768px) {
+                    .table-header-controls { flex-direction: column; }
                 }
             </style>
-
         `;
 		$(styles).appendTo("head");
-	}
-
-	switchTimePeriod(period) {
-		this.timePeriod = period;
-		$(".time-period-btn").removeClass("active");
-		$(`.time-period-btn[data-period="${period}"]`).addClass("active");
-		this.saveState();
-		this.updateFilterIndicator();
-		this.loadDashboardData();
-	}
-
-	createFilterPanel() {
-		const filterHtml = `
-            <div class="filter-panel ${this.filterCollapsed ? "" : "expanded"}" id="filter-panel">
-                <div class="filter-row">
-                    <div class="filter-group">
-                        <label>From Date</label>
-                        <input type="date" id="from-date-filter" />
-                    </div>
-                    <div class="filter-group">
-                        <label>To Date</label>
-                        <input type="date" id="to-date-filter" />
-                    </div>
-                    <div class="filter-group" style="flex: 0;">
-                        <label>&nbsp;</label>
-                        <button class="apply-filter-btn" id="apply-filter">
-                            Apply
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-		$(filterHtml).appendTo(this.page.main);
-
-		$("#apply-filter").on("click", () => this.applyFilters());
-		$("#from-date-filter, #to-date-filter").on("change", () => this.saveState());
 	}
 
 	createCombinedFilters() {
@@ -1336,10 +979,12 @@ class SahayogDashboard {
                         <i class="fa fa-map-marker-alt" style="font-size: 9px;"></i> ZONE
                     </div>
                     <div class="filter-chips" id="zone-chips">
-                        <div class="filter-chip active" data-zone="all">All <span class="chip-count">0</span></div>
+                        <div class="filter-chip active" data-zone="all">
+                            All <span class="chip-count zone-count-all">0</span>
+                        </div>
                     </div>
                 </div>
-                
+
                 <div class="filter-section">
                     <div class="filter-section-label">
                         <i class="fa fa-layer-group" style="font-size: 9px;"></i> PERFORMANCE CATEGORIES
@@ -1347,25 +992,39 @@ class SahayogDashboard {
                     <div class="filter-chips">
                         <div class="filter-chip ${
 							this.activeCategories.size === 0 ? "active" : ""
-						}" data-category="all">All <span class="chip-count" id="count-all">0</span></div>
+						}" data-category="all">
+                            All <span class="chip-count" id="count-all">0</span>
+                        </div>
                         <div class="filter-chip ${
 							this.activeCategories.has("Pinacle") ? "active" : ""
-						}" data-category="Pinacle">Pinacle <span class="chip-count" id="count-pinacle">0</span></div>
+						}" data-category="Pinacle">
+                            Pinacle <span class="chip-count" id="count-pinacle">0</span>
+                        </div>
                         <div class="filter-chip ${
 							this.activeCategories.has("Master") ? "active" : ""
-						}" data-category="Master">Master <span class="chip-count" id="count-master">0</span></div>
+						}" data-category="Master">
+                            Master <span class="chip-count" id="count-master">0</span>
+                        </div>
                         <div class="filter-chip ${
 							this.activeCategories.has("Accelerator") ? "active" : ""
-						}" data-category="Accelerator">Accelerator <span class="chip-count" id="count-accelerator">0</span></div>
+						}" data-category="Accelerator">
+                            Accelerator <span class="chip-count" id="count-accelerator">0</span>
+                        </div>
                         <div class="filter-chip ${
 							this.activeCategories.has("Starter") ? "active" : ""
-						}" data-category="Starter">Starter <span class="chip-count" id="count-starter">0</span></div>
+						}" data-category="Starter">
+                            Starter <span class="chip-count" id="count-starter">0</span>
+                        </div>
                         <div class="filter-chip ${
 							this.activeCategories.has("Learner") ? "active" : ""
-						}" data-category="Learner">Learner <span class="chip-count" id="count-learner">0</span></div>
+						}" data-category="Learner">
+                            Learner <span class="chip-count" id="count-learner">0</span>
+                        </div>
                         <div class="filter-chip ${
 							this.activeCategories.has("Zero Level") ? "active" : ""
-						}" data-category="Zero Level">Zero Level <span class="chip-count" id="count-zero">0</span></div>
+						}" data-category="Zero Level">
+                            Zero Level <span class="chip-count" id="count-zero">0</span>
+                        </div>
                     </div>
                 </div>
 
@@ -1386,14 +1045,13 @@ class SahayogDashboard {
 			this.toggleCategoryFilter(category, chip);
 		});
 
-		// Allow clicking on the small count inside the category chip to open category-level drilldown
 		$(document).on("click", ".filter-chip[data-category] .chip-count", (e) => {
 			e.stopPropagation();
 			const chip = $(e.currentTarget).closest(".filter-chip");
 			const category = chip.data("category");
 			if (!category || category === "all") {
 				frappe.show_alert({
-					message: "Please select a specific category to drill down",
+					message: "Please select a specific category",
 					indicator: "orange",
 				});
 				return;
@@ -1405,7 +1063,6 @@ class SahayogDashboard {
 	}
 
 	loadZoneChips() {
-		// Hardcoded zones - no server call
 		const zones = [
 			{ name: "ZONE-1" },
 			{ name: "ZONE-2" },
@@ -1422,11 +1079,11 @@ class SahayogDashboard {
 			const isActive = this.activeZones.has(zoneName) ? "active" : "";
 
 			container.append(`
-            <div class="filter-chip ${isActive}" data-zone="${zoneName}">
-                ${zoneName}
-                <span class="chip-count zone-count-${zoneName}">0</span>
-            </div>
-        `);
+                <div class="filter-chip ${isActive}" data-zone="${zoneName}">
+                    ${zoneName}
+                    <span class="chip-count zone-count-${zoneName}">0</span>
+                </div>
+            `);
 		});
 
 		$(".filter-chip[data-zone]").on("click", (e) => {
@@ -1434,10 +1091,6 @@ class SahayogDashboard {
 			const zone = chip.data("zone");
 			this.toggleZoneFilter(zone, chip);
 		});
-
-		if (this.activeZones.size === 0) {
-			$('.filter-chip[data-zone="all"]').removeClass("active");
-		}
 	}
 
 	toggleZoneFilter(zone, chip) {
@@ -1500,9 +1153,6 @@ class SahayogDashboard {
 		$(".filter-chip[data-category]").removeClass("active");
 		$('.filter-chip[data-category="all"]').addClass("active");
 
-		$("#from-date-filter").val("");
-		$("#to-date-filter").val("");
-
 		this.saveState();
 		this.updateFilterIndicator();
 		this.updateCategoryCounts();
@@ -1522,9 +1172,12 @@ class SahayogDashboard {
 	updateFilterIndicator() {
 		const indicator = $("#filter-indicator");
 		const text = $("#filter-indicator-text");
-		let parts = [];
+		const parts = [];
 
-		parts.push(`<span class="filter-badge">${this.timePeriod.toUpperCase()}</span>`);
+		const selectedDateObj = this.availableDates.find((d) => d.date === this.selectedDate);
+		if (selectedDateObj) {
+			parts.push(`<span class="filter-badge">${selectedDateObj.display_full}</span>`);
+		}
 
 		if (this.activeZones.size > 0) {
 			const zoneList = Array.from(this.activeZones).join(", ");
@@ -1536,13 +1189,12 @@ class SahayogDashboard {
 			parts.push(`Categories <span class="filter-badge">${catList}</span>`);
 		}
 
-		if (parts.length > 1) {
+		if (parts.length > 0) {
 			text.html(`Viewing ${parts.join(" • ")}`);
-			indicator.addClass("show");
 		} else {
 			text.html(`Viewing <span class="filter-badge">ALL DATA</span>`);
-			indicator.addClass("show");
 		}
+		indicator.addClass("show");
 	}
 
 	updateCategoryCounts() {
@@ -1557,23 +1209,22 @@ class SahayogDashboard {
 			"Zero Level": 0,
 			All: 0,
 		};
-
 		const zoneCounts = {};
 		const showAllZones = this.activeZones.size === 0;
 
 		if (this.rawData.zones) {
 			this.rawData.zones.forEach((zone) => {
 				const zoneMatch = showAllZones || this.activeZones.has(zone.zone);
-				if (zoneMatch) {
-					if (!zoneCounts[zone.zone]) {
-						zoneCounts[zone.zone] = 0;
-					}
-					zoneCounts[zone.zone] += zone.branch_count || 0;
+				if (!zoneMatch) return;
+
+				if (!zoneCounts[zone.zone]) {
+					zoneCounts[zone.zone] = 0;
 				}
+				zoneCounts[zone.zone] += zone.branch_count || 0;
 
 				if (zone.categories) {
 					zone.categories.forEach((cat) => {
-						if (zoneMatch && counts.hasOwnProperty(cat.category)) {
+						if (counts.hasOwnProperty(cat.category)) {
 							counts[cat.category] += cat.branch_count || 0;
 							counts["All"] += cat.branch_count || 0;
 						}
@@ -1593,8 +1244,7 @@ class SahayogDashboard {
 		Object.keys(zoneCounts).forEach((zone) => {
 			$(`.zone-count-${zone}`).text(zoneCounts[zone]);
 		});
-
-		$('.filter-chip[data-zone="all"] .chip-count').text(counts["All"]);
+		$(".zone-count-all").text(counts["All"]);
 	}
 
 	createContentArea() {
@@ -1610,17 +1260,13 @@ class SahayogDashboard {
 	}
 
 	createChartModal() {
+		// Create chart modal HTML and attach handlers
 		const modalHtml = `
             <div class="chart-modal" id="chart-modal">
                 <div class="chart-modal-content">
                     <div class="chart-modal-header">
-                        <div class="chart-modal-title">
-                            <i class="fa fa-chart-bar"></i>
-                            <span id="chart-modal-title-text">Chart Visualization</span>
-                        </div>
-                        <button class="chart-modal-close" id="close-chart-modal">
-                            <i class="fa fa-times"></i> Close
-                        </button>
+                        <div class="chart-modal-title"><i class="fa fa-chart-bar"></i> <span id="chart-modal-title">Chart</span></div>
+                        <button class="chart-modal-close" id="chart-modal-close">Close</button>
                     </div>
                     <div class="chart-modal-body">
                         <div id="chart-container"></div>
@@ -1628,172 +1274,135 @@ class SahayogDashboard {
                 </div>
             </div>
         `;
+
 		$("body").append(modalHtml);
 
-		$("#close-chart-modal").on("click", () => this.closeChartModal());
-		$("#chart-modal").on("click", (e) => {
-			if ($(e.target).is("#chart-modal")) {
-				this.closeChartModal();
-			}
-		});
-	}
+		$("#chart-modal-close").on("click", () => this.closeChartModal());
 
-	openChartModal(chartType) {
-		$("#chart-modal").addClass("show");
-		if (chartType === "bar") {
-			$("#chart-modal-title-text").text("Bar Chart - Performance Overview");
-			this.renderBarChart();
-		} else if (chartType === "bubble") {
-			$("#chart-modal-title-text").text("Bubble Chart - Zone vs Category Analysis");
-			this.renderBubbleChart();
-		}
-	}
-
-	closeChartModal() {
-		$("#chart-modal").removeClass("show");
-		if (this.chartInstance) {
-			this.chartInstance.dispose();
-			this.chartInstance = null;
-		}
-	}
-
-	renderBarChart() {
-		if (!window.echarts) {
-			frappe.show_alert({ message: "ECharts library is loading...", indicator: "orange" });
-			setTimeout(() => this.renderBarChart(), 500);
-			return;
-		}
-
-		if (!this.rawData) {
-			frappe.show_alert({ message: "No data available", indicator: "red" });
-			return;
-		}
-
-		const chartDom = document.getElementById("chart-container");
-		this.chartInstance = echarts.init(chartDom);
-
-		const categories = [];
-		const targetData = [];
-		const achievementData = [];
-
-		const showAllZones = this.activeZones.size === 0;
-		const showAllCategories = this.activeCategories.size === 0;
-
-		if (this.groupBy === "zone") {
-			(this.rawData.zones || []).forEach((zone) => {
-				const zoneMatch = showAllZones || this.activeZones.has(zone.zone);
-				if (zoneMatch) {
-					categories.push(zone.zone);
-					targetData.push(zone.total.tgt || 0);
-					achievementData.push(zone.total.ach || 0);
-				}
-			});
-		} else {
-			const categoryMap = {};
-			(this.rawData.zones || []).forEach((zone) => {
-				(zone.categories || []).forEach((cat) => {
-					const catMatch = showAllCategories || this.activeCategories.has(cat.category);
-					if (catMatch) {
-						if (!categoryMap[cat.category]) {
-							categoryMap[cat.category] = { tgt: 0, ach: 0 };
-						}
-						categoryMap[cat.category].tgt += cat.total.tgt || 0;
-						categoryMap[cat.category].ach += cat.total.ach || 0;
-					}
-				});
-			});
-
-			Object.keys(categoryMap).forEach((cat) => {
-				categories.push(cat);
-				targetData.push(categoryMap[cat].tgt);
-				achievementData.push(categoryMap[cat].ach);
-			});
-		}
-
-		const option = {
-			title: {
-				text: "Target vs Achievement",
-				left: "center",
-				textStyle: { fontSize: 18, fontWeight: "bold" },
-			},
-			tooltip: {
-				trigger: "axis",
-				axisPointer: { type: "shadow" },
-				formatter: function (params) {
-					let result = params[0].name + "<br/>";
-					params.forEach((param) => {
-						result +=
-							param.marker +
-							" " +
-							param.seriesName +
-							": " +
-							param.value.toLocaleString("en-IN") +
-							"<br/>";
-					});
-					return result;
-				},
-			},
-			legend: { data: ["Target", "Achievement"], top: 40 },
-			grid: { left: "3%", right: "4%", bottom: "10%", containLabel: true },
-			xAxis: {
-				type: "category",
-				data: categories,
-				axisLabel: { interval: 0, rotate: 45 },
-			},
-			yAxis: {
-				type: "value",
-				name: "Amount",
-				axisLabel: {
-					formatter: function (value) {
-						if (value >= 10000000) {
-							return (value / 10000000).toFixed(1) + " Cr";
-						} else if (value >= 100000) {
-							return (value / 100000).toFixed(1) + " L";
-						}
-						return value;
-					},
-				},
-			},
-			series: [
-				{
-					name: "Target",
-					type: "bar",
-					data: targetData,
-					itemStyle: { color: "#6366f1" },
-				},
-				{
-					name: "Achievement",
-					type: "bar",
-					data: achievementData,
-					itemStyle: { color: "#22c55e" },
-				},
-			],
-		};
-
-		this.chartInstance.setOption(option);
-
-		window.addEventListener("resize", () => {
-			if (this.chartInstance) {
+		// Ensure chart resizes on window resize
+		$(window).on("resize.sahayog_chart", () => {
+			if (this.chartInstance && this.chartInstance.resize) {
 				this.chartInstance.resize();
 			}
 		});
 	}
 
-	renderBubbleChart() {
-		if (!window.echarts) {
-			frappe.show_alert({ message: "ECharts library is loading...", indicator: "orange" });
-			setTimeout(() => this.renderBubbleChart(), 500);
-			return;
+	openChartModal(type) {
+		$("#chart-modal").addClass("show");
+		$("#chart-modal-title").text(
+			type === "bar" ? "Bar Chart - Performance Overview" : "Bubble Chart - Zone vs Category"
+		);
+		// Wait until echarts loaded
+		const render = () => {
+			if (!window.echarts) {
+				setTimeout(render, 150);
+				return;
+			}
+			this.renderChart(type);
+		};
+		render();
+	}
+
+	closeChartModal() {
+		$("#chart-modal").removeClass("show");
+		if (this.chartInstance && this.chartInstance.dispose) {
+			this.chartInstance.dispose();
+			this.chartInstance = null;
 		}
+	}
+
+	renderChart(type) {
+		const container = document.getElementById("chart-container");
+		if (!container) return;
+		container.innerHTML = "";
+		const chart = window.echarts.init(container);
+		this.chartInstance = chart;
 
 		if (!this.rawData) {
-			frappe.show_alert({ message: "No data available", indicator: "red" });
+			chart.setOption({ title: { text: "No data" } });
 			return;
 		}
 
-		const chartDom = document.getElementById("chart-container");
-		this.chartInstance = echarts.init(chartDom);
+		if (type === "bar") {
+			this.renderBarChart(chart);
+		} else {
+			this.renderBubbleChart(chart);
+		}
+	}
 
+	renderBarChart(chart) {
+		// Build series based on current grouping and active filters
+		const groupBy = this.groupBy || "zone";
+		const showAllZones = this.activeZones.size === 0;
+		const showAllCategories = this.activeCategories.size === 0;
+
+		const xLabels = [];
+		const tgtSeries = [];
+		const achSeries = [];
+
+		if (groupBy === "zone") {
+			this.rawData.zones.forEach((z) => {
+				if (!showAllCategories) {
+					// when categories filtered, sum only categories matching activeCategories
+					let tgt = 0,
+						ach = 0;
+					z.categories.forEach((c) => {
+						if (showAllCategories || this.activeCategories.has(c.category)) {
+							tgt += c.total.tgt || 0;
+							ach += c.total.ach || 0;
+						}
+					});
+					xLabels.push(z.zone);
+					tgtSeries.push(tgt);
+					achSeries.push(ach);
+				} else {
+					xLabels.push(z.zone);
+					tgtSeries.push(z.total.tgt || 0);
+					achSeries.push(z.total.ach || 0);
+				}
+			});
+		} else {
+			// group by category
+			const categoryOrder = [
+				"Pinacle",
+				"Master",
+				"Accelerator",
+				"Starter",
+				"Learner",
+				"Zero Level",
+			];
+			const categories = this.transformToCategoryGrouping(this.rawData);
+			categories.forEach((c) => {
+				xLabels.push(c.category);
+				tgtSeries.push(c.total.tgt || 0);
+				achSeries.push(c.total.ach || 0);
+			});
+		}
+
+		const option = {
+			title: { text: "Target vs Achievement" },
+			tooltip: { trigger: "axis" },
+			legend: { data: ["Target", "Achievement"] },
+			toolbox: { feature: { saveAsImage: {} } },
+			xAxis: { type: "category", data: xLabels },
+			yAxis: { type: "value" },
+			series: [
+				{ name: "Target", type: "bar", data: tgtSeries, itemStyle: { color: "#60a5fa" } },
+				{
+					name: "Achievement",
+					type: "bar",
+					data: achSeries,
+					itemStyle: { color: "#16a34a" },
+				},
+			],
+		};
+
+		chart.setOption(option);
+	}
+
+	renderBubbleChart(chart) {
+		// X: zones, Y: categories, size: total achievement
+		const zones = this.rawData.zones.map((z) => z.zone);
 		const categoryOrder = [
 			"Pinacle",
 			"Master",
@@ -1802,138 +1411,72 @@ class SahayogDashboard {
 			"Learner",
 			"Zero Level",
 		];
-		const zonesList = [];
-		const data = [];
+		const dataPoints = [];
 
-		const showAllZones = this.activeZones.size === 0;
-		const showAllCategories = this.activeCategories.size === 0;
-
-		(this.rawData.zones || []).forEach((zone) => {
-			const zoneMatch = showAllZones || this.activeZones.has(zone.zone);
-			if (!zoneMatch) return;
-
-			if (!zonesList.includes(zone.zone)) {
-				zonesList.push(zone.zone);
-			}
-			const zoneIndex = zonesList.indexOf(zone.zone);
-
-			(zone.categories || []).forEach((cat) => {
-				const catMatch = showAllCategories || this.activeCategories.has(cat.category);
-				if (!catMatch) return;
-
-				const categoryIndex = categoryOrder.indexOf(cat.category);
-				if (zoneIndex >= 0 && categoryIndex >= 0) {
-					data.push([
-						zoneIndex,
-						categoryIndex,
-						cat.total.ach || 0,
-						cat.branch_count || 0,
-						zone.zone,
-						cat.category,
-						cat.total.tgt || 0,
-					]);
+		this.rawData.zones.forEach((z, zi) => {
+			z.categories.forEach((c) => {
+				const size = c.total.ach || 0;
+				const yi = categoryOrder.indexOf(c.category);
+				if (yi >= 0) {
+					dataPoints.push([zi, yi, Math.round(size / 1000)]);
 				}
 			});
 		});
 
 		const option = {
-			title: {
-				text: "Zone vs Category Performance",
-				left: "center",
-				textStyle: { fontSize: 18, fontWeight: "bold" },
-			},
-			tooltip: {
-				formatter: function (params) {
-					const d = params.data;
-					return (
-						`<strong>${d[4]}</strong> - ${d[5]}<br/>` +
-						`Target: ${d[6].toLocaleString("en-IN")}<br/>` +
-						`Achievement: ${d[2].toLocaleString("en-IN")}<br/>` +
-						`Branches: ${d[3]}`
-					);
-				},
-			},
-			grid: { left: "10%", right: "10%", bottom: "15%", top: "15%" },
-			xAxis: {
-				type: "category",
-				data: zonesList,
-				name: "Zones",
-				nameLocation: "middle",
-				nameGap: 30,
-				axisLabel: { interval: 0, rotate: 45 },
-			},
-			yAxis: {
-				type: "category",
-				data: categoryOrder,
-				name: "Categories",
-				nameLocation: "middle",
-				nameGap: 50,
-			},
-			visualMap: {
-				min: 0,
-				max: Math.max(...data.map((d) => d[2])),
-				dimension: 2,
-				orient: "vertical",
-				right: 10,
-				top: "center",
-				text: ["HIGH", "LOW"],
-				calculable: true,
-				inRange: {
-					color: ["#f1f5f9", "#6366f1", "#4f46e5", "#4338ca"],
-				},
-			},
+			title: { text: "Zone vs Category - Achievement" },
+			xAxis: { type: "category", data: zones, name: "Zone" },
+			yAxis: { type: "category", data: categoryOrder, name: "Category" },
 			series: [
 				{
 					type: "scatter",
-					symbolSize: function (val) {
-						return Math.max(val[3] * 5, 10);
+					symbolSize: function (data) {
+						return Math.max(6, data[2]);
 					},
-					data: data,
-					itemStyle: {
-						shadowBlur: 10,
-						shadowColor: "rgba(0, 0, 0, 0.3)",
-						shadowOffsetY: 5,
-						opacity: 0.8,
-					},
+					data: dataPoints,
+					itemStyle: { color: "#ec4899" },
 				},
 			],
+			tooltip: {
+				formatter: function (params) {
+					const zi = params.value[0];
+					const yi = params.value[1];
+					const size = params.value[2];
+					return (
+						zones[zi] +
+						" / " +
+						categoryOrder[yi] +
+						"<br/>Achievement(≈): " +
+						size * 1000
+					);
+				},
+			},
 		};
 
-		this.chartInstance.setOption(option);
-
-		window.addEventListener("resize", () => {
-			if (this.chartInstance) {
-				this.chartInstance.resize();
-			}
-		});
+		chart.setOption(option);
 	}
 
-	switchGrouping(group) {
-		this.groupBy = group;
-		$(".grouping-btn").removeClass("active");
-		$(`.grouping-btn[data-group="${group}"]`).addClass("active");
-		this.saveState();
-		this.loadDashboardData();
-	}
+	createDrillDownView() {
+		const drillHtml = `
+			<div class="drill-down-view" id="drill-down-view">
+				<div class="drill-down-header">
+					<div class="drill-down-title">
+						<i class="fa fa-layer-group"></i>
+						<span id="drill-title"></span>
+					</div>
+					<button class="drill-close-btn" id="drill-close">
+						<i class="fa fa-times"></i> Close
+					</button>
+				</div>
+				<div class="drill-down-body">
+					<div id="drill-segments-container"></div>
+				</div>
+			</div>
+		`;
 
-	toggleFilter() {
-		this.filterCollapsed = !this.filterCollapsed;
-		const panel = $("#filter-panel");
-		const icon = $("#toggle-filter .fa-chevron-down, #toggle-filter .fa-chevron-up");
-		if (this.filterCollapsed) {
-			panel.removeClass("expanded");
-			icon.removeClass("fa-chevron-up").addClass("fa-chevron-down");
-		} else {
-			panel.addClass("expanded");
-			icon.removeClass("fa-chevron-down").addClass("fa-chevron-up");
-		}
-		this.saveState();
-	}
+		$("body").append(drillHtml);
 
-	applyFilters() {
-		this.saveState();
-		this.updateFilterIndicator();
-		this.loadDashboardData();
+		$("#drill-close").on("click", () => this.closeDrillDown());
 	}
 
 	applyQuickFilters() {
@@ -1984,6 +1527,8 @@ class SahayogDashboard {
 	}
 
 	loadDashboardData() {
+		if (!this.selectedDate) return;
+
 		const container = $("#dashboard-view");
 		container.html(`
             <div class="table-header-controls">
@@ -1991,17 +1536,6 @@ class SahayogDashboard {
                     <div class="table-header-title">Performance Overview</div>
                 </div>
                 <div class="table-header-right">
-                    <div class="time-period-toggle">
-                        <button class="time-period-btn ${
-							this.timePeriod === "daily" ? "active" : ""
-						}" data-period="daily">Daily</button>
-                        <button class="time-period-btn ${
-							this.timePeriod === "weekly" ? "active" : ""
-						}" data-period="weekly">Weekly</button>
-                        <button class="time-period-btn ${
-							this.timePeriod === "monthly" ? "active" : ""
-						}" data-period="monthly">Monthly</button>
-                    </div>
                     <div class="grouping-toggle">
                         <button class="grouping-btn ${
 							this.groupBy === "zone" ? "active" : ""
@@ -2015,23 +1549,12 @@ class SahayogDashboard {
                         </button>
                     </div>
                     <div class="chart-visualize-wrapper">
-                        <button class="chart-visualize-btn" id="chart-visualize-btn">
-                            <i class="fa fa-chart-bar"></i> Visualize
-                            <i class="fa fa-chevron-down"></i>
-                        </button>
+                        <button class="chart-visualize-btn" id="chart-visualize-btn">📊 Visualize ▼</button>
                         <div class="chart-dropdown" id="chart-dropdown">
-                            <div class="chart-dropdown-item bar-chart" data-chart="bar">
-                                <i class="fa fa-chart-bar"></i> <span>Bar Chart</span>
-                            </div>
-                            <div class="chart-dropdown-item bubble-chart" data-chart="bubble">
-                                <i class="fa fa-chart-scatter"></i> <span>Bubble Chart</span>
-                            </div>
+                            <div class="chart-dropdown-item bar-chart" data-chart="bar"><i>▦</i> Bar Chart</div>
+                            <div class="chart-dropdown-item bubble-chart" data-chart="bubble"><i>●</i> Bubble Chart</div>
                         </div>
                     </div>
-                    <button class="filter-toggle-btn" id="toggle-filter">
-                        <i class="fa fa-calendar"></i> Date
-                        <i class="fa fa-chevron-down"></i>
-                    </button>
                     <button class="toggle-all-btn" id="toggle-all-rows">
                         <i class="fa fa-expand-alt"></i> <span>Expand All</span>
                     </button>
@@ -2066,16 +1589,23 @@ class SahayogDashboard {
 
 		this.attachDashboardEventListeners();
 
+		// Insert compact timeline inline with the header controls (after grouping toggle)
+		try {
+			const groupingToggle = container.find(".grouping-toggle");
+			if (groupingToggle.length) {
+				groupingToggle.after(this.createCompactTimeline());
+			}
+		} catch (e) {
+			console.error("Failed to insert timeline:", e);
+		}
+
 		frappe.call({
 			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_dashboard_data",
 			args: {
-				from_date: $("#from-date-filter").val(),
-				to_date: $("#to-date-filter").val(),
-				time_period: this.timePeriod,
+				selected_date: this.selectedDate,
 			},
 			callback: (r) => {
 				if (r.message) {
-					// Transform flat Python data to nested structure
 					const transformedData = this.transformPythonData(r.message);
 					this.rawData = transformedData;
 					this.renderDashboard(transformedData);
@@ -2093,19 +1623,22 @@ class SahayogDashboard {
 				this.switchGrouping(group);
 			});
 
-		$(".time-period-btn")
-			.off("click")
-			.on("click", (e) => {
-				const period = $(e.currentTarget).data("period");
-				this.switchTimePeriod(period);
-			});
-
-		$("#toggle-filter")
-			.off("click")
-			.on("click", () => this.toggleFilter());
 		$("#toggle-all-rows")
 			.off("click")
 			.on("click", () => this.toggleAllRows());
+
+		// Chart visualize dropdown
+		$(document)
+			.off("click.dashboard_chart")
+			.on("click.dashboard_chart", (e) => {
+				if (
+					!$(e.target).closest(
+						"#chart-visualize-btn, #chart-dropdown, .chart-visualize-wrapper"
+					).length
+				) {
+					$("#chart-dropdown").removeClass("show");
+				}
+			});
 
 		$("#chart-visualize-btn")
 			.off("click")
@@ -2117,18 +1650,18 @@ class SahayogDashboard {
 		$(".chart-dropdown-item")
 			.off("click")
 			.on("click", (e) => {
-				const chartType = $(e.currentTarget).data("chart");
+				const chart = $(e.currentTarget).data("chart");
 				$("#chart-dropdown").removeClass("show");
-				this.openChartModal(chartType);
+				this.openChartModal(chart);
 			});
+	}
 
-		$(document)
-			.off("click.chart-dropdown")
-			.on("click.chart-dropdown", (e) => {
-				if (!$(e.target).closest(".chart-visualize-wrapper").length) {
-					$("#chart-dropdown").removeClass("show");
-				}
-			});
+	switchGrouping(group) {
+		this.groupBy = group;
+		$(".grouping-btn").removeClass("active");
+		$(`.grouping-btn[data-group="${group}"]`).addClass("active");
+		this.saveState();
+		this.loadDashboardData();
 	}
 
 	toggleAllRows() {
@@ -2194,10 +1727,7 @@ class SahayogDashboard {
 			this.collapsedGroups.add(idx);
 			tbody.append(this.createGroupRow(cat.category, cat, idx));
 
-			const sortedZones = cat.zones.sort((a, b) => {
-				return a.zone.localeCompare(b.zone);
-			});
-
+			const sortedZones = cat.zones.sort((a, b) => a.zone.localeCompare(b.zone));
 			sortedZones.forEach((zone) => {
 				tbody.append(this.createChildRow(zone, idx, zone.zone, zone.category));
 			});
@@ -2224,10 +1754,10 @@ class SahayogDashboard {
 			categoryMap[cat] = {
 				category: cat,
 				branch_count: 0,
-				dec: { tgt: 0, ach: 0 },
-				jan: { tgt: 0, ach: 0 },
-				feb: { tgt: 0, ach: 0 },
-				mar: { tgt: 0, ach: 0 },
+				dec: { tgt: 0, ach: 0, available: false },
+				jan: { tgt: 0, ach: 0, available: false },
+				feb: { tgt: 0, ach: 0, available: false },
+				mar: { tgt: 0, ach: 0, available: false },
 				total: { tgt: 0, ach: 0 },
 				zones: [],
 			};
@@ -2237,14 +1767,13 @@ class SahayogDashboard {
 			zone.categories.forEach((cat) => {
 				if (categoryMap[cat.category]) {
 					categoryMap[cat.category].branch_count += cat.branch_count || 0;
-					categoryMap[cat.category].dec.tgt += cat.dec.tgt || 0;
-					categoryMap[cat.category].dec.ach += cat.dec.ach || 0;
-					categoryMap[cat.category].jan.tgt += cat.jan.tgt || 0;
-					categoryMap[cat.category].jan.ach += cat.jan.ach || 0;
-					categoryMap[cat.category].feb.tgt += cat.feb.tgt || 0;
-					categoryMap[cat.category].feb.ach += cat.feb.ach || 0;
-					categoryMap[cat.category].mar.tgt += cat.mar.tgt || 0;
-					categoryMap[cat.category].mar.ach += cat.mar.ach || 0;
+					["dec", "jan", "feb", "mar"].forEach((month) => {
+						categoryMap[cat.category][month].tgt += cat[month].tgt || 0;
+						categoryMap[cat.category][month].ach += cat[month].ach || 0;
+						if (cat[month].available) {
+							categoryMap[cat.category][month].available = true;
+						}
+					});
 					categoryMap[cat.category].total.tgt += cat.total.tgt || 0;
 					categoryMap[cat.category].total.ach += cat.total.ach || 0;
 
@@ -2307,11 +1836,11 @@ class SahayogDashboard {
             <tr class="grand-total-row">
                 <td class="row-label">Grand Total</td>
                 <td>${total.branch_count}</td>
-                <td>${this.formatTgtAch(total.dec, true)}</td>
-                <td>${this.formatTgtAch(total.jan, true)}</td>
-                <td>${this.formatTgtAch(total.feb, true)}</td>
-                <td>${this.formatTgtAch(total.mar, true)}</td>
-                <td>${this.formatTgtAch(total.total, true)}</td>
+                <td>${this.formatTgtAch(total.dec)}</td>
+                <td>${this.formatTgtAch(total.jan)}</td>
+                <td>${this.formatTgtAch(total.feb)}</td>
+                <td>${this.formatTgtAch(total.mar)}</td>
+                <td>${this.formatTgtAch(total.total)}</td>
             </tr>
         `;
 	}
@@ -2338,12 +1867,30 @@ class SahayogDashboard {
 		return other.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + last3;
 	}
 
-	formatTgtAch(data, isGrandTotal = false) {
-		if (!data || (data.tgt == null && data.ach == null)) {
-			return `<div class="tgt-ach-cell"><span class="na-text">NA</span></div>`;
+	/**
+	 * Format Target/Achievement cell.
+	 * If data.available is false, show "N/A" for achievement.
+	 */
+	formatTgtAch(data) {
+		if (!data) {
+			return `<div class="tgt-ach-cell"><span class="na-text">N/A</span></div>`;
 		}
+
 		const tgt = data.tgt || 0;
 		const ach = data.ach || 0;
+		const available = data.available || false;
+
+		if (!available) {
+			// Future month - show target but N/A for achievement
+			return `
+                <div class="tgt-ach-cell">
+                    <div class="tgt-line">T: ${this.formatNumber(tgt)}</div>
+                    <div class="na-text">A: N/A</div>
+                </div>
+            `;
+		}
+
+		// Current/past month - show both target and achievement
 		return `
             <div class="tgt-ach-cell">
                 <div class="tgt-line">T: ${this.formatNumber(tgt)}</div>
@@ -2360,14 +1907,12 @@ class SahayogDashboard {
 				this.toggleGroup(idx);
 			});
 
-		// Clicking the group's branch count should open category-level drilldown when grouped by category
 		$(".group-row td:nth-child(2)")
 			.off("click")
 			.on("click", (e) => {
 				e.stopPropagation();
 				if (this.groupBy === "category") {
 					const groupRow = $(e.currentTarget).closest("tr");
-					// Extract label text without collapse icon
 					const category = groupRow
 						.find(".row-label")
 						.clone()
@@ -2407,78 +1952,6 @@ class SahayogDashboard {
 		}
 	}
 
-	createDrillDownView() {
-		const drillHtml = `
-            <div class="drill-down-view" id="drill-down-view">
-                <div class="drill-down-header">
-                    <div class="drill-down-title">
-                        <i class="fa fa-layer-group"></i>
-                        <span id="drill-title"></span>
-                    </div>
-                    <button class="drill-close-btn" id="drill-close">
-                        <i class="fa fa-times"></i> Close
-                    </button>
-                </div>
-                <div class="drill-down-body">
-                    <div class="drill-filters">
-                        <div class="drill-filters-row">
-                            <div class="drill-filter-group">
-                                <label>Branch</label>
-                                <select id="drill-filter-branch" class="drill-filter">
-                                    <option value="">All Branches</option>
-                                </select>
-                            </div>
-                            <div class="drill-filter-group">
-                                <label>SOL</label>
-                                <input type="text" id="drill-filter-sol" class="drill-filter" placeholder="SOL ID" />
-                            </div>
-                            <div class="drill-filter-group">
-                                <label>Region</label>
-                                <select id="drill-filter-region" class="drill-filter">
-                                    <option value="">All Regions</option>
-                                </select>
-                            </div>
-                            <div class="drill-filter-group">
-                                <label>District</label>
-                                <select id="drill-filter-district" class="drill-filter">
-                                    <option value="">All Districts</option>
-                                </select>
-                            </div>
-                            <div class="drill-filter-group" style="flex: 0;">
-                                <label>&nbsp;</label>
-                                <button class="drill-reset-btn" id="drill-reset-filters">Reset</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="table-container">
-                        <table class="sahayog-table">
-                            <thead>
-                                <tr>
-											<th class="row-label">Branch</th>
-											<th>Zone</th>
-											<th>SOL</th>
-											<th>Region</th>
-                                    <th>District</th>
-                                    <th>DEC-25</th>
-                                    <th>JAN-26</th>
-                                    <th>FEB-26</th>
-                                    <th>MAR-26</th>
-                                    <th>Total</th>
-                                </tr>
-                            </thead>
-                            <tbody id="drill-tbody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        `;
-		$("body").append(drillHtml);
-
-		$("#drill-close").on("click", () => this.closeDrillDown());
-		$(".drill-filter").on("change input", () => this.applyDrillFilters());
-		$("#drill-reset-filters").on("click", () => this.resetDrillFilters());
-	}
-
 	openDrillDown(zone, category) {
 		this.currentZone = zone;
 		this.currentCategory = category;
@@ -2486,18 +1959,16 @@ class SahayogDashboard {
 		const titleText = zone === "ALL" ? `${category} - All Zones` : `${zone} - ${category}`;
 		$("#drill-title").text(titleText);
 		$("#drill-down-view").addClass("active");
-		$(".filter-panel, .combined-filters, .active-filter-indicator, .sahayog-content").hide();
-
-		this.loadDrillFilterOptions();
+		$(
+			".timeline-container, .combined-filters, .active-filter-indicator, .sahayog-content"
+		).hide();
 
 		frappe.call({
 			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_drill_down_data",
 			args: {
 				zone: zone,
 				category: category,
-				time_period: this.timePeriod,
-				from_date: $("#from-date-filter").val(),
-				to_date: $("#to-date-filter").val(),
+				selected_date: this.selectedDate,
 			},
 			callback: (r) => {
 				if (r.message) {
@@ -2510,277 +1981,132 @@ class SahayogDashboard {
 
 	closeDrillDown() {
 		$("#drill-down-view").removeClass("active");
-		$(".filter-panel, .combined-filters, .active-filter-indicator, .sahayog-content").show();
-		this.resetDrillFilters();
-	}
-
-	loadDrillFilterOptions() {
-		// Build filters for branch list depending on whether we're viewing ALL zones or a specific zone
-		let branchFilters = { branch_score: this.currentCategory };
-		if (this.currentZone && this.currentZone !== "ALL") {
-			branchFilters.zone = this.currentZone;
-		}
-
-		frappe.call({
-			method: "frappe.client.get_list",
-			args: {
-				doctype: "Branch Category Report",
-				filters: branchFilters,
-				fields: ["branches"],
-				order_by: "branches asc",
-				limit_page_length: 0,
-			},
-			callback: (r) => {
-				const select = $("#drill-filter-branch");
-				select.html('<option value="">All Branches</option>');
-				if (r.message) {
-					r.message.forEach((b) => {
-						select.append(`<option value="${b.branches}">${b.branches}</option>`);
-					});
-				}
-			},
-		});
-
-		frappe.call({
-			method: "frappe.client.get_list",
-			args: {
-				doctype: "Region",
-				fields: ["name"],
-				order_by: "name asc",
-				limit_page_length: 0,
-			},
-			callback: (r) => {
-				const select = $("#drill-filter-region");
-				select.html('<option value="">All Regions</option>');
-				if (r.message) {
-					r.message.forEach((reg) => {
-						select.append(`<option value="${reg.name}">${reg.name}</option>`);
-					});
-				}
-			},
-		});
-
-		frappe.call({
-			method: "frappe.client.get_list",
-			args: {
-				doctype: "District",
-				fields: ["name"],
-				order_by: "name asc",
-				limit_page_length: 0,
-			},
-			callback: (r) => {
-				const select = $("#drill-filter-district");
-				select.html('<option value="">All Districts</option>');
-				if (r.message) {
-					r.message.forEach((dist) => {
-						select.append(`<option value="${dist.name}">${dist.name}</option>`);
-					});
-				}
-			},
-		});
-	}
-
-	applyDrillFilters() {
-		if (!this.allDrillData) return;
-
-		const filters = {
-			branch: $("#drill-filter-branch").val(),
-			sol: $("#drill-filter-sol").val().trim(),
-			region: $("#drill-filter-region").val(),
-			district: $("#drill-filter-district").val(),
-		};
-
-		let filtered = this.allDrillData.filter((row) => {
-			if (filters.branch && row.branch !== filters.branch) return false;
-			if (filters.sol && (!row.sol || !row.sol.toString().includes(filters.sol)))
-				return false;
-			if (filters.region && row.region !== filters.region) return false;
-			if (filters.district && row.district !== filters.district) return false;
-			return true;
-		});
-
-		this.renderDrillDown(filtered);
-	}
-
-	resetDrillFilters() {
 		$(
-			"#drill-filter-branch, #drill-filter-sol, #drill-filter-region, #drill-filter-district"
-		).val("");
-		this.renderDrillDown(this.allDrillData);
+			".timeline-container, .combined-filters, .active-filter-indicator, .sahayog-content"
+		).show();
 	}
 
 	renderDrillDown(branches) {
-		const tbody = $("#drill-tbody");
-		tbody.empty();
+		const container = $("#drill-segments-container");
+		container.empty();
 
 		if (!branches || branches.length === 0) {
-			tbody.html(
-				`<tr><td colspan="10" style="text-align:center; padding:40px; color:var(--text-muted);">No branches found</td></tr>`
+			container.html(
+				`<div style="text-align:center; padding:40px;">No branches found</div>`
 			);
 			return;
 		}
 
-		// Calculate achievement percentage for each branch
-		const branchesWithSegment = branches.map((b) => {
-			const loanTgt = b.loan_target || 0;
-			const loanAch = b.loan_ach || 0;
-			const depTgt = b.dep_target || 0;
-			const depAch = b.dep_ach || 0;
+		// Compute ach_pct for each branch if not provided
+		branches.forEach((b) => {
+			const yearly = b.yearly_target || 0;
+			const totalAch = b.total_ach || 0;
+			let pct = 0;
+			if (yearly > 0) {
+				pct = (totalAch / yearly) * 100;
+			}
+			b.ach_pct = b.ach_pct !== undefined ? b.ach_pct : pct;
+		});
 
-			const totalTgt = loanTgt + depTgt;
-			const totalAch = loanAch + depAch;
+		// Segment buckets
+		const segments = [
+			{ key: "TOP", range: [75, 100], class: "segment-child-1", colorClass: "segment-top" },
+			{ key: "NEXT", range: [50, 75], class: "segment-child-2", colorClass: "segment-next" },
+			{ key: "MID", range: [25, 50], class: "segment-child-3", colorClass: "segment-mid" },
+			{
+				key: "BOTTOM",
+				range: [0, 25],
+				class: "segment-child-4",
+				colorClass: "segment-bottom",
+			},
+		];
 
-			// Calculate achievement percentage
-			const achPct = totalTgt > 0 ? (totalAch / totalTgt) * 100 : 0;
+		segments.forEach((seg, idx) => {
+			const items = branches.filter((b) => {
+				const p = b.ach_pct || 0;
+				return p >= seg.range[0] && p <= seg.range[1];
+			});
 
-			// Assign performance segment
-			let segment = "";
-			let segmentOrder = 0;
+			// Sort descending by ach_pct
+			items.sort((a, b) => (b.ach_pct || 0) - (a.ach_pct || 0));
 
-			if (achPct >= 75) {
-				segment = "TOP (75% - 100%+)";
-				segmentOrder = 1;
-			} else if (achPct >= 50) {
-				segment = "NEXT (50% - 75%)";
-				segmentOrder = 2;
-			} else if (achPct >= 25) {
-				segment = "MID (25% - 50%)";
-				segmentOrder = 3;
+			// Header
+			const header = $(
+				`<div class="table-container" style="margin-bottom:8px;">
+					<table class="sahayog-table segment-header-row ${seg.colorClass}">
+						<thead>
+							<tr>
+								<td class="row-label" style="text-align:left;">
+									<span class="collapse-icon">&#9658;</span> ${seg.key} (${items.length} branches)
+								</td>
+								<td style="text-align:right">Zone</td>
+								<td style="text-align:right">SOL</td>
+								<td style="text-align:right">Region</td>
+								<td style="text-align:right">District</td>
+								<td style="text-align:right">DEC-25</td>
+								<td style="text-align:right">JAN-26</td>
+								<td style="text-align:right">FEB-26</td>
+								<td style="text-align:right">MAR-26</td>
+								<td style="text-align:right">Total</td>
+							</tr>
+						</thead>
+					</table>
+					<div class="segment-children ${seg.class}" style="display:none;"></div>
+				</div>`
+			);
+
+			container.append(header);
+
+			const childrenContainer = container.find(".segment-children").last();
+			if (items.length === 0) {
+				childrenContainer.append(
+					`<div style="padding:14px; text-align:center;">No branches in this segment</div>`
+				);
 			} else {
-				segment = "BOTTOM (0% - 25%)";
-				segmentOrder = 4;
+				// Build rows
+				items.forEach((b) => {
+					childrenContainer.append(`
+						<div class="child-row ${
+							seg.class
+						}" style="display:flex; align-items:center; gap:8px; padding:10px 14px;">
+							<div style="flex:1; text-align:left; font-weight:600;">${
+								b.branch || b.branch_name
+							} <span style="background:rgba(0,0,0,0.06); padding:2px 8px; border-radius:8px; font-size:11px; font-weight:700; margin-left:8px;">${(
+						b.ach_pct || 0
+					).toFixed(1)}%</span></div>
+							<div style="width:80px; text-align:right">${b.zone}</div>
+							<div style="width:80px; text-align:right">${b.sol_id || ""}</div>
+							<div style="width:120px; text-align:right">${b.region || ""}</div>
+							<div style="width:120px; text-align:right">${b.district || ""}</div>
+							<div style="width:120px; text-align:right">${this.formatTgtAch(b.dec)}</div>
+							<div style="width:120px; text-align:right">${this.formatTgtAch(b.jan)}</div>
+							<div style="width:120px; text-align:right">${this.formatTgtAch(b.feb)}</div>
+							<div style="width:120px; text-align:right">${this.formatTgtAch(b.mar)}</div>
+							<div style="width:120px; text-align:right">${this.formatTgtAch(
+								b.total || {
+									tgt: b.yearly_target,
+									ach: b.total_ach,
+									available: true,
+								}
+							)}</div>
+						</div>
+					`);
+				});
 			}
 
-			return {
-				...b,
-				totalTgt,
-				totalAch,
-				achPct,
-				segment,
-				segmentOrder,
-				loanTgt,
-				loanAch,
-				depTgt,
-				depAch,
-			};
-		});
-
-		// Sort by segment order, then by achievement percentage descending
-		branchesWithSegment.sort((a, b) => {
-			if (a.segmentOrder !== b.segmentOrder) {
-				return a.segmentOrder - b.segmentOrder;
-			}
-			return b.achPct - a.achPct;
-		});
-
-		// Define all 4 segments (always show them)
-		const segments = {
-			1: { name: "TOP (75% - 100%+)", branches: [], class: "segment-top" },
-			2: { name: "NEXT (50% - 75%)", branches: [], class: "segment-next" },
-			3: { name: "MID (25% - 50%)", branches: [], class: "segment-mid" },
-			4: { name: "BOTTOM (0% - 25%)", branches: [], class: "segment-bottom" },
-		};
-
-		// Group branches into segments
-		branchesWithSegment.forEach((b) => {
-			segments[b.segmentOrder].branches.push(b);
-		});
-
-		// Render all 4 segments (even if empty)
-		Object.keys(segments).forEach((key) => {
-			const segment = segments[key];
-			const branchCount = segment.branches.length;
-
-			// Segment header row (always visible)
-			tbody.append(`
-			<tr class="segment-header-row ${segment.class}" data-segment="${key}">
-				<td class="row-label" colspan="10">
-					<span class="collapse-icon">▸</span>
-					<strong>${segment.name}</strong>
-					<span style="margin-left: 10px; color: #64748b;">(${branchCount} branches)</span>
-				</td>
-			</tr>
-		`);
-
-			// Per-segment column headers (inserted as a child row so it toggles with segment)
-			tbody.append(`
-			<tr class="segment-column-header segment-child-${key}" data-segment="${key}" style="display: none;">
-				<td class="row-label">Branch</td>
-				<td>Zone</td>
-				<td>SOL</td>
-				<td>Region</td>
-				<td>District</td>
-				<td>DEC-25</td>
-				<td>JAN-26</td>
-				<td>FEB-26</td>
-				<td>MAR-26</td>
-				<td>Total</td>
-			</tr>
-		`);
-
-			// Branch rows (initially hidden - collapsed)
-			segment.branches.forEach((b) => {
-				const monthlyLoanTgt = b.loanTgt / 4;
-				const monthlyLoanAch = b.loanAch / 4;
-				const monthlyDepTgt = b.depTgt / 4;
-				const monthlyDepAch = b.depAch / 4;
-
-				const decTgt = monthlyLoanTgt + monthlyDepTgt;
-				const decAch = monthlyLoanAch + monthlyDepAch;
-				const janTgt = monthlyLoanTgt + monthlyDepTgt;
-				const janAch = monthlyLoanAch + monthlyDepAch;
-				const febTgt = monthlyLoanTgt + monthlyDepTgt;
-				const febAch = monthlyLoanAch + monthlyDepAch;
-				const marTgt = monthlyLoanTgt + monthlyDepTgt;
-				const marAch = monthlyLoanAch + monthlyDepAch;
-
-				tbody.append(`
-				<tr class="child-row segment-child-${key}" data-segment="${key}" style="display: none;">
-					<td class="row-label" style="padding-left: 36px;">
-						${b.branch || b.branches}
-						<span style="color: #64748b; font-size: 10px; margin-left: 8px;">${b.achPct.toFixed(1)}%</span>
-					</td>
-					<td>${b.zone}</td>
-					<td>${b.sol}</td>
-					<td>${b.region}</td>
-					<td>${b.district}</td>
-					<td>${this.formatTgtAch({ tgt: decTgt, ach: decAch })}</td>
-					<td>${this.formatTgtAch({ tgt: janTgt, ach: janAch })}</td>
-					<td>${this.formatTgtAch({ tgt: febTgt, ach: febAch })}</td>
-					<td>${this.formatTgtAch({ tgt: marTgt, ach: marAch })}</td>
-					<td>${this.formatTgtAch({ tgt: b.totalTgt, ach: b.totalAch })}</td>
-				</tr>
-			`);
+			// Toggle on header click
+			header.find(".segment-header-row").on("click", function () {
+				const icon = $(this).find(".collapse-icon");
+				const segChildren = $(this).next(".segment-children");
+				if (segChildren.is(":visible")) {
+					segChildren.slideUp(150);
+					icon.html("&#9658;");
+				} else {
+					segChildren.slideDown(150);
+					icon.html("&#9662;");
+				}
 			});
 		});
-
-		// Attach segment collapse/expand events
-		this.attachSegmentEvents();
-	}
-
-	attachSegmentEvents() {
-		$(".segment-header-row")
-			.off("click")
-			.on("click", (e) => {
-				const segment = $(e.currentTarget).data("segment");
-				this.toggleSegment(segment);
-			});
-	}
-
-	toggleSegment(segment) {
-		const headerRow = $(`.segment-header-row[data-segment="${segment}"]`);
-		const childRows = $(`.segment-child-${segment}`);
-		const icon = headerRow.find(".collapse-icon");
-
-		if (childRows.first().is(":visible")) {
-			// Collapse
-			childRows.hide();
-			icon.text("▸");
-		} else {
-			// Expand
-			childRows.show();
-			icon.text("▾");
-		}
 	}
 
 	loadBranchTargets() {
@@ -2807,10 +2133,7 @@ class SahayogDashboard {
 
 		frappe.call({
 			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_branch_targets",
-			args: {
-				from_date: $("#from-date-filter").val(),
-				to_date: $("#to-date-filter").val(),
-			},
+			args: { selected_date: this.selectedDate },
 			callback: (r) => {
 				if (r.message) {
 					this.renderBranchTargets(r.message);
@@ -2825,7 +2148,7 @@ class SahayogDashboard {
 
 		if (!targets || targets.length === 0) {
 			tbody.html(
-				`<tr><td colspan="4" style="text-align:center; padding:40px; color:var(--text-muted);">No targets found</td></tr>`
+				`<tr><td colspan="4" style="text-align:center; padding:40px;">No targets found</td></tr>`
 			);
 			return;
 		}
