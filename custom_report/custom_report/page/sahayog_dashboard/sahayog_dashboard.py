@@ -724,141 +724,171 @@ def get_comparison_data(current_date=None, comparison_date=None, mode="daily", f
     }
 
     return response
-@frappe.whitelist()
-def get_branch_comparison_detail(current_date=None, comparison_date=None, mode="daily",
-                                 zone=None, category=None, filters=None):
-    """
-    For a given zone+category, return only the *difference* branches (branch-name based):
-    - added_branches  : branches present in current_date but not in comparison_date
-    - removed_branches: branches present in comparison_date but not in current_date
 
-    Branch identity = only branch name (sol_id change ignore).
+@frappe.whitelist()
+def get_branch_comparison_detail(
+    current_date=None,
+    comparison_date=None,
+    mode="daily",
+    zone=None,
+    category=None,
+    filters=None,
+):
     """
+    Branch-level comparison for a given zone + category.
+
+    - added_branches  : branches present on current_date but not on comparison_date
+    - removed_branches: branches present on comparison_date but not on current_date
+
+    Identity is based ONLY on branch name (case-insensitive, trimmed).
+    Dates are taken from get_available_dates(), which already excludes Sundays.
+    """
+
+    # ---------------------------------------------------------------------
+    # 0. Basic guards / settings
+    # ---------------------------------------------------------------------
     settings = frappe.get_single("Report Settings")
     if not settings.is_active:
         frappe.throw(_("Data source is not active"))
 
-    # --- Normalise mode / dates ---
     mode = (mode or "daily").strip().lower()
+    doctype_name = settings.master_doctype or "Branch Category Report"
 
-    # Current date (latest if not passed)
+    # ---------------------------------------------------------------------
+    # 1. Resolve current_date and comparison_date (Sunday-safe)
+    # ---------------------------------------------------------------------
+    available_rows = get_available_dates()      # latest-first, Sundays excluded
+    available_dates = [d["date"] for d in available_rows] if available_rows else []
+
+    if not available_dates:
+        frappe.throw(_("No available dates to compare"))
+
+    # If current_date missing, use latest available
     if not current_date:
-        dates = get_available_dates()
-        if dates:
-            current_date = dates[0]["date"]
-        else:
-            frappe.throw(_("No available dates to compare"))
+        current_date = available_dates[0]
 
     current_date_obj = getdate(current_date)
 
-    # Comparison date auto-calc if not given
-    if not comparison_date:
-        if mode == "weekly":
-            comp_obj = getdate(add_days(current_date_obj, -7))
-        elif mode == "monthly":
-            comp_obj = getdate(add_days(current_date_obj, -30))
-        else:  # daily
-            comp_obj = getdate(add_days(current_date_obj, -1))
-        comparison_date = str(comp_obj)
+    # Helper: find index for a date in available_dates (or nearest previous)
+    def find_index_for(date_str: str) -> int:
+        if date_str in available_dates:
+            return available_dates.index(date_str)
 
-    # --- Parse global filters ---
+        target = getdate(date_str)
+        for i, d in enumerate(available_dates):
+            if getdate(d) <= target:
+                return i
+        return 0  # fallback to latest if everything is after target
+
+    # Step size on available_dates list
+    steps = 1
+    if mode == "weekly":
+        steps = 7
+    elif mode == "monthly":
+        steps = 30
+
+    if not comparison_date:
+        cur_idx = find_index_for(current_date)
+        comp_idx = min(cur_idx + steps, len(available_dates) - 1)
+        comparison_date = available_dates[comp_idx]
+
+    # ---------------------------------------------------------------------
+    # 2. Build filters for current & comparison dates
+    # ---------------------------------------------------------------------
     zone_filter = []
     category_filter = []
     if filters:
         try:
-            filter_dict = json.loads(filters)
-            zone_filter = filter_dict.get("zones", []) or []
-            category_filter = filter_dict.get("categories", []) or []
+            f = json.loads(filters) or {}
+            zone_filter = f.get("zones", []) or []
+            category_filter = f.get("categories", []) or []
         except Exception:
             pass
 
-    doctype_name = settings.master_doctype or "Branch Category Report"
+    def normalize_list(values):
+        return [str(v) for v in values if str(v).strip() and str(v).lower() != "all"]
 
-    # Base filters
-    current_filters = {"date": current_date}
-    comp_filters = {"date": comparison_date}
+    zone_filter = normalize_list(zone_filter)
+    category_filter = normalize_list(category_filter)
 
-    # Global zone/category filters (chips)
-    if zone_filter and "all" not in [z.lower() for z in zone_filter]:
-        current_filters["zone"] = ["in", zone_filter]
-        comp_filters["zone"] = ["in", zone_filter]
+    def build_filters(base_date: str) -> dict:
+        flt = {"date": base_date}
 
-    if category_filter and "all" not in [c.lower() for c in category_filter]:
-        current_filters["branch_score"] = ["in", category_filter]
-        comp_filters["branch_score"] = ["in", category_filter]
+        # Global chips
+        if zone_filter:
+            flt["zone"] = ["in", zone_filter]
+        if category_filter:
+            flt["branch_score"] = ["in", category_filter]
 
-    # Specific zone / category (indicator click)
-    if zone:
-        current_filters["zone"] = zone
-        comp_filters["zone"] = zone
+        # Specific indicator click
+        if zone:
+            flt["zone"] = zone
+        if category:
+            flt["branch_score"] = category
 
-    if category:
-        current_filters["branch_score"] = category
-        comp_filters["branch_score"] = category
+        return flt
 
-    # --- Fetch branch data for both dates (same filters, different dates) ---
-    # Field names: branch, zone, branch_score, sol_id
-    current_branches = frappe.get_all(
+    current_filters = build_filters(current_date)
+    comp_filters = build_filters(comparison_date)
+
+    # ---------------------------------------------------------------------
+    # 3. Fetch branch rows for both dates
+    # ---------------------------------------------------------------------
+    fields = ["branch", "zone", "branch_score", "sol_id"]
+
+    current_rows = frappe.get_all(
         doctype_name,
         filters=current_filters,
-        fields=["branch", "zone", "branch_score", "sol_id"],
+        fields=fields,
         order_by="branch asc, sol_id asc",
     )
 
-    comp_branches = frappe.get_all(
+    comp_rows = frappe.get_all(
         doctype_name,
         filters=comp_filters,
-        fields=["branch", "zone", "branch_score", "sol_id"],
+        fields=fields,
         order_by="branch asc, sol_id asc",
     )
 
-    # --- Helper: unique key ONLY by branch name (case-insensitive) ---
-    def key_by_branch(row):
+    # ---------------------------------------------------------------------
+    # 4. Build identity maps (branch-name based)
+    # ---------------------------------------------------------------------
+    def make_key(row):
+        # If future me zone-wise unique chahiye ho, key = (branch, zone) kar sakte ho
         return (row.get("branch") or "").strip().lower()
 
-    # Latest record per branch for display
-    current_map = {}
-    for row in current_branches:
-        k = key_by_branch(row)
-        if not k:
-            continue
-        # keep first or last, doesn't matter much – we just need one row per branch
-        current_map[k] = row
+    def build_map(rows):
+        m = {}
+        for r in rows:
+            k = make_key(r)
+            if not k:
+                continue
+            # last row wins – generally fine, we just need one data point per branch
+            m[k] = r
+        return m
 
-    comp_map = {}
-    for row in comp_branches:
-        k = key_by_branch(row)
-        if not k:
-            continue
-        comp_map[k] = row
+    current_map = build_map(current_rows)
+    comp_map = build_map(comp_rows)
 
     current_keys = set(current_map.keys())
     comp_keys = set(comp_map.keys())
 
-    # Branch-name based differences
-    added_keys = current_keys - comp_keys     # branch in current only
-    removed_keys = comp_keys - current_keys   # branch in previous only
+    added_keys = current_keys - comp_keys
+    removed_keys = comp_keys - current_keys
 
-    # --- Build final lists ---
-    added_branches = []
-    for k in sorted(added_keys):
-        row = current_map[k]
-        added_branches.append({
+    # ---------------------------------------------------------------------
+    # 5. Build clean response lists
+    # ---------------------------------------------------------------------
+    def to_payload(row):
+        return {
             "sol_id": row.get("sol_id") or "",
             "branch": row.get("branch") or "Unknown",
             "zone": row.get("zone") or "Unknown",
             "category": row.get("branch_score") or "Unknown",
-        })
+        }
 
-    removed_branches = []
-    for k in sorted(removed_keys):
-        row = comp_map[k]
-        removed_branches.append({
-            "sol_id": row.get("sol_id") or "",
-            "branch": row.get("branch") or "Unknown",
-            "zone": row.get("zone") or "Unknown",
-            "category": row.get("branch_score") or "Unknown",
-        })
+    added_branches = [to_payload(current_map[k]) for k in sorted(added_keys) if k in current_map]
+    removed_branches = [to_payload(comp_map[k]) for k in sorted(removed_keys) if k in comp_map]
 
     return {
         "current_date": str(current_date_obj),
