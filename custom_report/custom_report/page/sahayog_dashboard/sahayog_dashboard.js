@@ -1,7 +1,7 @@
 frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
-		title: "MIS Dashboard",
+		title: "DRISHTI",
 		single_column: true,
 	});
 
@@ -1852,7 +1852,7 @@ class SahayogDashboard {
 		$(`#${view}-view`).addClass("active");
 
 		if (view === "dashboard") {
-			this.page.set_title("MIS Dashboard");
+			this.page.set_title("DRISHTI");
 			this.loadDashboardData();
 		} else if (view === "branch-targets") {
 			this.page.set_title("Branch Targets");
@@ -2369,16 +2369,23 @@ class SahayogDashboard {
 	}
 
 	formatNumber(num) {
-		if (!num) return 0;
-		num = parseFloat(num);
-		if (num >= 10000000) {
-			return (num / 10000000).toFixed(1) + " Cr";
-		} else if (num >= 100000) {
-			return (num / 100000).toFixed(1) + " L";
-		} else if (num >= 1000) {
-			return (num / 1000).toFixed(1) + " K";
+		// Return full amount formatted as Indian Rupees (no shortcuts)
+		if (num === null || num === undefined || num === "" || isNaN(num)) {
+			return "₹0";
 		}
-		return num.toLocaleString("en-IN");
+
+		num = Number(num);
+		try {
+			const fmt = new Intl.NumberFormat("en-IN", {
+				style: "currency",
+				currency: "INR",
+				maximumFractionDigits: 0,
+			});
+			return fmt.format(num);
+		} catch (e) {
+			// Fallback
+			return "₹" + num.toLocaleString("en-IN");
+		}
 	}
 
 	formatTgtAch(data) {
@@ -2560,13 +2567,11 @@ class SahayogDashboard {
 						<div style="font-size:10px; opacity:0.8;">Total Branches</div>
 					</div>
 					<div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:6px; text-align:center;">
-						<div style="font-size:18px; font-weight:700;">₹${this.formatNumberShort(
-							metadata.total_target
-						)}</div>
+						<div style="font-size:18px; font-weight:700;">${this.formatNumber(metadata.total_target)}</div>
 						<div style="font-size:10px; opacity:0.8;">Total Target</div>
 					</div>
 					<div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:6px; text-align:center;">
-						<div style="font-size:18px; font-weight:700;">₹${this.formatNumberShort(
+						<div style="font-size:18px; font-weight:700;">${this.formatNumber(
 							metadata.total_achievement
 						)}</div>
 						<div style="font-size:10px; opacity:0.8;">Total Achievement</div>
@@ -2785,10 +2790,10 @@ class SahayogDashboard {
 						</div>
 					</td>
 					<td style="padding:12px; text-align:center; font-weight:700; color:#1e293b;">
-						₹${this.formatNumberShort(branch.yearly_target)}
+						${this.formatNumber(branch.yearly_target)}
 					</td>
 					<td style="padding:12px; text-align:center; font-weight:700; color:#000;">
-						₹${this.formatNumberShort(branch.total_ach)}
+						${this.formatNumber(branch.total_ach)}
 					</td>
 					<td style="padding:12px; text-align:center;">
 						<div style="display:inline-block; padding:6px 12px; border-radius:20px; font-weight:700; font-size:12px; 
@@ -2819,10 +2824,10 @@ class SahayogDashboard {
 								Segment Total (${branches.length} branches)
 							</td>
 							<td style="padding:12px; text-align:center; font-weight:700; color:#1e293b;">
-								₹${this.formatNumberShort(totalTarget)}
+								${this.formatNumber(totalTarget)}
 							</td>
 							<td style="padding:12px; text-align:center; font-weight:700; color:#000;">
-								₹${this.formatNumberShort(totalAchievement)}
+								${this.formatNumber(totalAchievement)}
 							</td>
 							<td style="padding:12px; text-align:center; font-weight:700;">
 								<div style="display:inline-block; padding:6px 12px; border-radius:20px; background:#1e293b; color:white;">
