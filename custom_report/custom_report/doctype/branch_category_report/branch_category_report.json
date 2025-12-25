@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "creation": "2025-12-24 22:53:29.302096",
+ "creation": "2025-12-26 00:23:03.085866",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -16,6 +16,7 @@
   "achievement_details_section",
   "date",
   "achievement",
+  "yearly_achievement",
   "branch_score",
   "column_break_qekw",
   "ytd_achi",
@@ -85,6 +86,11 @@
    "search_index": 1
   },
   {
+   "fieldname": "yearly_achievement",
+   "fieldtype": "Currency",
+   "label": "Yearly Achievement"
+  },
+  {
    "fieldname": "branch_score",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -114,7 +120,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-24 22:56:39.658857",
+ "modified": "2025-12-26 00:24:18.040562",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Branch Category Report",
