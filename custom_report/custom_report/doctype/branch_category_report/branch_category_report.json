@@ -1,8 +1,7 @@
 {
  "actions": [],
  "allow_import": 1,
- "allow_rename": 1,
- "creation": "2025-12-26 00:23:03.085866",
+ "creation": "2025-12-26 00:27:48.151269",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -86,11 +85,6 @@
    "search_index": 1
   },
   {
-   "fieldname": "yearly_achievement",
-   "fieldtype": "Currency",
-   "label": "Yearly Achievement"
-  },
-  {
    "fieldname": "branch_score",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -115,12 +109,17 @@
    "in_standard_filter": 1,
    "label": "Branch Category",
    "search_index": 1
+  },
+  {
+   "fieldname": "yearly_achievement",
+   "fieldtype": "Currency",
+   "label": "Yearly Achievement"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-26 00:24:18.040562",
+ "modified": "2025-12-26 00:32:18.990001",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Branch Category Report",
@@ -156,5 +155,6 @@
  "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }
