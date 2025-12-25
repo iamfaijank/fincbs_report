@@ -57,7 +57,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Type",
-   "options": "\nYearly\nQuarterly\nHalf-Yearly\nMonthly",
+   "options": "\nYearly\nMonthly\nYTD",
    "reqd": 1
   },
   {
@@ -67,14 +67,12 @@
   {
    "fieldname": "valid_from",
    "fieldtype": "Date",
-   "label": "Valid From",
-   "reqd": 1
+   "label": "Valid From"
   },
   {
    "fieldname": "valid_till",
    "fieldtype": "Date",
-   "label": "Valid Till",
-   "reqd": 1
+   "label": "Valid Till"
   },
   {
    "default": "Inactive",
@@ -198,7 +196,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-20 22:50:48.655960",
+ "modified": "2025-12-25 23:12:47.632182",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Target Vs Achivement",
