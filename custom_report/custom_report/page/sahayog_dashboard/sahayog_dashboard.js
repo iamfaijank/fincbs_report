@@ -2867,52 +2867,7 @@ class SahayogDashboard {
 		container.append(metaHtml);
 
 		// 2. SHOW SEGMENTS SUMMARY CARD
-		const segmentsSummaryHtml = `
-			<div style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:16px; margin-bottom:16px;">
-				<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-					<div style="font-size:13px; font-weight:700; color:#1e293b;">PERFORMANCE SEGMENTS</div>
-					<div style="font-size:11px; color:#64748b;">${
-						metadata.total_branches
-					} branches across 4 segments</div>
-				</div>
-				
-				<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:10px;">
-					${segments
-						.map((seg, idx) => {
-							const colors = [
-								{ bg: "rgba(34,197,94,0.1)", border: "#22c55e", text: "#16a34a" },
-								{ bg: "rgba(14,165,233,0.1)", border: "#0ea5e9", text: "#0284c7" },
-								{ bg: "rgba(245,158,11,0.1)", border: "#f59e0b", text: "#d97706" },
-								{ bg: "rgba(239,68,68,0.1)", border: "#ef4444", text: "#dc2626" },
-							][idx];
-
-							return `
-							<div style="border:2px solid ${colors.border}; background:${colors.bg}; border-radius:6px; padding:12px; text-align:center; cursor:pointer;" 
-								onclick="$(this).closest('.drill-down-body').find('.segment-container[data-segment=\"${seg.segment_name}\"] .segment-header').click()">
-								<div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:6px;">
-									<div style="font-size:20px; font-weight:700; color:${colors.text};">${seg.branch_count}</div>
-								</div>
-								<div style="font-size:11px; font-weight:600; color:${colors.text}; margin-bottom:4px;">${seg.segment_name}</div>
-								<div style="font-size:10px; color:#64748b;">${seg.avg_achievement_pct}% avg.</div>
-							</div>
-						`;
-						})
-						.join("")}
-				</div>
-				
-				<div style="display:flex; justify-content:space-between; margin-top:12px; padding-top:12px; border-top:1px solid #f1f5f9;">
-					<div style="font-size:11px; color:#64748b;">
-						<i class="fa fa-info-circle" style="margin-right:4px;"></i>
-						Click on any segment to view detailed branch list
-					</div>
-					<div style="font-size:11px; color:#64748b;">
-						<i class="fa fa-sort-amount-desc" style="margin-right:4px;"></i>
-						Sorted by achievement %
-					</div>
-				</div>
-			</div>
-		`;
-		container.append(segmentsSummaryHtml);
+		// Removed as per user request.
 
 		// 3. SHOW DETAILED SEGMENTS
 		segments.forEach((seg, idx) => {
