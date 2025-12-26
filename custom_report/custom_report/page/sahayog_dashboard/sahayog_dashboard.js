@@ -218,6 +218,14 @@ class SahayogDashboard {
 				this.showComparisonDetailPopup(zone, category);
 			}
 		});
+
+		// Click handler for branch name to open branch profile
+		$(document).on("click", ".branch-name-cell", (e) => {
+			const sol_id = $(e.currentTarget).data("sol-id");
+			if (sol_id) {
+				this.openBranchProfile(sol_id);
+			}
+		});
 	}
 
 	saveState() {
@@ -1602,6 +1610,178 @@ class SahayogDashboard {
 						.table-header-controls { flex-direction: column; }
 						.comparison-btns { flex-wrap: wrap; }
 					}
+
+/* Branch Profile Modal */
+.branch-profile-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 2100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.branch-profile-modal.show {
+    display: flex;
+}
+
+.branch-profile-content {
+    background: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 900px;
+    max-height: 90vh;
+    overflow: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.branch-profile-header {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 8px 8px 0 0;
+}
+
+.branch-profile-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.branch-profile-body {
+    padding: 24px;
+}
+
+.profile-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.profile-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 16px;
+    text-align: center;
+}
+
+.profile-card-label {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 600;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.profile-card-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.profile-section {
+    margin-bottom: 24px;
+}
+
+.profile-section h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.profile-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.profile-table th,
+.profile-table td {
+    padding: 12px;
+    text-align: right;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.profile-table th:first-child,
+.profile-table td:first-child {
+    text-align: left;
+}
+
+.profile-table th {
+    background: #f8fafc;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+.performance-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.perf-item {
+    background: #f8fafc;
+    padding: 16px;
+    border-radius: 6px;
+}
+
+.perf-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 8px;
+}
+
+.perf-bar {
+    height: 24px;
+    background: #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.perf-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+    transition: width 0.3s ease;
+}
+
+.perf-stats {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.category-badge {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.branch-name-cell:hover {
+    background: #f1f5f9;
+    cursor: pointer;
+}
 				</style>
 			`;
 		$(styles).appendTo("head");
@@ -3011,7 +3191,7 @@ class SahayogDashboard {
 					<td style="padding:12px; text-align:center; font-size:14px;">
 						${rankBadge}
 					</td>
-					<td style="padding:12px;">
+					<td style="padding:12px; cursor:pointer;" class="branch-name-cell" data-sol-id="${branch.sol_id}">
 						<div style="font-weight:600; color:#1e293b; margin-bottom:2px;">${
 							branch.branch_name || branch.branch
 						}</div>
@@ -3221,17 +3401,201 @@ class SahayogDashboard {
 		targets.forEach((t, index) => {
 			const rowClass = index % 2 === 0 ? "" : "background:#fafafa";
 			tbody.append(`
-					<tr style="${rowClass}">
-						<td class="row-label" style="font-weight:600;">${t.sol_id}</td>
-						<td style="font-weight:700; color:#000;">${this.formatNumber(t.target)}</td>
-						<td>${t.financial_year}</td>
-						<td>
-							<span style="padding:5px 12px; background:#000; color:white; border-radius:14px; font-size:11px; font-weight:600;">
-								${t.type}
-							</span>
-						</td>
-					</tr>
-				`);
+						<tr style="${rowClass}">
+							<td class="row-label" style="font-weight:600;">${t.sol_id}</td>
+							<td style="font-weight:700; color:#000;">${this.formatNumber(t.target)}</td>
+							<td>${t.financial_year}</td>
+							<td>
+								<span style="padding:5px 12px; background:#000; color:white; border-radius:14px; font-size:11px; font-weight:600;">
+									${t.type}
+								</span>
+							</td>
+						</tr>
+					`);
+		});
+	}
+
+	openBranchProfile(sol_id) {
+		frappe.call({
+			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_branch_profile",
+			args: {
+				sol_id: sol_id,
+				selected_date: this.selectedDate,
+			},
+			callback: (r) => {
+				if (r.message) {
+					this.renderBranchProfile(r.message);
+				}
+			},
+		});
+	}
+
+	renderBranchProfile(data) {
+		// Create or show branch profile modal
+		const modalHtml = `
+        <div class="branch-profile-modal" id="branch-profile-modal">
+            <div class="branch-profile-content">
+                <!-- Header -->
+                <div class="branch-profile-header">
+                    <div>
+                        <div style="font-size:20px; font-weight:700;">${data.branch}</div>
+                        <div style="font-size:13px; opacity:0.9; margin-top:4px;">
+                            SOL ID: ${data.sol_id} • ${data.zone} • ${data.region} • ${
+			data.district
+		} • ${data.state}
+                        </div>
+                    </div>
+                    <button class="branch-profile-close" id="branch-profile-close">
+                        <i class="fa fa-times"></i> Close
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div class="branch-profile-body">
+                    <!-- Category Badges -->
+                    <div style="margin-bottom:20px; display:flex; gap:12px; align-items:center;">
+                        <div>
+                            <div style="font-size:11px; color:#64748b; margin-bottom:4px; font-weight:600;">STORED CATEGORY</div>
+                            <span class="category-badge ${this.getCategoryClass(data.category)}">
+                                ${data.category}
+                            </span>
+                        </div>
+                        <div style="font-size:20px; color:#cbd5e1;">→</div>
+                        <div>
+                            <div style="font-size:11px; color:#64748b; margin-bottom:4px; font-weight:600;">CALCULATED CATEGORY</div>
+                            <span class="category-badge ${this.getCategoryClass(
+								data.calculated_category
+							)}">
+                                ${data.calculated_category}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div class="profile-summary-cards">
+                        <div class="profile-card">
+                            <div class="profile-card-label">Current Month (${
+								data.current_month.month
+							})</div>
+                            <div class="profile-card-value">${this.formatNumber(
+								data.current_month.achievement
+							)}</div>
+                            <div style="font-size:11px; color:#64748b; margin-top:4px;">
+                                Target: ${this.formatNumber(data.current_month.target)} (${
+			data.current_month.percentage
+		}%)
+                            </div>
+                        </div>
+                        <div class="profile-card">
+                            <div class="profile-card-label">Yearly Achievement</div>
+                            <div class="profile-card-value">${this.formatNumber(
+								data.yearly.achievement
+							)}</div>
+                            <div style="font-size:11px; color:#64748b; margin-top:4px;">
+                                Target: ${this.formatNumber(data.yearly.target)} (${
+			data.yearly.percentage
+		}%)
+                            </div>
+                        </div>
+                        <div class="profile-card">
+                            <div class="profile-card-label">YTD Achievement</div>
+                            <div class="profile-card-value">${this.formatNumber(
+								data.ytd.achievement
+							)}</div>
+                            <div style="font-size:11px; color:#64748b; margin-top:4px;">
+                                Target: ${this.formatNumber(data.ytd.target)} (${
+			data.ytd.percentage
+		}%)
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Performance -->
+                    <div class="profile-section">
+                        <h3>Monthly Performance</h3>
+                        <table class="profile-table">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Target</th>
+                                    <th>Achievement</th>
+                                    <th>%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${Object.keys(data.monthly)
+									.map((month) => {
+										const m = data.monthly[month];
+										const pct =
+											m.tgt > 0 ? ((m.ach / m.tgt) * 100).toFixed(1) : "0.0";
+										return `
+                                        <tr>
+                                            <td>${month.toUpperCase()}</td>
+                                            <td>${this.formatNumber(m.tgt)}</td>
+                                            <td>${this.formatNumber(m.ach)}</td>
+                                            <td>${pct}%</td>
+                                        </tr>
+                                    `;
+									})
+									.join("")}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Yearly & YTD Summary -->
+                    <div class="profile-section">
+                        <h3>Overall Performance</h3>
+                        <div class="performance-summary">
+                            <div class="perf-item">
+                                <div class="perf-label">Yearly</div>
+                                <div class="perf-bar">
+                                    <div class="perf-bar-fill" style="width:${Math.min(
+										data.yearly.percentage,
+										100
+									)}%;"></div>
+                                </div>
+                                <div class="perf-stats">
+                                    ${this.formatNumber(
+										data.yearly.achievement
+									)} / ${this.formatNumber(data.yearly.target)} (${
+			data.yearly.percentage
+		}%)
+                                </div>
+                            </div>
+                            <div class="perf-item">
+                                <div class="perf-label">YTD (Dec to Current)</div>
+                                <div class="perf-bar">
+                                    <div class="perf-bar-fill" style="width:${Math.min(
+										data.ytd.percentage,
+										100
+									)}%;"></div>
+                                </div>
+                                <div class="perf-stats">
+                                    ${this.formatNumber(
+										data.ytd.achievement
+									)} / ${this.formatNumber(data.ytd.target)} (${
+			data.ytd.percentage
+		}%)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+		// Remove existing modal if any
+		$("#branch-profile-modal").remove();
+
+		// Append and show
+		$("body").append(modalHtml);
+		$("#branch-profile-modal").addClass("show");
+
+		// Close handler
+		$("#branch-profile-close").on("click", () => {
+			$("#branch-profile-modal").removeClass("show");
+			setTimeout(() => $("#branch-profile-modal").remove(), 300);
 		});
 	}
 }
