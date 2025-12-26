@@ -1231,3 +1231,193 @@ def get_branch_targets(selected_date=None):
     )
 
     return targets
+
+@frappe.whitelist()
+def get_branch_profile(sol_id, selected_date=None):
+    """
+    Get complete branch profile using sol_id.
+    
+    Data Sources:
+    1. Sahayog Branch → branch basic details
+    2. Branch Category Report → achievement, yearly_achievement
+    3. Target Vs Achivement → targets (Monthly, Yearly, YTD)
+    
+    Also calculates performance category based on achievement %.
+    """
+    
+    if not sol_id:
+        frappe.throw("SOL ID is required")
+    
+    # =====================================================
+    # 1. Get Branch Master Data (Sahayog Branch)
+    # =====================================================
+    branch_master = frappe.db.get_value(
+        "Sahayog Branch",
+        {"sol_id": sol_id},
+        ["branch", "zone", "region", "district", "state"],
+        as_dict=True
+    )
+    
+    if not branch_master:
+        frappe.throw(f"Branch with SOL ID {sol_id} not found in Sahayog Branch")
+    
+    # =====================================================
+    # 2. Get Selected Date
+    # =====================================================
+    if not selected_date:
+        dates = get_available_dates()
+        selected_date = dates[0]["date"] if dates else None
+    
+    selected_date_obj = getdate(selected_date)
+    
+    # =====================================================
+    # 3. Get Achievement Data (Branch Category Report)
+    # =====================================================
+    achievement_data = frappe.db.get_value(
+        "Branch Category Report",
+        filters={"sol_id": sol_id, "date": selected_date},
+        fieldname=["achievement", "yearly_achievement", "branch_score"],
+        as_dict=True
+    )
+    
+    current_achievement = float(achievement_data.get("achievement") or 0) if achievement_data else 0
+    yearly_achievement = float(achievement_data.get("yearly_achievement") or 0) if achievement_data else 0
+    stored_category = achievement_data.get("branch_score") if achievement_data else "Unknown"
+    
+    # =====================================================
+    # 4. Get Financial Year
+    # =====================================================
+    financial_year = get_financial_year(selected_date)
+    
+    # =====================================================
+    # 5. Get ALL Targets from Target Vs Achivement
+    # =====================================================
+    target_records = frappe.get_all(
+        "Target Vs Achivement",
+        filters={
+            "sol_id": sol_id,
+            "financial_year": financial_year
+        },
+        fields=["type", "month", "target"],
+        order_by="type, month"
+    )
+    
+    # =====================================================
+    # 6. Parse Target Records by Type
+    # =====================================================
+    monthly_targets_map = {}
+    yearly_target = 0.0
+    ytd_target = 0.0
+    
+    for rec in target_records:
+        rec_type = rec.get("type", "").strip()
+        
+        if rec_type == "Monthly":
+            month_name = rec.get("month", "").strip()
+            target_val = float(rec.get("target") or 0)
+            monthly_targets_map[month_name.upper()] = target_val
+        
+        elif rec_type == "Yearly":
+            yearly_target = float(rec.get("target") or 0)
+        
+        elif rec_type == "YTD":
+            ytd_target = float(rec.get("target") or 0)
+    
+    # =====================================================
+    # 7. Build Monthly Data Structure
+    # =====================================================
+    month_data = {
+        "dec": {"tgt": monthly_targets_map.get("DECEMBER", 0), "ach": 0},
+        "jan": {"tgt": monthly_targets_map.get("JANUARY", 0), "ach": 0},
+        "feb": {"tgt": monthly_targets_map.get("FEBRUARY", 0), "ach": 0},
+        "mar": {"tgt": monthly_targets_map.get("MARCH", 0), "ach": 0}
+    }
+    
+    # Set achievement for current month only
+    month_number_to_key = {12: "dec", 1: "jan", 2: "feb", 3: "mar"}
+    current_month_key = month_number_to_key.get(selected_date_obj.month)
+    
+    if current_month_key:
+        month_data[current_month_key]["ach"] = current_achievement
+    
+    # =====================================================
+    # 8. Calculate Percentages
+    # =====================================================
+    yearly_pct = round((yearly_achievement / yearly_target * 100), 2) if yearly_target > 0 else 0
+    ytd_pct = round((yearly_achievement / ytd_target * 100), 2) if ytd_target > 0 else 0
+    
+    # Current month percentage
+    current_month_target = month_data.get(current_month_key, {}).get("tgt", 0) if current_month_key else 0
+    current_month_pct = round((current_achievement / current_month_target * 100), 2) if current_month_target > 0 else 0
+    
+    # =====================================================
+    # 9. Calculate Performance Category
+    # =====================================================
+    # Based on yearly achievement percentage
+    calculated_category = calculate_performance_category(yearly_pct)
+    
+    # =====================================================
+    # 10. Build Response
+    # =====================================================
+    return {
+        "sol_id": sol_id,
+        "branch": branch_master.get("branch"),
+        "zone": branch_master.get("zone"),
+        "region": branch_master.get("region"),
+        "district": branch_master.get("district"),
+        "state": branch_master.get("state"),
+        "category": stored_category,  # Original category from Branch Category Report
+        "calculated_category": calculated_category,  # Calculated based on performance
+        "selected_date": selected_date,
+        
+        # Monthly breakdown
+        "monthly": month_data,
+        
+        # Current month summary
+        "current_month": {
+            "month": current_month_key.upper() if current_month_key else "N/A",
+            "target": current_month_target,
+            "achievement": current_achievement,
+            "percentage": current_month_pct
+        },
+        
+        # Yearly data
+        "yearly": {
+            "target": yearly_target,
+            "achievement": yearly_achievement,
+            "percentage": yearly_pct
+        },
+        
+        # YTD data
+        "ytd": {
+            "target": ytd_target,
+            "achievement": yearly_achievement,
+            "percentage": ytd_pct
+        }
+    }
+
+
+def calculate_performance_category(percentage):
+    """
+    Calculate performance category based on achievement percentage.
+    
+    Categories:
+    - Pinacle: >= 100%
+    - Master: 75% - 99%
+    - Accelerator: 50% - 74%
+    - Starter: 25% - 49%
+    - Learner: 10% - 24%
+    - Zero Level: < 10%
+    """
+    if percentage >= 100:
+        return "Pinacle"
+    elif percentage >= 75:
+        return "Master"
+    elif percentage >= 50:
+        return "Accelerator"
+    elif percentage >= 25:
+        return "Starter"
+    elif percentage >= 10:
+        return "Learner"
+    else:
+        return "Zero Level"
