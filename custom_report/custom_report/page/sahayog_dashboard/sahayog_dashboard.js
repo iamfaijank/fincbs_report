@@ -1330,6 +1330,10 @@ class SahayogDashboard {
 						border-bottom: none !important;
 						padding: 14px !important;
 					}
+					.grand-total-row .tgt-line,
+					.grand-total-row .ach-line {
+						color: #ffffff !important;
+					}
 
 					/* Drill-down Segment Styles */
 					.drill-down-view {
