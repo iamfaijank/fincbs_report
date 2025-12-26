@@ -27,6 +27,9 @@ class SahayogDashboard {
 			categories: new Set(),
 		};
 
+		// Target type: Monthly | Yearly | YTD (default Monthly)
+		this.targetType = "Monthly";
+
 		// UI state
 		this.collapsedGroups = new Set();
 		this.collapsedSegments = new Set([1, 2, 3, 4]);
@@ -61,6 +64,7 @@ class SahayogDashboard {
 				current_date: this.selectedDate,
 				mode: this.comparisonMode,
 				filters: this.getFiltersJSON(),
+				target_type: this.targetType,
 			},
 			callback: (r) => {
 				if (r.message) {
@@ -200,7 +204,20 @@ class SahayogDashboard {
 
 	init() {
 		this.setupStyles();
+		this.createFixedHeader();
 		this.loadAvailableDates();
+
+		// Delegated hover event for comparison popups
+		$(document).on("mouseenter", ".cmp-indicator-clickable", (e) => {
+			const target = $(e.currentTarget);
+			const zone = target.data("zone") || target.attr("data-zone");
+			const category = target.data("category") || target.attr("data-category");
+			const diff = target.data("diff") || target.attr("data-diff");
+
+			if (diff != 0) {
+				this.showComparisonDetailPopup(zone, category);
+			}
+		});
 	}
 
 	saveState() {
@@ -208,6 +225,7 @@ class SahayogDashboard {
 			selectedDate: this.selectedDate,
 			groupBy: this.groupBy,
 			comparisonMode: this.comparisonMode,
+			targetType: this.targetType,
 			filters: {
 				zones: Array.from(this.filters.zones),
 				categories: Array.from(this.filters.categories),
@@ -225,6 +243,7 @@ class SahayogDashboard {
 			this.selectedDate = state.selectedDate || null;
 			this.groupBy = state.groupBy || "zone";
 			this.comparisonMode = state.comparisonMode || "daily";
+			this.targetType = state.targetType || "Monthly";
 
 			if (state.filters) {
 				this.filters.zones = new Set(state.filters.zones || []);
@@ -245,6 +264,9 @@ class SahayogDashboard {
 					if (!this.selectedDate) {
 						this.selectedDate = this.availableDates[0].date;
 					}
+
+					// Default week start = Monday of the week that contains the selected/latest date
+					this.weekStartDate = this.getWeekStart(this.selectedDate);
 
 					this.loadAvailableZones();
 				} else {
@@ -284,47 +306,48 @@ class SahayogDashboard {
 	// Create compact timeline in table header
 	createCompactTimeline() {
 		const timelineHtml = `
-				<div class="timeline-container">
-					<div class="compact-timeline">
-						<div class="timeline-dates-compact" id="timeline-dates-compact"></div>
-					</div>
+			<div class="timeline-container">
+				<div class="compact-timeline">
+					<button class="week-nav-btn" id="week-prev">◀</button>
+					<div class="timeline-dates-compact" id="timeline-dates-compact"></div>
+					<button class="week-nav-btn" id="week-next">▶</button>
 				</div>
-			`;
+			</div>
+		`;
 
 		const container = $(timelineHtml);
 		const datesContainer = container.find("#timeline-dates-compact");
 
-		this.availableDates.forEach((dateObj) => {
-			const isSelected = dateObj.date === this.selectedDate;
-			const dateItem = $(`
-					<div class="timeline-date-compact ${isSelected ? "selected" : ""}" data-date="${
-				dateObj.date
-			}" title="${dateObj.display_full}">
-						<div class="timeline-day-compact">${dateObj.day_name}</div>
-						<div class="timeline-num-compact">${dateObj.day_num}</div>
-					</div>
-				`);
+		// Ensure we have a weekStartDate
+		if (!this.weekStartDate) {
+			this.weekStartDate = this.getWeekStart(
+				this.selectedDate || (this.availableDates[0] && this.availableDates[0].date)
+			);
+		}
 
-			dateItem.on("click", () => this.selectDate(dateObj.date));
-			datesContainer.append(dateItem);
+		// Render the week (Mon - Sat)
+		this.renderWeekInTimeline(datesContainer, this.weekStartDate);
+
+		// Prev / Next handlers
+		container.find("#week-prev").on("click", () => {
+			this.weekStartDate = this.addDays(this.weekStartDate, -7);
+			this.renderWeekInTimeline(datesContainer, this.weekStartDate);
+			console.log("Week changed to:", this.weekStartDate);
 		});
 
-		// Smooth-scroll the selected date into center
-		setTimeout(() => {
-			const parent = datesContainer.get(0);
-			const sel = datesContainer.find(".timeline-date-compact.selected").get(0);
-			if (parent && sel) {
-				const parentWidth = parent.clientWidth;
-				const targetLeft = sel.offsetLeft + sel.offsetWidth / 2 - parentWidth / 2;
-				parent.scrollTo({ left: targetLeft, behavior: "smooth" });
-			}
-		}, 80);
+		container.find("#week-next").on("click", () => {
+			this.weekStartDate = this.addDays(this.weekStartDate, 7);
+			this.renderWeekInTimeline(datesContainer, this.weekStartDate);
+			console.log("Week changed to:", this.weekStartDate);
+		});
 
 		return container;
 	}
 
 	selectDate(date) {
 		this.selectedDate = date;
+		// Keep timeline focused on the week of the selected date
+		this.weekStartDate = this.getWeekStart(date);
 
 		$(".timeline-date-compact").removeClass("selected");
 		$(`.timeline-date-compact[data-date="${date}"]`).addClass("selected");
@@ -337,6 +360,73 @@ class SahayogDashboard {
 			this.loadDashboardData();
 			this.dateSelectTimer = null;
 		}, 220);
+	}
+
+	// Helpers for week rendering and date manipulation
+	formatDateISO(d) {
+		const yyyy = d.getFullYear();
+		const mm = String(d.getMonth() + 1).padStart(2, "0");
+		const dd = String(d.getDate()).padStart(2, "0");
+		return `${yyyy}-${mm}-${dd}`;
+	}
+
+	getWeekStart(dateStr) {
+		// Return ISO date string for Monday of the week containing dateStr
+		const d = new Date(dateStr);
+		// Compute diff to Monday: Monday should be 0 offset
+		const diff = (d.getDay() + 6) % 7; // 0->Mon, 6->Sun maps to 6
+		d.setDate(d.getDate() - diff);
+		return this.formatDateISO(d);
+	}
+
+	addDays(dateStr, offset) {
+		const d = new Date(dateStr);
+		d.setDate(d.getDate() + offset);
+		return this.formatDateISO(d);
+	}
+
+	renderWeekInTimeline(datesContainer, weekStartIso) {
+		// weekStartIso is ISO string for Monday
+		datesContainer.empty();
+		const availableSet = new Set((this.availableDates || []).map((d) => d.date));
+
+		for (let i = 0; i < 6; i++) {
+			const d = new Date(weekStartIso);
+			d.setDate(d.getDate() + i);
+			const iso = this.formatDateISO(d);
+			const dayName = d.toLocaleDateString(undefined, { weekday: "short" });
+			const dayNum = d.getDate();
+			const isAvailable = availableSet.has(iso);
+			const isSelected = iso === this.selectedDate;
+
+			const item = $(
+				`<div class="timeline-date-compact ${isSelected ? "selected" : ""} ${
+					isAvailable ? "" : "disabled"
+				}" data-date="${iso}" title="${dayName} ${dayNum}">
+					<div class="timeline-day-compact">${dayName}</div>
+					<div class="timeline-num-compact">${dayNum}</div>
+				</div>`
+			);
+
+			if (isAvailable) {
+				item.on("click", () => this.selectDate(iso));
+			} else {
+				item.css({ opacity: 0.45, cursor: "default" });
+			}
+
+			datesContainer.append(item);
+		}
+
+		// Scroll selected into center if present
+		setTimeout(() => {
+			const parent = datesContainer.get(0);
+			const sel = datesContainer.find(".timeline-date-compact.selected").get(0);
+			if (parent && sel) {
+				const parentWidth = parent.clientWidth;
+				const targetLeft = sel.offsetLeft + sel.offsetWidth / 2 - parentWidth / 2;
+				parent.scrollTo({ left: targetLeft, behavior: "smooth" });
+			}
+		}, 40);
 	}
 
 	getFiltersJSON() {
@@ -700,6 +790,17 @@ class SahayogDashboard {
 						color: white;
 						box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 					}
+					.week-nav-btn {
+						background: rgba(0,0,0,0.6);
+						color: white;
+						border: none;
+						padding: 6px 8px;
+						border-radius: 6px;
+						cursor: pointer;
+						font-weight: 700;
+					}
+					.week-nav-btn:hover { background: rgba(255,255,255,0.06); }
+					.timeline-date-compact.disabled { opacity: 0.45; }
 					.timeline-day-compact {
 						font-size: 8px;
 						font-weight: 600;
@@ -1246,6 +1347,34 @@ class SahayogDashboard {
 						top: 0;
 						z-index: 100;
 						box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+						gap: 20px;
+					}
+					.drill-target-types {
+						display: flex;
+						gap: 8px;
+						align-items: center;
+					}
+					.drill-target-type-btn {
+						padding: 7px 14px;
+						border: 1px solid rgba(255, 255, 255, 0.2);
+						background: transparent;
+						color: rgba(255, 255, 255, 0.8);
+						font-size: 12px;
+						font-weight: 600;
+						border-radius: 4px;
+						cursor: pointer;
+						transition: all 0.2s;
+					}
+					.drill-target-type-btn:hover {
+						background: rgba(255, 255, 255, 0.1);
+						border-color: rgba(255, 255, 255, 0.4);
+						color: white;
+					}
+					.drill-target-type-btn.active {
+						background: white;
+						color: #000;
+						border-color: white;
+						box-shadow: 0 2px 6px rgba(255, 255, 255, 0.2);
 					}
 					.drill-down-title {
 						font-size: 15px;
@@ -1432,6 +1561,43 @@ class SahayogDashboard {
 						transition: all 0.2s ease;
 					}
 
+					/* Fixed Header Styles */
+					#sahayog-fixed-header {
+						position: sticky;
+						top: 0;
+						z-index: 110;
+						background: linear-gradient(90deg, #000, #111);
+						color: white;
+						padding: 10px 16px;
+						display: flex;
+						justify-content: space-between;
+						align-items: center;
+						border-bottom: 1px solid rgba(255,255,255,0.1);
+						box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+					}
+					#sahayog-fixed-header .target-type-btn {
+						padding: 6px 12px;
+						border-radius: 6px;
+						border: 1px solid rgba(255,255,255,0.2);
+						background: rgba(255,255,255,0.05);
+						color: white;
+						font-weight: 700;
+						font-size: 12px;
+						cursor: pointer;
+						transition: all 0.2s ease;
+					}
+					#sahayog-fixed-header .target-type-btn:hover {
+						background: rgba(255,255,255,0.1);
+						border-color: rgba(255,255,255,0.3);
+						transform: translateY(-1px);
+					}
+					#sahayog-fixed-header .target-type-btn.active {
+						background: white;
+						color: #000;
+						border-color: white;
+						box-shadow: 0 2px 8px rgba(255,255,255,0.3);
+					}
+
 					@media (max-width: 768px) {
 						.table-header-controls { flex-direction: column; }
 						.comparison-btns { flex-wrap: wrap; }
@@ -1451,6 +1617,56 @@ class SahayogDashboard {
 		$(contentHtml).appendTo(this.page.main);
 
 		this.page.set_secondary_action("Branch Targets", () => this.loadView("branch-targets"));
+	}
+
+	// Create a fixed header component visible on main and drill screens
+	createFixedHeader() {
+		console.log("Creating fixed header...", this.page.main);
+		const headerHtml = `
+			<div id="sahayog-fixed-header" style="position:sticky; top:0; z-index:110; background:linear-gradient(90deg,#000,#111); color:white; padding:10px 16px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1);">
+				<div style="font-weight:700; font-size:14px;">DRISHTI — Target vs Achievement</div>
+				<div style="display:flex; gap:8px; align-items:center;">
+					<div style="font-size:12px; opacity:0.9; margin-right:6px;">View:</div>
+					<button class="target-type-btn ${
+						this.targetType === "Yearly" ? "active" : ""
+					}" data-type="Yearly">Yearly</button>
+					<button class="target-type-btn ${
+						this.targetType === "YTD" ? "active" : ""
+					}" data-type="YTD">YTD</button>
+					<button class="target-type-btn ${
+						this.targetType === "Monthly" ? "active" : ""
+					}" data-type="Monthly">Monthly</button>
+				</div>
+			</div>
+		`;
+		const $header = $(headerHtml);
+		$header.prependTo(this.page.main);
+		console.log("Fixed header created and appended", $("#sahayog-fixed-header"));
+
+		// Attach click handlers
+		$(document).on("click", "#sahayog-fixed-header .target-type-btn", (e) => {
+			e.preventDefault();
+			const btn = $(e.currentTarget);
+			const type = btn.data("type");
+			console.log("Target type button clicked:", type);
+			this.targetType = type;
+			$("#sahayog-fixed-header .target-type-btn").removeClass("active");
+			btn.addClass("active");
+			this.saveState();
+			// reload views with new target type
+			if ($("#drill-down-view").hasClass("active")) {
+				// In drill-down mode: reload drill-down data
+				console.log("Reloading drill-down data with target_type:", type);
+				this.openDrillDown(this.currentZone, this.currentCategory);
+			} else if (this.currentView === "branch-targets") {
+				console.log("Reloading branch targets with target_type:", type);
+				this.loadBranchTargets();
+			} else {
+				// In dashboard mode
+				console.log("Reloading dashboard data with target_type:", type);
+				this.loadDashboardData();
+			}
+		});
 	}
 
 	createChartModal() {
@@ -1478,10 +1694,8 @@ class SahayogDashboard {
 		});
 	}
 	showComparisonDetailPopup(zone, category) {
-		// Guard: agar already popup open hai, dobara mat kholo
-		if (this.isComparisonPopupOpen) {
-			return;
-		}
+		// Guard: if a popup is already open, don't open another one
+		if (this.isComparisonPopupOpen) return;
 		this.isComparisonPopupOpen = true;
 
 		frappe.call({
@@ -1492,139 +1706,186 @@ class SahayogDashboard {
 				zone: zone,
 				category: category,
 				filters: this.getFiltersJSON(),
+				target_type: this.targetType,
 			},
 			callback: (r) => {
 				if (!r.message) {
 					this.isComparisonPopupOpen = false;
 					frappe.msgprint({
 						title: "Error",
-						message: "Could not load comparison details",
+						message: "Could not load comparison details.",
 						indicator: "red",
 					});
 					return;
 				}
 
 				const data = r.message;
-				console.log("Comparison Detail Data", data);
+				console.log("=".repeat(80));
+				console.log("📥 API Response:", data);
+				console.log("📊 Net Change:", data.net_change);
+				console.log("📦 Branch Count:", data.count);
+				console.log("🏢 Branches:", data.branches);
+				console.log("=".repeat(80));
 
-				const netChange = data.net_change || 0;
-
-				// --- Decide which list to show (branch-name based diff) ---
-				let branchList = [];
-				let changeTitle = "";
-				let titleColor = "";
-				let bgColor = "";
-				let borderColor = "";
-
-				if (netChange > 0) {
-					branchList = data.added_branches || [];
-					changeTitle = `${netChange} Branch${netChange !== 1 ? "es" : ""} Added`;
-					titleColor = "#16a34a";
-					bgColor = "#f0fdf4";
-					borderColor = "#16a34a";
-				} else if (netChange < 0) {
-					const removedCount = Math.abs(netChange);
-					branchList = (data.removed_branches || []).slice(0, removedCount);
-					changeTitle = `${removedCount} Branch${
-						removedCount !== 1 ? "es" : ""
-					} Removed`;
-					titleColor = "#dc2626";
-					bgColor = "#fef2f2";
-					borderColor = "#dc2626";
-				} else {
-					branchList = [];
-					changeTitle = "No Net Change";
-					titleColor = "#64748b";
-					bgColor = "#f9fafb";
-					borderColor = "#e5e7eb";
-				}
-
-				console.log("Branch List", branchList);
-				console.log("Branch List Length", branchList.length);
-
+				// ============================================================
+				// BUILD TABLE from new response structure
+				// ============================================================
 				let tableRows = "";
+				let title = "No Changes";
+				let titleColor = "#64748b";
 
-				if (Array.isArray(branchList) && branchList.length > 0) {
-					tableRows = branchList
-						.map(
-							(b) => `
-                    <tr style="border-bottom: 1px solid #e5e7eb;">
-                        <td style="padding: 10px 12px; font-size: 13px; color: #374151; word-break: break-word;">
-                            ${b.sol_id || b.solid || "N/A"}
-                        </td>
-                        <td style="padding: 10px 12px; font-size: 13px; color: #374151; word-break: break-word;">
-                            ${b.branch || "Unknown"}
-                        </td>
-                        <td style="padding: 10px 12px; font-size: 13px; color: #374151;">
-                            ${b.zone || "Unknown"}
+				if (data.branches && data.branches.length > 0) {
+					// Set title based on change type
+					if (data.net_change > 0) {
+						title = `+${data.net_change} Branch(es) Added to ${category}`;
+						titleColor = "#16a34a";
+					} else if (data.net_change < 0) {
+						title = `${data.net_change} Branch(es) Removed from ${category}`;
+						titleColor = "#dc2626";
+					} else {
+						title = `${data.count} Branch Movement(s)`;
+						titleColor = "#6366f1";
+					}
+
+					tableRows = data.branches
+						.map((b, index) => {
+							// Determine row color based on change type
+							let rowBg = "#ffffff";
+							let changeIcon = "↔️";
+							let changeColor = "#64748b";
+
+							if (b.change_type === "added") {
+								rowBg = "#f0fdf4";
+								changeIcon = "✅";
+								changeColor = "#16a34a";
+							} else if (b.change_type === "removed") {
+								rowBg = "#fef2f2";
+								changeIcon = "❌";
+								changeColor = "#dc2626";
+							}
+
+							return `
+                            <tr style="background: ${rowBg}; border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 10px 12px; font-size: 13px; font-weight: 600; color: #64748b; text-align: center;">${
+									index + 1
+								}</td>
+                                <td style="padding: 10px 12px; font-size: 13px;">${
+									b.sol_id || "NA"
+								}</td>
+                                <td style="padding: 10px 12px; font-size: 13px; font-weight: 600;">${
+									b.branch || "Unknown"
+								}</td>
+                                <td style="padding: 10px 12px; font-size: 13px;">${
+									b.zone || "Unknown"
+								}</td>
+                                <td style="padding: 10px 12px; font-size: 13px; color: #64748b;">${
+									b.previous_category || "N/A"
+								}</td>
+                                <td style="padding: 10px 12px; font-size: 13px; font-weight: 700; color: #1f2937;">${
+									b.current_category || "N/A"
+								}</td>
+                                <td style="padding: 10px 12px; font-size: 13px; font-weight: 700; color: ${changeColor};">
+                                    ${changeIcon} ${
+								b.change_type === "added"
+									? "Added"
+									: b.change_type === "removed"
+									? "Removed"
+									: "Moved"
+							}
+                                </td>
+                            </tr>
+                        `;
+						})
+						.join("");
+				} else {
+					tableRows = `
+                    <tr>
+                        <td colspan="7" style="padding: 24px 12px; text-align: center; color: #9ca3af; font-size: 13px;">
+                            No branch changes to display
                         </td>
                     </tr>
-                `
-						)
-						.join("");
+                `;
 				}
 
+				console.log("✅ Table Rows Generated:", tableRows ? "YES" : "NO");
+
+				// ============================================================
+				// POPUP HTML
+				// ============================================================
 				const htmlContent = `
-                <div style="
-                    padding: 12px 4px 4px 4px;
-                    background: ${bgColor};
-                    border-radius: 6px;
-                ">
-                    <div style="margin-bottom: 16px; text-align: center;">
-                        <div style="font-size: 24px; font-weight: 800; color: ${titleColor};">
-                            ${changeTitle}
+                <div style="padding: 12px 4px;">
+                    <!-- Header Card -->
+                    <div style="background: linear-gradient(135deg, ${titleColor} 0%, ${titleColor}dd 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+                        <div style="font-size: 28px; font-weight: 700; margin-bottom: 8px;">
+                            ${data.net_change > 0 ? "+" : ""}${data.net_change}
                         </div>
-                        <div style="font-size: 13px; color: #64748b; margin-top: 4px; font-weight: 600;">
-                            ${zone} - ${category}
+                        <div style="font-size: 16px; font-weight: 600; opacity: 0.95;">
+                            ${title}
+                        </div>
+                        <div style="font-size: 13px; opacity: 0.8; margin-top: 4px;">
+                            ${zone} • Comparing with previous date
                         </div>
                     </div>
 
-                    <div style="margin-top: 8px;">
-                        <table style="
-                            width: 100%;
-                            border-collapse: collapse;
-                            background: #ffffff;
-                            border-radius: 4px;
-                            overflow: hidden;
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-                        ">
-                            <thead>
-                                <tr style="background: #f3f4f6; border-bottom: 1px solid #d1d5db;">
-                                    <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 700; color: #1f2937;">Sol ID</th>
-                                    <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 700; color: #1f2937;">Branch Name</th>
-                                    <th style="padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 700; color: #1f2937;">Zone</th>
+                    <!-- Stats Row -->
+                    <div style="display: flex; gap: 12px; margin-bottom: 20px; justify-content: center;">
+                        <div style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px; text-align: center;">
+                            <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Total Showing</div>
+                            <div style="font-size: 20px; font-weight: 700; color: #1f2937;">${
+								data.count
+							}</div>
+                        </div>
+                        <div style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px; text-align: center;">
+                            <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Net Change</div>
+                            <div style="font-size: 20px; font-weight: 700; color: ${
+								data.net_change > 0
+									? "#16a34a"
+									: data.net_change < 0
+									? "#dc2626"
+									: "#64748b"
+							};">
+                                ${data.net_change > 0 ? "+" : ""}${data.net_change}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div style="max-height: 450px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead style="position: sticky; top: 0; background: #f9fafb; z-index: 10;">
+                                <tr style="border-bottom: 2px solid #e5e7eb;">
+                                    <th style="padding: 12px; text-align: center; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; width: 50px;">#</th>
+                                    <th style="padding: 12px; text-align: left; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;">SOL ID</th>
+                                    <th style="padding: 12px; text-align: left; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;">Branch Name</th>
+                                    <th style="padding: 12px; text-align: left; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;">Zone</th>
+                                    <th style="padding: 12px; text-align: left; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;">Previous</th>
+                                    <th style="padding: 12px; text-align: left; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;">Current</th>
+                                    <th style="padding: 12px; text-align: left; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;">Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${
-									tableRows ||
-									`
-                                    <tr>
-                                        <td colspan="3" style="padding: 24px 12px; text-align: center; color: #9ca3af; font-size: 13px;">
-                                            No branch data available
-                                        </td>
-                                    </tr>`
-								}
+                                ${tableRows}
                             </tbody>
                         </table>
                     </div>
                 </div>
             `;
 
-				// --- Dialog use instead of msgprint ---
+				// ============================================================
+				// SHOW DIALOG
+				// ============================================================
 				const d = new frappe.ui.Dialog({
-					title: `${zone} - ${category}`,
+					title: `Branch Comparison: ${category}`,
 					size: "large",
 					fields: [
 						{
 							fieldtype: "HTML",
-							fieldname: "comparison_html",
 							options: htmlContent,
 						},
 					],
 					primary_action_label: "Close",
-					primary_action: () => {
-						d.hide();
+					primary_action: () => d.hide(),
+					onhide: () => {
 						this.isComparisonPopupOpen = false;
 					},
 				});
@@ -1632,7 +1893,7 @@ class SahayogDashboard {
 				d.show();
 			},
 			error: (err) => {
-				console.error("API Error", err);
+				console.error("❌ API Error:", err);
 				this.isComparisonPopupOpen = false;
 				frappe.msgprint({
 					title: "Error",
@@ -1831,6 +2092,11 @@ class SahayogDashboard {
 							<i class="fa fa-layer-group"></i>
 							<span id="drill-title"></span>
 						</div>
+						<div class="drill-target-types">
+							<button class="drill-target-type-btn" data-type="Monthly">Monthly</button>
+							<button class="drill-target-type-btn" data-type="Yearly">Yearly</button>
+							<button class="drill-target-type-btn" data-type="YTD">YTD</button>
+						</div>
 						<button class="drill-close-btn" id="drill-close">
 							<i class="fa fa-times"></i> Close
 						</button>
@@ -1844,6 +2110,17 @@ class SahayogDashboard {
 		$("body").append(drillHtml);
 
 		$("#drill-close").on("click", () => this.closeDrillDown());
+
+		// Handle drill-down target type buttons
+		$(".drill-target-type-btn")
+			.off("click")
+			.on("click", (e) => {
+				const type = $(e.currentTarget).data("type");
+				console.log("Drill-down target type button clicked:", type);
+				this.targetType = type;
+				this.updateDrillDownHeaderButtons();
+				this.openDrillDown(this.currentZone, this.currentCategory);
+			});
 	}
 
 	loadView(view) {
@@ -1951,6 +2228,7 @@ class SahayogDashboard {
 			args: {
 				selected_date: this.selectedDate,
 				filters: this.getFiltersJSON(),
+				target_type: this.targetType,
 			},
 			callback: (r) => {
 				if (r.message) {
@@ -2066,19 +2344,6 @@ class SahayogDashboard {
 		$("#toggle-all-rows")
 			.off("click")
 			.on("click", () => this.toggleAllRows());
-
-		// Comparison indicator hover handler (show popup on hover, not click)
-		$(document)
-			.off("mouseenter.cmp_indicator")
-			.on("mouseenter.cmpindicator", ".cmp-indicator, .cmp-indicator-clickable", (e) => {
-				const indicator = e.currentTarget;
-				const zone = indicator.dataset.zone;
-				const category = indicator.dataset.category;
-				const diff = indicator.dataset.diff;
-				if (zone && category && diff != 0) {
-					this.showComparisonDetailPopup(zone, category);
-				}
-			});
 
 		// Chart visualize dropdown
 		$(document)
@@ -2486,6 +2751,11 @@ class SahayogDashboard {
 		}
 	}
 
+	updateDrillDownHeaderButtons() {
+		$(".drill-target-type-btn").removeClass("active");
+		$(`.drill-target-type-btn[data-type="${this.targetType}"]`).addClass("active");
+	}
+
 	openDrillDown(zone, category) {
 		this.currentZone = zone;
 		this.currentCategory = category;
@@ -2493,6 +2763,7 @@ class SahayogDashboard {
 		const titleText = zone === "ALL" ? `${category} - All Zones` : `${zone} - ${category}`;
 		$("#drill-title").text(titleText);
 		$("#drill-down-view").addClass("active");
+		this.updateDrillDownHeaderButtons();
 		$(
 			".timeline-container, .combined-filters, .active-filter-indicator, .sahayog-content"
 		).hide();
@@ -2504,6 +2775,7 @@ class SahayogDashboard {
 				category: category,
 				selected_date: this.selectedDate,
 				filters: this.getFiltersJSON(),
+				target_type: this.targetType,
 			},
 			callback: (r) => {
 				if (r.message) {
@@ -2550,6 +2822,9 @@ class SahayogDashboard {
 								${metadata.drill_type}
 							</div>
 							${metadata.drill_title}
+							<div style="background:rgba(255,255,255,0.15); padding:4px 10px; border-radius:6px; font-size:10px; border:1px solid rgba(255,255,255,0.2);">
+								${this.targetType}
+							</div>
 						</div>
 						<div style="font-size:12px; opacity:0.8; margin-top:4px;">
 							${this.formatDate(metadata.selected_date)} • ${metadata.total_branches} branches

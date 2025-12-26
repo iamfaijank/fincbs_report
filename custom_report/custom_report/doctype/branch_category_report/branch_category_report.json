@@ -32,7 +32,7 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Sol id",
+   "label": "sol",
    "search_index": 1
   },
   {
@@ -40,7 +40,7 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Branch",
+   "label": "Branches",
    "search_index": 1
   },
   {
@@ -50,7 +50,7 @@
   {
    "fieldname": "zone",
    "fieldtype": "Data",
-   "label": "Zone",
+   "label": "ZONE",
    "search_index": 1
   },
   {
@@ -89,7 +89,7 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Branch Score",
+   "label": "BRANCH SCORE",
    "search_index": 1
   },
   {
@@ -107,19 +107,19 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Branch Category",
+   "label": "BRANCH CATEROGY",
    "search_index": 1
   },
   {
    "fieldname": "yearly_achievement",
    "fieldtype": "Currency",
-   "label": "Yearly Achievement"
+   "label": "YTD"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-26 00:32:18.990001",
+ "modified": "2025-12-26 15:17:16.273207",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Branch Category Report",
