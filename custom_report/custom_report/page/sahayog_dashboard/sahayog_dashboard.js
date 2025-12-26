@@ -1623,7 +1623,7 @@ class SahayogDashboard {
     z-index: 2100;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 0;
 }
 
 .branch-profile-modal.show {
@@ -1632,12 +1632,12 @@ class SahayogDashboard {
 
 .branch-profile-content {
     background: white;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 900px;
-    max-height: 90vh;
+    border-radius: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 100vh;
     overflow: auto;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    box-shadow: none;
 }
 
 .branch-profile-header {
