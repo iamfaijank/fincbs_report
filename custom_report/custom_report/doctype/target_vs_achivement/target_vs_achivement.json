@@ -57,8 +57,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Type",
-   "options": "\nYearly\nMonthly\nYTD",
-   "reqd": 1
+   "options": "\nYearly\nMonthly\nYTD"
   },
   {
    "fieldname": "column_break_1",
@@ -93,8 +92,7 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Target",
-   "precision": "0",
-   "reqd": 1
+   "precision": "0"
   },
   {
    "fieldname": "achievement",
@@ -196,7 +194,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-25 23:12:47.632182",
+ "modified": "2025-12-27 10:52:34.228535",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Target Vs Achivement",
@@ -211,6 +209,19 @@
    "read": 1,
    "report": 1,
    "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "MIS Admin",
+   "select": 1,
    "share": 1,
    "write": 1
   }
