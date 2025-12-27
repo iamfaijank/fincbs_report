@@ -1,0 +1,480 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:sol_id",
+ "creation": "2025-12-27 12:20:04.375768",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "sol_id",
+  "branch_today_date",
+  "bm_name",
+  "bm_vintage",
+  "total_ytd_target",
+  "total_mtd_target",
+  "ca_book",
+  "rd_book",
+  "total_customers_id",
+  "total_fd_no_of_customers",
+  "total_smbg_no_of_customers",
+  "total_active_dds_agent",
+  "total_staff_onboarded",
+  "mab_ac",
+  "rd_smbg_pending",
+  "nav",
+  "crm",
+  "headless",
+  "district",
+  "smbg_demand",
+  "dd_acollection",
+  "bdo",
+  "bde_and_productivity",
+  "bdo_productivity",
+  "column_break_dkfe",
+  "branch_name",
+  "branch_vintage",
+  "bm_doj",
+  "staff_count",
+  "total_ytd_achievement",
+  "total_mtd_achievement",
+  "sa_book",
+  "dds_book",
+  "total_ca_no_of_customers",
+  "total_rd_no_of_customers",
+  "total_dds_agent",
+  "total_active_ss_agent",
+  "total_productivity",
+  "dds_demand_vs_collection",
+  "total_less_than_2100_casa",
+  "erv",
+  "activity_dashboard",
+  "audit_rating",
+  "rd_demand",
+  "smbg_collection",
+  "tasc_value",
+  "bde",
+  "dd_collection",
+  "bde_productivity",
+  "column_break_zeaz",
+  "branch_opening_date",
+  "branch_location_category",
+  "bm_today_date",
+  "staff_nos",
+  "total_book",
+  "fd_book",
+  "smbg_book",
+  "total_sa_no_of_customers",
+  "total_dds_no_of_customers",
+  "total_ss_agent",
+  "total_no_of_budgeted_staff",
+  "nmab_ac",
+  "smbg_demand_vs_collection",
+  "ntb",
+  "ats",
+  "actionable",
+  "ch_name",
+  "rd_collection",
+  "dds_demand",
+  "tasc",
+  "ro",
+  "bdo_and_productivity",
+  "rd_smbg_collection"
+ ],
+ "fields": [
+  {
+   "fieldname": "sol_id",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Br Code",
+   "options": "Sahayog Branch",
+   "unique": 1
+  },
+  {
+   "fieldname": "branch_opening_date",
+   "fieldtype": "Data",
+   "label": "Branch Opening Date"
+  },
+  {
+   "fetch_from": "sol_id.branch",
+   "fieldname": "branch_name",
+   "fieldtype": "Data",
+   "label": "Branch Name"
+  },
+  {
+   "fieldname": "branch_vintage",
+   "fieldtype": "Data",
+   "label": "Branch Vintage"
+  },
+  {
+   "fieldname": "branch_location_category",
+   "fieldtype": "Data",
+   "label": "Branch Location Category"
+  },
+  {
+   "fieldname": "bm_name",
+   "fieldtype": "Data",
+   "label": "BM Name"
+  },
+  {
+   "fieldname": "bm_vintage",
+   "fieldtype": "Data",
+   "label": "BM Vintage"
+  },
+  {
+   "fieldname": "column_break_dkfe",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "staff_nos",
+   "fieldtype": "Data",
+   "label": "Staff Nos"
+  },
+  {
+   "fieldname": "staff_count",
+   "fieldtype": "Data",
+   "label": "Staff Count"
+  },
+  {
+   "fieldname": "total_ytd_target",
+   "fieldtype": "Data",
+   "label": "Total YTD Target"
+  },
+  {
+   "fieldname": "total_ytd_achievement",
+   "fieldtype": "Data",
+   "label": "Total YTD Achievement"
+  },
+  {
+   "fieldname": "total_mtd_target",
+   "fieldtype": "Data",
+   "label": "Total MTD Target"
+  },
+  {
+   "fieldname": "total_mtd_achievement",
+   "fieldtype": "Data",
+   "label": "Total MTD Achievement"
+  },
+  {
+   "fieldname": "total_book",
+   "fieldtype": "Data",
+   "label": "Total Book"
+  },
+  {
+   "fieldname": "column_break_zeaz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ca_book",
+   "fieldtype": "Data",
+   "label": "CA Book"
+  },
+  {
+   "fieldname": "sa_book",
+   "fieldtype": "Data",
+   "label": "SA Book"
+  },
+  {
+   "fieldname": "fd_book",
+   "fieldtype": "Data",
+   "label": "FD Book"
+  },
+  {
+   "fieldname": "rd_book",
+   "fieldtype": "Data",
+   "label": "RD Book"
+  },
+  {
+   "fieldname": "dds_book",
+   "fieldtype": "Data",
+   "label": "DDS Book"
+  },
+  {
+   "fieldname": "smbg_book",
+   "fieldtype": "Data",
+   "label": "SMBG Book"
+  },
+  {
+   "fieldname": "total_customers_id",
+   "fieldtype": "Data",
+   "label": "Total Customers ID #"
+  },
+  {
+   "fieldname": "total_ca_no_of_customers",
+   "fieldtype": "Data",
+   "label": "Total CA No of Customers"
+  },
+  {
+   "fieldname": "total_sa_no_of_customers",
+   "fieldtype": "Data",
+   "label": "Total SA No of Customers"
+  },
+  {
+   "fieldname": "total_fd_no_of_customers",
+   "fieldtype": "Data",
+   "label": "Total FD No of Customers"
+  },
+  {
+   "fieldname": "total_rd_no_of_customers",
+   "fieldtype": "Data",
+   "label": "Total RD No of Customers"
+  },
+  {
+   "fieldname": "total_dds_no_of_customers",
+   "fieldtype": "Data",
+   "label": "Total DDS No of Customers"
+  },
+  {
+   "fieldname": "total_smbg_no_of_customers",
+   "fieldtype": "Data",
+   "label": "Total SMBG No of Customers"
+  },
+  {
+   "fieldname": "total_dds_agent",
+   "fieldtype": "Data",
+   "label": "Total DDS Agent #"
+  },
+  {
+   "fieldname": "total_ss_agent",
+   "fieldtype": "Data",
+   "label": "Total SS Agent #"
+  },
+  {
+   "fieldname": "total_active_dds_agent",
+   "fieldtype": "Data",
+   "label": "Total Active DDS Agent #"
+  },
+  {
+   "fieldname": "total_active_ss_agent",
+   "fieldtype": "Data",
+   "label": "Total Active SS Agent #"
+  },
+  {
+   "fieldname": "total_no_of_budgeted_staff",
+   "fieldtype": "Data",
+   "label": "Total No of Budgeted Staff"
+  },
+  {
+   "fieldname": "total_staff_onboarded",
+   "fieldtype": "Data",
+   "label": "Total Staff Onboarded"
+  },
+  {
+   "fieldname": "total_productivity",
+   "fieldtype": "Data",
+   "label": "Total Productivity"
+  },
+  {
+   "fieldname": "nmab_ac",
+   "fieldtype": "Data",
+   "label": "NMAB A/C"
+  },
+  {
+   "fieldname": "mab_ac",
+   "fieldtype": "Data",
+   "label": "MAB A/C"
+  },
+  {
+   "fieldname": "dds_demand_vs_collection",
+   "fieldtype": "Data",
+   "label": "DDS Demand Vs Collection"
+  },
+  {
+   "fieldname": "smbg_demand_vs_collection",
+   "fieldtype": "Data",
+   "label": "SMBG Demand Vs Collection"
+  },
+  {
+   "fieldname": "rd_smbg_pending",
+   "fieldtype": "Data",
+   "label": "RD & SMBG Pending"
+  },
+  {
+   "fieldname": "total_less_than_2100_casa",
+   "fieldtype": "Data",
+   "label": "Total Less than 2100 CASA"
+  },
+  {
+   "fieldname": "ntb",
+   "fieldtype": "Data",
+   "label": "NTB"
+  },
+  {
+   "fieldname": "nav",
+   "fieldtype": "Data",
+   "label": "NAV"
+  },
+  {
+   "fieldname": "erv",
+   "fieldtype": "Data",
+   "label": "ERV"
+  },
+  {
+   "fieldname": "ats",
+   "fieldtype": "Data",
+   "label": "ATS"
+  },
+  {
+   "fieldname": "crm",
+   "fieldtype": "Data",
+   "label": "CRM"
+  },
+  {
+   "fieldname": "activity_dashboard",
+   "fieldtype": "Data",
+   "label": "Activity Dashboard"
+  },
+  {
+   "fieldname": "actionable",
+   "fieldtype": "Data",
+   "label": "Actionable"
+  },
+  {
+   "fieldname": "headless",
+   "fieldtype": "Data",
+   "label": "Headless"
+  },
+  {
+   "fieldname": "audit_rating",
+   "fieldtype": "Data",
+   "label": "Audit Rating"
+  },
+  {
+   "fieldname": "ch_name",
+   "fieldtype": "Data",
+   "label": "CH NAME"
+  },
+  {
+   "fieldname": "district",
+   "fieldtype": "Data",
+   "label": "District"
+  },
+  {
+   "fieldname": "rd_demand",
+   "fieldtype": "Data",
+   "label": "RD Demand"
+  },
+  {
+   "fieldname": "rd_collection",
+   "fieldtype": "Data",
+   "label": "RD Collection"
+  },
+  {
+   "fieldname": "smbg_demand",
+   "fieldtype": "Data",
+   "label": "SMBG Deamnd"
+  },
+  {
+   "fieldname": "smbg_collection",
+   "fieldtype": "Data",
+   "label": "SMBG Collection"
+  },
+  {
+   "fieldname": "dds_demand",
+   "fieldtype": "Data",
+   "label": "DDS Demand"
+  },
+  {
+   "fieldname": "dd_acollection",
+   "fieldtype": "Data",
+   "label": "DD ACollection"
+  },
+  {
+   "fieldname": "tasc_value",
+   "fieldtype": "Data",
+   "label": "TASC Value"
+  },
+  {
+   "fieldname": "tasc",
+   "fieldtype": "Data",
+   "label": "TASC#"
+  },
+  {
+   "fieldname": "bdo",
+   "fieldtype": "Data",
+   "label": "BDO"
+  },
+  {
+   "fieldname": "bde",
+   "fieldtype": "Data",
+   "label": "BDE"
+  },
+  {
+   "fieldname": "ro",
+   "fieldtype": "Data",
+   "label": "RO"
+  },
+  {
+   "fieldname": "dd_collection",
+   "fieldtype": "Data",
+   "label": "DD COLLECTION"
+  },
+  {
+   "fieldname": "rd_smbg_collection",
+   "fieldtype": "Data",
+   "label": "RD+SMBG COLLECTION"
+  },
+  {
+   "fieldname": "bdo_productivity",
+   "fieldtype": "Data",
+   "label": "BDO PRODUCTIVITY"
+  },
+  {
+   "fieldname": "branch_today_date",
+   "fieldtype": "Data",
+   "label": "Branch Today Date"
+  },
+  {
+   "fieldname": "bm_doj",
+   "fieldtype": "Data",
+   "label": "BM DOJ"
+  },
+  {
+   "fieldname": "bm_today_date",
+   "fieldtype": "Data",
+   "label": "BM Today Date"
+  },
+  {
+   "fieldname": "bde_and_productivity",
+   "fieldtype": "Data",
+   "label": "BDE / PRODUCTIVITY"
+  },
+  {
+   "fieldname": "bdo_and_productivity",
+   "fieldtype": "Data",
+   "label": "BDO / PRODUCTIVITY"
+  },
+  {
+   "fieldname": "bde_productivity",
+   "fieldtype": "Data",
+   "label": "BDE PRODUCTIVITY"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-27 15:09:17.968272",
+ "modified_by": "Administrator",
+ "module": "custom_report",
+ "name": "Branch Profile Data",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
