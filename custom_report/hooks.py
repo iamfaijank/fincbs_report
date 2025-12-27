@@ -242,5 +242,10 @@ override_whitelisted_methods = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 fixtures = [
-    {"dt": "DocType", "filters": [["name", "in", ["Branch Category Report"]]]}
+    {
+        "dt": "Branch Category Report"
+    },
+    {
+        "dt": "Target Vs Achivement"
+    }
 ]
