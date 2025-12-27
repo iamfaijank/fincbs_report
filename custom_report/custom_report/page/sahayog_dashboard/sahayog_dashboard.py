@@ -190,23 +190,8 @@ def aggregate_with_dynamic_categories(data, targets_map, selected_date_obj, targ
     selected_month = selected_date_obj.month
     current_month_key = month_number_to_key.get(selected_month)
 
-    # ========================================================================
-    # CONSOLE LOGGING - START
-    # ========================================================================
-    print("\n" + "="*100)
-    print("📊 CATEGORY AGGREGATION & COMPARISON DEBUG LOG")
-    print("="*100)
-    print(f"🎯 Target Type: {target_type}")
-    print(f"📅 Selected Date: {selected_date_obj}")
-    print(f"📆 Current Month: {selected_month} ({current_month_key})")
-    print(f"🏢 Total Branches in Data: {len(data)}")
-    print(f"🎯 Total Targets Available: {len(targets_map)}")
-    print("="*100 + "\n")
-
     # Initialize all zones
     all_zones = sorted(set([row.get("zone") or "Unknown" for row in data]))
-    
-    print(f"🗺️  Zones Found: {', '.join(all_zones)}\n")
     
     for zone_name in all_zones:
         if zone_name not in zone_map:
@@ -311,88 +296,7 @@ def aggregate_with_dynamic_categories(data, targets_map, selected_date_obj, targ
         if current_month_key:
             cat_data[current_month_key]["ach"] += total_ach
             cat_data[current_month_key]["available"] = True
-
-    # ========================================================================
-    # PRINT CATEGORY-WISE DETAILED ANALYSIS
-    # ========================================================================
     
-    print("\n" + "="*100)
-    print("📈 CATEGORY-WISE DISTRIBUTION & DETAILS")
-    print("="*100)
-    
-    total_branches = len(data)
-    
-    for cat in CATEGORY_ORDER:
-        count = category_distribution[cat]
-        pct = (count / total_branches * 100) if total_branches > 0 else 0
-        
-        # Category emoji mapping
-        emoji_map = {
-            "Pinnacle": "🏆",
-            "Master": "⭐",
-            "Accelerator": "🚀",
-            "Starter": "🌱",
-            "Learner": "📚",
-            "Zero Level": "⚠️"
-        }
-        
-        emoji = emoji_map.get(cat, "📊")
-        
-        print(f"\n{emoji} {cat.upper()}")
-        print("-"*100)
-        print(f"   Total Branches: {count} ({pct:.1f}% of all branches)")
-        
-        if count > 0:
-            branches = category_branch_details[cat]
-            
-            # Calculate totals for this category
-            total_target = sum(b["target"] for b in branches)
-            total_achievement = sum(b["achievement"] for b in branches)
-            avg_ach_pct = (total_achievement / total_target * 100) if total_target > 0 else 0
-            
-            print(f"   Total Target: ₹{total_target:,.0f}")
-            print(f"   Total Achievement: ₹{total_achievement:,.0f}")
-            print(f"   Average Achievement %: {avg_ach_pct:.1f}%")
-            
-            # Show top 5 branches in this category
-            if len(branches) > 0:
-                print(f"\n   📋 Sample Branches (showing {min(5, len(branches))} of {len(branches)}):")
-                sorted_branches = sorted(branches, key=lambda x: x["ach_pct"], reverse=True)
-                for i, b in enumerate(sorted_branches[:5], 1):
-                    print(f"      {i}. {b['branch'][:40]:40s} | Zone: {b['zone']:10s} | "
-                          f"Target: ₹{b['target']:>10,.0f} | Ach: ₹{b['achievement']:>10,.0f} | {b['ach_pct']:>6.2f}%")
-            
-            # Zone-wise breakdown for this category
-            zone_breakdown = {}
-            for b in branches:
-                zone = b["zone"]
-                if zone not in zone_breakdown:
-                    zone_breakdown[zone] = 0
-                zone_breakdown[zone] += 1
-            
-            if len(zone_breakdown) > 0:
-                print(f"\n   🗺️  Zone-wise Distribution:")
-                for zone, zone_count in sorted(zone_breakdown.items()):
-                    zone_pct = (zone_count / count * 100) if count > 0 else 0
-                    print(f"      {zone:15s}: {zone_count:3d} branches ({zone_pct:5.1f}% of {cat})")
-    
-    print("\n" + "="*100)
-    
-    # Print branches without targets
-    if branches_without_targets:
-        print("\n" + "="*100)
-        print(f"⚠️  BRANCHES WITHOUT TARGETS: {len(branches_without_targets)}")
-        print("="*100)
-        for i, b in enumerate(branches_without_targets[:10]):
-            sol_id = b.get('sol_id', 'N/A')
-            branch = b.get('branch', 'Unknown')
-            zone = b.get('zone', 'Unknown')
-            ach = b.get('achievement', 0)
-            print(f"   {i+1}. SOL: {sol_id:10s} | {branch[:40]:40s} | Zone: {zone:10s} | Ach: ₹{ach:>10,.0f}")
-        if len(branches_without_targets) > 10:
-            print(f"   ... and {len(branches_without_targets) - 10} more branches without targets")
-        print("="*100 + "\n")
-
     # Flatten to list in proper order
     result = []
     
@@ -415,10 +319,6 @@ def aggregate_with_dynamic_categories(data, targets_map, selected_date_obj, targ
             # Only include if there's data
             if cat_data["branch_count"] > 0 or cat_data["total"]["tgt"] > 0 or cat_data["total"]["ach"] > 0:
                 result.append(cat_data)
-
-    print("="*100)
-    print(f"✅ FINAL RESULT: {len(result)} zone-category combinations with data")
-    print("="*100 + "\n")
 
     return result
 
@@ -849,26 +749,10 @@ def get_comparison_data(current_date=None, comparison_date=None, mode="daily", f
 
     current_date_obj = getdate(current_date)
 
-    # ========================================================================
-    # DEBUG LOGGING - COMPARISON START
-    # ========================================================================
-    print("\n" + "="*100)
-    print("🔍 COMPARISON DEBUG LOG - DETAILED ANALYSIS")
-    print("="*100)
-    print(f"📅 Current Date: {current_date}")
-    print(f"📅 Comparison Date: {comparison_date}")
-    print(f"🎯 Target Type: {target_type}")
-    print(f"📊 Comparison Mode: {mode}")
-    print("="*100 + "\n")
-
     # Fetch data with target type
-    print("⏳ Fetching current date data...")
     current_data = get_dashboard_data(current_date, filters, target_type) or []
-    print(f"✅ Current data fetched: {len(current_data)} zone-category combinations\n")
     
-    print("⏳ Fetching comparison date data...")
     comparison_data = get_dashboard_data(comparison_date, filters, target_type) or []
-    print(f"✅ Comparison data fetched: {len(comparison_data)} zone-category combinations\n")
 
     def _key(row):
         zone = row.get("zone") or "Unknown"
@@ -878,32 +762,20 @@ def get_comparison_data(current_date=None, comparison_date=None, mode="daily", f
     current_map = {_key(r): r for r in current_data}
     comp_map = {_key(r): r for r in comparison_data}
 
-    print("="*100)
-    print("📋 CURRENT DATE BREAKDOWN (Zone + Category)")
-    print("="*100)
     current_category_totals = {}
     for (zone, category), row in sorted(current_map.items()):
         count = row.get("branch_count", 0)
         if category not in current_category_totals:
             current_category_totals[category] = 0
         current_category_totals[category] += count
-        print(f"   {zone:15s} | {category:15s} | Branches: {count:3d}")
     
-    print("\n" + "="*100)
-    print("📋 COMPARISON DATE BREAKDOWN (Zone + Category)")
-    print("="*100)
     comp_category_totals = {}
     for (zone, category), row in sorted(comp_map.items()):
         count = row.get("branch_count", 0)
         if category not in comp_category_totals:
             comp_category_totals[category] = 0
         comp_category_totals[category] += count
-        print(f"   {zone:15s} | {category:15s} | Branches: {count:3d}")
 
-    print("\n" + "="*100)
-    print("📊 CATEGORY-WISE TOTALS COMPARISON")
-    print("="*100)
-    
     CATEGORY_ORDER = ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Zero Level"]
     emoji_map = {
         "Pinnacle": "🏆",
@@ -914,28 +786,6 @@ def get_comparison_data(current_date=None, comparison_date=None, mode="daily", f
         "Zero Level": "⚠️"
     }
     
-    print(f"{'Category':<15} | {'Current':>8} | {'Previous':>8} | {'Difference':>12} | {'Change %':>10}")
-    print("-"*100)
-    
-    for cat in CATEGORY_ORDER:
-        cur_count = current_category_totals.get(cat, 0)
-        prev_count = comp_category_totals.get(cat, 0)
-        diff = cur_count - prev_count
-        
-        if prev_count > 0:
-            change_pct = (diff / prev_count * 100)
-        elif cur_count > 0:
-            change_pct = 100.0
-        else:
-            change_pct = 0.0
-        
-        emoji = emoji_map.get(cat, "📊")
-        diff_str = f"+{diff}" if diff > 0 else str(diff)
-        
-        print(f"{emoji} {cat:<12} | {cur_count:>8} | {prev_count:>8} | {diff_str:>12} | {change_pct:>9.1f}%")
-    
-    print("="*100 + "\n")
-
     all_keys = set(list(current_map.keys()) + list(comp_map.keys()))
 
     comparison_rows = []
@@ -992,14 +842,6 @@ def get_comparison_data(current_date=None, comparison_date=None, mode="daily", f
     else:
         overall_indicator = "→"
         overall_color = "grey"
-
-    print("="*100)
-    print("📊 FINAL COMPARISON SUMMARY")
-    print("="*100)
-    print(f"   Total Current Branches: {total_current_branches}")
-    print(f"   Total Previous Branches: {total_previous_branches}")
-    print(f"   Net Difference: {total_diff:+d} {overall_indicator}")
-    print("="*100 + "\n")
 
     return {
         "current_date": str(current_date_obj),
@@ -1068,15 +910,6 @@ def get_branch_comparison_detail(
 
     comparison_date_obj = getdate(comparison_date)
 
-    print("\n" + "="*100)
-    print("🔍 NET CHANGE BRANCH COMPARISON")
-    print("="*100)
-    print(f"📅 Current Date: {current_date}")
-    print(f"📅 Comparison Date: {comparison_date}")
-    print(f"🗺️  Zone: {zone or 'ALL'}")
-    print(f"📊 Category: {category or 'ALL'}")
-    print("="*100)
-
     # Helper: Build branch map with categories
     def build_branch_map(rows, date_obj_for_map):
         branch_map = {}
@@ -1125,16 +958,10 @@ def get_branch_comparison_detail(
     current_map_all = build_branch_map(current_rows, current_date_obj)
     comp_map_all = build_branch_map(comp_rows, comparison_date_obj)
 
-    print(f"\n📊 Total Current Branches: {len(current_map_all)}")
-    print(f"📊 Total Comparison Branches: {len(comp_map_all)}")
-
     # Filter by selected category
     if category and category != "ALL":
         current_in_category = {k: v for k, v in current_map_all.items() if v["category"] == category}
         comp_in_category = {k: v for k, v in comp_map_all.items() if v["category"] == category}
-        
-        print(f"\n🎯 Current in {category}: {len(current_in_category)}")
-        print(f"🎯 Previous in {category}: {len(comp_in_category)}")
     else:
         current_in_category = current_map_all
         comp_in_category = comp_map_all
@@ -1142,9 +969,6 @@ def get_branch_comparison_detail(
     # Calculate net change
     net_change = len(current_in_category) - len(comp_in_category)
     
-    print(f"\n📊 NET CHANGE: {net_change:+d}")
-    print("="*100)
-
     # ============================================================
     # BUILD RESULT: Return branches with previous category info
     # ============================================================
@@ -1155,8 +979,6 @@ def get_branch_comparison_detail(
         current_keys = set(current_in_category.keys())
         comp_keys = set(comp_in_category.keys())
         added_keys = current_keys - comp_keys
-        
-        print(f"\n✅ SHOWING {len(added_keys)} ADDED BRANCHES:\n")
         
         for key in sorted(added_keys):
             current_branch = current_in_category[key]
@@ -1174,16 +996,12 @@ def get_branch_comparison_detail(
                 "previous_category": previous_category,
                 "change_type": "added",
             })
-            
-            print(f"   {current_branch['branch']:40} | {previous_category:15} → {current_branch['category']:15}")
     
     elif net_change < 0:
         # Fewer branches now - show REMOVED ones
         current_keys = set(current_in_category.keys())
         comp_keys = set(comp_in_category.keys())
         removed_keys = comp_keys - current_keys
-        
-        print(f"\n❌ SHOWING {len(removed_keys)} REMOVED BRANCHES:\n")
         
         for key in sorted(removed_keys):
             previous_branch = comp_in_category[key]
@@ -1201,15 +1019,7 @@ def get_branch_comparison_detail(
                 "current_category": current_category,
                 "change_type": "removed",
             })
-            
-            print(f"   {previous_branch['branch']:40} | {previous_branch['category']:15} → {current_category:15}")
     
-    else:
-        print("\n➡️  NO NET CHANGE (same count in both dates)")
-
-    print(f"\n📦 RETURNING {len(result_branches)} BRANCHES")
-    print("="*100 + "\n")
-
     return {
         "branches": result_branches,
         "count": len(result_branches),
