@@ -564,7 +564,7 @@ class SahayogDashboard {
 		}
 
 		const categoryColors = {
-			Pinacle: "pinacle",
+			Pinnacle: "pinnacle",
 			Master: "master",
 			Accelerator: "accelerator",
 			Starter: "starter",
@@ -901,12 +901,12 @@ class SahayogDashboard {
 						color: white;
 						border-color: #000;
 					}
-					.filter-chip[data-category="Pinacle"] {
+					.filter-chip[data-category="Pinnacle"] {
 						background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
 						color: white !important;
 						border-color: #16a34a;
 					}
-					.filter-chip[data-category="Pinacle"].active {
+					.filter-chip[data-category="Pinnacle"].active {
 						border: 2px dashed white;
 						box-shadow: 0 0 0 3px #22c55e, 0 4px 12px rgba(34, 197, 94, 0.4);
 					}
@@ -1265,11 +1265,11 @@ class SahayogDashboard {
 					.child-row.filtered-out { display: none !important; }
 
 					/* Category Colors */
-					.cat-pinacle {
+					.cat-Pinnacle {
 						background: linear-gradient(90deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.05) 100%);
 						border-left: 5px solid #22c55e;
 					}
-					.cat-pinacle:hover {
+					.cat-Pinnacle:hover {
 						background: linear-gradient(90deg, rgba(34, 197, 94, 0.25) 0%, rgba(34, 197, 94, 0.10) 100%);
 					}
 					.cat-master {
@@ -2807,7 +2807,7 @@ class SahayogDashboard {
 
 	getCategoryClass(category) {
 		const map = {
-			Pinacle: "cat-pinacle",
+			Pinnacle: "cat-Pinnacle",
 			Master: "cat-master",
 			Accelerator: "cat-accelerator",
 			Starter: "cat-starter",
