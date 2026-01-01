@@ -12,16 +12,11 @@ def execute(filters=None):
     current_rows = get_current_data(filters)
     previous_map = get_previous_achievement_map(filters)
 
-    # build table data (keep _cat internally)
     data = build_final_data(current_rows, previous_map, filters, keep_category=True)
 
-    # build previous category map
     prev_category_map = get_previous_category_map(filters)
-
-    # summary above table (with +X growth)
     report_summary = get_report_summary(data, prev_category_map)
 
-    # cleanup helper key
     for row in data:
         row.pop("_cat", None)
 
@@ -38,7 +33,7 @@ def normalize_target_type(target_type):
 def format_number(value):
     try:
         return "{:,.2f}".format(float(value))
-    except (TypeError, ValueError):
+    except Exception:
         return value
 
 
@@ -151,6 +146,7 @@ def get_current_data(filters):
             ON tva.sol_id = bcr.sol_id
             {"AND tva.type = %(type)s" if filters.get("type") else ""}
         WHERE bcr.docstatus < 2
+          AND TRIM(IFNULL(bcr.branch, '')) != '-'
         {cond}
     """
 
@@ -258,75 +254,47 @@ def get_previous_category_map(filters):
 
 
 # =========================================================
-# REPORT SUMMARY (WITH +X GROWTH)
+# REPORT SUMMARY
 # =========================================================
 def _delta(current, previous):
     diff = current - previous
     if diff > 0:
         return f"+{diff}"
-    if diff < 0:
-        return str(diff)
-    return "0"
+    return ""
+
 
 def get_report_summary(data, prev_category_map):
     categories = ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Zero Level"]
 
-    # -------------------------------
-    # Current counts
-    # -------------------------------
     current_counts = {c: 0 for c in categories}
     for r in data:
-        cat = r.get("_cat")
-        if cat in current_counts:
-            current_counts[cat] += 1
+        if r.get("_cat") in current_counts:
+            current_counts[r["_cat"]] += 1
 
-    # -------------------------------
-    # Previous counts
-    # -------------------------------
     previous_counts = {c: 0 for c in categories}
-    for _, cat in prev_category_map.items():
+    for cat in prev_category_map.values():
         if cat in previous_counts:
             previous_counts[cat] += 1
 
-    # -------------------------------
-    # Build summary with delta
-    # -------------------------------
+    def fmt(cur, prev):
+        d = _delta(cur, prev)
+        return f"{cur} ({d})" if d else f"{cur}"
+
     return [
-        {
-            "label": "Pinnacle",
-            "value": f'{current_counts["Pinnacle"]} ({_delta(current_counts["Pinnacle"], previous_counts["Pinnacle"])})',
-            "indicator": "Purple",
-        },
-        {
-            "label": "Master",
-            "value": f'{current_counts["Master"]} ({_delta(current_counts["Master"], previous_counts["Master"])})',
-            "indicator": "Green",
-        },
-        {
-            "label": "Accelerator",
-            "value": f'{current_counts["Accelerator"]} ({_delta(current_counts["Accelerator"], previous_counts["Accelerator"])})',
-            "indicator": "Blue",
-        },
-        {
-            "label": "Starter",
-            "value": f'{current_counts["Starter"]} ({_delta(current_counts["Starter"], previous_counts["Starter"])})',
-            "indicator": "Orange",
-        },
-        {
-            "label": "Learner",
-            "value": f'{current_counts["Learner"]} ({_delta(current_counts["Learner"], previous_counts["Learner"])})',
-            "indicator": "Yellow",
-        },
-        {
-            "label": "Zero Level",
-            "value": f'{current_counts["Zero Level"]} ({_delta(current_counts["Zero Level"], previous_counts["Zero Level"])})',
-            "indicator": "Red",
-        },
+        {"label": c, "value": fmt(current_counts[c], previous_counts[c]), "indicator": i}
+        for c, i in [
+            ("Pinnacle", "Purple"),
+            ("Master", "Green"),
+            ("Accelerator", "Blue"),
+            ("Starter", "Orange"),
+            ("Learner", "Yellow"),
+            ("Zero Level", "Red"),
+        ]
     ]
 
 
 # =========================================================
-# FINAL DATA (TABLE)
+# FINAL DATA (WITH ZONE-WISE FIX)
 # =========================================================
 def build_final_data(current_rows, previous_map, filters, keep_category=False):
     CATEGORY_ORDER = {
@@ -382,7 +350,25 @@ def build_final_data(current_rows, previous_map, filters, keep_category=False):
         r["_band"] = band
         r["_rank"] = CATEGORY_ORDER[cat]
 
-    current_rows.sort(key=lambda x: (x["_rank"], -x["_pct"]))
+    # -------- SORT FIX --------
+    sort_mode = filters.get("sort_mode") or "Zone-wise Category"
+
+    if sort_mode == "Zone-wise Category":
+        current_rows.sort(
+            key=lambda x: (
+                (x.get("zone") or ""),
+                x["_rank"],
+                -x["_pct"],
+            )
+        )
+    else:
+        current_rows.sort(
+            key=lambda x: (
+                x["_rank"],
+                -x["_pct"],
+            )
+        )
+    # --------------------------
 
     def wrap(val, bg):
         return f'<div style="background:{bg};padding:6px">{val}</div>'
