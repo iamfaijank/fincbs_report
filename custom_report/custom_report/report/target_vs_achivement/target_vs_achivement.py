@@ -12,13 +12,9 @@ def execute(filters=None):
     current_rows = get_current_data(filters)
     previous_map = get_previous_achievement_map(filters)
 
-    # build data with internal category kept
     data = build_final_data(current_rows, previous_map, filters, keep_category=True)
-
-    # summary above table
     report_summary = get_report_summary(data)
 
-    # cleanup helper key
     for row in data:
         row.pop("_cat", None)
 
@@ -26,11 +22,24 @@ def execute(filters=None):
 
 
 # =========================================================
-# NORMALIZE TARGET TYPE
-# Quarterly == YTD
+# HELPERS
 # =========================================================
 def normalize_target_type(target_type):
     return "YTD" if target_type == "Quarterly" else target_type
+
+
+def format_number(value):
+    try:
+        return "{:,.2f}".format(float(value))
+    except (TypeError, ValueError):
+        return value
+
+
+def format_date_ddmmyy(value):
+    try:
+        return getdate(value).strftime("%d-%m-%y")
+    except Exception:
+        return value
 
 
 # =========================================================
@@ -55,7 +64,7 @@ def get_columns():
 
 
 # =========================================================
-# PREVIOUS DATE (POINT-TO-POINT LOGIC)
+# PREVIOUS DATE LOGIC
 # =========================================================
 def get_previous_date(base_date, compare_type, filters):
     base_date = getdate(base_date)
@@ -63,7 +72,6 @@ def get_previous_date(base_date, compare_type, filters):
     if compare_type == "Daily":
         target_date = base_date
         condition = "date < %(target_date)s"
-
     elif compare_type == "Monthly":
         target_date = add_months(base_date, -1)
         condition = """
@@ -71,7 +79,6 @@ def get_previous_date(base_date, compare_type, filters):
             AND MONTH(date) = MONTH(%(target_date)s)
             AND YEAR(date) = YEAR(%(target_date)s)
         """
-
     elif compare_type == "Yearly":
         target_date = add_years(base_date, -1)
         condition = """
@@ -142,7 +149,7 @@ def get_current_data(filters):
 
 
 # =========================================================
-# PREVIOUS ACHIEVEMENT % MAP
+# PREVIOUS MAP
 # =========================================================
 def get_previous_achievement_map(filters):
     if not filters.get("date") or not filters.get("compare_type"):
@@ -164,10 +171,7 @@ def get_previous_achievement_map(filters):
         params["type"] = normalize_target_type(filters["type"])
 
     query = f"""
-        SELECT
-            bcr.sol_id,
-            bcr.achievement,
-            tva.target
+        SELECT bcr.sol_id, bcr.achievement, tva.target
         FROM `tabBranch Category Report` bcr
         LEFT JOIN `tabTarget Vs Achivement` tva
             ON tva.sol_id = bcr.sol_id
@@ -178,17 +182,15 @@ def get_previous_achievement_map(filters):
 
     rows = frappe.db.sql(query, params, as_dict=True)
 
-    result = {}
-    for r in rows:
-        ach = float(r.get("achievement") or 0)
-        tgt = float(r.get("target") or 0)
-        result[r["sol_id"]] = round((ach / tgt) * 100, 2) if tgt > 0 else 0
-
-    return result
+    return {
+        r["sol_id"]: round((float(r.get("achievement") or 0) / float(r.get("target") or 1)) * 100, 2)
+        for r in rows
+        if float(r.get("target") or 0) > 0
+    }
 
 
 # =========================================================
-# REPORT SUMMARY (ABOVE TABLE)
+# REPORT SUMMARY
 # =========================================================
 def get_report_summary(data):
     counts = {
@@ -216,7 +218,7 @@ def get_report_summary(data):
 
 
 # =========================================================
-# BUILD FINAL DATA (CALC → SORT → COLOR)
+# FINAL DATA
 # =========================================================
 def build_final_data(current_rows, previous_map, filters, keep_category=False):
     CATEGORY_ORDER = {
@@ -246,11 +248,9 @@ def build_final_data(current_rows, previous_map, filters, keep_category=False):
         "Zero Level": "#dc3545",
     }
 
-    # ---------- CALC ----------
     for r in current_rows:
         ach = float(r.get("achievement") or 0)
         tgt = float(r.get("target") or 0)
-
         pct = round((ach / tgt) * 100, 2) if tgt > 0 else 0
         prev = previous_map.get(r["sol_id"], 0)
 
@@ -274,13 +274,8 @@ def build_final_data(current_rows, previous_map, filters, keep_category=False):
         r["_band"] = band
         r["_rank"] = CATEGORY_ORDER[cat]
 
-    # ---------- SORT ----------
-    if filters.get("sort_mode") == "Overall Category":
-        current_rows.sort(key=lambda x: (x["_rank"], -x["_pct"]))
-    else:
-        current_rows.sort(key=lambda x: (x.get("zone") or "", x["_rank"], -x["_pct"]))
+    current_rows.sort(key=lambda x: (x["_rank"], -x["_pct"]))
 
-    # ---------- COLOR ----------
     def wrap(val, bg):
         return f'<div style="background:{bg};padding:6px">{val}</div>'
 
@@ -288,37 +283,19 @@ def build_final_data(current_rows, previous_map, filters, keep_category=False):
 
     for r in current_rows:
         bg = ROW_COLORS[r["_cat"]]
+        badge = f'<span style="background:{BADGE_COLORS[r["_cat"]]};color:white;padding:4px 10px;border-radius:12px">{r["_cat"]}</span>'
 
-        badge = f"""
-        <span style="background:{BADGE_COLORS[r['_cat']]};
-        color:white;padding:4px 10px;border-radius:12px;font-weight:600">
-        {r['_cat']}
-        </span>
-        """
-
+        r["achievement"] = wrap(format_number(r.get("achievement")), bg)
+        r["target"] = wrap(format_number(r.get("target")), bg)
         r["achievement_percent"] = wrap(f"{r['_pct']}%", bg)
         r["compare_percent"] = wrap(f"{r['_cmp']}%", bg)
         r["performance_category"] = wrap(badge, bg)
         r["achievement_band"] = wrap(r["_band"], bg)
-        def format_number(value):
-            try:
-                return "{:,.2f}".format(float(value))
-            except (TypeError, ValueError):
-                return value
+        r["date"] = wrap(format_date_ddmmyy(r.get("date")), bg)
 
-
-        for f in [
-            "sol_id", "branch", "zone", "region",
-            "district", "date", "branch_category"
-        ]:
+        for f in ["sol_id", "branch", "zone", "region", "district", "branch_category"]:
             r[f] = wrap(r.get(f), bg)
 
-        # 🔹 Apply comma formatting ONLY to numbers
-        r["achievement"] = wrap(format_number(r.get("achievement")), bg)
-        r["target"] = wrap(format_number(r.get("target")), bg)
-
-
-        # cleanup
         for k in ["_pct", "_cmp", "_band", "_rank"]:
             r.pop(k, None)
 
