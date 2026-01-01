@@ -11,9 +11,18 @@ def execute(filters=None):
     columns = get_columns()
     current_rows = get_current_data(filters)
     previous_map = get_previous_achievement_map(filters)
-    data = build_final_data(current_rows, previous_map, filters)
 
-    return columns, data
+    # build data with internal category kept
+    data = build_final_data(current_rows, previous_map, filters, keep_category=True)
+
+    # summary above table
+    report_summary = get_report_summary(data)
+
+    # cleanup helper key
+    for row in data:
+        row.pop("_cat", None)
+
+    return columns, data, None, None, report_summary
 
 
 # =========================================================
@@ -31,22 +40,22 @@ def get_columns():
     return [
         {"label": "SOL ID", "fieldname": "sol_id", "fieldtype": "HTML", "width": 90},
         {"label": "Branch", "fieldname": "branch", "fieldtype": "HTML", "width": 180},
-        {"label": "Zone", "fieldname": "zone", "fieldtype": "HTML", "width": 120},
-        {"label": "Region", "fieldname": "region", "fieldtype": "HTML", "width": 120},
-        {"label": "District", "fieldname": "district", "fieldtype": "HTML", "width": 120},
-        {"label": "Date", "fieldname": "date", "fieldtype": "HTML", "width": 100},
         {"label": "Achievement", "fieldname": "achievement", "fieldtype": "HTML", "width": 120},
         {"label": "Target", "fieldname": "target", "fieldtype": "HTML", "width": 120},
         {"label": "Achievement %", "fieldname": "achievement_percent", "fieldtype": "HTML", "width": 120},
         {"label": "Compare %", "fieldname": "compare_percent", "fieldtype": "HTML", "width": 120},
         {"label": "Performance Category", "fieldname": "performance_category", "fieldtype": "HTML", "width": 160},
+        {"label": "Date", "fieldname": "date", "fieldtype": "HTML", "width": 100},
         {"label": "Achievement Band", "fieldname": "achievement_band", "fieldtype": "HTML", "width": 140},
+        {"label": "Zone", "fieldname": "zone", "fieldtype": "HTML", "width": 120},
+        {"label": "Region", "fieldname": "region", "fieldtype": "HTML", "width": 120},
+        {"label": "District", "fieldname": "district", "fieldtype": "HTML", "width": 120},
         {"label": "Branch Category", "fieldname": "branch_category", "fieldtype": "HTML", "width": 140},
     ]
 
 
 # =========================================================
-# GET PREVIOUS DATE (✔ ORIGINAL LOGIC – UNCHANGED)
+# PREVIOUS DATE (POINT-TO-POINT LOGIC)
 # =========================================================
 def get_previous_date(base_date, compare_type, filters):
     base_date = getdate(base_date)
@@ -70,7 +79,6 @@ def get_previous_date(base_date, compare_type, filters):
             AND MONTH(date) = MONTH(%(target_date)s)
             AND YEAR(date) = YEAR(%(target_date)s)
         """
-
     else:
         return None
 
@@ -134,7 +142,7 @@ def get_current_data(filters):
 
 
 # =========================================================
-# PREVIOUS ACHIEVEMENT % MAP (✔ ORIGINAL LOGIC)
+# PREVIOUS ACHIEVEMENT % MAP
 # =========================================================
 def get_previous_achievement_map(filters):
     if not filters.get("date") or not filters.get("compare_type"):
@@ -180,9 +188,37 @@ def get_previous_achievement_map(filters):
 
 
 # =========================================================
-# BUILD FINAL DATA (✔ CORRECT ORDER)
+# REPORT SUMMARY (ABOVE TABLE)
 # =========================================================
-def build_final_data(current_rows, previous_map, filters):
+def get_report_summary(data):
+    counts = {
+        "Pinnacle": 0,
+        "Master": 0,
+        "Accelerator": 0,
+        "Starter": 0,
+        "Learner": 0,
+        "Zero Level": 0,
+    }
+
+    for r in data:
+        cat = r.get("_cat")
+        if cat in counts:
+            counts[cat] += 1
+
+    return [
+        {"label": "Pinnacle", "value": counts["Pinnacle"], "indicator": "Purple"},
+        {"label": "Master", "value": counts["Master"], "indicator": "Green"},
+        {"label": "Accelerator", "value": counts["Accelerator"], "indicator": "Blue"},
+        {"label": "Starter", "value": counts["Starter"], "indicator": "Orange"},
+        {"label": "Learner", "value": counts["Learner"], "indicator": "Yellow"},
+        {"label": "Zero Level", "value": counts["Zero Level"], "indicator": "Red"},
+    ]
+
+
+# =========================================================
+# BUILD FINAL DATA (CALC → SORT → COLOR)
+# =========================================================
+def build_final_data(current_rows, previous_map, filters, keep_category=False):
     CATEGORY_ORDER = {
         "Pinnacle": 1,
         "Master": 2,
@@ -190,7 +226,6 @@ def build_final_data(current_rows, previous_map, filters):
         "Starter": 4,
         "Learner": 5,
         "Zero Level": 6,
-        "No Target": 7,
     }
 
     ROW_COLORS = {
@@ -200,7 +235,6 @@ def build_final_data(current_rows, previous_map, filters):
         "Starter": "#fff3e6",
         "Learner": "#fff9db",
         "Zero Level": "#fdecea",
-        "No Target": "#f1f3f5",
     }
 
     BADGE_COLORS = {
@@ -210,10 +244,9 @@ def build_final_data(current_rows, previous_map, filters):
         "Starter": "#fd7e14",
         "Learner": "#ffc107",
         "Zero Level": "#dc3545",
-        "No Target": "#6c757d",
     }
 
-    # ---------- STEP 1: CALC ----------
+    # ---------- CALC ----------
     for r in current_rows:
         ach = float(r.get("achievement") or 0)
         tgt = float(r.get("target") or 0)
@@ -241,13 +274,13 @@ def build_final_data(current_rows, previous_map, filters):
         r["_band"] = band
         r["_rank"] = CATEGORY_ORDER[cat]
 
-    # ---------- STEP 2: SORT ----------
+    # ---------- SORT ----------
     if filters.get("sort_mode") == "Overall Category":
         current_rows.sort(key=lambda x: (x["_rank"], -x["_pct"]))
     else:
         current_rows.sort(key=lambda x: (x.get("zone") or "", x["_rank"], -x["_pct"]))
 
-    # ---------- STEP 3: APPLY COLOR ----------
+    # ---------- COLOR ----------
     def wrap(val, bg):
         return f'<div style="background:{bg};padding:6px">{val}</div>'
 
@@ -267,16 +300,30 @@ def build_final_data(current_rows, previous_map, filters):
         r["compare_percent"] = wrap(f"{r['_cmp']}%", bg)
         r["performance_category"] = wrap(badge, bg)
         r["achievement_band"] = wrap(r["_band"], bg)
+        def format_number(value):
+            try:
+                return "{:,.2f}".format(float(value))
+            except (TypeError, ValueError):
+                return value
+
 
         for f in [
             "sol_id", "branch", "zone", "region",
-            "district", "date", "achievement",
-            "target", "branch_category"
+            "district", "date", "branch_category"
         ]:
             r[f] = wrap(r.get(f), bg)
 
-        for k in ["_pct", "_cmp", "_cat", "_band", "_rank"]:
+        # 🔹 Apply comma formatting ONLY to numbers
+        r["achievement"] = wrap(format_number(r.get("achievement")), bg)
+        r["target"] = wrap(format_number(r.get("target")), bg)
+
+
+        # cleanup
+        for k in ["_pct", "_cmp", "_band", "_rank"]:
             r.pop(k, None)
+
+        if not keep_category:
+            r.pop("_cat", None)
 
         final.append(r)
 
