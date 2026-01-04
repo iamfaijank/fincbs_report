@@ -173,7 +173,7 @@ function render_branch_master(b) {
 			"SOL ID": b.sol_id,
 			"Branch Name": b.branch,
 			District: b.district,
-			State: `${b.state || ""} (${b.state_code || ""})`,
+			State: `${b.state} (${b.state_code})`,
 			Zone: b.zone,
 			Region: b.region,
 			Email: b.email,
@@ -214,26 +214,6 @@ function render_branch_profile(data) {
 			"audit_rating",
 		],
 	};
-
-	data.bm_name = data.bm_name || "John Doe";
-	data.bm_vintage = data.bm_vintage || "5 years";
-	data.bm_doj = data.bm_doj || "01-01-2019";
-	data.staff_count = data.staff_count || 10;
-	data.total_no_of_budgeted_staff = data.total_no_of_budgeted_staff || 12;
-	data.total_staff_onboarded = data.total_staff_onboarded || 8;
-	data.total_book = data.total_book || "10,00,00,000";
-	data.ca_book = data.ca_book || "1,00,00,000";
-	data.sa_book = data.sa_book || "2,00,00,000";
-	data.fd_book = data.fd_book || "5,00,00,000";
-	data.rd_book = data.rd_book || "50,00,000";
-	data.dds_book = data.dds_book || "50,00,000";
-	data.smbg_book = data.smbg_book || "1,00,00,000";
-	data.total_ytd_target = data.total_ytd_target || "5,00,00,000";
-	data.total_ytd_achievement = data.total_ytd_achievement || "4,00,00,000";
-	data.total_mtd_target = data.total_mtd_target || "50,00,000";
-	data.total_mtd_achievement = data.total_mtd_achievement || "40,00,000";
-	data.total_productivity = data.total_productivity || "80%";
-	data.audit_rating = data.audit_rating || "A";
 
 	let html = "";
 	Object.keys(sections).forEach((title) => {
