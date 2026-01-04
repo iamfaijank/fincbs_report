@@ -3144,7 +3144,9 @@ class SahayogDashboard {
 					<thead>
 						<tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
 							<th style="padding:12px; text-align:left; font-weight:600; width:30px;">#</th>
-							<th style="padding:12px; text-align:left; font-weight:600;">Branch Details</th>
+							<th style="padding:12px; text-align:left; font-weight:600;">Branch Name</th>
+							<th style="padding:12px; text-align:left; font-weight:600;">Zone</th>
+							<th style="padding:12px; text-align:left; font-weight:600;">Region</th>
 							<th style="padding:12px; text-align:center; font-weight:600;">Target</th>
 							<th style="padding:12px; text-align:center; font-weight:600;">Achievement</th>
 							<th style="padding:12px; text-align:center; font-weight:600;">%</th>
@@ -3200,9 +3202,11 @@ class SahayogDashboard {
 							branch.branch_name || branch.branch
 						}</div>
 						<div style="font-size:11px; color:#64748b;">
-							${branch.zone} • ${branch.region || "N/A"} • SOL: ${branch.sol_id || "N/A"}
+							SOL: ${branch.sol_id || "N/A"}
 						</div>
 					</td>
+					<td style="padding:12px; text-align:left;">${branch.zone}</td>
+					<td style="padding:12px; text-align:left;">${branch.region || "N/A"}</td>
 					<td style="padding:12px; text-align:center; font-weight:700; color:#1e293b;">
 						${this.formatNumber(branch.yearly_target)}
 					</td>
@@ -3234,7 +3238,7 @@ class SahayogDashboard {
 					</tbody>
 					<tfoot>
 						<tr style="background:#f8fafc; border-top:2px solid #e2e8f0;">
-							<td style="padding:12px; text-align:left; font-weight:700; color:#1e293b;" colspan="2">
+							<td style="padding:12px; text-align:left; font-weight:700; color:#1e293b;" colspan="4">
 								Segment Total (${branches.length} branches)
 							</td>
 							<td style="padding:12px; text-align:center; font-weight:700; color:#1e293b;">
