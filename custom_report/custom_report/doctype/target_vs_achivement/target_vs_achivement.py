@@ -7,6 +7,26 @@ from frappe.utils import date_diff, flt, getdate, nowdate
 from frappe import _
 
 class TargetVsAchivement(Document):
+    def autoname(self):
+        if not self.sol_id or not self.financial_year or not self.type:
+            frappe.throw("SOL ID, Financial Year and Type are mandatory")
+
+        doc_type = self.type.upper()
+
+        if doc_type == "MONTHLY":
+            if not self.month:
+                frappe.throw("Month is mandatory for Monthly type")
+
+            self.name = (
+                f"{self.sol_id}-{self.financial_year}-MONTHLY-{self.month.upper()}"
+            )
+
+        elif doc_type in ("YEARLY", "YTD"):
+            self.name = f"{self.sol_id}-{self.financial_year}-{doc_type}"
+
+        else:
+            frappe.throw("Invalid type")
+
     
     def validate(self):
         self.validate_dates()
