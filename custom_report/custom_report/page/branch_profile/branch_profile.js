@@ -829,19 +829,19 @@ function render_branch_performance(data) {
 	}
 
 	// Placeholder performance data
-	const monthAchieved = data.month_achievement || 140000;
-	const monthTarget = data.month_target || 10000000;
-	const monthPercent = Math.round((monthAchieved / monthTarget) * 100) || 25;
+	const monthAchieved = data.month_achievement;
+	const monthTarget = data.month_target;
+	const monthPercent = Math.round((monthAchieved / monthTarget) * 100);
 	const monthStatus = getPerformanceStatus(monthPercent);
 
-	const ytdAchieved = data.total_ytd_achievement || 140000;
-	const ytdTarget = data.total_ytd_target || 10000000;
-	const ytdPercent = Math.round((ytdAchieved / ytdTarget) * 100) || 35;
+	const ytdAchieved = data.total_ytd_achievement;
+	const ytdTarget = data.total_ytd_target;
+	const ytdPercent = Math.round((ytdAchieved / ytdTarget) * 100);
 	const ytdStatus = getPerformanceStatus(ytdPercent);
 
-	const yearlyAchieved = data.yearly_achievement || 140000;
-	const yearlyTarget = data.yearly_target || 10000000;
-	const yearlyPercent = Math.round((yearlyAchieved / yearlyTarget) * 100) || 85;
+	const yearlyAchieved = data.yearly_achievement;
+	const yearlyTarget = data.yearly_target;
+	const yearlyPercent = Math.round((yearlyAchieved / yearlyTarget) * 100);
 	const yearlyStatus = getPerformanceStatus(yearlyPercent);
 
 	const currentMonth = new Date().toLocaleString('default', { month: 'short' }).toUpperCase();
