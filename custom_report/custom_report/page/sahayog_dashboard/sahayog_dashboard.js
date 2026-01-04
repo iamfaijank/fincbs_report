@@ -16,6 +16,7 @@ class SahayogDashboard {
 		this.data = null;
 		this.rawData = null;
 		this.allDrillData = [];
+		this.drillDownFilters = { sol: "", zone: "all", region: "all" };
 		this.availableDates = [];
 		this.selectedDate = null;
 		this.availableZones = [];
@@ -1336,6 +1337,64 @@ class SahayogDashboard {
 					}
 
 					/* Drill-down Segment Styles */
+					.perf-top-row { background-color: #e9f8db; } /* Light Green */
+					.perf-next-row { background-color: #e0f2fe; } /* Light Blue */
+					.perf-mid-row { background-color: #fdeace; } /* Light Orange */
+					.perf-bottom-row { background-color: #fadadd; } /* Light Red */
+
+					.perf-badge {
+						display: inline-block;
+						padding: 3px 10px;
+						border-radius: 12px;
+						font-size: 11px;
+						font-weight: 600;
+					}
+					.perf-badge.green { background-color: #b7eb8f; color: #389e0d; border: 1px solid #95de64; }
+					.perf-badge.blue { background-color: #bae7ff; color: #096dd9; border: 1px solid #91d5ff; }
+					.perf-badge.orange { background-color: #ffe7ba; color: #d46b08; border: 1px solid #ffd591; }
+					.perf-badge.red { background-color: #ffccc7; color: #cf1322; border: 1px solid #ffa39e; }
+					.perf-badge.grey { background-color: #f5f5f5; color: #8c8c8c; border: 1px solid #d9d9d9;}
+
+					.drill-down-filters {
+						padding: 16px;
+						background-color: #f8fafc;
+						border: 1px solid #e2e8f0;
+						border-radius: 8px;
+						margin-bottom: 16px;
+						display: flex;
+						gap: 20px;
+						align-items: center;
+					}
+					.drill-down-filters .filter-group {
+						display: flex;
+						flex-direction: column;
+						gap: 4px;
+					}
+					.drill-down-filters label {
+						font-size: 11px;
+						font-weight: 700;
+						color: #64748b;
+						text-transform: uppercase;
+					}
+					.drill-down-filters input, .drill-down-filters select {
+						min-width: 250px;
+						padding: 8px 12px;
+						border-radius: 6px;
+						border: 1px solid #cbd5e1;
+						background: #fff;
+						font-size: 13px;
+					}
+					.drill-down-filters .filter-group button {
+						padding: 8px 16px;
+						border-radius: 6px;
+						border: none;
+						background: #dc2626;
+						color: white;
+						font-weight: 600;
+						cursor: pointer;
+						align-self: flex-end;
+					}
+
 					.drill-down-view {
 						display: none;
 						position: fixed;
@@ -2991,280 +3050,207 @@ class SahayogDashboard {
 			return;
 		}
 
-		const metadata = response.metadata;
-		const segments = response.segments;
+		this.allDrillData = response; // Store for filtering
+		const allBranches = response.branches;
+		
+		const zoneSorter = (a, b) => {
+			const getSortKey = (zoneName) => {
+				if (zoneName && zoneName.startsWith("ZONE-")) {
+					try {
+						const zoneNum = parseInt(zoneName.split("-")[1], 10);
+						if (!isNaN(zoneNum)) {
+							return [0, zoneNum];
+						}
+					} catch (e) {
+						// fall through
+					}
+				}
+				return [1, zoneName]; // Non "ZONE-X" formats come after
+			};
+		
+			const keyA = getSortKey(a);
+			const keyB = getSortKey(b);
+		
+			if (keyA[0] < keyB[0]) return -1;
+			if (keyA[0] > keyB[0]) return 1;
+			
+			if (keyA[1] < keyB[1]) return -1;
+			if (keyA[1] > keyB[1]) return 1;
+			
+			return 0;
+		};
 
-		// 1. SHOW METADATA HEADER
-		const metaHtml = `
-			<div style="background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius:8px; padding:16px 20px; margin-bottom:16px; color:white;">
-				<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-					<div>
-						<div style="font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px;">
-							<div style="background:${
-								metadata.drill_type === "CATEGORY" ? "#6366f1" : "#10b981"
-							}; padding:4px 10px; border-radius:6px; font-size:11px;">
-								${metadata.drill_type}
-							</div>
-							${metadata.drill_title}
-							<div style="background:rgba(255,255,255,0.15); padding:4px 10px; border-radius:6px; font-size:10px; border:1px solid rgba(255,255,255,0.2);">
-								${this.targetType}
-							</div>
-						</div>
-						<div style="font-size:12px; opacity:0.8; margin-top:4px;">
-							${this.formatDate(metadata.selected_date)} • ${metadata.total_branches} branches
-						</div>
-					</div>
-					<div style="text-align:right;">
-						<div style="font-size:24px; font-weight:700;">${metadata.avg_achievement_pct}%</div>
-						<div style="font-size:11px; opacity:0.8;">Overall Achievement</div>
-					</div>
+		const uniqueZonesFromData = [...new Set(allBranches.map(b => b.zone).filter(z => z))];
+		uniqueZonesFromData.sort(zoneSorter);
+		const uniqueZones = ["All", ...uniqueZonesFromData];
+
+		const uniqueRegionsFromData = [...new Set(allBranches.map(b => b.region).filter(r => r))];
+        uniqueRegionsFromData.sort(); // Alphabetical sort
+        const uniqueRegions = ["All", ...uniqueRegionsFromData];
+
+		// 1. FILTERS
+		const filtersHtml = `
+			<div class="drill-down-filters">
+				<div class="filter-group">
+					<label for="drill-sol-filter">Filter by SOL ID or Branch Name</label>
+					<input type="text" id="drill-sol-filter" placeholder="e.g., 12345 or 'Main Branch'">
 				</div>
-				
-				<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-top:16px;">
-					<div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:6px; text-align:center;">
-						<div style="font-size:18px; font-weight:700;">${metadata.total_branches}</div>
-						<div style="font-size:10px; opacity:0.8;">Total Branches</div>
-					</div>
-					<div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:6px; text-align:center;">
-						<div style="font-size:18px; font-weight:700;">${this.formatNumber(metadata.total_target)}</div>
-						<div style="font-size:10px; opacity:0.8;">Total Target</div>
-					</div>
-					<div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:6px; text-align:center;">
-						<div style="font-size:18px; font-weight:700;">${this.formatNumber(
-							metadata.total_achievement
-						)}</div>
-						<div style="font-size:10px; opacity:0.8;">Total Achievement</div>
-					</div>
-					<div style="background:${
-						metadata.avg_achievement_pct >= 80
-							? "rgba(34,197,94,0.3)"
-							: metadata.avg_achievement_pct >= 60
-							? "rgba(245,158,11,0.3)"
-							: "rgba(239,68,68,0.3)"
-					}; padding:10px; border-radius:6px; text-align:center;">
-						<div style="font-size:18px; font-weight:700;">${metadata.avg_achievement_pct}%</div>
-						<div style="font-size:10px; opacity:0.8;">Avg. Achievement</div>
-					</div>
+				<div class="filter-group">
+					<label for="drill-zone-filter">Filter by Zone</label>
+					<select id="drill-zone-filter">
+						${uniqueZones.map(z => `<option value="${z}">${z}</option>`).join("")}
+					</select>
+				</div>
+				<div class="filter-group">
+					<label for="drill-region-filter">Filter by Region</label>
+					<select id="drill-region-filter">
+						${uniqueRegions.map(r => `<option value="${r}">${r}</option>`).join("")}
+					</select>
 				</div>
 			</div>
 		`;
-		container.append(metaHtml);
+		container.append(filtersHtml);
 
-		// 2. SHOW SEGMENTS SUMMARY CARD
-		// Removed as per user request.
 
-		// 3. SHOW DETAILED SEGMENTS
-		segments.forEach((seg, idx) => {
-			const colorConfig = [
-				{
-					colorClass: "segment-top",
-					badge: "🥇",
-					gradient: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
-				},
-				{
-					colorClass: "segment-next",
-					badge: "🥈",
-					gradient: "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)",
-				},
-				{
-					colorClass: "segment-mid",
-					badge: "🥉",
-					gradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-				},
-				{
-					colorClass: "segment-bottom",
-					badge: "⚠️",
-					gradient: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-				},
-			][idx];
+		// 2. UNIFIED TABLE
+		const tableHtml = `
+			<div class="table-container-wrapper" style="max-height: 70vh;">
+				<table class="sahayog-table">
+					<thead>
+						<tr>
+							<th>Sr. No.</th>
+							<th class="row-label">Branch Name</th>
+							<th>SOL ID</th>
+							<th>Zone</th>
+							<th>Region</th>
+							<th>Target</th>
+							<th>Achievement</th>
+							<th>% Achievement</th>
+							<th>Performance Category</th>
+						</tr>
+					</thead>
+					<tbody id="drill-down-tbody-unified">
+					</tbody>
+				</table>
+			</div>
+		`;
+		container.append(tableHtml);
 
-			const segmentHtml = `
-				<div class="segment-container" data-segment="${seg.segment_name}">
-					<div class="segment-header" style="background:${
-						colorConfig.gradient
-					}; border-radius:6px; margin-bottom:8px;">
-						<div style="display:flex; align-items:center; gap:12px; padding:14px 16px; cursor:pointer;">
-							<div style="font-size:20px; background:rgba(255,255,255,0.2); width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:8px;">
-								${seg.branch_count}
-							</div>
-							<div style="flex:1;">
-								<div style="font-weight:700; font-size:13px; color:white; display:flex; align-items:center; gap:8px;">
-									${seg.segment_name}
-									<span style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:10px; font-size:10px; font-weight:600;">
-										${seg.branch_count} branches
-									</span>
-								</div>
-								<div style="font-size:11px; color:rgba(255,255,255,0.9); margin-top:2px;">
-									${seg.description} • Avg: ${seg.avg_achievement_pct}% achievement
-								</div>
-							</div>
-							<div class="segment-toggle" style="color:white;">
-								<i class="fa fa-chevron-down"></i>
-							</div>
-						</div>
-					</div>
-					<div class="segment-content" style="display:none; padding:0; margin-bottom:20px;">
-						${
-							seg.branches.length > 0
-								? this.createEnhancedDrillDownTable(seg.branches, seg.segment_name)
-								: `<div style="padding:20px; text-align:center; color:#666; font-style:italic; background:#f8fafc; border-radius:6px;">
-								No branches in this segment
-							</div>`
-						}
-					</div>
-				</div>
-			`;
-			container.append(segmentHtml);
+		// 3. RENDER TABLE BODY
+		this._renderDrillDownTableBody(allBranches);
+
+		// 4. ATTACH FILTER EVENTS
+		$("#drill-sol-filter, #drill-zone-filter, #drill-region-filter").on("input", () => {
+			this.drillDownFilters.sol = $("#drill-sol-filter").val().toLowerCase();
+			this.drillDownFilters.zone = $("#drill-zone-filter").val();
+			this.drillDownFilters.region = $("#drill-region-filter").val();
+			this._applyDrillDownFilters();
 		});
+	}
 
-		// Add segment toggle functionality
-		$(".segment-header").on("click", function () {
-			const $segment = $(this).closest(".segment-container");
-			const $content = $segment.find(".segment-content");
-			const $toggle = $(this).find(".segment-toggle i");
+	_applyDrillDownFilters() {
+		let filteredBranches = this.allDrillData.branches;
 
-			if ($content.is(":visible")) {
-				$content.slideUp(200);
-				$toggle.removeClass("fa-chevron-up").addClass("fa-chevron-down");
-			} else {
-				$content.slideDown(200);
-				$toggle.removeClass("fa-chevron-down").addClass("fa-chevron-up");
+		// SOL / Branch Name Filter
+		if (this.drillDownFilters.sol) {
+			filteredBranches = filteredBranches.filter(b => {
+				const solMatch = b.sol_id && b.sol_id.toLowerCase().includes(this.drillDownFilters.sol);
+				const nameMatch = b.branch_name && b.branch_name.toLowerCase().includes(this.drillDownFilters.sol);
+				return solMatch || nameMatch;
+			});
+		}
+
+		// Zone Filter
+		if (this.drillDownFilters.zone && this.drillDownFilters.zone !== "All") {
+			filteredBranches = filteredBranches.filter(b => b.zone === this.drillDownFilters.zone);
+		}
+
+		// Region Filter
+		if (this.drillDownFilters.region && this.drillDownFilters.region !== "All") {
+			filteredBranches = filteredBranches.filter(b => b.region === this.drillDownFilters.region);
+		}
+
+		this._renderDrillDownTableBody(filteredBranches);
+	}
+	
+	_getSegmentForBranch(branchIndex, segments) {
+		for (let i = 0; i < segments.length; i++) {
+			const seg = segments[i];
+			if (branchIndex >= seg.start_index && branchIndex < seg.end_index) {
+				const segmentName = seg.segment_name;
+				let colorClass = "";
+				let badgeColor = "";
+	
+				switch (i) {
+					case 0: // TOP 25%
+						colorClass = "perf-top-row";
+						badgeColor = "green";
+						break;
+					case 1: // NEXT 25%
+						colorClass = "perf-next-row";
+						badgeColor = "blue";
+						break;
+					case 2: // MID 25%
+						colorClass = "perf-mid-row";
+						badgeColor = "orange";
+						break;
+					case 3: // BOTTOM 25%
+						colorClass = "perf-bottom-row";
+						badgeColor = "red";
+						break;
+				}
+				return { name: segmentName, colorClass, badgeColor };
 			}
+		}
+		return { name: "N/A", colorClass: "", badgeColor: "grey" };
+	}
+
+	_renderDrillDownTableBody(branches) {
+		const tbody = $("#drill-down-tbody-unified");
+		tbody.empty();
+
+		if (branches.length === 0) {
+			tbody.html(
+				`<tr><td colspan="8" style="text-align:center; padding: 40px;">No branches match the current filters.</td></tr>`
+			);
+			return;
+		}
+		
+		const original_branches = this.allDrillData.branches
+		const segments = this.allDrillData.segments
+
+		branches.forEach((branch, index) => {
+			const originalIndex = original_branches.findIndex(b => b.sol_id === branch.sol_id);
+			const segmentInfo = this._getSegmentForBranch(originalIndex, segments);
+
+			const rowHtml = `
+				<tr class="${segmentInfo.colorClass}">
+					<td>${index + 1}</td>
+					<td class="row-label branch-name-cell" data-sol-id="${branch.sol_id}" style="cursor:pointer;">${branch.branch_name}</td>
+					<td>${branch.sol_id}</td>
+					<td>${branch.zone}</td>
+					<td>${branch.region}</td>
+					<td>${this.formatNumber(branch.yearly_target)}</td>
+					<td>${this.formatNumber(branch.total_ach)}</td>
+					<td>${branch.ach_pct.toFixed(2)}%</td>
+					<td>
+						<span class="perf-badge ${segmentInfo.badgeColor}">
+							${segmentInfo.name}
+						</span>
+					</td>
+				</tr>
+			`;
+			tbody.append(rowHtml);
 		});
 	}
 
 	// New function for enhanced table
 	createEnhancedDrillDownTable(branches, segmentName) {
-		// Sort by achievement percentage
-		branches.sort((a, b) => (b.ach_pct || 0) - (a.ach_pct || 0));
-
-		let tableHtml = `
-			<div style="overflow-x:auto; border:1px solid #e2e8f0; border-radius:6px;">
-				<table style="width:100%; border-collapse:collapse; font-size:12px;">
-					<thead>
-						<tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
-							<th style="padding:12px; text-align:left; font-weight:600; width:30px;">#</th>
-							<th style="padding:12px; text-align:left; font-weight:600;">Branch Name</th>
-							<th style="padding:12px; text-align:left; font-weight:600;">Zone</th>
-							<th style="padding:12px; text-align:left; font-weight:600;">Region</th>
-							<th style="padding:12px; text-align:center; font-weight:600;">Target</th>
-							<th style="padding:12px; text-align:center; font-weight:600;">Achievement</th>
-							<th style="padding:12px; text-align:center; font-weight:600;">%</th>
-							<th style="padding:12px; text-align:center; font-weight:600;">Performance</th>
-						</tr>
-					</thead>
-					<tbody>
-		`;
-
-		branches.forEach((branch, index) => {
-			const rank = index + 1;
-			const pct = branch.ach_pct || 0;
-
-			// Performance badge
-			let performanceBadge = "";
-			let performanceColor = "";
-
-			if (pct >= 100) {
-				performanceBadge = "Exceeding";
-				performanceColor = "#22c55e";
-			} else if (pct >= 80) {
-				performanceBadge = "On Track";
-				performanceColor = "#16a34a";
-			} else if (pct >= 60) {
-				performanceBadge = "Moderate";
-				performanceColor = "#f59e0b";
-			} else if (pct >= 40) {
-				performanceBadge = "Needs Push";
-				performanceColor = "#f97316";
-			} else {
-				performanceBadge = "Critical";
-				performanceColor = "#ef4444";
-			}
-
-			// Rank badge
-			let rankBadge = "";
-			if (rank <= 3 && segmentName === "TOP 25%") {
-				const rankIcons = ["🥇", "🥈", "🥉"];
-				rankBadge = rankIcons[rank - 1];
-			} else {
-				rankBadge = `<span style="font-weight:700; color:#64748b;">${rank}</span>`;
-			}
-
-			tableHtml += `
-				<tr style="border-bottom:1px solid #f1f5f9; transition:all 0.2s;" 
-					onmouseover="this.style.backgroundColor='#f8fafc'" 
-					onmouseout="this.style.backgroundColor=''">
-					<td style="padding:12px; text-align:center; font-size:14px;">
-						${rankBadge}
-					</td>
-					<td style="padding:12px; cursor:pointer;" class="branch-name-cell" data-sol-id="${branch.sol_id}">
-						<div style="font-weight:600; color:#1e293b; margin-bottom:2px;">${
-							branch.branch_name || branch.branch
-						}</div>
-						<div style="font-size:11px; color:#64748b;">
-							SOL: ${branch.sol_id || "N/A"}
-						</div>
-					</td>
-					<td style="padding:12px; text-align:left;">${branch.zone}</td>
-					<td style="padding:12px; text-align:left;">${branch.region || "N/A"}</td>
-					<td style="padding:12px; text-align:center; font-weight:700; color:#1e293b;">
-						${this.formatNumber(branch.yearly_target)}
-					</td>
-					<td style="padding:12px; text-align:center; font-weight:700; color:#000;">
-						${this.formatNumber(branch.total_ach)}
-					</td>
-					<td style="padding:12px; text-align:center;">
-						<div style="display:inline-block; padding:6px 12px; border-radius:20px; font-weight:700; font-size:12px; 
-							background:${this.getPercentageColor(pct)}; color:#1e293b;">
-							${pct.toFixed(1)}%
-						</div>
-					</td>
-					<td style="padding:12px; text-align:center;">
-						<div style="display:inline-block; padding:5px 10px; border-radius:12px; font-size:11px; font-weight:600;
-							background:${performanceColor}15; color:${performanceColor}; border:1px solid ${performanceColor}30;">
-							${performanceBadge}
-						</div>
-					</td>
-				</tr>
-			`;
-		});
-
-		// Add summary row
-		const totalTarget = branches.reduce((sum, b) => sum + (b.yearly_target || 0), 0);
-		const totalAchievement = branches.reduce((sum, b) => sum + (b.total_ach || 0), 0);
-		const avgPercentage = totalTarget > 0 ? (totalAchievement / totalTarget) * 100 : 0;
-
-		tableHtml += `
-					</tbody>
-					<tfoot>
-						<tr style="background:#f8fafc; border-top:2px solid #e2e8f0;">
-							<td style="padding:12px; text-align:left; font-weight:700; color:#1e293b;" colspan="4">
-								Segment Total (${branches.length} branches)
-							</td>
-							<td style="padding:12px; text-align:center; font-weight:700; color:#1e293b;">
-								${this.formatNumber(totalTarget)}
-							</td>
-							<td style="padding:12px; text-align:center; font-weight:700; color:#000;">
-								${this.formatNumber(totalAchievement)}
-							</td>
-							<td style="padding:12px; text-align:center; font-weight:700;">
-								<div style="display:inline-block; padding:6px 12px; border-radius:20px; background:#1e293b; color:white;">
-									${avgPercentage.toFixed(1)}%
-								</div>
-							</td>
-							<td style="padding:12px; text-align:center;">
-								<div style="display:inline-block; padding:5px 10px; border-radius:12px; font-size:11px; font-weight:600;
-									background:#1e293b; color:white;">
-									${segmentName}
-								</div>
-							</td>
-						</tr>
-					</tfoot>
-				</table>
-			</div>
-		`;
-
-		return tableHtml;
+		// This function is now OBSOLETE and REPLACED by the unified table logic in `renderDrillDown`.
+		// Kept here to avoid breaking changes if it's called from somewhere else unexpectedly,
+		// but it should not be used in the new flow.
+		console.warn("createEnhancedDrillDownTable is obsolete and should not be used.");
+		return '<div></div>';
 	}
 
 	// Helper functions
