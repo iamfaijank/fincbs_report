@@ -888,12 +888,12 @@ function render_staff_manpower(data) {
 
 	// Placeholder staff data - will be replaced with actual data later
 	const staffData = {
-		"Branch Manager": data.bm_count,
-		"BDO": data.bdo_count,
-		"BDE": data.bde_count,
-		"RO": data.ro_count,
-		"COM": data.com_count,
-		"BOM": data.bom_count,
+		"Branch Manager": data.bm_count || 1,
+		"BDO": data.bdo_count || 5,
+		"BDE": data.bde_count || 3,
+		"RO": data.ro_count || 5,
+		"COM": data.com_count || 1,
+		"BOM": data.bom_count || 2,
 	};
 
 	let staffHtml = "";
