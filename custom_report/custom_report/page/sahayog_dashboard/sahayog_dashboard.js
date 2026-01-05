@@ -1,12 +1,12 @@
 // ============================================================================
 // DRISHTI PERFORMANCE DASHBOARD - MONTH-WISE CATEGORY VERSION
-// Version: 4.3.1 | Complete Filter Fix - Proper DOM Element Handling
+// Version: 4.4.0 | With Drill-Down from Category to Branch View
 // ============================================================================
 
 frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
-		title: "DRISHTI v4.3 - Advanced Filters",
+		title: "DRISHTI v4.4 - With Drill-Down",
 		single_column: true,
 	});
 
@@ -18,13 +18,14 @@ class DrishtiDashboardV4 {
 		this.page = page;
 		this.state = {
 			financialYear: "2025-2026",
-			activeTab: "branch", // category | branch
+			activeTab: "category", // category | branch
 			formatMode: "number", // number | words
 			selectedDate: null,
 			selectedCategories: [],
 			selectedZones: [],
 			selectedRegion: "",
 			branchSearchTerm: "",
+			drillDownActive: false, // Track if drill-down is active
 		};
 		this.data = null;
 		this.availableFilters = {
@@ -42,6 +43,55 @@ class DrishtiDashboardV4 {
 		this.createControls();
 		this.createTabsAndContainer();
 		this.loadData();
+	}
+
+	// ========================================================================
+	// DRILL-DOWN FUNCTIONALITY
+	// ========================================================================
+	drillDownToCategory(category) {
+		console.log(`🔍 Drilling down to Category: ${category}`);
+
+		// Set filter to only this category
+		this.state.selectedCategories = [category];
+		this.state.drillDownActive = true;
+
+		// Update UI - uncheck all, then check only this category
+		this.page.main.find(".category-checkbox").prop("checked", false);
+		this.page.main.find(`.category-checkbox[value="${category}"]`).prop("checked", true);
+		this.updateFilterButtonLabel("category");
+
+		// Switch to Branch view
+		this.switchTab("branch");
+	}
+
+	drillDownToZone(category, zone) {
+		console.log(`🔍 Drilling down to Category: ${category}, Zone: ${zone}`);
+
+		// Set filters
+		this.state.selectedCategories = [category];
+		this.state.selectedZones = [zone];
+		this.state.drillDownActive = true;
+
+		// Update category UI
+		this.page.main.find(".category-checkbox").prop("checked", false);
+		this.page.main.find(`.category-checkbox[value="${category}"]`).prop("checked", true);
+		this.updateFilterButtonLabel("category");
+
+		// Update zone UI
+		this.page.main.find(".zone-checkbox").prop("checked", false);
+		this.page.main.find(`.zone-checkbox[value="${zone}"]`).prop("checked", true);
+		this.updateFilterButtonLabel("zone");
+
+		// Switch to Branch view
+		this.switchTab("branch");
+	}
+
+	clearDrillDown() {
+		if (this.state.drillDownActive) {
+			console.log("🔄 Clearing drill-down filters");
+			this.state.drillDownActive = false;
+			this.clearAllFilters();
+		}
 	}
 
 	// ========================================================================
@@ -134,7 +184,6 @@ class DrishtiDashboardV4 {
 	}
 
 	populateFilterOptions() {
-		// Populate Category checkboxes
 		const categoryContainer = this.page.main.find("#category-options");
 		this.availableFilters.categories.forEach((cat) => {
 			categoryContainer.append(`
@@ -147,7 +196,6 @@ class DrishtiDashboardV4 {
             `);
 		});
 
-		// Populate Zone checkboxes (will be updated after data load)
 		this.updateZoneOptions();
 	}
 
@@ -180,36 +228,30 @@ class DrishtiDashboardV4 {
 	attachControlEvents() {
 		const self = this;
 
-		// Financial Year selector
 		this.page.main.find("#fy-selector").on("change", function () {
 			self.state.financialYear = $(this).val();
 			self.loadData();
 		});
 
-		// Date selector - auto apply
 		this.page.main.find("#date-selector").on("change", function () {
 			self.state.selectedDate = $(this).val();
 			self.applyFiltersAndRender();
 		});
 
-		// Format toggle
 		this.page.main.find("#format-toggle").on("click", function () {
 			self.toggleFormat();
 		});
 
-		// Category filter dropdown
 		this.page.main.find("#category-filter-btn").on("click", function (e) {
 			e.stopPropagation();
 			self.toggleFilterDropdown("#category-filter-dropdown");
 		});
 
-		// Zone filter dropdown
 		this.page.main.find("#zone-filter-btn").on("click", function (e) {
 			e.stopPropagation();
 			self.toggleFilterDropdown("#zone-filter-dropdown");
 		});
 
-		// Category select all
 		this.page.main.find("#category-select-all").on("change", function () {
 			const checked = $(this).prop("checked");
 			self.page.main.find(".category-checkbox").prop("checked", checked);
@@ -217,7 +259,6 @@ class DrishtiDashboardV4 {
 			self.applyFiltersAndRender();
 		});
 
-		// Zone select all
 		this.page.main.find("#zone-select-all").on("change", function () {
 			const checked = $(this).prop("checked");
 			self.page.main.find(".zone-checkbox").prop("checked", checked);
@@ -225,25 +266,21 @@ class DrishtiDashboardV4 {
 			self.applyFiltersAndRender();
 		});
 
-		// Individual category checkboxes - auto apply
 		this.page.main.on("change", ".category-checkbox", function () {
 			self.updateFilterButtonLabel("category");
 			self.applyFiltersAndRender();
 		});
 
-		// Individual zone checkboxes - auto apply
 		this.page.main.on("change", ".zone-checkbox", function () {
 			self.updateFilterButtonLabel("zone");
 			self.applyFiltersAndRender();
 		});
 
-		// Region selector - auto apply
 		this.page.main.find("#region-selector").on("change", function () {
 			self.state.selectedRegion = $(this).val() || "";
 			self.applyFiltersAndRender();
 		});
 
-		// Branch search - auto apply on Enter or after 500ms delay
 		let searchTimeout;
 		this.page.main.find("#branch-search").on("input", function () {
 			clearTimeout(searchTimeout);
@@ -255,24 +292,20 @@ class DrishtiDashboardV4 {
 
 		this.page.main.find("#branch-search").on("keypress", function (e) {
 			if (e.which === 13) {
-				// Enter key
 				clearTimeout(searchTimeout);
 				self.state.branchSearchTerm = $(this).val() || "";
 				self.applyFiltersAndRender();
 			}
 		});
 
-		// Clear filters button
 		this.page.main.find("#clear-filters").on("click", function () {
 			self.clearAllFilters();
 		});
 
-		// Close dropdowns when clicking outside
 		$(document).on("click", function () {
 			self.page.main.find(".filter-dropdown-menu").hide();
 		});
 
-		// Prevent dropdown close when clicking inside
 		this.page.main.find(".filter-dropdown-menu").on("click", function (e) {
 			e.stopPropagation();
 		});
@@ -282,10 +315,8 @@ class DrishtiDashboardV4 {
 		const dropdown = this.page.main.find(selector);
 		const isVisible = dropdown.is(":visible");
 
-		// Hide all dropdowns
 		this.page.main.find(".filter-dropdown-menu").hide();
 
-		// Toggle current dropdown
 		if (!isVisible) {
 			dropdown.show();
 		}
@@ -326,22 +357,20 @@ class DrishtiDashboardV4 {
 	applyFiltersAndRender() {
 		const self = this;
 
-		// Collect selected categories - FIXED: Store DOM element separately
 		this.state.selectedCategories = [];
 		const categoryCheckboxes = this.page.main.find(".category-checkbox:checked");
 		categoryCheckboxes.each(function () {
-			const domElement = this; // DOM element
+			const domElement = this;
 			const val = domElement.getAttribute("value");
 			if (val) {
 				self.state.selectedCategories.push(val);
 			}
 		});
 
-		// Collect selected zones - FIXED: Store DOM element separately
 		this.state.selectedZones = [];
 		const zoneCheckboxes = this.page.main.find(".zone-checkbox:checked");
 		zoneCheckboxes.each(function () {
-			const domElement = this; // DOM element
+			const domElement = this;
 			const val = domElement.getAttribute("value");
 			if (val) {
 				self.state.selectedZones.push(val);
@@ -355,22 +384,19 @@ class DrishtiDashboardV4 {
 			branch: this.state.branchSearchTerm,
 		});
 
-		// Re-render with filters
 		this.render();
 
-		// Close dropdowns
 		this.page.main.find(".filter-dropdown-menu").hide();
 	}
 
 	clearAllFilters() {
-		// Reset state
 		this.state.selectedDate = null;
 		this.state.selectedCategories = [];
 		this.state.selectedZones = [];
 		this.state.selectedRegion = "";
 		this.state.branchSearchTerm = "";
+		this.state.drillDownActive = false;
 
-		// Reset UI
 		this.page.main.find("#date-selector").val("");
 		this.page.main.find("#region-selector").val("");
 		this.page.main.find("#branch-search").val("");
@@ -384,7 +410,6 @@ class DrishtiDashboardV4 {
 
 		console.log("🔄 Filters Cleared");
 
-		// Re-render
 		this.applyFiltersAndRender();
 	}
 
@@ -472,7 +497,6 @@ class DrishtiDashboardV4 {
 					this.data = r.message.data;
 					console.log("✨ API Response:", this.data);
 
-					// Extract available zones and regions from data
 					this.extractAvailableFilters();
 					this.updateZoneOptions();
 					this.updateRegionOptions();
@@ -491,7 +515,6 @@ class DrishtiDashboardV4 {
 		const regions = new Set();
 		const branches = new Set();
 
-		// Extract from consolidated_branches
 		if (this.data.consolidated_branches) {
 			this.data.consolidated_branches.forEach((branch) => {
 				if (branch.zone) zones.add(branch.zone);
@@ -500,7 +523,6 @@ class DrishtiDashboardV4 {
 			});
 		}
 
-		// Sort zones properly
 		this.availableFilters.zones = Array.from(zones).sort((a, b) => {
 			const aMatch = a.match(/ZONE-(\d+)/);
 			const bMatch = b.match(/ZONE-(\d+)/);
@@ -552,7 +574,6 @@ class DrishtiDashboardV4 {
 			return;
 		}
 
-		// Show filter summary
 		this.updateFilterSummary();
 
 		if (this.state.activeTab === "branch") {
@@ -599,13 +620,9 @@ class DrishtiDashboardV4 {
 		}
 	}
 
-	// ========================================================================
-	// FILTER APPLICATION
-	// ========================================================================
 	applyFiltersToData(data) {
 		let filtered = [...data];
 
-		// Filter by categories
 		if (
 			this.state.selectedCategories.length > 0 &&
 			this.state.selectedCategories.length < this.availableFilters.categories.length
@@ -615,7 +632,6 @@ class DrishtiDashboardV4 {
 			);
 		}
 
-		// Filter by zones
 		if (
 			this.state.selectedZones.length > 0 &&
 			this.state.selectedZones.length < this.availableFilters.zones.length
@@ -623,12 +639,10 @@ class DrishtiDashboardV4 {
 			filtered = filtered.filter((item) => this.state.selectedZones.includes(item.zone));
 		}
 
-		// Filter by region
 		if (this.state.selectedRegion) {
 			filtered = filtered.filter((item) => item.region === this.state.selectedRegion);
 		}
 
-		// Filter by branch search
 		if (this.state.branchSearchTerm) {
 			const searchTerm = this.state.branchSearchTerm.toLowerCase().trim();
 			filtered = filtered.filter((item) => {
@@ -641,9 +655,9 @@ class DrishtiDashboardV4 {
 		return filtered;
 	}
 
-	// Rest of the code remains exactly the same...
-	// (I'll include only the key parts to save space, but full code is identical)
-
+	// ========================================================================
+	// CATEGORY VIEW WITH DRILL-DOWN
+	// ========================================================================
 	renderCategoryView(months) {
 		const categoryData = this.data.months || {};
 
@@ -677,6 +691,33 @@ class DrishtiDashboardV4 {
 		this.page.main.find("#table-foot").html(footerHtml);
 
 		this.attachCategoryCollapseHandlers();
+		this.attachDrillDownHandlers(); // NEW: Attach drill-down click handlers
+	}
+
+	// NEW: Attach drill-down click handlers
+	attachDrillDownHandlers() {
+		const self = this;
+
+		// Category row drill-down - click on branch count
+		this.page.main
+			.find(".drill-category")
+			.off("click")
+			.on("click", function (e) {
+				e.stopPropagation(); // Prevent row collapse
+				const category = $(this).data("category");
+				self.drillDownToCategory(category);
+			});
+
+		// Zone row drill-down - click on branch count
+		this.page.main
+			.find(".drill-zone")
+			.off("click")
+			.on("click", function (e) {
+				e.stopPropagation();
+				const category = $(this).data("category");
+				const zone = $(this).data("zone");
+				self.drillDownToZone(category, zone);
+			});
 	}
 
 	buildCategoryTableHeader(months) {
@@ -803,7 +844,13 @@ class DrishtiDashboardV4 {
 			const pct = this.calcPct(md.achievement, md.target);
 
 			html += `
-                <td style="text-align: center; padding: 10px;">${md.branches}</td>
+                <td style="text-align: center; padding: 10px;">
+                    <span class="drill-category" data-category="${category}" 
+                          style="cursor: pointer; color: #0066cc; text-decoration: underline; font-weight: 600;"
+                          title="Click to drill down to branches">
+                        ${md.branches}
+                    </span>
+                </td>
                 <td style="text-align: right; padding: 10px;">${this.formatCurrency(
 					md.target
 				)}</td>
@@ -817,9 +864,13 @@ class DrishtiDashboardV4 {
 		});
 
 		html += `
-            <td style="text-align: center; padding: 10px; background: #fff;">${
-				categoryTotals.totalBranches
-			}</td>
+            <td style="text-align: center; padding: 10px; background: #fff;">
+                <span class="drill-category" data-category="${category}" 
+                      style="cursor: pointer; color: #0066cc; text-decoration: underline; font-weight: 600;"
+                      title="Click to drill down to branches">
+                    ${categoryTotals.totalBranches}
+                </span>
+            </td>
             <td style="text-align: right; padding: 10px; background: #fff;">${this.formatCurrency(
 				categoryTotals.totalTarget
 			)}</td>
@@ -871,7 +922,17 @@ class DrishtiDashboardV4 {
 				zoneTotalAch += achievement;
 
 				html += `
-                    <td style="text-align: center; padding: 10px;">${branches || "-"}</td>
+                    <td style="text-align: center; padding: 10px;">
+                        ${
+							branches > 0
+								? `<span class="drill-zone" data-category="${category}" data-zone="${zone}" 
+                              style="cursor: pointer; color: #0066cc; text-decoration: underline;"
+                              title="Click to drill down to branches">
+                            ${branches}
+                        </span>`
+								: "-"
+						}
+                    </td>
                     <td style="text-align: right; padding: 10px;">${
 						target > 0 ? this.formatCurrency(target) : "-"
 					}</td>
@@ -889,7 +950,13 @@ class DrishtiDashboardV4 {
 			const zoneTotalPct = this.calcPct(zoneTotalAch, zoneTotalTarget);
 
 			html += `
-                <td style="text-align: center; padding: 10px; background: #fafafa;">${maxBranches}</td>
+                <td style="text-align: center; padding: 10px; background: #fafafa;">
+                    <span class="drill-zone" data-category="${category}" data-zone="${zone}" 
+                          style="cursor: pointer; color: #0066cc; text-decoration: underline;"
+                          title="Click to drill down to branches">
+                        ${maxBranches}
+                    </span>
+                </td>
                 <td style="text-align: right; padding: 10px; background: #fafafa;">${this.formatCurrency(
 					zoneTotalTarget
 				)}</td>
@@ -1022,7 +1089,12 @@ class DrishtiDashboardV4 {
 		this.page.main
 			.find(".category-header")
 			.off("click")
-			.on("click", function () {
+			.on("click", function (e) {
+				// Don't collapse if clicking on drill-down link
+				if ($(e.target).hasClass("drill-category")) {
+					return;
+				}
+
 				const category = $(this).data("category");
 				const zoneRows = self.page.main.find(`.zone-detail[data-category="${category}"]`);
 				const toggle = $(this).find(".category-toggle");
@@ -1037,9 +1109,9 @@ class DrishtiDashboardV4 {
 			});
 	}
 
-	// ========================================================================
-	// BRANCH VIEW
-	// ========================================================================
+	// [REST OF THE CODE REMAINS SAME - Branch View, Utility Functions, Styles]
+	// Continuing from previous file...
+
 	renderBranchView(months) {
 		let branchData = this.data.consolidated_branches || [];
 
@@ -1188,9 +1260,6 @@ class DrishtiDashboardV4 {
 		return html;
 	}
 
-	// ========================================================================
-	// UTILITY FUNCTIONS
-	// ========================================================================
 	getCategoryBadge(category, size = "small") {
 		const colors = {
 			Pinnacle: "#22c55e",
@@ -1260,9 +1329,6 @@ class DrishtiDashboardV4 {
 		return "red";
 	}
 
-	// ========================================================================
-	// STYLES
-	// ========================================================================
 	setupStyles() {
 		$(`<style>
             .tab-btn {
@@ -1328,6 +1394,13 @@ class DrishtiDashboardV4 {
 
             .zone-sum-check {
                 font-style: italic;
+            }
+
+            /* Drill-down links */
+            .drill-category:hover,
+            .drill-zone:hover {
+                color: #004499 !important;
+                font-weight: 700 !important;
             }
 
             /* Filter Dropdown Styles */
