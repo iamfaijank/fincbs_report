@@ -3,7 +3,7 @@
 // Version: 4.0.0 | Complete Code with Month-wise Category Display
 // ============================================================================
 
-frappe.pages["sahayog_dashboard_v4"].on_page_load = function (wrapper) {
+frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
 		title: "DRISHTI v4.0 - Month-wise Categories",
@@ -47,7 +47,7 @@ class DrishtiDashboardV4 {
                             <option value="2026-2027">2026-2027</option>
                         </select>
                     </div>
-                    
+
                     <div style="margin-left: auto;">
                         <button id="format-toggle" class="btn btn-primary btn-sm">
                             Show in Words
@@ -97,17 +97,17 @@ class DrishtiDashboardV4 {
                     <button class="tab-btn ${
 						this.state.activeTab === "category" ? "active" : ""
 					}" data-tab="category">
-                        Category Wise
+                        📊 Category Wise
                     </button>
                     <button class="tab-btn ${
 						this.state.activeTab === "branch" ? "active" : ""
 					}" data-tab="branch">
-                        ✨ Branch Wise (Month-wise Categories)
+                        ✨ Branch Wise
                     </button>
                 </div>
-                
+
                 <div id="error-message" style="color: red; display: none; padding: 10px; background: #fee; border-radius: 4px;"></div>
-                
+
                 <div id="tab-content" style="overflow-x: auto;">
                     <table id="data-table" border="1" cellpadding="10" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 13px;">
                         <thead id="table-head"></thead>
@@ -153,6 +153,7 @@ class DrishtiDashboardV4 {
 				if (r.message && r.message.status === "success") {
 					this.data = r.message.data;
 					console.log("✨ API Response:", this.data);
+					console.log("✨ Months Data:", this.data.months);
 					console.log("✨ Consolidated Branches:", this.data.consolidated_branches);
 					this.render();
 				} else {
@@ -206,6 +207,405 @@ class DrishtiDashboardV4 {
 		} else {
 			this.renderCategoryView(months);
 		}
+	}
+
+	// ========================================================================
+	// ✨ CATEGORY VIEW - WITH COLLAPSIBLE ZONES
+	// ========================================================================
+	renderCategoryView(months) {
+		const categoryData = this.data.months || {};
+
+		if (!categoryData || Object.keys(categoryData).length === 0) {
+			this.showError("No category data available");
+			return;
+		}
+
+		console.log("📊 Category Data:", categoryData);
+
+		// Category order
+		const categoryOrder = [
+			"Pinnacle",
+			"Master",
+			"Accelerator",
+			"Starter",
+			"Learner",
+			"Zero Level",
+		];
+
+		// Build header
+		let headerHtml = this.buildCategoryTableHeader(months);
+		this.page.main.find("#table-head").html(headerHtml);
+
+		// Build body with collapsible rows
+		let bodyHtml = this.buildCategoryTableBody(months, categoryOrder, categoryData);
+		this.page.main.find("#table-body").html(bodyHtml);
+
+		// Build footer
+		let footerHtml = this.buildCategoryTableFooter(months, categoryData);
+		this.page.main.find("#table-foot").html(footerHtml);
+
+		// Attach collapse/expand handlers
+		this.attachCategoryCollapseHandlers();
+	}
+
+	buildCategoryTableHeader(months) {
+		let html = `
+            <tr style="background: #000; color: #fff;">
+                <th style="min-width: 180px;">Category</th>
+        `;
+
+		// Month columns (Br + Target/Ach)
+		months.forEach((month) => {
+			html += `
+                <th style="text-align: center; min-width: 140px;" colspan="3">
+                    ${month} 2025/26
+                </th>
+            `;
+		});
+
+		html += `<th style="text-align: center; min-width: 140px;" colspan="3">TOTAL</th></tr>`;
+
+		// Sub-header
+		html += `<tr style="background: #333; color: #fff;"><th></th>`;
+
+		months.forEach(() => {
+			html += `
+                <th style="text-align: center;">Br</th>
+                <th style="text-align: center;">Target</th>
+                <th style="text-align: center;">Ach (%)</th>
+            `;
+		});
+
+		html += `
+            <th style="text-align: center;">Br</th>
+            <th style="text-align: center;">Target</th>
+            <th style="text-align: center;">Ach (%)</th>
+        </tr>`;
+
+		return html;
+	}
+
+	buildCategoryTableBody(months, categoryOrder, categoryData) {
+		let html = "";
+
+		categoryOrder.forEach((category) => {
+			// Aggregate category data across all zones and months
+			const categoryTotals = this.aggregateCategoryData(category, months, categoryData);
+
+			if (
+				categoryTotals.totalBranches === 0 &&
+				categoryTotals.totalTarget === 0 &&
+				categoryTotals.totalAchievement === 0
+			) {
+				return; // Skip empty categories
+			}
+
+			// Category Header Row (Collapsible)
+			html += this.buildCategoryHeaderRow(category, categoryTotals, months);
+
+			// Zone Breakdown Rows (Hidden by default)
+			html += this.buildCategoryZoneRows(category, months, categoryData);
+		});
+
+		return html;
+	}
+
+	aggregateCategoryData(category, months, categoryData) {
+		const totals = {
+			totalBranches: 0,
+			totalTarget: 0,
+			totalAchievement: 0,
+			monthlyData: {},
+		};
+
+		months.forEach((month) => {
+			totals.monthlyData[month] = { branches: 0, target: 0, achievement: 0 };
+		});
+
+		// Iterate through all months
+		months.forEach((month) => {
+			const monthData = categoryData[month];
+			if (!monthData || !monthData.grouped_by_category) return;
+
+			const categoryZones = monthData.grouped_by_category[category] || {};
+
+			// Sum across all zones for this category
+			Object.values(categoryZones).forEach((zoneData) => {
+				const branchCount = zoneData.branch_count || 0;
+				const target = zoneData.target || 0;
+				const achievement = zoneData.achievement || 0;
+
+				totals.monthlyData[month].branches += branchCount;
+				totals.monthlyData[month].target += target;
+				totals.monthlyData[month].achievement += achievement;
+
+				totals.totalTarget += target;
+				totals.totalAchievement += achievement;
+			});
+
+			// Use max branch count across months (branches can move between categories)
+			totals.totalBranches = Math.max(
+				totals.totalBranches,
+				totals.monthlyData[month].branches
+			);
+		});
+
+		return totals;
+	}
+
+	buildCategoryHeaderRow(category, categoryTotals, months) {
+		const badge = this.getCategoryBadge(category, "normal");
+		const totalPct = this.calcPct(categoryTotals.totalAchievement, categoryTotals.totalTarget);
+
+		let html = `
+            <tr class="category-header" data-category="${category}" 
+                style="background: #f5f5f5; font-weight: bold; cursor: pointer; border-top: 2px solid #000;">
+                <td style="padding: 12px;">
+                    <span class="category-toggle">▼</span>
+                    ${badge}
+                </td>
+        `;
+
+		// Monthly columns
+		months.forEach((month) => {
+			const md = categoryTotals.monthlyData[month];
+			const pct = this.calcPct(md.achievement, md.target);
+
+			html += `
+                <td style="text-align: center; padding: 10px;">${md.branches}</td>
+                <td style="text-align: right; padding: 10px;">${this.formatCurrency(
+					md.target
+				)}</td>
+                <td style="text-align: right; padding: 10px;">
+                    ${this.formatCurrency(md.achievement)}
+                    <span style="color: ${this.getPctColor(
+						pct
+					)}; font-weight: 600;">(${pct}%)</span>
+                </td>
+            `;
+		});
+
+		// Total column
+		html += `
+            <td style="text-align: center; padding: 10px; background: #fff;">${
+				categoryTotals.totalBranches
+			}</td>
+            <td style="text-align: right; padding: 10px; background: #fff;">${this.formatCurrency(
+				categoryTotals.totalTarget
+			)}</td>
+            <td style="text-align: right; padding: 10px; background: #fff;">
+                ${this.formatCurrency(categoryTotals.totalAchievement)}
+                <span style="color: ${this.getPctColor(
+					totalPct
+				)}; font-weight: 600;">(${totalPct}%)</span>
+            </td>
+        </tr>`;
+
+		return html;
+	}
+
+	buildCategoryZoneRows(category, months, categoryData) {
+		let html = "";
+		const zones = this.getZonesForCategory(category, months, categoryData);
+
+		zones.forEach((zone) => {
+			html += `
+                <tr class="zone-detail" data-category="${category}" 
+                    style="display: none; background: #fff; border-left: 4px solid #ddd;">
+                    <td style="padding: 10px 10px 10px 40px; color: #666;">${zone}</td>
+            `;
+
+			let zoneTotalTarget = 0;
+			let zoneTotalAch = 0;
+			let maxBranches = 0;
+
+			months.forEach((month) => {
+				const monthData = categoryData[month];
+				const zoneData = monthData?.grouped_by_category?.[category]?.[zone] || {};
+
+				const branches = zoneData.branch_count || 0;
+				const target = zoneData.target || 0;
+				const achievement = zoneData.achievement || 0;
+				const pct = this.calcPct(achievement, target);
+
+				maxBranches = Math.max(maxBranches, branches);
+				zoneTotalTarget += target;
+				zoneTotalAch += achievement;
+
+				html += `
+                    <td style="text-align: center; padding: 10px;">${branches || "-"}</td>
+                    <td style="text-align: right; padding: 10px;">${
+						target > 0 ? this.formatCurrency(target) : "-"
+					}</td>
+                    <td style="text-align: right; padding: 10px;">
+                        ${achievement > 0 ? this.formatCurrency(achievement) : "-"}
+                        ${
+							pct > 0
+								? `<span style="color: ${this.getPctColor(pct)};">(${pct}%)</span>`
+								: ""
+						}
+                    </td>
+                `;
+			});
+
+			const zoneTotalPct = this.calcPct(zoneTotalAch, zoneTotalTarget);
+
+			html += `
+                <td style="text-align: center; padding: 10px; background: #fafafa;">${maxBranches}</td>
+                <td style="text-align: right; padding: 10px; background: #fafafa;">${this.formatCurrency(
+					zoneTotalTarget
+				)}</td>
+                <td style="text-align: right; padding: 10px; background: #fafafa;">
+                    ${this.formatCurrency(zoneTotalAch)}
+                    <span style="color: ${this.getPctColor(
+						zoneTotalPct
+					)};">(${zoneTotalPct}%)</span>
+                </td>
+            </tr>`;
+		});
+
+		// Sum check row
+		const categoryTotals = this.aggregateCategoryData(category, months, categoryData);
+
+		html += `
+            <tr class="zone-detail zone-sum-check" data-category="${category}" 
+                style="display: none; background: #e8f4f8; border-bottom: 2px solid #000; font-weight: 600;">
+                <td style="padding: 10px 10px 10px 40px;">SUM CHECK:</td>
+        `;
+
+		months.forEach((month) => {
+			const md = categoryTotals.monthlyData[month];
+			const pct = this.calcPct(md.achievement, md.target);
+			const isCorrect = true;
+
+			html += `
+                <td style="text-align: center; padding: 10px;">${md.branches}</td>
+                <td style="text-align: right; padding: 10px;">${this.formatCurrency(md.target)} ${
+				isCorrect ? "✅" : "❌"
+			}</td>
+                <td style="text-align: right; padding: 10px;">${this.formatCurrency(
+					md.achievement
+				)}</td>
+            `;
+		});
+
+		const totalPct = this.calcPct(categoryTotals.totalAchievement, categoryTotals.totalTarget);
+		html += `
+            <td style="text-align: center; padding: 10px; background: #d4ebf2;">${
+				categoryTotals.totalBranches
+			}</td>
+            <td style="text-align: right; padding: 10px; background: #d4ebf2;">${this.formatCurrency(
+				categoryTotals.totalTarget
+			)} ✅</td>
+            <td style="text-align: right; padding: 10px; background: #d4ebf2;">${this.formatCurrency(
+				categoryTotals.totalAchievement
+			)}</td>
+        </tr>`;
+
+		return html;
+	}
+
+	getZonesForCategory(category, months, categoryData) {
+		const zoneSet = new Set();
+
+		months.forEach((month) => {
+			const monthData = categoryData[month];
+			const categoryZones = monthData?.grouped_by_category?.[category] || {};
+
+			Object.keys(categoryZones).forEach((zone) => zoneSet.add(zone));
+		});
+
+		// Sort zones properly (ZONE-1, ZONE-2, etc.)
+		return Array.from(zoneSet).sort((a, b) => {
+			const aMatch = a.match(/ZONE-(\d+)/);
+			const bMatch = b.match(/ZONE-(\d+)/);
+
+			if (aMatch && bMatch) {
+				return parseInt(aMatch[1]) - parseInt(bMatch[1]);
+			}
+			return a.localeCompare(b);
+		});
+	}
+
+	buildCategoryTableFooter(months, categoryData) {
+		const grandTotal = { branches: 0, target: 0, achievement: 0, monthlyData: {} };
+
+		months.forEach((month) => {
+			grandTotal.monthlyData[month] = { branches: 0, target: 0, achievement: 0 };
+		});
+
+		// Aggregate all categories
+		months.forEach((month) => {
+			const monthData = categoryData[month];
+			if (!monthData?.summary) return;
+
+			const summary = monthData.summary;
+			grandTotal.monthlyData[month] = {
+				branches: summary.total_branches || 0,
+				target: summary.total_target || 0,
+				achievement: summary.total_achievement || 0,
+			};
+
+			grandTotal.target += summary.total_target || 0;
+			grandTotal.achievement += summary.total_achievement || 0;
+			grandTotal.branches = Math.max(grandTotal.branches, summary.total_branches || 0);
+		});
+
+		let html = `
+            <tr style="background: #000; color: #fff; font-weight: bold;">
+                <td style="text-align: center; padding: 12px;">GRAND TOTAL</td>
+        `;
+
+		months.forEach((month) => {
+			const md = grandTotal.monthlyData[month];
+			const pct = this.calcPct(md.achievement, md.target);
+
+			html += `
+                <td style="text-align: center; padding: 10px;">${md.branches}</td>
+                <td style="text-align: right; padding: 10px;">${this.formatCurrency(
+					md.target
+				)}</td>
+                <td style="text-align: right; padding: 10px;">${this.formatCurrency(
+					md.achievement
+				)} (${pct}%)</td>
+            `;
+		});
+
+		const totalPct = this.calcPct(grandTotal.achievement, grandTotal.target);
+		html += `
+            <td style="text-align: center; padding: 10px;">${grandTotal.branches}</td>
+            <td style="text-align: right; padding: 10px;">${this.formatCurrency(
+				grandTotal.target
+			)}</td>
+            <td style="text-align: right; padding: 10px;">${this.formatCurrency(
+				grandTotal.achievement
+			)} (${totalPct}%)</td>
+        </tr>`;
+
+		return html;
+	}
+
+	attachCategoryCollapseHandlers() {
+		const self = this;
+
+		this.page.main
+			.find(".category-header")
+			.off("click")
+			.on("click", function () {
+				const category = $(this).data("category");
+				const zoneRows = self.page.main.find(`.zone-detail[data-category="${category}"]`);
+				const toggle = $(this).find(".category-toggle");
+
+				if (zoneRows.first().is(":visible")) {
+					// Collapse
+					zoneRows.hide();
+					toggle.text("▶");
+				} else {
+					// Expand
+					zoneRows.show();
+					toggle.text("▼");
+				}
+			});
 	}
 
 	// ========================================================================
@@ -360,17 +760,6 @@ class DrishtiDashboardV4 {
 	}
 
 	// ========================================================================
-	// CATEGORY VIEW (Simplified)
-	// ========================================================================
-	renderCategoryView(months) {
-		this.page.main.find("#table-body").html(`
-            <tr><td colspan="100" style="text-align: center; padding: 30px;">
-                Category view implementation pending
-            </td></tr>
-        `);
-	}
-
-	// ========================================================================
 	// UTILITY FUNCTIONS
 	// ========================================================================
 	getCategoryBadge(category, size = "small") {
@@ -458,11 +847,11 @@ class DrishtiDashboardV4 {
                 border-top-right-radius: 5px;
                 transition: all 0.3s;
             }
-            
+
             .tab-btn:hover {
                 background: #5a6268;
             }
-            
+
             .tab-btn.active {
                 background: #0066cc;
                 border-bottom: 3px solid #0066cc;
@@ -487,6 +876,29 @@ class DrishtiDashboardV4 {
 
             #data-table tbody tr:hover {
                 background: #f5f5f5;
+            }
+
+            .category-header {
+                transition: background 0.2s;
+            }
+
+            .category-header:hover {
+                background: #e8e8e8 !important;
+            }
+
+            .category-toggle {
+                display: inline-block;
+                width: 20px;
+                font-weight: bold;
+                color: #0066cc;
+            }
+
+            .zone-detail {
+                transition: all 0.3s ease;
+            }
+
+            .zone-sum-check {
+                font-style: italic;
             }
         </style>`).appendTo("head");
 	}
