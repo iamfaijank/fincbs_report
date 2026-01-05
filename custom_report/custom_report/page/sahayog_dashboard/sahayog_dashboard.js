@@ -1163,13 +1163,21 @@ class DrishtiDashboardV4 {
 
 	buildBranchRow(branch, months, serialNo) {
 		let html = `
-            <tr style="background: #fff; border-bottom: 1px solid #e0e0e0;">
-                <td style="padding: 10px; text-align: center; font-weight: 600;">${serialNo}</td>
-                <td style="padding: 10px;">${branch.branch_code || ""}</td>
-                <td style="padding: 10px;">${branch.branch_name || ""}</td>
-                <td style="padding: 10px;">${branch.zone || ""}</td>
-                <td style="padding: 10px;">${branch.region || ""}</td>
-        `;
+        <tr style="background: #fff; border-bottom: 1px solid #e0e0e0;">
+            <td style="padding: 10px; text-align: center; font-weight: 600;">${serialNo}</td>
+            <td style="padding: 10px;">
+                <a href="javascript:void(0)" 
+                   onclick="window.location.href='/app/branch-profile?sol_id=${
+						branch.branch_code
+					}'" 
+                   style="color: #3498db; font-weight: bold; text-decoration: none; cursor: pointer;">
+                    ${branch.branch_code || ""}
+                </a>
+            </td>
+            <td style="padding: 10px;">${branch.branch_name || ""}</td>
+            <td style="padding: 10px;">${branch.zone || ""}</td>
+            <td style="padding: 10px;">${branch.region || ""}</td>
+    `;
 
 		months.forEach((month) => {
 			const md = branch.monthly_data?.[month] || {};
@@ -1182,14 +1190,12 @@ class DrishtiDashboardV4 {
 				tgt
 			)}</td>`;
 			html += `
-                <td style="text-align: right; padding: 10px;">
-                    ${this.formatCurrency(ach)} 
-                    <span style="color: ${this.getPctColor(
-						pct
-					)}; font-weight: 600;">(${pct}%)</span>
-                    ${this.getCategoryBadge(monthCategory, "small")}
-                </td>
-            `;
+            <td style="text-align: right; padding: 10px;">
+                ${this.formatCurrency(ach)} 
+                <span style="color: ${this.getPctColor(pct)}; font-weight: 600;">(${pct}%)</span>
+                ${this.getCategoryBadge(monthCategory, "small")}
+            </td>
+        `;
 		});
 
 		const totalTgt = branch.total_target || 0;
@@ -1197,15 +1203,15 @@ class DrishtiDashboardV4 {
 		const totalPct = this.calcPct(totalAch, totalTgt);
 
 		html += `
-            <td style="text-align: right; font-weight: bold; padding: 10px; background: #f5f5f5;">${this.formatCurrency(
-				totalTgt
-			)}</td>
-            <td style="text-align: right; font-weight: bold; padding: 10px; background: #f5f5f5;">
-                ${this.formatCurrency(totalAch)} 
-                <span style="color: ${this.getPctColor(totalPct)};">(${totalPct}%)</span>
-            </td>
-        </tr>
-        `;
+        <td style="text-align: right; font-weight: bold; padding: 10px; background: #f5f5f5;">${this.formatCurrency(
+			totalTgt
+		)}</td>
+        <td style="text-align: right; font-weight: bold; padding: 10px; background: #f5f5f5;">
+            ${this.formatCurrency(totalAch)} 
+            <span style="color: ${this.getPctColor(totalPct)};">(${totalPct}%)</span>
+        </td>
+    </tr>
+    `;
 
 		return html;
 	}
