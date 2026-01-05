@@ -6,7 +6,7 @@
 frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
-		title: "DRISHTI v4.4 - With Drill-Down",
+		title: "DRISHTI",
 		single_column: true,
 	});
 
