@@ -1,12 +1,12 @@
 // ============================================================================
 // DRISHTI PERFORMANCE DASHBOARD - MONTH-WISE CATEGORY VERSION
-// Version: 4.0.0 | Complete Code with Month-wise Category Display
+// Version: 4.1.0 | Updated with Sr.No. in Branch View
 // ============================================================================
 
 frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
-		title: "DRISHTI v4.0 - Month-wise Categories",
+		title: "DRISHTI v4.1 - Month-wise Categories",
 		single_column: true,
 	});
 
@@ -609,7 +609,7 @@ class DrishtiDashboardV4 {
 	}
 
 	// ========================================================================
-	// ✨ BRANCH VIEW - WITH MONTH-WISE CATEGORIES
+	// ✨ BRANCH VIEW - WITH SR.NO. AND MONTH-WISE CATEGORIES
 	// ========================================================================
 	renderBranchView(months) {
 		const branchData = this.data.consolidated_branches || [];
@@ -626,7 +626,7 @@ class DrishtiDashboardV4 {
 		// Build header
 		let headerHtml = `
             <tr style="background: #000; color: #fff;">
-                <th style="min-width: 140px;">Latest Category</th>
+                <th style="min-width: 60px;">Sr.No.</th>
                 <th style="min-width: 100px;">Branch Code</th>
                 <th style="min-width: 200px;">Branch Name</th>
                 <th style="min-width: 100px;">Zone</th>
@@ -648,8 +648,10 @@ class DrishtiDashboardV4 {
 
 		this.page.main.find("#table-head").html(headerHtml);
 
-		// Build body
-		const bodyRows = branchData.map((branch) => this.buildBranchRow(branch, months));
+		// Build body with serial numbers
+		const bodyRows = branchData.map((branch, index) =>
+			this.buildBranchRow(branch, months, index + 1)
+		);
 		this.page.main.find("#table-body").html(bodyRows.join(""));
 
 		// Build footer
@@ -657,13 +659,10 @@ class DrishtiDashboardV4 {
 		this.page.main.find("#table-foot").html(footerHtml);
 	}
 
-	buildBranchRow(branch, months) {
-		const latestCategory = branch.latest_category || "Unknown";
-		const categoryBadge = this.getCategoryBadge(latestCategory, "normal");
-
+	buildBranchRow(branch, months, serialNo) {
 		let html = `
             <tr style="background: #fff; border-bottom: 1px solid #e0e0e0;">
-                <td style="padding: 10px; font-weight: 600;">${categoryBadge}</td>
+                <td style="padding: 10px; text-align: center; font-weight: 600;">${serialNo}</td>
                 <td style="padding: 10px;">${branch.branch_code || ""}</td>
                 <td style="padding: 10px;">${branch.branch_name || ""}</td>
                 <td style="padding: 10px;">${branch.zone || ""}</td>
@@ -675,7 +674,7 @@ class DrishtiDashboardV4 {
 			const tgt = md.target || 0;
 			const ach = md.achievement || 0;
 			const pct = md.achievement_pct || this.calcPct(ach, tgt);
-			const monthCategory = md.category || latestCategory;
+			const monthCategory = md.category || branch.latest_category || "Unknown";
 
 			html += `<td style="text-align: right; padding: 10px;">${this.formatCurrency(
 				tgt
