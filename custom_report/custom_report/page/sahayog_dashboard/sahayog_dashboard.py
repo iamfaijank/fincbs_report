@@ -1231,3 +1231,778 @@ def calculate_performance_category(percentage):
         return "Learner"
     else:
         return "Zero Level"
+    
+
+
+
+@frappe.whitelist(allow_guest=True)
+def get_fy_master_data_dummy(financial_year="2025-2026"):
+    """
+    DUMMY API for testing FY data structure.
+    Returns sample nested data: FY → Month → Date → Branches
+
+    Test URL: 
+    http://localhost:8000/api/method/custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_fy_master_data_dummy?financial_year=2025-2026
+    """
+
+    # Dummy branch data generator
+    def generate_dummy_branches(date_str, count=10):
+        """Generate dummy branch data for testing"""
+        branches = []
+        zones = ["ZONE-1", "ZONE-2", "ZONE-3", "ZONE-4", "ZONE-5", "ZONE-6"]
+        categories = ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Zero Level"]
+
+        for i in range(1, count + 1):
+            zone_idx = (i - 1) % len(zones)
+            cat_idx = (i - 1) % len(categories)
+
+            monthly_target = 100000 + (i * 10000)
+            monthly_achievement = int(monthly_target * (0.6 + (i % 5) * 0.08))
+            ach_pct = round((monthly_achievement / monthly_target * 100), 2)
+
+            branches.append({
+                "sol_id": f"00{i:03d}",
+                "branch": f"Branch {i:03d}",
+                "zone": zones[zone_idx],
+                "region": f"Region {zone_idx + 1}",
+                "district": f"District {zone_idx + 1}",
+                "monthly_target": monthly_target,
+                "monthly_achievement": monthly_achievement,
+                "yearly_target": monthly_target * 12,
+                "yearly_achievement": monthly_achievement * 6,
+                "ach_pct": ach_pct,
+                "category": categories[cat_idx]
+            })
+
+        return branches
+
+    # Generate dummy months data
+    months_data = {}
+
+    # Parse FY
+    fy_parts = financial_year.split("-")
+    start_year = int(fy_parts[0])
+    end_year = int(fy_parts[1])
+
+    # Only generate data for DEC and JAN (for testing)
+    month_configs = [
+        ("DEC", 12, start_year, 25),  # 25 dates in December
+        ("JAN", 1, end_year, 5),       # 5 dates in January (current month)
+    ]
+
+    for month_name, month_num, year, total_dates in month_configs:
+        dates_data = {}
+
+        # Generate dates for this month
+        for day in range(1, total_dates + 1):
+            date_str = f"{year}-{month_num:02d}-{day:02d}"
+
+            # Generate 150 dummy branches for each date
+            branches = generate_dummy_branches(date_str, count=150)
+            dates_data[date_str] = branches
+
+        # Calculate month summary (using last date)
+        last_date = f"{year}-{month_num:02d}-{total_dates:02d}"
+        last_date_branches = dates_data[last_date]
+
+        # Category distribution
+        category_distribution = {
+            "Pinnacle": 0,
+            "Master": 0,
+            "Accelerator": 0,
+            "Starter": 0,
+            "Learner": 0,
+            "Zero Level": 0
+        }
+
+        total_target = 0
+        total_achievement = 0
+
+        for branch in last_date_branches:
+            cat = branch["category"]
+            category_distribution[cat] += 1
+            total_target += branch["monthly_target"]
+            total_achievement += branch["monthly_achievement"]
+
+        avg_ach_pct = round((total_achievement / total_target * 100), 2) if total_target > 0 else 0
+
+        # Store month data
+        months_data[month_name] = {
+            "month_name": month_name,
+            "month_num": month_num,
+            "year": year,
+            "dates": dates_data,
+            "summary": {
+                "total_dates": total_dates,
+                "total_branches": len(last_date_branches),
+                "total_target": total_target,
+                "total_achievement": total_achievement,
+                "avg_ach_pct": avg_ach_pct,
+                "last_date": last_date,
+                "category_distribution": category_distribution
+            }
+        }
+
+    # FY summary
+    total_branches_fy = 150
+    overall_ach_pct = sum([m["summary"]["avg_ach_pct"] for m in months_data.values()]) / len(months_data)
+
+    # Final response
+    return {
+        "status": "success",
+        "financial_year": financial_year,
+        "months": months_data,
+        "fy_summary": {
+            "total_months": len(months_data),
+            "total_branches": total_branches_fy,
+            "overall_achievement_pct": round(overall_ach_pct, 2)
+        }
+    }
+# ============================================================================
+# SAHAYOG DASHBOARD API - WITH MONTH-WISE CATEGORY TRACKING
+# Version: 3.0.0 | Added: Month-wise category calculation for each branch
+# ============================================================================
+
+
+import frappe
+from frappe import _
+import json
+from typing import Dict, List, Optional, Tuple, Any
+from datetime import datetime
+import logging
+
+
+logger = logging.getLogger(__name__)
+
+
+@frappe.whitelist(allow_guest=False)
+def get_fy_master_data_actual(
+    financial_year: str = "2025-2026",
+    filters: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Get FY Master Data with DUAL GROUPING + MONTH-WISE BRANCH DETAILS.
+
+    Returns:
+    1. grouped_by_zone: {"ZONE-1": {"Pinnacle": {...}}}
+    2. grouped_by_category: {"Pinnacle": {"ZONE-1": {...}}}
+    3. branch_details: [{branch_code, zone, region, monthly_data: {APR: {category, target, ach}}}]
+
+    ✨ NEW: Each month has its own category for each branch
+    """
+
+    start_time = datetime.now()
+
+    try:
+        # Validation
+        validated_fy = _validate_financial_year(financial_year)
+        parsed_filters = _parse_and_validate_filters(filters)
+        _check_user_permissions()
+
+        # Configuration
+        settings = _get_validated_settings()
+        doctype_name = settings.master_doctype or "Branch Category Report"
+
+        # Get FY structure
+        start_year, end_year = validated_fy
+        fy_months = _get_fy_month_structure(start_year, end_year)
+
+        # Get all targets (optimized)
+        targets_map = _fetch_all_targets_optimized(f"{start_year}-{end_year}")
+
+        # ✨ Build months data with MONTH-WISE CATEGORY TRACKING
+        months_data, consolidated_branches = _build_months_data_with_category_tracking(
+            fy_months=fy_months,
+            doctype_name=doctype_name,
+            targets_map=targets_map,
+            zone_filter=parsed_filters["zones"],
+            category_filter=parsed_filters["categories"]
+        )
+
+        # Calculate FY summary
+        fy_summary = _calculate_fy_summary(months_data)
+
+        # Calculate execution time
+        execution_time = (datetime.now() - start_time).total_seconds() * 1000
+
+        response = {
+            "status": "success",
+            "data": {
+                "financial_year": f"{start_year}-{end_year}",
+                "months": months_data,
+                "consolidated_branches": consolidated_branches,  # ✨ NEW
+                "fy_summary": fy_summary
+            },
+            "meta": {
+                "total_records": len(consolidated_branches),
+                "execution_time_ms": round(execution_time, 2),
+                "timestamp": datetime.now().isoformat(),
+                "api_version": "3.0.0"
+            }
+        }
+
+        logger.info(
+            f"API Success: FY={validated_fy}, Time={execution_time:.2f}ms, "
+            f"Branches={len(consolidated_branches)}, User={frappe.session.user}"
+        )
+
+        return response
+
+    except frappe.ValidationError as e:
+        logger.warning(f"Validation Error: {str(e)}")
+        return _error_response(400, "ValidationError", str(e))
+
+    except frappe.PermissionError as e:
+        logger.warning(f"Permission Denied: User={frappe.session.user}")
+        return _error_response(403, "PermissionError", 
+            _("Access denied. Insufficient permissions."))
+
+    except frappe.DoesNotExistError as e:
+        logger.error(f"Configuration Error: {str(e)}")
+        return _error_response(404, "ConfigurationError", 
+            _("Required configuration not found."))
+
+    except Exception as e:
+        logger.error(f"Unexpected Error: {str(e)}", exc_info=True)
+        return _error_response(500, "InternalServerError", 
+            _("An unexpected error occurred. Please contact support."))
+
+
+# ============================================================================
+# ✨ CORE DATA BUILDING - WITH MONTH-WISE CATEGORY TRACKING
+# ============================================================================
+
+
+def _build_months_data_with_category_tracking(
+    fy_months: List[Tuple[str, int, int]],
+    doctype_name: str,
+    targets_map: Dict,
+    zone_filter: List[str],
+    category_filter: List[str]
+) -> Tuple[Dict[str, Any], List[Dict]]:
+    """
+    Build month data with:
+    1. Zone-wise grouping (current month category)
+    2. Category-wise grouping (current month category)
+    3. ✨ Consolidated branch list with month-wise category tracking
+
+    Returns:
+        (months_data, consolidated_branches)
+    """
+    months_data = {}
+    category_order = ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Zero Level"]
+
+    # ✨ Track all branches across months
+    branch_tracker = {}  # {sol_id: {branch_name, zone, region, monthly_data}}
+
+    for month_name, month_num, year in fy_months:
+
+        # Get last date for this month
+        last_date_result = frappe.db.sql("""
+            SELECT DISTINCT date 
+            FROM `tabBranch Category Report` 
+            WHERE MONTH(date) = %s AND YEAR(date) = %s
+            ORDER BY date DESC
+            LIMIT 1
+        """, (month_num, year), as_dict=True)
+
+        if not last_date_result:
+            continue
+
+        last_date = str(last_date_result[0]["date"])
+
+        # Build filters
+        date_filters = {"date": last_date}
+        if zone_filter and "all" not in [z.lower() for z in zone_filter]:
+            date_filters["zone"] = ["in", zone_filter]
+
+        # Fetch branches with REGION field
+        branches = frappe.get_all(
+            doctype_name,
+            filters=date_filters,
+            fields=["branch", "sol_id", "zone", "region", "achievement", "yearly_achievement"],
+            order_by="zone asc, region asc, branch asc"
+        )
+
+        # Initialize month structures
+        raw_data = {}  # For zone grouping
+        branch_details_current_month = []  # For current month's branch_details
+
+        for branch in branches:
+            sol_id = str(branch.get("sol_id")) if branch.get("sol_id") else None
+            if not sol_id:
+                continue
+
+            zone = branch.get("zone") or "Unknown"
+            region = branch.get("region") or "Unknown"
+            branch_name = branch.get("branch") or "Unknown Branch"
+
+            # Get target and achievement
+            branch_targets = targets_map.get(sol_id, {})
+            monthly_target = branch_targets.get(month_name, 0.0)
+            monthly_achievement = float(branch.get("achievement") or 0)
+
+            # Calculate achievement percentage
+            ach_pct = (
+                (monthly_achievement / monthly_target * 100) 
+                if monthly_target > 0 else 0
+            )
+
+            # ✨ Determine category FOR THIS MONTH
+            category = _calculate_category(ach_pct)
+
+            # Apply category filter (use current month's category)
+            if category_filter and "all" not in [c.lower() for c in category_filter]:
+                if category not in category_filter:
+                    continue
+
+            # ================================================================
+            # ✨ TRACK BRANCH ACROSS MONTHS
+            # ================================================================
+            if sol_id not in branch_tracker:
+                branch_tracker[sol_id] = {
+                    "branch_code": sol_id,
+                    "branch_name": branch_name,
+                    "zone": zone,
+                    "region": region,
+                    "monthly_data": {}
+                }
+
+            # ✨ Store month-wise data WITH CATEGORY
+            branch_tracker[sol_id]["monthly_data"][month_name] = {
+                "target": round(monthly_target, 2),
+                "achievement": round(monthly_achievement, 2),
+                "achievement_pct": round(ach_pct, 2),
+                "category": category  # ✨ Month-specific category
+            }
+
+            # ================================================================
+            # Store for current month's branch_details (for backward compatibility)
+            # ================================================================
+            branch_details_current_month.append({
+                "branch_code": sol_id,
+                "branch_name": branch_name,
+                "zone": zone,
+                "region": region,
+                "category": category,
+                "target": round(monthly_target, 2),
+                "achievement": round(monthly_achievement, 2),
+                "achievement_pct": round(ach_pct, 2)
+            })
+
+            # ================================================================
+            # Aggregate for zone grouping (existing logic)
+            # ================================================================
+            if zone not in raw_data:
+                raw_data[zone] = {}
+                for cat in category_order:
+                    raw_data[zone][cat] = {
+                        "branch_count": 0,
+                        "target": 0.0,
+                        "achievement": 0.0,
+                        "ach_pct": 0.0
+                    }
+
+            # Aggregate
+            raw_data[zone][category]["branch_count"] += 1
+            raw_data[zone][category]["target"] += monthly_target
+            raw_data[zone][category]["achievement"] += monthly_achievement
+
+        # Calculate achievement percentages for aggregated data
+        for zone in raw_data:
+            for category in raw_data[zone]:
+                cat_data = raw_data[zone][category]
+                if cat_data["target"] > 0:
+                    cat_data["ach_pct"] = round(
+                        (cat_data["achievement"] / cat_data["target"]) * 100, 2
+                    )
+                cat_data["target"] = round(cat_data["target"], 2)
+                cat_data["achievement"] = round(cat_data["achievement"], 2)
+
+        # Create dual grouping
+        grouped_by_zone = raw_data
+        grouped_by_category = _transform_to_category_grouping(raw_data, category_order)
+
+        # Calculate summary
+        summary = _calculate_month_summary(raw_data, category_order)
+
+        # ✨ Sort branch_details by Category → Zone → Region → Branch Name
+        branch_details_sorted = _sort_branch_details(branch_details_current_month, category_order)
+
+        # Store month data
+        months_data[month_name] = {
+            "month_name": month_name,
+            "month_num": month_num,
+            "year": year,
+            "last_date": last_date,
+            "grouped_by_zone": grouped_by_zone,
+            "grouped_by_category": grouped_by_category,
+            "branch_details": branch_details_sorted,  # Current month snapshot
+            "summary": summary
+        }
+
+    # ================================================================
+    # ✨ BUILD CONSOLIDATED BRANCH LIST
+    # ================================================================
+    consolidated_branches = _build_consolidated_branch_list(
+        branch_tracker, 
+        category_order
+    )
+
+    return months_data, consolidated_branches
+
+
+# ============================================================================
+# ✨ NEW: Build Consolidated Branch List with Month-wise Categories
+# ============================================================================
+
+
+def _build_consolidated_branch_list(
+    branch_tracker: Dict,
+    category_order: List[str]
+) -> List[Dict]:
+    """
+    Build consolidated branch list sorted by latest month's category.
+
+    Returns:
+        [{
+            branch_code, branch_name, zone, region,
+            latest_category,  # For sorting
+            monthly_data: {
+                'APR': {category, target, achievement, achievement_pct},
+                'MAY': {category, target, achievement, achievement_pct},
+                ...
+            }
+        }]
+    """
+    consolidated = []
+
+    # Month order for determining latest
+    month_order = ["MAR", "FEB", "JAN", "DEC", "NOV", "OCT", 
+                   "SEP", "AUG", "JUL", "JUN", "MAY", "APR"]
+
+    for sol_id, branch_data in branch_tracker.items():
+        # Determine latest category (from most recent month with data)
+        latest_category = "Unknown"
+        for month in month_order:
+            if month in branch_data["monthly_data"]:
+                latest_category = branch_data["monthly_data"][month]["category"]
+                break
+
+        # Calculate total target and achievement across all months
+        total_target = sum(
+            m.get("target", 0) 
+            for m in branch_data["monthly_data"].values()
+        )
+        total_achievement = sum(
+            m.get("achievement", 0) 
+            for m in branch_data["monthly_data"].values()
+        )
+
+        consolidated.append({
+            "branch_code": branch_data["branch_code"],
+            "branch_name": branch_data["branch_name"],
+            "zone": branch_data["zone"],
+            "region": branch_data["region"],
+            "latest_category": latest_category,
+            "total_target": round(total_target, 2),
+            "total_achievement": round(total_achievement, 2),
+            "monthly_data": branch_data["monthly_data"]
+        })
+
+    # ✨ Sort by Latest Category → Zone → Region → Branch Name
+    def get_category_index(category: str) -> int:
+        try:
+            return category_order.index(category)
+        except ValueError:
+            return len(category_order)
+
+    consolidated_sorted = sorted(
+        consolidated,
+        key=lambda x: (
+            get_category_index(x.get("latest_category", "")),
+            x.get("zone", ""),
+            x.get("region", ""),
+            x.get("branch_name", "")
+        )
+    )
+
+    return consolidated_sorted
+
+
+# ============================================================================
+# HELPER FUNCTIONS (Unchanged)
+# ============================================================================
+
+
+def _sort_branch_details(
+    branch_details: List[Dict],
+    category_order: List[str]
+) -> List[Dict]:
+    """Sort branch details by Category → Zone → Region → Branch Name"""
+    def get_category_index(category: str) -> int:
+        try:
+            return category_order.index(category)
+        except ValueError:
+            return len(category_order)
+
+    return sorted(
+        branch_details,
+        key=lambda x: (
+            get_category_index(x.get("category", "")),
+            x.get("zone", ""),
+            x.get("region", ""),
+            x.get("branch_name", "")
+        )
+    )
+
+
+def _transform_to_category_grouping(
+    zone_data: Dict,
+    category_order: List[str]
+) -> Dict[str, Dict[str, Dict]]:
+    """Transform Zone→Category to Category→Zone grouping"""
+    category_data = {}
+
+    for category in category_order:
+        category_data[category] = {}
+
+    for zone, categories in zone_data.items():
+        for category, metrics in categories.items():
+            if metrics["branch_count"] > 0:
+                category_data[category][zone] = metrics.copy()
+
+    return category_data
+
+
+# ============================================================================
+# VALIDATION FUNCTIONS (Unchanged)
+# ============================================================================
+
+
+def _validate_financial_year(fy: str) -> Tuple[int, int]:
+    """Validate and parse financial year."""
+    try:
+        parts = fy.split("-")
+        if len(parts) != 2:
+            raise ValueError("Invalid format")
+
+        start_year = int(parts[0])
+        end_year = int(parts[1])
+
+        if end_year != start_year + 1:
+            raise ValueError("End year must be start_year + 1")
+
+        if not (2000 <= start_year <= 2100):
+            raise ValueError("Year out of reasonable range")
+
+        return (start_year, end_year)
+
+    except (ValueError, IndexError):
+        frappe.throw(
+            _(f"Invalid financial year format: {fy}. Expected: YYYY-YYYY"),
+            frappe.ValidationError
+        )
+
+
+def _parse_and_validate_filters(filters: Optional[str]) -> Dict[str, List[str]]:
+    """Parse and validate filter JSON."""
+    default_filters = {"zones": [], "categories": []}
+
+    if not filters:
+        return default_filters
+
+    try:
+        if isinstance(filters, str):
+            filter_dict = json.loads(filters)
+        else:
+            filter_dict = filters
+
+        zones = filter_dict.get("zones", [])
+        categories = filter_dict.get("categories", [])
+
+        if not isinstance(zones, list) or not isinstance(categories, list):
+            raise ValueError("Filters must contain lists")
+
+        return {
+            "zones": [str(z).strip() for z in zones],
+            "categories": [str(c).strip() for c in categories]
+        }
+
+    except (json.JSONDecodeError, ValueError, TypeError):
+        logger.warning(f"Invalid filters: {filters}. Using defaults.")
+        return default_filters
+
+
+def _check_user_permissions():
+    """Check user permissions."""
+    required_roles = ["System Manager", "Dashboard User", "Business Head"]
+    user_roles = frappe.get_roles(frappe.session.user)
+
+    if not any(role in user_roles for role in required_roles):
+        frappe.throw(
+            _("You do not have permission to access this resource."),
+            frappe.PermissionError
+        )
+
+
+def _get_validated_settings():
+    """Get and validate Report Settings."""
+    try:
+        settings = frappe.get_single("Report Settings")
+
+        if not settings.is_active:
+            frappe.throw(
+                _("Report data source is currently inactive."),
+                frappe.DoesNotExistError
+            )
+
+        return settings
+
+    except frappe.DoesNotExistError:
+        frappe.throw(
+            _("Report Settings not configured."),
+            frappe.DoesNotExistError
+        )
+
+
+# ============================================================================
+# DATA FETCHING FUNCTIONS (Unchanged)
+# ============================================================================
+
+
+def _get_fy_month_structure(start_year: int, end_year: int) -> List[Tuple[str, int, int]]:
+    """Get FY month structure (APR to MAR)."""
+    return [
+        ("APR", 4, start_year), ("MAY", 5, start_year), ("JUN", 6, start_year),
+        ("JUL", 7, start_year), ("AUG", 8, start_year), ("SEP", 9, start_year),
+        ("OCT", 10, start_year), ("NOV", 11, start_year), ("DEC", 12, start_year),
+        ("JAN", 1, end_year), ("FEB", 2, end_year), ("MAR", 3, end_year),
+    ]
+
+
+def _fetch_all_targets_optimized(financial_year: str) -> Dict[str, Dict[str, float]]:
+    """Fetch all targets in single query."""
+    targets_map = {}
+
+    targets = frappe.get_all(
+        "Target Vs Achivement",
+        filters={"financial_year": financial_year},
+        fields=["sol_id", "target", "type", "month"],
+        limit_page_length=0
+    )
+
+    month_mapping = {
+        "JANUARY": "JAN", "FEBRUARY": "FEB", "MARCH": "MAR",
+        "APRIL": "APR", "MAY": "MAY", "JUNE": "JUN",
+        "JULY": "JUL", "AUGUST": "AUG", "SEPTEMBER": "SEP",
+        "OCTOBER": "OCT", "NOVEMBER": "NOV", "DECEMBER": "DEC"
+    }
+
+    for target in targets:
+        sol_id = str(target.sol_id) if target.sol_id else None
+        if not sol_id:
+            continue
+
+        if sol_id not in targets_map:
+            targets_map[sol_id] = {}
+
+        target_value = float(target.target or 0)
+
+        if target.type == "Monthly" and target.month:
+            month_key = str(target.month).strip().upper()
+            month_key = month_mapping.get(month_key, month_key[:3])
+            targets_map[sol_id][month_key] = target_value
+
+        elif target.type == "Yearly":
+            targets_map[sol_id]["YEARLY"] = target_value
+
+    return targets_map
+
+
+def _calculate_month_summary(grouped_data: Dict, category_order: List[str]) -> Dict[str, Any]:
+    """Calculate month summary statistics."""
+    category_distribution = {cat: 0 for cat in category_order}
+    total_branches = 0
+    total_target = 0.0
+    total_achievement = 0.0
+
+    for zone in grouped_data:
+        for category in grouped_data[zone]:
+            cat_data = grouped_data[zone][category]
+
+            if cat_data["branch_count"] > 0:
+                category_distribution[category] += cat_data["branch_count"]
+                total_branches += cat_data["branch_count"]
+                total_target += cat_data["target"]
+                total_achievement += cat_data["achievement"]
+
+    avg_ach_pct = (
+        (total_achievement / total_target * 100) 
+        if total_target > 0 else 0
+    )
+
+    return {
+        "total_branches": total_branches,
+        "total_target": round(total_target, 2),
+        "total_achievement": round(total_achievement, 2),
+        "avg_ach_pct": round(avg_ach_pct, 2),
+        "category_distribution": category_distribution
+    }
+
+
+def _calculate_fy_summary(months_data: Dict) -> Dict[str, Any]:
+    """Calculate FY summary."""
+    total_branches_fy = 0
+    overall_ach_list = []
+
+    for month_data in months_data.values():
+        summary = month_data.get("summary", {})
+        total_branches_fy = max(total_branches_fy, summary.get("total_branches", 0))
+        overall_ach_list.append(summary.get("avg_ach_pct", 0))
+
+    overall_ach_pct = (
+        sum(overall_ach_list) / len(overall_ach_list) 
+        if overall_ach_list else 0
+    )
+
+    return {
+        "total_months": len(months_data),
+        "total_branches": total_branches_fy,
+        "overall_achievement_pct": round(overall_ach_pct, 2)
+    }
+
+
+def _calculate_category(ach_pct: float) -> str:
+    """Calculate performance category based on achievement percentage."""
+    if ach_pct > 100:
+        return "Pinnacle"
+    elif ach_pct >= 80:
+        return "Master"
+    elif ach_pct >= 60:
+        return "Accelerator"
+    elif ach_pct >= 40:
+        return "Starter"
+    elif ach_pct >= 20:
+        return "Learner"
+    else:
+        return "Zero Level"
+
+
+# ============================================================================
+# ERROR HANDLING (Unchanged)
+# ============================================================================
+
+
+def _error_response(status_code: int, error_type: str, message: str) -> Dict[str, Any]:
+    """Construct error response."""
+    frappe.response["http_status_code"] = status_code
+
+    return {
+        "status": "error",
+        "error": {
+            "type": error_type,
+            "message": message,
+            "timestamp": datetime.now().isoformat()
+        }
+    }
