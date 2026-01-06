@@ -128,7 +128,6 @@ frappe.pages["branch-profile"].on_page_load = function (wrapper) {
         .left-column, .right-column {
             overflow: visible !important;
             position: sticky;
-
             align-self: start;
             height: fit-content;
         }
@@ -767,9 +766,7 @@ frappe.pages["branch-profile"].on_page_load = function (wrapper) {
         if (tabId === "crm-customers") {
             const sol_id = $("#search-field input").val().trim();
             if (sol_id) {
-                // Render the HTML first with dates pre-filled
                 render_crm_skeleton();
-                // Then load the data
                 setTimeout(() => {
                     load_crm_data(sol_id);
                 }, 100);
@@ -781,7 +778,7 @@ frappe.pages["branch-profile"].on_page_load = function (wrapper) {
     init_sol_search(wrapper);
 
 
-    // -------- LOAD FROM URL --------
+    // Load from URL
     const query = frappe.utils.get_query_params();
     if (query.sol_id) {
         $("#search-field input").val(query.sol_id);
@@ -797,7 +794,7 @@ frappe.pages["branch-profile"].on_page_load = function (wrapper) {
         }
     });
 
-    // CRM date filter change handler (using event delegation)
+    // CRM date filter change handler
     $(document).on("change", "#crm-from-date, #crm-to-date", function () {
         const sol_id = $("#search-field input").val().trim();
         if (sol_id) {
@@ -807,36 +804,16 @@ frappe.pages["branch-profile"].on_page_load = function (wrapper) {
 };
 
 
-/* ---------------- DATE UTILITY FUNCTIONS ---------------- */
-// Convert dd/mm/yyyy to yyyy-mm-dd for backend
-function formatDateForBackend(ddmmyyyy) {
-    const parts = ddmmyyyy.split('/');
-    if (parts.length === 3) {
-        return `${parts[2]}-${parts[1]}-${parts[0]}`;
-    }
-    return ddmmyyyy;
-}
-
-// Convert yyyy-mm-dd to dd/mm/yyyy for display
-function formatDateForDisplay(yyyymmdd) {
-    const parts = yyyymmdd.split('-');
-    if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
-    return yyyymmdd;
-}
-
-// Get default dates (first day of month and today)
+/* ---------------- DATE UTILITY FUNCTIONS (UPDATED) ---------------- */
 function get_default_dates() {
     const today = new Date();
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    // Format as dd/mm/yyyy
     const formatDate = (date) => {
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     };
 
     return {
@@ -872,14 +849,12 @@ function init_sol_search(wrapper) {
     $(control.input).on("input", function () {
         const txt = $(this).val().trim();
 
-
         if (!txt) {
             $("#suggestions-dropdown").remove();
             update_url_sol(null);
             clear_all_cards();
             return;
         }
-
 
         frappe.call({
             method: "custom_report.custom_report.page.branch_profile.branch_profile.search_branches",
@@ -895,11 +870,9 @@ function show_suggestions(input, list) {
     $("#suggestions-dropdown").remove();
     if (!list.length) return;
 
-
     let ul = $(
         `<ul id="suggestions-dropdown" class="list-group position-absolute w-100 shadow" style="z-index:999; max-width: 300px;"></ul>`
     );
-
 
     list.forEach((b) => {
         ul.append(`
@@ -909,15 +882,12 @@ function show_suggestions(input, list) {
         `);
     });
 
-
     $(input).after(ul);
-
 
     ul.find("li").on("click", function () {
         const sol = $(this).data("sol");
         $(input).val(sol);
         ul.remove();
-
 
         update_url_sol(sol);
         load_all_data(sol);
@@ -951,7 +921,6 @@ function render_branch_info(b) {
         return;
     }
 
-
     const branch = b.branch || "";
     const solId = b.sol_id || "";
     const zone = b.zone || "";
@@ -959,7 +928,6 @@ function render_branch_info(b) {
     const state = b.state || "";
     const address = b.address || "";
     const email = b.email || "";
-
 
     const html = `
         <div class="dashboard-card" style="animation-delay: 0.05s;">
@@ -984,7 +952,6 @@ function render_branch_info(b) {
             <div class="branch-address">${address}</div>
         </div>
     `;
-
 
     $("#branch-info-card").html(html);
 }
@@ -1015,12 +982,10 @@ function render_branch_manager(data) {
         .substring(0, 2)
         .toUpperCase();
 
-
     const experience = data.bm_vintage || "";
     const phone = data.bm_phone || "";
     const email = data.bm_email || "";
     const joinedDate = data.bm_doj || "";
-
 
     const html = `
         <div class="dashboard-card" style="animation-delay: 0.1s;">
@@ -1047,7 +1012,6 @@ function render_branch_manager(data) {
         </div>
     `;
 
-
     $("#branch-manager-card").html(html);
 }
 
@@ -1058,7 +1022,6 @@ function render_account_portfolio(data) {
     const totalYtdAchievement = Number(data.total_ytd_achievement) || 0;
     const totalClosingBalance = Number(data.total_book) || 0;
     const totalYtdTarget = Number(data.total_ytd_target) || 0;
-
 
     const html = `
         <div>
@@ -1088,12 +1051,11 @@ function render_account_portfolio(data) {
         </div>
     `;
 
-
     $("#account-portfolio-summary").html(html);
 }
 
 
-/* ---------------- CRM & CUSTOMERS FUNCTIONALITY ---------------- */
+/* ---------------- CRM & CUSTOMERS FUNCTIONALITY (UPDATED) ---------------- */
 function render_crm_skeleton() {
     const dates = get_default_dates();
 
@@ -1102,13 +1064,13 @@ function render_crm_skeleton() {
             <div class="crm-filter-row">
                 <div class="crm-filter-group">
                     <label for="crm-from-date">From Date</label>
-                    <input type="text" id="crm-from-date" class="crm-date-input" 
-                           value="${dates.fromDate}" placeholder="DD/MM/YYYY" />
+                    <input type="date" id="crm-from-date" class="crm-date-input" 
+                           value="${dates.fromDate}" />
                 </div>
                 <div class="crm-filter-group">
                     <label for="crm-to-date">To Date</label>
-                    <input type="text" id="crm-to-date" class="crm-date-input" 
-                           value="${dates.toDate}" placeholder="DD/MM/YYYY" />
+                    <input type="date" id="crm-to-date" class="crm-date-input" 
+                           value="${dates.toDate}" />
                 </div>
             </div>
         </div>
@@ -1156,17 +1118,13 @@ function render_crm_skeleton() {
 
 
 function load_crm_data(sol_id) {
-    const fromDateDisplay = $("#crm-from-date").val();
-    const toDateDisplay = $("#crm-to-date").val();
+    const fromDate = $("#crm-from-date").val();
+    const toDate = $("#crm-to-date").val();
 
-    if (!fromDateDisplay || !toDateDisplay) {
+    if (!fromDate || !toDate) {
         frappe.msgprint("Please select both From and To dates");
         return;
     }
-
-    // Convert dd/mm/yyyy to yyyy-mm-dd for backend
-    const fromDate = formatDateForBackend(fromDateDisplay);
-    const toDate = formatDateForBackend(toDateDisplay);
 
     frappe.call({
         method: "custom_report.custom_report.page.branch_profile.branch_profile.get_crm_data",
@@ -1196,22 +1154,21 @@ function render_crm_data(data) {
     const notInterested = data.not_interested || 0;
     const conversionRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(1) : 0;
 
-    // Convert backend dates (yyyy-mm-dd) to display format (dd/mm/yyyy)
-    const fromDateValue = data.from_date ? formatDateForDisplay(data.from_date) : dates.fromDate;
-    const toDateValue = data.to_date ? formatDateForDisplay(data.to_date) : dates.toDate;
+    const fromDateValue = data.from_date || dates.fromDate;
+    const toDateValue = data.to_date || dates.toDate;
 
     const html = `
         <div class="crm-date-filter-section">
             <div class="crm-filter-row">
                 <div class="crm-filter-group">
                     <label for="crm-from-date">From Date</label>
-                    <input type="text" id="crm-from-date" class="crm-date-input" 
-                           value="${fromDateValue}" placeholder="DD/MM/YYYY" />
+                    <input type="date" id="crm-from-date" class="crm-date-input" 
+                           value="${fromDateValue}" />
                 </div>
                 <div class="crm-filter-group">
                     <label for="crm-to-date">To Date</label>
-                    <input type="text" id="crm-to-date" class="crm-date-input" 
-                           value="${toDateValue}" placeholder="DD/MM/YYYY" />
+                    <input type="date" id="crm-to-date" class="crm-date-input" 
+                           value="${toDateValue}" />
                 </div>
             </div>
         </div>
@@ -1259,10 +1216,9 @@ function render_crm_data(data) {
 }
 
 
-/* ---------------- RIGHT COLUMN: PERFORMANCE DATA LOADING (UPDATED) ---------------- */
+/* ---------------- RIGHT COLUMN: PERFORMANCE DATA LOADING ---------------- */
 function load_performance_data(sol_id) {
     const selectedDate = $("#date-filter").val();
-
 
     frappe.call({
         method: "custom_report.custom_report.page.branch_profile.branch_profile.get_performance_data",
@@ -1290,11 +1246,9 @@ function load_performance_data(sol_id) {
 }
 
 
-/* ---------------- NEW: NO DATA MESSAGE WITH LATEST DATE ---------------- */
 function show_no_data_message(latestDate, selectedDate) {
     const formattedLatest = new Date(latestDate).toLocaleDateString("en-IN");
     const formattedSelected = new Date(selectedDate).toLocaleDateString("en-IN");
-
 
     const html = `
         <div class="dashboard-card" style="animation-delay: 0.15s;">
@@ -1315,7 +1269,6 @@ function show_no_data_message(latestDate, selectedDate) {
             </div>
         </div>
     `;
-
 
     $("#branch-performance-card").html(html);
 }
@@ -1341,20 +1294,17 @@ function render_branch_performance(data) {
         },
     ];
 
-
     let performanceHtml = "";
     performanceData.forEach((item) => {
         const percent = item.target ? Math.round((item.achievement / item.target) * 100) : 0;
         const status = getPerformanceStatus(percent);
         const statusClass = status.toLowerCase().replace(/[\s()]/g, "-");
 
-
         performanceHtml += `
             <div class="performance-item status-${statusClass}">
                 <div class="performance-header">
                     <div class="performance-period">${item.period}</div>
                     <span class="performance-badge status-${statusClass}">${status}</span>
-
                 </div>
                 <div class="performance-values">
                     ₹${formatCurrency(item.achievement)} / ₹${formatCurrency(item.target)}
@@ -1363,7 +1313,6 @@ function render_branch_performance(data) {
             </div>
         `;
     });
-
 
     const financialYear = data.financial_year || "N/A";
     const html = `
@@ -1375,7 +1324,6 @@ function render_branch_performance(data) {
             ${performanceHtml}
         </div>
     `;
-
 
     $("#branch-performance-card").html(html);
 }
@@ -1393,7 +1341,6 @@ function render_staff_manpower(data) {
         "Active SS Agent": data.total_active_ss_agent || 0,
     };
 
-
     let staffHtml = "";
     Object.keys(staffData).forEach((role) => {
         staffHtml += `
@@ -1404,7 +1351,6 @@ function render_staff_manpower(data) {
         `;
     });
 
-
     const html = `
         <div class="dashboard-card" style="animation-delay: 0.2s;">
             <div class="card-header">Staff & Manpower Details</div>
@@ -1413,7 +1359,6 @@ function render_staff_manpower(data) {
             </div>
         </div>
     `;
-
 
     $("#staff-manpower-card").html(html);
 }
