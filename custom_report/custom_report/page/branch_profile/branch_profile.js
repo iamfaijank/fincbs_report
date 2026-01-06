@@ -1,13 +1,12 @@
 frappe.pages["branch-profile"].on_page_load = function (wrapper) {
-    let page = frappe.ui.make_app_page({
-        parent: wrapper,
-        title: "Branch Profile",
-        single_column: true,
-    });
+	let page = frappe.ui.make_app_page({
+		parent: wrapper,
+		title: "Branch Profile",
+		single_column: true,
+	});
 
-
-    /* ---------------- CSS ---------------- */
-    $(`<style>
+	/* ---------------- CSS ---------------- */
+	$(`<style>
         /* Prevent horizontal scroll */
         body, html {
             overflow-x: hidden;
@@ -678,10 +677,53 @@ frappe.pages["branch-profile"].on_page_load = function (wrapper) {
             line-height: 1.2;
         }
 
+        /* ✨ Enhanced CRM Amount Styling */
+        .crm-amount-highlight {
+            display: inline-block;
+            font-size: 18px;
+            font-weight: 700;
+            padding: 6px 14px;
+            border-radius: 6px;
+            margin-top: 8px;
+            letter-spacing: 0.3px;
+            background: linear-gradient(135deg, rgba(10, 102, 194, 0.08) 0%, rgba(10, 102, 194, 0.15) 100%);
+            color: var(--linkedin-blue);
+            box-shadow: 0 2px 8px rgba(10, 102, 194, 0.12);
+            transition: var(--transition-base);
+        }
+
+        .crm-amount-highlight:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(10, 102, 194, 0.18);
+        }
+
+        /* Different color variants for each metric */
+        .crm-total .crm-amount-highlight {
+            background: linear-gradient(135deg, rgba(10, 102, 194, 0.08) 0%, rgba(10, 102, 194, 0.15) 100%);
+            color: #0a66c2;
+        }
+
+        .crm-converted .crm-amount-highlight {
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.08) 0%, rgba(40, 167, 69, 0.15) 100%);
+            color: #28a745;
+        }
+
+        .crm-followup .crm-amount-highlight {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.12) 0%, rgba(255, 193, 7, 0.2) 100%);
+            color: #d39e00;
+        }
+
+        .crm-not-interested .crm-amount-highlight {
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.08) 0%, rgba(220, 53, 69, 0.15) 100%);
+            color: #dc3545;
+        }
+
+        /* Update existing crm-metric-subtext for conversion rate only */
         .crm-metric-subtext {
-            font-size: 12px;
-            color: var(--linkedin-text-secondary);
-            margin-top: 4px;
+            font-size: 11px;
+            color: var(--linkedin-text-muted);
+            margin-top: 6px;
+            font-weight: 500;
         }
 
         /* Specific color accents for different metrics */
@@ -691,9 +733,8 @@ frappe.pages["branch-profile"].on_page_load = function (wrapper) {
         .crm-not-interested { border-left: 4px solid #dc3545; }
     </style>`).appendTo("head");
 
-
-    /* ---------------- HTML ---------------- */
-    $(wrapper).find(".layout-main-section").html(`
+	/* ---------------- HTML ---------------- */
+	$(wrapper).find(".layout-main-section").html(`
         <div class="branch-profile-container">
             <div class="dashboard-grid">
                 <div class="left-column">
@@ -722,7 +763,6 @@ frappe.pages["branch-profile"].on_page_load = function (wrapper) {
                     </div>
                 </div>
 
-
                 <div class="right-column">
                     <div class="date-filter-container">
                         <label for="date-filter">Select Date:</label>
@@ -735,194 +775,191 @@ frappe.pages["branch-profile"].on_page_load = function (wrapper) {
         </div>
     `);
 
+	// Tabs functionality
+	$(".tab-item").on("click", function () {
+		const tabId = $(this).data("tab");
+		const $clickedTab = $(this);
+		const $targetContent = $(`#tab-${tabId}`);
 
-    // Tabs functionality
-    $(".tab-item").on("click", function () {
-        const tabId = $(this).data("tab");
-        const $clickedTab = $(this);
-        const $targetContent = $(`#tab-${tabId}`);
+		$(".tab-item").removeClass("active");
+		$clickedTab.addClass("active");
 
+		$(".tab-content.active").css("opacity", "0");
+		setTimeout(() => {
+			$(".tab-content").removeClass("active");
+			$targetContent.addClass("active").css("opacity", "0");
+			setTimeout(() => {
+				$targetContent.css("opacity", "1");
+			}, 10);
+		}, 150);
 
-        $(".tab-item").removeClass("active");
-        $clickedTab.addClass("active");
+		// Load CRM data when CRM tab is clicked
+		if (tabId === "crm-customers") {
+			const sol_id = $("#search-field input").val().trim();
+			if (sol_id) {
+				render_crm_skeleton();
+				setTimeout(() => {
+					load_crm_data(sol_id);
+				}, 100);
+			}
+		}
+	});
 
+	init_sol_search(wrapper);
 
-        $(".tab-content.active").css("opacity", "0");
-        setTimeout(() => {
-            $(".tab-content").removeClass("active");
-            $targetContent.addClass("active").css("opacity", "0");
-            setTimeout(() => {
-                $targetContent.css("opacity", "1");
-            }, 10);
-        }, 150);
+	// Load from URL
+	const query = frappe.utils.get_query_params();
+	if (query.sol_id) {
+		$("#search-field input").val(query.sol_id);
+		load_all_data(query.sol_id);
+	}
 
-        // Load CRM data when CRM tab is clicked
-        if (tabId === "crm-customers") {
-            const sol_id = $("#search-field input").val().trim();
-            if (sol_id) {
-                render_crm_skeleton();
-                setTimeout(() => {
-                    load_crm_data(sol_id);
-                }, 100);
-            }
-        }
-    });
+	// Date filter change handler
+	$("#date-filter").on("change", function () {
+		const sol_id = $("#search-field input").val().trim();
+		if (sol_id) {
+			load_performance_data(sol_id);
+		}
+	});
 
-
-    init_sol_search(wrapper);
-
-
-    // Load from URL
-    const query = frappe.utils.get_query_params();
-    if (query.sol_id) {
-        $("#search-field input").val(query.sol_id);
-        load_all_data(query.sol_id);
-    }
-
-
-    // Date filter change handler
-    $("#date-filter").on("change", function () {
-        const sol_id = $("#search-field input").val().trim();
-        if (sol_id) {
-            load_performance_data(sol_id);
-        }
-    });
-
-    // CRM date filter change handler
-    $(document).on("change", "#crm-from-date, #crm-to-date", function () {
-        const sol_id = $("#search-field input").val().trim();
-        if (sol_id) {
-            load_crm_data(sol_id);
-        }
-    });
+	// CRM date filter change handler
+	$(document).on("change", "#crm-from-date, #crm-to-date", function () {
+		const sol_id = $("#search-field input").val().trim();
+		if (sol_id) {
+			load_crm_data(sol_id);
+		}
+	});
 };
-
 
 /* ---------------- DATE UTILITY FUNCTIONS ---------------- */
 function get_default_dates() {
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+	const today = new Date();
+	const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    const formatDate = (date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
+	const formatDate = (date) => {
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, "0");
+		const day = String(date.getDate()).padStart(2, "0");
+		return `${year}-${month}-${day}`;
+	};
 
-    return {
-        fromDate: formatDate(firstDay),
-        toDate: formatDate(today)
-    };
+	return {
+		fromDate: formatDate(firstDay),
+		toDate: formatDate(today),
+	};
 }
-
 
 /* ---------------- URL HANDLER ---------------- */
 function update_url_sol(sol_id = null) {
-    const url = new URL(window.location.href);
-    if (sol_id) url.searchParams.set("sol_id", sol_id);
-    else url.searchParams.delete("sol_id");
-    window.history.pushState({}, "", url);
+	const url = new URL(window.location.href);
+	if (sol_id) url.searchParams.set("sol_id", sol_id);
+	else url.searchParams.delete("sol_id");
+	window.history.pushState({}, "", url);
 }
-
 
 /* ---------------- SOL SEARCH ---------------- */
 function init_sol_search(wrapper) {
-    const control = new frappe.ui.form.ControlData({
-        df: {
-            fieldname: "sol",
-            fieldtype: "Data",
-            placeholder: "Type SOL ID or Branch Name",
-        },
-        parent: $(wrapper).find("#search-field"),
-        render_input: true,
-    });
-    control.refresh();
+	const control = new frappe.ui.form.ControlData({
+		df: {
+			fieldname: "sol",
+			fieldtype: "Data",
+			placeholder: "Type SOL ID or Branch Name",
+		},
+		parent: $(wrapper).find("#search-field"),
+		render_input: true,
+	});
+	control.refresh();
 
-    $(control.input).on("input", function () {
-        const txt = $(this).val().trim();
+	$(control.input).on("input", function () {
+		const txt = $(this).val().trim();
 
-        if (!txt) {
-            $("#suggestions-dropdown").remove();
-            update_url_sol(null);
-            clear_all_cards();
-            return;
-        }
+		if (!txt) {
+			$("#suggestions-dropdown").remove();
+			update_url_sol(null);
+			clear_all_cards();
+			return;
+		}
 
-        frappe.call({
-            method: "custom_report.custom_report.page.branch_profile.branch_profile.search_branches",
-            args: { txt },
-            callback: (r) => show_suggestions(control.input, r.message || []),
-        });
-    });
+		frappe.call({
+			method: "custom_report.custom_report.page.branch_profile.branch_profile.search_branches",
+			args: { txt },
+			callback: (r) => show_suggestions(control.input, r.message || []),
+		});
+	});
 }
-
 
 /* ---------------- AUTOCOMPLETE ---------------- */
 function show_suggestions(input, list) {
-    $("#suggestions-dropdown").remove();
-    if (!list.length) return;
+	$("#suggestions-dropdown").remove();
+	if (!list.length) return;
 
-    let ul = $(
-        `<ul id="suggestions-dropdown" class="list-group position-absolute w-100 shadow" style="z-index:999; max-width: 300px;"></ul>`
-    );
+	let ul = $(
+		`<ul id="suggestions-dropdown" class="list-group position-absolute w-100 shadow" style="z-index:999; max-width: 300px;"></ul>`
+	);
 
-    list.forEach((b) => {
-        ul.append(`
+	list.forEach((b) => {
+		ul.append(`
             <li class="list-group-item" data-sol="${b.sol_id}">
                 <b>${b.sol_id}</b> – ${b.branch}
             </li>
         `);
-    });
+	});
 
-    $(input).after(ul);
+	$(input).after(ul);
 
-    ul.find("li").on("click", function () {
-        const sol = $(this).data("sol");
-        $(input).val(sol);
-        ul.remove();
+	ul.find("li").on("click", function () {
+		const sol = $(this).data("sol");
+		$(input).val(sol);
+		ul.remove();
 
-        update_url_sol(sol);
-        load_all_data(sol);
-    });
+		update_url_sol(sol);
+		load_all_data(sol);
+	});
 }
-
 
 /* ---------------- LOAD ALL DATA ---------------- */
 function load_all_data(sol) {
-    load_branch_master(sol);
-    load_branch_profile(sol);
-    load_performance_data(sol, true);  // ✅ CHANGE: Pass true for initial load
-}
+	load_branch_master(sol);
+	load_branch_profile(sol);
+	load_performance_data(sol, true);
 
+	// ✅ Check if CRM tab is active and load CRM data
+	const isCrmTabActive = $(".tab-item[data-tab='crm-customers']").hasClass("active");
+
+	if (isCrmTabActive) {
+		render_crm_skeleton();
+		setTimeout(() => {
+			load_crm_data(sol);
+		}, 100);
+	}
+}
 
 /* ---------------- LEFT COLUMN: BRANCH INFORMATION ---------------- */
 function load_branch_master(sol) {
-    frappe.call({
-        method: "custom_report.custom_report.page.branch_profile.branch_profile.get_branch_data",
-        args: { sol_id: sol },
-        callback: (r) => render_branch_info(r.message?.[0]),
-    });
+	frappe.call({
+		method: "custom_report.custom_report.page.branch_profile.branch_profile.get_branch_data",
+		args: { sol_id: sol },
+		callback: (r) => render_branch_info(r.message?.[0]),
+	});
 }
 
-
 function render_branch_info(b) {
-    if (!b) {
-        $("#branch-info-card").html(
-            `<div class="dashboard-card"><div class="empty-state">No Branch Found</div></div>`
-        );
-        return;
-    }
+	if (!b) {
+		$("#branch-info-card").html(
+			`<div class="dashboard-card"><div class="empty-state">No Branch Found</div></div>`
+		);
+		return;
+	}
 
-    const branch = b.branch || "";
-    const solId = b.sol_id || "";
-    const zone = b.zone || "";
-    const region = b.region || "";
-    const state = b.state || "";
-    const address = b.address || "";
-    const email = b.email || "";
+	const branch = b.branch || "";
+	const solId = b.sol_id || "";
+	const zone = b.zone || "";
+	const region = b.region || "";
+	const state = b.state || "";
+	const address = b.address || "";
+	const email = b.email || "";
 
-    const html = `
+	const html = `
         <div class="dashboard-card" style="animation-delay: 0.05s;">
             <div class="card-header">Branch Information</div>
             <div class="branch-name-id">${branch} - ${solId}</div>
@@ -946,41 +983,39 @@ function render_branch_info(b) {
         </div>
     `;
 
-    $("#branch-info-card").html(html);
+	$("#branch-info-card").html(html);
 }
-
 
 /* ---------------- LEFT COLUMN: BRANCH MANAGER ---------------- */
 function load_branch_profile(sol) {
-    frappe.call({
-        method: "custom_report.custom_report.page.branch_profile.branch_profile.get_branch_profile_data",
-        args: { sol_id: sol },
-        callback: (r) => {
-            const data = r.message || {};
-            render_branch_manager(data);
-            render_account_portfolio(data);
-            render_staff_manpower(data);
-        },
-    });
+	frappe.call({
+		method: "custom_report.custom_report.page.branch_profile.branch_profile.get_branch_profile_data",
+		args: { sol_id: sol },
+		callback: (r) => {
+			const data = r.message || {};
+			render_branch_manager(data);
+			render_account_portfolio(data);
+			render_staff_manpower(data);
+		},
+	});
 }
 
-
 function render_branch_manager(data) {
-    const managerName = data.bm_name || "";
-    const initials = (managerName || "NA")
-        .split(" ")
-        .filter(Boolean)
-        .map((n) => n[0])
-        .join("")
-        .substring(0, 2)
-        .toUpperCase();
+	const managerName = data.bm_name || "";
+	const initials = (managerName || "NA")
+		.split(" ")
+		.filter(Boolean)
+		.map((n) => n[0])
+		.join("")
+		.substring(0, 2)
+		.toUpperCase();
 
-    const experience = data.bm_vintage || "";
-    const phone = data.bm_phone || "";
-    const email = data.bm_email || "";
-    const joinedDate = data.bm_doj || "";
+	const experience = data.bm_vintage || "";
+	const phone = data.bm_phone || "";
+	const email = data.bm_email || "";
+	const joinedDate = data.bm_doj || "";
 
-    const html = `
+	const html = `
         <div class="dashboard-card" style="animation-delay: 0.1s;">
             <div class="card-header">Branch Manager</div>
             <div class="manager-profile">
@@ -1005,18 +1040,17 @@ function render_branch_manager(data) {
         </div>
     `;
 
-    $("#branch-manager-card").html(html);
+	$("#branch-manager-card").html(html);
 }
-
 
 /* ---------------- MIDDLE COLUMN: ACCOUNT PORTFOLIO SUMMARY ---------------- */
 function render_account_portfolio(data) {
-    const totalAccounts = data.total_customers_id || 0;
-    const totalYtdAchievement = Number(data.total_ytd_achievement) || 0;
-    const totalClosingBalance = Number(data.total_book) || 0;
-    const totalYtdTarget = Number(data.total_ytd_target) || 0;
+	const totalAccounts = data.total_customers_id || 0;
+	const totalYtdAchievement = Number(data.total_ytd_achievement) || 0;
+	const totalClosingBalance = Number(data.total_book) || 0;
+	const totalYtdTarget = Number(data.total_ytd_target) || 0;
 
-    const html = `
+	const html = `
         <div>
             <div class="card-header">Account Portfolio Summary</div>
             <div class="portfolio-grid">
@@ -1027,14 +1061,14 @@ function render_account_portfolio(data) {
                 <div class="portfolio-metric">
                     <div class="portfolio-metric-label">Total YTD Achievement</div>
                     <div class="portfolio-metric-value">₹${formatCurrency(
-                        totalYtdAchievement
-                    )}</div>
+						totalYtdAchievement
+					)}</div>
                 </div>
                 <div class="portfolio-metric">
                     <div class="portfolio-metric-label">Total Closing Balance</div>
                     <div class="portfolio-metric-value">₹${formatCurrency(
-                        totalClosingBalance
-                    )}</div>
+						totalClosingBalance
+					)}</div>
                 </div>
                 <div class="portfolio-metric">
                     <div class="portfolio-metric-label">Total YTD Target</div>
@@ -1044,15 +1078,14 @@ function render_account_portfolio(data) {
         </div>
     `;
 
-    $("#account-portfolio-summary").html(html);
+	$("#account-portfolio-summary").html(html);
 }
-
 
 /* ---------------- CRM & CUSTOMERS FUNCTIONALITY ---------------- */
 function render_crm_skeleton() {
-    const dates = get_default_dates();
+	const dates = get_default_dates();
 
-    const html = `
+	const html = `
         <div class="crm-date-filter-section">
             <div class="crm-filter-row">
                 <div class="crm-filter-group">
@@ -1106,50 +1139,50 @@ function render_crm_skeleton() {
         </div>
     `;
 
-    $("#tab-crm-customers").html(html);
+	$("#tab-crm-customers").html(html);
 }
-
 
 function load_crm_data(sol_id) {
-    const fromDate = $("#crm-from-date").val();
-    const toDate = $("#crm-to-date").val();
+	const fromDate = $("#crm-from-date").val();
+	const toDate = $("#crm-to-date").val();
 
-    if (!fromDate || !toDate) {
-        frappe.msgprint("Please select both From and To dates");
-        return;
-    }
+	if (!fromDate || !toDate) {
+		frappe.msgprint("Please select both From and To dates");
+		return;
+	}
 
-    frappe.call({
-        method: "custom_report.custom_report.page.branch_profile.branch_profile.get_crm_data",
-        args: {
-            sol_id: sol_id,
-            from_date: fromDate,
-            to_date: toDate
-        },
-        callback: (r) => {
-            render_crm_data(r.message || {});
-        },
-        error: (r) => {
-            $("#tab-crm-customers").html(
-                '<div class="empty-state">Error loading CRM data</div>'
-            );
-        }
-    });
+	frappe.call({
+		method: "custom_report.custom_report.page.branch_profile.branch_profile.get_crm_data",
+		args: {
+			sol_id: sol_id,
+			from_date: fromDate,
+			to_date: toDate,
+		},
+		callback: (r) => {
+			render_crm_data(r.message || {});
+		},
+		error: (r) => {
+			$("#tab-crm-customers").html('<div class="empty-state">Error loading CRM data</div>');
+		},
+	});
 }
 
-
 function render_crm_data(data) {
-    const dates = get_default_dates();
-    const totalLeads = data.total_leads || 0;
-    const convertedLeads = data.converted_leads || 0;
-    const followUp = data.follow_up || 0;
-    const notInterested = data.not_interested || 0;
-    const conversionRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(1) : 0;
+	const dates = get_default_dates();
+	const totalLeads = data.total_leads || 0;
+	const totalLeadsAmount = data.total_leads_amount || 0;
+	const convertedLeads = data.converted_leads || 0;
+	const convertedAmount = data.converted_amount || 0;
+	const followUp = data.follow_up || 0;
+	const followUpAmount = data.follow_up_amount || 0;
+	const notInterested = data.not_interested || 0;
+	const notInterestedAmount = data.not_interested_amount || 0;
+	const conversionRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(1) : 0;
 
-    const fromDateValue = data.from_date || dates.fromDate;
-    const toDateValue = data.to_date || dates.toDate;
+	const fromDateValue = data.from_date || dates.fromDate;
+	const toDateValue = data.to_date || dates.toDate;
 
-    const html = `
+	const html = `
         <div class="crm-date-filter-section">
             <div class="crm-filter-row">
                 <div class="crm-filter-group">
@@ -1173,6 +1206,9 @@ function render_crm_data(data) {
                     <div class="crm-metric-content">
                         <div class="crm-metric-label">Total Leads</div>
                         <div class="crm-metric-value">${formatNumber(totalLeads)}</div>
+                        <div class="crm-amount-highlight">₹${formatCurrency(
+							totalLeadsAmount
+						)}</div>
                     </div>
                 </div>
 
@@ -1181,7 +1217,8 @@ function render_crm_data(data) {
                     <div class="crm-metric-content">
                         <div class="crm-metric-label">Converted Leads</div>
                         <div class="crm-metric-value">${formatNumber(convertedLeads)}</div>
-                        <div class="crm-metric-subtext">${conversionRate}% conversion</div>
+                        <div class="crm-amount-highlight">₹${formatCurrency(convertedAmount)}</div>
+                        <div class="crm-metric-subtext">${conversionRate}% conversion rate</div>
                     </div>
                 </div>
 
@@ -1190,6 +1227,7 @@ function render_crm_data(data) {
                     <div class="crm-metric-content">
                         <div class="crm-metric-label">Follow Up</div>
                         <div class="crm-metric-value">${formatNumber(followUp)}</div>
+                        <div class="crm-amount-highlight">₹${formatCurrency(followUpAmount)}</div>
                     </div>
                 </div>
 
@@ -1198,72 +1236,68 @@ function render_crm_data(data) {
                     <div class="crm-metric-content">
                         <div class="crm-metric-label">Not Interested</div>
                         <div class="crm-metric-value">${formatNumber(notInterested)}</div>
+                        <div class="crm-amount-highlight">₹${formatCurrency(
+							notInterestedAmount
+						)}</div>
                     </div>
                 </div>
             </div>
         </div>
     `;
 
-    $("#tab-crm-customers").html(html);
+	$("#tab-crm-customers").html(html);
 }
 
-
-/* ---------------- RIGHT COLUMN: PERFORMANCE DATA LOADING ✅ UPDATED ---------------- */
+/* ---------------- RIGHT COLUMN: PERFORMANCE DATA LOADING ---------------- */
 function load_performance_data(sol_id, initial_load = false) {
-    const selectedDate = $("#date-filter").val();
+	const selectedDate = $("#date-filter").val();
 
-    frappe.call({
-        method: "custom_report.custom_report.page.branch_profile.branch_profile.get_performance_data",
-        args: {
-            sol_id: sol_id,
-            date: initial_load ? null : selectedDate,  // ✅ CHANGE: Send null on initial load
-        },
-        callback: (r) => {
-            if (r.message && r.message.data_exists) {
-                render_branch_performance(r.message);
-                // If initial load and date filter is empty, set it to the latest date
-                if (initial_load && !selectedDate && r.message.selected_date) {
-                    $("#date-filter").val(r.message.selected_date);
-                }
-            } else if (r.message && r.message.latest_date) {
-                show_no_data_message(r.message.latest_date, selectedDate);
-                // ✅ CHANGE: Set the date filter to latest available date
-                if (initial_load) {
-                    $("#date-filter").val(r.message.latest_date);
-                    // Reload with latest date
-                    setTimeout(() => {
-                        load_performance_data(sol_id, false);
-                    }, 100);
-                }
-            } else {
-                $("#branch-performance-card").html(
-                    '<div class="dashboard-card"><div class="empty-state">No performance data available for this branch</div></div>'
-                );
-            }
-        },
-        error: (r) => {
-            $("#branch-performance-card").html(
-                '<div class="dashboard-card"><div class="empty-state">Error loading performance data</div></div>'
-            );
-        },
-    });
+	frappe.call({
+		method: "custom_report.custom_report.page.branch_profile.branch_profile.get_performance_data",
+		args: {
+			sol_id: sol_id,
+			date: initial_load ? null : selectedDate,
+		},
+		callback: (r) => {
+			if (r.message && r.message.data_exists) {
+				render_branch_performance(r.message);
+				if (initial_load && !selectedDate && r.message.selected_date) {
+					$("#date-filter").val(r.message.selected_date);
+				}
+			} else if (r.message && r.message.latest_date) {
+				show_no_data_message(r.message.latest_date, selectedDate);
+				if (initial_load) {
+					$("#date-filter").val(r.message.latest_date);
+					setTimeout(() => {
+						load_performance_data(sol_id, false);
+					}, 100);
+				}
+			} else {
+				$("#branch-performance-card").html(
+					`<div class="dashboard-card"><div class="empty-state">No performance data available for this branch</div></div>`
+				);
+			}
+		},
+		error: (r) => {
+			$("#branch-performance-card").html(
+				`<div class="dashboard-card"><div class="empty-state">Error loading performance data</div></div>`
+			);
+		},
+	});
 }
-
 
 function show_no_data_message(latestDate, selectedDate) {
-    const formattedLatest = new Date(latestDate).toLocaleDateString("en-IN");
-    const formattedSelected = new Date(selectedDate).toLocaleDateString("en-IN");
+	const formattedLatest = new Date(latestDate).toLocaleDateString("en-IN");
+	const formattedSelected = new Date(selectedDate).toLocaleDateString("en-IN");
 
-    const html = `
+	const html = `
         <div class="dashboard-card" style="animation-delay: 0.15s;">
             <div class="card-header">
                 Branch Performance 
                 <small>No Data - ${formattedSelected}</small>
             </div>
             <div class="no-data-state">
-                <div class="no-data-title">
-                    No data available for ${formattedSelected}
-                </div>
+                <div class="no-data-title">📅 No data available for ${formattedSelected}</div>
                 <div class="no-data-latest">
                     Latest available data: <strong>${formattedLatest}</strong>
                 </div>
@@ -1274,37 +1308,36 @@ function show_no_data_message(latestDate, selectedDate) {
         </div>
     `;
 
-    $("#branch-performance-card").html(html);
+	$("#branch-performance-card").html(html);
 }
-
 
 /* ---------------- RIGHT COLUMN: BRANCH PERFORMANCE ---------------- */
 function render_branch_performance(data) {
-    const performanceData = [
-        {
-            period: "Month",
-            achievement: Number(data.monthly_achievement) || 0,
-            target: Number(data.monthly_target) || 0,
-        },
-        {
-            period: "Yearly",
-            achievement: Number(data.yearly_achievement) || 0,
-            target: Number(data.yearly_target) || 0,
-        },
-        {
-            period: "YTD",
-            achievement: Number(data.yearly_achievement) || 0,
-            target: Number(data.ytd_target) || 0,
-        },
-    ];
+	const performanceData = [
+		{
+			period: "Month",
+			achievement: Number(data.monthly_achievement) || 0,
+			target: Number(data.monthly_target) || 0,
+		},
+		{
+			period: "Yearly",
+			achievement: Number(data.yearly_achievement) || 0,
+			target: Number(data.yearly_target) || 0,
+		},
+		{
+			period: "YTD",
+			achievement: Number(data.yearly_achievement) || 0,
+			target: Number(data.ytd_target) || 0,
+		},
+	];
 
-    let performanceHtml = "";
-    performanceData.forEach((item) => {
-        const percent = item.target ? Math.round((item.achievement / item.target) * 100) : 0;
-        const status = getPerformanceStatus(percent);
-        const statusClass = status.toLowerCase().replace(/[\s()]/g, "-");
+	let performanceHtml = "";
+	performanceData.forEach((item) => {
+		const percent = item.target ? Math.round((item.achievement / item.target) * 100) : 0;
+		const status = getPerformanceStatus(percent);
+		const statusClass = status.toLowerCase().replace(/\s+/g, "-");
 
-        performanceHtml += `
+		performanceHtml += `
             <div class="performance-item status-${statusClass}">
                 <div class="performance-header">
                     <div class="performance-period">${item.period}</div>
@@ -1316,86 +1349,83 @@ function render_branch_performance(data) {
                 <div class="performance-percentage">${percent}%</div>
             </div>
         `;
-    });
+	});
 
-    const financialYear = data.financial_year || "N/A";
-    const html = `
+	const financialYear = data.financial_year || "NA";
+	const html = `
         <div class="dashboard-card" style="animation-delay: 0.15s;">
             <div class="card-header">
                 Branch Performance 
-                <small>(${financialYear}) - ${data.selected_date}</small>
+                <small>${financialYear} - ${data.selected_date}</small>
             </div>
             ${performanceHtml}
         </div>
     `;
 
-    $("#branch-performance-card").html(html);
+	$("#branch-performance-card").html(html);
 }
 
-
-/* ---------------- RIGHT COLUMN: STAFF & MANPOWER ---------------- */
+/* ---------------- RIGHT COLUMN: STAFF MANPOWER ---------------- */
 function render_staff_manpower(data) {
-    const staffData = {
-        "Staff Nos": data.staff_nos || 0,
-        "Budgeted Staff": data.total_no_of_budgeted_staff || 0,
-        "Staff Onboarded": data.total_staff_onboarded || 0,
-        "DDS Agent": data.total_dds_agent || 0,
-        "Active DDS Agent": data.total_active_dds_agent || 0,
-        "SS Agent": data.total_ss_agent || 0,
-        "Active SS Agent": data.total_active_ss_agent || 0,
-    };
+	const staffData = {
+		"Staff Nos": data.staff_nos || 0,
+		"Budgeted Staff": data.total_no_of_budgeted_staff || 0,
+		"Staff Onboarded": data.total_staff_onboarded || 0,
+		"DDS Agent": data.total_dds_agent || 0,
+		"Active DDS Agent": data.total_active_dds_agent || 0,
+		"SS Agent": data.total_ss_agent || 0,
+		"Active SS Agent": data.total_active_ss_agent || 0,
+	};
 
-    let staffHtml = "";
-    Object.keys(staffData).forEach((role) => {
-        staffHtml += `
+	let staffHtml = "";
+	Object.keys(staffData).forEach((role) => {
+		staffHtml += `
             <div class="staff-role-box">
                 <div class="staff-role-label">${role}</div>
                 <div class="staff-role-count">${formatNumber(staffData[role])}</div>
             </div>
         `;
-    });
+	});
 
-    const html = `
+	const html = `
         <div class="dashboard-card" style="animation-delay: 0.2s;">
-            <div class="card-header">Staff & Manpower Details</div>
+            <div class="card-header">Staff Manpower Details</div>
             <div class="staff-grid">
                 ${staffHtml}
             </div>
         </div>
     `;
 
-    $("#staff-manpower-card").html(html);
+	$("#staff-manpower-card").html(html);
 }
-
 
 /* ---------------- HELPER FUNCTIONS ---------------- */
 function clear_all_cards() {
-    $("#branch-info-card").html("");
-    $("#branch-manager-card").html("");
-    $("#account-portfolio-summary").html("");
-    $("#branch-performance-card").html("");
-    $("#staff-manpower-card").html("");
-    $("#tab-crm-customers").html('<div class="empty-state">Select a branch to view CRM data</div>');
+	$("#branch-info-card").html("");
+	$("#branch-manager-card").html("");
+	$("#account-portfolio-summary").html("");
+	$("#branch-performance-card").html("");
+	$("#staff-manpower-card").html("");
+	$("#tab-crm-customers").html(
+		'<div class="empty-state">Select a branch to view CRM data</div>'
+	);
 }
-
 
 function formatNumber(num) {
-    if (!num) return "0";
-    return num.toLocaleString("en-IN");
+	if (!num) return "0";
+	return num.toLocaleString("en-IN");
 }
-
 
 function formatCurrency(num) {
-    if (!num) return "0";
-    return num.toLocaleString("en-IN");
+	if (!num) return "0";
+	return num.toLocaleString("en-IN");
 }
 
-
 function getPerformanceStatus(percent) {
-    if (percent > 100) return "Pinnacle (Overachievers)";
-    if (percent >= 80) return "Master";
-    if (percent >= 60) return "Accelerator";
-    if (percent >= 40) return "Starter";
-    if (percent >= 20) return "Learner";
-    return "Zero Level";
+	if (percent >= 100) return "Pinnacle Overachievers";
+	if (percent >= 80) return "Master";
+	if (percent >= 60) return "Accelerator";
+	if (percent >= 40) return "Starter";
+	if (percent >= 20) return "Learner";
+	return "Zero Level";
 }

@@ -2,7 +2,6 @@ import frappe
 from frappe.utils import getdate
 
 
-
 @frappe.whitelist()
 def search_branches(txt):
     """
@@ -19,7 +18,6 @@ def search_branches(txt):
         fields=["name", "sol_id", "branch"],
         limit_page_length=10,
     )
-
 
 
 @frappe.whitelist()
@@ -46,7 +44,6 @@ def get_branch_data(sol_id):
     )
 
 
-
 @frappe.whitelist()
 def get_branch_profile_data(sol_id):
     """
@@ -59,7 +56,6 @@ def get_branch_profile_data(sol_id):
         limit_page_length=1,
     )
     return data[0] if data else {}
-
 
 
 @frappe.whitelist()
@@ -159,7 +155,6 @@ def get_performance_data(sol_id, date=None):
         }
 
 
-
 @frappe.whitelist()
 def get_crm_data(sol_id, from_date, to_date):
     """
@@ -186,35 +181,41 @@ def get_crm_data(sol_id, from_date, to_date):
             "creation": ["between", [from_date, to_date]]
         }
 
-        # Total leads (all statuses)
-        total_leads = frappe.db.count("Lead", filters=base_filters)
+        # Total leads (all statuses) with product amount
+        total_leads_data = get_lead_count_with_amount(base_filters)
 
         # Converted leads (status = "Converted")
         converted_filters = base_filters.copy()
         converted_filters["status"] = "Converted"
-        converted_leads = frappe.db.count("Lead", filters=converted_filters)
+        converted_data = get_lead_count_with_amount(converted_filters)
 
         # Follow up leads (status = "Follow Up")
         follow_up_filters = base_filters.copy()
         follow_up_filters["status"] = "Follow Up"
-        follow_up = frappe.db.count("Lead", filters=follow_up_filters)
+        follow_up_data = get_lead_count_with_amount(follow_up_filters)
 
         # Not interested leads (status = "Not Interested")
         not_interested_filters = base_filters.copy()
         not_interested_filters["status"] = "Not Interested"
-        not_interested = frappe.db.count("Lead", filters=not_interested_filters)
+        not_interested_data = get_lead_count_with_amount(not_interested_filters)
 
         frappe.logger().info(
             f"CRM Data for SOL {sol_id} ({from_date} to {to_date}): "
-            f"Total={total_leads}, Converted={converted_leads}, "
-            f"FollowUp={follow_up}, NotInterested={not_interested}"
+            f"Total={total_leads_data['count']} (₹{total_leads_data['amount']}), "
+            f"Converted={converted_data['count']} (₹{converted_data['amount']}), "
+            f"FollowUp={follow_up_data['count']} (₹{follow_up_data['amount']}), "
+            f"NotInterested={not_interested_data['count']} (₹{not_interested_data['amount']})"
         )
 
         return {
-            "total_leads": total_leads,
-            "converted_leads": converted_leads,
-            "follow_up": follow_up,
-            "not_interested": not_interested,
+            "total_leads": total_leads_data['count'],
+            "total_leads_amount": total_leads_data['amount'],
+            "converted_leads": converted_data['count'],
+            "converted_amount": converted_data['amount'],
+            "follow_up": follow_up_data['count'],
+            "follow_up_amount": follow_up_data['amount'],
+            "not_interested": not_interested_data['count'],
+            "not_interested_amount": not_interested_data['amount'],
             "from_date": from_date.strftime('%Y-%m-%d'),
             "to_date": to_date.strftime('%Y-%m-%d')
         }
@@ -226,19 +227,50 @@ def get_crm_data(sol_id, from_date, to_date):
         )
         return {
             "total_leads": 0,
+            "total_leads_amount": 0,
             "converted_leads": 0,
+            "converted_amount": 0,
             "follow_up": 0,
+            "follow_up_amount": 0,
             "not_interested": 0,
+            "not_interested_amount": 0,
             "from_date": str(from_date),
             "to_date": str(to_date),
             "error": str(e)
         }
 
 
-
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
+
+def get_lead_count_with_amount(filters):
+    """
+    Get lead count and sum of product amounts from Lead Product child table
+    
+    Args:
+        filters: Dict of filters to apply on Lead doctype
+    
+    Returns:
+        dict: {count: int, amount: float}
+    """
+    # Get all matching leads
+    leads = frappe.db.get_list("Lead", filters=filters, pluck="name")
+    
+    if not leads:
+        return {"count": 0, "amount": 0.0}
+    
+    # Get sum of product_amount from Lead Product child table
+    total_amount = frappe.db.sql("""
+        SELECT COALESCE(SUM(product_amount), 0) as total_amount
+        FROM `tabLead Product`
+        WHERE parent IN %(leads)s
+    """, {"leads": leads}, as_dict=1)[0].total_amount
+    
+    return {
+        "count": len(leads),
+        "amount": float(total_amount or 0)
+    }
 
 
 def get_fiscal_year(date_str):
@@ -259,7 +291,6 @@ def get_fiscal_year(date_str):
         return f"{year}-{year+1}"
     else:  # Jan-Mar
         return f"{year-1}-{year}"
-
 
 
 def get_targets(sol_id, fiscal_year):
