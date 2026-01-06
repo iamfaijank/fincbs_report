@@ -375,10 +375,11 @@ def _apply_branch_report_filter(sql_query, sol_id, is_branch_user):
     modified_sql = _inject_sol_id_filter(sql_query, sol_id)
     return modified_sql, True
 
-
 def _inject_sol_id_filter(sql_segment, sol_id):
     """
     Inject sol_id filter into the WHERE clause of a SQL segment.
+    
+    Automatically detects the correct table alias to use for sol_id filtering.
     
     Args:
         sql_segment (str): SQL query or query segment
@@ -387,12 +388,18 @@ def _inject_sol_id_filter(sql_segment, sol_id):
     Returns:
         str: Modified SQL with sol_id filter added
     """
+    # Detect which table alias has sol_id column
+    table_alias = _detect_sol_id_table_alias(sql_segment)
+    
+    # Build the filter condition with detected alias
+    sol_id_condition = f"{table_alias}.sol_id = %(branch_sol_id)s"
+    
     # Check if WHERE clause exists
     if re.search(r"\bWHERE\b", sql_segment, flags=re.IGNORECASE):
         # Add condition after WHERE keyword
         modified_sql = re.sub(
             r"(\bWHERE\b)\s+",
-            r"\1 g.sol_id = %(branch_sol_id)s AND ",
+            rf"\1 {sol_id_condition} AND ",
             sql_segment,
             count=1,
             flags=re.IGNORECASE
@@ -402,7 +409,7 @@ def _inject_sol_id_filter(sql_segment, sol_id):
         if re.search(r"\bORDER\s+BY\b", sql_segment, flags=re.IGNORECASE):
             modified_sql = re.sub(
                 r"(\bORDER\s+BY\b)",
-                r"WHERE g.sol_id = %(branch_sol_id)s \1",
+                rf"WHERE {sol_id_condition} \1",
                 sql_segment,
                 count=1,
                 flags=re.IGNORECASE
@@ -410,16 +417,45 @@ def _inject_sol_id_filter(sql_segment, sol_id):
         elif re.search(r"\bLIMIT\b", sql_segment, flags=re.IGNORECASE):
             modified_sql = re.sub(
                 r"(\bLIMIT\b)",
-                r"WHERE g.sol_id = %(branch_sol_id)s \1",
+                rf"WHERE {sol_id_condition} \1",
                 sql_segment,
                 count=1,
                 flags=re.IGNORECASE
             )
         else:
             # Add WHERE at the end
-            modified_sql = f"{sql_segment.rstrip(';')} WHERE g.sol_id = %(branch_sol_id)s"
+            modified_sql = f"{sql_segment.rstrip(';')} WHERE {sol_id_condition}"
     
     return modified_sql
+
+def _detect_sol_id_table_alias(sql_segment):
+    """
+    Detect which table alias to use for sol_id filtering.
+    
+    Searches the FROM clause to identify the primary table/CTE alias.
+    
+    Args:
+        sql_segment (str): SQL query segment
+    
+    Returns:
+        str: Table alias to use (e.g., 'g', 'b', 't')
+    """
+    # Pattern matches: FROM table_name alias OR FROM cte_name alias
+    # Examples:
+    #   FROM tbaadm.gam g          -> captures 'g'
+    #   FROM base_data b           -> captures 'b'
+    #   FROM (SELECT ...) t        -> captures 't'
+    
+    from_pattern = r'\bFROM\s+(?:\w+\.\w+|\w+|\([^)]+\))\s+(\w+)'
+    match = re.search(from_pattern, sql_segment, flags=re.IGNORECASE)
+    
+    if match:
+        alias = match.group(1)
+        return alias
+    
+    # Default fallback to 'g' if no match found
+    return 'g'
+
 
 def _build_query_parameters(sql_query, start_date, end_date, sol_id):
     """
