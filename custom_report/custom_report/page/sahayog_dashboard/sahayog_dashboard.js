@@ -25,6 +25,7 @@ class DrishtiDashboardV4 {
 			selectedZones: [],
 			selectedRegion: "",
 			branchSearchTerm: "",
+			selectedMonth: null,
 			drillDownActive: false, // Track if drill-down is active
 		};
 		this.data = null;
@@ -395,6 +396,7 @@ class DrishtiDashboardV4 {
 		this.state.selectedZones = [];
 		this.state.selectedRegion = "";
 		this.state.branchSearchTerm = "";
+		this.state.selectedMonth = null; // NEW
 		this.state.drillDownActive = false;
 
 		this.page.main.find("#date-selector").val("");
@@ -582,12 +584,15 @@ class DrishtiDashboardV4 {
 			this.renderCategoryView(months);
 		}
 	}
-
 	updateFilterSummary() {
 		const filters = [];
 
 		if (this.state.selectedDate) {
 			filters.push(`Date: ${this.state.selectedDate}`);
+		}
+
+		if (this.state.selectedMonth) {
+			filters.push(`Month: ${this.state.selectedMonth}`); // NEW
 		}
 
 		if (
@@ -627,9 +632,16 @@ class DrishtiDashboardV4 {
 			this.state.selectedCategories.length > 0 &&
 			this.state.selectedCategories.length < this.availableFilters.categories.length
 		) {
-			filtered = filtered.filter((item) =>
-				this.state.selectedCategories.includes(item.latest_category)
-			);
+			filtered = filtered.filter((item) => {
+				if (this.state.selectedMonth) {
+					// Use month-specific category if a month is selected
+					const monthData = item.monthly_data?.[this.state.selectedMonth];
+					return monthData && this.state.selectedCategories.includes(monthData.category);
+				} else {
+					// Otherwise, use the latest category
+					return this.state.selectedCategories.includes(item.latest_category);
+				}
+			});
 		}
 
 		if (
@@ -698,17 +710,23 @@ class DrishtiDashboardV4 {
 	attachDrillDownHandlers() {
 		const self = this;
 
-		// Category row drill-down - click on branch count
+		// Category row drill-down with month
 		this.page.main
 			.find(".drill-category")
 			.off("click")
 			.on("click", function (e) {
 				e.stopPropagation(); // Prevent row collapse
 				const category = $(this).data("category");
-				self.drillDownToCategory(category);
+				const month = $(this).data("month"); // Get month
+
+				if (month) {
+					self.drillDownToCategoryMonth(category, month); // Month-specific
+				} else {
+					self.drillDownToCategory(category); // All months
+				}
 			});
 
-		// Zone row drill-down - click on branch count
+		// Zone row drill-down with month
 		this.page.main
 			.find(".drill-zone")
 			.off("click")
@@ -716,7 +734,13 @@ class DrishtiDashboardV4 {
 				e.stopPropagation();
 				const category = $(this).data("category");
 				const zone = $(this).data("zone");
-				self.drillDownToZone(category, zone);
+				const month = $(this).data("month"); // Get month
+
+				if (month) {
+					self.drillDownToZoneMonth(category, zone, month); // Month-specific
+				} else {
+					self.drillDownToZone(category, zone); // All months
+				}
 			});
 	}
 
@@ -825,62 +849,99 @@ class DrishtiDashboardV4 {
 
 		return totals;
 	}
+	drillDownToCategoryMonth(category, month) {
+		console.log(`🔍 Drilling down to Category: ${category}, Month: ${month}`);
+
+		// Set filters
+		this.state.selectedCategories = [category];
+		this.state.selectedMonth = month; // NEW
+		this.state.drillDownActive = true;
+
+		// Update UI
+		this.page.main.find(".category-checkbox").prop("checked", false);
+		this.page.main.find(`.category-checkbox[value="${category}"]`).prop("checked", true);
+		this.updateFilterButtonLabel("category");
+
+		// Switch to Branch view
+		this.switchTab("branch");
+	}
+
+	drillDownToZoneMonth(category, zone, month) {
+		console.log(`🔍 Drilling down to Category: ${category}, Zone: ${zone}, Month: ${month}`);
+
+		// Set filters
+		this.state.selectedCategories = [category];
+		this.state.selectedZones = [zone];
+		this.state.selectedMonth = month; // NEW
+		this.state.drillDownActive = true;
+
+		// Update category UI
+		this.page.main.find(".category-checkbox").prop("checked", false);
+		this.page.main.find(`.category-checkbox[value="${category}"]`).prop("checked", true);
+		this.updateFilterButtonLabel("category");
+
+		// Update zone UI
+		this.page.main.find(".zone-checkbox").prop("checked", false);
+		this.page.main.find(`.zone-checkbox[value="${zone}"]`).prop("checked", true);
+		this.updateFilterButtonLabel("zone");
+
+		// Switch to Branch view
+		this.switchTab("branch");
+	}
 
 	buildCategoryHeaderRow(category, categoryTotals, months) {
 		const badge = this.getCategoryBadge(category, "normal");
 		const totalPct = this.calcPct(categoryTotals.totalAchievement, categoryTotals.totalTarget);
 
 		let html = `
-            <tr class="category-header" data-category="${category}" 
-                style="background: #f5f5f5; font-weight: bold; cursor: pointer; border-top: 2px solid #000;">
-                <td style="padding: 12px;">
-                    <span class="category-toggle">▼</span>
-                    ${badge}
-                </td>
-        `;
+        <tr class="category-header" data-category="${category}" 
+            style="background: #f5f5f5; font-weight: bold; cursor: pointer; border-top: 2px solid #000;">
+            <td style="padding: 12px;">
+                <span class="category-toggle">▼</span>
+                ${badge}
+            </td>
+    `;
 
+		// Month-wise columns with month filter
 		months.forEach((month) => {
 			const md = categoryTotals.monthlyData[month];
 			const pct = this.calcPct(md.achievement, md.target);
 
 			html += `
-                <td style="text-align: center; padding: 10px;">
-                    <span class="drill-category" data-category="${category}" 
-                          style="cursor: pointer; color: #0066cc; text-decoration: underline; font-weight: 600;"
-                          title="Click to drill down to branches">
-                        ${md.branches}
-                    </span>
-                </td>
-                <td style="text-align: right; padding: 10px;">${this.formatCurrency(
-					md.target
-				)}</td>
-                <td style="text-align: right; padding: 10px;">
-                    ${this.formatCurrency(md.achievement)}
-                    <span style="color: ${this.getPctColor(
-						pct
-					)}; font-weight: 600;">(${pct}%)</span>
-                </td>
-            `;
-		});
-
-		html += `
-            <td style="text-align: center; padding: 10px; background: #fff;">
-                <span class="drill-category" data-category="${category}" 
+            <td style="text-align: center; padding: 10px;">
+                <span class="drill-category" data-category="${category}" data-month="${month}"
                       style="cursor: pointer; color: #0066cc; text-decoration: underline; font-weight: 600;"
-                      title="Click to drill down to branches">
-                    ${categoryTotals.totalBranches}
+                      title="Click to drill down to ${month} branches">
+                    ${md.branches}
                 </span>
             </td>
-            <td style="text-align: right; padding: 10px; background: #fff;">${this.formatCurrency(
-				categoryTotals.totalTarget
-			)}</td>
-            <td style="text-align: right; padding: 10px; background: #fff;">
-                ${this.formatCurrency(categoryTotals.totalAchievement)}
-                <span style="color: ${this.getPctColor(
-					totalPct
-				)}; font-weight: 600;">(${totalPct}%)</span>
+            <td style="text-align: right; padding: 10px;">${this.formatCurrency(md.target)}</td>
+            <td style="text-align: right; padding: 10px;">
+                ${this.formatCurrency(md.achievement)}
+                <span style="color: ${this.getPctColor(pct)}; font-weight: 600;">(${pct}%)</span>
             </td>
-        </tr>`;
+        `;
+		});
+
+		// Total column - no month filter (shows all months)
+		html += `
+        <td style="text-align: center; padding: 10px; background: #fff;">
+            <span class="drill-category" data-category="${category}" data-month=""
+                  style="cursor: pointer; color: #0066cc; text-decoration: underline; font-weight: 600;"
+                  title="Click to drill down to all months">
+                ${categoryTotals.totalBranches}
+            </span>
+        </td>
+        <td style="text-align: right; padding: 10px; background: #fff;">${this.formatCurrency(
+			categoryTotals.totalTarget
+		)}</td>
+        <td style="text-align: right; padding: 10px; background: #fff;">
+            ${this.formatCurrency(categoryTotals.totalAchievement)}
+            <span style="color: ${this.getPctColor(
+				totalPct
+			)}; font-weight: 600;">(${totalPct}%)</span>
+        </td>
+    </tr>`;
 
 		return html;
 	}
@@ -899,15 +960,16 @@ class DrishtiDashboardV4 {
 
 		filteredZones.forEach((zone) => {
 			html += `
-                <tr class="zone-detail" data-category="${category}" 
-                    style="display: none; background: #fff; border-left: 4px solid #ddd;">
-                    <td style="padding: 10px 10px 10px 40px; color: #666;">${zone}</td>
-            `;
+            <tr class="zone-detail" data-category="${category}" 
+                style="display: none; background: #fff; border-left: 4px solid #ddd;">
+                <td style="padding: 10px 10px 10px 40px; color: #666;">${zone}</td>
+        `;
 
 			let zoneTotalTarget = 0;
 			let zoneTotalAch = 0;
 			let maxBranches = 0;
 
+			// Month-wise columns with month filter
 			months.forEach((month) => {
 				const monthData = categoryData[month];
 				const zoneData = monthData?.grouped_by_category?.[category]?.[zone] || {};
@@ -922,86 +984,83 @@ class DrishtiDashboardV4 {
 				zoneTotalAch += achievement;
 
 				html += `
-                    <td style="text-align: center; padding: 10px;">
-                        ${
-							branches > 0
-								? `<span class="drill-zone" data-category="${category}" data-zone="${zone}" 
-                              style="cursor: pointer; color: #0066cc; text-decoration: underline;"
-                              title="Click to drill down to branches">
-                            ${branches}
-                        </span>`
-								: "-"
-						}
-                    </td>
-                    <td style="text-align: right; padding: 10px;">${
-						target > 0 ? this.formatCurrency(target) : "-"
-					}</td>
-                    <td style="text-align: right; padding: 10px;">
-                        ${achievement > 0 ? this.formatCurrency(achievement) : "-"}
-                        ${
-							pct > 0
-								? `<span style="color: ${this.getPctColor(pct)};">(${pct}%)</span>`
-								: ""
-						}
-                    </td>
-                `;
+                <td style="text-align: center; padding: 10px;">
+                    ${
+						branches > 0
+							? `<span class="drill-zone" data-category="${category}" data-zone="${zone}" data-month="${month}"
+                          style="cursor: pointer; color: #0066cc; text-decoration: underline;"
+                          title="Click to drill down to ${month} branches in ${zone}">
+                        ${branches}
+                    </span>`
+							: "-"
+					}
+                </td>
+                <td style="text-align: right; padding: 10px;">${
+					target > 0 ? this.formatCurrency(target) : "-"
+				}</td>
+                <td style="text-align: right; padding: 10px;">
+                    ${achievement > 0 ? this.formatCurrency(achievement) : "-"}
+                    ${
+						pct > 0
+							? `<span style="color: ${this.getPctColor(pct)};">(${pct}%)</span>`
+							: ""
+					}
+                </td>
+            `;
 			});
 
 			const zoneTotalPct = this.calcPct(zoneTotalAch, zoneTotalTarget);
 
+			// Total column - no month filter (shows all months)
 			html += `
-                <td style="text-align: center; padding: 10px; background: #fafafa;">
-                    <span class="drill-zone" data-category="${category}" data-zone="${zone}" 
-                          style="cursor: pointer; color: #0066cc; text-decoration: underline;"
-                          title="Click to drill down to branches">
-                        ${maxBranches}
-                    </span>
-                </td>
-                <td style="text-align: right; padding: 10px; background: #fafafa;">${this.formatCurrency(
-					zoneTotalTarget
-				)}</td>
-                <td style="text-align: right; padding: 10px; background: #fafafa;">
-                    ${this.formatCurrency(zoneTotalAch)}
-                    <span style="color: ${this.getPctColor(
-						zoneTotalPct
-					)};">(${zoneTotalPct}%)</span>
-                </td>
-            </tr>`;
+            <td style="text-align: center; padding: 10px; background: #fafafa;">
+                <span class="drill-zone" data-category="${category}" data-zone="${zone}" data-month=""
+                      style="cursor: pointer; color: #0066cc; text-decoration: underline;"
+                      title="Click to drill down to all months in ${zone}">
+                    ${maxBranches}
+                </span>
+            </td>
+            <td style="text-align: right; padding: 10px; background: #fafafa;">${this.formatCurrency(
+				zoneTotalTarget
+			)}</td>
+            <td style="text-align: right; padding: 10px; background: #fafafa;">
+                ${this.formatCurrency(zoneTotalAch)}
+                <span style="color: ${this.getPctColor(zoneTotalPct)};">(${zoneTotalPct}%)</span>
+            </td>
+        </tr>`;
 		});
 
 		const categoryTotals = this.aggregateCategoryData(category, months, categoryData);
 
 		html += `
-            <tr class="zone-detail zone-sum-check" data-category="${category}" 
-                style="display: none; background: #e8f4f8; border-bottom: 2px solid #000; font-weight: 600;">
-                <td style="padding: 10px 10px 10px 40px;">SUM CHECK:</td>
-        `;
+        <tr class="zone-detail zone-sum-check" data-category="${category}" 
+            style="display: none; background: #e8f4f8; border-bottom: 2px solid #000; font-weight: 600;">
+            <td style="padding: 10px 10px 10px 40px;">SUM CHECK:</td>
+    `;
 
 		months.forEach((month) => {
 			const md = categoryTotals.monthlyData[month];
 
 			html += `
-                <td style="text-align: center; padding: 10px;">${md.branches}</td>
-                <td style="text-align: right; padding: 10px;">${this.formatCurrency(
-					md.target
-				)} ✅</td>
-                <td style="text-align: right; padding: 10px;">${this.formatCurrency(
-					md.achievement
-				)}</td>
-            `;
+            <td style="text-align: center; padding: 10px;">${md.branches}</td>
+            <td style="text-align: right; padding: 10px;">${this.formatCurrency(md.target)} ✅</td>
+            <td style="text-align: right; padding: 10px;">${this.formatCurrency(
+				md.achievement
+			)}</td>
+        `;
 		});
 
 		html += `
-            <td style="text-align: center; padding: 10px; background: #d4ebf2;">${
-				categoryTotals.totalBranches
-			}</td>
-            <td style="text-align: right; padding: 10px; background: #d4ebf2;">${this.formatCurrency(
-				categoryTotals.totalTarget
-			)} ✅</td>
-            <td style="text-align: right; padding: 10px; background: #d4ebf2;">${this.formatCurrency(
-				categoryTotals.totalAchievement
-			)}</td>
-        </tr>`;
+        <td style="text-align: center; padding: 10px; background: #d4ebf2;">${
+			categoryTotals.totalBranches
+		}</td>
+        <td style="text-align: right; padding: 10px; background: #d4ebf2;">${this.formatCurrency(
+			categoryTotals.totalTarget
+		)} ✅</td>
+        <td style="text-align: right; padding: 10px; background: #d4ebf2;">${this.formatCurrency(
+			categoryTotals.totalAchievement
+		)}</td>
+    </tr>`;
 
 		return html;
 	}
@@ -1114,37 +1173,43 @@ class DrishtiDashboardV4 {
 
 	renderBranchView(months) {
 		let branchData = this.data.consolidated_branches || [];
-
 		branchData = this.applyFiltersToData(branchData);
 
 		if (branchData.length === 0) {
 			this.page.main.find("#table-head").html("");
 			this.page.main.find("#table-body").html(`
-                <tr><td colspan="100" style="text-align: center; padding: 30px; color: #999;">
-                    No branch data available with current filters
-                </td></tr>
-            `);
+            <tr><td colspan="100" style="text-align: center; padding: 30px; color: #999;">
+                No branch data available with current filters
+            </td></tr>
+        `);
 			this.page.main.find("#table-foot").html("");
 			return;
 		}
 
-		let headerHtml = `
-            <tr style="background: #000; color: #fff;">
-                <th style="min-width: 60px;">Sr.No.</th>
-                <th style="min-width: 100px;">Branch Code</th>
-                <th style="min-width: 200px;">Branch Name</th>
-                <th style="min-width: 100px;">Zone</th>
-                <th style="min-width: 120px;">Region</th>
-        `;
+		// Filter months if specific month selected
+		let displayMonths = months;
+		if (this.state.selectedMonth) {
+			displayMonths = months.filter((m) => m === this.state.selectedMonth);
+		}
 
-		months.forEach((month) => {
+		// Build header
+		let headerHtml = `
+        <tr style="background: #000; color: #fff;">
+            <th style="min-width: 60px;">Sr.No.</th>
+            <th style="min-width: 100px;">Branch Code</th>
+            <th style="min-width: 200px;">Branch Name</th>
+            <th style="min-width: 100px;">Zone</th>
+            <th style="min-width: 120px;">Region</th>
+    `;
+
+		displayMonths.forEach((month) => {
 			headerHtml += `<th style="text-align: center; min-width: 200px;" colspan="2">${month} 2025/26</th>`;
 		});
 
 		headerHtml += `<th style="text-align: center; min-width: 180px;" colspan="2">TOTAL</th></tr>`;
 		headerHtml += `<tr style="background: #333; color: #fff;"><th colspan="5"></th>`;
 
-		months.forEach(() => {
+		displayMonths.forEach(() => {
 			headerHtml += `<th style="text-align: center;">Target</th><th style="text-align: center;">Ach (%) + Category</th>`;
 		});
 
@@ -1153,11 +1218,11 @@ class DrishtiDashboardV4 {
 		this.page.main.find("#table-head").html(headerHtml);
 
 		const bodyRows = branchData.map((branch, index) =>
-			this.buildBranchRow(branch, months, index + 1)
+			this.buildBranchRow(branch, displayMonths, index + 1)
 		);
 		this.page.main.find("#table-body").html(bodyRows.join(""));
 
-		const footerHtml = this.buildBranchFooter(branchData, months);
+		const footerHtml = this.buildBranchFooter(branchData, displayMonths);
 		this.page.main.find("#table-foot").html(footerHtml);
 	}
 
