@@ -317,13 +317,14 @@ def _get_user_sol_id_with_branch_check(user, user_roles):
 # PRIVATE HELPER METHODS - SQL QUERY MANIPULATION
 # ============================================================================
 
-
 def _apply_branch_report_filter(sql_query, sol_id, is_branch_user):
     """
     Apply sol_id filter for Branch Report users ONLY.
     
     This function dynamically adds a WHERE condition to filter by sol_id
     ONLY if the user has the "Branch Report" role.
+    
+    Handles both simple queries and CTE-based queries correctly.
     
     Args:
         sql_query (str): Original SQL query
@@ -346,42 +347,79 @@ def _apply_branch_report_filter(sql_query, sol_id, is_branch_user):
             "Please contact administrator."
         )
     
-    # Add sol_id filter to WHERE clause (safe parameterized approach)
-    # Check if query already has WHERE clause
-    if re.search(r"\bwhere\b", sql_query, flags=re.IGNORECASE):
-        # Find the position of WHERE clause and add condition after it
+    # Check if query contains CTEs (WITH clause)
+    has_cte = bool(re.search(r'^\s*WITH\s+', sql_query, flags=re.IGNORECASE))
+    
+    if has_cte:
+        # For CTE queries, find the main SELECT (after all CTEs)
+        # Pattern: closing bracket followed by SELECT
+        cte_end_pattern = r'\)\s*\n\s*SELECT'
+        matches = list(re.finditer(cte_end_pattern, sql_query, flags=re.IGNORECASE))
+        
+        if matches:
+            # Get the last match - this is where main SELECT starts
+            last_match = matches[-1]
+            
+            # Split: CTE part + Main SELECT part
+            cte_part = sql_query[:last_match.end()]
+            main_part = sql_query[last_match.end():]
+            
+            # Apply filter to main SELECT part only
+            modified_main = _inject_sol_id_filter(main_part, sol_id)
+            
+            # Reconstruct full query
+            modified_sql = cte_part + modified_main
+            return modified_sql, True
+    
+    # For non-CTE queries, apply filter directly
+    modified_sql = _inject_sol_id_filter(sql_query, sol_id)
+    return modified_sql, True
+
+
+def _inject_sol_id_filter(sql_segment, sol_id):
+    """
+    Inject sol_id filter into the WHERE clause of a SQL segment.
+    
+    Args:
+        sql_segment (str): SQL query or query segment
+        sol_id (str): User's sol_id value
+    
+    Returns:
+        str: Modified SQL with sol_id filter added
+    """
+    # Check if WHERE clause exists
+    if re.search(r"\bWHERE\b", sql_segment, flags=re.IGNORECASE):
+        # Add condition after WHERE keyword
         modified_sql = re.sub(
-            r"(\bwhere\b)",
-            r"\1 g.sol_id = %(branch_sol_id)s AND",
-            sql_query,
+            r"(\bWHERE\b)\s+",
+            r"\1 g.sol_id = %(branch_sol_id)s AND ",
+            sql_segment,
             count=1,
             flags=re.IGNORECASE
         )
     else:
-        # No WHERE clause exists, add one
-        # Find the position before ORDER BY, LIMIT, or end of query
-        if re.search(r"\border\s+by\b", sql_query, flags=re.IGNORECASE):
+        # No WHERE clause exists - add one before ORDER BY, LIMIT, or at end
+        if re.search(r"\bORDER\s+BY\b", sql_segment, flags=re.IGNORECASE):
             modified_sql = re.sub(
-                r"(\border\s+by\b)",
+                r"(\bORDER\s+BY\b)",
                 r"WHERE g.sol_id = %(branch_sol_id)s \1",
-                sql_query,
+                sql_segment,
                 count=1,
                 flags=re.IGNORECASE
             )
-        elif re.search(r"\blimit\b", sql_query, flags=re.IGNORECASE):
+        elif re.search(r"\bLIMIT\b", sql_segment, flags=re.IGNORECASE):
             modified_sql = re.sub(
-                r"(\blimit\b)",
+                r"(\bLIMIT\b)",
                 r"WHERE g.sol_id = %(branch_sol_id)s \1",
-                sql_query,
+                sql_segment,
                 count=1,
                 flags=re.IGNORECASE
             )
         else:
             # Add WHERE at the end
-            modified_sql = f"{sql_query.rstrip(';')} WHERE g.sol_id = %(branch_sol_id)s"
+            modified_sql = f"{sql_segment.rstrip(';')} WHERE g.sol_id = %(branch_sol_id)s"
     
-    return modified_sql, True
-
+    return modified_sql
 
 def _build_query_parameters(sql_query, start_date, end_date, sol_id):
     """
