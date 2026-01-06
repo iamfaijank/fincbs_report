@@ -2,6 +2,7 @@ import frappe
 from frappe.utils import getdate
 
 
+
 @frappe.whitelist()
 def search_branches(txt):
     """
@@ -18,6 +19,7 @@ def search_branches(txt):
         fields=["name", "sol_id", "branch"],
         limit_page_length=10,
     )
+
 
 
 @frappe.whitelist()
@@ -44,6 +46,7 @@ def get_branch_data(sol_id):
     )
 
 
+
 @frappe.whitelist()
 def get_branch_profile_data(sol_id):
     """
@@ -58,14 +61,36 @@ def get_branch_profile_data(sol_id):
     return data[0] if data else {}
 
 
+
 @frappe.whitelist()
-def get_performance_data(sol_id, date):
+def get_performance_data(sol_id, date=None):
     """
     Get branch performance data for a specific date
+    If no date provided, automatically fetches latest available date
     Returns data_exists + latest_date for frontend integration
     """
     try:
         frappe.logger().info(f"Fetching performance data for SOL: {sol_id}, Date: {date}")
+
+        # ✅ NEW: If no date provided, get latest available date first
+        if not date:
+            latest_record = frappe.db.sql("""
+                SELECT date, achievement, yearly_achievement 
+                FROM `tabBranch Category Report`
+                WHERE sol_id = %s 
+                ORDER BY date DESC 
+                LIMIT 1
+            """, (sol_id,), as_dict=1)
+
+            if latest_record:
+                date = latest_record[0].date.strftime('%Y-%m-%d')
+                frappe.logger().info(f"No date provided. Using latest: {date}")
+            else:
+                return {
+                    "data_exists": False,
+                    "latest_date": None,
+                    "message": "No performance data available for this branch"
+                }
 
         # 1. EXACT DATE MATCH CHECK (priority 1)
         branch_category_data = frappe.db.get_list(
@@ -132,6 +157,7 @@ def get_performance_data(sol_id, date):
             "latest_date": None,
             "error": str(e)
         }
+
 
 
 @frappe.whitelist()
@@ -209,9 +235,11 @@ def get_crm_data(sol_id, from_date, to_date):
         }
 
 
+
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
+
 
 def get_fiscal_year(date_str):
     """
@@ -231,6 +259,7 @@ def get_fiscal_year(date_str):
         return f"{year}-{year+1}"
     else:  # Jan-Mar
         return f"{year-1}-{year}"
+
 
 
 def get_targets(sol_id, fiscal_year):

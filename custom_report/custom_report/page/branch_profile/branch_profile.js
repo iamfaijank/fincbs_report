@@ -701,7 +701,6 @@ frappe.pages["branch-profile"].on_page_load = function (wrapper) {
                     <div id="branch-manager-card"></div>
                 </div>
 
-
                 <div class="middle-column">
                     <div class="dashboard-card">
                         <div class="tab-container">
@@ -735,11 +734,6 @@ frappe.pages["branch-profile"].on_page_load = function (wrapper) {
             </div>
         </div>
     `);
-
-
-    // Initialize date filter with today's date
-    const today = new Date().toISOString().split("T")[0];
-    $("#date-filter").val(today);
 
 
     // Tabs functionality
@@ -804,7 +798,7 @@ frappe.pages["branch-profile"].on_page_load = function (wrapper) {
 };
 
 
-/* ---------------- DATE UTILITY FUNCTIONS (UPDATED) ---------------- */
+/* ---------------- DATE UTILITY FUNCTIONS ---------------- */
 function get_default_dates() {
     const today = new Date();
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -844,7 +838,6 @@ function init_sol_search(wrapper) {
         render_input: true,
     });
     control.refresh();
-
 
     $(control.input).on("input", function () {
         const txt = $(this).val().trim();
@@ -899,7 +892,7 @@ function show_suggestions(input, list) {
 function load_all_data(sol) {
     load_branch_master(sol);
     load_branch_profile(sol);
-    load_performance_data(sol);
+    load_performance_data(sol, true);  // ✅ CHANGE: Pass true for initial load
 }
 
 
@@ -1055,7 +1048,7 @@ function render_account_portfolio(data) {
 }
 
 
-/* ---------------- CRM & CUSTOMERS FUNCTIONALITY (UPDATED) ---------------- */
+/* ---------------- CRM & CUSTOMERS FUNCTIONALITY ---------------- */
 function render_crm_skeleton() {
     const dates = get_default_dates();
 
@@ -1135,7 +1128,6 @@ function load_crm_data(sol_id) {
         },
         callback: (r) => {
             render_crm_data(r.message || {});
-            console.log(r.message);
         },
         error: (r) => {
             $("#tab-crm-customers").html(
@@ -1216,21 +1208,33 @@ function render_crm_data(data) {
 }
 
 
-/* ---------------- RIGHT COLUMN: PERFORMANCE DATA LOADING ---------------- */
-function load_performance_data(sol_id) {
+/* ---------------- RIGHT COLUMN: PERFORMANCE DATA LOADING ✅ UPDATED ---------------- */
+function load_performance_data(sol_id, initial_load = false) {
     const selectedDate = $("#date-filter").val();
 
     frappe.call({
         method: "custom_report.custom_report.page.branch_profile.branch_profile.get_performance_data",
         args: {
             sol_id: sol_id,
-            date: selectedDate,
+            date: initial_load ? null : selectedDate,  // ✅ CHANGE: Send null on initial load
         },
         callback: (r) => {
             if (r.message && r.message.data_exists) {
                 render_branch_performance(r.message);
+                // If initial load and date filter is empty, set it to the latest date
+                if (initial_load && !selectedDate && r.message.selected_date) {
+                    $("#date-filter").val(r.message.selected_date);
+                }
             } else if (r.message && r.message.latest_date) {
                 show_no_data_message(r.message.latest_date, selectedDate);
+                // ✅ CHANGE: Set the date filter to latest available date
+                if (initial_load) {
+                    $("#date-filter").val(r.message.latest_date);
+                    // Reload with latest date
+                    setTimeout(() => {
+                        load_performance_data(sol_id, false);
+                    }, 100);
+                }
             } else {
                 $("#branch-performance-card").html(
                     '<div class="dashboard-card"><div class="empty-state">No performance data available for this branch</div></div>'
@@ -1304,7 +1308,7 @@ function render_branch_performance(data) {
             <div class="performance-item status-${statusClass}">
                 <div class="performance-header">
                     <div class="performance-period">${item.period}</div>
-                    <span class="performance-badge status-${statusClass}">${status}</span>
+                    <span class="performance-status status-${statusClass}">${status}</span>
                 </div>
                 <div class="performance-values">
                     ₹${formatCurrency(item.achievement)} / ₹${formatCurrency(item.target)}
