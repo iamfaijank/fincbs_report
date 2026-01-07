@@ -1375,7 +1375,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-@frappe.whitelist(allow_guest=False)
+@frappe.whitelist(allow_guest=True)
 def get_fy_master_data_actual(
     financial_year: str = "2025-2026",
     filters: Optional[str] = None
@@ -1836,7 +1836,7 @@ def _parse_and_validate_filters(filters: Optional[str]) -> Dict[str, List[str]]:
 
 def _check_user_permissions():
     """Check user permissions."""
-    required_roles = ["System Manager", "Dashboard User", "Business Head"]
+    required_roles = ["System Manager","MIS Admin"]
     user_roles = frappe.get_roles(frappe.session.user)
 
     if not any(role in user_roles for role in required_roles):
