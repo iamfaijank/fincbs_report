@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>DRISHTI Dashboard - SAHAYOG</title>
+		<script src="/assets/custom_report/js/petite-vue.iife.js"></script>
+		<style>
+			:root {
+				--primary: #14b8a6;
+				--primary-dark: #0d9488;
+				--success: #10b981;
+				--warning: #f59e0b;
+				--danger: #ef4444;
+				--info: #3b82f6;
+				--purple: #a855f7;
+				--gray-50: #f9fafb;
+				--gray-100: #f3f4f6;
+				--gray-200: #e5e7eb;
+				--gray-300: #d1d5db;
+				--gray-600: #4b5563;
+				--gray-700: #374151;
+				--gray-900: #111827;
+			}
+
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+				background: var(--gray-50);
+				color: var(--gray-900);
+			}
+
+			/* Header */
+			.top-header {
+				background: white;
+				padding: 12px 24px;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+			}
+
+			.logo-section {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+
+			.logo {
+				width: 40px;
+				height: 40px;
+				background: var(--primary);
+				border-radius: 8px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: white;
+				font-weight: 700;
+				font-size: 20px;
+			}
+
+			.logo-text h1 {
+				font-size: 18px;
+				font-weight: 700;
+			}
+
+			.logo-text p {
+				font-size: 12px;
+				color: var(--gray-600);
+			}
+
+			.header-actions {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+
+			.search-box {
+				position: relative;
+			}
+
+			.search-box input {
+				width: 300px;
+				padding: 8px 12px 8px 36px;
+				border: 1px solid var(--gray-300);
+				border-radius: 8px;
+				font-size: 14px;
+			}
+
+			.search-icon {
+				position: absolute;
+				left: 12px;
+				top: 50%;
+				transform: translateY(-50%);
+				color: var(--gray-600);
+			}
+
+			.icon-btn {
+				width: 36px;
+				height: 36px;
+				border-radius: 8px;
+				border: 1px solid var(--gray-300);
+				background: white;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+			}
+
+			.icon-btn:hover {
+				background: var(--gray-100);
+			}
+
+			.user-avatar {
+				width: 36px;
+				height: 36px;
+				border-radius: 50%;
+				background: var(--purple);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: white;
+				font-weight: 600;
+				font-size: 14px;
+			}
+
+			/* Main Container */
+			.container {
+				max-width: 1400px;
+				margin: 0 auto;
+				padding: 20px;
+			}
+
+			/* Dashboard Header */
+			.dashboard-header {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				margin-bottom: 20px;
+			}
+
+			.dashboard-title h2 {
+				font-size: 22px;
+				margin-bottom: 4px;
+			}
+
+			.dashboard-title p {
+				font-size: 13px;
+				color: var(--gray-600);
+			}
+
+			.view-tabs {
+				display: flex;
+				gap: 8px;
+				background: white;
+				padding: 4px;
+				border-radius: 8px;
+				border: 1px solid var(--gray-200);
+			}
+
+			.view-tab {
+				padding: 6px 16px;
+				border-radius: 6px;
+				border: none;
+				background: transparent;
+				cursor: pointer;
+				font-size: 13px;
+				font-weight: 500;
+				color: var(--gray-600);
+			}
+
+			.view-tab.active {
+				background: var(--gray-900);
+				color: white;
+			}
+
+			/* Stats Grid */
+			.stats {
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: 16px;
+				margin-bottom: 20px;
+			}
+
+			.stat-card {
+				background: white;
+				padding: 20px;
+				border-radius: 12px;
+				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+				display: flex;
+				justify-content: space-between;
+				align-items: flex-start;
+			}
+
+			.stat-info {
+				flex: 1;
+			}
+
+			.stat-label {
+				font-size: 13px;
+				color: var(--gray-600);
+				margin-bottom: 8px;
+			}
+
+			.stat-value {
+				font-size: 28px;
+				font-weight: 700;
+				margin-bottom: 4px;
+			}
+
+			.stat-change {
+				font-size: 12px;
+				color: var(--success);
+				font-weight: 500;
+			}
+
+			.stat-icon {
+				width: 48px;
+				height: 48px;
+				border-radius: 10px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 20px;
+			}
+
+			.stat-icon.teal {
+				background: #ccfbf1;
+				color: #0d9488;
+			}
+			.stat-icon.green {
+				background: #d1fae5;
+				color: #10b981;
+			}
+			.stat-icon.blue {
+				background: #dbeafe;
+				color: #3b82f6;
+			}
+			.stat-icon.purple {
+				background: #e9d5ff;
+				color: #a855f7;
+			}
+
+			/* Filters */
+			.filters-section {
+				background: white;
+				padding: 16px 20px;
+				border-radius: 12px;
+				margin-bottom: 16px;
+				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+			}
+
+			.filter-header {
+				font-size: 11px;
+				font-weight: 700;
+				color: var(--gray-600);
+				text-transform: uppercase;
+				letter-spacing: 0.05em;
+				margin-bottom: 12px;
+			}
+
+			.filter-tags {
+				display: flex;
+				gap: 10px;
+				flex-wrap: wrap;
+			}
+
+			.filter-tag {
+				padding: 8px 16px;
+				border-radius: 20px;
+				border: 1.5px solid var(--gray-300);
+				background: white;
+				cursor: pointer;
+				font-size: 13px;
+				font-weight: 500;
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				transition: all 0.2s;
+			}
+
+			.filter-tag:hover {
+				border-color: var(--primary);
+			}
+
+			.filter-tag.active {
+				background: var(--primary);
+				border-color: var(--primary);
+				color: white;
+			}
+
+			.tag-count {
+				background: var(--gray-100);
+				padding: 2px 8px;
+				border-radius: 10px;
+				font-size: 11px;
+				font-weight: 600;
+			}
+
+			.filter-tag.active .tag-count {
+				background: rgba(255, 255, 255, 0.25);
+				color: white;
+			}
+
+			/* Category Pills */
+			.cat-pill {
+				padding: 8px 16px;
+				border-radius: 20px;
+				border: none;
+				cursor: pointer;
+				font-size: 13px;
+				font-weight: 600;
+				color: white;
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				transition: all 0.2s;
+			}
+
+			.cat-pill:hover {
+				transform: translateY(-2px);
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+			}
+
+			.cat-pill.all {
+				background: #475569;
+			}
+			.cat-pill.pinnacle {
+				background: #10b981;
+			}
+			.cat-pill.master {
+				background: #14b8a6;
+			}
+			.cat-pill.accelerator {
+				background: #3b82f6;
+			}
+			.cat-pill.starter {
+				background: #f59e0b;
+			}
+			.cat-pill.learner {
+				background: #f97316;
+			}
+			.cat-pill.zero {
+				background: #dc2626;
+			}
+
+			.cat-pill-pct {
+				background: rgba(255, 255, 255, 0.25);
+				padding: 2px 8px;
+				border-radius: 10px;
+				font-size: 11px;
+			}
+
+			/* Content Card */
+			.content-card {
+				background: white;
+				border-radius: 12px;
+				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+				overflow: hidden;
+			}
+
+			.content-header {
+				padding: 16px 20px;
+				border-bottom: 1px solid var(--gray-200);
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+
+			.content-tabs {
+				display: flex;
+				gap: 4px;
+			}
+
+			.content-tab {
+				padding: 8px 16px;
+				border-radius: 8px;
+				border: none;
+				background: transparent;
+				cursor: pointer;
+				font-size: 14px;
+				font-weight: 500;
+				color: var(--gray-600);
+			}
+
+			.content-tab.active {
+				background: var(--gray-100);
+				color: var(--gray-900);
+			}
+
+			.content-actions {
+				display: flex;
+				gap: 8px;
+			}
+
+			.btn {
+				padding: 8px 16px;
+				border-radius: 8px;
+				border: 1px solid var(--gray-300);
+				background: white;
+				cursor: pointer;
+				font-size: 13px;
+				font-weight: 500;
+				display: flex;
+				align-items: center;
+				gap: 6px;
+			}
+
+			.btn:hover {
+				background: var(--gray-100);
+			}
+
+			.btn-primary {
+				background: var(--primary);
+				border-color: var(--primary);
+				color: white;
+			}
+
+			.btn-primary:hover {
+				background: var(--primary-dark);
+			}
+
+			/* Table */
+			.table-wrapper {
+				padding: 20px;
+				overflow-x: auto;
+				max-height: 600px;
+				overflow-y: auto;
+			}
+
+			table {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: 13px;
+			}
+
+			th {
+				background: #1e293b;
+				color: white;
+				padding: 12px 10px;
+				text-align: center;
+				position: sticky;
+				top: 0;
+				z-index: 10;
+				font-size: 11px;
+				text-transform: uppercase;
+				font-weight: 600;
+				letter-spacing: 0.05em;
+			}
+
+			th.left {
+				text-align: left;
+			}
+
+			td {
+				padding: 12px 10px;
+				border-bottom: 1px solid var(--gray-200);
+				text-align: center;
+			}
+
+			tbody tr:hover {
+				background: var(--gray-50);
+			}
+
+			tfoot td {
+				background: #1e293b;
+				color: white;
+				font-weight: 700;
+				padding: 12px 10px;
+			}
+
+			/* Category Table */
+			.cat-row {
+				background: var(--gray-100);
+				font-weight: 600;
+				cursor: pointer;
+			}
+
+			.cat-row:hover {
+				background: var(--gray-200) !important;
+			}
+
+			.zone-row {
+				display: none;
+				border-left: 3px solid var(--primary);
+			}
+
+			.zone-row.show {
+				display: table-row;
+			}
+
+			.zone-cell {
+				padding-left: 40px !important;
+				text-align: left;
+				color: var(--gray-600);
+			}
+
+			.drill {
+				color: var(--primary);
+				text-decoration: underline;
+				cursor: pointer;
+				font-weight: 600;
+			}
+
+			.drill:hover {
+				color: var(--primary-dark);
+			}
+
+			/* Branch Table */
+			.branch-code {
+				color: var(--primary);
+				font-weight: 700;
+				text-decoration: none;
+				padding: 4px 8px;
+				background: #ccfbf1;
+				border-radius: 6px;
+				display: inline-block;
+				margin-right: 8px;
+			}
+
+			.branch-code:hover {
+				background: #99f6e4;
+			}
+
+			.cat-badge {
+				padding: 4px 10px;
+				border-radius: 12px;
+				color: white;
+				font-size: 10px;
+				font-weight: 700;
+				text-transform: uppercase;
+				display: inline-block;
+			}
+
+			.cat-badge.pinnacle {
+				background: #10b981;
+			}
+			.cat-badge.master {
+				background: #14b8a6;
+			}
+			.cat-badge.accelerator {
+				background: #3b82f6;
+			}
+			.cat-badge.starter {
+				background: #f59e0b;
+			}
+			.cat-badge.learner {
+				background: #f97316;
+			}
+			.cat-badge.zero-level {
+				background: #dc2626;
+			}
+
+			.loading {
+				text-align: center;
+				padding: 60px 20px;
+				color: var(--gray-600);
+			}
+
+			.spinner {
+				width: 40px;
+				height: 40px;
+				border: 4px solid var(--gray-200);
+				border-top-color: var(--primary);
+				border-radius: 50%;
+				animation: spin 0.8s linear infinite;
+				margin: 0 auto 16px;
+			}
+
+			@keyframes spin {
+				to {
+					transform: rotate(360deg);
+				}
+			}
+
+			.error {
+				background: #fee;
+				border: 1px solid #fcc;
+				padding: 16px;
+				margin: 20px;
+				border-radius: 12px;
+				color: var(--danger);
+			}
+
+			@media (max-width: 1024px) {
+				.stats {
+					grid-template-columns: repeat(2, 1fr);
+				}
+			}
+
+			@media (max-width: 640px) {
+				.stats {
+					grid-template-columns: 1fr;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div id="app" v-scope @vue:mounted="loadData()">
+			<!-- Top Header -->
+			<div class="top-header">
+				<div class="logo-section">
+					<div class="logo">S</div>
+					<div class="logo-text">
+						<h1>SAHAYOG</h1>
+						<p>Finacle Report Admin</p>
+					</div>
+				</div>
+
+				<div class="header-actions">
+					<div class="search-box">
+						<span class="search-icon">🔍</span>
+						<input type="text" placeholder="Search..." v-model="state.searchTerm" />
+					</div>
+					<div class="icon-btn">🔔</div>
+					<div class="icon-btn">🌙</div>
+					<div class="user-avatar">A</div>
+				</div>
+			</div>
+
+			<div class="container">
+				<!-- Dashboard Header -->
+				<div class="dashboard-header">
+					<div class="dashboard-title">
+						<h2>DRISHTI Dashboard</h2>
+						<p>Target vs Achievement Analytics</p>
+					</div>
+					<div class="view-tabs">
+						<button
+							v-for="view in ['View', 'Yearly', 'YTD', 'Monthly']"
+							class="view-tab"
+							:class="{active: state.activeView === view}"
+							@click="state.activeView = view"
+						>
+							[[ view ]]
+						</button>
+					</div>
+				</div>
+
+				<!-- Loading -->
+				<div v-if="state.loading" class="loading">
+					<div class="spinner"></div>
+					<p>Loading dashboard data...</p>
+				</div>
+
+				<!-- Error -->
+				<div v-if="state.error" class="error">
+					<strong>❌ Error:</strong> [[ state.error ]]
+					<button class="btn" @click="loadData()" style="margin-left: 10px">
+						🔄 Retry
+					</button>
+				</div>
+
+				<!-- Main Content -->
+				<template v-if="data && !state.loading">
+					<!-- Stats Cards -->
+					<div class="stats">
+						<div class="stat-card">
+							<div class="stat-info">
+								<div class="stat-label">Total Branches</div>
+								<div class="stat-value">[[ stats.totalBranches ]]</div>
+								<div class="stat-change">+1.7% from last month</div>
+							</div>
+							<div class="stat-icon teal">🏢</div>
+						</div>
+
+						<div class="stat-card">
+							<div class="stat-info">
+								<div class="stat-label">Target Amount</div>
+								<div class="stat-value">[[ stats.targetAmount ]]</div>
+								<div class="stat-change">Monthly target</div>
+							</div>
+							<div class="stat-icon green">🎯</div>
+						</div>
+
+						<div class="stat-card">
+							<div class="stat-info">
+								<div class="stat-label">Achievement</div>
+								<div class="stat-value">[[ stats.achievement ]]</div>
+								<div class="stat-change">[[ stats.achievementPercent ]]</div>
+							</div>
+							<div class="stat-icon blue">📈</div>
+						</div>
+
+						<div class="stat-card">
+							<div class="stat-info">
+								<div class="stat-label">Active Zones</div>
+								<div class="stat-value">[[ stats.activeZones ]] Zones</div>
+								<div class="stat-change">All zones operational</div>
+							</div>
+							<div class="stat-icon purple">🗺️</div>
+						</div>
+					</div>
+
+					<!-- Zone Filters -->
+					<div class="filters-section">
+						<div class="filter-header">Zone Selection</div>
+						<div class="filter-tags">
+							<button
+								v-for="z in zones"
+								class="filter-tag"
+								:class="{active: isZoneActive(z.id)}"
+								@click="toggleZone(z.id)"
+							>
+								<span>[[ z.name ]]</span>
+								<span class="tag-count">[[ z.count ]]</span>
+							</button>
+						</div>
+					</div>
+
+					<!-- Category Filters -->
+					<div class="filters-section">
+						<div class="filter-header">Performance Categories</div>
+						<div class="filter-tags">
+							<button
+								v-for="c in categories"
+								:class="'cat-pill ' + c.class"
+								@click="toggleCategory(c.id)"
+							>
+								<span>[[ c.name ]]</span>
+								<span class="tag-count">[[ c.count ]]</span>
+								<span class="cat-pill-pct">[[ c.percent ]]</span>
+							</button>
+						</div>
+					</div>
+
+					<!-- Content Card -->
+					<div class="content-card">
+						<div class="content-header">
+							<div class="content-tabs">
+								<button
+									class="content-tab"
+									:class="{active: state.activeTab === 'category'}"
+									@click="state.activeTab = 'category'"
+								>
+									Category Wise
+								</button>
+								<button
+									class="content-tab"
+									:class="{active: state.activeTab === 'branch'}"
+									@click="state.activeTab = 'branch'"
+								>
+									Branch Wise
+								</button>
+							</div>
+							<div class="content-actions">
+								<button class="btn" @click="toggleFormat()">
+									[[ state.formatMode === 'number' ? '📝 Visualize' : '📊 Export'
+									]]
+								</button>
+								<button class="btn btn-primary">📥 Export</button>
+							</div>
+						</div>
+
+						<div class="table-wrapper">
+							<!-- Category Table -->
+							<div v-if="state.activeTab === 'category'">
+								<table v-if="months.length > 0">
+									<thead>
+										<tr>
+											<th style="width: 300px" class="left">Category</th>
+											<th v-for="m in months">[[ m ]]-2025</th>
+											<th>Change</th>
+										</tr>
+									</thead>
+									<tbody v-html="renderCategoryTable()"></tbody>
+								</table>
+								<div v-else class="loading">
+									<p>📊 No data available</p>
+								</div>
+							</div>
+
+							<!-- Branch Table -->
+							<div v-else-if="state.activeTab === 'branch'">
+								<div
+									v-if="filteredBranches.length > 0"
+									v-html="renderBranchTable()"
+								></div>
+								<div v-else class="loading">
+									<p>🏢 No branches found</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</template>
+			</div>
+		</div>
+
+		<script>
+			console.log("🚀 DRISHTI Dashboard Loading...");
+
+			PetiteVue.createApp({
+				$delimiters: ["[[", "]]"],
+
+				state: {
+					financialYear: "2025-2026",
+					activeView: "Monthly",
+					activeTab: "category",
+					selectedZones: [],
+					selectedCategories: [],
+					searchTerm: "",
+					formatMode: "number",
+					loading: false,
+					error: null,
+				},
+
+				data: null,
+				expandedCategories: [],
+
+				get stats() {
+					if (!this.data || !this.data.consolidated_branches)
+						return {
+							totalBranches: 229,
+							targetAmount: "₹163.04 Cr",
+							achievement: "₹91.45 Cr",
+							achievementPercent: "57.9% achieved",
+							activeZones: "6",
+						};
+					const total = this.data.consolidated_branches.length;
+					let totalTarget = 0,
+						totalAch = 0;
+					this.data.consolidated_branches.forEach((b) => {
+						Object.values(b.monthly_data || {}).forEach((md) => {
+							totalTarget += md.target || 0;
+							totalAch += md.achievement || 0;
+						});
+					});
+					const pct = totalTarget > 0 ? ((totalAch / totalTarget) * 100).toFixed(1) : 0;
+					const zones = new Set(
+						this.data.consolidated_branches.map((b) => b.zone).filter(Boolean)
+					);
+					return {
+						totalBranches: total,
+						targetAmount: this.formatCurrency(totalTarget),
+						achievement: this.formatCurrency(totalAch),
+						achievementPercent: pct + "% achieved",
+						activeZones: zones.size,
+					};
+				},
+
+				get zones() {
+					if (!this.data || !this.data.consolidated_branches) return [];
+					const zoneMap = new Map();
+					this.data.consolidated_branches.forEach((b) => {
+						if (b.zone) zoneMap.set(b.zone, (zoneMap.get(b.zone) || 0) + 1);
+					});
+					const zones = [
+						{
+							id: "all",
+							name: "All Zones",
+							count: this.data.consolidated_branches.length,
+						},
+					];
+					zoneMap.forEach((count, zone) => {
+						const num = zone.match(/\d+/);
+						zones.push({ id: zone, name: num ? `Zone ${num[0]}` : zone, count });
+					});
+					return zones;
+				},
+
+				get categories() {
+					if (!this.data || !this.data.consolidated_branches) return [];
+					const catMap = new Map();
+					this.data.consolidated_branches.forEach((b) => {
+						const cat = b.latest_category;
+						if (cat) catMap.set(cat, (catMap.get(cat) || 0) + 1);
+					});
+					const total = this.data.consolidated_branches.length;
+					const categories = [
+						{ id: "all", name: "All", count: total, percent: "137.5%", class: "all" },
+					];
+					const catOrder = [
+						"Pinnacle",
+						"Master",
+						"Accelerator",
+						"Starter",
+						"Learner",
+						"Zero Level",
+					];
+					const classMap = {
+						Pinnacle: "pinnacle",
+						Master: "master",
+						Accelerator: "accelerator",
+						Starter: "starter",
+						Learner: "learner",
+						"Zero Level": "zero",
+					};
+					catOrder.forEach((cat) => {
+						const count = catMap.get(cat) || 0;
+						categories.push({
+							id: cat,
+							name: cat,
+							count,
+							percent: total > 0 ? ((count / total) * 100).toFixed(1) + "%" : "0%",
+							class: classMap[cat],
+						});
+					});
+					return categories;
+				},
+
+				get displayCategories() {
+					const catOrder = [
+						"Pinnacle",
+						"Master",
+						"Accelerator",
+						"Starter",
+						"Learner",
+						"Zero Level",
+					];
+					if (this.state.selectedCategories.length > 0) {
+						return catOrder.filter((cat) =>
+							this.state.selectedCategories.includes(cat)
+						);
+					}
+					return catOrder;
+				},
+
+				get months() {
+					if (!this.data || !this.data.months) return [];
+					const monthOrder = [
+						"APR",
+						"MAY",
+						"JUN",
+						"JUL",
+						"AUG",
+						"SEP",
+						"OCT",
+						"NOV",
+						"DEC",
+						"JAN",
+						"FEB",
+						"MAR",
+					];
+					return monthOrder.filter((m) => this.data.months[m]);
+				},
+
+				get filteredBranches() {
+					if (!this.data || !this.data.consolidated_branches) return [];
+					let branches = [...this.data.consolidated_branches];
+					if (this.state.selectedCategories.length > 0) {
+						branches = branches.filter((b) =>
+							this.state.selectedCategories.includes(b.latest_category)
+						);
+					}
+					if (this.state.selectedZones.length > 0) {
+						branches = branches.filter((b) =>
+							this.state.selectedZones.includes(b.zone)
+						);
+					}
+					if (this.state.searchTerm) {
+						const term = this.state.searchTerm.toLowerCase();
+						branches = branches.filter(
+							(b) =>
+								(b.branch_name || "").toLowerCase().includes(term) ||
+								(b.branch_code || "").toLowerCase().includes(term)
+						);
+					}
+					return branches;
+				},
+
+				renderCategoryTable() {
+					let html = "";
+					const displayMonths = this.months.slice(0, 2); // Show only last 2 months like image
+
+					this.displayCategories.forEach((cat, idx) => {
+						const isExpanded = this.expandedCategories.includes(cat);
+						const catColor =
+							{
+								Pinnacle: "#10b981",
+								Master: "#14b8a6",
+								Accelerator: "#3b82f6",
+								Starter: "#f59e0b",
+								Learner: "#f97316",
+								"Zero Level": "#dc2626",
+							}[cat] || "#475569";
+
+						// Get counts for last 2 months
+						const counts = displayMonths.map((m) =>
+							this.getCategoryMonthCount(cat, m)
+						);
+						const change = counts[1] - counts[0];
+						const changeIcon = change > 0 ? "📈" : change < 0 ? "📉" : "➖";
+						const changeColor =
+							change > 0 ? "#10b981" : change < 0 ? "#ef4444" : "#6b7280";
+
+						// Category header
+						html += `<tr class="cat-row" onclick="window.toggleCat('${cat}')">`;
+						html += `<td style="text-align: left; font-weight: 600;">`;
+						html += `<span style="display: inline-block; width: 20px; color: ${catColor};">${
+							isExpanded ? "▼" : "▶"
+						}</span>`;
+						html += `<span style="padding: 4px 12px; background: ${catColor}; color: white; border-radius: 12px; font-size: 11px; margin-right: 8px;">${cat}</span>`;
+						html += `</td>`;
+
+						displayMonths.forEach((m, i) => {
+							const count = counts[i];
+							const pct =
+								this.data.consolidated_branches.length > 0
+									? (
+											(count / this.data.consolidated_branches.length) *
+											100
+									  ).toFixed(1)
+									: 0;
+							html += `<td><strong>${count}</strong><br><span style="font-size: 11px; color: #6b7280;">${pct}% of total</span></td>`;
+						});
+
+						html += `<td><span style="color: ${changeColor}; font-weight: 700;">${changeIcon} ${
+							change > 0 ? "+" : ""
+						}${change}</span></td>`;
+						html += "</tr>";
+
+						// Zone rows
+						const zones = this.getCategoryZones(cat);
+						zones.forEach((zone) => {
+							html += `<tr class="zone-row ${isExpanded ? "show" : ""}">`;
+							html += `<td class="zone-cell">${zone}</td>`;
+							displayMonths.forEach((m) => {
+								const zoneCount = this.getZoneCount(zone, cat, m);
+								html += `<td>${zoneCount}<br><span style="font-size: 11px; color: #6b7280;">branches</span></td>`;
+							});
+							html += `<td>-</td>`;
+							html += "</tr>";
+						});
+					});
+
+					// Total row
+					html += '<tr style="background: #1e293b; color: white; font-weight: 700;">';
+					html += '<td style="text-align: left;">TOTAL</td>';
+					const totalCounts = displayMonths.map((m) => this.getMonthTotal(m));
+					totalCounts.forEach((count) => {
+						html += `<td>${count}</td>`;
+					});
+					const totalChange = totalCounts[1] - totalCounts[0];
+					html += `<td style="color: ${
+						totalChange > 0 ? "#10b981" : "#ef4444"
+					};">📈 +${totalChange}</td>`;
+					html += "</tr>";
+
+					return html;
+				},
+
+				renderBranchTable() {
+					const months = this.months.slice(0, 2); // Last 2 months
+					const branches = this.filteredBranches;
+
+					let html = "<table><thead><tr>";
+					html += '<th rowspan="2" style="width: 250px;" class="left">Branch</th>';
+					months.forEach((m) => (html += `<th colspan="4">${m}-2025</th>`));
+					html += "</tr><tr>";
+					months.forEach(() => {
+						html += "<th>Cat</th><th>Target</th><th>Ach</th><th>%</th>";
+					});
+					html += "</tr></thead><tbody>";
+
+					branches.forEach((b) => {
+						html += "<tr>";
+						html += `<td style="text-align: left;">`;
+						html += `<a href="/app/branch?id=${b.branch_code}" class="branch-code">${b.branch_code}</a>`;
+						html += `<div style="font-weight: 600; margin: 4px 0;">${b.branch_name}</div>`;
+						html += `<div style="font-size: 11px; color: #6b7280;">${b.zone} | ${b.region}</div>`;
+						html += `</td>`;
+
+						months.forEach((m) => {
+							const md = this.getBranchData(b, m);
+							const pct = this.calcPct(md.achievement, md.target);
+							const catClass = this.getCatClass(md.category);
+
+							html += `<td><span class="cat-badge ${catClass}">${
+								md.category || "NA"
+							}</span></td>`;
+							html += `<td style="font-family: monospace;">${this.formatCurrency(
+								md.target
+							)}</td>`;
+							html += `<td style="font-family: monospace;">${this.formatCurrency(
+								md.achievement
+							)}</td>`;
+							html += `<td><strong style="color: ${
+								pct >= 100 ? "#10b981" : pct >= 80 ? "#f59e0b" : "#ef4444"
+							};">${pct}%</strong></td>`;
+						});
+						html += "</tr>";
+					});
+
+					html += "</tbody><tfoot><tr>";
+					html += `<td style="text-align: left;"><strong>GRAND TOTAL (${branches.length})</strong></td>`;
+					months.forEach((m) => {
+						const tgt = this.getMonthTotalTarget(m);
+						const ach = this.getMonthTotalAch(m);
+						html += "<td></td>";
+						html += `<td style="font-family: monospace;"><strong>${this.formatCurrency(
+							tgt
+						)}</strong></td>`;
+						html += `<td style="font-family: monospace;"><strong>${this.formatCurrency(
+							ach
+						)}</strong></td>`;
+						html += `<td><strong>${this.calcPct(ach, tgt)}%</strong></td>`;
+					});
+					html += "</tr></tfoot></table>";
+
+					return html;
+				},
+
+				async loadData() {
+					this.state.loading = true;
+					this.state.error = null;
+					try {
+						const filters = JSON.stringify({ zones: [], categories: [] });
+						const url = `/api/method/custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_fy_master_data_actual?financial_year=${
+							this.state.financialYear
+						}&filters=${encodeURIComponent(filters)}`;
+						const response = await fetch(url, {
+							method: "GET",
+							headers: { Accept: "application/json" },
+							credentials: "same-origin",
+						});
+						const result = await response.json();
+						if (!response.ok)
+							throw new Error(
+								result.message?.error?.message || `HTTP ${response.status}`
+							);
+						if (result.message && result.message.status === "success") {
+							this.data = result.message.data;
+							console.log("✅ Data loaded:", this.data);
+							window.toggleCat = (cat) => this.toggleCategoryExpand(cat);
+						} else {
+							throw new Error(result.message?.error?.message || "Invalid response");
+						}
+					} catch (error) {
+						console.error("❌ Error:", error);
+						this.state.error = error.message;
+					} finally {
+						this.state.loading = false;
+					}
+				},
+
+				toggleZone(zoneId) {
+					if (zoneId === "all") this.state.selectedZones = [];
+					else {
+						const idx = this.state.selectedZones.indexOf(zoneId);
+						if (idx > -1) this.state.selectedZones.splice(idx, 1);
+						else this.state.selectedZones.push(zoneId);
+					}
+				},
+
+				toggleCategory(catId) {
+					if (catId === "all") this.state.selectedCategories = [];
+					else {
+						const idx = this.state.selectedCategories.indexOf(catId);
+						if (idx > -1) this.state.selectedCategories.splice(idx, 1);
+						else this.state.selectedCategories.push(catId);
+					}
+				},
+
+				isZoneActive(zoneId) {
+					return zoneId === "all"
+						? this.state.selectedZones.length === 0
+						: this.state.selectedZones.includes(zoneId);
+				},
+
+				toggleCategoryExpand(catId) {
+					const idx = this.expandedCategories.indexOf(catId);
+					if (idx > -1) this.expandedCategories.splice(idx, 1);
+					else this.expandedCategories.push(catId);
+				},
+
+				getCategoryMonthCount(category, month) {
+					if (!this.data || !this.data.months || !this.data.months[month]) return 0;
+					const monthData = this.data.months[month];
+					const categoryData = monthData.grouped_by_category?.[category];
+					if (!categoryData) return 0;
+					let count = 0;
+					Object.values(categoryData).forEach((zoneData) => {
+						count += zoneData.branch_count || 0;
+					});
+					return count;
+				},
+
+				getCategoryZones(category) {
+					if (!this.data || !this.data.months) return [];
+					const zoneSet = new Set();
+					Object.values(this.data.months).forEach((monthData) => {
+						const categoryData = monthData.grouped_by_category?.[category];
+						if (categoryData) {
+							Object.keys(categoryData).forEach((zone) => zoneSet.add(zone));
+						}
+					});
+					return Array.from(zoneSet).sort();
+				},
+
+				getZoneCount(zone, category, month) {
+					if (!this.data || !this.data.months || !this.data.months[month]) return 0;
+					const monthData = this.data.months[month];
+					const zoneData = monthData.grouped_by_category?.[category]?.[zone];
+					return zoneData?.branch_count || 0;
+				},
+
+				getMonthTotal(month) {
+					if (!this.data || !this.data.months || !this.data.months[month]) return 0;
+					let total = 0;
+					const monthData = this.data.months[month];
+					Object.values(monthData.grouped_by_category || {}).forEach((categoryData) => {
+						Object.values(categoryData).forEach((zoneData) => {
+							total += zoneData.branch_count || 0;
+						});
+					});
+					return total;
+				},
+
+				getBranchData(branch, month) {
+					return (
+						branch.monthly_data?.[month] || {
+							category: "NA",
+							target: 0,
+							achievement: 0,
+						}
+					);
+				},
+
+				getMonthTotalTarget(month) {
+					let total = 0;
+					this.filteredBranches.forEach((b) => {
+						const md = this.getBranchData(b, month);
+						total += md.target || 0;
+					});
+					return total;
+				},
+
+				getMonthTotalAch(month) {
+					let total = 0;
+					this.filteredBranches.forEach((b) => {
+						const md = this.getBranchData(b, month);
+						total += md.achievement || 0;
+					});
+					return total;
+				},
+
+				toggleFormat() {
+					this.state.formatMode =
+						this.state.formatMode === "number" ? "words" : "number";
+				},
+
+				formatCurrency(num) {
+					if (num >= 10000000) return "₹" + (num / 10000000).toFixed(2) + " Cr";
+					if (num >= 100000) return "₹" + (num / 100000).toFixed(2) + " L";
+					if (num >= 1000) return "₹" + (num / 1000).toFixed(2) + " K";
+					return "₹" + num.toFixed(0);
+				},
+
+				calcPct(ach, tgt) {
+					return tgt > 0 ? ((ach / tgt) * 100).toFixed(1) : "0.0";
+				},
+
+				getCatClass(category) {
+					const classMap = {
+						Pinnacle: "pinnacle",
+						Master: "master",
+						Accelerator: "accelerator",
+						Starter: "starter",
+						Learner: "learner",
+						"Zero Level": "zero-level",
+					};
+					return classMap[category] || "";
+				},
+			}).mount("#app");
+
+			console.log("✅ Dashboard Ready!");
+		</script>
+	</body>
+</html>

@@ -28,6 +28,11 @@ app_license = "mit"
 # app_include_css = "/assets/custom_report/css/custom_report.css"
 # app_include_js = "/assets/custom_report/js/custom_report.js"
 
+app_include_js = [
+    "/assets/custom_report/js/petite-vue.js"
+]
+
+
 # include js, css files in header of web template
 # web_include_css = "/assets/custom_report/css/custom_report.css"
 # web_include_js = "/assets/custom_report/js/custom_report.js"
