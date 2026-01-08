@@ -1,6 +1,6 @@
 // ============================================================================
-// DRISHTI PERFORMANCE DASHBOARD - MONTH-WISE CATEGORY VERSION
-// Version: 4.4.0 | With Drill-Down from Category to Branch View
+// DRISHTI PERFORMANCE DASHBOARD - SIMPLIFIED BRANCH TABLE
+// Version: 4.8.0 | Mokopi-style Clean UI with Row Borders
 // ============================================================================
 
 frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
@@ -18,15 +18,15 @@ class DrishtiDashboardV4 {
 		this.page = page;
 		this.state = {
 			financialYear: "2025-2026",
-			activeTab: "category", // category | branch
-			formatMode: "number", // number | words
+			activeTab: "category",
+			formatMode: "number",
 			selectedDate: null,
 			selectedCategories: [],
 			selectedZones: [],
 			selectedRegion: "",
 			branchSearchTerm: "",
 			selectedMonth: null,
-			drillDownActive: false, // Track if drill-down is active
+			drillDownActive: false,
 		};
 		this.data = null;
 		this.availableFilters = {
@@ -35,6 +35,8 @@ class DrishtiDashboardV4 {
 			regions: [],
 			branches: [],
 		};
+		this.categoryCounts = {};
+		this.zoneCounts = {};
 
 		this.init();
 	}
@@ -42,6 +44,7 @@ class DrishtiDashboardV4 {
 	init() {
 		this.setupStyles();
 		this.createControls();
+		this.createFilterTags();
 		this.createTabsAndContainer();
 		this.loadData();
 	}
@@ -51,39 +54,18 @@ class DrishtiDashboardV4 {
 	// ========================================================================
 	drillDownToCategory(category) {
 		console.log(`🔍 Drilling down to Category: ${category}`);
-
-		// Set filter to only this category
 		this.state.selectedCategories = [category];
 		this.state.drillDownActive = true;
-
-		// Update UI - uncheck all, then check only this category
-		this.page.main.find(".category-checkbox").prop("checked", false);
-		this.page.main.find(`.category-checkbox[value="${category}"]`).prop("checked", true);
-		this.updateFilterButtonLabel("category");
-
-		// Switch to Branch view
+		this.updateFilterTagsUI();
 		this.switchTab("branch");
 	}
 
 	drillDownToZone(category, zone) {
 		console.log(`🔍 Drilling down to Category: ${category}, Zone: ${zone}`);
-
-		// Set filters
 		this.state.selectedCategories = [category];
 		this.state.selectedZones = [zone];
 		this.state.drillDownActive = true;
-
-		// Update category UI
-		this.page.main.find(".category-checkbox").prop("checked", false);
-		this.page.main.find(`.category-checkbox[value="${category}"]`).prop("checked", true);
-		this.updateFilterButtonLabel("category");
-
-		// Update zone UI
-		this.page.main.find(".zone-checkbox").prop("checked", false);
-		this.page.main.find(`.zone-checkbox[value="${zone}"]`).prop("checked", true);
-		this.updateFilterButtonLabel("zone");
-
-		// Switch to Branch view
+		this.updateFilterTagsUI();
 		this.switchTab("branch");
 	}
 
@@ -95,83 +77,63 @@ class DrishtiDashboardV4 {
 		}
 	}
 
+	drillDownToCategoryMonth(category, month) {
+		console.log(`🔍 Drilling down to Category: ${category}, Month: ${month}`);
+		this.state.selectedCategories = [category];
+		this.state.selectedMonth = month;
+		this.state.drillDownActive = true;
+		this.updateFilterTagsUI();
+		this.switchTab("branch");
+	}
+
+	drillDownToZoneMonth(category, zone, month) {
+		console.log(`🔍 Drilling down to Category: ${category}, Zone: ${zone}, Month: ${month}`);
+		this.state.selectedCategories = [category];
+		this.state.selectedZones = [zone];
+		this.state.selectedMonth = month;
+		this.state.drillDownActive = true;
+		this.updateFilterTagsUI();
+		this.switchTab("branch");
+	}
+
 	// ========================================================================
-	// CONTROLS WITH ADVANCED FILTERS
+	// BASIC CONTROLS
 	// ========================================================================
 	createControls() {
 		const html = `
-            <div style="margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; background: #f9f9f9; border-radius: 6px;">
-                <!-- Row 1: Main Filters -->
-                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-bottom: 12px;">
+            <div style="margin-bottom: 15px; padding: 15px; border: 1px solid #778da9; background: #e0e1dd; border-radius: 6px;">
+                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                     <div>
-                        <label style="font-weight: bold; color: #333;">Financial Year:</label>
-                        <select id="fy-selector" style="padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; margin-left: 8px;">
+                        <label style="font-weight: bold; color: #0d1b2a;">Financial Year:</label>
+                        <select id="fy-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;">
                             <option value="2025-2026">2025-2026</option>
                             <option value="2026-2027">2026-2027</option>
                         </select>
                     </div>
 
                     <div>
-                        <label style="font-weight: bold; color: #333;">Date:</label>
-                        <input type="date" id="date-selector" style="padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; margin-left: 8px;" />
-                    </div>
-
-                    <div style="margin-left: auto;">
-                        <button id="format-toggle" class="btn btn-primary btn-sm">
-                            Show in Words
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Row 2: Advanced Filters -->
-                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid #ddd;">
-                    <div class="filter-dropdown-container">
-                        <label style="font-weight: bold; color: #333;">Category:</label>
-                        <button id="category-filter-btn" class="filter-dropdown-btn">
-                            <span class="filter-label">All Categories</span>
-                            <span class="filter-arrow">▼</span>
-                        </button>
-                        <div id="category-filter-dropdown" class="filter-dropdown-menu" style="display: none;">
-                            <div style="padding: 8px; border-bottom: 1px solid #ddd;">
-                                <label style="cursor: pointer; font-weight: 600;">
-                                    <input type="checkbox" id="category-select-all" checked> Select All
-                                </label>
-                            </div>
-                            <div id="category-options" style="max-height: 200px; overflow-y: auto;"></div>
-                        </div>
-                    </div>
-
-                    <div class="filter-dropdown-container">
-                        <label style="font-weight: bold; color: #333;">Zone:</label>
-                        <button id="zone-filter-btn" class="filter-dropdown-btn">
-                            <span class="filter-label">All Zones</span>
-                            <span class="filter-arrow">▼</span>
-                        </button>
-                        <div id="zone-filter-dropdown" class="filter-dropdown-menu" style="display: none;">
-                            <div style="padding: 8px; border-bottom: 1px solid #ddd;">
-                                <label style="cursor: pointer; font-weight: 600;">
-                                    <input type="checkbox" id="zone-select-all" checked> Select All
-                                </label>
-                            </div>
-                            <div id="zone-options" style="max-height: 200px; overflow-y: auto;"></div>
-                        </div>
+                        <label style="font-weight: bold; color: #0d1b2a;">Date:</label>
+                        <input type="date" id="date-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;" />
                     </div>
 
                     <div>
-                        <label style="font-weight: bold; color: #333;">Region:</label>
-                        <select id="region-selector" style="padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; margin-left: 8px; min-width: 150px;">
+                        <label style="font-weight: bold; color: #0d1b2a;">Region:</label>
+                        <select id="region-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; min-width: 150px; background: white; color: #1b263b;">
                             <option value="">All Regions</option>
                         </select>
                     </div>
 
                     <div>
-                        <label style="font-weight: bold; color: #333;">Branch:</label>
+                        <label style="font-weight: bold; color: #0d1b2a;">Branch:</label>
                         <input type="text" id="branch-search" placeholder="Search branch..." 
-                               style="padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; margin-left: 8px; min-width: 200px;" />
+                               style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; min-width: 200px; background: white; color: #1b263b;" />
                     </div>
 
                     <div style="margin-left: auto;">
-                        <button id="clear-filters" class="btn btn-secondary btn-sm">
+                        <button id="format-toggle" class="btn btn-primary btn-sm" style="background: #415a77; border-color: #415a77; color: white;">
+                            Show in Words
+                        </button>
+                        <button id="clear-filters" class="btn btn-secondary btn-sm" style="background: #778da9; border-color: #778da9; color: white; margin-left: 8px;">
                             🔄 Clear Filters
                         </button>
                     </div>
@@ -181,49 +143,6 @@ class DrishtiDashboardV4 {
 
 		$(html).appendTo(this.page.main);
 		this.attachControlEvents();
-		this.populateFilterOptions();
-	}
-
-	populateFilterOptions() {
-		const categoryContainer = this.page.main.find("#category-options");
-		this.availableFilters.categories.forEach((cat) => {
-			categoryContainer.append(`
-                <div style="padding: 6px 8px;">
-                    <label style="cursor: pointer; display: block;">
-                        <input type="checkbox" class="category-checkbox" value="${cat}" checked>
-                        ${cat}
-                    </label>
-                </div>
-            `);
-		});
-
-		this.updateZoneOptions();
-	}
-
-	updateZoneOptions() {
-		const zoneContainer = this.page.main.find("#zone-options");
-		zoneContainer.empty();
-
-		this.availableFilters.zones.forEach((zone) => {
-			zoneContainer.append(`
-                <div style="padding: 6px 8px;">
-                    <label style="cursor: pointer; display: block;">
-                        <input type="checkbox" class="zone-checkbox" value="${zone}" checked>
-                        ${zone}
-                    </label>
-                </div>
-            `);
-		});
-	}
-
-	updateRegionOptions() {
-		const regionSelector = this.page.main.find("#region-selector");
-		regionSelector.empty();
-		regionSelector.append('<option value="">All Regions</option>');
-
-		this.availableFilters.regions.forEach((region) => {
-			regionSelector.append(`<option value="${region}">${region}</option>`);
-		});
 	}
 
 	attachControlEvents() {
@@ -236,158 +155,34 @@ class DrishtiDashboardV4 {
 
 		this.page.main.find("#date-selector").on("change", function () {
 			self.state.selectedDate = $(this).val();
-			self.applyFiltersAndRender();
+			self.render();
 		});
 
 		this.page.main.find("#format-toggle").on("click", function () {
 			self.toggleFormat();
 		});
 
-		this.page.main.find("#category-filter-btn").on("click", function (e) {
-			e.stopPropagation();
-			self.toggleFilterDropdown("#category-filter-dropdown");
-		});
-
-		this.page.main.find("#zone-filter-btn").on("click", function (e) {
-			e.stopPropagation();
-			self.toggleFilterDropdown("#zone-filter-dropdown");
-		});
-
-		this.page.main.find("#category-select-all").on("change", function () {
-			const checked = $(this).prop("checked");
-			self.page.main.find(".category-checkbox").prop("checked", checked);
-			self.updateFilterButtonLabel("category");
-			self.applyFiltersAndRender();
-		});
-
-		this.page.main.find("#zone-select-all").on("change", function () {
-			const checked = $(this).prop("checked");
-			self.page.main.find(".zone-checkbox").prop("checked", checked);
-			self.updateFilterButtonLabel("zone");
-			self.applyFiltersAndRender();
-		});
-
-		this.page.main.on("change", ".category-checkbox", function () {
-			self.updateFilterButtonLabel("category");
-			self.applyFiltersAndRender();
-		});
-
-		this.page.main.on("change", ".zone-checkbox", function () {
-			self.updateFilterButtonLabel("zone");
-			self.applyFiltersAndRender();
-		});
-
 		this.page.main.find("#region-selector").on("change", function () {
 			self.state.selectedRegion = $(this).val() || "";
-			self.applyFiltersAndRender();
+			self.updateCounts();
+			self.updateFilterTagsUI();
+			self.render();
 		});
 
 		let searchTimeout;
 		this.page.main.find("#branch-search").on("input", function () {
 			clearTimeout(searchTimeout);
-			searchTimeout = setTimeout(function () {
-				self.state.branchSearchTerm = self.page.main.find("#branch-search").val() || "";
-				self.applyFiltersAndRender();
-			}, 500);
-		});
-
-		this.page.main.find("#branch-search").on("keypress", function (e) {
-			if (e.which === 13) {
-				clearTimeout(searchTimeout);
-				self.state.branchSearchTerm = $(this).val() || "";
-				self.applyFiltersAndRender();
-			}
-		});
+							searchTimeout = setTimeout(function () {
+							self.state.branchSearchTerm = self.page.main.find("#branch-search").val() || "";
+							self.render();
+							if (self.state.branchSearchTerm) {
+								self.switchTab("branch");
+							}
+						}, 500);		});
 
 		this.page.main.find("#clear-filters").on("click", function () {
 			self.clearAllFilters();
 		});
-
-		$(document).on("click", function () {
-			self.page.main.find(".filter-dropdown-menu").hide();
-		});
-
-		this.page.main.find(".filter-dropdown-menu").on("click", function (e) {
-			e.stopPropagation();
-		});
-	}
-
-	toggleFilterDropdown(selector) {
-		const dropdown = this.page.main.find(selector);
-		const isVisible = dropdown.is(":visible");
-
-		this.page.main.find(".filter-dropdown-menu").hide();
-
-		if (!isVisible) {
-			dropdown.show();
-		}
-	}
-
-	updateFilterButtonLabel(filterType) {
-		if (filterType === "category") {
-			const checkedBoxes = this.page.main.find(".category-checkbox:checked");
-			const totalBoxes = this.page.main.find(".category-checkbox");
-			const label = this.page.main.find("#category-filter-btn .filter-label");
-
-			if (checkedBoxes.length === 0) {
-				label.text("No Categories");
-			} else if (checkedBoxes.length === totalBoxes.length) {
-				label.text("All Categories");
-			} else if (checkedBoxes.length === 1) {
-				label.text($(checkedBoxes[0]).attr("value"));
-			} else {
-				label.text(`${checkedBoxes.length} Categories`);
-			}
-		} else if (filterType === "zone") {
-			const checkedBoxes = this.page.main.find(".zone-checkbox:checked");
-			const totalBoxes = this.page.main.find(".zone-checkbox");
-			const label = this.page.main.find("#zone-filter-btn .filter-label");
-
-			if (checkedBoxes.length === 0) {
-				label.text("No Zones");
-			} else if (checkedBoxes.length === totalBoxes.length) {
-				label.text("All Zones");
-			} else if (checkedBoxes.length === 1) {
-				label.text($(checkedBoxes[0]).attr("value"));
-			} else {
-				label.text(`${checkedBoxes.length} Zones`);
-			}
-		}
-	}
-
-	applyFiltersAndRender() {
-		const self = this;
-
-		this.state.selectedCategories = [];
-		const categoryCheckboxes = this.page.main.find(".category-checkbox:checked");
-		categoryCheckboxes.each(function () {
-			const domElement = this;
-			const val = domElement.getAttribute("value");
-			if (val) {
-				self.state.selectedCategories.push(val);
-			}
-		});
-
-		this.state.selectedZones = [];
-		const zoneCheckboxes = this.page.main.find(".zone-checkbox:checked");
-		zoneCheckboxes.each(function () {
-			const domElement = this;
-			const val = domElement.getAttribute("value");
-			if (val) {
-				self.state.selectedZones.push(val);
-			}
-		});
-
-		console.log("🔍 Filters Applied:", {
-			categories: this.state.selectedCategories,
-			zones: this.state.selectedZones,
-			region: this.state.selectedRegion,
-			branch: this.state.branchSearchTerm,
-		});
-
-		this.render();
-
-		this.page.main.find(".filter-dropdown-menu").hide();
 	}
 
 	clearAllFilters() {
@@ -396,23 +191,16 @@ class DrishtiDashboardV4 {
 		this.state.selectedZones = [];
 		this.state.selectedRegion = "";
 		this.state.branchSearchTerm = "";
-		this.state.selectedMonth = null; // NEW
+		this.state.selectedMonth = null;
 		this.state.drillDownActive = false;
 
 		this.page.main.find("#date-selector").val("");
 		this.page.main.find("#region-selector").val("");
 		this.page.main.find("#branch-search").val("");
-		this.page.main.find(".category-checkbox").prop("checked", true);
-		this.page.main.find(".zone-checkbox").prop("checked", true);
-		this.page.main.find("#category-select-all").prop("checked", true);
-		this.page.main.find("#zone-select-all").prop("checked", true);
 
-		this.updateFilterButtonLabel("category");
-		this.updateFilterButtonLabel("zone");
-
-		console.log("🔄 Filters Cleared");
-
-		this.applyFiltersAndRender();
+		this.updateCounts();
+		this.updateFilterTagsUI();
+		this.render();
 	}
 
 	toggleFormat() {
@@ -429,36 +217,248 @@ class DrishtiDashboardV4 {
 	}
 
 	// ========================================================================
+	// FILTER TAGS
+	// ========================================================================
+	createFilterTags() {
+		const html = `
+            <div class="filter-tags-container">
+                <!-- Zone Selection -->
+                <div class="filter-section">
+                    <label class="filter-section-label">ZONE SELECTION</label>
+                    <div class="filter-tags" id="zone-tags"></div>
+                </div>
+
+                <!-- Performance Categories -->
+                <div class="filter-section">
+                    <label class="filter-section-label">PERFORMANCE CATEGORIES</label>
+                    <div class="filter-tags" id="category-tags"></div>
+                </div>
+            </div>
+        `;
+
+		$(html).appendTo(this.page.main);
+		this.populateFilterTags();
+	}
+
+	populateFilterTags() {
+		this.updateZoneTags();
+		this.updateCategoryTags();
+	}
+
+	updateZoneTags() {
+		const container = this.page.main.find("#zone-tags");
+		container.empty();
+
+		const allZonesCount = this.zoneCounts["all"] || 0;
+		const allZonesActive = this.state.selectedZones.length === 0;
+		container.append(`
+            <button class="filter-tag zone-tag ${allZonesActive ? "active" : ""}" data-zone="all">
+                All Zones
+                <span class="filter-tag-count">${allZonesCount}</span>
+            </button>
+        `);
+
+		this.availableFilters.zones.forEach((zone) => {
+			const count = this.zoneCounts[zone] || 0;
+			const isActive = this.state.selectedZones.includes(zone);
+			const zoneNum = zone.match(/\d+/);
+			const displayName = zoneNum ? `Zone ${zoneNum[0]}` : zone;
+
+			container.append(`
+                <button class="filter-tag zone-tag ${
+					isActive ? "active" : ""
+				}" data-zone="${zone}">
+                    ${displayName}
+                    <span class="filter-tag-count">${count}</span>
+                </button>
+            `);
+		});
+
+		this.attachZoneTagEvents();
+	}
+
+	updateCategoryTags() {
+		const container = this.page.main.find("#category-tags");
+		container.empty();
+
+		const categoryColors = {
+			Pinnacle: "#10b981",
+			Master: "#14b8a6",
+			Accelerator: "#3b82f6",
+			Starter: "#f59e0b",
+			Learner: "#ef4444",
+			"Zero Level": "#dc2626",
+		};
+
+		const allCategoriesCount = this.categoryCounts["all"] || 0;
+		const allCategoriesActive = this.state.selectedCategories.length === 0;
+		const totalPct = this.calculateCategoryPercentage("all");
+
+		container.append(`
+            <button class="filter-tag category-tag all-tag ${
+				allCategoriesActive ? "active" : ""
+			}" data-category="all">
+                All
+                <span class="filter-tag-count">${allCategoriesCount}</span>
+                <span class="filter-tag-pct">${totalPct}%</span>
+            </button>
+        `);
+
+		this.availableFilters.categories.forEach((category) => {
+			const count = this.categoryCounts[category] || 0;
+			const isActive = this.state.selectedCategories.includes(category);
+			const color = categoryColors[category] || "#778da9";
+			const pct = this.calculateCategoryPercentage(category);
+
+			container.append(`
+                <button class="filter-tag category-tag ${isActive ? "active" : ""}" 
+                        data-category="${category}" 
+                        style="border-left: 3px solid ${color};">
+                    ${category}
+                    <span class="filter-tag-count">${count}</span>
+                    <span class="filter-tag-pct">${pct}%</span>
+                </button>
+            `);
+		});
+
+		this.attachCategoryTagEvents();
+	}
+
+	calculateCategoryPercentage(category) {
+		const total = this.categoryCounts["all"] || 0;
+		if (total === 0) return "0.0";
+
+		if (category === "all") {
+			return "100.0";
+		}
+
+		const count = this.categoryCounts[category] || 0;
+		return ((count / total) * 100).toFixed(1);
+	}
+
+	attachZoneTagEvents() {
+		const self = this;
+
+		this.page.main
+			.find(".zone-tag")
+			.off("click")
+			.on("click", function () {
+				const zone = $(this).data("zone");
+
+				if (zone === "all") {
+					self.state.selectedZones = [];
+				} else {
+					const index = self.state.selectedZones.indexOf(zone);
+					if (index > -1) {
+						self.state.selectedZones.splice(index, 1);
+					} else {
+						self.state.selectedZones.push(zone);
+					}
+
+					if (self.state.selectedZones.length === 0) {
+						self.state.selectedZones = [];
+					}
+				}
+
+				self.updateFilterTagsUI();
+				self.render();
+			});
+	}
+
+	attachCategoryTagEvents() {
+		const self = this;
+
+		this.page.main
+			.find(".category-tag")
+			.off("click")
+			.on("click", function () {
+				const category = $(this).data("category");
+
+				if (category === "all") {
+					self.state.selectedCategories = [];
+				} else {
+					const index = self.state.selectedCategories.indexOf(category);
+					if (index > -1) {
+						self.state.selectedCategories.splice(index, 1);
+					} else {
+						self.state.selectedCategories.push(category);
+					}
+
+					if (self.state.selectedCategories.length === 0) {
+						self.state.selectedCategories = [];
+					}
+				}
+
+				self.updateFilterTagsUI();
+				self.render();
+			});
+	}
+
+	updateFilterTagsUI() {
+		this.page.main.find(".zone-tag").removeClass("active");
+		if (this.state.selectedZones.length === 0) {
+			this.page.main.find(".zone-tag[data-zone='all']").addClass("active");
+		} else {
+			this.state.selectedZones.forEach((zone) => {
+				this.page.main.find(`.zone-tag[data-zone="${zone}"]`).addClass("active");
+			});
+		}
+
+		this.page.main.find(".category-tag").removeClass("active");
+		if (this.state.selectedCategories.length === 0) {
+			this.page.main.find(".category-tag[data-category='all']").addClass("active");
+		} else {
+			this.state.selectedCategories.forEach((category) => {
+				this.page.main
+					.find(`.category-tag[data-category="${category}"]`)
+					.addClass("active");
+			});
+		}
+	}
+
+	updateCounts() {
+		if (!this.data || !this.data.consolidated_branches) return;
+
+		let branches = this.data.consolidated_branches;
+
+		if (this.state.selectedRegion) {
+			branches = branches.filter((b) => b.region === this.state.selectedRegion);
+		}
+
+		this.categoryCounts = { all: branches.length };
+		this.availableFilters.categories.forEach((cat) => {
+			this.categoryCounts[cat] = branches.filter((b) => b.latest_category === cat).length;
+		});
+
+		this.zoneCounts = { all: branches.length };
+		this.availableFilters.zones.forEach((zone) => {
+			this.zoneCounts[zone] = branches.filter((b) => b.zone === zone).length;
+		});
+	}
+
+	// ========================================================================
 	// TABS
 	// ========================================================================
 	createTabsAndContainer() {
 		const html = `
-            <div style="border: 1px solid #ddd; padding: 12px; background: #fff; border-radius: 6px;">
-                <div id="tab-buttons" style="display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #ddd;">
+            <div style="border: 1px solid #778da9; padding: 12px; background: #fff; border-radius: 6px; margin-top: 15px;">
+                <div id="tab-buttons" style="display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #778da9;">
                     <button class="tab-btn ${
 						this.state.activeTab === "category" ? "active" : ""
 					}" data-tab="category">
-                        📊 Category Wise
+                        Category Wise
                     </button>
                     <button class="tab-btn ${
 						this.state.activeTab === "branch" ? "active" : ""
 					}" data-tab="branch">
-                        ✨ Branch Wise
+                        Branch Wise
                     </button>
                 </div>
 
-                <div id="filter-summary" style="margin-bottom: 10px; padding: 8px; background: #e8f4f8; border-radius: 4px; font-size: 12px; display: none;">
-                    <strong>Active Filters:</strong> <span id="filter-summary-text"></span>
-                </div>
-
-                <div id="error-message" style="color: red; display: none; padding: 10px; background: #fee; border-radius: 4px;"></div>
+                <div id="error-message" style="color: #0d1b2a; display: none; padding: 10px; background: #ffebee; border-radius: 4px;"></div>
 
                 <div id="tab-content" style="overflow-x: auto;">
-                    <table id="data-table" border="1" cellpadding="10" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                        <thead id="table-head"></thead>
-                        <tbody id="table-body"></tbody>
-                        <tfoot id="table-foot"></tfoot>
-                    </table>
+                    <div id="data-container" style="transition: opacity 0.2s ease-in-out;"></div>
                 </div>
             </div>
         `;
@@ -500,8 +500,9 @@ class DrishtiDashboardV4 {
 					console.log("✨ API Response:", this.data);
 
 					this.extractAvailableFilters();
-					this.updateZoneOptions();
 					this.updateRegionOptions();
+					this.updateCounts();
+					this.populateFilterTags();
 
 					this.render();
 				} else {
@@ -515,13 +516,11 @@ class DrishtiDashboardV4 {
 	extractAvailableFilters() {
 		const zones = new Set();
 		const regions = new Set();
-		const branches = new Set();
 
 		if (this.data.consolidated_branches) {
 			this.data.consolidated_branches.forEach((branch) => {
 				if (branch.zone) zones.add(branch.zone);
 				if (branch.region) regions.add(branch.region);
-				if (branch.branch_name) branches.add(branch.branch_name);
 			});
 		}
 
@@ -535,16 +534,25 @@ class DrishtiDashboardV4 {
 		});
 
 		this.availableFilters.regions = Array.from(regions).sort();
-		this.availableFilters.branches = Array.from(branches).sort();
+	}
+
+	updateRegionOptions() {
+		const regionSelector = this.page.main.find("#region-selector");
+		regionSelector.empty();
+		regionSelector.append('<option value="">All Regions</option>');
+
+		this.availableFilters.regions.forEach((region) => {
+			regionSelector.append(`<option value="${region}">${region}</option>`);
+		});
 	}
 
 	showError(message) {
 		this.page.main.find("#error-message").text(message).show();
-		this.page.main.find("#data-table").hide();
+		this.page.main.find("#data-container").css("opacity", 0); // Hide content immediately on error
 	}
 
 	// ========================================================================
-	// RENDERING WITH FILTERS
+	// RENDERING
 	// ========================================================================
 	render() {
 		if (!this.data || !this.data.months) {
@@ -553,101 +561,69 @@ class DrishtiDashboardV4 {
 		}
 
 		this.page.main.find("#error-message").hide();
-		this.page.main.find("#data-table").show();
+		const dataContainer = this.page.main.find("#data-container");
 
-		const monthOrder = [
-			"APR",
-			"MAY",
-			"JUN",
-			"JUL",
-			"AUG",
-			"SEP",
-			"OCT",
-			"NOV",
-			"DEC",
-			"JAN",
-			"FEB",
-			"MAR",
-		];
-		const months = monthOrder.filter((m) => this.data.months[m]);
+		// Fade out current content
+		dataContainer.css("opacity", 0);
 
-		if (months.length === 0) {
-			this.showError("No months found");
-			return;
-		}
+		// Wait for fade-out, then update content and fade in
+		setTimeout(() => {
+			let htmlContent = "";
 
-		this.updateFilterSummary();
+			const monthOrder = [
+				"APR",
+				"MAY",
+				"JUN",
+				"JUL",
+				"AUG",
+				"SEP",
+				"OCT",
+				"NOV",
+				"DEC",
+				"JAN",
+				"FEB",
+				"MAR",
+			];
+			const months = monthOrder.filter((m) => this.data.months[m]);
 
-		if (this.state.activeTab === "branch") {
-			this.renderBranchView(months);
-		} else {
-			this.renderCategoryView(months);
-		}
-	}
-	updateFilterSummary() {
-		const filters = [];
+			if (months.length === 0) {
+				this.showError("No months found");
+				return;
+			}
 
-		if (this.state.selectedDate) {
-			filters.push(`Date: ${this.state.selectedDate}`);
-		}
+			if (this.state.activeTab === "branch") {
+				htmlContent = this.buildBranchTable(this.applyFiltersToData(this.data.consolidated_branches || []), months);
+			} else {
+				// Use the new HTML generator for category view
+				htmlContent = this.getCategoryViewHtml(months);
+			}
 
-		if (this.state.selectedMonth) {
-			filters.push(`Month: ${this.state.selectedMonth}`); // NEW
-		}
+			dataContainer.html(htmlContent); // Update content
 
-		if (
-			this.state.selectedCategories.length > 0 &&
-			this.state.selectedCategories.length < this.availableFilters.categories.length
-		) {
-			filters.push(`Categories: ${this.state.selectedCategories.join(", ")}`);
-		}
+            if (this.state.activeTab === "category") {
+                this.attachCategoryCollapseHandlers();
+                this.attachDrillDownHandlers();
+            }
 
-		if (
-			this.state.selectedZones.length > 0 &&
-			this.state.selectedZones.length < this.availableFilters.zones.length
-		) {
-			filters.push(`Zones: ${this.state.selectedZones.join(", ")}`);
-		}
-
-		if (this.state.selectedRegion) {
-			filters.push(`Region: ${this.state.selectedRegion}`);
-		}
-
-		if (this.state.branchSearchTerm) {
-			filters.push(`Branch: "${this.state.branchSearchTerm}"`);
-		}
-
-		if (filters.length > 0) {
-			this.page.main.find("#filter-summary").show();
-			this.page.main.find("#filter-summary-text").text(filters.join(" | "));
-		} else {
-			this.page.main.find("#filter-summary").hide();
-		}
+			dataContainer.css("opacity", 1); // Fade in new content
+		}, 200); // Match this duration with the CSS transition duration
 	}
 
 	applyFiltersToData(data) {
 		let filtered = [...data];
 
-		if (
-			this.state.selectedCategories.length > 0 &&
-			this.state.selectedCategories.length < this.availableFilters.categories.length
-		) {
+		if (this.state.selectedCategories.length > 0) {
 			filtered = filtered.filter((item) => {
 				if (this.state.selectedMonth) {
-					// Use month-specific category if a month is selected
 					const monthData = item.monthly_data?.[this.state.selectedMonth];
 					return monthData && this.state.selectedCategories.includes(monthData.category);
 				} else {
-					// Otherwise, use the latest category
 					return this.state.selectedCategories.includes(item.latest_category);
 				}
 			});
 		}
 
-		if (
-			this.state.selectedZones.length > 0 &&
-			this.state.selectedZones.length < this.availableFilters.zones.length
-		) {
+		if (this.state.selectedZones.length > 0) {
 			filtered = filtered.filter((item) => this.state.selectedZones.includes(item.zone));
 		}
 
@@ -665,138 +641,6 @@ class DrishtiDashboardV4 {
 		}
 
 		return filtered;
-	}
-
-	// ========================================================================
-	// CATEGORY VIEW WITH DRILL-DOWN
-	// ========================================================================
-	renderCategoryView(months) {
-		const categoryData = this.data.months || {};
-
-		if (!categoryData || Object.keys(categoryData).length === 0) {
-			this.showError("No category data available");
-			return;
-		}
-
-		const categoryOrder = [
-			"Pinnacle",
-			"Master",
-			"Accelerator",
-			"Starter",
-			"Learner",
-			"Zero Level",
-		];
-
-		const filteredCategories =
-			this.state.selectedCategories.length > 0 &&
-			this.state.selectedCategories.length < this.availableFilters.categories.length
-				? categoryOrder.filter((cat) => this.state.selectedCategories.includes(cat))
-				: categoryOrder;
-
-		let headerHtml = this.buildCategoryTableHeader(months);
-		this.page.main.find("#table-head").html(headerHtml);
-
-		let bodyHtml = this.buildCategoryTableBody(months, filteredCategories, categoryData);
-		this.page.main.find("#table-body").html(bodyHtml);
-
-		let footerHtml = this.buildCategoryTableFooter(months, categoryData, filteredCategories);
-		this.page.main.find("#table-foot").html(footerHtml);
-
-		this.attachCategoryCollapseHandlers();
-		this.attachDrillDownHandlers(); // NEW: Attach drill-down click handlers
-	}
-
-	// NEW: Attach drill-down click handlers
-	attachDrillDownHandlers() {
-		const self = this;
-
-		// Category row drill-down with month
-		this.page.main
-			.find(".drill-category")
-			.off("click")
-			.on("click", function (e) {
-				e.stopPropagation(); // Prevent row collapse
-				const category = $(this).data("category");
-				const month = $(this).data("month"); // Get month
-
-				if (month) {
-					self.drillDownToCategoryMonth(category, month); // Month-specific
-				} else {
-					self.drillDownToCategory(category); // All months
-				}
-			});
-
-		// Zone row drill-down with month
-		this.page.main
-			.find(".drill-zone")
-			.off("click")
-			.on("click", function (e) {
-				e.stopPropagation();
-				const category = $(this).data("category");
-				const zone = $(this).data("zone");
-				const month = $(this).data("month"); // Get month
-
-				if (month) {
-					self.drillDownToZoneMonth(category, zone, month); // Month-specific
-				} else {
-					self.drillDownToZone(category, zone); // All months
-				}
-			});
-	}
-
-	buildCategoryTableHeader(months) {
-		let html = `
-            <tr style="background: #000; color: #fff;">
-                <th style="min-width: 180px;">Category</th>
-        `;
-
-		months.forEach((month) => {
-			html += `
-                <th style="text-align: center; min-width: 140px;" colspan="3">
-                    ${month} 2025/26
-                </th>
-            `;
-		});
-
-		html += `<th style="text-align: center; min-width: 140px;" colspan="3">TOTAL</th></tr>`;
-		html += `<tr style="background: #333; color: #fff;"><th></th>`;
-
-		months.forEach(() => {
-			html += `
-                <th style="text-align: center;">Br</th>
-                <th style="text-align: center;">Target</th>
-                <th style="text-align: center;">Ach (%)</th>
-            `;
-		});
-
-		html += `
-            <th style="text-align: center;">Br</th>
-            <th style="text-align: center;">Target</th>
-            <th style="text-align: center;">Ach (%)</th>
-        </tr>`;
-
-		return html;
-	}
-
-	buildCategoryTableBody(months, categoryOrder, categoryData) {
-		let html = "";
-
-		categoryOrder.forEach((category) => {
-			const categoryTotals = this.aggregateCategoryData(category, months, categoryData);
-
-			if (
-				categoryTotals.totalBranches === 0 &&
-				categoryTotals.totalTarget === 0 &&
-				categoryTotals.totalAchievement === 0
-			) {
-				return;
-			}
-
-			html += this.buildCategoryHeaderRow(category, categoryTotals, months);
-			html += this.buildCategoryZoneRows(category, months, categoryData);
-		});
-
-		return html;
 	}
 
 	aggregateCategoryData(category, months, categoryData) {
@@ -818,10 +662,7 @@ class DrishtiDashboardV4 {
 			const categoryZones = monthData.grouped_by_category[category] || {};
 
 			let zonesToProcess = Object.keys(categoryZones);
-			if (
-				this.state.selectedZones.length > 0 &&
-				this.state.selectedZones.length < this.availableFilters.zones.length
-			) {
+			if (this.state.selectedZones.length > 0) {
 				zonesToProcess = zonesToProcess.filter((zone) =>
 					this.state.selectedZones.includes(zone)
 				);
@@ -841,6 +682,9 @@ class DrishtiDashboardV4 {
 				totals.totalAchievement += achievement;
 			});
 
+			// Only update totalBranches if it's the max count across all months processed so far.
+			// This prevents double-counting branches that might appear in multiple months
+			// but belong to the same category.
 			totals.totalBranches = Math.max(
 				totals.totalBranches,
 				totals.monthlyData[month].branches
@@ -849,100 +693,177 @@ class DrishtiDashboardV4 {
 
 		return totals;
 	}
-	drillDownToCategoryMonth(category, month) {
-		console.log(`🔍 Drilling down to Category: ${category}, Month: ${month}`);
 
-		// Set filters
-		this.state.selectedCategories = [category];
-		this.state.selectedMonth = month; // NEW
-		this.state.drillDownActive = true;
+	getZonesForCategory(category, months, categoryData) {
+		const zoneSet = new Set();
 
-		// Update UI
-		this.page.main.find(".category-checkbox").prop("checked", false);
-		this.page.main.find(`.category-checkbox[value="${category}"]`).prop("checked", true);
-		this.updateFilterButtonLabel("category");
+		months.forEach((month) => {
+			const monthData = categoryData[month];
+			const categoryZones = monthData?.grouped_by_category?.[category] || {};
+			Object.keys(categoryZones).forEach((zone) => zoneSet.add(zone));
+		});
 
-		// Switch to Branch view
-		this.switchTab("branch");
+		return Array.from(zoneSet).sort((a, b) => {
+			const aMatch = a.match(/ZONE-(\d+)/);
+			const bMatch = b.match(/ZONE-(\d+)/);
+			if (aMatch && bMatch) {
+				return parseInt(aMatch[1]) - parseInt(bMatch[1]);
+			}
+			return a.localeCompare(b);
+		});
 	}
 
-	drillDownToZoneMonth(category, zone, month) {
-		console.log(`🔍 Drilling down to Category: ${category}, Zone: ${zone}, Month: ${month}`);
+	attachDrillDownHandlers() {
+		const self = this;
 
-		// Set filters
-		this.state.selectedCategories = [category];
-		this.state.selectedZones = [zone];
-		this.state.selectedMonth = month; // NEW
-		this.state.drillDownActive = true;
+		// Attach to elements in the category table view
+		this.page.main
+			.find(".category-header .drill-category, .zone-detail .drill-zone")
+			.off("click")
+			.on("click", function (e) {
+				e.stopPropagation();
+				const category = $(this).data("category");
+				const zone = $(this).data("zone"); // Might be undefined for category drill-down
+				const month = $(this).data("month");
 
-		// Update category UI
-		this.page.main.find(".category-checkbox").prop("checked", false);
-		this.page.main.find(`.category-checkbox[value="${category}"]`).prop("checked", true);
-		this.updateFilterButtonLabel("category");
+				if (zone) {
+					self.drillDownToZoneMonth(category, zone, month);
+				} else if (month) {
+					self.drillDownToCategoryMonth(category, month);
+				} else {
+					self.drillDownToCategory(category);
+				}
+			});
+		
+		// Attach to elements in the branch table view
+		this.page.main
+			.find(".branch-table .drill-category, .branch-table .drill-zone")
+			.off("click")
+			.on("click", function (e) {
+				e.stopPropagation();
+				const category = $(this).data("category");
+				const zone = $(this).data("zone"); // Might be undefined
+				const month = $(this).data("month");
 
-		// Update zone UI
-		this.page.main.find(".zone-checkbox").prop("checked", false);
-		this.page.main.find(`.zone-checkbox[value="${zone}"]`).prop("checked", true);
-		this.updateFilterButtonLabel("zone");
-
-		// Switch to Branch view
-		this.switchTab("branch");
+				if (zone) {
+					self.drillDownToZoneMonth(category, zone, month);
+				} else if (month) {
+					self.drillDownToCategoryMonth(category, month);
+				} else {
+					self.drillDownToCategory(category);
+				}
+			});
 	}
 
-	buildCategoryHeaderRow(category, categoryTotals, months) {
+	// ========================================================================
+	// CATEGORY VIEW (Table-based) - HTML GENERATOR
+	// ========================================================================
+	getCategoryViewHtml(months) {
+		const categoryData = this.data.months || {};
+
+		if (!categoryData || Object.keys(categoryData).length === 0) {
+			this.showError("No category data available");
+			return `<div style="text-align: center; padding: 50px; color: #778da9; font-size: 16px;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">📭</div>
+                        <div style="font-weight: 600; margin-bottom: 8px;">No category data found</div>
+                        <div style="font-size: 13px;">Try adjusting your filters or checking data sources</div>
+                    </div>`;
+		}
+
+		const categoryOrder = [
+			"Pinnacle",
+			"Master",
+			"Accelerator",
+			"Starter",
+			"Learner",
+			"Zero Level",
+		];
+
+		const filteredCategories =
+			this.state.selectedCategories.length > 0
+				? categoryOrder.filter((cat) => this.state.selectedCategories.includes(cat))
+				: categoryOrder;
+
+		let html = `
+            <table border="1" cellpadding="10" cellspacing="0" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>${this.buildCategoryTableHeader(months)}</thead>
+                <tbody>${this.buildCategoryTableBody(
+					months,
+					filteredCategories,
+					categoryData
+				)}</tbody>
+                <tfoot>${this.buildCategoryTableFooter(
+					months,
+					categoryData,
+					filteredCategories
+				)}</tfoot>
+            </table>
+        `;
+
+		return html;
+	}
+
+	buildCategoryTableHeader(months) {
+		let html = `
+            <tr class="category-table-header">
+                <th style="min-width: 80px; padding: 12px;">Sr No.</th>
+                <th style="min-width: 200px; padding: 12px;">Category</th>
+        `;
+
+		months.forEach((month) => {
+			html += `<th style="text-align: center; min-width: 120px; padding: 12px;">${month}-2025</th>`;
+		});
+
+		html += `</tr>`;
+		return html;
+	}
+
+	buildCategoryTableBody(months, categoryOrder, categoryData) {
+		let html = "";
+		let srNo = 1;
+
+		categoryOrder.forEach((category) => {
+			const categoryTotals = this.aggregateCategoryData(category, months, categoryData);
+
+			if (categoryTotals.totalBranches === 0) {
+				return;
+			}
+
+			html += this.buildCategoryHeaderRow(category, categoryTotals, months, srNo);
+			html += this.buildCategoryZoneRows(category, months, categoryData);
+			srNo++;
+		});
+
+		return html;
+	}
+
+	buildCategoryHeaderRow(category, categoryTotals, months, srNo) {
 		const badge = this.getCategoryBadge(category, "normal");
-		const totalPct = this.calcPct(categoryTotals.totalAchievement, categoryTotals.totalTarget);
 
 		let html = `
         <tr class="category-header" data-category="${category}" 
-            style="background: #f5f5f5; font-weight: bold; cursor: pointer; border-top: 2px solid #000;">
-            <td style="padding: 12px;">
+            style="background: #e0e1dd; font-weight: 600; cursor: pointer; border-bottom: 1px solid #778da9;">
+            <td style="padding: 12px; text-align: center; color: #0d1b2a;">${srNo}</td>
+            <td style="padding: 12px; color: #0d1b2a;">
                 <span class="category-toggle">▼</span>
                 ${badge}
             </td>
     `;
 
-		// Month-wise columns with month filter
 		months.forEach((month) => {
 			const md = categoryTotals.monthlyData[month];
-			const pct = this.calcPct(md.achievement, md.target);
-
 			html += `
-            <td style="text-align: center; padding: 10px;">
+            <td style="text-align: center; padding: 12px;">
                 <span class="drill-category" data-category="${category}" data-month="${month}"
-                      style="cursor: pointer; color: #0066cc; text-decoration: underline; font-weight: 600;"
+                      style="cursor: pointer; color: #415a77; text-decoration: underline; font-weight: 600; font-size: 16px;"
                       title="Click to drill down to ${month} branches">
                     ${md.branches}
                 </span>
             </td>
-            <td style="text-align: right; padding: 10px;">${this.formatCurrency(md.target)}</td>
-            <td style="text-align: right; padding: 10px;">
-                ${this.formatCurrency(md.achievement)}
-                <span style="color: ${this.getPctColor(pct)}; font-weight: 600;">(${pct}%)</span>
-            </td>
         `;
 		});
 
-		// Total column - no month filter (shows all months)
-		html += `
-        <td style="text-align: center; padding: 10px; background: #fff;">
-            <span class="drill-category" data-category="${category}" data-month=""
-                  style="cursor: pointer; color: #0066cc; text-decoration: underline; font-weight: 600;"
-                  title="Click to drill down to all months">
-                ${categoryTotals.totalBranches}
-            </span>
-        </td>
-        <td style="text-align: right; padding: 10px; background: #fff;">${this.formatCurrency(
-			categoryTotals.totalTarget
-		)}</td>
-        <td style="text-align: right; padding: 10px; background: #fff;">
-            ${this.formatCurrency(categoryTotals.totalAchievement)}
-            <span style="color: ${this.getPctColor(
-				totalPct
-			)}; font-weight: 600;">(${totalPct}%)</span>
-        </td>
-    </tr>`;
-
+		html += `</tr>`;
 		return html;
 	}
 
@@ -951,146 +872,49 @@ class DrishtiDashboardV4 {
 		const zones = this.getZonesForCategory(category, months, categoryData);
 
 		let filteredZones = zones;
-		if (
-			this.state.selectedZones.length > 0 &&
-			this.state.selectedZones.length < this.availableFilters.zones.length
-		) {
+		if (this.state.selectedZones.length > 0) {
 			filteredZones = zones.filter((zone) => this.state.selectedZones.includes(zone));
 		}
 
 		filteredZones.forEach((zone) => {
 			html += `
             <tr class="zone-detail" data-category="${category}" 
-                style="display: none; background: #fff; border-left: 4px solid #ddd;">
-                <td style="padding: 10px 10px 10px 40px; color: #666;">${zone}</td>
+                style="display: none; background: #fff; border-left: 33px solid #415a77;">
+                <td></td>
+                <td style="padding: 12px 12px 12px 40px; color: #1b263b; font-size: 13px;">${zone}</td>
         `;
 
-			let zoneTotalTarget = 0;
-			let zoneTotalAch = 0;
-			let maxBranches = 0;
-
-			// Month-wise columns with month filter
 			months.forEach((month) => {
 				const monthData = categoryData[month];
 				const zoneData = monthData?.grouped_by_category?.[category]?.[zone] || {};
-
 				const branches = zoneData.branch_count || 0;
-				const target = zoneData.target || 0;
-				const achievement = zoneData.achievement || 0;
-				const pct = this.calcPct(achievement, target);
-
-				maxBranches = Math.max(maxBranches, branches);
-				zoneTotalTarget += target;
-				zoneTotalAch += achievement;
 
 				html += `
-                <td style="text-align: center; padding: 10px;">
+                <td style="text-align: center; padding: 12px;">
                     ${
 						branches > 0
 							? `<span class="drill-zone" data-category="${category}" data-zone="${zone}" data-month="${month}"
-                          style="cursor: pointer; color: #0066cc; text-decoration: underline;"
+                          style="cursor: pointer; color: #415a77; text-decoration: underline; font-size: 14px;"
                           title="Click to drill down to ${month} branches in ${zone}">
                         ${branches}
                     </span>`
-							: "-"
-					}
-                </td>
-                <td style="text-align: right; padding: 10px;">${
-					target > 0 ? this.formatCurrency(target) : "-"
-				}</td>
-                <td style="text-align: right; padding: 10px;">
-                    ${achievement > 0 ? this.formatCurrency(achievement) : "-"}
-                    ${
-						pct > 0
-							? `<span style="color: ${this.getPctColor(pct)};">(${pct}%)</span>`
-							: ""
+							: `<span style="color: #778da9;">-</span>`
 					}
                 </td>
             `;
 			});
 
-			const zoneTotalPct = this.calcPct(zoneTotalAch, zoneTotalTarget);
-
-			// Total column - no month filter (shows all months)
-			html += `
-            <td style="text-align: center; padding: 10px; background: #fafafa;">
-                <span class="drill-zone" data-category="${category}" data-zone="${zone}" data-month=""
-                      style="cursor: pointer; color: #0066cc; text-decoration: underline;"
-                      title="Click to drill down to all months in ${zone}">
-                    ${maxBranches}
-                </span>
-            </td>
-            <td style="text-align: right; padding: 10px; background: #fafafa;">${this.formatCurrency(
-				zoneTotalTarget
-			)}</td>
-            <td style="text-align: right; padding: 10px; background: #fafafa;">
-                ${this.formatCurrency(zoneTotalAch)}
-                <span style="color: ${this.getPctColor(zoneTotalPct)};">(${zoneTotalPct}%)</span>
-            </td>
-        </tr>`;
+			html += `</tr>`;
 		});
-
-		const categoryTotals = this.aggregateCategoryData(category, months, categoryData);
-
-		html += `
-        <tr class="zone-detail zone-sum-check" data-category="${category}" 
-            style="display: none; background: #e8f4f8; border-bottom: 2px solid #000; font-weight: 600;">
-            <td style="padding: 10px 10px 10px 40px;">SUM CHECK:</td>
-    `;
-
-		months.forEach((month) => {
-			const md = categoryTotals.monthlyData[month];
-
-			html += `
-            <td style="text-align: center; padding: 10px;">${md.branches}</td>
-            <td style="text-align: right; padding: 10px;">${this.formatCurrency(md.target)} ✅</td>
-            <td style="text-align: right; padding: 10px;">${this.formatCurrency(
-				md.achievement
-			)}</td>
-        `;
-		});
-
-		html += `
-        <td style="text-align: center; padding: 10px; background: #d4ebf2;">${
-			categoryTotals.totalBranches
-		}</td>
-        <td style="text-align: right; padding: 10px; background: #d4ebf2;">${this.formatCurrency(
-			categoryTotals.totalTarget
-		)} ✅</td>
-        <td style="text-align: right; padding: 10px; background: #d4ebf2;">${this.formatCurrency(
-			categoryTotals.totalAchievement
-		)}</td>
-    </tr>`;
 
 		return html;
 	}
 
-	getZonesForCategory(category, months, categoryData) {
-		const zoneSet = new Set();
-
-		months.forEach((month) => {
-			const monthData = categoryData[month];
-			const categoryZones = monthData?.grouped_by_category?.[category] || {};
-
-			Object.keys(categoryZones).forEach((zone) => zoneSet.add(zone));
-		});
-
-		return Array.from(zoneSet).sort((a, b) => {
-			const aMatch = a.match(/ZONE-(\d+)/);
-			const bMatch = b.match(/ZONE-(\d+)/);
-
-			if (aMatch && bMatch) {
-				return parseInt(aMatch[1]) - parseInt(bMatch[1]);
-			}
-			return a.localeCompare(b);
-		});
-	}
-
 	buildCategoryTableFooter(months, categoryData, filteredCategories) {
-		const grandTotal = { branches: 0, target: 0, achievement: 0, monthlyData: {} };
+		const grandTotal = { branches: 0, monthlyData: {} };
 
 		months.forEach((month) => {
-			grandTotal.monthlyData[month] = { branches: 0, target: 0, achievement: 0 };
+			grandTotal.monthlyData[month] = { branches: 0 };
 		});
 
 		filteredCategories.forEach((category) => {
@@ -1099,46 +923,22 @@ class DrishtiDashboardV4 {
 			months.forEach((month) => {
 				const md = categoryTotals.monthlyData[month];
 				grandTotal.monthlyData[month].branches += md.branches;
-				grandTotal.monthlyData[month].target += md.target;
-				grandTotal.monthlyData[month].achievement += md.achievement;
 			});
 
-			grandTotal.target += categoryTotals.totalTarget;
-			grandTotal.achievement += categoryTotals.totalAchievement;
 			grandTotal.branches = Math.max(grandTotal.branches, categoryTotals.totalBranches);
 		});
 
 		let html = `
-            <tr style="background: #000; color: #fff; font-weight: bold;">
-                <td style="text-align: center; padding: 12px;">GRAND TOTAL</td>
+            <tr style="background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%); color: #e0e1dd; font-weight: bold;">
+                <td colspan="2" style="text-align: center; padding: 14px;">GRAND TOTAL</td>
         `;
 
 		months.forEach((month) => {
 			const md = grandTotal.monthlyData[month];
-			const pct = this.calcPct(md.achievement, md.target);
-
-			html += `
-                <td style="text-align: center; padding: 10px;">${md.branches}</td>
-                <td style="text-align: right; padding: 10px;">${this.formatCurrency(
-					md.target
-				)}</td>
-                <td style="text-align: right; padding: 10px;">${this.formatCurrency(
-					md.achievement
-				)} (${pct}%)</td>
-            `;
+			html += `<td style="text-align: center; padding: 14px; font-size: 16px;">${md.branches}</td>`;
 		});
 
-		const totalPct = this.calcPct(grandTotal.achievement, grandTotal.target);
-		html += `
-            <td style="text-align: center; padding: 10px;">${grandTotal.branches}</td>
-            <td style="text-align: right; padding: 10px;">${this.formatCurrency(
-				grandTotal.target
-			)}</td>
-            <td style="text-align: right; padding: 10px;">${this.formatCurrency(
-				grandTotal.achievement
-			)} (${totalPct}%)</td>
-        </tr>`;
-
+		html += `</tr>`;
 		return html;
 	}
 
@@ -1149,7 +949,6 @@ class DrishtiDashboardV4 {
 			.find(".category-header")
 			.off("click")
 			.on("click", function (e) {
-				// Don't collapse if clicking on drill-down link
 				if ($(e.target).hasClass("drill-category")) {
 					return;
 				}
@@ -1168,130 +967,127 @@ class DrishtiDashboardV4 {
 			});
 	}
 
-	// [REST OF THE CODE REMAINS SAME - Branch View, Utility Functions, Styles]
-	// Continuing from previous file...
-
+	// ========================================================================
+	// BRANCH VIEW - HTML TABLE
+	// ========================================================================
 	renderBranchView(months) {
 		let branchData = this.data.consolidated_branches || [];
 		branchData = this.applyFiltersToData(branchData);
 
 		if (branchData.length === 0) {
-			this.page.main.find("#table-head").html("");
-			this.page.main.find("#table-body").html(`
-            <tr><td colspan="100" style="text-align: center; padding: 30px; color: #999;">
-                No branch data available with current filters
-            </td></tr>
-        `);
-			this.page.main.find("#table-foot").html("");
+			this.page.main.find("#data-container").html(`
+                <div style="text-align: center; padding: 50px; color: #778da9; font-size: 16px;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">📭</div>
+                    <div style="font-weight: 600; margin-bottom: 8px;">No branches found</div>
+                    <div style="font-size: 13px;">Try adjusting your filters</div>
+                </div>
+            `);
 			return;
 		}
 
-		// Filter months if specific month selected
 		let displayMonths = months;
 		if (this.state.selectedMonth) {
 			displayMonths = months.filter((m) => m === this.state.selectedMonth);
 		}
 
-		// Build header
-		let headerHtml = `
-        <tr style="background: #000; color: #fff;">
-            <th style="min-width: 60px;">Sr.No.</th>
-            <th style="min-width: 100px;">Branch Code</th>
-            <th style="min-width: 200px;">Branch Name</th>
-            <th style="min-width: 100px;">Zone</th>
-            <th style="min-width: 120px;">Region</th>
-    `;
-
-		displayMonths.forEach((month) => {
-			headerHtml += `<th style="text-align: center; min-width: 200px;" colspan="2">${month} 2025/26</th>`;
-		});
-
-		headerHtml += `<th style="text-align: center; min-width: 180px;" colspan="2">TOTAL</th></tr>`;
-		headerHtml += `<tr style="background: #333; color: #fff;"><th colspan="5"></th>`;
-
-		displayMonths.forEach(() => {
-			headerHtml += `<th style="text-align: center;">Target</th><th style="text-align: center;">Ach (%) + Category</th>`;
-		});
-
-		headerHtml += `<th style="text-align: center;">Target</th><th style="text-align: center;">Ach (%)</th></tr>`;
-
-		this.page.main.find("#table-head").html(headerHtml);
-
-		const bodyRows = branchData.map((branch, index) =>
-			this.buildBranchRow(branch, displayMonths, index + 1)
-		);
-		this.page.main.find("#table-body").html(bodyRows.join(""));
-
-		const footerHtml = this.buildBranchFooter(branchData, displayMonths);
-		this.page.main.find("#table-foot").html(footerHtml);
+		let html = this.buildBranchTable(branchData, displayMonths);
+		this.page.main.find("#data-container").html(html);
 	}
 
-	buildBranchRow(branch, months, serialNo) {
-		let html = `
-        <tr style="background: #fff; border-bottom: 1px solid #e0e0e0;">
-            <td style="padding: 10px; text-align: center; font-weight: 600;">${serialNo}</td>
-            <td style="padding: 10px;">
-                <a href="javascript:void(0)" 
-                   onclick="window.location.href='/app/branch-profile?sol_id=${
-						branch.branch_code
-					}'" 
-                   style="color: #3498db; font-weight: bold; text-decoration: none; cursor: pointer;">
-                    ${branch.branch_code || ""}
-                </a>
-            </td>
-            <td style="padding: 10px;">${branch.branch_name || ""}</td>
-            <td style="padding: 10px;">${branch.zone || ""}</td>
-            <td style="padding: 10px;">${branch.region || ""}</td>
-    `;
+	buildBranchTable(branchData, months) {
+		const header = this.buildBranchTableHeader(months);
+		const body = branchData
+			.map((branch, index) => this.buildBranchTableRow(branch, months, index + 1))
+			.join("");
+		const footer = this.buildBranchTableFooter(branchData, months);
+
+		return `
+            <table class="branch-table">
+                ${header}
+                <tbody>${body}</tbody>
+                ${footer}
+            </table>
+        `;
+	}
+
+	buildBranchTableHeader(months) {
+		let header = `
+            <thead>
+                <tr class="branch-table-header">
+                    <th rowspan="2" class="sr-col">Sr. No.</th>
+                    <th rowspan="2" class="branch-col">Branch</th>
+        `;
+
+		months.forEach((month) => {
+			header += `<th colspan="4" class="month-col">${month} 2025</th>`;
+		});
+
+		header += `</tr><tr class="branch-table-subheader">`;
+
+		months.forEach((month) => {
+			header += `
+                <th>Category</th>
+                <th>Target</th>
+                <th>Ach.</th>
+                <th>%</th>
+            `;
+		});
+
+		header += `</tr></thead>`;
+		return header;
+	}
+
+	buildBranchTableRow(branch, months, serialNo) {
+		let row = `
+            <tr class="branch-table-row">
+                <td class="sr-col">${serialNo}</td>
+                <td class="branch-col">
+                    <div class="branch-info">
+                        <div class="branch-code-name">
+                            <a href="/app/branch-profile?sol_id=${
+								branch.branch_code
+							}" class="branch-code-link">${branch.branch_code || ""}</a>
+                            <span class="branch-name">${branch.branch_name || ""}</span>
+                        </div>
+                        <div class="branch-zone-region">
+                            <span class="zone-badge">${branch.zone || ""}</span>
+                            <span class="region-label">${branch.region || ""}</span>
+                        </div>
+                    </div>
+                </td>
+        `;
 
 		months.forEach((month) => {
 			const md = branch.monthly_data?.[month] || {};
+			const category = md.category || "N/A";
 			const tgt = md.target || 0;
 			const ach = md.achievement || 0;
 			const pct = md.achievement_pct || this.calcPct(ach, tgt);
-			const monthCategory = md.category || branch.latest_category || "Unknown";
 
-			html += `<td style="text-align: right; padding: 10px;">${this.formatCurrency(
-				tgt
-			)}</td>`;
-			html += `
-            <td style="text-align: right; padding: 10px;">
-                ${this.formatCurrency(ach)} 
-                <span style="color: ${this.getPctColor(pct)}; font-weight: 600;">(${pct}%)</span>
-                ${this.getCategoryBadge(monthCategory, "small")}
-            </td>
-        `;
+			row += `
+                <td class="metric-cell category-cell">${this.getCategoryBadge(
+					category,
+					"small"
+				)}</td>
+                <td class="metric-cell amount-cell">${this.formatCurrency(tgt)}</td>
+                <td class="metric-cell amount-cell">${this.formatCurrency(ach)}</td>
+                <td class="metric-cell pct-cell" style="color: ${this.getPctColor(
+					pct
+				)};">${pct}%</td>
+            `;
 		});
 
-		const totalTgt = branch.total_target || 0;
-		const totalAch = branch.total_achievement || 0;
-		const totalPct = this.calcPct(totalAch, totalTgt);
-
-		html += `
-        <td style="text-align: right; font-weight: bold; padding: 10px; background: #f5f5f5;">${this.formatCurrency(
-			totalTgt
-		)}</td>
-        <td style="text-align: right; font-weight: bold; padding: 10px; background: #f5f5f5;">
-            ${this.formatCurrency(totalAch)} 
-            <span style="color: ${this.getPctColor(totalPct)};">(${totalPct}%)</span>
-        </td>
-    </tr>
-    `;
-
-		return html;
+		row += `</tr>`;
+		return row;
 	}
 
-	buildBranchFooter(branchData, months) {
-		const grandTotal = { tgt: 0, ach: 0, monthlyData: {} };
-
+	buildBranchTableFooter(branchData, months) {
+		const grandTotal = { monthlyData: {} };
 		months.forEach((month) => {
 			grandTotal.monthlyData[month] = { tgt: 0, ach: 0 };
 		});
 
 		branchData.forEach((branch) => {
-			grandTotal.tgt += branch.total_target || 0;
-			grandTotal.ach += branch.total_achievement || 0;
-
 			months.forEach((month) => {
 				const md = branch.monthly_data?.[month] || {};
 				grandTotal.monthlyData[month].tgt += md.target || 0;
@@ -1299,38 +1095,30 @@ class DrishtiDashboardV4 {
 			});
 		});
 
-		let html = `
-            <tr style="background: #000; color: #fff; font-weight: bold;">
-                <td colspan="5" style="text-align: center; padding: 12px;">
-                    GRAND TOTAL (${branchData.length} Branches)
-                </td>
+		let footer = `
+            <tfoot class="branch-table-footer">
+                <tr>
+                    <td colspan="2">GRAND TOTAL (${branchData.length} Branches)</td>
         `;
 
 		months.forEach((month) => {
 			const md = grandTotal.monthlyData[month];
 			const pct = this.calcPct(md.ach, md.tgt);
-			html += `<td style="text-align: right; padding: 10px;">${this.formatCurrency(
-				md.tgt
-			)}</td>`;
-			html += `<td style="text-align: right; padding: 10px;">${this.formatCurrency(
-				md.ach
-			)} (${pct}%)</td>`;
+			footer += `
+                <td class="metric-cell">&nbsp;</td>
+                <td class="metric-cell amount-cell">${this.formatCurrency(md.tgt)}</td>
+                <td class="metric-cell amount-cell">${this.formatCurrency(md.ach)}</td>
+                <td class="metric-cell pct-cell">${pct}%</td>
+            `;
 		});
 
-		const totalPct = this.calcPct(grandTotal.ach, grandTotal.tgt);
-		html += `
-            <td style="text-align: right; padding: 10px;">${this.formatCurrency(
-				grandTotal.tgt
-			)}</td>
-            <td style="text-align: right; padding: 10px;">${this.formatCurrency(
-				grandTotal.ach
-			)} (${totalPct}%)</td>
-        </tr>
-        `;
-
-		return html;
+		footer += `</tr></tfoot>`;
+		return footer;
 	}
 
+	// ========================================================================
+	// UTILITY FUNCTIONS
+	// ========================================================================
 	getCategoryBadge(category, size = "small") {
 		const colors = {
 			Pinnacle: "#22c55e",
@@ -1343,17 +1131,15 @@ class DrishtiDashboardV4 {
 
 		const color = colors[category] || "#999";
 		const fontSize = size === "small" ? "9px" : "11px";
-		const padding = size === "small" ? "2px 6px" : "4px 10px";
+		const padding = size === "small" ? "2px 6px" : "5px 10px";
 
-		return `<span style="
+		return `<span class="category-badge-span" style="
             background: ${color};
             color: white;
             font-size: ${fontSize};
             font-weight: 700;
             padding: ${padding};
             border-radius: 10px;
-            display: inline-block;
-            margin-left: 4px;
             text-transform: uppercase;
             letter-spacing: 0.3px;
         ">${category}</span>`;
@@ -1371,7 +1157,6 @@ class DrishtiDashboardV4 {
 		const absNum = Math.abs(num);
 		const sign = num < 0 ? "-" : "";
 		const rounded = Math.round(absNum);
-
 		return sign + "₹" + rounded.toLocaleString("en-IN");
 	}
 
@@ -1395,133 +1180,300 @@ class DrishtiDashboardV4 {
 	}
 
 	getPctColor(pct) {
-		if (pct >= 100) return "green";
-		if (pct >= 80) return "orange";
-		return "red";
+		if (pct >= 100) return "#22c55e";
+		if (pct >= 80) return "#f59e0b";
+		return "#ef4444";
 	}
 
+	// ========================================================================
+	// STYLES - MOKOPI INSPIRED
+	// ========================================================================
 	setupStyles() {
 		$(`<style>
+            /* Tab Buttons */
             .tab-btn {
                 padding: 10px 20px;
-                background: #6c757d;
-                color: #fff;
+                background: #e0e1dd; /* Lighter background for inactive */
+                color: #778da9; /* Greyer text for inactive */
                 border: none;
                 cursor: pointer;
-                font-weight: 500;
+                font-weight: bold; /* Bold font for all */
                 border-top-left-radius: 5px;
                 border-top-right-radius: 5px;
-                transition: all 0.3s;
+                transition: all 0.3s ease; /* Smooth transition */
             }
 
             .tab-btn:hover {
-                background: #5a6268;
+                background: #c5c7c6; /* Slightly darker on hover for inactive */
+                color: #415a77;
             }
 
             .tab-btn.active {
-                background: #0066cc;
-                border-bottom: 3px solid #0066cc;
+                background: #1b263b; /* Dark background for active */
+                color: #e0e1dd;
+                border-bottom: 3px solid #0d1b2a; /* Stronger highlight */
             }
 
-            #data-table {
-                table-layout: auto;
+            /* Filter Tags */
+            .filter-tags-container {
+                margin-bottom: 15px;
+                padding: 15px;
+                background: white;
+                border: 1px solid #778da9;
+                border-radius: 6px;
             }
 
-            #data-table th {
-                background: #000;
-                color: white;
+            .filter-section {
+                margin-bottom: 15px;
+            }
+
+            .filter-section:last-child {
+                margin-bottom: 0;
+            }
+
+            .filter-section-label {
+                display: block;
+                font-size: 11px;
+                font-weight: 700;
+                color: #1b263b;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 10px;
+            }
+
+            .filter-tags {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+
+            .filter-tag {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 8px 14px;
+                background: white;
+                border: 1.5px solid #e0e1dd;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 13px;
                 font-weight: 600;
-                padding: 12px;
-                text-align: center;
+                color: #1b263b;
+                transition: all 0.2s ease;
             }
 
-            #data-table td {
-                padding: 10px;
-                border-bottom: 1px solid #e0e0e0;
+            .filter-tag:hover {
+                border-color: #415a77;
+                background: rgba(65, 90, 119, 0.05);
             }
 
-            #data-table tbody tr:hover {
-                background: #f5f5f5;
+            .filter-tag.active {
+                background: #415a77;
+                border-color: #415a77;
+                color: white;
             }
 
+            .filter-tag-count {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 24px;
+                height: 20px;
+                padding: 0 6px;
+                background: rgba(0, 0, 0, 0.08);
+                border-radius: 10px;
+                font-size: 11px;
+                font-weight: 700;
+            }
+
+            .filter-tag.active .filter-tag-count {
+                background: rgba(255, 255, 255, 0.25);
+                color: white;
+            }
+
+            .filter-tag-pct {
+                display: inline-flex;
+                align-items: center;
+                font-size: 11px;
+                font-weight: 600;
+                color: #778da9;
+            }
+
+            .filter-tag.active .filter-tag-pct {
+                color: rgba(255, 255, 255, 0.85);
+            }
+
+            .all-tag {
+                background: #1b263b;
+                border-color: #1b263b;
+                color: white;
+            }
+
+            .all-tag:hover {
+                background: #0d1b2a;
+                border-color: #0d1b2a;
+            }
+
+            .all-tag.active {
+                background: #0d1b2a;
+                border-color: #0d1b2a;
+            }
+
+            .all-tag .filter-tag-count,
+            .all-tag .filter-tag-pct {
+                color: rgba(255, 255, 255, 0.85);
+            }
+
+            /* Category Table Styles */
             .category-header {
                 transition: background 0.2s;
             }
 
             .category-header:hover {
-                background: #e8e8e8 !important;
+                background: rgba(65, 90, 119, 0.15) !important;
             }
 
             .category-toggle {
                 display: inline-block;
-                width: 20px;
+                width: 22px;
                 font-weight: bold;
-                color: #0066cc;
+                color: #415a77;
+                margin-right: 8px;
             }
 
             .zone-detail {
                 transition: all 0.3s ease;
             }
 
-            .zone-sum-check {
-                font-style: italic;
-            }
-
-            /* Drill-down links */
             .drill-category:hover,
             .drill-zone:hover {
-                color: #004499 !important;
+                color: #0d1b2a !important;
                 font-weight: 700 !important;
             }
 
-            /* Filter Dropdown Styles */
-            .filter-dropdown-container {
-                position: relative;
-                display: inline-block;
+
+            /* ============================================ */
+            /* BRANCH TABLE - HTML TABLE STYLE             */
+            /* ============================================ */
+
+            .branch-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 13px;
+                background: white;
             }
 
-            .filter-dropdown-btn {
-                padding: 6px 12px;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                background: white;
-                cursor: pointer;
-                margin-left: 8px;
-                min-width: 180px;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 8px;
+            .branch-table th, .branch-table td {
+                padding: 10px;
+                border: 1px solid #e0e1dd;
+                text-align: center;
+                vertical-align: middle;
+            }
+
+            /* Header */
+            .branch-table-header th, .branch-table-subheader th {
+                background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
+                color: #e0e1dd;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                font-weight: 600;
+            }
+            .branch-table-subheader th {
+                font-size: 11px;
+                font-weight: 500;
+            }
+            
+            .sr-col { width: 50px; }
+            .branch-col { width: 280px; text-align: left !important; }
+            .month-col { font-weight: 700; }
+
+            /* Body */
+            .branch-table-row:hover {
+                background: rgba(119, 141, 169, 0.05);
+            }
+            
+            .metric-cell {
                 font-size: 13px;
             }
-
-            .filter-dropdown-btn:hover {
-                background: #f5f5f5;
-                border-color: #999;
+            .amount-cell {
+                font-family: monospace;
+                font-weight: 500;
+            }
+            .pct-cell {
+                font-weight: 700;
+            }
+            .category-cell .category-badge-span {
+                margin: 0;
             }
 
-            .filter-dropdown-menu {
-                position: absolute;
-                top: 100%;
-                left: 0;
-                margin-top: 4px;
-                background: white;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                z-index: 1000;
-                min-width: 200px;
-            }
 
-            .filter-arrow {
-                color: #666;
-                font-size: 10px;
-            }
-
-            .filter-label {
-                flex: 1;
+            /* Branch Info */
+            .branch-info {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
                 text-align: left;
             }
+
+            .branch-code-name {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .branch-code-link {
+                color: #415a77;
+                font-weight: 700;
+                text-decoration: none;
+                padding: 2px 6px;
+                background: rgba(65, 90, 119, 0.08);
+                border-radius: 4px;
+            }
+
+            .branch-code-link:hover {
+                background: rgba(65, 90, 119, 0.15);
+                color: #0d1b2a;
+            }
+
+            .branch-name {
+                color: #0d1b2a;
+                font-weight: 600;
+            }
+
+            .branch-zone-region {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 11px;
+            }
+
+            .zone-badge {
+                background: #778da9;
+                color: white;
+                padding: 2px 8px;
+                border-radius: 10px;
+                font-weight: 600;
+                font-size: 10px;
+                text-transform: uppercase;
+            }
+
+            .region-label {
+                color: #778da9;
+                font-weight: 500;
+            }
+            
+            /* Footer */
+            .branch-table-footer td {
+                background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
+                color: #e0e1dd;
+                font-weight: 700;
+                text-align: center;
+            }
+            .branch-table-footer td:first-child {
+                text-align: left;
+            }
+
         </style>`).appendTo("head");
 	}
 }
