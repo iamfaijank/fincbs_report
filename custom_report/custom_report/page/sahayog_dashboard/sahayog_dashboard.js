@@ -144,6 +144,15 @@ class DrishtiDashboard {
                         <input type="date" id="date-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;" />
                     </div>
 
+                    <!-- Format Toggle Buttons -->
+                    <div>
+                        <label style="font-weight: bold; color: #0d1b2a;">Format:</label>
+                        <div class="btn-group" role="group" style="margin-left: 8px;">
+                            <button type="button" class="btn btn-sm format-toggle-btn active" data-format="number">Numbers</button>
+                            <button type="button" class="btn btn-sm format-toggle-btn" data-format="words">Words</button>
+                        </div>
+                    </div>
+
                     <!-- Region Filter -->
                     <div>
                         <label style="font-weight: bold; color: #0d1b2a;">Region:</label>
@@ -161,10 +170,7 @@ class DrishtiDashboard {
 
                     <!-- Action Buttons -->
                     <div style="margin-left: auto;">
-                        <button id="format-toggle" class="btn btn-primary btn-sm" style="background: #415a77; border-color: #415a77; color: white;">
-                            Show in Words
-                        </button>
-                        <button id="clear-filters" class="btn btn-secondary btn-sm" style="background: #778da9; border-color: #778da9; color: white; margin-left: 8px;">
+                        <button id="clear-filters" class="btn btn-secondary btn-sm" style="background: #778da9; border-color: #778da9; color: white;">
                             🔄 Clear Filters
                         </button>
                     </div>
@@ -208,8 +214,11 @@ class DrishtiDashboard {
 		});
 
 		// Format Toggle
-		this.page.main.find("#format-toggle").on("click", function () {
-			self.toggleFormat();
+		this.page.main.find(".format-toggle-btn").on("click", function () {
+			self.page.main.find(".format-toggle-btn").removeClass("active");
+			$(this).addClass("active");
+			self.state.formatMode = $(this).data("format");
+			self.render();
 		});
 
 		// Region Filter
@@ -1071,18 +1080,24 @@ class DrishtiDashboard {
 
 	formatCurrency(value) {
 		if (!value || value === 0) return "-";
+		const numValue = Math.round(value);
 
 		if (this.state.formatMode === "words") {
-			if (value >= 10000000) {
-				return (value / 10000000).toFixed(2) + " Cr";
-			} else if (value >= 100000) {
-				return (value / 100000).toFixed(2) + " L";
-			} else if (value >= 1000) {
-				return (value / 1000).toFixed(2) + " K";
+			if (numValue >= 1000000000) { // 100+ Crore
+				return `${(numValue / 10000000).toFixed(2)} Cr`;
 			}
-			return value.toFixed(2);
+			if (numValue >= 10000000) { // 1+ Crore
+				return `${(numValue / 10000000).toFixed(2)} Cr`;
+			}
+			if (numValue >= 100000) { // 1+ Lakh
+				return `${(numValue / 100000).toFixed(2)} L`;
+			}
+			if (numValue >= 1000) { // 1+ Thousand
+				return `${(numValue / 1000).toFixed(2)} K`;
+			}
+			return numValue.toString();
 		} else {
-			return new Intl.NumberFormat("en-IN").format(Math.round(value));
+			return new Intl.NumberFormat("en-IN").format(numValue);
 		}
 	}
 
@@ -1093,6 +1108,32 @@ class DrishtiDashboard {
 		if (pct >= 40) return "#f59e0b";
 		if (pct >= 20) return "#ef4444";
 		return "#dc2626";
+	}
+
+	getStatusIcon(status) {
+		const icons = {
+			improved: "🟢",
+			declined: "🔴",
+			increased: "🟡↑",
+			decreased: "🟠↓",
+			unchanged: "⚪",
+			new: "✨",
+		};
+		return icons[status] || "";
+	}
+
+	getCategoryBadge(category, size = "normal") {
+		const colors = {
+			Pinnacle: "#10b981",
+			Master: "#14b8a6",
+			Accelerator: "#3b82f6",
+			Starter: "#f59e0b",
+			Learner: "#ef4444",
+			"Zero Level": "#dc2626",
+		};
+		const color = colors[category] || "#778da9";
+		const fontSize = size === "small" ? "10px" : "12px";
+		return `<span class="category-badge" style="background:${color};color:white;padding:4px 8px;border-radius:4px;font-size:${fontSize};font-weight:600;display:inline-block;">${category}</span>`;
 	}
 
 	getStatusIcon(status) {
