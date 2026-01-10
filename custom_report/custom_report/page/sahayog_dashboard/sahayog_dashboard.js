@@ -222,19 +222,6 @@ class DrishtiDashboard {
 			self.loadData();
 		});
 
-		// Branch Search with debounce
-		let searchTimeout;
-		this.page.main.find("#branch-search").on("input", function () {
-			clearTimeout(searchTimeout);
-			searchTimeout = setTimeout(() => {
-				self.state.branchSearchTerm = $(this).val() || "";
-				self.loadData();
-				if (self.state.branchSearchTerm) {
-					self.switchTab("branch");
-				}
-			}, 500);
-		});
-
 		// Clear Filters
 		this.page.main.find("#clear-filters").on("click", function () {
 			self.clearAllFilters();
@@ -551,6 +538,19 @@ class DrishtiDashboard {
 		this.page.main.find(".tab-btn").on("click", function () {
 			const tabId = $(this).data("tab");
 			self.switchTab(tabId);
+		});
+
+		// Branch Search with debounce
+		let searchTimeout;
+		this.page.main.find("#branch-search").on("input", function () {
+			clearTimeout(searchTimeout);
+			searchTimeout = setTimeout(() => {
+				self.state.branchSearchTerm = $(this).val() || "";
+				self.loadData();
+				if (self.state.branchSearchTerm) {
+					self.switchTab("branch");
+				}
+			}, 500);
 		});
 	}
 
