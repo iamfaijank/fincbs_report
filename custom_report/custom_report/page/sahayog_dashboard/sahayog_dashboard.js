@@ -161,12 +161,7 @@ class DrishtiDashboard {
                         </select>
                     </div>
 
-                    <!-- Branch Search -->
-                    <div>
-                        <label style="font-weight: bold; color: #0d1b2a;">Branch:</label>
-                        <input type="text" id="branch-search" placeholder="Search branch..." 
-                               style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; min-width: 200px; background: white; color: #1b263b;" />
-                    </div>
+
 
                     <!-- Action Buttons -->
                     <div style="margin-left: auto;">
@@ -531,6 +526,12 @@ class DrishtiDashboard {
 					}" data-tab="branch">
                         Branch Wise
                     </button>
+
+                    <!-- Branch Search - Moved Here -->
+                    <div style="margin-left: auto; display: flex; align-items: center;">
+                        <input type="text" id="branch-search" placeholder="Search branch..." 
+                               style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; min-width: 200px; background: white; color: #1b263b;" />
+                    </div>
                 </div>
 
                 <div id="error-message" style="color: #0d1b2a; display: none; padding: 10px; background: #ffebee; border-radius: 4px;"></div>
