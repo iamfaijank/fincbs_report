@@ -723,7 +723,7 @@ class DrishtiDashboard {
 
 				// Region Rows (hidden by default)
 				zoneGroup.regions.forEach((regionItem) => {
-					html += this.buildRegionRow(regionItem, sr++, zoneName, isExpanded);
+					html += this.buildRegionRow(regionItem, "", zoneName, isExpanded);
 				});
 			});
 
