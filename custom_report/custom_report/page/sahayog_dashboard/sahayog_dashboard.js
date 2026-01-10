@@ -528,7 +528,7 @@ class DrishtiDashboard {
                     </button>
 
                     <!-- Branch Search - Moved Here -->
-                    <div style="margin-left: auto; display: flex; align-items: center;">
+                    <div style="display: flex; align-items: center; margin-left: 15px;">
                         <input type="text" id="branch-search" placeholder="Search branch..." 
                                style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; min-width: 200px; background: white; color: #1b263b;" />
                     </div>
