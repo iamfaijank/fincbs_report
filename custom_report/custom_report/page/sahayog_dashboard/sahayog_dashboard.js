@@ -30,6 +30,7 @@ class DrishtiDashboard {
 			selectedMonth: null,
 			drillDownActive: false,
 			expandedZones: {}, // Track expanded/collapsed zones
+			selectedSegment: "all",
 		};
 		this.data = null;
 		this.availableFilters = {
@@ -453,6 +454,13 @@ class DrishtiDashboard {
 
                     <!-- Search and Clear Actions -->
                     <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+						<select id="segment-filter" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; background: white; color: #1b263b;">
+							<option value="all">All Segments</option>
+							<option value="Top 25%">Top 25%</option>
+							<option value="Next 25%">Next 25%</option>
+							<option value="Mid 25%">Mid 25%</option>
+							<option value="Bottom 25%">Bottom 25%</option>
+						</select>
                         <input type="text" id="branch-search" placeholder="Search branch..." 
                                style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; min-width: 200px; background: white; color: #1b263b;" />
                         <button id="clear-filters" class="btn btn-secondary btn-sm" style="background: #778da9; border-color: #778da9; color: white;">
@@ -540,6 +548,12 @@ class DrishtiDashboard {
 		// Clear Filters
 		this.page.main.find("#clear-filters").on("click", function () {
 			self.clearAllFilters();
+		});
+
+		// Segment Filter
+		this.page.main.find("#segment-filter").on("change", function () {
+			self.state.selectedSegment = $(this).val();
+			self.render();
 		});
 	}
 
@@ -970,41 +984,57 @@ class DrishtiDashboard {
 			displayMonths = months.filter((m) => m.key === this.state.selectedMonth);
 		}
 
-		// Sort data by achievement percentage
+		// 1. Determine sort key
 		const sortMonthKey = this.state.selectedMonth || (months.length > 0 ? months[months.length - 1].key : null);
+
+		// 2. Sort data
 		if (sortMonthKey) {
 			branchData.sort((a, b) => {
 				const aPct = a.months[sortMonthKey]?.percentage || 0;
 				const bPct = b.months[sortMonthKey]?.percentage || 0;
-				return bPct - aPct; // Sort descending
+				return bPct - aPct; // Descending
 			});
 		}
 
-		// Define row styling based on performance segments
-		const getRowStyle = (index) => {
-			const total = branchData.length;
-			if (total < 4) return ''; // Don't apply colors if not enough data for segmentation
-
-			const top25 = Math.floor(total * 0.25);
-			const next25 = Math.floor(total * 0.50);
-			const mid25 = Math.floor(total * 0.75);
-
-			let color;
-			if (index < top25) {
-				color = '#d4edda'; // Top 25% (Light Green)
-			} else if (index < next25) {
-				color = '#cce5ff'; // Next 25% (Light Blue)
-			} else if (index < mid25) {
-				color = '#fff3cd'; // Mid 25% (Light Yellow)
+		// 3. Assign Segments and Row Styles to each branch
+		const total = branchData.length;
+		branchData.forEach((branch, index) => {
+			let segment, color;
+			if (total < 4) {
+				segment = "N/A";
+				color = 'transparent';
 			} else {
-				color = '#f8d7da'; // Bottom 25% (Light Red)
+				const top25_index = Math.floor(total * 0.25);
+				const next25_index = Math.floor(total * 0.50);
+				const mid25_index = Math.floor(total * 0.75);
+
+				if (index < top25_index) {
+					segment = "Top 25%";
+					color = '#d4edda';
+				} else if (index < next25_index) {
+					segment = "Next 25%";
+					color = '#cce5ff';
+				} else if (index < mid25_index) {
+					segment = "Mid 25%";
+					color = '#fff3cd';
+				} else {
+					segment = "Bottom 25%";
+					color = '#f8d7da';
+				}
 			}
-			return `background-color: ${color};`;
-		};
+			branch.performanceSegment = segment;
+			branch.rowStyle = `background-color: ${color};`;
+		});
+
+		// 4. Filter by selected segment
+		let filteredBranchData = branchData;
+		if (this.state.selectedSegment && this.state.selectedSegment !== 'all') {
+			filteredBranchData = branchData.filter(branch => branch.performanceSegment === this.state.selectedSegment);
+		}
 
 		const header = this.buildBranchTableHeader(displayMonths);
-		const body = branchData
-			.map((branch, index) => this.buildBranchTableRow(branch, displayMonths, index + 1, getRowStyle(index)))
+		const body = filteredBranchData
+			.map((branch, index) => this.buildBranchTableRow(branch, displayMonths, index + 1, branch.rowStyle, branch.performanceSegment))
 			.join("");
 
 		return `
@@ -1021,6 +1051,7 @@ class DrishtiDashboard {
                 <tr class="branch-table-header">
                     <th rowspan="2" class="sr-col">Sr. No.</th>
                     <th rowspan="2" class="branch-col">Branch</th>
+					<th rowspan="2" >Performance Segments</th>
         `;
 
 		months.forEach((month) => {
@@ -1042,7 +1073,7 @@ class DrishtiDashboard {
 		return header;
 	}
 
-	buildBranchTableRow(branch, months, serialNo, rowStyle = "") {
+	buildBranchTableRow(branch, months, serialNo, rowStyle = "", segmentName = "") {
 		let html = `<tr class="branch-table-row" data-sol-id="${branch.sol_id}" style="${rowStyle}">`;
 		html += `<td>${serialNo}</td>`;
 		html += `<td>
@@ -1057,6 +1088,7 @@ class DrishtiDashboard {
 				</div>
 			</div>
 		</td>`;
+		html += `<td>${segmentName}</td>`;
 
 		months.forEach((month) => {
 			const mdata = branch.months[month.key];
