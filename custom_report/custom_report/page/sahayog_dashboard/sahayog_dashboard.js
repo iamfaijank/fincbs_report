@@ -970,9 +970,41 @@ class DrishtiDashboard {
 			displayMonths = months.filter((m) => m.key === this.state.selectedMonth);
 		}
 
+		// Sort data by achievement percentage
+		const sortMonthKey = this.state.selectedMonth || (months.length > 0 ? months[months.length - 1].key : null);
+		if (sortMonthKey) {
+			branchData.sort((a, b) => {
+				const aPct = a.months[sortMonthKey]?.percentage || 0;
+				const bPct = b.months[sortMonthKey]?.percentage || 0;
+				return bPct - aPct; // Sort descending
+			});
+		}
+
+		// Define row styling based on performance segments
+		const getRowStyle = (index) => {
+			const total = branchData.length;
+			if (total < 4) return ''; // Don't apply colors if not enough data for segmentation
+
+			const top25 = Math.floor(total * 0.25);
+			const next25 = Math.floor(total * 0.50);
+			const mid25 = Math.floor(total * 0.75);
+
+			let color;
+			if (index < top25) {
+				color = '#d4edda'; // Top 25% (Light Green)
+			} else if (index < next25) {
+				color = '#cce5ff'; // Next 25% (Light Blue)
+			} else if (index < mid25) {
+				color = '#fff3cd'; // Mid 25% (Light Yellow)
+			} else {
+				color = '#f8d7da'; // Bottom 25% (Light Red)
+			}
+			return `background-color: ${color};`;
+		};
+
 		const header = this.buildBranchTableHeader(displayMonths);
 		const body = branchData
-			.map((branch, index) => this.buildBranchTableRow(branch, displayMonths, index + 1))
+			.map((branch, index) => this.buildBranchTableRow(branch, displayMonths, index + 1, getRowStyle(index)))
 			.join("");
 
 		return `
@@ -1010,8 +1042,8 @@ class DrishtiDashboard {
 		return header;
 	}
 
-	buildBranchTableRow(branch, months, serialNo) {
-		let html = `<tr class="branch-table-row" data-sol-id="${branch.sol_id}">`;
+	buildBranchTableRow(branch, months, serialNo, rowStyle = "") {
+		let html = `<tr class="branch-table-row" data-sol-id="${branch.sol_id}" style="${rowStyle}">`;
 		html += `<td>${serialNo}</td>`;
 		html += `<td>
 			<div class="branch-info">
