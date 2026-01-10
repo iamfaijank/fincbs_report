@@ -105,128 +105,10 @@ class DrishtiDashboard {
 	// CONTROLS - View, Target, FY, Date, Region, Branch, Format
 	// ========================================================================
 	createControls() {
-		const html = `
-            <div style="margin-bottom: 15px; padding: 15px; border: 1px solid #778da9; background: #e0e1dd; border-radius: 6px;">
-                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-
-                    <!-- Financial Year -->
-                    <div>
-                        <label style="font-weight: bold; color: #0d1b2a;">FY:</label>
-                        <select id="fy-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;">
-                            <option value="2025-2026">2025-2026</option>
-                            <option value="2026-2027">2026-2027</option>
-                        </select>
-                    </div>
-
-                    <!-- View Toggle Buttons -->
-                    <div>
-                        <label style="font-weight: bold; color: #0d1b2a;">View:</label>
-                        <div class="btn-group" role="group" style="margin-left: 8px;">
-                            <button type="button" class="btn btn-sm view-toggle-btn active" data-view="Monthly">Monthly</button>
-                            <button type="button" class="btn btn-sm view-toggle-btn" data-view="Quarterly">Quarterly</button>
-                            <button type="button" class="btn btn-sm view-toggle-btn" data-view="Yearly">Yearly</button>
-                        </div>
-                    </div>
-
-                    <!-- Target Toggle Buttons -->
-                    <div>
-                        <label style="font-weight: bold; color: #0d1b2a;">Target:</label>
-                        <div class="btn-group" role="group" style="margin-left: 8px;">
-                            <button type="button" class="btn btn-sm target-toggle-btn active" data-target="Monthly">Monthly</button>
-                            <button type="button" class="btn btn-sm target-toggle-btn" data-target="YTD">YTD</button>
-                            <button type="button" class="btn btn-sm target-toggle-btn" data-target="Yearly">Yearly</button>
-                        </div>
-                    </div>
-
-                    <!-- Date Selector -->
-                    <div>
-                        <label style="font-weight: bold; color: #0d1b2a;">Date:</label>
-                        <input type="date" id="date-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;" />
-                    </div>
-
-                    <!-- Format Toggle Buttons -->
-                    <div>
-                        <label style="font-weight: bold; color: #0d1b2a;">Format:</label>
-                        <div class="btn-group" role="group" style="margin-left: 8px;">
-                            <button type="button" class="btn btn-sm format-toggle-btn active" data-format="number">Numbers</button>
-                            <button type="button" class="btn btn-sm format-toggle-btn" data-format="words">Words</button>
-                        </div>
-                    </div>
-
-                    <!-- Region Filter -->
-                    <div>
-                        <label style="font-weight: bold; color: #0d1b2a;">Region:</label>
-                        <select id="region-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; min-width: 150px; background: white; color: #1b263b;">
-                            <option value="">All Regions</option>
-                        </select>
-                    </div>
-
-
-
-                    <!-- Action Buttons -->
-                    <div style="margin-left: auto;">
-                        <button id="clear-filters" class="btn btn-secondary btn-sm" style="background: #778da9; border-color: #778da9; color: white;">
-                            🔄 Clear Filters
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-		$(html).appendTo(this.page.main);
-		this.attachControlEvents();
+		// All controls have been moved to createTabsAndContainer
 	}
 
-	attachControlEvents() {
-		const self = this;
 
-		// Financial Year
-		this.page.main.find("#fy-selector").on("change", function () {
-			self.state.financialYear = $(this).val();
-			self.loadData();
-		});
-
-		// View Toggle Buttons
-		this.page.main.find(".view-toggle-btn").on("click", function () {
-			self.page.main.find(".view-toggle-btn").removeClass("active");
-			$(this).addClass("active");
-			self.state.viewType = $(this).data("view");
-			self.loadData();
-		});
-
-		// Target Toggle Buttons
-		this.page.main.find(".target-toggle-btn").on("click", function () {
-			self.page.main.find(".target-toggle-btn").removeClass("active");
-			$(this).addClass("active");
-			self.state.targetType = $(this).data("target");
-			self.loadData();
-		});
-
-		// Date Selector
-		this.page.main.find("#date-selector").on("change", function () {
-			self.state.selectedDate = $(this).val();
-			self.loadData();
-		});
-
-		// Format Toggle
-		this.page.main.find(".format-toggle-btn").on("click", function () {
-			self.page.main.find(".format-toggle-btn").removeClass("active");
-			$(this).addClass("active");
-			self.state.formatMode = $(this).data("format");
-			self.render();
-		});
-
-		// Region Filter
-		this.page.main.find("#region-selector").on("change", function () {
-			self.state.selectedRegion = $(this).val() || "";
-			self.loadData();
-		});
-
-		// Clear Filters
-		this.page.main.find("#clear-filters").on("click", function () {
-			self.clearAllFilters();
-		});
-	}
 
 	clearAllFilters() {
 		this.state.selectedDate = null;
@@ -497,7 +379,62 @@ class DrishtiDashboard {
 	createTabsAndContainer() {
 		const html = `
             <div style="border: 1px solid #778da9; padding: 12px; background: #fff; border-radius: 6px; margin-top: 15px;">
-                <div id="tab-buttons" style="display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #778da9;">
+                <!-- Filters Row -->
+                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ddd;">
+                    <!-- Financial Year -->
+                    <div>
+                        <label style="font-weight: bold; color: #0d1b2a;">FY:</label>
+                        <select id="fy-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;">
+                            <option value="2025-2026">2025-2026</option>
+                            <option value="2026-2027">2026-2027</option>
+                        </select>
+                    </div>
+
+                    <!-- View Toggle Buttons -->
+                    <div>
+                        <label style="font-weight: bold; color: #0d1b2a;">View:</label>
+                        <div class="btn-group" role="group" style="margin-left: 8px;">
+                            <button type="button" class="btn btn-sm view-toggle-btn active" data-view="Monthly">Monthly</button>
+                            <button type="button" class="btn btn-sm view-toggle-btn" data-view="Quarterly">Quarterly</button>
+                            <button type="button" class="btn btn-sm view-toggle-btn" data-view="Yearly">Yearly</button>
+                        </div>
+                    </div>
+
+                    <!-- Target Toggle Buttons -->
+                    <div>
+                        <label style="font-weight: bold; color: #0d1b2a;">Target:</label>
+                        <div class="btn-group" role="group" style="margin-left: 8px;">
+                            <button type="button" class="btn btn-sm target-toggle-btn active" data-target="Monthly">Monthly</button>
+                            <button type="button" class="btn btn-sm target-toggle-btn" data-target="YTD">YTD</button>
+                            <button type="button" class="btn btn-sm target-toggle-btn" data-target="Yearly">Yearly</button>
+                        </div>
+                    </div>
+
+                    <!-- Date Selector -->
+                    <div>
+                        <label style="font-weight: bold; color: #0d1b2a;">Date:</label>
+                        <input type="date" id="date-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;" />
+                    </div>
+
+                    <!-- Format Toggle Buttons -->
+                    <div>
+                        <label style="font-weight: bold; color: #0d1b2a;">Format:</label>
+                        <div class="btn-group" role="group" style="margin-left: 8px;">
+                            <button type="button" class="btn btn-sm format-toggle-btn active" data-format="number">Numbers</button>
+                            <button type="button" class="btn btn-sm format-toggle-btn" data-format="words">Words</button>
+                        </div>
+                    </div>
+
+                    <!-- Region Filter -->
+                    <div>
+                        <label style="font-weight: bold; color: #0d1b2a;">Region:</label>
+                        <select id="region-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; min-width: 150px; background: white; color: #1b263b;">
+                            <option value="">All Regions</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="tab-buttons" style="display: flex; align-items: center; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #778da9;">
                     <button class="tab-btn ${
 						this.state.activeTab === "zone" ? "active" : ""
 					}" data-tab="zone">
@@ -514,10 +451,13 @@ class DrishtiDashboard {
                         Branch Wise
                     </button>
 
-                    <!-- Branch Search - Moved Here -->
-                    <div style="display: flex; align-items: center; margin-left: 15px;">
+                    <!-- Search and Clear Actions -->
+                    <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
                         <input type="text" id="branch-search" placeholder="Search branch..." 
                                style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; min-width: 200px; background: white; color: #1b263b;" />
+                        <button id="clear-filters" class="btn btn-secondary btn-sm" style="background: #778da9; border-color: #778da9; color: white;">
+                            🔄 Clear Filters
+                        </button>
                     </div>
                 </div>
 
@@ -535,6 +475,8 @@ class DrishtiDashboard {
 
 	attachTabEvents() {
 		const self = this;
+
+		// Tab buttons
 		this.page.main.find(".tab-btn").on("click", function () {
 			const tabId = $(this).data("tab");
 			self.switchTab(tabId);
@@ -551,6 +493,53 @@ class DrishtiDashboard {
 					self.switchTab("branch");
 				}
 			}, 500);
+		});
+
+		// Financial Year
+		this.page.main.find("#fy-selector").on("change", function () {
+			self.state.financialYear = $(this).val();
+			self.loadData();
+		});
+
+		// View Toggle Buttons
+		this.page.main.find(".view-toggle-btn").on("click", function () {
+			self.page.main.find(".view-toggle-btn").removeClass("active");
+			$(this).addClass("active");
+			self.state.viewType = $(this).data("view");
+			self.loadData();
+		});
+
+		// Target Toggle Buttons
+		this.page.main.find(".target-toggle-btn").on("click", function () {
+			self.page.main.find(".target-toggle-btn").removeClass("active");
+			$(this).addClass("active");
+			self.state.targetType = $(this).data("target");
+			self.loadData();
+		});
+
+		// Date Selector
+		this.page.main.find("#date-selector").on("change", function () {
+			self.state.selectedDate = $(this).val();
+			self.loadData();
+		});
+
+		// Format Toggle
+		this.page.main.find(".format-toggle-btn").on("click", function () {
+			self.page.main.find(".format-toggle-btn").removeClass("active");
+			$(this).addClass("active");
+			self.state.formatMode = $(this).data("format");
+			self.render();
+		});
+
+		// Region Filter
+		this.page.main.find("#region-selector").on("change", function () {
+			self.state.selectedRegion = $(this).val() || "";
+			self.loadData();
+		});
+
+		// Clear Filters
+		this.page.main.find("#clear-filters").on("click", function () {
+			self.clearAllFilters();
 		});
 	}
 
