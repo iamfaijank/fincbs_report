@@ -109,8 +109,6 @@ class DrishtiDashboard {
 		// All controls have been moved to createTabsAndContainer
 	}
 
-
-
 	clearAllFilters() {
 		this.state.selectedDate = null;
 		this.state.selectedCategories = [];
@@ -654,47 +652,71 @@ class DrishtiDashboard {
 			dataContainer.html(htmlContent);
 
 			// Attach handlers after rendering
+
 			if (this.state.activeTab === "zone") {
 				this.attachZoneExpandHandlers();
 			} else if (this.state.activeTab === "category") {
+				this.attachMovementPopupHandlers();
+
 				this.attachCategoryExpandHandlers();
-				this.attachDrillHandlers();
-			}
+
+								this.attachDrillHandlers();
+
+								this.attachZoneDrillHandlers();
+
+								this.attachTotalMovementPopupHandler();
+
+							}
 
 			dataContainer.css("opacity", 1);
 		}, 200);
 	}
 
 	// ========================================================================
+
 	// ZONE WISE VIEW - Expandable/Collapsible
+
 	// ========================================================================
+
 	renderZoneTable() {
 		const months = this.months;
 
 		let html = `
-    <table class="table table-bordered zone-wise-table">
-        <thead>
-            <tr class="zone-table-header">
-                <th rowspan="2">Sr</th>
-                <th rowspan="2">Zone/Region</th>
-                <th rowspan="2">Branches</th>
-    `;
+
+			    <table class="table table-bordered zone-wise-table">
+
+			        <thead>
+
+			            <tr class="zone-table-header">
+
+			                <th rowspan="2">Sr</th>
+
+			                <th rowspan="2">Zone/Region</th>
+
+			                <th rowspan="2">Branches</th>
+
+			    `;
 
 		months.forEach((month) => {
 			html += `<th colspan="3">${month.display}</th>`;
 		});
+
 		html += '</tr><tr class="zone-table-subheader">';
 
 		months.forEach(() => {
 			html += "<th>Target</th><th>Ach</th><th>%</th>";
 		});
+
 		html += "</tr></thead><tbody>";
 
 		// Group data by zone
+
 		const zoneGroups = {};
+
 		this.zoneData.forEach((item) => {
 			if (item.zone === item.region) {
 				// Zone total row
+
 				if (!zoneGroups[item.zone]) {
 					zoneGroups[item.zone] = { total: item, regions: [] };
 				} else {
@@ -702,59 +724,80 @@ class DrishtiDashboard {
 				}
 			} else {
 				// Region row
+
 				if (!zoneGroups[item.zone]) {
 					zoneGroups[item.zone] = { total: null, regions: [] };
 				}
+
 				zoneGroups[item.zone].regions.push(item);
 			}
 		});
 
 		let sr = 1;
+
 		Object.keys(zoneGroups)
+
 			.sort((a, b) => {
 				const aNum = a.match(/ZONE-(\d+)/)?.[1];
+
 				const bNum = b.match(/ZONE-(\d+)/)?.[1];
+
 				return aNum && bNum ? parseInt(aNum) - parseInt(bNum) : a.localeCompare(b);
 			})
+
 			.forEach((zoneName) => {
 				const zoneGroup = zoneGroups[zoneName];
+
 				const isExpanded = this.state.expandedZones[zoneName] || false;
 
 				// Zone Total Row
+
 				if (zoneGroup.total) {
 					html += this.buildZoneRow(zoneGroup.total, sr++, true, zoneName, isExpanded);
 				}
 
 				// Region Rows (hidden by default)
+
 				zoneGroup.regions.forEach((regionItem) => {
 					html += this.buildRegionRow(regionItem, "", zoneName, isExpanded);
 				});
 			});
 
 		html += "</tbody></table>";
+
 		return html;
 	}
 
 	buildZoneRow(zoneItem, sr, isZoneTotal, zoneName, isExpanded) {
 		const months = this.months;
+
 		const firstMonthData = zoneItem.months[months[0].key];
+
 		const branchCount = firstMonthData?.branches || 0;
 
 		let html = `<tr class="zone-total-row" data-zone="${zoneName}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">`;
+
 		html += `<td>${sr}</td>`;
+
 		html += `<td><span class="zone-toggle">${isExpanded ? "▼" : "▶"}</span> ${zoneName}</td>`;
+
 		html += `<td>${branchCount}</td>`;
 
 		months.forEach((month) => {
 			const mdata = zoneItem.months[month.key];
+
 			if (mdata) {
 				html += `
-                <td>${this.formatNumber(mdata.target)}</td>
-                <td>${this.formatNumber(mdata.achievement)}</td>
-                <td style="color: ${this.getPctColor(
-					mdata.percentage
-				)}">${mdata.percentage?.toFixed(1)}%</td>
-            `;
+
+			                <td>${this.formatNumber(mdata.target)}</td>
+
+			                <td>${this.formatNumber(mdata.achievement)}</td>
+
+			                <td style="color: ${this.getPctColor(
+								mdata.percentage
+							)}">${mdata.percentage?.toFixed(1)}%</td>
+
+			            `;
 			} else {
 				html += "<td>-</td><td>-</td><td>-</td>";
 			}
@@ -765,26 +808,36 @@ class DrishtiDashboard {
 
 	buildRegionRow(regionItem, sr, zoneName, isExpanded) {
 		const months = this.months;
+
 		const firstMonthData = regionItem.months[months[0].key];
+
 		const branchCount = firstMonthData?.branches || 0;
 
 		let html = `<tr class="region-detail-row" data-zone="${zoneName}" style="display: ${
 			isExpanded ? "table-row" : "none"
 		}; border-left: 4px solid #415a77;">`;
+
 		html += `<td>${sr}</td>`;
+
 		html += `<td style="padding-left: 30px;">${regionItem.region}</td>`;
+
 		html += `<td>${branchCount}</td>`;
 
 		months.forEach((month) => {
 			const mdata = regionItem.months[month.key];
+
 			if (mdata) {
 				html += `
-                <td>${this.formatNumber(mdata.target)}</td>
-                <td>${this.formatNumber(mdata.achievement)}</td>
-                <td style="color: ${this.getPctColor(
-					mdata.percentage
-				)}">${mdata.percentage?.toFixed(1)}%</td>
-            `;
+
+			                <td>${this.formatNumber(mdata.target)}</td>
+
+			                <td>${this.formatNumber(mdata.achievement)}</td>
+
+			                <td style="color: ${this.getPctColor(
+								mdata.percentage
+							)}">${mdata.percentage?.toFixed(1)}%</td>
+
+			            `;
 			} else {
 				html += "<td>-</td><td>-</td><td>-</td>";
 			}
@@ -795,146 +848,903 @@ class DrishtiDashboard {
 
 	attachZoneExpandHandlers() {
 		const self = this;
+
 		this.page.main
+
 			.find(".zone-total-row")
+
 			.off("click")
+
 			.on("click", function () {
 				const zoneName = $(this).data("zone");
+
 				self.state.expandedZones[zoneName] = !self.state.expandedZones[zoneName];
+
 				self.render();
 			});
 	}
 
 	// ========================================================================
+
 	// CATEGORY WISE VIEW - With Zone Breakdown
+
 	// ========================================================================
+
 	renderCategoryTable() {
 		const months = this.months;
-		const categoryOrder = [
-			"Pinnacle",
-			"Master",
-			"Accelerator",
-			"Starter",
-			"Learner",
-			"Zero Level",
-		];
+		const latestMonthKey = months[0]?.key;
+		const latestMonthDisplay = months[0]?.display;
+		if (!latestMonthKey) return "<div>No data available for the selected period.</div>";
 
-		let html = `
-    <table class="table table-bordered category-table">
-        <thead>
-            <tr class="category-table-header">
-                <th rowspan="2">Sr</th>
-                <th rowspan="2">Category</th>
-                <th rowspan="2">Changes</th>
-    `;
+		const categoryConfig = {
+			Pinnacle: { grade: "A+", range: ">100%", color: "#10b981", health: "Excellent" },
+			Master: { grade: "A", range: "80-100%", color: "#14b8a6", health: "Good" },
+			Accelerator: { grade: "B", range: "60-80%", color: "#3b82f6", health: "Improving" },
+			Starter: { grade: "C", range: "40-60%", color: "#f59e0b", health: "Needs Attention" },
+			Learner: { grade: "D", range: "20-40%", color: "#ef4444", health: "At Risk" },
+			"Zero Level": { grade: "E", range: "0-20%", color: "#dc2626", health: "Critical" },
+		};
+		const categoryOrder = Object.keys(categoryConfig);
 
-		months.forEach((month) => {
-			html += `<th colspan="2">${month.display}</th>`;
-		});
-		html += '</tr><tr class="category-table-subheader">';
+		// Calculate Totals
+		let totalBranches = 0;
+		let totalUp = 0;
+		let totalDown = 0;
+		let totalIncreasedBranches = [];
+		let totalDecreasedBranches = [];
 
-		months.forEach(() => {
-			html += "<th>Count</th><th>Zone Breakdown</th>";
-		});
-		html += "</tr></thead><tbody>";
-
-		let sr = 1;
-		categoryOrder.forEach((catName) => {
-			const catData = this.categoryData.find((c) => c.category === catName);
-			if (!catData) return;
-
-			const isExpanded = this.state.expandedZones[`cat_${catName}`] || false;
-
-			// Category Header Row
-			html += `<tr class="category-header-row" data-category="${catName}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">`;
-			html += `<td>${sr++}</td>`;
-			html += `<td><span class="category-toggle">${
-				isExpanded ? "▼" : "▶"
-			}</span> ${this.getCategoryBadge(catName)}</td>`;
-			html += `<td>${this.getChangesBadge(catData)}</td>`;
-
-			months.forEach((month) => {
-				const monthData = catData.months[month.key];
-				const count = monthData?.count || 0;
-				html += `<td class="drill-cell" data-category="${catName}" data-month="${month.key}">
-                <span class="drill-link">${count}</span>
-            </td>`;
-				html += `<td>—</td>`;
-			});
-			html += "</tr>";
-
-			// Zone Breakdown Rows (expandable)
-			if (isExpanded) {
-				this.availableFilters.zones.forEach((zone) => {
-					html += `<tr class="zone-breakdown-row" data-category="${catName}" style="border-left: 4px solid #415a77;">`;
-					html += `<td></td>`;
-					html += `<td style="padding-left: 30px;">${zone}</td>`;
-					html += `<td></td>`;
-
-					months.forEach((month) => {
-						const monthData = catData.months[month.key];
-						const zoneBreakdown = monthData?.zone_breakdown || {};
-						const zoneCount = zoneBreakdown[zone] || 0;
-						html += `<td>${zoneCount}</td><td></td>`;
-					});
-					html += "</tr>";
-				});
+		this.categoryData.forEach((catData) => {
+			const monthData = catData.months[latestMonthKey];
+			if (monthData) {
+				totalBranches += monthData.count || 0;
+				const increased = monthData.changes?.increased || [];
+				const decreased = monthData.changes?.decreased || [];
+				totalUp += increased.length;
+				totalDown += decreased.length;
+				totalIncreasedBranches = totalIncreasedBranches.concat(increased);
+				totalDecreasedBranches = totalDecreasedBranches.concat(decreased);
 			}
 		});
 
-		html += "</tbody></table>";
+		let html = `
+    <table class="table table-bordered category-table-redesigned">
+        <thead>
+            <tr>
+                <th style="width: 25%;">Category</th>
+                <th style="width: 15%;">Performance Band</th>
+                <th style="width: 15%;">Branch Count</th>
+                <th style="width: 20%;">Movement (vs Prev. Day)</th>
+                <th style="width: 25%;">Health Status</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
+
+		categoryOrder.forEach((catName) => {
+			const config = categoryConfig[catName];
+			const catData = this.categoryData.find((c) => c.category === catName);
+			const monthData = catData?.months[latestMonthKey];
+			const count = monthData?.count || 0;
+			const changes = monthData?.changes || { increased: [], decreased: [] };
+			const upCount = changes.increased.length;
+			const downCount = changes.decreased.length;
+			const isExpanded = this.state.expandedZones[`cat_${catName}`] || false;
+			const percentage = totalBranches > 0 ? ((count / totalBranches) * 100).toFixed(1) : 0;
+
+			html += `
+            <tr class="category-row-redesigned" data-category="${catName}" style="border-left: 5px solid ${
+				config.color
+			};">
+                <td class="cat-name-cell">
+                    <span class="category-toggle">${isExpanded ? "▼" : "▶"}</span>
+                    <span class="cat-grade" style="background-color: ${config.color};">${
+				config.grade
+			}</span>
+                    <div class="cat-name-wrapper">
+                        <span>${catName}</span>
+                        <span class="category-percentage-share">• ${percentage}%</span>
+                    </div>
+                </td>
+                <td class="perf-band-cell">${config.range}</td>
+                <td class="count-cell drill-cell" data-category="${catName}" data-month="${latestMonthKey}">
+                    <span class="drill-link">${count}</span>
+                </td>
+                <td class="movement-cell" data-changes='${JSON.stringify(changes)}'>
+                    <div class="movement-summary">
+                        ${
+							upCount > 0
+								? `<span class="mov-up">↑ ${upCount}</span>`
+								: ""
+						}
+                        ${
+							downCount > 0
+								? `<span class="mov-down">↓ ${downCount}</span>`
+								: ""
+						}
+                        ${
+							upCount === 0 && downCount === 0
+								? `<span class="mov-neutral">-</span>`
+								: ""
+						}
+                    </div>
+                </td>
+                <td class="health-cell">
+                    <span class="health-indicator" style="background-color: ${
+						config.color
+					};"></span>
+                    ${config.health}
+                </td>
+            </tr>
+        `;
+
+			// Zone Breakdown Rows
+			if (isExpanded) {
+				html += `
+                <tr class="zone-breakdown-row-redesigned" data-category-parent="${catName}">
+                    <td colspan="5">
+                        <div class="zone-breakdown-container">
+                            <div class="zone-breakdown-cards-container">
+                                ${this.availableFilters.zones
+									.map((zone) => {
+										const zoneCount =
+											monthData?.zone_breakdown[zone] || 0;
+										const isDisabled = zoneCount === 0;
+										return `
+                                        <div class="zone-card ${isDisabled ? 'disabled-zone-card' : ''}">
+                                            <div class="zone-card-name">${zone}</div>
+                                            <div class="zone-card-count">
+                                                ${isDisabled
+                                                    ? `<span>${zoneCount}</span>`
+                                                    : `<span class="zone-drill-link" data-category="${catName}" data-month="${latestMonthKey}" data-zone="${zone}">
+                                                        ${zoneCount}
+                                                    </span>`}
+                                            </div>
+                                        </div>
+                                        `;
+									})
+									.join("")}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                `;
+			}
+		});
+
+		html += `
+            </tbody>
+            <tfoot>
+                <tr class="category-total-row">
+                    <td>Total</td>
+                    <td></td>
+                    <td class="count-cell">${totalBranches}</td>
+                    <td class="total-movement-cell" data-totals='${JSON.stringify({increased: totalIncreasedBranches, decreased: totalDecreasedBranches})}'>
+                        <div class="movement-summary">
+                            <span class="mov-up">↑ ${totalUp}</span>
+                            <span class="mov-down">↓ ${totalDown}</span>
+                        </div>
+                    </td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+        `;
 		return html;
 	}
 
-	attachCategoryExpandHandlers() {
+				_buildMovementPopupContent(increased, decreased) {
+
+					let leftContent = "", rightContent = "";
+
+			
+
+					if (decreased && decreased.length > 0) {
+
+						leftContent += `<div class="popup-section declined">`;
+
+						leftContent += `<h6>Downgraded (${decreased.length})</h6>`;
+
+						decreased.forEach((item) => {
+
+							leftContent += `
+
+							<div class="popup-item">
+
+								<div class="item-header">
+
+									<span class="branch-name">${item.branch} (${item.zone})</span>
+
+									<span class="cat-change">${item.previous_category} → ${item.current_category}</span>
+
+								</div>
+
+								<div class="item-body">
+
+									<span class="pct-change">${item.previous_percentage.toFixed(2)}% → ${item.current_percentage.toFixed(2)}%</span>
+
+									<span class="diff-change">-₹${this.formatCurrency(Math.abs(item.achievement_diff))} | ${item.percentage_diff.toFixed(2)}%</span>
+
+								</div>
+
+							</div>
+
+						`;
+
+						});
+
+						leftContent += `</div>`;
+
+					}
+
+			
+
+					if (increased && increased.length > 0) {
+
+						rightContent += `<div class="popup-section improved">`;
+
+						rightContent += `<h6>Upgraded (${increased.length})</h6>`;
+
+						increased.forEach((item) => {
+
+							rightContent += `
+
+							<div class="popup-item">
+
+								<div class="item-header">
+
+									<span class="branch-name">${item.branch} (${item.zone})</span>
+
+									<span class="cat-change">${item.previous_category} → ${item.current_category}</span>
+
+								</div>
+
+								<div class="item-body">
+
+									<span class="pct-change">${item.previous_percentage.toFixed(2)}% → ${item.current_percentage.toFixed(2)}%</span>
+
+									<span class="diff-change">+₹${this.formatCurrency(item.achievement_diff)} | +${item.percentage_diff.toFixed(2)}%</span>
+
+								</div>
+
+							</div>
+
+						`;
+
+						});
+
+						rightContent += `</div>`;
+
+					}
+
+					
+
+							if (!leftContent && !rightContent) return "";
+
+					
+
+							
+
+					
+
+							const leftColumnHTML = leftContent ? `<div class="popup-column">${leftContent}</div>` : "";
+
+					
+
+							const rightColumnHTML = rightContent ? `<div class="popup-column">${rightContent}</div>` : "";
+
+					
+
+					
+
+					
+
+							return leftColumnHTML + rightColumnHTML;
+
+					
+
+						}
+
+		
+
+				attachMovementPopupHandlers() {
+
+		
+
+					const self = this;
+
+		
+
+					let popupTimer;
+
+		
+
+			
+
+		
+
+					const showPopup = function(target, data) {
+
+		
+
+						clearTimeout(popupTimer);
+
+		
+
+						$(".movement-popup").remove(); // Remove any existing popups
+
+		
+
+			
+
+		
+
+						const popupContent = self._buildMovementPopupContent(data.increased, data.decreased);
+
+		
+
+						if (!popupContent) return;
+
+		
+
+			
+
+		
+
+						const popup = $(`<div class="movement-popup"><div class="popup-main-container">${popupContent}</div></div>`).appendTo("body");
+
+		
+
+						
+
+		
+
+						// New stable positioning logic
+
+		
+
+						const targetCell = $(target);
+
+		
+
+						const cellOffset = targetCell.offset();
+
+		
+
+						const cellHeight = targetCell.outerHeight();
+
+		
+
+						const cellWidth = targetCell.outerWidth();
+
+		
+
+						const popupHeight = popup.outerHeight();
+
+		
+
+						const popupWidth = popup.outerWidth();
+
+		
+
+						const windowHeight = $(window).height();
+
+		
+
+						const scrollY = $(window).scrollTop();
+
+		
+
+			
+
+		
+
+						let top, left;
+
+		
+
+						left = cellOffset.left + (cellWidth / 2) - (popupWidth / 2);
+
+		
+
+			
+
+		
+
+						if (cellOffset.top + cellHeight + popupHeight + 15 > windowHeight + scrollY) {
+
+		
+
+							top = cellOffset.top - popupHeight - 10;
+
+		
+
+						} else {
+
+		
+
+							top = cellOffset.top + cellHeight + 10;
+
+		
+
+						}
+
+		
+
+			
+
+		
+
+						// Boundary checks to keep popup within viewport
+
+		
+
+						if (left < 0) left = 5;
+
+		
+
+						if (left + popupWidth > $(window).width()) left = $(window).width() - popupWidth - 5;
+
+		
+
+			
+
+		
+
+			
+
+		
+
+						popup.css({ top: `${top}px`, left: `${left}px` });
+
+		
+
+			
+
+		
+
+						// Add events to the popup itself to keep it open
+
+		
+
+						popup.on("mouseenter", function() {
+
+		
+
+							clearTimeout(popupTimer);
+
+		
+
+						}).on("mouseleave", function() {
+
+		
+
+							hidePopup();
+
+		
+
+						});
+
+		
+
+					};
+
+		
+
+			
+
+		
+
+					const hidePopup = function() {
+
+		
+
+						popupTimer = setTimeout(() => {
+
+		
+
+							$(".movement-popup").remove();
+
+		
+
+						}, 100);
+
+		
+
+					};
+
+		
+
+			
+
+		
+
+					this.page.main.find(".movement-cell").on("mouseenter", function () {
+
+		
+
+						const changesData = $(this).data("changes");
+
+		
+
+						if (changesData && (changesData.increased.length > 0 || changesData.decreased.length > 0)) {
+
+		
+
+							showPopup(this, changesData);
+
+		
+
+						}
+
+		
+
+					}).on("mouseleave", function() {
+
+		
+
+						hidePopup();
+
+		
+
+					});
+
+		
+
+				}
+
+	
+
+				attachTotalMovementPopupHandler() {
+
+	
+
+					const self = this;
+
+	
+
+					let popupTimer;
+
+	
+
+			
+
+	
+
+					const showPopup = function(target, data) {
+
+	
+
+						clearTimeout(popupTimer);
+
+	
+
+						$(".movement-popup").remove();
+
+	
+
+			
+
+	
+
+						const popupContent = self._buildMovementPopupContent(data.increased, data.decreased);
+
+	
+
+						if (!popupContent) return;
+
+	
+
+			
+
+	
+
+						const popup = $(`<div class="movement-popup"><div class="popup-main-container">${popupContent}</div></div>`).appendTo("body");
+
+	
+
+						
+
+	
+
+						const targetCell = $(target);
+
+	
+
+						const cellOffset = targetCell.offset();
+
+	
+
+						const cellHeight = targetCell.outerHeight();
+
+	
+
+						const cellWidth = targetCell.outerWidth();
+
+	
+
+						const popupHeight = popup.outerHeight();
+
+	
+
+						const popupWidth = popup.outerWidth();
+
+	
+
+						const windowHeight = $(window).height();
+
+	
+
+						const scrollY = $(window).scrollTop();
+
+	
+
+			
+
+	
+
+						let top, left;
+
+	
+
+						left = cellOffset.left + (cellWidth / 2) - (popupWidth / 2);
+
+	
+
+			
+
+	
+
+						if (cellOffset.top + cellHeight + popupHeight + 15 > windowHeight + scrollY) {
+
+	
+
+							top = cellOffset.top - popupHeight - 10;
+
+	
+
+						} else {
+
+	
+
+							top = cellOffset.top + cellHeight + 10;
+
+	
+
+						}
+
+	
+
+						
+
+	
+
+						// Boundary checks to keep popup within viewport
+
+	
+
+						if (left < 0) left = 5;
+
+	
+
+						if (left + popupWidth > $(window).width()) left = $(window).width() - popupWidth - 5;
+
+	
+
+			
+
+	
+
+						popup.css({ top: `${top}px`, left: `${left}px` });
+
+	
+
+			
+
+	
+
+						popup.on("mouseenter", function() {
+
+	
+
+							clearTimeout(popupTimer);
+
+	
+
+						}).on("mouseleave", function() {
+
+	
+
+							hidePopup();
+
+	
+
+						});
+
+	
+
+					};
+
+	
+
+			
+
+	
+
+					const hidePopup = function() {
+
+	
+
+						popupTimer = setTimeout(() => {
+
+	
+
+							$(".movement-popup").remove();
+
+	
+
+						}, 100);
+
+	
+
+					};
+
+	
+
+			
+
+	
+
+					this.page.main.find(".total-movement-cell").on("mouseenter", function () {
+
+	
+
+						const totals = $(this).data("totals");
+
+	
+
+						if (totals && (totals.increased.length > 0 || totals.decreased.length > 0)) {
+
+	
+
+							showPopup(this, totals);
+
+	
+
+						}
+
+	
+
+					}).on("mouseleave", function() {
+
+	
+
+						hidePopup();
+
+	
+
+					});
+
+	
+
+				}
+
+	
+
+		attachCategoryExpandHandlers() {
 		const self = this;
+
 		this.page.main
-			.find(".category-header-row")
+
+			.find(".category-row-redesigned")
+
 			.off("click")
-			.on("click", function () {
+
+			.on("click", function (e) {
+				// Stop if a drill-link or movement cell was clicked
+
+				if ($(e.target).closest(".drill-cell, .movement-cell, .zone-drill-link").length) {
+					return;
+				}
+
 				const catName = $(this).data("category");
+
 				self.state.expandedZones[`cat_${catName}`] =
 					!self.state.expandedZones[`cat_${catName}`];
+
 				self.render();
 			});
 	}
 
 	getChangesBadge(catData) {
 		const monthKey = this.months[0]?.key;
+
 		const changes = catData.months[monthKey]?.changes;
+
 		if (!changes) return "—";
 
 		const up = changes.increased?.length || 0;
+
 		const down = changes.decreased?.length || 0;
+
 		if (up === 0 && down === 0) return '<span class="changes-badge">—</span>';
+
 		return `<span class="changes-badge">↑${up} ↓${down}</span>`;
 	}
 
 	// ========================================================================
+
 	// DRILL-DOWN FUNCTIONALITY
+
 	// ========================================================================
+
 	attachDrillHandlers() {
 		const self = this;
+
 		this.page.main.find(".drill-cell").on("click", function (e) {
 			e.stopPropagation();
+
 			const category = $(this).data("category");
+
 			const month = $(this).data("month");
+
 			self.drillDownToCategoryMonth(category, month);
+		});
+	}
+
+	attachZoneDrillHandlers() {
+		const self = this;
+
+		this.page.main.find(".zone-drill-link").on("click", function (e) {
+			e.stopPropagation();
+
+			const category = $(this).data("category");
+
+			const month = $(this).data("month");
+
+			const zone = $(this).data("zone");
+
+			self.drillDownToZoneCategoryMonth(category, zone, month);
 		});
 	}
 
 	drillDownToCategoryMonth(category, month) {
 		console.log(`🔍 Drilling down to Category: ${category}, Month: ${month}`);
+
 		this.state.selectedCategories = [category];
+
+		this.state.selectedZones = []; // Clear zone filter
+
 		this.state.selectedMonth = month;
+
 		this.state.drillDownActive = true;
+
 		this.updateFilterTagsUI();
+
+		this.switchTab("branch");
+	}
+
+	drillDownToZoneCategoryMonth(category, zone, month) {
+		console.log(`🔍 Drilling down to Category: ${category}, Zone: ${zone}, Month: ${month}`);
+
+		this.state.selectedCategories = [category];
+
+		this.state.selectedZones = [zone];
+
+		this.state.selectedMonth = month;
+
+		this.state.drillDownActive = true;
+
+		this.updateFilterTagsUI();
+
 		this.switchTab("branch");
 	}
 
 	// ========================================================================
+
 	// BRANCH VIEW - Filtered Table
+
 	// ========================================================================
+
 	applyFiltersToData(data) {
 		let filtered = [...data];
 
@@ -984,58 +1794,103 @@ class DrishtiDashboard {
 			displayMonths = months.filter((m) => m.key === this.state.selectedMonth);
 		}
 
-		// 1. Determine sort key
-		const sortMonthKey = this.state.selectedMonth || (months.length > 0 ? months[months.length - 1].key : null);
+		        // --- Correct Performance Segmentation Logic ---
 
-		// 2. Sort data
-		if (sortMonthKey) {
-			branchData.sort((a, b) => {
-				const aPct = a.months[sortMonthKey]?.percentage || 0;
-				const bPct = b.months[sortMonthKey]?.percentage || 0;
-				return bPct - aPct; // Descending
-			});
-		}
+		
 
-		// 3. Assign Segments and Row Styles to each branch
-		const total = branchData.length;
-		branchData.forEach((branch, index) => {
-			let segment, color;
-			if (total < 4) {
-				segment = "N/A";
-				color = 'transparent';
-			} else {
-				const top25_index = Math.floor(total * 0.25);
-				const next25_index = Math.floor(total * 0.50);
-				const mid25_index = Math.floor(total * 0.75);
+				// 1. Determine the metric for sorting (latest month's percentage)
 
-				if (index < top25_index) {
-					segment = "Top 25%";
-					color = '#d4edda';
-				} else if (index < next25_index) {
-					segment = "Next 25%";
-					color = '#cce5ff';
-				} else if (index < mid25_index) {
-					segment = "Mid 25%";
-					color = '#fff3cd';
-				} else {
-					segment = "Bottom 25%";
-					color = '#f8d7da';
+				const sortMonthKey = this.state.selectedMonth || (months.length > 0 ? months[months.length - 1].key : null);
+
+		
+
+				// 2. Create a safe copy of the filtered data and sort it by performance
+
+				const sortedBranches = [...branchData].sort((a, b) => {
+
+					const aPct = a.months[sortMonthKey]?.percentage || 0;
+
+					const bPct = b.months[sortMonthKey]?.percentage || 0;
+
+					return bPct - aPct; // Descending sort
+
+				});
+
+		
+
+				// 3. Calculate quartile boundaries and assign segments to the sorted branches
+
+				const total = sortedBranches.length;
+
+				sortedBranches.forEach((branch, index) => {
+
+					if (total < 4) {
+
+						branch.performanceSegment = "N/A";
+
+						branch.rowStyle = 'transparent';
+
+					} else {
+
+						const top25_index = Math.floor(total * 0.25);
+
+						const next25_index = Math.floor(total * 0.50);
+
+						const mid25_index = Math.floor(total * 0.75);
+
+		
+
+						if (index < top25_index) {
+
+							branch.performanceSegment = "Top 25%";
+
+							branch.rowStyle = `background-color: #d4edda;`;
+
+						} else if (index < next25_index) {
+
+							branch.performanceSegment = "Next 25%";
+
+							branch.rowStyle = `background-color: #cce5ff;`;
+
+						} else if (index < mid25_index) {
+
+							branch.performanceSegment = "Mid 25%";
+
+							branch.rowStyle = `background-color: #fff3cd;`;
+
+						} else {
+
+							branch.performanceSegment = "Bottom 25%";
+
+							branch.rowStyle = `background-color: #f8d7da;`;
+
+						}
+
+					}
+
+				});
+
+				
+
+				// 4. Filter the now-segmented list based on the user's segment selection
+
+				let filteredBranchData = sortedBranches;
+
+				if (this.state.selectedSegment && this.state.selectedSegment !== 'all') {
+
+					filteredBranchData = sortedBranches.filter(branch => branch.performanceSegment === this.state.selectedSegment);
+
 				}
-			}
-			branch.performanceSegment = segment;
-			branch.rowStyle = `background-color: ${color};`;
-		});
 
-		// 4. Filter by selected segment
-		let filteredBranchData = branchData;
-		if (this.state.selectedSegment && this.state.selectedSegment !== 'all') {
-			filteredBranchData = branchData.filter(branch => branch.performanceSegment === this.state.selectedSegment);
-		}
+		
 
-		const header = this.buildBranchTableHeader(displayMonths);
-		const body = filteredBranchData
-			.map((branch, index) => this.buildBranchTableRow(branch, displayMonths, index + 1, branch.rowStyle, branch.performanceSegment))
-			.join("");
+				const header = this.buildBranchTableHeader(displayMonths);
+
+				const body = filteredBranchData
+
+					.map((branch, index) => this.buildBranchTableRow(branch, displayMonths, index + 1, branch.rowStyle, branch.performanceSegment))
+
+					.join("");
 
 		return `
             <table class="branch-table">
@@ -1079,8 +1934,8 @@ class DrishtiDashboard {
 		html += `<td>
 			<div class="branch-info">
 				<div class="branch-code-name">
-					<a href="/app/branch-profile?sol_id=${branch.sol_id}" class="branch-code-link">${branch.sol_id}</a>
-					<span class="branch-name">${branch.branch}</span>
+					<a onclick="window.location.href='/app/branch-profile?sol_id=${branch.sol_id}'; return false;" class="branch-code-link">${branch.sol_id}</a>
+					<a onclick="window.location.href='/app/branch-profile?sol_id=${branch.sol_id}'; return false;" class="branch-name-link">${branch.branch}</a>
 				</div>
 				<div class="branch-zone-region">
 					<span class="zone-badge">${branch.zone}</span>
@@ -1137,16 +1992,20 @@ class DrishtiDashboard {
 		const numValue = Math.round(value);
 
 		if (this.state.formatMode === "words") {
-			if (numValue >= 1000000000) { // 100+ Crore
+			if (numValue >= 1000000000) {
+				// 100+ Crore
 				return `${(numValue / 10000000).toFixed(2)} Cr`;
 			}
-			if (numValue >= 10000000) { // 1+ Crore
+			if (numValue >= 10000000) {
+				// 1+ Crore
 				return `${(numValue / 10000000).toFixed(2)} Cr`;
 			}
-			if (numValue >= 100000) { // 1+ Lakh
+			if (numValue >= 100000) {
+				// 1+ Lakh
 				return `${(numValue / 100000).toFixed(2)} L`;
 			}
-			if (numValue >= 1000) { // 1+ Thousand
+			if (numValue >= 1000) {
+				// 1+ Thousand
 				return `${(numValue / 1000).toFixed(2)} K`;
 			}
 			return numValue.toString();
@@ -1589,6 +2448,261 @@ class DrishtiDashboard {
                 .status-badge.decreased { background-color: #ef4444; }
                 .status-badge.unchanged { background-color: #778da9; }
                 .status-badge.new { background-color: #3b82f6; }
+
+                /* Redesigned Category Table */
+                .category-table-redesigned {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 14px;
+                    border: 1px solid #dee2e6;
+                }
+                .category-table-redesigned th {
+                    background-color: #f8f9fa;
+                    font-weight: 600;
+                    padding: 12px 15px;
+                    text-align: left;
+                    border-bottom: 2px solid #dee2e6;
+                    color: #495057;
+                }
+                .category-table-redesigned td {
+                    padding: 15px;
+                    border-bottom: 1px solid #dee2e6;
+                    vertical-align: middle;
+                }
+                .cat-name-cell {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    font-weight: 600;
+                }
+                .cat-grade {
+                    flex-shrink: 0;
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    color: white;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 16px;
+                    font-weight: 700;
+                }
+                .perf-band-cell {
+                    font-family: 'monospace';
+                    font-weight: 600;
+                    color: #495057;
+                }
+                .count-cell {
+                    font-weight: 700;
+                    font-size: 18px;
+                    text-align: center;
+                }
+                .movement-cell {
+                    cursor: pointer;
+                }
+                .movement-summary {
+                    display: flex;
+                    gap: 15px;
+                    font-weight: 700;
+                    font-size: 16px;
+                    justify-content: center;
+                }
+                .mov-up { color: #10b981; }
+                .mov-down { color: #dc2626; }
+                .mov-neutral { color: #6c757d; }
+                .health-cell {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    font-weight: 600;
+                    color: #495057;
+                }
+                .health-indicator {
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 50%;
+                }
+
+                /* Movement Popup */
+                .movement-popup {
+                    position: absolute;
+                    background-color: #fff;
+                    border: 1px solid #ccc;
+                    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+                    border-radius: 8px;
+                    padding: 0;
+                    z-index: 1000;
+                    max-width: 700px;
+                    min-width: 350px;
+                    font-size: 13px;
+                }
+                .popup-main-container {
+                    display: flex;
+                }
+                .popup-column {
+                    flex: 1;
+                    padding: 12px;
+                    min-width: 320px;
+                }
+                .popup-column:first-child:not(:only-child) {
+                    border-right: 1px solid #eee;
+                }
+                .popup-section { margin-bottom: 10px; }
+                .popup-section:last-child { margin-bottom: 0; }
+                .popup-section h6 {
+                    font-weight: 700;
+                    margin: 0 0 8px 0;
+                    padding-bottom: 5px;
+                    border-bottom: 1px solid #eee;
+                }
+                .popup-section.improved h6 { color: #10b981; }
+                .popup-section.declined h6 { color: #dc2626; }
+                .popup-item {
+                    padding: 8px;
+                    border-radius: 4px;
+                    margin-bottom: 6px;
+                }
+                .popup-section.improved .popup-item { background-color: #f0fff4; }
+                .popup-section.declined .popup-item { background-color: #fff5f5; }
+                .item-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 4px;
+                }
+                .item-header .branch-name { font-weight: 600; color: #333; }
+                .item-header .cat-change { font-weight: 600; font-size: 12px; }
+                .item-body {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    font-size: 12px;
+                    color: #555;
+                }
+                .item-body .pct-change { font-family: monospace; }
+                .item-body .diff-change { font-weight: 600; }
+                .popup-section.improved .diff-change { color: #10b981; }
+                .popup-section.declined .diff-change { color: #dc2626; }
+
+                /* Category Row Expansion & Drilldown */
+                .category-row-redesigned {
+                    cursor: pointer;
+                }
+                .category-row-redesigned:hover {
+                    background-color: #f8f9fa;
+                }
+                .count-cell .drill-link {
+                    color: #007bff;
+                    text-decoration: underline;
+                    font-weight: 700;
+                }
+                .count-cell .drill-link:hover {
+                    color: #0056b3;
+                }
+
+                /* Zone Breakdown */
+                .zone-breakdown-row-redesigned td {
+                    padding: 0 !important;
+                    background-color: #f8f9fa;
+                }
+                .zone-breakdown-container {
+                    padding: 15px 25px;
+                }
+                .zone-breakdown-container table {
+                    width: 100%;
+                    text-align: center;
+                    border-collapse: collapse;
+                }
+                .zone-breakdown-container th {
+                    font-weight: 600;
+                    font-size: 12px;
+                    color: #495057;
+                    padding-bottom: 8px;
+                }
+                .zone-breakdown-container td {
+                    font-size: 14px;
+                    font-weight: 700;
+                    padding: 8px;
+                    border: none;
+                }
+
+                /* Zone Breakdown Cards */
+                .zone-breakdown-cards-container {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                    padding: 10px 5px;
+                }
+                .zone-card {
+                    background: #fff;
+                    border: 1px solid #e0e1dd;
+                    border-radius: 6px;
+                    padding: 8px 12px;
+                    text-align: center;
+                    flex-grow: 1;
+                    min-width: 90px;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+                }
+                .zone-card-name {
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: #778da9;
+                    margin-bottom: 2px;
+                }
+                .zone-card-count {
+                    font-size: 18px;
+                    font-weight: 700;
+                    color: #1b263b;
+                }
+                .zone-drill-link {
+                    cursor: pointer;
+                    color: #007bff;
+                }
+                .zone-drill-link:hover {
+                    text-decoration: underline;
+                    color: #0056b3;
+                }
+
+                /* Disabled Zone Card */
+                .disabled-zone-card {
+                    background-color: #f8f9fa;
+                    color: #adb5bd;
+                    cursor: not-allowed;
+                    opacity: 0.7;
+                }
+                .disabled-zone-card .zone-card-name {
+                    color: #adb5bd;
+                }
+                .disabled-zone-card .zone-card-count span {
+                    color: #adb5bd;
+                    text-decoration: none;
+                    cursor: not-allowed;
+                }
+
+                /* Category Percentage Share */
+                .cat-name-wrapper {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                }
+                .category-percentage-share {
+                    font-size: 12px;
+                    color: #6c757d;
+                    font-weight: 400;
+                    margin-left: 0;
+                }
+
+                /* Category Total Row */
+                .category-table-redesigned tfoot {
+                    border-top: 2px solid #495057;
+                }
+                .category-total-row td {
+                    font-weight: 700;
+                    font-size: 15px;
+                }
+                .total-movement-cell {
+                    cursor: pointer;
+                }
             </style>
         `;
 
