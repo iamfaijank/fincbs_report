@@ -1794,69 +1794,103 @@ class DrishtiDashboard {
 			displayMonths = months.filter((m) => m.key === this.state.selectedMonth);
 		}
 
-		// 1. Determine sort key
-		const sortMonthKey =
-			this.state.selectedMonth || (months.length > 0 ? months[months.length - 1].key : null);
+		        // --- Correct Performance Segmentation Logic ---
 
-		// 2. Sort data
-		if (sortMonthKey) {
-			branchData.sort((a, b) => {
-				const aPct = a.months[sortMonthKey]?.percentage || 0;
-				const bPct = b.months[sortMonthKey]?.percentage || 0;
-				return bPct - aPct; // Descending
-			});
-		}
+		
 
-		// 3. Assign Segments and Row Styles to each branch
-		const total = branchData.length;
-		branchData.forEach((branch, index) => {
-			let segment, color;
-			if (total < 4) {
-				segment = "N/A";
-				color = "transparent";
-			} else {
-				const top25_index = Math.floor(total * 0.25);
-				const next25_index = Math.floor(total * 0.5);
-				const mid25_index = Math.floor(total * 0.75);
+				// 1. Determine the metric for sorting (latest month's percentage)
 
-				if (index < top25_index) {
-					segment = "Top 25%";
-					color = "#d4edda";
-				} else if (index < next25_index) {
-					segment = "Next 25%";
-					color = "#cce5ff";
-				} else if (index < mid25_index) {
-					segment = "Mid 25%";
-					color = "#fff3cd";
-				} else {
-					segment = "Bottom 25%";
-					color = "#f8d7da";
+				const sortMonthKey = this.state.selectedMonth || (months.length > 0 ? months[months.length - 1].key : null);
+
+		
+
+				// 2. Create a safe copy of the filtered data and sort it by performance
+
+				const sortedBranches = [...branchData].sort((a, b) => {
+
+					const aPct = a.months[sortMonthKey]?.percentage || 0;
+
+					const bPct = b.months[sortMonthKey]?.percentage || 0;
+
+					return bPct - aPct; // Descending sort
+
+				});
+
+		
+
+				// 3. Calculate quartile boundaries and assign segments to the sorted branches
+
+				const total = sortedBranches.length;
+
+				sortedBranches.forEach((branch, index) => {
+
+					if (total < 4) {
+
+						branch.performanceSegment = "N/A";
+
+						branch.rowStyle = 'transparent';
+
+					} else {
+
+						const top25_index = Math.floor(total * 0.25);
+
+						const next25_index = Math.floor(total * 0.50);
+
+						const mid25_index = Math.floor(total * 0.75);
+
+		
+
+						if (index < top25_index) {
+
+							branch.performanceSegment = "Top 25%";
+
+							branch.rowStyle = `background-color: #d4edda;`;
+
+						} else if (index < next25_index) {
+
+							branch.performanceSegment = "Next 25%";
+
+							branch.rowStyle = `background-color: #cce5ff;`;
+
+						} else if (index < mid25_index) {
+
+							branch.performanceSegment = "Mid 25%";
+
+							branch.rowStyle = `background-color: #fff3cd;`;
+
+						} else {
+
+							branch.performanceSegment = "Bottom 25%";
+
+							branch.rowStyle = `background-color: #f8d7da;`;
+
+						}
+
+					}
+
+				});
+
+				
+
+				// 4. Filter the now-segmented list based on the user's segment selection
+
+				let filteredBranchData = sortedBranches;
+
+				if (this.state.selectedSegment && this.state.selectedSegment !== 'all') {
+
+					filteredBranchData = sortedBranches.filter(branch => branch.performanceSegment === this.state.selectedSegment);
+
 				}
-			}
-			branch.performanceSegment = segment;
-			branch.rowStyle = `background-color: ${color};`;
-		});
 
-		// 4. Filter by selected segment
-		let filteredBranchData = branchData;
-		if (this.state.selectedSegment && this.state.selectedSegment !== "all") {
-			filteredBranchData = branchData.filter(
-				(branch) => branch.performanceSegment === this.state.selectedSegment
-			);
-		}
+		
 
-		const header = this.buildBranchTableHeader(displayMonths);
-		const body = filteredBranchData
-			.map((branch, index) =>
-				this.buildBranchTableRow(
-					branch,
-					displayMonths,
-					index + 1,
-					branch.rowStyle,
-					branch.performanceSegment
-				)
-			)
-			.join("");
+				const header = this.buildBranchTableHeader(displayMonths);
+
+				const body = filteredBranchData
+
+					.map((branch, index) => this.buildBranchTableRow(branch, displayMonths, index + 1, branch.rowStyle, branch.performanceSegment))
+
+					.join("");
 
 		return `
             <table class="branch-table">
