@@ -655,6 +655,7 @@ class DrishtiDashboard {
 
 			if (this.state.activeTab === "zone") {
 				this.attachZoneExpandHandlers();
+				this.attachZoneDrilldownHandlers();
 			} else if (this.state.activeTab === "category") {
 				this.attachMovementPopupHandlers();
 
@@ -781,7 +782,7 @@ class DrishtiDashboard {
 
 		html += `<td><span class="zone-toggle">${isExpanded ? "▼" : "▶"}</span> ${zoneName}</td>`;
 
-		html += `<td>${branchCount}</td>`;
+		html += `<td class="branch-drilldown" data-zone="${zoneName}" title="Click to view branches in ${zoneName}">${branchCount}</td>`;
 
 		months.forEach((month) => {
 			const mdata = zoneItem.months[month.key];
@@ -821,7 +822,7 @@ class DrishtiDashboard {
 
 		html += `<td style="padding-left: 30px;">${regionItem.region}</td>`;
 
-		html += `<td>${branchCount}</td>`;
+		html += `<td class="branch-drilldown" data-zone="${zoneName}" data-region="${regionItem.region}" title="Click to view branches in ${regionItem.region}">${branchCount}</td>`;
 
 		months.forEach((month) => {
 			const mdata = regionItem.months[month.key];
@@ -1739,6 +1740,32 @@ class DrishtiDashboard {
 		this.switchTab("branch");
 	}
 
+	attachZoneDrilldownHandlers() {
+		const self = this;
+		this.page.main.find(".zone-wise-table .branch-drilldown").on("click", function (e) {
+			e.stopPropagation(); // Prevents the row's expand/collapse click handler from firing
+
+			const zone = $(this).data("zone");
+			const region = $(this).data("region"); // This will be undefined for the zone total row, which is fine
+
+			self.drillDownToBranchView(zone, region);
+		});
+	}
+
+	drillDownToBranchView(zone, region = null) {
+		console.log(`Drilling down to Branch view for Zone: ${zone}` + (region ? `, Region: ${region}` : ''));
+
+		this.state.selectedZones = [zone];
+		this.state.selectedRegion = region || "";
+		this.state.drillDownActive = true; 
+
+		// Update filter UI elements to reflect the change
+		this.page.main.find("#region-selector").val(this.state.selectedRegion);
+		this.updateFilterTagsUI(); // this will highlight the correct zone
+
+		this.switchTab("branch");
+	}
+
 	// ========================================================================
 
 	// BRANCH VIEW - Filtered Table
@@ -2240,6 +2267,17 @@ class DrishtiDashboard {
 
                 .zone-total-row:hover {
                     background-color: #d4d5d1 !important;
+                }
+
+                .branch-drilldown {
+                    cursor: pointer;
+                    text-decoration: underline;
+                    color: #007bff;
+                    font-weight: 600;
+                }
+                .branch-drilldown:hover {
+                    color: #0056b3;
+                    font-weight: bold;
                 }
 
                 .zone-toggle, .category-toggle {
