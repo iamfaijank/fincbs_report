@@ -660,10 +660,13 @@ class DrishtiDashboard {
 
 				this.attachCategoryExpandHandlers();
 
-				this.attachDrillHandlers();
+								this.attachDrillHandlers();
 
-				this.attachZoneDrillHandlers();
-			}
+								this.attachZoneDrillHandlers();
+
+								this.attachTotalMovementPopupHandler();
+
+							}
 
 			dataContainer.css("opacity", 1);
 		}, 200);
@@ -869,334 +872,765 @@ class DrishtiDashboard {
 
 	renderCategoryTable() {
 		const months = this.months;
-
 		const latestMonthKey = months[0]?.key;
-
+		const latestMonthDisplay = months[0]?.display;
 		if (!latestMonthKey) return "<div>No data available for the selected period.</div>";
 
 		const categoryConfig = {
 			Pinnacle: { grade: "A+", range: ">100%", color: "#10b981", health: "Excellent" },
-
 			Master: { grade: "A", range: "80-100%", color: "#14b8a6", health: "Good" },
-
 			Accelerator: { grade: "B", range: "60-80%", color: "#3b82f6", health: "Improving" },
-
 			Starter: { grade: "C", range: "40-60%", color: "#f59e0b", health: "Needs Attention" },
-
 			Learner: { grade: "D", range: "20-40%", color: "#ef4444", health: "At Risk" },
-
 			"Zero Level": { grade: "E", range: "0-20%", color: "#dc2626", health: "Critical" },
 		};
-
 		const categoryOrder = Object.keys(categoryConfig);
 
-		let html = `
-
-			    <table class="table table-bordered category-table-redesigned">
-
-			        <thead>
-
-			            <tr>
-
-			                <th style="width: 25%;">Category</th>
-
-			                <th style="width: 15%;">Performance Band</th>
-
-			                <th style="width: 15%;">Branch Count</th>
-
-			                <th style="width: 20%;">Movement (vs Prev. Day)</th>
-
-			                <th style="width: 25%;">Health Status</th>
-
-			            </tr>
-
-			        </thead>
-
-			        <tbody>
-
-			    `;
-
-		categoryOrder.forEach((catName) => {
-			const config = categoryConfig[catName];
-
-			const catData = this.categoryData.find((c) => c.category === catName);
-
-			const monthData = catData?.months[latestMonthKey];
-
-			const count = monthData?.count || 0;
-
-			const changes = monthData?.changes || { increased: [], decreased: [] };
-
-			const upCount = changes.increased.length;
-
-			const downCount = changes.decreased.length;
-
-			const isExpanded = this.state.expandedZones[`cat_${catName}`] || false;
-
-			html += `
-
-			            <tr class="category-row-redesigned" data-category="${catName}" style="border-left: 5px solid ${
-				config.color
-			};">
-
-			                <td class="cat-name-cell">
-
-			                    <span class="category-toggle">${isExpanded ? "▼" : "▶"}</span>
-
-			                    <span class="cat-grade" style="background-color: ${config.color};">${
-				config.grade
-			}</span>
-
-			                    <span>${catName}</span>
-
-			                </td>
-
-			                <td class="perf-band-cell">${config.range}</td>
-
-			                <td class="count-cell drill-cell" data-category="${catName}" data-month="${latestMonthKey}">
-
-			                    <span class="drill-link">${count}</span>
-
-			                </td>
-
-			                <td class="movement-cell" data-changes='${JSON.stringify(changes)}'>
-
-			                    <div class="movement-summary">
-
-			                        ${upCount > 0 ? `<span class="mov-up">↑ ${upCount}</span>` : ""}
-
-			                        ${downCount > 0 ? `<span class="mov-down">↓ ${downCount}</span>` : ""}
-
-			                        ${
-										upCount === 0 && downCount === 0
-											? `<span class="mov-neutral">-</span>`
-											: ""
-									}
-
-			                    </div>
-
-			                </td>
-
-			                <td class="health-cell">
-
-			                    <span class="health-indicator" style="background-color: ${
-									config.color
-								};"></span>
-
-			                    ${config.health}
-
-			                </td>
-
-			            </tr>
-
-			        `;
-
-			// Zone Breakdown Rows
-
-			if (isExpanded) {
-				html += `
-
-			                <tr class="zone-breakdown-row-redesigned" data-category-parent="${catName}">
-
-			                    <td colspan="5">
-
-			                        <div class="zone-breakdown-container">
-
-			                            <div class="zone-breakdown-cards-container">
-
-			                                ${this.availableFilters.zones
-
-												.map((zone) => {
-													const zoneCount =
-														monthData?.zone_breakdown[zone] || 0;
-
-													const isDisabled = zoneCount === 0;
-
-													return `
-
-													                                        <div class="zone-card ${
-																								isDisabled
-																									? "disabled-zone-card"
-																									: ""
-																							}">
-
-													                                            <div class="zone-card-name">${zone}</div>
-
-													                                            <div class="zone-card-count">
-
-													                                                ${
-																										isDisabled
-																											? `<span>${zoneCount}</span>`
-																											: `<span class="zone-drill-link" data-category="${catName}" data-month="${latestMonthKey}" data-zone="${zone}">
-
-													                                                        ${zoneCount}
-
-													                                                    </span>`
-																									}
-
-													                                            </div>
-
-													                                        </div>
-
-													                                        `;
-												})
-
-												.join("")}
-
-			                            </div>
-
-			                        </div>
-
-			                    </td>
-
-			                </tr>
-
-			                `;
+		// Calculate Totals
+		let totalBranches = 0;
+		let totalUp = 0;
+		let totalDown = 0;
+		let totalIncreasedBranches = [];
+		let totalDecreasedBranches = [];
+
+		this.categoryData.forEach((catData) => {
+			const monthData = catData.months[latestMonthKey];
+			if (monthData) {
+				totalBranches += monthData.count || 0;
+				const increased = monthData.changes?.increased || [];
+				const decreased = monthData.changes?.decreased || [];
+				totalUp += increased.length;
+				totalDown += decreased.length;
+				totalIncreasedBranches = totalIncreasedBranches.concat(increased);
+				totalDecreasedBranches = totalDecreasedBranches.concat(decreased);
 			}
 		});
 
-		html += "</tbody></table>";
+		let html = `
+    <table class="table table-bordered category-table-redesigned">
+        <thead>
+            <tr>
+                <th style="width: 25%;">Category</th>
+                <th style="width: 15%;">Performance Band</th>
+                <th style="width: 15%;">Branch Count</th>
+                <th style="width: 20%;">Movement (vs Prev. Day)</th>
+                <th style="width: 25%;">Health Status</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
 
+		categoryOrder.forEach((catName) => {
+			const config = categoryConfig[catName];
+			const catData = this.categoryData.find((c) => c.category === catName);
+			const monthData = catData?.months[latestMonthKey];
+			const count = monthData?.count || 0;
+			const changes = monthData?.changes || { increased: [], decreased: [] };
+			const upCount = changes.increased.length;
+			const downCount = changes.decreased.length;
+			const isExpanded = this.state.expandedZones[`cat_${catName}`] || false;
+			const percentage = totalBranches > 0 ? ((count / totalBranches) * 100).toFixed(1) : 0;
+
+			html += `
+            <tr class="category-row-redesigned" data-category="${catName}" style="border-left: 5px solid ${
+				config.color
+			};">
+                <td class="cat-name-cell">
+                    <span class="category-toggle">${isExpanded ? "▼" : "▶"}</span>
+                    <span class="cat-grade" style="background-color: ${config.color};">${
+				config.grade
+			}</span>
+                    <div class="cat-name-wrapper">
+                        <span>${catName}</span>
+                        <span class="category-percentage-share">• ${percentage}%</span>
+                    </div>
+                </td>
+                <td class="perf-band-cell">${config.range}</td>
+                <td class="count-cell drill-cell" data-category="${catName}" data-month="${latestMonthKey}">
+                    <span class="drill-link">${count}</span>
+                </td>
+                <td class="movement-cell" data-changes='${JSON.stringify(changes)}'>
+                    <div class="movement-summary">
+                        ${
+							upCount > 0
+								? `<span class="mov-up">↑ ${upCount}</span>`
+								: ""
+						}
+                        ${
+							downCount > 0
+								? `<span class="mov-down">↓ ${downCount}</span>`
+								: ""
+						}
+                        ${
+							upCount === 0 && downCount === 0
+								? `<span class="mov-neutral">-</span>`
+								: ""
+						}
+                    </div>
+                </td>
+                <td class="health-cell">
+                    <span class="health-indicator" style="background-color: ${
+						config.color
+					};"></span>
+                    ${config.health}
+                </td>
+            </tr>
+        `;
+
+			// Zone Breakdown Rows
+			if (isExpanded) {
+				html += `
+                <tr class="zone-breakdown-row-redesigned" data-category-parent="${catName}">
+                    <td colspan="5">
+                        <div class="zone-breakdown-container">
+                            <div class="zone-breakdown-cards-container">
+                                ${this.availableFilters.zones
+									.map((zone) => {
+										const zoneCount =
+											monthData?.zone_breakdown[zone] || 0;
+										const isDisabled = zoneCount === 0;
+										return `
+                                        <div class="zone-card ${isDisabled ? 'disabled-zone-card' : ''}">
+                                            <div class="zone-card-name">${zone}</div>
+                                            <div class="zone-card-count">
+                                                ${isDisabled
+                                                    ? `<span>${zoneCount}</span>`
+                                                    : `<span class="zone-drill-link" data-category="${catName}" data-month="${latestMonthKey}" data-zone="${zone}">
+                                                        ${zoneCount}
+                                                    </span>`}
+                                            </div>
+                                        </div>
+                                        `;
+									})
+									.join("")}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                `;
+			}
+		});
+
+		html += `
+            </tbody>
+            <tfoot>
+                <tr class="category-total-row">
+                    <td>Total</td>
+                    <td></td>
+                    <td class="count-cell">${totalBranches}</td>
+                    <td class="total-movement-cell" data-totals='${JSON.stringify({increased: totalIncreasedBranches, decreased: totalDecreasedBranches})}'>
+                        <div class="movement-summary">
+                            <span class="mov-up">↑ ${totalUp}</span>
+                            <span class="mov-down">↓ ${totalDown}</span>
+                        </div>
+                    </td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+        `;
 		return html;
 	}
 
-	attachMovementPopupHandlers() {
-		const self = this;
+				_buildMovementPopupContent(increased, decreased) {
 
-		this.page.main
+					let leftContent = "", rightContent = "";
 
-			.find(".movement-cell")
+			
 
-			.on("mouseenter", function (e) {
-				// Clean up any existing popups
+					if (decreased && decreased.length > 0) {
 
-				$(".movement-popup").remove();
+						leftContent += `<div class="popup-section declined">`;
 
-				const changesData = $(this).data("changes");
+						leftContent += `<h6>Downgraded (${decreased.length})</h6>`;
 
-				if (!changesData) return;
+						decreased.forEach((item) => {
 
-				const { increased, decreased } = changesData;
+							leftContent += `
 
-				if (increased.length === 0 && decreased.length === 0) return;
+							<div class="popup-item">
 
-				let popupContent = "";
+								<div class="item-header">
 
-				if (increased.length > 0) {
-					popupContent += `<div class="popup-section improved">`;
+									<span class="branch-name">${item.branch} (${item.zone})</span>
 
-					popupContent += `<h6>Upgraded Branches (${increased.length})</h6>`;
+									<span class="cat-change">${item.previous_category} → ${item.current_category}</span>
 
-					increased.forEach((item) => {
-						popupContent += `
+								</div>
 
-			                        <div class="popup-item">
+								<div class="item-body">
 
-			                            <div class="item-header">
+									<span class="pct-change">${item.previous_percentage.toFixed(2)}% → ${item.current_percentage.toFixed(2)}%</span>
 
-			                                <span class="branch-name">${item.branch} (${item.zone})</span>
+									<span class="diff-change">-₹${this.formatCurrency(Math.abs(item.achievement_diff))} | ${item.percentage_diff.toFixed(2)}%</span>
 
-			                                <span class="cat-change">${item.previous_category} → ${
-							item.current_category
-						}</span>
+								</div>
 
-			                            </div>
+							</div>
 
-			                            <div class="item-body">
+						`;
 
-			                                <span class="pct-change">${item.previous_percentage.toFixed(
-												2
-											)}% → ${item.current_percentage.toFixed(2)}%</span>
+						});
 
-			                                <span class="diff-change">+₹${self.formatCurrency(
-												item.achievement_diff
-											)} | +${item.percentage_diff.toFixed(2)}%</span>
+						leftContent += `</div>`;
 
-			                            </div>
+					}
 
-			                        </div>
+			
 
-			                    `;
+					if (increased && increased.length > 0) {
+
+						rightContent += `<div class="popup-section improved">`;
+
+						rightContent += `<h6>Upgraded (${increased.length})</h6>`;
+
+						increased.forEach((item) => {
+
+							rightContent += `
+
+							<div class="popup-item">
+
+								<div class="item-header">
+
+									<span class="branch-name">${item.branch} (${item.zone})</span>
+
+									<span class="cat-change">${item.previous_category} → ${item.current_category}</span>
+
+								</div>
+
+								<div class="item-body">
+
+									<span class="pct-change">${item.previous_percentage.toFixed(2)}% → ${item.current_percentage.toFixed(2)}%</span>
+
+									<span class="diff-change">+₹${this.formatCurrency(item.achievement_diff)} | +${item.percentage_diff.toFixed(2)}%</span>
+
+								</div>
+
+							</div>
+
+						`;
+
+						});
+
+						rightContent += `</div>`;
+
+					}
+
+					
+
+							if (!leftContent && !rightContent) return "";
+
+					
+
+							
+
+					
+
+							const leftColumnHTML = leftContent ? `<div class="popup-column">${leftContent}</div>` : "";
+
+					
+
+							const rightColumnHTML = rightContent ? `<div class="popup-column">${rightContent}</div>` : "";
+
+					
+
+					
+
+					
+
+							return leftColumnHTML + rightColumnHTML;
+
+					
+
+						}
+
+		
+
+				attachMovementPopupHandlers() {
+
+		
+
+					const self = this;
+
+		
+
+					let popupTimer;
+
+		
+
+			
+
+		
+
+					const showPopup = function(target, data) {
+
+		
+
+						clearTimeout(popupTimer);
+
+		
+
+						$(".movement-popup").remove(); // Remove any existing popups
+
+		
+
+			
+
+		
+
+						const popupContent = self._buildMovementPopupContent(data.increased, data.decreased);
+
+		
+
+						if (!popupContent) return;
+
+		
+
+			
+
+		
+
+						const popup = $(`<div class="movement-popup"><div class="popup-main-container">${popupContent}</div></div>`).appendTo("body");
+
+		
+
+						
+
+		
+
+						// New stable positioning logic
+
+		
+
+						const targetCell = $(target);
+
+		
+
+						const cellOffset = targetCell.offset();
+
+		
+
+						const cellHeight = targetCell.outerHeight();
+
+		
+
+						const cellWidth = targetCell.outerWidth();
+
+		
+
+						const popupHeight = popup.outerHeight();
+
+		
+
+						const popupWidth = popup.outerWidth();
+
+		
+
+						const windowHeight = $(window).height();
+
+		
+
+						const scrollY = $(window).scrollTop();
+
+		
+
+			
+
+		
+
+						let top, left;
+
+		
+
+						left = cellOffset.left + (cellWidth / 2) - (popupWidth / 2);
+
+		
+
+			
+
+		
+
+						if (cellOffset.top + cellHeight + popupHeight + 15 > windowHeight + scrollY) {
+
+		
+
+							top = cellOffset.top - popupHeight - 10;
+
+		
+
+						} else {
+
+		
+
+							top = cellOffset.top + cellHeight + 10;
+
+		
+
+						}
+
+		
+
+			
+
+		
+
+						// Boundary checks to keep popup within viewport
+
+		
+
+						if (left < 0) left = 5;
+
+		
+
+						if (left + popupWidth > $(window).width()) left = $(window).width() - popupWidth - 5;
+
+		
+
+			
+
+		
+
+			
+
+		
+
+						popup.css({ top: `${top}px`, left: `${left}px` });
+
+		
+
+			
+
+		
+
+						// Add events to the popup itself to keep it open
+
+		
+
+						popup.on("mouseenter", function() {
+
+		
+
+							clearTimeout(popupTimer);
+
+		
+
+						}).on("mouseleave", function() {
+
+		
+
+							hidePopup();
+
+		
+
+						});
+
+		
+
+					};
+
+		
+
+			
+
+		
+
+					const hidePopup = function() {
+
+		
+
+						popupTimer = setTimeout(() => {
+
+		
+
+							$(".movement-popup").remove();
+
+		
+
+						}, 100);
+
+		
+
+					};
+
+		
+
+			
+
+		
+
+					this.page.main.find(".movement-cell").on("mouseenter", function () {
+
+		
+
+						const changesData = $(this).data("changes");
+
+		
+
+						if (changesData && (changesData.increased.length > 0 || changesData.decreased.length > 0)) {
+
+		
+
+							showPopup(this, changesData);
+
+		
+
+						}
+
+		
+
+					}).on("mouseleave", function() {
+
+		
+
+						hidePopup();
+
+		
+
 					});
 
-					popupContent += `</div>`;
+		
+
 				}
 
-				if (decreased.length > 0) {
-					popupContent += `<div class="popup-section declined">`;
+	
 
-					popupContent += `<h6>Downgraded Branches (${decreased.length})</h6>`;
+				attachTotalMovementPopupHandler() {
 
-					decreased.forEach((item) => {
-						popupContent += `
+	
 
-			                        <div class="popup-item">
+					const self = this;
 
-			                            <div class="item-header">
+	
 
-			                                <span class="branch-name">${item.branch} (${item.zone})</span>
+					let popupTimer;
 
-			                                <span class="cat-change">${item.previous_category} → ${
-							item.current_category
-						}</span>
+	
 
-			                            </div>
+			
 
-			                            <div class="item-body">
+	
 
-			                                <span class="pct-change">${item.previous_percentage.toFixed(
-												2
-											)}% → ${item.current_percentage.toFixed(2)}%</span>
+					const showPopup = function(target, data) {
 
-			                                <span class="diff-change">-₹${self.formatCurrency(
-												Math.abs(item.achievement_diff)
-											)} | ${item.percentage_diff.toFixed(2)}%</span>
+	
 
-			                            </div>
+						clearTimeout(popupTimer);
 
-			                        </div>
+	
 
-			                    `;
+						$(".movement-popup").remove();
+
+	
+
+			
+
+	
+
+						const popupContent = self._buildMovementPopupContent(data.increased, data.decreased);
+
+	
+
+						if (!popupContent) return;
+
+	
+
+			
+
+	
+
+						const popup = $(`<div class="movement-popup"><div class="popup-main-container">${popupContent}</div></div>`).appendTo("body");
+
+	
+
+						
+
+	
+
+						const targetCell = $(target);
+
+	
+
+						const cellOffset = targetCell.offset();
+
+	
+
+						const cellHeight = targetCell.outerHeight();
+
+	
+
+						const cellWidth = targetCell.outerWidth();
+
+	
+
+						const popupHeight = popup.outerHeight();
+
+	
+
+						const popupWidth = popup.outerWidth();
+
+	
+
+						const windowHeight = $(window).height();
+
+	
+
+						const scrollY = $(window).scrollTop();
+
+	
+
+			
+
+	
+
+						let top, left;
+
+	
+
+						left = cellOffset.left + (cellWidth / 2) - (popupWidth / 2);
+
+	
+
+			
+
+	
+
+						if (cellOffset.top + cellHeight + popupHeight + 15 > windowHeight + scrollY) {
+
+	
+
+							top = cellOffset.top - popupHeight - 10;
+
+	
+
+						} else {
+
+	
+
+							top = cellOffset.top + cellHeight + 10;
+
+	
+
+						}
+
+	
+
+						
+
+	
+
+						// Boundary checks to keep popup within viewport
+
+	
+
+						if (left < 0) left = 5;
+
+	
+
+						if (left + popupWidth > $(window).width()) left = $(window).width() - popupWidth - 5;
+
+	
+
+			
+
+	
+
+						popup.css({ top: `${top}px`, left: `${left}px` });
+
+	
+
+			
+
+	
+
+						popup.on("mouseenter", function() {
+
+	
+
+							clearTimeout(popupTimer);
+
+	
+
+						}).on("mouseleave", function() {
+
+	
+
+							hidePopup();
+
+	
+
+						});
+
+	
+
+					};
+
+	
+
+			
+
+	
+
+					const hidePopup = function() {
+
+	
+
+						popupTimer = setTimeout(() => {
+
+	
+
+							$(".movement-popup").remove();
+
+	
+
+						}, 100);
+
+	
+
+					};
+
+	
+
+			
+
+	
+
+					this.page.main.find(".total-movement-cell").on("mouseenter", function () {
+
+	
+
+						const totals = $(this).data("totals");
+
+	
+
+						if (totals && (totals.increased.length > 0 || totals.decreased.length > 0)) {
+
+	
+
+							showPopup(this, totals);
+
+	
+
+						}
+
+	
+
+					}).on("mouseleave", function() {
+
+	
+
+						hidePopup();
+
+	
+
 					});
 
-					popupContent += `</div>`;
+	
+
 				}
 
-				const popup = $(`<div class="movement-popup">${popupContent}</div>`).appendTo(
-					"body"
-				);
+	
 
-				// Viewport-aware positioning logic
-				const popupHeight = popup.outerHeight();
-				const popupWidth = popup.outerWidth();
-				const windowHeight = $(window).height();
-				const scrollY = $(window).scrollTop();
-				const cursorY = e.pageY;
-
-				let top, left;
-
-				// Position horizontally
-				left = e.pageX - popupWidth / 2;
-
-				// Check vertical space
-				if (cursorY + popupHeight + 20 > windowHeight + scrollY) {
-					// Not enough space below, position above cursor
-					top = cursorY - popupHeight - 15;
-				} else {
-					// Enough space below, position below cursor
-					top = cursorY + 15;
-				}
-
-				// Apply final position
-				popup.css({ top: `${top}px`, left: `${left}px` });
-			})
-
-			.on("mouseleave", function () {
-				$(".movement-popup").remove();
-			});
-	}
-
-	attachCategoryExpandHandlers() {
+		attachCategoryExpandHandlers() {
 		const self = this;
 
 		this.page.main
@@ -2062,10 +2496,22 @@ class DrishtiDashboard {
                     border: 1px solid #ccc;
                     box-shadow: 0 5px 15px rgba(0,0,0,0.15);
                     border-radius: 8px;
-                    padding: 12px;
+                    padding: 0;
                     z-index: 1000;
-                    width: 420px;
+                    max-width: 700px;
+                    min-width: 350px;
                     font-size: 13px;
+                }
+                .popup-main-container {
+                    display: flex;
+                }
+                .popup-column {
+                    flex: 1;
+                    padding: 12px;
+                    min-width: 320px;
+                }
+                .popup-column:first-child:not(:only-child) {
+                    border-right: 1px solid #eee;
                 }
                 .popup-section { margin-bottom: 10px; }
                 .popup-section:last-child { margin-bottom: 0; }
@@ -2197,6 +2643,31 @@ class DrishtiDashboard {
                     color: #adb5bd;
                     text-decoration: none;
                     cursor: not-allowed;
+                }
+
+                /* Category Percentage Share */
+                .cat-name-wrapper {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-start;
+                }
+                .category-percentage-share {
+                    font-size: 12px;
+                    color: #6c757d;
+                    font-weight: 400;
+                    margin-left: 0;
+                }
+
+                /* Category Total Row */
+                .category-table-redesigned tfoot {
+                    border-top: 2px solid #495057;
+                }
+                .category-total-row td {
+                    font-weight: 700;
+                    font-size: 15px;
+                }
+                .total-movement-cell {
+                    cursor: pointer;
                 }
             </style>
         `;
