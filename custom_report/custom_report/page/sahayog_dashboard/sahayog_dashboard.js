@@ -54,6 +54,16 @@ class DrishtiDashboard {
 		this.loadData();
 	}
 
+	setupStyles() {
+		const style = `
+			.movement-popup .popup-main-container {
+				max-height: 400px; /* Default max-height */
+				overflow-y: auto;
+			}
+		`;
+		$(`<style>${style}</style>`).appendTo("head");
+	}
+
 	processNewApiResponse() {
 		const data = this.data;
 
@@ -1445,485 +1455,169 @@ class DrishtiDashboard {
 		
 
 				attachMovementPopupHandlers() {
-
-		
-
 					const self = this;
-
-		
-
 					let popupTimer;
 
-		
-
-			
-
-		
-
 					const showPopup = function(target, data) {
-
-		
-
 						clearTimeout(popupTimer);
-
-		
-
-						$(".movement-popup").remove(); // Remove any existing popups
-
-		
-
-			
-
-		
+						$(".movement-popup").remove(); 
 
 						const popupContent = self._buildMovementPopupContent(data.increased, data.decreased);
-
-		
-
 						if (!popupContent) return;
 
-		
-
-			
-
-		
-
 						const popup = $(`<div class="movement-popup"><div class="popup-main-container">${popupContent}</div></div>`).appendTo("body");
-
-		
-
-						
-
-		
-
-						// New stable positioning logic
-
-		
+						const popupInner = popup.find(".popup-main-container");
 
 						const targetCell = $(target);
-
-		
-
 						const cellOffset = targetCell.offset();
-
-		
-
 						const cellHeight = targetCell.outerHeight();
-
-		
-
 						const cellWidth = targetCell.outerWidth();
+						
+						const windowHeight = $(window).height();
+						const scrollY = $(window).scrollTop();
+						const spaceAbove = cellOffset.top - scrollY;
+						const spaceBelow = windowHeight - (cellOffset.top + cellHeight - scrollY);
 
-		
+						let top, left, maxHeight;
+						const margin = 20;
+
+						// Decide position and max-height
+						if (spaceBelow > spaceAbove) {
+							// Position below
+							top = cellOffset.top + cellHeight + 10;
+							maxHeight = spaceBelow - margin;
+						} else {
+							// Position above
+							top = cellOffset.top - 10; // Initial top before adjusting for popup height
+							maxHeight = spaceAbove - margin;
+						}
+						
+						popupInner.css('max-height', `${maxHeight}px`);
 
 						const popupHeight = popup.outerHeight();
-
-		
-
 						const popupWidth = popup.outerWidth();
 
-		
-
-						const windowHeight = $(window).height();
-
-		
-
-						const scrollY = $(window).scrollTop();
-
-		
-
-			
-
-		
-
-						let top, left;
-
-		
-
-						left = cellOffset.left + (cellWidth / 2) - (popupWidth / 2);
-
-		
-
-			
-
-		
-
-						if (cellOffset.top + cellHeight + popupHeight + 15 > windowHeight + scrollY) {
-
-		
-
+						// Final position adjustment
+						if (spaceBelow < spaceAbove) {
 							top = cellOffset.top - popupHeight - 10;
-
-		
-
-						} else {
-
-		
-
-							top = cellOffset.top + cellHeight + 10;
-
-		
-
 						}
 
-		
-
-			
-
-		
-
-						// Boundary checks to keep popup within viewport
-
-		
-
+						// Boundary checks
+						if (top < scrollY + margin/2) {
+							top = scrollY + margin/2;
+						}
+						
+						left = cellOffset.left + (cellWidth / 2) - (popupWidth / 2);
 						if (left < 0) left = 5;
-
-		
-
 						if (left + popupWidth > $(window).width()) left = $(window).width() - popupWidth - 5;
-
-		
-
-			
-
-		
-
-			
-
-		
 
 						popup.css({ top: `${top}px`, left: `${left}px` });
 
-		
-
-			
-
-		
-
-						// Add events to the popup itself to keep it open
-
-		
-
 						popup.on("mouseenter", function() {
-
-		
-
 							clearTimeout(popupTimer);
-
-		
-
 						}).on("mouseleave", function() {
-
-		
-
 							hidePopup();
-
-		
-
 						});
-
-		
-
 					};
-
-		
-
-			
-
-		
 
 					const hidePopup = function() {
-
-		
-
 						popupTimer = setTimeout(() => {
-
-		
-
 							$(".movement-popup").remove();
-
-		
-
 						}, 100);
-
-		
-
 					};
 
-		
-
-			
-
-		
-
-					this.page.main.find(".movement-cell").on("mouseenter", function () {
-
-		
-
-						const changesData = $(this).data("changes");
-
-		
-
+					this.page.main.find(".movement-cell .movement-summary").on("mouseenter", function () {
+						const changesData = $(this).parent().data("changes");
 						if (changesData && (changesData.increased.length > 0 || changesData.decreased.length > 0)) {
-
-		
-
 							showPopup(this, changesData);
-
-		
-
 						}
-
-		
-
 					}).on("mouseleave", function() {
-
-		
-
 						hidePopup();
-
-		
-
 					});
-
-		
-
 				}
 
 	
 
 				attachTotalMovementPopupHandler() {
-
-	
-
 					const self = this;
-
-	
-
 					let popupTimer;
 
-	
-
-			
-
-	
-
 					const showPopup = function(target, data) {
-
-	
-
 						clearTimeout(popupTimer);
-
-	
-
-						$(".movement-popup").remove();
-
-	
-
-			
-
-	
+						$(".movement-popup").remove(); 
 
 						const popupContent = self._buildMovementPopupContent(data.increased, data.decreased);
-
-	
-
 						if (!popupContent) return;
 
-	
-
-			
-
-	
-
 						const popup = $(`<div class="movement-popup"><div class="popup-main-container">${popupContent}</div></div>`).appendTo("body");
-
-	
-
-						
-
-	
+						const popupInner = popup.find(".popup-main-container");
 
 						const targetCell = $(target);
-
-	
-
 						const cellOffset = targetCell.offset();
-
-	
-
 						const cellHeight = targetCell.outerHeight();
-
-	
-
 						const cellWidth = targetCell.outerWidth();
+						
+						const windowHeight = $(window).height();
+						const scrollY = $(window).scrollTop();
+						const spaceAbove = cellOffset.top - scrollY;
+						const spaceBelow = windowHeight - (cellOffset.top + cellHeight - scrollY);
 
-	
+						let top, left, maxHeight;
+						const margin = 20;
+
+						// Decide position and max-height
+						if (spaceBelow > spaceAbove) {
+							// Position below
+							top = cellOffset.top + cellHeight + 10;
+							maxHeight = spaceBelow - margin;
+						} else {
+							// Position above
+							top = cellOffset.top - 10; // Initial top before adjusting for popup height
+							maxHeight = spaceAbove - margin;
+						}
+						
+						popupInner.css('max-height', `${maxHeight}px`);
 
 						const popupHeight = popup.outerHeight();
-
-	
-
 						const popupWidth = popup.outerWidth();
 
-	
-
-						const windowHeight = $(window).height();
-
-	
-
-						const scrollY = $(window).scrollTop();
-
-	
-
-			
-
-	
-
-						let top, left;
-
-	
-
-						left = cellOffset.left + (cellWidth / 2) - (popupWidth / 2);
-
-	
-
-			
-
-	
-
-						if (cellOffset.top + cellHeight + popupHeight + 15 > windowHeight + scrollY) {
-
-	
-
+						// Final position adjustment
+						if (spaceBelow < spaceAbove) {
 							top = cellOffset.top - popupHeight - 10;
-
-	
-
-						} else {
-
-	
-
-							top = cellOffset.top + cellHeight + 10;
-
-	
-
 						}
 
-	
-
+						// Boundary checks
+						if (top < scrollY + margin/2) {
+							top = scrollY + margin/2;
+						}
 						
-
-	
-
-						// Boundary checks to keep popup within viewport
-
-	
-
+						left = cellOffset.left + (cellWidth / 2) - (popupWidth / 2);
 						if (left < 0) left = 5;
-
-	
-
 						if (left + popupWidth > $(window).width()) left = $(window).width() - popupWidth - 5;
-
-	
-
-			
-
-	
 
 						popup.css({ top: `${top}px`, left: `${left}px` });
 
-	
-
-			
-
-	
-
 						popup.on("mouseenter", function() {
-
-	
-
 							clearTimeout(popupTimer);
-
-	
-
 						}).on("mouseleave", function() {
-
-	
-
 							hidePopup();
-
-	
-
 						});
-
-	
-
 					};
-
-	
-
-			
-
-	
 
 					const hidePopup = function() {
-
-	
-
 						popupTimer = setTimeout(() => {
-
-	
-
 							$(".movement-popup").remove();
-
-	
-
 						}, 100);
-
-	
-
 					};
 
-	
-
-			
-
-	
-
-					this.page.main.find(".total-movement-cell").on("mouseenter", function () {
-
-	
-
-						const totals = $(this).data("totals");
-
-	
-
+					this.page.main.find(".total-movement-cell .movement-summary").on("mouseenter", function () {
+						const totals = $(this).parent().data("totals");
 						if (totals && (totals.increased.length > 0 || totals.decreased.length > 0)) {
-
-	
-
 							showPopup(this, totals);
-
-	
-
 						}
-
-	
-
 					}).on("mouseleave", function() {
-
-	
-
 						hidePopup();
-
-	
-
 					});
-
-	
-
 				}
 
 	
