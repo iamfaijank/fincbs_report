@@ -20,7 +20,7 @@ class DrishtiDashboard {
 			financialYear: "2025-2026",
 			activeTab: "zone",
 			viewType: "Monthly",
-			targetType: "Monthly",
+			targetType: "YTD",
 			formatMode: "number",
 			selectedDate: null,
 			selectedCategories: [],
@@ -403,8 +403,8 @@ class DrishtiDashboard {
                     <div>
                         <label style="font-weight: bold; color: #0d1b2a;">Target:</label>
                         <div class="btn-group" role="group" style="margin-left: 8px;">
-                            <button type="button" class="btn btn-sm target-toggle-btn active" data-target="Monthly">Monthly</button>
-                            <button type="button" class="btn btn-sm target-toggle-btn" data-target="YTD">YTD</button>
+                            <button type="button" class="btn btn-sm target-toggle-btn" data-target="Monthly">Monthly</button>
+                            <button type="button" class="btn btn-sm target-toggle-btn active" data-target="YTD">YTD</button>
                             <button type="button" class="btn btn-sm target-toggle-btn" data-target="Yearly">Yearly</button>
                         </div>
                     </div>
