@@ -903,6 +903,22 @@ class DrishtiDashboard {
 		return Object.values(aggregatedCategories);
 	}
 
+	filterMovementData(changes) {
+		if (!changes) return { increased: [], decreased: [] };
+
+		let { increased, decreased } = changes;
+
+		// Get a set of branch names that are in the current filtered view
+		const filteredBranches = this.getFilteredBranches();
+		const filteredBranchNames = new Set(filteredBranches.map(b => b.branch));
+
+		// Filter the increased and decreased arrays
+		increased = increased.filter(item => filteredBranchNames.has(item.branch));
+		decreased = decreased.filter(item => filteredBranchNames.has(item.branch));
+
+		return { increased, decreased };
+	}
+
 
 	// ========================================================================
 	// RENDERING - Main Render Function
@@ -1150,18 +1166,28 @@ class DrishtiDashboard {
 
 		// Calculate Totals based on reaggregatedCategoryData
 		let totalBranches = 0;
-		// Changes are not reaggregated on the frontend without previous day data.
-		let totalUp = 0;
-		let totalDown = 0;
-		let totalIncreasedBranches = [];
-		let totalDecreasedBranches = [];
-
 		reaggregatedCategoryData.forEach((catData) => {
 			const monthData = catData.months[latestMonthKey];
 			if (monthData) {
 				totalBranches += monthData.count || 0;
 			}
 		});
+
+		// Calculate total movements based on original data but filtered
+		let totalIncreasedBranches = [];
+		let totalDecreasedBranches = [];
+
+		this.categoryData.forEach((catData) => {
+			const monthData = catData.months[latestMonthKey];
+			if (monthData && monthData.changes) {
+                const filteredChanges = this.filterMovementData(monthData.changes);
+				totalIncreasedBranches = totalIncreasedBranches.concat(filteredChanges.increased);
+				totalDecreasedBranches = totalDecreasedBranches.concat(filteredChanges.decreased);
+			}
+		});
+		const totalUp = totalIncreasedBranches.length;
+        const totalDown = totalDecreasedBranches.length;
+
 
 		let html = `
     <table class="table table-bordered category-table-redesigned">
@@ -1185,14 +1211,21 @@ class DrishtiDashboard {
 
 		categoriesToDisplay.forEach((catName) => {
 			const config = categoryConfig[catName];
-            // Find data for this specific category from reaggregated data
-			const catData = reaggregatedCategoryData.find((c) => c.category === catName);
-			const monthData = catData?.months[latestMonthKey];
+            // Find data for this specific category
+			const reaggCatData = reaggregatedCategoryData.find((c) => c.category === catName);
+			const originalCatData = this.categoryData.find((c) => c.category === catName);
+			
+			const monthData = reaggCatData?.months[latestMonthKey];
+			const originalMonthData = originalCatData?.months[latestMonthKey];
+
 			const count = monthData?.count || 0;
-            // Changes cannot be reaggregated on frontend for now, so default to empty
-			const changes = { increased: [], decreased: [] }; 
-			const upCount = changes.increased.length;
-			const downCount = changes.decreased.length;
+            
+			// Get original changes and filter them based on current filters
+			const originalChanges = originalMonthData?.changes || { increased: [], decreased: [] };
+			const filteredChanges = this.filterMovementData(originalChanges);
+			const upCount = filteredChanges.increased.length;
+			const downCount = filteredChanges.decreased.length;
+
 			const isExpanded = this.state.expandedZones[`cat_${catName}`] || false;
 			const percentage = totalBranches > 0 ? ((count / totalBranches) * 100).toFixed(1) : 0;
 
@@ -1214,7 +1247,7 @@ class DrishtiDashboard {
                 <td class="count-cell drill-cell" data-category="${catName}" data-month="${latestMonthKey}">
                     <span class="drill-link">${count}</span>
                 </td>
-                <td class="movement-cell" data-changes='${JSON.stringify(changes)}'>
+                <td class="movement-cell" data-changes='${JSON.stringify(filteredChanges)}'>
                     <div class="movement-summary">
                         ${
 							upCount > 0
