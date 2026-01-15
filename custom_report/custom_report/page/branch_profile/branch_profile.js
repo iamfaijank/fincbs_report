@@ -1421,9 +1421,9 @@ function render_staff_manpower(data) {
 		"Staff Nos": data.staff_nos || 0,
 		"Budgeted Staff": data.total_no_of_budgeted_staff || 0,
 		"Staff Onboarded": data.total_staff_onboarded || 0,
-		"DDS Agent": data.total_dds_agent || 0,
+		"Total DDS_VS Agent": data.total_dds_agent || 0,
 		"Active DDS Agent": data.total_active_dds_agent || 0,
-		"SS Agent": data.total_ss_agent || 0,
+		"Total SMBG_SS Agent": data.total_ss_agent || 0,
 		"Active SS Agent": data.total_active_ss_agent || 0,
 	};
 
@@ -1472,9 +1472,9 @@ function formatCurrency(num) {
 }
 
 function isEmptyOrNA(value) {
-    if (!value) return true; // Handles null, undefined, empty string
-    const processedValue = String(value).trim().replace(/^#/, '').toUpperCase();
-    return processedValue === "N/A" || processedValue === "";
+	if (!value) return true; // Handles null, undefined, empty string
+	const processedValue = String(value).trim().replace(/^#/, "").toUpperCase();
+	return processedValue === "N/A" || processedValue === "";
 }
 
 function getPerformanceStatus(percent) {
