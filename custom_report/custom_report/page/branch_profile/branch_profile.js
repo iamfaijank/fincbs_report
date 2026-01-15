@@ -735,6 +735,11 @@ frappe.pages["branch-profile"].on_page_load = function (wrapper) {
 
 	/* ---------------- HTML ---------------- */
 	$(wrapper).find(".layout-main-section").html(`
+        <div class="back-button-container" style="padding: 10px 20px 0 20px;">
+            <button class="btn btn-default btn-sm" onclick="window.history.back()">
+                <span class="fa fa-arrow-left"></span> Back to Drishti
+            </button>
+        </div>
         <div class="branch-profile-container">
             <div class="dashboard-grid">
                 <div class="left-column">
