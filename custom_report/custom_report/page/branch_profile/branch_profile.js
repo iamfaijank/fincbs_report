@@ -1037,7 +1037,7 @@ function load_branch_profile(sol) {
 function render_branch_manager(data) {
 	const managerName = isEmptyOrNA(data.bm_name) ? "" : data.bm_name;
 	const experience = isEmptyOrNA(data.bm_vintage) ? "" : data.bm_vintage;
-	const phone = isEmptyOrNA(data.bm_phone) ? "" : data.bm_phone;
+	const phone = isEmptyOrNA(data.bm_mob_no) ? "" : data.bm_mob_no;
 	const email = isEmptyOrNA(data.bm_email) ? "" : data.bm_email;
 	const joinedDate = isEmptyOrNA(data.bm_doj) ? "" : data.bm_doj;
 

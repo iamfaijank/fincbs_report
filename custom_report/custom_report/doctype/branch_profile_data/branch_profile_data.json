@@ -10,6 +10,7 @@
   "sol_id",
   "branch_today_date",
   "bm_name",
+  "bm_mob_no",
   "bm_vintage",
   "total_ytd_target",
   "total_mtd_target",
@@ -448,12 +449,17 @@
    "fieldname": "bde_productivity",
    "fieldtype": "Data",
    "label": "BDE PRODUCTIVITY"
+  },
+  {
+   "fieldname": "bm_mob_no",
+   "fieldtype": "Data",
+   "label": "BM Mob No."
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-15 10:43:57.144268",
+ "modified": "2026-01-15 12:54:17.102001",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Branch Profile Data",
