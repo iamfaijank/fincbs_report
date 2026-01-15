@@ -190,6 +190,35 @@ frappe.pages["branch-profile"].on_page_load = function (wrapper) {
             to   { opacity: 1; transform: translateY(0); }
         }
 
+        .dashboard-card.alert-warning {
+            background-color: #fff3cd; /* Light amber */
+            border-color: #ffeeba; /* Slightly darker amber border */
+            color: #856404; /* Dark text for contrast */
+            box-shadow: var(--shadow-sm);
+        }
+        .dashboard-card.alert-warning .card-header {
+            border-bottom: 1px solid var(--linkedin-border); /* Re-add border to separate header */
+            margin-bottom: 12px; /* Add margin after header */
+            padding-bottom: 12px;
+            display: block; /* Remove flex, align-items */
+            font-weight: 600; /* Standard header font weight */
+            color: #856404; /* Dark text for contrast */
+        }
+        .alert-message {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #856404;
+        }
+        .alert-message .alert-icon {
+            font-size: 20px;
+            margin-right: 10px;
+            line-height: 1;
+            flex-shrink: 0;
+            color: #ffc107; /* Amber icon color */
+        }
+
 
         .card-header {
             font-size: 16px;
@@ -1006,7 +1035,28 @@ function load_branch_profile(sol) {
 }
 
 function render_branch_manager(data) {
-	const managerName = data.bm_name || "";
+	const managerName = isEmptyOrNA(data.bm_name) ? "" : data.bm_name;
+	const experience = isEmptyOrNA(data.bm_vintage) ? "" : data.bm_vintage;
+	const phone = isEmptyOrNA(data.bm_phone) ? "" : data.bm_phone;
+	const email = isEmptyOrNA(data.bm_email) ? "" : data.bm_email;
+	const joinedDate = isEmptyOrNA(data.bm_doj) ? "" : data.bm_doj;
+
+	// Check if all key fields are empty or 'N/A'
+	const isHeadless = !managerName && !experience && !phone && !email && !joinedDate;
+
+	if (isHeadless) {
+		$("#branch-manager-card").html(`
+            <div class="dashboard-card alert-warning" style="animation-delay: 0.1s;">
+                <div class="card-header">Branch Headless</div>
+                <div class="alert-message">
+                    <span class="alert-icon fa fa-exclamation-triangle"></span>
+                    <span>No Branch Manager assigned to this branch.</span>
+                </div>
+            </div>
+        `);
+		return;
+	}
+
 	const initials = (managerName || "NA")
 		.split(" ")
 		.filter(Boolean)
@@ -1014,11 +1064,6 @@ function render_branch_manager(data) {
 		.join("")
 		.substring(0, 2)
 		.toUpperCase();
-
-	const experience = data.bm_vintage || "";
-	const phone = data.bm_phone || "";
-	const email = data.bm_email || "";
-	const joinedDate = data.bm_doj || "";
 
 	const html = `
         <div class="dashboard-card" style="animation-delay: 0.1s;">
@@ -1424,6 +1469,12 @@ function formatNumber(num) {
 function formatCurrency(num) {
 	if (!num) return "0";
 	return num.toLocaleString("en-IN");
+}
+
+function isEmptyOrNA(value) {
+    if (!value) return true; // Handles null, undefined, empty string
+    const processedValue = String(value).trim().replace(/^#/, '').toUpperCase();
+    return processedValue === "N/A" || processedValue === "";
 }
 
 function getPerformanceStatus(percent) {
