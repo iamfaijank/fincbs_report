@@ -1025,6 +1025,25 @@ class DrishtiDashboard {
 
 		html += "</tr></thead><tbody>";
 
+        const grandTotals = {};
+        months.forEach(month => {
+            grandTotals[month.key] = { target: 0, achievement: 0 };
+        });
+
+        // Accumulate grand totals only from zone total items (isZoneTotal === true)
+        zoneData.forEach(item => {
+            if (item.isZoneTotal) { // Only sum from the main zone aggregates to avoid double-counting regions
+                months.forEach(month => {
+                    const mdata = item.months[month.key];
+                    if (mdata) {
+                        grandTotals[month.key].target += mdata.target || 0;
+                        grandTotals[month.key].achievement += mdata.achievement || 0;
+                    }
+                });
+            }
+        });
+
+
 		// Group data by zone from the reaggregated data
 		const zoneGroups = {};
 
@@ -1071,7 +1090,26 @@ class DrishtiDashboard {
 				});
 			});
 
-		html += "</tbody></table>";
+		html += "</tbody>";
+
+        // Grand Total Row
+        html += `<tfoot><tr style="background-color: #0d1b2a; color: #e0e1dd; font-weight: bold;">`;
+        html += `<td colspan="3" style="text-align: left; padding-left: 8px;">TOTAL</td>`; // Spanning Sr, Zone/Region, Branches columns
+
+        months.forEach(month => {
+            const totalTarget = grandTotals[month.key].target;
+            const totalAchievement = grandTotals[month.key].achievement;
+            const overallPercentage = totalTarget > 0 ? (totalAchievement / totalTarget) * 100 : 0;
+
+            html += `
+                <td>${this.formatNumber(totalTarget)}</td>
+                <td>${this.formatNumber(totalAchievement)}</td>
+                <td style="color: ${this.getPctColor(overallPercentage)}">${overallPercentage.toFixed(1)}%</td>
+            `;
+        });
+        html += `</tr></tfoot>`;
+
+        html += "</table>";
 
 		return html;
 	}
