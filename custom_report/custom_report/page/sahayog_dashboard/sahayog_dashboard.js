@@ -1933,8 +1933,6 @@ class DrishtiDashboard {
 			const mdata = branch.months[month.key];
 			if (mdata) {
 				const pct = mdata.percentage || 0;
-				const status = mdata.status || "";
-				const diff = mdata.percentage_diff || 0;
 
 				html += `
                 <td class="metric-cell category-cell">${this.getCategoryBadge(
@@ -1943,18 +1941,12 @@ class DrishtiDashboard {
 				)}</td>
                 <td class="metric-cell amount-cell">${this.formatNumber(mdata.target)}</td>
                 <td class="metric-cell amount-cell">${this.formatNumber(mdata.achievement)}</td>
-                <td class="metric-cell pct-cell" style="color:${this.getPctColor(pct)}">
-                    ${pct.toFixed(1)}%
-                    ${
-						status
-							? `<span class="status-badge ${status}">${this.getStatusIcon(
-									status,
-								)} ${
-									diff > 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`
-								}</span>`
-							: ""
-					}
-                </td>
+                <td>
+					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+						<span style="color: ${this.getPctColor(pct)}; min-width: 45px; text-align: right;">${pct.toFixed(1)}%</span>
+						${this.renderProgressBar(pct)}
+					</div>
+				</td>
             `;
 			} else {
 				html += "<td>-</td><td>-</td><td>-</td><td>-</td>";
