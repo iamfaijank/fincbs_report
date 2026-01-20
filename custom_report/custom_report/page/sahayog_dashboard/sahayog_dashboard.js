@@ -1104,7 +1104,12 @@ class DrishtiDashboard {
             html += `
                 <td>${this.formatNumber(totalTarget)}</td>
                 <td>${this.formatNumber(totalAchievement)}</td>
-                <td style="color: ${this.getPctColor(overallPercentage)}">${overallPercentage.toFixed(1)}%</td>
+                <td>
+					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+						<span style="min-width: 45px; text-align: right;">${overallPercentage.toFixed(1)}%</span>
+						${this.renderProgressBar(overallPercentage)}
+					</div>
+				</td>
             `;
         });
         html += `</tr></tfoot>`;
@@ -1136,9 +1141,14 @@ class DrishtiDashboard {
 				html += `
 			                <td>${this.formatNumber(mdata.target)}</td>
 			                <td>${this.formatNumber(mdata.achievement)}</td>
-			                <td style="color: ${this.getPctColor(
-								mdata.percentage,
-							)}">${mdata.percentage?.toFixed(1)}%</td>
+			                <td>
+								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+									<span style="color: ${this.getPctColor(
+										mdata.percentage,
+									)}; min-width: 45px; text-align: right;">${mdata.percentage?.toFixed(1)}%</span>
+									${this.renderProgressBar(mdata.percentage)}
+								</div>
+							</td>
 			            `;
 			} else {
 				html += "<td>-</td><td>-</td><td>-</td>";
@@ -1172,9 +1182,14 @@ class DrishtiDashboard {
 				html += `
 			                <td>${this.formatNumber(mdata.target)}</td>
 			                <td>${this.formatNumber(mdata.achievement)}</td>
-			                <td style="color: ${this.getPctColor(
-								mdata.percentage,
-							)}">${mdata.percentage?.toFixed(1)}%</td>
+			                <td>
+								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+									<span style="color: ${this.getPctColor(
+										mdata.percentage,
+									)}; min-width: 45px; text-align: right;">${mdata.percentage?.toFixed(1)}%</span>
+									${this.renderProgressBar(mdata.percentage)}
+								</div>
+							</td>
 			            `;
 			} else {
 				html += "<td>-</td><td>-</td><td>-</td>";
@@ -1992,6 +2007,17 @@ class DrishtiDashboard {
 		return "#dc2626";
 	}
 
+	renderProgressBar(percentage) {
+		const pct = Math.max(0, Math.min(100, percentage || 0));
+		const color = this.getPctColor(pct);
+
+		return `
+			<div class="progress-container-3d">
+				<div class="progress-bar-3d" style="width: ${pct}%; background-color: ${color};"></div>
+			</div>
+		`;
+	}
+
 	getStatusIcon(status) {
 		const icons = {
 			improved: "🟢",
@@ -2682,6 +2708,30 @@ class DrishtiDashboard {
                 }
                 .total-movement-cell {
                     cursor: pointer;
+                }
+
+                @keyframes progress-bar-stripes {
+                  from { background-position: 40px 0; }
+                  to { background-position: 0 0; }
+                }
+
+                .progress-container-3d {
+                    width: 80px;
+                    height: 14px;
+                    background-color: #e9ecef;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+                    position: relative;
+                }
+
+                .progress-bar-3d {
+                    height: 100%;
+                    border-radius: 8px;
+                    transition: width 0.6s ease;
+                    background-size: 40px 40px;
+                    animation: progress-bar-stripes 2s linear infinite;
+                    background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.15) 50%, rgba(255,255,255,.15) 75%, transparent 75%, transparent);
                 }
             </style>
         `;
