@@ -675,7 +675,8 @@ class DrishtiDashboard {
 
 		// Clear Filters
 		this.page.main.find("#clear-filters").on("click", function () {
-			self.clearAllFilters();
+			history.pushState({}, "", window.location.pathname);
+			location.reload(true);
 		});
 
 		// Segment Filter
