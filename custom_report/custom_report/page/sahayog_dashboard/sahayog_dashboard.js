@@ -20,8 +20,8 @@ class DrishtiDashboard {
 			financialYear: "2025-2026",
 			activeTab: "zone",
 			viewType: "Monthly",
-			targetType: "YTD",
-			formatMode: "number",
+			targetType: "Monthly",
+			formatMode: "words",
 			selectedDate: null,
 			selectedCategories: [],
 			selectedZones: [],
@@ -227,7 +227,6 @@ class DrishtiDashboard {
 		// Update filter tags for zones and categories
 		this.updateFilterTagsUI();
 	}
-
 
 	// ========================================================================
 	// CONTROLS - View, Target, FY, Date, Region, Branch, Format
@@ -472,14 +471,14 @@ class DrishtiDashboard {
 		// Apply zone filter
 		if (this.state.selectedZones.length > 0) {
 			filteredBranches = filteredBranches.filter((b) =>
-				this.state.selectedZones.includes(b.zone)
+				this.state.selectedZones.includes(b.zone),
 			);
 		}
 
 		// Apply region filter
 		if (this.state.selectedRegion) {
 			filteredBranches = filteredBranches.filter(
-				(b) => b.region === this.state.selectedRegion
+				(b) => b.region === this.state.selectedRegion,
 			);
 		}
 
@@ -490,7 +489,7 @@ class DrishtiDashboard {
 		if (firstMonth) {
 			this.availableFilters.categories.forEach((catName) => {
 				this.categoryCounts[catName] = filteredBranches.filter(
-					(b) => b.months[firstMonth]?.category === catName
+					(b) => b.months[firstMonth]?.category === catName,
 				).length;
 			});
 		}
@@ -756,7 +755,9 @@ class DrishtiDashboard {
 	getFilteredBranches() {
 		let filtered = this.branchData ? [...this.branchData] : [];
 
-		const filterMonthKey = this.state.selectedMonth || (this.months && this.months.length > 0 ? this.months[0].key : null);
+		const filterMonthKey =
+			this.state.selectedMonth ||
+			(this.months && this.months.length > 0 ? this.months[0].key : null);
 
 		// 1. Category filter (applied for the selected/latest month)
 		if (this.state.selectedCategories.length > 0 && filterMonthKey) {
@@ -785,7 +786,7 @@ class DrishtiDashboard {
 				return branchName.includes(searchTerm) || solId.includes(searchTerm);
 			});
 		}
-		
+
 		return filtered;
 	}
 
@@ -797,7 +798,7 @@ class DrishtiDashboard {
 		// Group branches into top-level zones and regions
 		const groupedData = {}; // { "ZONE-1": { totalBranches: [], regionBranches: { "REGION-A": [] } } }
 
-		branches.forEach(branch => {
+		branches.forEach((branch) => {
 			const zoneName = branch.zone;
 			const regionName = branch.region;
 
@@ -824,19 +825,23 @@ class DrishtiDashboard {
 			return aNum && bNum ? parseInt(aNum) - parseInt(bNum) : a.localeCompare(b);
 		});
 
-
-		sortedZoneNames.forEach(zoneName => {
+		sortedZoneNames.forEach((zoneName) => {
 			const zoneGroup = groupedData[zoneName];
 
 			// Aggregate for the top-level zone
 			const zoneAgg = {
 				zone: zoneName,
 				region: zoneName,
-				months: Object.fromEntries(this.months.map(m => [m.key, { target: 0, achievement: 0, percentage: 0, branches: 0 }])),
+				months: Object.fromEntries(
+					this.months.map((m) => [
+						m.key,
+						{ target: 0, achievement: 0, percentage: 0, branches: 0 },
+					]),
+				),
 				isZoneTotal: true,
 			};
-			zoneGroup.totalBranches.forEach(branch => {
-				this.months.forEach(m => {
+			zoneGroup.totalBranches.forEach((branch) => {
+				this.months.forEach((m) => {
 					const monthData = branch.months[m.key];
 					if (monthData) {
 						zoneAgg.months[m.key].target += monthData.target || 0;
@@ -845,24 +850,30 @@ class DrishtiDashboard {
 				});
 			});
 			zoneAgg.months[this.months[0].key].branches = zoneGroup.totalBranches.length; // Count branches for the first month
-			this.months.forEach(m => {
+			this.months.forEach((m) => {
 				const monthAgg = zoneAgg.months[m.key];
-				monthAgg.percentage = monthAgg.target > 0 ? (monthAgg.achievement / monthAgg.target) * 100 : 0;
+				monthAgg.percentage =
+					monthAgg.target > 0 ? (monthAgg.achievement / monthAgg.target) * 100 : 0;
 			});
 			result.push(zoneAgg);
 
 			// Aggregate for regions within this zone
 			const sortedRegionNames = Object.keys(zoneGroup.regionBranches).sort();
-			sortedRegionNames.forEach(regionName => {
+			sortedRegionNames.forEach((regionName) => {
 				const regionBranches = zoneGroup.regionBranches[regionName];
 				const regionAgg = {
 					zone: zoneName,
 					region: regionName,
-					months: Object.fromEntries(this.months.map(m => [m.key, { target: 0, achievement: 0, percentage: 0, branches: 0 }])),
+					months: Object.fromEntries(
+						this.months.map((m) => [
+							m.key,
+							{ target: 0, achievement: 0, percentage: 0, branches: 0 },
+						]),
+					),
 					isZoneTotal: false,
 				};
-				regionBranches.forEach(branch => {
-					this.months.forEach(m => {
+				regionBranches.forEach((branch) => {
+					this.months.forEach((m) => {
 						const monthData = branch.months[m.key];
 						if (monthData) {
 							regionAgg.months[m.key].target += monthData.target || 0;
@@ -871,9 +882,10 @@ class DrishtiDashboard {
 					});
 				});
 				regionAgg.months[this.months[0].key].branches = regionBranches.length; // Count branches for the first month
-				this.months.forEach(m => {
+				this.months.forEach((m) => {
 					const monthAgg = regionAgg.months[m.key];
-					monthAgg.percentage = monthAgg.target > 0 ? (monthAgg.achievement / monthAgg.target) * 100 : 0;
+					monthAgg.percentage =
+						monthAgg.target > 0 ? (monthAgg.achievement / monthAgg.target) * 100 : 0;
 				});
 				result.push(regionAgg);
 			});
@@ -888,7 +900,7 @@ class DrishtiDashboard {
 		const latestMonthKey = this.months[0].key;
 		const aggregatedCategories = {};
 
-		this.availableFilters.categories.forEach(cat => {
+		this.availableFilters.categories.forEach((cat) => {
 			aggregatedCategories[cat] = {
 				category: cat,
 				months: {
@@ -896,12 +908,12 @@ class DrishtiDashboard {
 						count: 0,
 						changes: { increased: [], decreased: [] }, // No previous day data for reaggregation
 						zone_breakdown: {},
-					}
-				}
+					},
+				},
 			};
 		});
 
-		branches.forEach(branch => {
+		branches.forEach((branch) => {
 			const monthData = branch.months[latestMonthKey];
 			if (monthData && aggregatedCategories[monthData.category]) {
 				const catAgg = aggregatedCategories[monthData.category].months[latestMonthKey];
@@ -920,15 +932,14 @@ class DrishtiDashboard {
 
 		// Get a set of branch names that are in the current filtered view
 		const filteredBranches = this.getFilteredBranches();
-		const filteredBranchNames = new Set(filteredBranches.map(b => b.branch));
+		const filteredBranchNames = new Set(filteredBranches.map((b) => b.branch));
 
 		// Filter the increased and decreased arrays
-		increased = increased.filter(item => filteredBranchNames.has(item.branch));
-		decreased = decreased.filter(item => filteredBranchNames.has(item.branch));
+		increased = increased.filter((item) => filteredBranchNames.has(item.branch));
+		decreased = decreased.filter((item) => filteredBranchNames.has(item.branch));
 
 		return { increased, decreased };
 	}
-
 
 	// ========================================================================
 	// RENDERING - Main Render Function
@@ -945,7 +956,7 @@ class DrishtiDashboard {
 		dataContainer.css("opacity", 0);
 
 		const filteredBranches = this.getFilteredBranches();
-		
+
 		const reaggregatedZoneData = this.reaggregateZoneData(filteredBranches);
 		const reaggregatedCategoryData = this.reaggregateCategoryData(filteredBranches);
 
@@ -1014,6 +1025,25 @@ class DrishtiDashboard {
 
 		html += "</tr></thead><tbody>";
 
+        const grandTotals = {};
+        months.forEach(month => {
+            grandTotals[month.key] = { target: 0, achievement: 0 };
+        });
+
+        // Accumulate grand totals only from zone total items (isZoneTotal === true)
+        zoneData.forEach(item => {
+            if (item.isZoneTotal) { // Only sum from the main zone aggregates to avoid double-counting regions
+                months.forEach(month => {
+                    const mdata = item.months[month.key];
+                    if (mdata) {
+                        grandTotals[month.key].target += mdata.target || 0;
+                        grandTotals[month.key].achievement += mdata.achievement || 0;
+                    }
+                });
+            }
+        });
+
+
 		// Group data by zone from the reaggregated data
 		const zoneGroups = {};
 
@@ -1060,7 +1090,26 @@ class DrishtiDashboard {
 				});
 			});
 
-		html += "</tbody></table>";
+		html += "</tbody>";
+
+        // Grand Total Row
+        html += `<tfoot><tr style="background-color: #0d1b2a; color: #e0e1dd; font-weight: bold;">`;
+        html += `<td colspan="3" style="text-align: left; padding-left: 8px;">TOTAL</td>`; // Spanning Sr, Zone/Region, Branches columns
+
+        months.forEach(month => {
+            const totalTarget = grandTotals[month.key].target;
+            const totalAchievement = grandTotals[month.key].achievement;
+            const overallPercentage = totalTarget > 0 ? (totalAchievement / totalTarget) * 100 : 0;
+
+            html += `
+                <td>${this.formatNumber(totalTarget)}</td>
+                <td>${this.formatNumber(totalAchievement)}</td>
+                <td style="color: ${this.getPctColor(overallPercentage)}">${overallPercentage.toFixed(1)}%</td>
+            `;
+        });
+        html += `</tr></tfoot>`;
+
+        html += "</table>";
 
 		return html;
 	}
@@ -1088,7 +1137,7 @@ class DrishtiDashboard {
 			                <td>${this.formatNumber(mdata.target)}</td>
 			                <td>${this.formatNumber(mdata.achievement)}</td>
 			                <td style="color: ${this.getPctColor(
-								mdata.percentage
+								mdata.percentage,
 							)}">${mdata.percentage?.toFixed(1)}%</td>
 			            `;
 			} else {
@@ -1124,7 +1173,7 @@ class DrishtiDashboard {
 			                <td>${this.formatNumber(mdata.target)}</td>
 			                <td>${this.formatNumber(mdata.achievement)}</td>
 			                <td style="color: ${this.getPctColor(
-								mdata.percentage
+								mdata.percentage,
 							)}">${mdata.percentage?.toFixed(1)}%</td>
 			            `;
 			} else {
@@ -1190,14 +1239,13 @@ class DrishtiDashboard {
 		this.categoryData.forEach((catData) => {
 			const monthData = catData.months[latestMonthKey];
 			if (monthData && monthData.changes) {
-                const filteredChanges = this.filterMovementData(monthData.changes);
+				const filteredChanges = this.filterMovementData(monthData.changes);
 				totalIncreasedBranches = totalIncreasedBranches.concat(filteredChanges.increased);
 				totalDecreasedBranches = totalDecreasedBranches.concat(filteredChanges.decreased);
 			}
 		});
 		const totalUp = totalIncreasedBranches.length;
-        const totalDown = totalDecreasedBranches.length;
-
+		const totalDown = totalDecreasedBranches.length;
 
 		let html = `
     <table class="table table-bordered category-table-redesigned">
@@ -1212,24 +1260,26 @@ class DrishtiDashboard {
         </thead>
         <tbody>
     `;
-        
-        // Filter categories to display
-        let categoriesToDisplay = categoryOrder;
-        if (this.state.selectedCategories.length > 0) {
-            categoriesToDisplay = categoryOrder.filter(c => this.state.selectedCategories.includes(c));
-        }
+
+		// Filter categories to display
+		let categoriesToDisplay = categoryOrder;
+		if (this.state.selectedCategories.length > 0) {
+			categoriesToDisplay = categoryOrder.filter((c) =>
+				this.state.selectedCategories.includes(c),
+			);
+		}
 
 		categoriesToDisplay.forEach((catName) => {
 			const config = categoryConfig[catName];
-            // Find data for this specific category
+			// Find data for this specific category
 			const reaggCatData = reaggregatedCategoryData.find((c) => c.category === catName);
 			const originalCatData = this.categoryData.find((c) => c.category === catName);
-			
+
 			const monthData = reaggCatData?.months[latestMonthKey];
 			const originalMonthData = originalCatData?.months[latestMonthKey];
 
 			const count = monthData?.count || 0;
-            
+
 			// Get original changes and filter them based on current filters
 			const originalChanges = originalMonthData?.changes || { increased: [], decreased: [] };
 			const filteredChanges = this.filterMovementData(originalChanges);
@@ -1246,8 +1296,8 @@ class DrishtiDashboard {
                 <td class="cat-name-cell">
                     <span class="category-toggle">${isExpanded ? "▼" : "▶"}</span>
                     <span class="cat-grade" style="background-color: ${config.color};">${
-				config.grade
-			}</span>
+						config.grade
+					}</span>
                     <div class="cat-name-wrapper">
                         <span>${catName}</span>
                         <span class="category-percentage-share">• ${percentage}%</span>
@@ -1259,16 +1309,8 @@ class DrishtiDashboard {
                 </td>
                 <td class="movement-cell" data-changes='${JSON.stringify(filteredChanges)}'>
                     <div class="movement-summary">
-                        ${
-							upCount > 0
-								? `<span class="mov-up">↑ ${upCount}</span>`
-								: ""
-						}
-                        ${
-							downCount > 0
-								? `<span class="mov-down">↓ ${downCount}</span>`
-								: ""
-						}
+                        ${upCount > 0 ? `<span class="mov-up">↑ ${upCount}</span>` : ""}
+                        ${downCount > 0 ? `<span class="mov-down">↓ ${downCount}</span>` : ""}
                         ${
 							upCount === 0 && downCount === 0
 								? `<span class="mov-neutral">-</span>`
@@ -1294,18 +1336,19 @@ class DrishtiDashboard {
                             <div class="zone-breakdown-cards-container">
                                 ${this.availableFilters.zones
 									.map((zone) => {
-										const zoneCount =
-											monthData?.zone_breakdown[zone] || 0; // Use reaggregated zone breakdown
+										const zoneCount = monthData?.zone_breakdown[zone] || 0; // Use reaggregated zone breakdown
 										const isDisabled = zoneCount === 0;
 										return `
-                                        <div class="zone-card ${isDisabled ? 'disabled-zone-card' : ''}">
+                                        <div class="zone-card ${isDisabled ? "disabled-zone-card" : ""}">
                                             <div class="zone-card-name">${zone}</div>
                                             <div class="zone-card-count">
-                                                ${isDisabled
-                                                    ? `<span>${zoneCount}</span>`
-                                                    : `<span class="zone-drill-link" data-category="${catName}" data-month="${latestMonthKey}" data-zone="${zone}">
+                                                ${
+													isDisabled
+														? `<span>${zoneCount}</span>`
+														: `<span class="zone-drill-link" data-category="${catName}" data-month="${latestMonthKey}" data-zone="${zone}">
                                                         ${zoneCount}
-                                                    </span>`}
+                                                    </span>`
+												}
                                             </div>
                                         </div>
                                         `;
@@ -1326,7 +1369,7 @@ class DrishtiDashboard {
                     <td>Total</td>
                     <td></td>
                     <td class="count-cell">${totalBranches}</td>
-                    <td class="total-movement-cell" data-totals='${JSON.stringify({increased: totalIncreasedBranches, decreased: totalDecreasedBranches})}'>
+                    <td class="total-movement-cell" data-totals='${JSON.stringify({ increased: totalIncreasedBranches, decreased: totalDecreasedBranches })}'>
                         <div class="movement-summary">
                             <span class="mov-up">↑ ${totalUp}</span>
                             <span class="mov-down">↓ ${totalDown}</span>
@@ -1340,21 +1383,17 @@ class DrishtiDashboard {
 		return html;
 	}
 
-				_buildMovementPopupContent(increased, decreased) {
+	_buildMovementPopupContent(increased, decreased) {
+		let leftContent = "",
+			rightContent = "";
 
-					let leftContent = "", rightContent = "";
+		if (decreased && decreased.length > 0) {
+			leftContent += `<div class="popup-section declined">`;
 
-			
+			leftContent += `<h6>Downgraded (${decreased.length})</h6>`;
 
-					if (decreased && decreased.length > 0) {
-
-						leftContent += `<div class="popup-section declined">`;
-
-						leftContent += `<h6>Downgraded (${decreased.length})</h6>`;
-
-						decreased.forEach((item) => {
-
-							leftContent += `
+			decreased.forEach((item) => {
+				leftContent += `
 
 							<div class="popup-item">
 
@@ -1377,24 +1416,18 @@ class DrishtiDashboard {
 							</div>
 
 						`;
+			});
 
-						});
+			leftContent += `</div>`;
+		}
 
-						leftContent += `</div>`;
+		if (increased && increased.length > 0) {
+			rightContent += `<div class="popup-section improved">`;
 
-					}
+			rightContent += `<h6>Upgraded (${increased.length})</h6>`;
 
-			
-
-					if (increased && increased.length > 0) {
-
-						rightContent += `<div class="popup-section improved">`;
-
-						rightContent += `<h6>Upgraded (${increased.length})</h6>`;
-
-						increased.forEach((item) => {
-
-							rightContent += `
+			increased.forEach((item) => {
+				rightContent += `
 
 							<div class="popup-item">
 
@@ -1417,212 +1450,204 @@ class DrishtiDashboard {
 							</div>
 
 						`;
+			});
 
-						});
+			rightContent += `</div>`;
+		}
 
-						rightContent += `</div>`;
+		if (!leftContent && !rightContent) return "";
 
-					}
+		const leftColumnHTML = leftContent ? `<div class="popup-column">${leftContent}</div>` : "";
 
-					
+		const rightColumnHTML = rightContent
+			? `<div class="popup-column">${rightContent}</div>`
+			: "";
 
-							if (!leftContent && !rightContent) return "";
+		return leftColumnHTML + rightColumnHTML;
+	}
 
-					
+	attachMovementPopupHandlers() {
+		const self = this;
+		let popupTimer;
 
-							
+		const showPopup = function (target, data) {
+			clearTimeout(popupTimer);
+			$(".movement-popup").remove();
 
-					
+			const popupContent = self._buildMovementPopupContent(data.increased, data.decreased);
+			if (!popupContent) return;
 
-							const leftColumnHTML = leftContent ? `<div class="popup-column">${leftContent}</div>` : "";
+			const popup = $(
+				`<div class="movement-popup"><div class="popup-main-container">${popupContent}</div></div>`,
+			).appendTo("body");
+			const popupInner = popup.find(".popup-main-container");
 
-					
+			const targetCell = $(target);
+			const cellOffset = targetCell.offset();
+			const cellHeight = targetCell.outerHeight();
+			const cellWidth = targetCell.outerWidth();
 
-							const rightColumnHTML = rightContent ? `<div class="popup-column">${rightContent}</div>` : "";
+			const windowHeight = $(window).height();
+			const scrollY = $(window).scrollTop();
+			const spaceAbove = cellOffset.top - scrollY;
+			const spaceBelow = windowHeight - (cellOffset.top + cellHeight - scrollY);
 
-					
+			let top, left, maxHeight;
+			const margin = 20;
 
-					
+			// Decide position and max-height
+			if (spaceBelow > spaceAbove) {
+				// Position below
+				top = cellOffset.top + cellHeight + 10;
+				maxHeight = spaceBelow - margin;
+			} else {
+				// Position above
+				top = cellOffset.top - 10; // Initial top before adjusting for popup height
+				maxHeight = spaceAbove - margin;
+			}
 
-					
+			popupInner.css("max-height", `${maxHeight}px`);
 
-							return leftColumnHTML + rightColumnHTML;
+			const popupHeight = popup.outerHeight();
+			const popupWidth = popup.outerWidth();
 
-					
+			// Final position adjustment
+			if (spaceBelow < spaceAbove) {
+				top = cellOffset.top - popupHeight - 10;
+			}
 
-						}
+			// Boundary checks
+			if (top < scrollY + margin / 2) {
+				top = scrollY + margin / 2;
+			}
 
-		
+			left = cellOffset.left + cellWidth / 2 - popupWidth / 2;
+			if (left < 0) left = 5;
+			if (left + popupWidth > $(window).width()) left = $(window).width() - popupWidth - 5;
 
-				attachMovementPopupHandlers() {
-					const self = this;
-					let popupTimer;
+			popup.css({ top: `${top}px`, left: `${left}px` });
 
-					const showPopup = function(target, data) {
-						clearTimeout(popupTimer);
-						$(".movement-popup").remove(); 
+			popup
+				.on("mouseenter", function () {
+					clearTimeout(popupTimer);
+				})
+				.on("mouseleave", function () {
+					hidePopup();
+				});
+		};
 
-						const popupContent = self._buildMovementPopupContent(data.increased, data.decreased);
-						if (!popupContent) return;
+		const hidePopup = function () {
+			popupTimer = setTimeout(() => {
+				$(".movement-popup").remove();
+			}, 100);
+		};
 
-						const popup = $(`<div class="movement-popup"><div class="popup-main-container">${popupContent}</div></div>`).appendTo("body");
-						const popupInner = popup.find(".popup-main-container");
-
-						const targetCell = $(target);
-						const cellOffset = targetCell.offset();
-						const cellHeight = targetCell.outerHeight();
-						const cellWidth = targetCell.outerWidth();
-						
-						const windowHeight = $(window).height();
-						const scrollY = $(window).scrollTop();
-						const spaceAbove = cellOffset.top - scrollY;
-						const spaceBelow = windowHeight - (cellOffset.top + cellHeight - scrollY);
-
-						let top, left, maxHeight;
-						const margin = 20;
-
-						// Decide position and max-height
-						if (spaceBelow > spaceAbove) {
-							// Position below
-							top = cellOffset.top + cellHeight + 10;
-							maxHeight = spaceBelow - margin;
-						} else {
-							// Position above
-							top = cellOffset.top - 10; // Initial top before adjusting for popup height
-							maxHeight = spaceAbove - margin;
-						}
-						
-						popupInner.css('max-height', `${maxHeight}px`);
-
-						const popupHeight = popup.outerHeight();
-						const popupWidth = popup.outerWidth();
-
-						// Final position adjustment
-						if (spaceBelow < spaceAbove) {
-							top = cellOffset.top - popupHeight - 10;
-						}
-
-						// Boundary checks
-						if (top < scrollY + margin/2) {
-							top = scrollY + margin/2;
-						}
-						
-						left = cellOffset.left + (cellWidth / 2) - (popupWidth / 2);
-						if (left < 0) left = 5;
-						if (left + popupWidth > $(window).width()) left = $(window).width() - popupWidth - 5;
-
-						popup.css({ top: `${top}px`, left: `${left}px` });
-
-						popup.on("mouseenter", function() {
-							clearTimeout(popupTimer);
-						}).on("mouseleave", function() {
-							hidePopup();
-						});
-					};
-
-					const hidePopup = function() {
-						popupTimer = setTimeout(() => {
-							$(".movement-popup").remove();
-						}, 100);
-					};
-
-					this.page.main.find(".movement-cell .movement-summary").on("mouseenter", function () {
-						const changesData = $(this).parent().data("changes");
-						if (changesData && (changesData.increased.length > 0 || changesData.decreased.length > 0)) {
-							showPopup(this, changesData);
-						}
-					}).on("mouseleave", function() {
-						hidePopup();
-					});
+		this.page.main
+			.find(".movement-cell .movement-summary")
+			.on("mouseenter", function () {
+				const changesData = $(this).parent().data("changes");
+				if (
+					changesData &&
+					(changesData.increased.length > 0 || changesData.decreased.length > 0)
+				) {
+					showPopup(this, changesData);
 				}
+			})
+			.on("mouseleave", function () {
+				hidePopup();
+			});
+	}
 
-	
+	attachTotalMovementPopupHandler() {
+		const self = this;
+		let popupTimer;
 
-				attachTotalMovementPopupHandler() {
-					const self = this;
-					let popupTimer;
+		const showPopup = function (target, data) {
+			clearTimeout(popupTimer);
+			$(".movement-popup").remove();
 
-					const showPopup = function(target, data) {
-						clearTimeout(popupTimer);
-						$(".movement-popup").remove(); 
+			const popupContent = self._buildMovementPopupContent(data.increased, data.decreased);
+			if (!popupContent) return;
 
-						const popupContent = self._buildMovementPopupContent(data.increased, data.decreased);
-						if (!popupContent) return;
+			const popup = $(
+				`<div class="movement-popup"><div class="popup-main-container">${popupContent}</div></div>`,
+			).appendTo("body");
+			const popupInner = popup.find(".popup-main-container");
 
-						const popup = $(`<div class="movement-popup"><div class="popup-main-container">${popupContent}</div></div>`).appendTo("body");
-						const popupInner = popup.find(".popup-main-container");
+			const targetCell = $(target);
+			const cellOffset = targetCell.offset();
+			const cellHeight = targetCell.outerHeight();
+			const cellWidth = targetCell.outerWidth();
 
-						const targetCell = $(target);
-						const cellOffset = targetCell.offset();
-						const cellHeight = targetCell.outerHeight();
-						const cellWidth = targetCell.outerWidth();
-						
-						const windowHeight = $(window).height();
-						const scrollY = $(window).scrollTop();
-						const spaceAbove = cellOffset.top - scrollY;
-						const spaceBelow = windowHeight - (cellOffset.top + cellHeight - scrollY);
+			const windowHeight = $(window).height();
+			const scrollY = $(window).scrollTop();
+			const spaceAbove = cellOffset.top - scrollY;
+			const spaceBelow = windowHeight - (cellOffset.top + cellHeight - scrollY);
 
-						let top, left, maxHeight;
-						const margin = 20;
+			let top, left, maxHeight;
+			const margin = 20;
 
-						// Decide position and max-height
-						if (spaceBelow > spaceAbove) {
-							// Position below
-							top = cellOffset.top + cellHeight + 10;
-							maxHeight = spaceBelow - margin;
-						} else {
-							// Position above
-							top = cellOffset.top - 10; // Initial top before adjusting for popup height
-							maxHeight = spaceAbove - margin;
-						}
-						
-						popupInner.css('max-height', `${maxHeight}px`);
+			// Decide position and max-height
+			if (spaceBelow > spaceAbove) {
+				// Position below
+				top = cellOffset.top + cellHeight + 10;
+				maxHeight = spaceBelow - margin;
+			} else {
+				// Position above
+				top = cellOffset.top - 10; // Initial top before adjusting for popup height
+				maxHeight = spaceAbove - margin;
+			}
 
-						const popupHeight = popup.outerHeight();
-						const popupWidth = popup.outerWidth();
+			popupInner.css("max-height", `${maxHeight}px`);
 
-						// Final position adjustment
-						if (spaceBelow < spaceAbove) {
-							top = cellOffset.top - popupHeight - 10;
-						}
+			const popupHeight = popup.outerHeight();
+			const popupWidth = popup.outerWidth();
 
-						// Boundary checks
-						if (top < scrollY + margin/2) {
-							top = scrollY + margin/2;
-						}
-						
-						left = cellOffset.left + (cellWidth / 2) - (popupWidth / 2);
-						if (left < 0) left = 5;
-						if (left + popupWidth > $(window).width()) left = $(window).width() - popupWidth - 5;
+			// Final position adjustment
+			if (spaceBelow < spaceAbove) {
+				top = cellOffset.top - popupHeight - 10;
+			}
 
-						popup.css({ top: `${top}px`, left: `${left}px` });
+			// Boundary checks
+			if (top < scrollY + margin / 2) {
+				top = scrollY + margin / 2;
+			}
 
-						popup.on("mouseenter", function() {
-							clearTimeout(popupTimer);
-						}).on("mouseleave", function() {
-							hidePopup();
-						});
-					};
+			left = cellOffset.left + cellWidth / 2 - popupWidth / 2;
+			if (left < 0) left = 5;
+			if (left + popupWidth > $(window).width()) left = $(window).width() - popupWidth - 5;
 
-					const hidePopup = function() {
-						popupTimer = setTimeout(() => {
-							$(".movement-popup").remove();
-						}, 100);
-					};
+			popup.css({ top: `${top}px`, left: `${left}px` });
 
-					this.page.main.find(".total-movement-cell .movement-summary").on("mouseenter", function () {
-						const totals = $(this).parent().data("totals");
-						if (totals && (totals.increased.length > 0 || totals.decreased.length > 0)) {
-							showPopup(this, totals);
-						}
-					}).on("mouseleave", function() {
-						hidePopup();
-					});
+			popup
+				.on("mouseenter", function () {
+					clearTimeout(popupTimer);
+				})
+				.on("mouseleave", function () {
+					hidePopup();
+				});
+		};
+
+		const hidePopup = function () {
+			popupTimer = setTimeout(() => {
+				$(".movement-popup").remove();
+			}, 100);
+		};
+
+		this.page.main
+			.find(".total-movement-cell .movement-summary")
+			.on("mouseenter", function () {
+				const totals = $(this).parent().data("totals");
+				if (totals && (totals.increased.length > 0 || totals.decreased.length > 0)) {
+					showPopup(this, totals);
 				}
+			})
+			.on("mouseleave", function () {
+				hidePopup();
+			});
+	}
 
-	
-
-		attachCategoryExpandHandlers() {
+	attachCategoryExpandHandlers() {
 		const self = this;
 
 		this.page.main
@@ -1744,11 +1769,14 @@ class DrishtiDashboard {
 	}
 
 	drillDownToBranchView(zone, region = null) {
-		console.log(`Drilling down to Branch view for Zone: ${zone}` + (region ? `, Region: ${region}` : ''));
+		console.log(
+			`Drilling down to Branch view for Zone: ${zone}` +
+				(region ? `, Region: ${region}` : ""),
+		);
 
 		this.state.selectedZones = [zone];
 		this.state.selectedRegion = region || "";
-		this.state.drillDownActive = true; 
+		this.state.drillDownActive = true;
 
 		// Update filter UI elements to reflect the change
 		this.page.main.find("#region-selector").val(this.state.selectedRegion);
@@ -1756,7 +1784,6 @@ class DrishtiDashboard {
 
 		this.switchTab("branch");
 	}
-
 
 	buildBranchTable(branchData, months) {
 		if (branchData.length === 0) {
@@ -1774,55 +1801,66 @@ class DrishtiDashboard {
 			displayMonths = months.filter((m) => m.key === this.state.selectedMonth);
 		}
 
-		        // --- Correct Performance Segmentation Logic ---
+		// --- Correct Performance Segmentation Logic ---
 
-				// 1. Determine the metric for sorting (latest month's percentage)
-				const sortMonthKey = this.state.selectedMonth || (months.length > 0 ? months[months.length - 1].key : null);
+		// 1. Determine the metric for sorting (latest month's percentage)
+		const sortMonthKey =
+			this.state.selectedMonth || (months.length > 0 ? months[months.length - 1].key : null);
 
-				// 2. Create a safe copy of the filtered data and sort it by performance
-				const sortedBranches = [...branchData].sort((a, b) => {
-					const aPct = a.months[sortMonthKey]?.percentage || 0;
-					const bPct = b.months[sortMonthKey]?.percentage || 0;
-					return bPct - aPct; // Descending sort
-				});
+		// 2. Create a safe copy of the filtered data and sort it by performance
+		const sortedBranches = [...branchData].sort((a, b) => {
+			const aPct = a.months[sortMonthKey]?.percentage || 0;
+			const bPct = b.months[sortMonthKey]?.percentage || 0;
+			return bPct - aPct; // Descending sort
+		});
 
-				// 3. Calculate quartile boundaries and assign segments to the sorted branches
-				const total = sortedBranches.length;
-				sortedBranches.forEach((branch, index) => {
-					if (total < 4) {
-						branch.performanceSegment = "N/A";
-						branch.rowStyle = 'transparent';
-					} else {
-						const top25_index = Math.floor(total * 0.25);
-						const next25_index = Math.floor(total * 0.50);
-						const mid25_index = Math.floor(total * 0.75);
+		// 3. Calculate quartile boundaries and assign segments to the sorted branches
+		const total = sortedBranches.length;
+		sortedBranches.forEach((branch, index) => {
+			if (total < 4) {
+				branch.performanceSegment = "N/A";
+				branch.rowStyle = "transparent";
+			} else {
+				const top25_index = Math.floor(total * 0.25);
+				const next25_index = Math.floor(total * 0.5);
+				const mid25_index = Math.floor(total * 0.75);
 
-						if (index < top25_index) {
-							branch.performanceSegment = "Top 25%";
-							branch.rowStyle = `background-color: #d4edda;`;
-						} else if (index < next25_index) {
-							branch.performanceSegment = "Next 25%";
-							branch.rowStyle = `background-color: #cce5ff;`;
-						} else if (index < mid25_index) {
-							branch.performanceSegment = "Mid 25%";
-							branch.rowStyle = `background-color: #fff3cd;`;
-						} else {
-							branch.performanceSegment = "Bottom 25%";
-							branch.rowStyle = `background-color: #f8d7da;`;
-						}
-					}
-				});
-				
-				// 4. Filter the now-segmented list based on the user's segment selection
-				let filteredBranchData = sortedBranches;
-				if (this.state.selectedSegment && this.state.selectedSegment !== 'all') {
-					filteredBranchData = sortedBranches.filter(branch => branch.performanceSegment === this.state.selectedSegment);
+				if (index < top25_index) {
+					branch.performanceSegment = "Top 25%";
+					branch.rowStyle = `background-color: #d4edda;`;
+				} else if (index < next25_index) {
+					branch.performanceSegment = "Next 25%";
+					branch.rowStyle = `background-color: #cce5ff;`;
+				} else if (index < mid25_index) {
+					branch.performanceSegment = "Mid 25%";
+					branch.rowStyle = `background-color: #fff3cd;`;
+				} else {
+					branch.performanceSegment = "Bottom 25%";
+					branch.rowStyle = `background-color: #f8d7da;`;
 				}
+			}
+		});
 
-				const header = this.buildBranchTableHeader(displayMonths);
-				const body = filteredBranchData
-					.map((branch, index) => this.buildBranchTableRow(branch, displayMonths, index + 1, branch.rowStyle, branch.performanceSegment))
-					.join("");
+		// 4. Filter the now-segmented list based on the user's segment selection
+		let filteredBranchData = sortedBranches;
+		if (this.state.selectedSegment && this.state.selectedSegment !== "all") {
+			filteredBranchData = sortedBranches.filter(
+				(branch) => branch.performanceSegment === this.state.selectedSegment,
+			);
+		}
+
+		const header = this.buildBranchTableHeader(displayMonths);
+		const body = filteredBranchData
+			.map((branch, index) =>
+				this.buildBranchTableRow(
+					branch,
+					displayMonths,
+					index + 1,
+					branch.rowStyle,
+					branch.performanceSegment,
+				),
+			)
+			.join("");
 		return `
             <table class="branch-table">
                 ${header}
@@ -1886,7 +1924,7 @@ class DrishtiDashboard {
 				html += `
                 <td class="metric-cell category-cell">${this.getCategoryBadge(
 					mdata.category,
-					"small"
+					"small",
 				)}</td>
                 <td class="metric-cell amount-cell">${this.formatNumber(mdata.target)}</td>
                 <td class="metric-cell amount-cell">${this.formatNumber(mdata.achievement)}</td>
@@ -1895,10 +1933,10 @@ class DrishtiDashboard {
                     ${
 						status
 							? `<span class="status-badge ${status}">${this.getStatusIcon(
-									status
-							  )} ${
+									status,
+								)} ${
 									diff > 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`
-							  }</span>`
+								}</span>`
 							: ""
 					}
                 </td>
