@@ -55,7 +55,93 @@ class DrishtiDashboard {
 	}
 
 	setupStyles() {
+        // --- Font and Style Injection ---
+        const fontLink = document.createElement("link");
+        fontLink.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap";
+        fontLink.rel = "stylesheet";
+        document.head.appendChild(fontLink);
+
 		const style = `
+            :root {
+                --font-primary: 'Inter', sans-serif;
+                --text-base: 14px;
+                --line-height-base: 1.5;
+            }
+            .frappe-page .page-head, .frappe-page .page-content {
+                font-family: var(--font-primary);
+                font-size: var(--text-base);
+                line-height: var(--line-height-base);
+            }
+
+            /* Section Titles (e.g., "DRISHTI") */
+            .title-text {
+                font-size: 18px !important;
+                font-weight: 600 !important;
+            }
+
+            /* Sub-section Titles (e.g., "ZONE SELECTION") */
+            .filter-section-label {
+                font-size: 16px;
+                font-weight: 500;
+            }
+
+            /* Top Filters / Pills */
+            .filter-tag {
+                font-size: 13px;
+                font-weight: 500;
+            }
+            .filter-tag-count, .filter-tag-pct {
+                font-size: 12px;
+                font-weight: 600;
+            }
+
+            /* Table Headers */
+            .table th {
+                font-size: 13px;
+                font-weight: 500;
+                letter-spacing: 0.25px;
+            }
+
+            /* Table Body */
+            .table td {
+                font-size: 14px; /* Base for table body */
+                font-weight: 400; /* Regular weight */
+            }
+            .table .zone-total-row > td:nth-child(2),
+            .table .region-detail-row > td:nth-child(2) {
+                font-weight: 600; /* Semibold for Zone/Region names */
+            }
+            .table td:first-child {
+                font-size: 12px; /* Row index */
+            }
+            .table .amount-cell {
+                font-weight: 500; /* Medium for Target/Achievement */
+            }
+            .pct-value { /* Class to be added to percentage span */
+                font-size: 14px;
+                font-weight: 600; /* Semibold for percentage values */
+            }
+
+            /* Total Row */
+            tfoot tr td {
+                font-size: 14px;
+                font-weight: 700; /* Bold for label */
+            }
+            tfoot tr td:not(:first-child) {
+                font-size: 15px;
+                font-weight: 600; /* Semibold for numbers */
+            }
+
+            /* Meta / Status Text */
+            .table th.month-col {
+                font-size: 14px;
+                font-weight: 500; /* Medium */
+            }
+            .days-left-indicator {
+                font-size: 12px;
+                font-weight: 400; /* Regular */
+            }
+
 			.movement-popup .popup-main-container {
 				max-height: 400px; /* Default max-height */
 				overflow-y: auto;
@@ -384,7 +470,7 @@ class DrishtiDashboard {
 		}
 
 		const count = this.categoryCounts[category] || 0;
-		return ((count / total) * 100).toFixed(1);
+		return ((count / total) * 100).toFixed(2);
 	}
 
 	attachZoneTagEvents() {
@@ -584,8 +670,10 @@ class DrishtiDashboard {
 						</select>
                         <input type="text" id="branch-search" placeholder="Search branch..." 
                                style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; min-width: 200px; background: white; color: #1b263b;" />
-                        <button id="clear-filters" class="btn btn-secondary btn-sm" style="background: #778da9; border-color: #778da9; color: white;">
-                            🔄 Clear Filters
+                        <button id="clear-filters" class="btn btn-secondary btn-sm" 
+                                style="background: #415a77; border-color: #1b263b; color: white; font-weight: 600;"
+                                title="Resets all filters to their default state and refreshes the dashboard.">
+                            🔄 Reset & Refresh
                         </button>
                     </div>
                 </div>
@@ -675,7 +763,8 @@ class DrishtiDashboard {
 
 		// Clear Filters
 		this.page.main.find("#clear-filters").on("click", function () {
-			self.clearAllFilters();
+			history.pushState({}, "", window.location.pathname);
+			location.reload(true);
 		});
 
 		// Segment Filter
@@ -1013,8 +1102,35 @@ class DrishtiDashboard {
 			                <th rowspan="2">Branches</th>
 			    `;
 
+		const today = new Date();
+		const currentMonth = today.getMonth();
+		const currentYear = today.getFullYear();
+
 		months.forEach((month) => {
-			html += `<th colspan="3">${month.display}</th>`;
+			const monthDate = new Date(month.date);
+			const monthIndex = monthDate.getMonth();
+			const monthYear = monthDate.getFullYear();
+			
+			const monthName = month.display.split("-")[0];
+			const displayYear = `${monthName}-${monthYear}`;
+
+			let daysLeftIndicator = "";
+			if (monthIndex === currentMonth && monthYear === currentYear) {
+				const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+				const currentDay = today.getDate();
+				const remainingDays = lastDayOfMonth - currentDay + 1;
+
+				if (remainingDays >= 0) {
+					daysLeftIndicator = `
+						<br>
+						<span class="days-left-indicator">
+							${remainingDays} Day${remainingDays !== 1 ? "s" : ""} Left
+						</span>
+					`;
+				}
+			}
+
+			html += `<th colspan="3">${displayYear}${daysLeftIndicator}</th>`;
 		});
 
 		html += '</tr><tr class="zone-table-subheader">';
@@ -1024,6 +1140,25 @@ class DrishtiDashboard {
 		});
 
 		html += "</tr></thead><tbody>";
+
+        const styleId = "days-left-indicator-style";
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement("style");
+            style.id = styleId;
+            style.innerHTML = `
+                @keyframes smooth-blink {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.3; }
+                }
+                .days-left-indicator {
+                    color: red;
+                    font-weight: bold;
+                    animation: smooth-blink 1.5s infinite;
+                    font-size: 12px;
+                }
+            `;
+            document.head.appendChild(style);
+        }
 
         const grandTotals = {};
         months.forEach(month => {
@@ -1104,7 +1239,12 @@ class DrishtiDashboard {
             html += `
                 <td>${this.formatNumber(totalTarget)}</td>
                 <td>${this.formatNumber(totalAchievement)}</td>
-                <td style="color: ${this.getPctColor(overallPercentage)}">${overallPercentage.toFixed(1)}%</td>
+                <td>
+					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+						<span class="pct-value" style="min-width: 45px; text-align: right;">${overallPercentage.toFixed(2)}%</span>
+						${this.renderProgressBar(overallPercentage)}
+					</div>
+				</td>
             `;
         });
         html += `</tr></tfoot>`;
@@ -1136,9 +1276,14 @@ class DrishtiDashboard {
 				html += `
 			                <td>${this.formatNumber(mdata.target)}</td>
 			                <td>${this.formatNumber(mdata.achievement)}</td>
-			                <td style="color: ${this.getPctColor(
-								mdata.percentage,
-							)}">${mdata.percentage?.toFixed(1)}%</td>
+			                <td>
+								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+									<span class="pct-value" style="color: ${this.getPctColor(
+										mdata.percentage,
+									)}; min-width: 45px; text-align: right;">${mdata.percentage?.toFixed(2)}%</span>
+									${this.renderProgressBar(mdata.percentage)}
+								</div>
+							</td>
 			            `;
 			} else {
 				html += "<td>-</td><td>-</td><td>-</td>";
@@ -1172,9 +1317,14 @@ class DrishtiDashboard {
 				html += `
 			                <td>${this.formatNumber(mdata.target)}</td>
 			                <td>${this.formatNumber(mdata.achievement)}</td>
-			                <td style="color: ${this.getPctColor(
-								mdata.percentage,
-							)}">${mdata.percentage?.toFixed(1)}%</td>
+			                <td>
+								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+									<span class="pct-value" style="color: ${this.getPctColor(
+										mdata.percentage,
+									)}; min-width: 45px; text-align: right;">${mdata.percentage?.toFixed(2)}%</span>
+									${this.renderProgressBar(mdata.percentage)}
+								</div>
+							</td>
 			            `;
 			} else {
 				html += "<td>-</td><td>-</td><td>-</td>";
@@ -1287,7 +1437,7 @@ class DrishtiDashboard {
 			const downCount = filteredChanges.decreased.length;
 
 			const isExpanded = this.state.expandedZones[`cat_${catName}`] || false;
-			const percentage = totalBranches > 0 ? ((count / totalBranches) * 100).toFixed(1) : 0;
+			const percentage = totalBranches > 0 ? ((count / totalBranches) * 100).toFixed(2) : "0.00";
 
 			html += `
             <tr class="category-row-redesigned" data-category="${catName}" style="border-left: 5px solid ${
@@ -1878,10 +2028,36 @@ class DrishtiDashboard {
 					<th rowspan="2" >Performance Segments</th>
         `;
 
-		months.forEach((month) => {
-			header += `<th colspan="4" class="month-col">${month.display}</th>`;
-		});
+		const today = new Date();
+		const currentMonth = today.getMonth();
+		const currentYear = today.getFullYear();
 
+		months.forEach((month) => {
+			const monthDate = new Date(month.date);
+			const monthIndex = monthDate.getMonth();
+			const monthYear = monthDate.getFullYear();
+			
+			const monthName = month.display.split("-")[0];
+			const displayYear = `${monthName}-${monthYear}`;
+
+			let daysLeftIndicator = "";
+			if (monthIndex === currentMonth && monthYear === currentYear) {
+				                const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+								const currentDay = today.getDate();
+								const remainingDays = lastDayOfMonth - currentDay + 1;
+				
+								if (remainingDays >= 0) {
+									daysLeftIndicator = `
+										<br>
+										<span class="days-left-indicator">
+											${remainingDays} Day${remainingDays !== 1 ? "s" : ""} Left
+										</span>
+									`;
+								}
+							}
+				
+							header += `<th colspan="4" class="month-col">${displayYear}${daysLeftIndicator}</th>`;
+						});
 		header += `</tr><tr class="branch-table-subheader">`;
 
 		months.forEach(() => {
@@ -1894,6 +2070,26 @@ class DrishtiDashboard {
 		});
 
 		header += `</tr></thead>`;
+
+        const styleId = "days-left-indicator-style";
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement("style");
+            style.id = styleId;
+            style.innerHTML = `
+                @keyframes smooth-blink {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.3; }
+                }
+                .days-left-indicator {
+                    color: red;
+                    font-weight: bold;
+                    animation: smooth-blink 1.5s infinite;
+                    font-size: 12px;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
 		return header;
 	}
 
@@ -1918,8 +2114,6 @@ class DrishtiDashboard {
 			const mdata = branch.months[month.key];
 			if (mdata) {
 				const pct = mdata.percentage || 0;
-				const status = mdata.status || "";
-				const diff = mdata.percentage_diff || 0;
 
 				html += `
                 <td class="metric-cell category-cell">${this.getCategoryBadge(
@@ -1928,18 +2122,12 @@ class DrishtiDashboard {
 				)}</td>
                 <td class="metric-cell amount-cell">${this.formatNumber(mdata.target)}</td>
                 <td class="metric-cell amount-cell">${this.formatNumber(mdata.achievement)}</td>
-                <td class="metric-cell pct-cell" style="color:${this.getPctColor(pct)}">
-                    ${pct.toFixed(1)}%
-                    ${
-						status
-							? `<span class="status-badge ${status}">${this.getStatusIcon(
-									status,
-								)} ${
-									diff > 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`
-								}</span>`
-							: ""
-					}
-                </td>
+                <td>
+					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+						<span class="pct-value" style="color: ${this.getPctColor(pct)}; min-width: 45px; text-align: right;">${pct.toFixed(2)}%</span>
+						${this.renderProgressBar(pct)}
+					</div>
+				</td>
             `;
 			} else {
 				html += "<td>-</td><td>-</td><td>-</td><td>-</td>";
@@ -1990,6 +2178,17 @@ class DrishtiDashboard {
 		if (pct >= 40) return "#f59e0b";
 		if (pct >= 20) return "#ef4444";
 		return "#dc2626";
+	}
+
+	renderProgressBar(percentage) {
+		const pct = Math.max(0, Math.min(100, percentage || 0));
+		const color = this.getPctColor(pct);
+
+		return `
+			<div class="progress-container-3d">
+				<div class="progress-bar-3d" style="width: ${pct}%; background-color: ${color};"></div>
+			</div>
+		`;
 	}
 
 	getStatusIcon(status) {
@@ -2682,6 +2881,30 @@ class DrishtiDashboard {
                 }
                 .total-movement-cell {
                     cursor: pointer;
+                }
+
+                @keyframes progress-bar-stripes {
+                  from { background-position: 40px 0; }
+                  to { background-position: 0 0; }
+                }
+
+                .progress-container-3d {
+                    width: 80px;
+                    height: 14px;
+                    background-color: #e9ecef;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+                    position: relative;
+                }
+
+                .progress-bar-3d {
+                    height: 100%;
+                    border-radius: 8px;
+                    transition: width 0.6s ease;
+                    background-size: 40px 40px;
+                    animation: progress-bar-stripes 2s linear infinite;
+                    background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.15) 50%, rgba(255,255,255,.15) 75%, transparent 75%, transparent);
                 }
             </style>
         `;
