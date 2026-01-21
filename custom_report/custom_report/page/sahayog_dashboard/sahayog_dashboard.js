@@ -1014,8 +1014,35 @@ class DrishtiDashboard {
 			                <th rowspan="2">Branches</th>
 			    `;
 
+		const today = new Date();
+		const currentMonth = today.getMonth();
+		const currentYear = today.getFullYear();
+
 		months.forEach((month) => {
-			html += `<th colspan="3">${month.display}</th>`;
+			const monthDate = new Date(month.date);
+			const monthIndex = monthDate.getMonth();
+			const monthYear = monthDate.getFullYear();
+			
+			const monthName = month.display.split("-")[0];
+			const displayYear = `${monthName}-${monthYear}`;
+
+			let daysLeftIndicator = "";
+			if (monthIndex === currentMonth && monthYear === currentYear) {
+				const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+				const currentDay = today.getDate();
+				const remainingDays = lastDayOfMonth - currentDay + 1;
+
+				if (remainingDays >= 0) {
+					daysLeftIndicator = `
+						<br>
+						<span class="days-left-indicator">
+							${remainingDays} Day${remainingDays !== 1 ? "s" : ""} Left
+						</span>
+					`;
+				}
+			}
+
+			html += `<th colspan="3">${displayYear}${daysLeftIndicator}</th>`;
 		});
 
 		html += '</tr><tr class="zone-table-subheader">';
@@ -1025,6 +1052,25 @@ class DrishtiDashboard {
 		});
 
 		html += "</tr></thead><tbody>";
+
+        const styleId = "days-left-indicator-style";
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement("style");
+            style.id = styleId;
+            style.innerHTML = `
+                @keyframes smooth-blink {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.3; }
+                }
+                .days-left-indicator {
+                    color: red;
+                    font-weight: bold;
+                    animation: smooth-blink 1.5s infinite;
+                    font-size: 12px;
+                }
+            `;
+            document.head.appendChild(style);
+        }
 
         const grandTotals = {};
         months.forEach(month => {
@@ -1894,10 +1940,36 @@ class DrishtiDashboard {
 					<th rowspan="2" >Performance Segments</th>
         `;
 
-		months.forEach((month) => {
-			header += `<th colspan="4" class="month-col">${month.display}</th>`;
-		});
+		const today = new Date();
+		const currentMonth = today.getMonth();
+		const currentYear = today.getFullYear();
 
+		months.forEach((month) => {
+			const monthDate = new Date(month.date);
+			const monthIndex = monthDate.getMonth();
+			const monthYear = monthDate.getFullYear();
+			
+			const monthName = month.display.split("-")[0];
+			const displayYear = `${monthName}-${monthYear}`;
+
+			let daysLeftIndicator = "";
+			if (monthIndex === currentMonth && monthYear === currentYear) {
+				                const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+								const currentDay = today.getDate();
+								const remainingDays = lastDayOfMonth - currentDay + 1;
+				
+								if (remainingDays >= 0) {
+									daysLeftIndicator = `
+										<br>
+										<span class="days-left-indicator">
+											${remainingDays} Day${remainingDays !== 1 ? "s" : ""} Left
+										</span>
+									`;
+								}
+							}
+				
+							header += `<th colspan="4" class="month-col">${displayYear}${daysLeftIndicator}</th>`;
+						});
 		header += `</tr><tr class="branch-table-subheader">`;
 
 		months.forEach(() => {
@@ -1910,6 +1982,26 @@ class DrishtiDashboard {
 		});
 
 		header += `</tr></thead>`;
+
+        const styleId = "days-left-indicator-style";
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement("style");
+            style.id = styleId;
+            style.innerHTML = `
+                @keyframes smooth-blink {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.3; }
+                }
+                .days-left-indicator {
+                    color: red;
+                    font-weight: bold;
+                    animation: smooth-blink 1.5s infinite;
+                    font-size: 12px;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
 		return header;
 	}
 
