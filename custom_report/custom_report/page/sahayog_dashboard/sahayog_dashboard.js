@@ -384,7 +384,7 @@ class DrishtiDashboard {
 		}
 
 		const count = this.categoryCounts[category] || 0;
-		return ((count / total) * 100).toFixed(1);
+		return ((count / total) * 100).toFixed(2);
 	}
 
 	attachZoneTagEvents() {
@@ -1155,7 +1155,7 @@ class DrishtiDashboard {
                 <td>${this.formatNumber(totalAchievement)}</td>
                 <td>
 					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-						<span style="min-width: 45px; text-align: right;">${overallPercentage.toFixed(1)}%</span>
+						<span style="min-width: 45px; text-align: right;">${overallPercentage.toFixed(2)}%</span>
 						${this.renderProgressBar(overallPercentage)}
 					</div>
 				</td>
@@ -1194,7 +1194,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span style="color: ${this.getPctColor(
 										mdata.percentage,
-									)}; min-width: 45px; text-align: right;">${mdata.percentage?.toFixed(1)}%</span>
+									)}; min-width: 45px; text-align: right;">${mdata.percentage?.toFixed(2)}%</span>
 									${this.renderProgressBar(mdata.percentage)}
 								</div>
 							</td>
@@ -1235,7 +1235,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span style="color: ${this.getPctColor(
 										mdata.percentage,
-									)}; min-width: 45px; text-align: right;">${mdata.percentage?.toFixed(1)}%</span>
+									)}; min-width: 45px; text-align: right;">${mdata.percentage?.toFixed(2)}%</span>
 									${this.renderProgressBar(mdata.percentage)}
 								</div>
 							</td>
@@ -1351,7 +1351,7 @@ class DrishtiDashboard {
 			const downCount = filteredChanges.decreased.length;
 
 			const isExpanded = this.state.expandedZones[`cat_${catName}`] || false;
-			const percentage = totalBranches > 0 ? ((count / totalBranches) * 100).toFixed(1) : 0;
+			const percentage = totalBranches > 0 ? ((count / totalBranches) * 100).toFixed(2) : "0.00";
 
 			html += `
             <tr class="category-row-redesigned" data-category="${catName}" style="border-left: 5px solid ${
@@ -2038,7 +2038,7 @@ class DrishtiDashboard {
                 <td class="metric-cell amount-cell">${this.formatNumber(mdata.achievement)}</td>
                 <td>
 					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-						<span style="color: ${this.getPctColor(pct)}; min-width: 45px; text-align: right;">${pct.toFixed(1)}%</span>
+						<span style="color: ${this.getPctColor(pct)}; min-width: 45px; text-align: right;">${pct.toFixed(2)}%</span>
 						${this.renderProgressBar(pct)}
 					</div>
 				</td>
