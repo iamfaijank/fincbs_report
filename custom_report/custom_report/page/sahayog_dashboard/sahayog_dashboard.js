@@ -55,7 +55,93 @@ class DrishtiDashboard {
 	}
 
 	setupStyles() {
+        // --- Font and Style Injection ---
+        const fontLink = document.createElement("link");
+        fontLink.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap";
+        fontLink.rel = "stylesheet";
+        document.head.appendChild(fontLink);
+
 		const style = `
+            :root {
+                --font-primary: 'Inter', sans-serif;
+                --text-base: 14px;
+                --line-height-base: 1.5;
+            }
+            .frappe-page .page-head, .frappe-page .page-content {
+                font-family: var(--font-primary);
+                font-size: var(--text-base);
+                line-height: var(--line-height-base);
+            }
+
+            /* Section Titles (e.g., "DRISHTI") */
+            .title-text {
+                font-size: 18px !important;
+                font-weight: 600 !important;
+            }
+
+            /* Sub-section Titles (e.g., "ZONE SELECTION") */
+            .filter-section-label {
+                font-size: 16px;
+                font-weight: 500;
+            }
+
+            /* Top Filters / Pills */
+            .filter-tag {
+                font-size: 13px;
+                font-weight: 500;
+            }
+            .filter-tag-count, .filter-tag-pct {
+                font-size: 12px;
+                font-weight: 600;
+            }
+
+            /* Table Headers */
+            .table th {
+                font-size: 13px;
+                font-weight: 500;
+                letter-spacing: 0.25px;
+            }
+
+            /* Table Body */
+            .table td {
+                font-size: 14px; /* Base for table body */
+                font-weight: 400; /* Regular weight */
+            }
+            .table .zone-total-row > td:nth-child(2),
+            .table .region-detail-row > td:nth-child(2) {
+                font-weight: 600; /* Semibold for Zone/Region names */
+            }
+            .table td:first-child {
+                font-size: 12px; /* Row index */
+            }
+            .table .amount-cell {
+                font-weight: 500; /* Medium for Target/Achievement */
+            }
+            .pct-value { /* Class to be added to percentage span */
+                font-size: 14px;
+                font-weight: 600; /* Semibold for percentage values */
+            }
+
+            /* Total Row */
+            tfoot tr td {
+                font-size: 14px;
+                font-weight: 700; /* Bold for label */
+            }
+            tfoot tr td:not(:first-child) {
+                font-size: 15px;
+                font-weight: 600; /* Semibold for numbers */
+            }
+
+            /* Meta / Status Text */
+            .table th.month-col {
+                font-size: 14px;
+                font-weight: 500; /* Medium */
+            }
+            .days-left-indicator {
+                font-size: 12px;
+                font-weight: 400; /* Regular */
+            }
+
 			.movement-popup .popup-main-container {
 				max-height: 400px; /* Default max-height */
 				overflow-y: auto;
@@ -1155,7 +1241,7 @@ class DrishtiDashboard {
                 <td>${this.formatNumber(totalAchievement)}</td>
                 <td>
 					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-						<span style="min-width: 45px; text-align: right;">${overallPercentage.toFixed(2)}%</span>
+						<span class="pct-value" style="min-width: 45px; text-align: right;">${overallPercentage.toFixed(2)}%</span>
 						${this.renderProgressBar(overallPercentage)}
 					</div>
 				</td>
@@ -1192,7 +1278,7 @@ class DrishtiDashboard {
 			                <td>${this.formatNumber(mdata.achievement)}</td>
 			                <td>
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-									<span style="color: ${this.getPctColor(
+									<span class="pct-value" style="color: ${this.getPctColor(
 										mdata.percentage,
 									)}; min-width: 45px; text-align: right;">${mdata.percentage?.toFixed(2)}%</span>
 									${this.renderProgressBar(mdata.percentage)}
@@ -1233,7 +1319,7 @@ class DrishtiDashboard {
 			                <td>${this.formatNumber(mdata.achievement)}</td>
 			                <td>
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-									<span style="color: ${this.getPctColor(
+									<span class="pct-value" style="color: ${this.getPctColor(
 										mdata.percentage,
 									)}; min-width: 45px; text-align: right;">${mdata.percentage?.toFixed(2)}%</span>
 									${this.renderProgressBar(mdata.percentage)}
@@ -2038,7 +2124,7 @@ class DrishtiDashboard {
                 <td class="metric-cell amount-cell">${this.formatNumber(mdata.achievement)}</td>
                 <td>
 					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-						<span style="color: ${this.getPctColor(pct)}; min-width: 45px; text-align: right;">${pct.toFixed(2)}%</span>
+						<span class="pct-value" style="color: ${this.getPctColor(pct)}; min-width: 45px; text-align: right;">${pct.toFixed(2)}%</span>
 						${this.renderProgressBar(pct)}
 					</div>
 				</td>
