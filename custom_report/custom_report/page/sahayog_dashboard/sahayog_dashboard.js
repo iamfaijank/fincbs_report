@@ -584,8 +584,10 @@ class DrishtiDashboard {
 						</select>
                         <input type="text" id="branch-search" placeholder="Search branch..." 
                                style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; min-width: 200px; background: white; color: #1b263b;" />
-                        <button id="clear-filters" class="btn btn-secondary btn-sm" style="background: #778da9; border-color: #778da9; color: white;">
-                            🔄 Clear Filters
+                        <button id="clear-filters" class="btn btn-secondary btn-sm" 
+                                style="background: #415a77; border-color: #1b263b; color: white; font-weight: 600;"
+                                title="Resets all filters to their default state and refreshes the dashboard.">
+                            🔄 Reset & Refresh
                         </button>
                     </div>
                 </div>
