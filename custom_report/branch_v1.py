@@ -237,3 +237,66 @@ def get_targets(sol_id: str, fiscal_year: str) -> Dict[str, float]:
         row.type.lower().strip(): float(row.target or 0)
         for row in rows
     }
+
+
+# ============================================================================
+# DRISHTI DASHBOARD API
+# ============================================================================
+
+@frappe.whitelist()
+def get_drishti_dashboard_data(financial_year: str, filters: str):
+	"""
+	Fetch all master data required for the Drishti dashboard.
+	This is a complex and potentially slow query, so it should be used with care.
+	"""
+	# NOTE: This is a placeholder implementation.
+	# The actual implementation will require fetching and processing data
+	# from various doctypes like Sahayog Branch, Branch Category Report, etc.
+
+	dummy_data = {
+		"consolidated_branches": [
+			{
+				"sol_id": "1001",
+				"branch_name": "GONDIA",
+				"zone": "ZONE-1",
+				"region": "REGION-1",
+				"latest_category": "Pinnacle",
+				"monthly_data": {
+					"APR": {"category": "Pinnacle", "target": 50000, "achievement": 60000},
+					"MAY": {"category": "Pinnacle", "target": 55000, "achievement": 58000},
+				},
+			},
+			{
+				"sol_id": "1002",
+				"branch_name": "NAGPUR",
+				"zone": "ZONE-1",
+				"region": "REGION-1",
+				"latest_category": "Master",
+				"monthly_data": {
+					"APR": {"category": "Accelerator", "target": 40000, "achievement": 35000},
+					"MAY": {"category": "Master", "target": 42000, "achievement": 45000},
+				},
+			},
+		],
+		"months": {
+			"APR": {
+				"grouped_by_category": {
+					"Pinnacle": {"ZONE-1": {"branch_count": 1}},
+					"Accelerator": {"ZONE-1": {"branch_count": 1}},
+				}
+			},
+			"MAY": {
+				"grouped_by_category": {
+					"Pinnacle": {"ZONE-1": {"branch_count": 1}},
+					"Master": {"ZONE-1": {"branch_count": 1}},
+				}
+			},
+		},
+		"financial_year": financial_year,
+	}
+
+	return {
+		"status": "success",
+		"data": dummy_data,
+	}
+
