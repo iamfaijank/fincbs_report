@@ -3,569 +3,1119 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Gondia</title>
-		<link
-			rel="stylesheet"
-			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-		/>
+		<title>Branch Dashboard</title>
 		<style>
+			:root {
+				--primary-1: #097c80;
+				--primary-2: #066164;
+				--accent: #ffd700;
+				--white: #fff;
+				--shadow: rgba(0, 0, 0, 0.12);
+				--transition: all 0.2s ease;
+			}
+
 			* {
 				margin: 0;
 				padding: 0;
 				box-sizing: border-box;
+				-webkit-font-smoothing: antialiased;
+				-moz-osx-font-smoothing: grayscale;
 			}
 
 			body {
 				font-family:
 					-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
 					sans-serif;
-				background-color: #f8fafc;
-				color: #1e293b;
-				line-height: 1.6;
-				width: 100%;
-				margin: 0 auto;
-				padding-top: 120px; /* Adjusted to account for more compact fixed header height */
+				background: #f8fafc;
+				padding-top: 64px;
 			}
 
-			.container {
-				background: white;
-
-				overflow: hidden;
-				margin-bottom: 30px;
-			}
-
-			/* Header Section */
+			/* HEADER - Compact design */
 			.header {
-				background: linear-gradient(
-					135deg,
-					#097c80 0%,
-					#066164 100%
-				); /* New primary color gradient */
-				color: white;
-				padding: 15px 25px; /* More compact padding */
-				position: fixed; /* Make header fixed */
+				position: fixed;
 				top: 0;
 				left: 0;
 				right: 0;
-				z-index: 1000; /* Ensure header stays on top of other content */
-				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Add subtle shadow */
-				display: flex; /* Use flexbox for internal arrangement */
-				flex-direction: column; /* Stack items vertically */
-				justify-content: center; /* Center content vertically */
-				align-items: flex-start; /* Align content to the start horizontally */
+				z-index: 1000;
+				background: linear-gradient(135deg, var(--primary-1), var(--primary-2));
+				color: var(--white);
+				box-shadow: 0 2px 8px var(--shadow);
+				min-height: 64px;
 			}
 
-			.back-button {
-				position: absolute;
-				top: 15px; /* Align with new header padding */
-				right: 20px; /* Align with new header padding */
-				color: white;
-				text-decoration: none;
-				font-size: 16px;
-				display: flex;
+			.header-content {
+				display: grid;
+				grid-template-columns: auto 1fr auto;
 				align-items: center;
-				gap: 8px;
-				padding: 8px 12px;
-				border-radius: 8px;
-				background-color: rgba(255, 255, 255, 0.1);
-				transition: background-color 0.3s ease;
+				gap: 20px;
+				padding: 12px 24px;
+				max-width: 1400px;
+				margin: 0 auto;
 			}
 
-			.back-button:hover {
-				background-color: rgba(255, 255, 255, 0.2);
-			}
-
-			.back-button i {
-				font-size: 14px;
-			}
-
-			.header::after {
-				content: "";
-				position: absolute;
-				bottom: 0;
-				left: 0;
-				right: 0;
-				height: 4px;
-				background: linear-gradient(90deg, #ffd700 0%, #daa520 100%); /* Gold accent */
-			}
-
-			.branch-code {
-				font-size: 14px;
-				opacity: 0.9;
-				margin-bottom: 5px; /* Positive margin for proper spacing */
-				display: flex;
-				align-items: center;
-				gap: 8px;
+			.branch-info {
+				min-width: 200px;
+				max-width: 300px;
 			}
 
 			.branch-name {
-				font-size: 32px;
-				font-weight: 700;
-				margin-bottom: 5px; /* Positive margin for proper spacing */
-			}
-
-			.branch-location {
 				font-size: 18px;
-				opacity: 0.95;
-				display: flex;
-				align-items: center;
-				gap: 10px;
-			}
-
-			.branch-location i {
-				font-size: 16px;
-			}
-
-			/* Content Layout */
-			.content {
-				display: grid;
-				grid-template-columns: 1fr 1fr;
-				gap: 0;
-				min-height: 500px;
-			}
-
-			/* Branch Info Section */
-			.branch-info {
-				padding: 40px;
-				background: #f8fafc;
-				border-right: 1px solid #e2e8f0;
-			}
-
-			.section-title {
-				font-size: 20px;
 				font-weight: 600;
-				color: #0f172a;
-				margin-bottom: 25px;
-				padding-bottom: 10px;
-				border-bottom: 2px solid #097c80; /* New primary color */
-				display: inline-block;
+				line-height: 1.3;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
 			}
 
-			.info-grid {
-				display: grid;
-				grid-template-columns: 1fr 1fr;
-				gap: 25px;
-				margin-top: 20px;
-			}
-
-			.info-card {
-				background: white;
-				border-radius: 12px;
-				padding: 20px;
-				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-				transition:
-					transform 0.2s,
-					box-shadow 0.2s;
-				border: 1px solid #e2e8f0;
-			}
-
-			.info-card:hover {
-				transform: translateY(-2px);
-				box-shadow: 0 44px 12px rgba(0, 0, 0, 0.08);
-			}
-
-			.card-label {
-				font-size: 13px;
-				color: #64748b;
-				text-transform: uppercase;
-				letter-spacing: 0.5px;
-				margin-bottom: 8px;
+			.branch-meta {
+				font-size: 12px;
+				opacity: 0.9;
+				margin-top: 2px;
 				display: flex;
-				align-items: center;
-				gap: 6px;
-			}
-
-			.card-value {
-				font-size: 20px;
-				font-weight: 600;
-				color: #1e293b;
-			}
-
-			.card-value.subtext {
-				font-size: 14px;
-				color: #64748b;
-				font-weight: normal;
-				margin-top: 4px;
-			}
-
-			/* Manager Profile Section */
-			.manager-profile {
-				padding: 40px;
-				background: white;
-			}
-
-			.manager-header {
-				display: flex;
-				justify-content: space-between;
-				align-items: flex-start;
-				margin-bottom: 30px;
-			}
-
-			.manager-title {
-				font-size: 20px;
-				font-weight: 600;
-				color: #0f172a;
-			}
-
-			.manager-tenure {
-				background: #e7f7f7; /* Light teal background */
-				color: #066164; /* Darker teal text */
-				padding: 8px 16px;
-				border-radius: 20px;
-				font-size: 14px;
-				font-weight: 600;
-				display: flex;
-				align-items: center;
 				gap: 8px;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
 			}
 
-			.manager-details {
-				background: #f8fafc;
-				border-radius: 16px;
-				padding: 30px;
-				margin-top: 20px;
-				border: 1px solid #e2e8f0;
+			/* SEARCH - Enhanced UX */
+			.branch-search {
+				position: relative;
+				max-width: 500px;
+				margin: 0 auto;
+				width: 100%;
 			}
 
-			.manager-name {
-				font-size: 28px;
-				font-weight: 700;
-				color: #1e293b;
-				margin-bottom: 15px;
-			}
-
-			.manager-contact {
+			.search-container {
+				position: relative;
 				display: flex;
-				flex-direction: column;
-				gap: 15px;
-				margin-top: 25px;
+				background: var(--white);
+				border-radius: 8px;
+				overflow: hidden;
+				box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+				transition: var(--transition);
 			}
 
-			.contact-item {
-				display: flex;
-				align-items: center;
-				gap: 12px;
-				font-size: 16px;
+			.search-container:focus-within {
+				box-shadow: 0 0 0 2px var(--accent);
 			}
 
-			.contact-item i {
-				width: 20px;
-				color: #097c80; /* New primary color */
+			.search-input {
+				flex: 1;
+				border: none;
+				padding: 10px 14px;
+				font-size: 14px;
+				outline: none;
+				background: transparent;
+				min-width: 0;
 			}
 
-			.contact-label {
-				color: #64748b;
-				min-width: 80px;
-			}
-
-			.contact-value {
-				font-weight: 500;
-				color: #1e293b;
-			}
-
-			.manager-avatar {
-				width: 80px;
-				height: 80px;
-				background: linear-gradient(
-					135deg,
-					#097c80 0%,
-					#066164 100%
-				); /* New primary color gradient */
-				border-radius: 50%;
+			.search-button {
+				background: var(--accent);
+				border: none;
+				padding: 0 16px;
+				cursor: pointer;
 				display: flex;
 				align-items: center;
 				justify-content: center;
-				color: white;
-				font-size: 32px;
+				min-width: 60px;
+				transition: var(--transition);
+			}
+
+			.search-button:hover {
+				background: #e6c200;
+			}
+
+			.search-button:active {
+				transform: scale(0.98);
+			}
+
+			/* SUGGESTIONS - Virtual scroll ready */
+			.search-suggestions {
+				position: absolute;
+				top: 100%;
+				left: 0;
+				right: 0;
+				background: var(--white);
+				border-radius: 8px;
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+				margin-top: 4px;
+				max-height: 280px;
+				overflow: hidden;
+				display: none;
+				z-index: 1001;
+				color: #1e293b;
+			}
+
+			.suggestions-container {
+				max-height: 280px;
+				overflow-y: auto;
+				overscroll-behavior: contain;
+				-webkit-overflow-scrolling: touch;
+			}
+
+			.suggestion-item {
+				padding: 10px 14px;
+				cursor: pointer;
+				border-bottom: 1px solid #f1f5f9;
+				font-size: 13px;
+				line-height: 1.4;
+				transition: var(--transition);
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+
+			.suggestion-item:last-child {
+				border-bottom: none;
+			}
+
+			.suggestion-item:hover,
+			.suggestion-item.selected {
+				background: #f8fafc;
+			}
+
+			.suggestion-highlight {
+				color: var(--primary-1);
 				font-weight: 600;
-				margin-bottom: 20px;
-				box-shadow: 0 4px 12px rgba(9, 124, 128, 0.3); /* New primary color shadow */
 			}
 
-			/* Stats Section */
-			.stats-section {
-				grid-column: 1 / -1;
-				background: white;
-				border-top: 1px solid #e2e8f0;
-				padding: 30px 40px;
+			.suggestion-sol {
+				font-size: 11px;
+				background: #e2e8f0;
+				padding: 2px 6px;
+				border-radius: 4px;
+				color: #475569;
 			}
 
-			.stats-grid {
+			/* BACK BUTTON */
+			.back-button {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				color: var(--white);
+				text-decoration: none;
+				padding: 8px 12px;
+				border-radius: 6px;
+				background: rgba(255, 255, 255, 0.1);
+				font-size: 13px;
+				white-space: nowrap;
+				transition: var(--transition);
+			}
+
+			.back-button:hover {
+				background: rgba(255, 255, 255, 0.2);
+				text-decoration: none;
+			}
+
+			/* LOADING STATES */
+			.loading {
+				opacity: 0.7;
+				position: relative;
+				pointer-events: none;
+			}
+
+			.loading::after {
+				content: "";
+				position: absolute;
+				right: 8px;
+				top: 50%;
+				transform: translateY(-50%);
+				width: 16px;
+				height: 16px;
+				border: 2px solid #e2e8f0;
+				border-top-color: var(--primary-1);
+				border-radius: 50%;
+				animation: spin 0.8s linear infinite;
+			}
+			.page-content {
+				max-width: 1400px;
+				margin: 0 auto;
+				padding: 24px;
+			}
+
+			.bm-card {
+				background: #ffffff;
+				border-radius: 16px;
+				padding: 24px;
 				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-				gap: 25px;
+				grid-template-columns: 140px 1fr;
+				gap: 24px;
+				box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
 			}
 
-			.stat-card {
+			.bm-avatar {
+				width: 120px;
+				height: 120px;
+				border-radius: 16px;
+				overflow: hidden;
+				border: 3px solid #e2e8f0;
+				background: #f1f5f9;
+			}
+
+			.bm-avatar img {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+			}
+
+			.bm-title {
+				font-size: 13px;
+				font-weight: 600;
+				color: #64748b;
+				margin-bottom: 4px;
+			}
+
+			.bm-name {
+				font-size: 22px;
+				font-weight: 700;
+				color: #0f172a;
+			}
+
+			.bm-sub {
+				font-size: 13px;
+				color: #475569;
+				margin-bottom: 16px;
+			}
+
+			.bm-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+				gap: 14px;
+				font-size: 13px;
+			}
+
+			.bm-grid label {
+				display: block;
+				color: #64748b;
+				font-weight: 600;
+				margin-bottom: 2px;
+			}
+
+			.bm-grid span {
+				color: #1e293b;
+				font-weight: 500;
+			}
+
+			/* Staff Detail Section */
+			.staff-detail-section {
+				margin-top: 30px;
+				background: #ffffff;
+				border-radius: 16px;
+				padding: 24px;
+				box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+			}
+
+			.staff-detail-section h2 {
+				font-size: 20px;
+				font-weight: 700;
+				color: #0f172a;
+				margin-bottom: 20px;
+				border-bottom: 1px solid #e2e8f0;
+				padding-bottom: 15px;
+			}
+
+			.staff-cards-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+				gap: 20px;
+			}
+
+			.staff-card {
 				background: #f8fafc;
 				border-radius: 12px;
-				padding: 25px;
+				padding: 18px;
 				text-align: center;
+				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+				transition:
+					transform 0.2s ease,
+					box-shadow 0.2s ease;
 				border: 1px solid #e2e8f0;
 			}
 
-			.stat-value {
-				font-size: 32px;
-				font-weight: 700;
-				color: #066164; /* Darker primary for stat value */
+			.staff-card:hover {
+				transform: translateY(-5px);
+				box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+			}
+
+			.staff-card-title {
+				font-size: 14px;
+				font-weight: 600;
+				color: #64748b;
 				margin-bottom: 8px;
 			}
 
-			.stat-label {
-				font-size: 14px;
-				color: #64748b;
-				text-transform: uppercase;
-				letter-spacing: 0.5px;
+			.staff-card-count {
+				font-size: 24px; /* Reduced from 28px */
+				font-weight: 700;
+				color: var(--primary-1);
 			}
 
-			/* Footer */
-			.footer {
-				text-align: center;
-				padding: 20px;
-				color: #64748b;
-				font-size: 14px;
-				border-top: 1px solid #e2e8f0;
-				background: #f8fafc;
-			}
-
-			/* Responsive Design */
-			@media (max-width: 900px) {
-				.content {
+			@media (max-width: 768px) {
+				.bm-card {
 					grid-template-columns: 1fr;
+					text-align: center;
+				}
+
+				.bm-avatar {
+					margin: 0 auto;
+				}
+
+				.bm-grid {
+					text-align: left;
+				}
+			}
+
+			@keyframes spin {
+				to {
+					transform: translateY(-50%) rotate(360deg);
+				}
+			}
+
+			/* RESPONSIVE */
+			@media (max-width: 768px) {
+				body {
+					padding-top: 120px;
+				}
+
+				.header {
+					min-height: 120px;
+				}
+
+				.header-content {
+					grid-template-columns: 1fr;
+					gap: 12px;
+					padding: 12px 16px;
 				}
 
 				.branch-info {
-					border-right: none;
-					border-bottom: 1px solid #e2e8f0;
+					max-width: 100%;
+					text-align: center;
 				}
 
-				.info-grid {
-					grid-template-columns: 1fr;
+				.branch-search {
+					max-width: 100%;
+				}
+
+				.back-button {
+					position: absolute;
+					top: 12px;
+					right: 16px;
 				}
 			}
 
-			@media (max-width: 600px) {
-				.header {
-					padding: 25px 20px;
-				}
-
+			@media (max-width: 480px) {
 				.branch-name {
-					font-size: 26px;
+					font-size: 16px;
 				}
 
-				.branch-info,
-				.manager-profile {
-					padding: 25px 20px;
+				.search-input {
+					padding: 8px 12px;
+					font-size: 13px;
 				}
 
-				.manager-header {
-					flex-direction: column;
-					gap: 15px;
-				}
-
-				.stats-grid {
-					grid-template-columns: 1fr;
-				}
-			}
-
-			/* Print Styles */
-			@media print {
-				body {
-					background: white;
-					padding: 0;
-				}
-
-				.container {
-					box-shadow: none;
-					border-radius: 0;
-				}
-
-				.info-card:hover,
-				.stat-card:hover {
-					transform: none;
-					box-shadow: none;
+				.search-button {
+					padding: 0 12px;
+					min-width: 50px;
 				}
 			}
 		</style>
 	</head>
 	<body>
-		<!-- Header Section -->
-		<div class="header">
-			<a
-				href="#"
-				class="back-button"
-				onclick="
-					window.history.back();
-					return false;
-				"
-			>
-				<i class="fas fa-arrow-left"></i>
-				Back to Drishti
-			</a>
-			<div class="branch-code">
-				<i class="fas fa-hashtag"></i>
-				Branch Code: 1001
-			</div>
-			<h1 class="branch-name">Gondia Main Branch -</h1>
-			<div class="branch-location">
-				<i class="fas fa-map-marker-alt"></i>
-				Zone-1 , Region-1 , Maharashtra
-			</div>
-		</div>
-
-		<div class="container">
-			<!-- Main Content -->
-			<div class="content">
-				<!-- Branch Information Section -->
+		<header class="header" role="banner">
+			<div class="header-content">
 				<div class="branch-info">
-					<h2 class="section-title">Branch Information</h2>
-					<div class="info-grid">
-						<div class="info-card">
-							<div class="card-label">
-								<i class="fas fa-calendar-alt"></i>
-								Established
-							</div>
-							<div class="card-value">January 15, 2010</div>
-							<div class="card-value subtext">14 years of service</div>
-						</div>
-
-						<div class="info-card">
-							<div class="card-label">
-								<i class="fas fa-users"></i>
-								Team Size
-							</div>
-							<div class="card-value">24 Members</div>
-							<div class="card-value subtext">Across 5 departments</div>
-						</div>
-
-						<div class="info-card">
-							<div class="card-label">
-								<i class="fas fa-building"></i>
-								Branch Type
-							</div>
-							<div class="card-value">Main Branch</div>
-							<div class="card-value subtext">Regional headquarters</div>
-						</div>
-
-						<div class="info-card">
-							<div class="card-label">
-								<i class="fas fa-star"></i>
-								Performance
-							</div>
-							<div class="card-value">A+ Rating</div>
-							<div class="card-value subtext">Q4 2023 assessment</div>
-						</div>
+					<h1 class="branch-name" id="branch-name" aria-live="polite">Loading...</h1>
+					<div class="branch-meta" aria-live="polite">
+						<span id="branch-zone">--</span> • <span id="branch-region">--</span> •
+						<span id="branch-state">--</span>
 					</div>
 				</div>
 
-				<!-- Branch Manager Section -->
-				<div class="manager-profile">
-					<div class="manager-header">
-						<h2 class="manager-title">Branch Manager</h2>
-						<div class="manager-tenure">
-							<i class="fas fa-clock"></i>
-							Tenure: 3 Years 6 Months
-						</div>
-					</div>
+				<div class="branch-search">
+					<form id="branch-search-form" class="search-container" role="search">
+						<input
+							type="search"
+							id="branch-search-input"
+							class="search-input"
+							placeholder="Search by SOL ID or Branch Name..."
+							aria-label="Search branches"
+							autocomplete="off"
+							spellcheck="false"
+						/>
+						<button type="submit" class="search-button" aria-label="Search">
+							<svg
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<circle cx="11" cy="11" r="8"></circle>
+								<path d="M21 21l-4.35-4.35"></path>
+							</svg>
+						</button>
+					</form>
 
-					<div class="manager-details">
-						<div class="manager-avatar">AR</div>
-						<h3 class="manager-name">Ashish Ashokji Rathi</h3>
-
-						<div class="manager-contact">
-							<div class="contact-item">
-								<i class="fas fa-phone"></i>
-								<span class="contact-label">Phone:</span>
-								<span class="contact-value">+91 94228 17278</span>
-							</div>
-
-							<div class="contact-item">
-								<i class="fas fa-calendar-check"></i>
-								<span class="contact-label">Joined:</span>
-								<span class="contact-value">2nd January, 2021</span>
-							</div>
-
-							<div class="contact-item">
-								<i class="fas fa-envelope"></i>
-								<span class="contact-label">Email:</span>
-								<span class="contact-value">ashish.rathi@bankpinnacle.com</span>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Statistics Section -->
-				<div class="stats-section">
-					<h2 class="section-title">Branch Performance Metrics</h2>
-					<div class="stats-grid">
-						<div class="stat-card">
-							<div class="stat-value">1,512</div>
-							<div class="stat-label">Active Accounts</div>
-						</div>
-
-						<div class="stat-card">
-							<div class="stat-value">₹42.7Cr</div>
-							<div class="stat-label">Total Deposits</div>
-						</div>
-
-						<div class="stat-card">
-							<div class="stat-value">98.2%</div>
-							<div class="stat-label">Customer Satisfaction</div>
-						</div>
-
-						<div class="stat-card">
-							<div class="stat-value">24</div>
-							<div class="stat-label">Awards & Recognitions</div>
-						</div>
+					<div
+						class="search-suggestions"
+						id="search-suggestions"
+						role="listbox"
+						aria-label="Search suggestions"
+					>
+						<div class="suggestions-container" id="suggestions-container"></div>
 					</div>
 				</div>
+
+				<a
+					href="#"
+					class="back-button"
+					onclick="
+						window.history.back();
+						return false;
+					"
+					aria-label="Go back"
+				>
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path d="M19 12H5M12 19l-7-7 7-7"></path>
+					</svg>
+					Back
+				</a>
 			</div>
+		</header>
+		<main class="page-content">
+			<section class="bm-card" id="bm-profile">
+				<div class="bm-left">
+					<div class="bm-avatar">
+						<img id="bm-photo" alt="Branch Manager" />
+					</div>
+				</div>
 
-			<!-- Footer -->
-			<div class="footer">
-				<p>Pinnacle Bank Gondia Main Branch • Last updated: March 2024</p>
-				<p style="margin-top: 5px; font-size: 13px; opacity: 0.8">
-					<i class="fas fa-map-marker-alt"></i> Station Road, Gondia - 441601,
-					Maharashtra
-				</p>
-			</div>
-		</div>
+				<div class="bm-right">
+					<div class="bm-title">Branch Manager</div>
+
+					<div class="bm-name" id="bm-name">Loading...</div>
+					<div class="bm-sub">
+						<span id="branch-name">--</span> •
+						<span id="branch-district">--</span>
+					</div>
+
+					<div class="bm-grid">
+						<div>
+							<label>Mobile</label>
+							<span id="bm-mobile">--</span>
+						</div>
+						<div>
+							<label>Date of Joining</label>
+							<span id="bm-doj">--</span>
+						</div>
+						<div>
+							<label>BM Vintage</label>
+							<span id="bm-vintage">--</span>
+						</div>
+						<div>
+							<label>Reporting Person</label>
+							<span id="ch-name">--</span>
+						</div>
+						<div>
+							<label>Branch Vintage</label>
+							<span id="branch-vintage">--</span>
+						</div>
+						<div>
+							<label>Staff Count</label>
+							<span id="staff-count">--</span>
+						</div>
+						<div>
+							<label>Branch Category</label>
+							<span id="branch-category">--</span>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="staff-detail-section">
+				<h2>Staff Detail</h2>
+				<div class="staff-cards-grid">
+					<div class="staff-card">
+						<div class="staff-card-title">Sub Staff</div>
+						<div class="staff-card-count" id="substaff-count">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">BDO</div>
+						<div class="staff-card-count" id="bdo-count">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">RO</div>
+						<div class="staff-card-count" id="ro-count">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">Total Active DDS Agent</div>
+						<div class="staff-card-count" id="total-active-dds-agent-count">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">Total DDS Agent</div>
+						<div class="staff-card-count" id="total-dds-agent-count">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">Total Active SS Agent</div>
+						<div class="staff-card-count" id="total-active-ss-agent-count">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">Total SS Agent</div>
+						<div class="staff-card-count" id="total-ss-agent-count">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">Total Staff</div>
+						<div class="staff-card-count" id="total-staff-count">--</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="staff-detail-section">
+				<h2>Deposit & Book Position</h2>
+				<div class="staff-cards-grid">
+					<div class="staff-card">
+						<div class="staff-card-title">Total Book</div>
+						<div class="staff-card-count" id="total-book">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">SA Book</div>
+						<div class="staff-card-count" id="sa-book">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">CA Book</div>
+						<div class="staff-card-count" id="ca-book">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">FD Book</div>
+						<div class="staff-card-count" id="fd-book">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">RD Book</div>
+						<div class="staff-card-count" id="rd-book">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">DDS Book</div>
+						<div class="staff-card-count" id="dds-book">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">SMBG Book</div>
+						<div class="staff-card-count" id="smbg-book">--</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="staff-detail-section">
+				<h2>Customers Details</h2>
+				<div class="staff-cards-grid">
+					<div class="staff-card">
+						<div class="staff-card-title">Total Customers</div>
+						<div class="staff-card-count" id="total-customers-id">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">CA Customers</div>
+						<div class="staff-card-count" id="total-ca-no-of-customers">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">SA Customers</div>
+						<div class="staff-card-count" id="total-sa-no-of-customers">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">FD Customers</div>
+						<div class="staff-card-count" id="total-fd-no-of-customers">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">RD Customers</div>
+						<div class="staff-card-count" id="total-rd-no-of_customers">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">DDS Customers</div>
+						<div class="staff-card-count" id="total-dds-no-of-customers">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">SMBG Customers</div>
+						<div class="staff-card-count" id="total-smbg-no-of-customers">--</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="staff-detail-section">
+				<h2>Demand & Collection Performance</h2>
+				<div class="staff-cards-grid">
+					<div class="staff-card">
+						<div class="staff-card-title">DD Collection</div>
+						<div class="staff-card-count" id="dd-collection">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">RD Collection</div>
+						<div class="staff-card-count" id="rd-collection">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">DDS Demand</div>
+						<div class="staff-card-count" id="dds-demand">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">DDS Demand vs Collection</div>
+						<div class="staff-card-count" id="dds-demand-vs-collection">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">SMBG Demand</div>
+						<div class="staff-card-count" id="smbg-demand">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">SMBG Collection</div>
+						<div class="staff-card-count" id="smbg-collection">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">SMBG Demand vs Collection</div>
+						<div class="staff-card-count" id="smbg-demand-vs-collection">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">RD Demand</div>
+						<div class="staff-card-count" id="rd-demand">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">RD SMBG Collection</div>
+						<div class="staff-card-count" id="rd-smbg-collection">--</div>
+					</div>
+					<div class="staff-card">
+						<div class="staff-card-title">RD SMBG Pending</div>
+						<div class="staff-card-count" id="rd-smbg-pending">--</div>
+					</div>
+				</div>
+			</section>
+		</main>
 
 		<script>
-			// Simple interaction enhancements
-			document.addEventListener("DOMContentLoaded", function () {
-				// Add animation to cards on load
-				const cards = document.querySelectorAll(".info-card, .stat-card");
-				cards.forEach((card, index) => {
-					card.style.opacity = "0";
-					card.style.transform = "translateY(20px)";
+			/* =========================================================
+	   BRANCH DASHBOARD (HEADER + SEARCH)
+	   ========================================================= */
+			const BranchDashboard = {
+				state: {
+					currentSolId: null,
+					suggestions: [],
+					selectedIndex: -1,
+					cache: new Map(),
+					abortController: null,
+				},
 
-					setTimeout(() => {
-						card.style.transition = "opacity 0.5s ease, transform 0.5s ease";
-						card.style.opacity = "1";
-						card.style.transform = "translateY(0)";
-					}, index * 100);
-				});
+				el: {
+					branchName: document.getElementById("branch-name"),
+					branchZone: document.getElementById("branch-zone"),
+					branchRegion: document.getElementById("branch-region"),
+					branchState: document.getElementById("branch-state"),
+					searchInput: document.getElementById("branch-search-input"),
+					searchForm: document.getElementById("branch-search-form"),
+					suggestionsBox: document.getElementById("search-suggestions"),
+					suggestionsContainer: document.getElementById("suggestions-container"),
+				},
 
-				// Format the phone number for better readability
-				const phoneElement = document.querySelector(".contact-value");
-				if (phoneElement && phoneElement.textContent.includes("9422817278")) {
-					phoneElement.textContent = "+91 94228 17278";
-				}
+				/* ---------------- Utilities ---------------- */
+				debounce(fn, delay) {
+					let t;
+					return (...args) => {
+						clearTimeout(t);
+						t = setTimeout(() => fn.apply(this, args), delay);
+					};
+				},
 
-				// Add current date to footer
-				const now = new Date();
-				const options = { year: "numeric", month: "long", day: "numeric" };
-				const dateString = now.toLocaleDateString("en-US", options);
+				getCache(key) {
+					const c = this.state.cache.get(key);
+					if (c && Date.now() - c.time < 300000) return c.data;
+					return null;
+				},
 
-				const footerDate = document.createElement("p");
-				footerDate.style.marginTop = "5px";
-				footerDate.style.fontSize = "12px";
-				footerDate.style.opacity = "0.7";
-				footerDate.innerHTML = `<i class="far fa-calendar"></i> Generated on: ${dateString}`;
+				setCache(key, data) {
+					this.state.cache.set(key, { data, time: Date.now() });
+				},
 
-				document.querySelector(".footer").appendChild(footerDate);
-			});
+				async fetchJSON(url) {
+					if (this.state.abortController) {
+						this.state.abortController.abort();
+					}
+					this.state.abortController = new AbortController();
+
+					const res = await fetch(url, {
+						signal: this.state.abortController.signal,
+					});
+					if (!res.ok) throw new Error(res.status);
+					return res.json();
+				},
+
+				/* ---------------- Branch Header ---------------- */
+				async loadBranch(solId, pushState = true) {
+					if (!solId) return;
+
+					this.state.currentSolId = solId;
+					this.hideSuggestions();
+					this.el.searchInput.value = "";
+
+					if (pushState) {
+						const url = new URL(window.location);
+						url.searchParams.set("sol_id", solId);
+						window.history.pushState({}, "", url);
+					}
+
+					try {
+						const cacheKey = "branch_" + solId;
+						let data = this.getCache(cacheKey);
+
+						if (!data) {
+							const r = await this.fetchJSON(
+								`/api/method/custom_report.branch_v1.get_branch_header_data?sol_id=${solId}`,
+							);
+							data = r.message;
+							if (data) this.setCache(cacheKey, data);
+						}
+
+						if (!data) throw "Not found";
+
+						this.el.branchName.textContent = `${data.branch} (${data.sol_id})`;
+						this.el.branchZone.textContent = data.zone || "--";
+						this.el.branchRegion.textContent = data.region || "--";
+						this.el.branchState.textContent = data.state || "--";
+
+						/* 🔗 Load Branch Manager Profile */
+						BranchManagerProfile.load(solId);
+					} catch (e) {
+						this.el.branchName.textContent = "Branch not found";
+						this.el.branchZone.textContent =
+							this.el.branchRegion.textContent =
+							this.el.branchState.textContent =
+								"--";
+					}
+				},
+
+				/* ---------------- Search Suggestions ---------------- */
+				async fetchSuggestions(txt) {
+					if (txt.length < 2) {
+						this.hideSuggestions();
+						return;
+					}
+
+					const key = "search_" + txt.toLowerCase();
+					let list = this.getCache(key);
+
+					try {
+						if (!list) {
+							const r = await this.fetchJSON(
+								`/api/method/custom_report.branch_v1.search_branches?txt=${encodeURIComponent(txt)}`,
+							);
+							list = r.message || [];
+							this.setCache(key, list);
+						}
+
+						this.state.suggestions = list.slice(0, 5);
+						this.renderSuggestions(txt);
+					} catch (e) {
+						this.hideSuggestions();
+					}
+				},
+
+				renderSuggestions(searchTxt) {
+					const box = this.el.suggestionsContainer;
+					box.innerHTML = "";
+					this.state.selectedIndex = -1;
+
+					if (!this.state.suggestions.length) {
+						this.hideSuggestions();
+						return;
+					}
+
+					const regex = new RegExp(`(${searchTxt})`, "ig");
+
+					this.state.suggestions.forEach((b, i) => {
+						const div = document.createElement("div");
+						div.className = "suggestion-item";
+						div.dataset.solId = b.sol_id;
+
+						div.innerHTML = `
+					<div>
+						${b.branch.replace(regex, '<span class="suggestion-highlight">$1</span>')}
+						<div style="font-size:11px;color:#64748b">${b.region} • ${b.state}</div>
+					</div>
+					<span class="suggestion-sol">${b.sol_id}</span>
+				`;
+
+						div.onclick = () => this.loadBranch(b.sol_id);
+						div.onmouseenter = () => this.highlight(i);
+
+						box.appendChild(div);
+					});
+
+					this.el.suggestionsBox.style.display = "block";
+				},
+
+				hideSuggestions() {
+					this.el.suggestionsBox.style.display = "none";
+					this.state.selectedIndex = -1;
+				},
+
+				highlight(i) {
+					const items = this.el.suggestionsContainer.children;
+					[...items].forEach((el, idx) => el.classList.toggle("selected", idx === i));
+					this.state.selectedIndex = i;
+				},
+
+				/* ---------------- Keyboard ---------------- */
+				handleKey(e) {
+					const items = this.el.suggestionsContainer.children;
+					if (!items.length) return;
+
+					if (e.key === "ArrowDown") {
+						e.preventDefault();
+						this.highlight(Math.min(this.state.selectedIndex + 1, items.length - 1));
+					}
+
+					if (e.key === "ArrowUp") {
+						e.preventDefault();
+						this.highlight(Math.max(this.state.selectedIndex - 1, 0));
+					}
+
+					if (e.key === "Enter") {
+						e.preventDefault();
+						if (this.state.selectedIndex >= 0) {
+							items[this.state.selectedIndex].click();
+						}
+					}
+
+					if (e.key === "Escape") {
+						this.hideSuggestions();
+					}
+				},
+
+				/* ---------------- Init ---------------- */
+				init() {
+					const debouncedSearch = this.debounce(this.fetchSuggestions, 250);
+
+					this.el.searchInput.addEventListener("input", (e) =>
+						debouncedSearch.call(this, e.target.value.trim()),
+					);
+
+					this.el.searchInput.addEventListener("keydown", (e) => this.handleKey(e));
+
+					this.el.searchForm.addEventListener("submit", (e) => {
+						e.preventDefault();
+						if (this.state.suggestions[0]) {
+							this.loadBranch(this.state.suggestions[0].sol_id);
+						}
+					});
+
+					document.addEventListener("click", (e) => {
+						if (!this.el.searchForm.contains(e.target)) this.hideSuggestions();
+					});
+
+					window.addEventListener("popstate", () => {
+						const sol = new URLSearchParams(location.search).get("sol_id");
+						if (sol) this.loadBranch(sol, false);
+					});
+
+					const params = new URLSearchParams(location.search);
+					const sol = params.get("sol_id");
+					if (sol) this.loadBranch(sol, false);
+				},
+			};
+
+			/* =========================================================
+	   BRANCH MANAGER PROFILE
+	   ========================================================= */
+			const BranchManagerProfile = {
+				el: {
+					name: document.getElementById("bm-name"),
+					mobile: document.getElementById("bm-mobile"),
+					vintage: document.getElementById("bm-vintage"),
+					doj: document.getElementById("bm-doj"),
+					chName: document.getElementById("ch-name"),
+					branchName: document.getElementById("branch-name"),
+					branchDistrict: document.getElementById("branch-district"),
+					branchVintage: document.getElementById("branch-vintage"),
+					staffCount: document.getElementById("staff-count"),
+					category: document.getElementById("branch-category"),
+					photo: document.getElementById("bm-photo"),
+
+					// Staff Detail Counts
+					substaffCount: document.getElementById("substaff-count"),
+					bdoCount: document.getElementById("bdo-count"),
+					roCount: document.getElementById("ro-count"),
+					totalActiveDdsAgentCount: document.getElementById(
+						"total-active-dds-agent-count",
+					),
+					totalDdsAgentCount: document.getElementById("total-dds-agent-count"),
+					totalActiveSsAgentCount: document.getElementById(
+						"total-active-ss-agent-count",
+					),
+					totalSsAgentCount: document.getElementById("total-ss-agent-count"),
+					totalStaffCount: document.getElementById("total-staff-count"),
+
+					// Deposit & Book Position
+					totalBook: document.getElementById("total-book"),
+					saBook: document.getElementById("sa-book"),
+					caBook: document.getElementById("ca-book"),
+					fdBook: document.getElementById("fd-book"),
+					rdBook: document.getElementById("rd-book"),
+					ddsBook: document.getElementById("dds-book"),
+					smbgBook: document.getElementById("smbg-book"),
+
+					// Customer Base Snapshot
+					totalCustomersId: document.getElementById("total-customers-id"),
+					totalCaNoOfCustomers: document.getElementById("total-ca-no-of-customers"),
+					totalSaNoOfCustomers: document.getElementById("total-sa-no-of-customers"),
+					totalFdNoOfCustomers: document.getElementById("total-fd-no-of-customers"),
+					totalRdNoOfCustomers: document.getElementById("total-rd-no-of_customers"),
+					totalDdsNoOfCustomers: document.getElementById("total-dds-no-of-customers"),
+					totalSmbgNoOfCustomers: document.getElementById("total-smbg-no-of-customers"),
+
+					// Demand & Collection Performance
+					ddCollection: document.getElementById("dd-collection"),
+					rdCollection: document.getElementById("rd-collection"),
+					ddsDemand: document.getElementById("dds-demand"),
+					ddsDemandVsCollection: document.getElementById("dds-demand-vs-collection"),
+					smbgDemand: document.getElementById("smbg-demand"),
+					smbgCollection: document.getElementById("smbg-collection"),
+					smbgDemandVsCollection: document.getElementById("smbg-demand-vs-collection"),
+					rdDemand: document.getElementById("rd-demand"),
+					rdSmbgCollection: document.getElementById("rd-smbg-collection"),
+					rdSmbgPending: document.getElementById("rd-smbg-pending"),
+				},
+
+				value(v) {
+					if (!v || v === "#N/A") return "--";
+					return v;
+				},
+
+				formatDate(d) {
+					if (!d) return "--";
+					return new Date(d).toLocaleDateString("en-GB");
+				},
+
+				formatIndianNumber(num) {
+					if (isNaN(num) || num === null || num === undefined) return "--";
+
+					const parts = num.toString().split(".");
+
+					let lastThree = parts[0].substring(parts[0].length - 3);
+
+					const otherNumbers = parts[0].substring(0, parts[0].length - 3);
+
+					if (otherNumbers != "") lastThree = "," + lastThree;
+
+					const formatted =
+						otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
+
+					return parts.length > 1 ? formatted + "." + parts[1] : formatted;
+				},
+
+				async load(solId) {
+					try {
+						const r = await fetch(
+							`/api/method/custom_report.branch_v1.get_branch_profile_data?sol_id=${solId}`,
+						);
+						const j = await r.json();
+						const d = j.message || {};
+
+						this.el.name.textContent = this.value(d.bm_name);
+						this.el.mobile.textContent = this.value(d.bm_mob_no);
+						this.el.vintage.textContent = this.value(d.bm_vintage);
+						this.el.doj.textContent = this.formatDate(d.bm_doj);
+						this.el.chName.textContent = this.value(d.ch_name);
+
+						this.el.branchName.textContent = this.value(d.branch_name);
+						this.el.branchDistrict.textContent = this.value(d.district);
+						this.el.branchVintage.textContent = this.value(d.branch_vintage);
+						this.el.staffCount.textContent = this.value(d.staff_nos || d.staff_count);
+						this.el.category.textContent = this.value(d.branch_location_category);
+
+						this.el.substaffCount.textContent = this.value(d.staff_nos); // Using staff_nos for substaff
+						this.el.bdoCount.textContent = this.value(d.bdo);
+						this.el.roCount.textContent = this.value(d.ro);
+						this.el.totalActiveDdsAgentCount.textContent = this.value(
+							d.total_active_dds_agent,
+						);
+						this.el.totalDdsAgentCount.textContent = this.value(d.total_dds_agent);
+						this.el.totalActiveSsAgentCount.textContent = this.value(
+							d.total_active_ss_agent,
+						);
+						this.el.totalSsAgentCount.textContent = this.value(d.total_ss_agent);
+						this.el.totalStaffCount.textContent = this.value(d.staff_count); // Using staff_count for total staff
+
+						// Populate Deposit & Book Position
+						this.el.totalBook.textContent = this.formatIndianNumber(d.total_book);
+						this.el.saBook.textContent = this.formatIndianNumber(d.sa_book);
+						this.el.caBook.textContent = this.formatIndianNumber(d.ca_book);
+						this.el.fdBook.textContent = this.formatIndianNumber(d.fd_book);
+						this.el.rdBook.textContent = this.formatIndianNumber(d.rd_book);
+						this.el.ddsBook.textContent = this.formatIndianNumber(d.dds_book);
+						this.el.smbgBook.textContent = this.formatIndianNumber(d.smbg_book);
+
+						// Populate Customer Base Snapshot
+						this.el.totalCustomersId.textContent = this.formatIndianNumber(
+							d.total_customers_id,
+						);
+						this.el.totalCaNoOfCustomers.textContent = this.formatIndianNumber(
+							d.total_ca_no_of_customers,
+						);
+						this.el.totalSaNoOfCustomers.textContent = this.formatIndianNumber(
+							d.total_sa_no_of_customers,
+						);
+						this.el.totalFdNoOfCustomers.textContent = this.formatIndianNumber(
+							d.total_fd_no_of_customers,
+						);
+						this.el.totalRdNoOfCustomers.textContent = this.formatIndianNumber(
+							d.total_rd_no_of_customers,
+						);
+						this.el.totalDdsNoOfCustomers.textContent = this.formatIndianNumber(
+							d.total_dds_no_of_customers,
+						);
+						this.el.totalSmbgNoOfCustomers.textContent = this.formatIndianNumber(
+							d.total_smbg_no_of_customers,
+						);
+
+						// Populate Demand & Collection Performance
+						this.el.ddCollection.textContent = this.formatIndianNumber(
+							d.dd_collection,
+						);
+						this.el.rdCollection.textContent = this.formatIndianNumber(
+							d.rd_collection,
+						);
+						this.el.ddsDemand.textContent = this.formatIndianNumber(d.dds_demand);
+						this.el.ddsDemandVsCollection.textContent =
+							this.formatIndianNumber(
+								parseFloat(d.dds_demand_vs_collection).toFixed(2),
+							) + "%";
+						this.el.smbgDemand.textContent = this.formatIndianNumber(d.smbg_demand);
+						this.el.smbgCollection.textContent = this.formatIndianNumber(
+							d.smbg_collection,
+						);
+						this.el.smbgDemandVsCollection.textContent =
+							this.formatIndianNumber(
+								parseFloat(d.smbg_demand_vs_collection).toFixed(2),
+							) + "%";
+						this.el.rdDemand.textContent = this.formatIndianNumber(d.rd_demand);
+						this.el.rdSmbgCollection.textContent = this.formatIndianNumber(
+							d.rd_smbg_collection,
+						);
+						this.el.rdSmbgPending.textContent = this.formatIndianNumber(
+							d.rd_smbg_pending,
+						);
+
+						this.el.photo.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+							d.bm_name || "BM",
+						)}&background=097c80&color=fff&size=256`;
+					} catch (e) {
+						this.el.name.textContent = "Branch Manager data unavailable";
+					}
+				},
+			};
+
+			document.addEventListener("DOMContentLoaded", () => BranchDashboard.init());
 		</script>
 	</body>
 </html>
