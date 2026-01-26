@@ -3,568 +3,366 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Gondia</title>
-		<link
-			rel="stylesheet"
-			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-		/>
+		<title>Branch Dashboard</title>
 		<style>
+			:root {
+				--primary-1: #097c80;
+				--primary-2: #066164;
+				--accent: #ffd700;
+				--white: #fff;
+				--shadow: rgba(0, 0, 0, 0.12);
+			}
 			* {
 				margin: 0;
 				padding: 0;
 				box-sizing: border-box;
 			}
-
 			body {
 				font-family:
-					-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-					sans-serif;
-				background-color: #f8fafc;
-				color: #1e293b;
-				line-height: 1.6;
-				width: 100%;
-				margin: 0 auto;
-				padding-top: 120px; /* Adjusted to account for more compact fixed header height */
+					-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+				background: #f8fafc;
+				padding-top: 120px;
 			}
 
-			.container {
-				background: white;
-
-				overflow: hidden;
-				margin-bottom: 30px;
-			}
-
-			/* Header Section */
-			.header {
-				background: linear-gradient(
-					135deg,
-					#097c80 0%,
-					#066164 100%
-				); /* New primary color gradient */
-				color: white;
-				padding: 15px 25px; /* More compact padding */
-				position: fixed; /* Make header fixed */
+			header.header {
+				position: fixed;
 				top: 0;
 				left: 0;
 				right: 0;
-				z-index: 1000; /* Ensure header stays on top of other content */
-				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Add subtle shadow */
-				display: flex; /* Use flexbox for internal arrangement */
-				flex-direction: column; /* Stack items vertically */
-				justify-content: center; /* Center content vertically */
-				align-items: flex-start; /* Align content to the start horizontally */
+				z-index: 1000;
+				height: 120px;
+				background: linear-gradient(135deg, var(--primary-1), var(--primary-2));
+				color: var(--white);
+				box-shadow: 0 1px 6px var(--shadow);
 			}
-
-			.back-button {
-				position: absolute;
-				top: 15px; /* Align with new header padding */
-				right: 20px; /* Align with new header padding */
-				color: white;
-				text-decoration: none;
-				font-size: 16px;
+			.header-top {
 				display: flex;
 				align-items: center;
-				gap: 8px;
-				padding: 8px 12px;
-				border-radius: 8px;
-				background-color: rgba(255, 255, 255, 0.1);
-				transition: background-color 0.3s ease;
+				justify-content: space-between;
+				padding: 18px 28px;
+				position: relative;
 			}
-
-			.back-button:hover {
-				background-color: rgba(255, 255, 255, 0.2);
-			}
-
-			.back-button i {
-				font-size: 14px;
-			}
-
-			.header::after {
-				content: "";
-				position: absolute;
-				bottom: 0;
-				left: 0;
-				right: 0;
-				height: 4px;
-				background: linear-gradient(90deg, #ffd700 0%, #daa520 100%); /* Gold accent */
-			}
-
-			.branch-code {
-				font-size: 14px;
-				opacity: 0.9;
-				margin-bottom: 5px; /* Positive margin for proper spacing */
-				display: flex;
-				align-items: center;
-				gap: 8px;
-			}
-
 			.branch-name {
-				font-size: 32px;
+				font-size: 28px;
 				font-weight: 700;
-				margin-bottom: 5px; /* Positive margin for proper spacing */
+				line-height: 1.2;
 			}
-
-			.branch-location {
-				font-size: 18px;
-				opacity: 0.95;
+			.branch-name span {
+				font-size: 15px;
+				font-weight: 500;
+				opacity: 0.9;
+			}
+			.header-center {
+				position: absolute;
+				left: 50%;
+				transform: translateX(-50%);
+			}
+			form.branch-search {
 				display: flex;
-				align-items: center;
 				gap: 10px;
+				width: 420px;
+				position: relative;
 			}
-
-			.branch-location i {
-				font-size: 16px;
+			.branch-search input {
+				flex: 1;
+				padding: 10px 14px;
+				border-radius: 8px;
+				border: none;
+				font-size: 14px;
+				outline: none;
 			}
-
-			/* Content Layout */
-			.content {
-				display: grid;
-				grid-template-columns: 1fr 1fr;
-				gap: 0;
-				min-height: 500px;
-			}
-
-			/* Branch Info Section */
-			.branch-info {
-				padding: 40px;
-				background: #f8fafc;
-				border-right: 1px solid #e2e8f0;
-			}
-
-			.section-title {
-				font-size: 20px;
+			.branch-search button {
+				padding: 10px 16px;
+				border-radius: 8px;
+				border: none;
+				background: var(--accent);
+				color: #1e293b;
 				font-weight: 600;
-				color: #0f172a;
-				margin-bottom: 25px;
-				padding-bottom: 10px;
-				border-bottom: 2px solid #097c80; /* New primary color */
-				display: inline-block;
-			}
-
-			.info-grid {
-				display: grid;
-				grid-template-columns: 1fr 1fr;
-				gap: 25px;
-				margin-top: 20px;
-			}
-
-			.info-card {
-				background: white;
-				border-radius: 12px;
-				padding: 20px;
-				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-				transition:
-					transform 0.2s,
-					box-shadow 0.2s;
-				border: 1px solid #e2e8f0;
-			}
-
-			.info-card:hover {
-				transform: translateY(-2px);
-				box-shadow: 0 44px 12px rgba(0, 0, 0, 0.08);
-			}
-
-			.card-label {
-				font-size: 13px;
-				color: #64748b;
-				text-transform: uppercase;
-				letter-spacing: 0.5px;
-				margin-bottom: 8px;
+				cursor: pointer;
 				display: flex;
 				align-items: center;
 				gap: 6px;
 			}
-
-			.card-value {
-				font-size: 20px;
-				font-weight: 600;
-				color: #1e293b;
+			.branch-search button:hover {
+				background: #e6c200;
 			}
-
-			.card-value.subtext {
-				font-size: 14px;
-				color: #64748b;
-				font-weight: normal;
-				margin-top: 4px;
-			}
-
-			/* Manager Profile Section */
-			.manager-profile {
-				padding: 40px;
-				background: white;
-			}
-
-			.manager-header {
-				display: flex;
-				justify-content: space-between;
-				align-items: flex-start;
-				margin-bottom: 30px;
-			}
-
-			.manager-title {
-				font-size: 20px;
-				font-weight: 600;
-				color: #0f172a;
-			}
-
-			.manager-tenure {
-				background: #e7f7f7; /* Light teal background */
-				color: #066164; /* Darker teal text */
-				padding: 8px 16px;
-				border-radius: 20px;
-				font-size: 14px;
-				font-weight: 600;
+			.back-button {
 				display: flex;
 				align-items: center;
 				gap: 8px;
+				color: var(--white);
+				text-decoration: none;
+				padding: 8px 14px;
+				border-radius: 8px;
+				background: rgba(255, 255, 255, 0.15);
+				font-size: 14px;
 			}
-
-			.manager-details {
-				background: #f8fafc;
-				border-radius: 16px;
-				padding: 30px;
-				margin-top: 20px;
-				border: 1px solid #e2e8f0;
+			.back-button:hover {
+				background: rgba(255, 255, 255, 0.25);
 			}
-
-			.manager-name {
-				font-size: 28px;
-				font-weight: 700;
-				color: #1e293b;
-				margin-bottom: 15px;
-			}
-
-			.manager-contact {
-				display: flex;
-				flex-direction: column;
-				gap: 15px;
-				margin-top: 25px;
-			}
-
-			.contact-item {
+			.header-bottom {
 				display: flex;
 				align-items: center;
-				gap: 12px;
-				font-size: 16px;
+				gap: 8px;
+				padding: 8px 28px 12px;
+				font-size: 14px;
+				opacity: 0.9;
+				border-top: 1px solid rgba(255, 255, 255, 0.15);
 			}
-
-			.contact-item i {
-				width: 20px;
-				color: #097c80; /* New primary color */
-			}
-
-			.contact-label {
-				color: #64748b;
-				min-width: 80px;
-			}
-
-			.contact-value {
-				font-weight: 500;
-				color: #1e293b;
-			}
-
-			.manager-avatar {
-				width: 80px;
-				height: 80px;
-				background: linear-gradient(
-					135deg,
-					#097c80 0%,
-					#066164 100%
-				); /* New primary color gradient */
-				border-radius: 50%;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				color: white;
-				font-size: 32px;
-				font-weight: 600;
-				margin-bottom: 20px;
-				box-shadow: 0 4px 12px rgba(9, 124, 128, 0.3); /* New primary color shadow */
-			}
-
-			/* Stats Section */
-			.stats-section {
-				grid-column: 1 / -1;
+			.search-suggestions {
+				position: absolute;
+				top: 45px;
+				left: 0;
+				right: 0;
 				background: white;
-				border-top: 1px solid #e2e8f0;
-				padding: 30px 40px;
-			}
-
-			.stats-grid {
-				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-				gap: 25px;
-			}
-
-			.stat-card {
-				background: #f8fafc;
-				border-radius: 12px;
-				padding: 25px;
-				text-align: center;
+				color: #1e293b;
 				border: 1px solid #e2e8f0;
+				border-radius: 8px;
+				max-height: 200px;
+				overflow-y: auto;
+				z-index: 1001;
+				display: none;
+			}
+			.search-suggestions div {
+				padding: 8px 12px;
+				cursor: pointer;
+				font-size: 13px; /* Adjusted for better readability */
+			}
+			.search-suggestions div:hover,
+			.search-suggestions div.selected {
+				background: #f0f0f0;
+			}
+			.search-suggestions div strong {
+				color: #DAA520; /* Dark yellow for highlighted text */
 			}
 
-			.stat-value {
-				font-size: 32px;
-				font-weight: 700;
-				color: #066164; /* Darker primary for stat value */
-				margin-bottom: 8px;
-			}
-
-			.stat-label {
-				font-size: 14px;
-				color: #64748b;
-				text-transform: uppercase;
-				letter-spacing: 0.5px;
-			}
-
-			/* Footer */
-			.footer {
-				text-align: center;
-				padding: 20px;
-				color: #64748b;
-				font-size: 14px;
-				border-top: 1px solid #e2e8f0;
-				background: #f8fafc;
-			}
-
-			/* Responsive Design */
-			@media (max-width: 900px) {
-				.content {
-					grid-template-columns: 1fr;
-				}
-
-				.branch-info {
-					border-right: none;
-					border-bottom: 1px solid #e2e8f0;
-				}
-
-				.info-grid {
-					grid-template-columns: 1fr;
-				}
-			}
-
-			@media (max-width: 600px) {
-				.header {
-					padding: 25px 20px;
-				}
-
-				.branch-name {
-					font-size: 26px;
-				}
-
-				.branch-info,
-				.manager-profile {
-					padding: 25px 20px;
-				}
-
-				.manager-header {
-					flex-direction: column;
-					gap: 15px;
-				}
-
-				.stats-grid {
-					grid-template-columns: 1fr;
-				}
-			}
-
-			/* Print Styles */
-			@media print {
+			@media (max-width: 768px) {
 				body {
-					background: white;
-					padding: 0;
+					padding-top: 180px;
 				}
-
-				.container {
-					box-shadow: none;
-					border-radius: 0;
+				header.header {
+					height: auto;
 				}
-
-				.info-card:hover,
-				.stat-card:hover {
+				.header-top {
+					flex-direction: column;
+					align-items: flex-start;
+					gap: 14px;
+				}
+				.header-center {
+					position: static;
 					transform: none;
-					box-shadow: none;
+					width: 100%;
+				}
+				form.branch-search {
+					width: 100%;
 				}
 			}
 		</style>
 	</head>
 	<body>
-		<!-- Header Section -->
-		<div class="header">
-			<a
-				href="#"
-				class="back-button"
-				onclick="
-					window.history.back();
-					return false;
-				"
-			>
-				<i class="fas fa-arrow-left"></i>
-				Back to Drishti
-			</a>
-			<div class="branch-code">
-				<i class="fas fa-hashtag"></i>
-				Branch Code: 1001
-			</div>
-			<h1 class="branch-name">Gondia Main Branch -</h1>
-			<div class="branch-location">
-				<i class="fas fa-map-marker-alt"></i>
-				Zone-1 , Region-1 , Maharashtra
-			</div>
-		</div>
+		<header class="header">
+			<div class="header-top">
+				<h1 class="branch-name" id="branch-name">
+					Loading... <span id="branch-sol"></span>
+				</h1>
 
-		<div class="container">
-			<!-- Main Content -->
-			<div class="content">
-				<!-- Branch Information Section -->
-				<div class="branch-info">
-					<h2 class="section-title">Branch Information</h2>
-					<div class="info-grid">
-						<div class="info-card">
-							<div class="card-label">
-								<i class="fas fa-calendar-alt"></i>
-								Established
-							</div>
-							<div class="card-value">January 15, 2010</div>
-							<div class="card-value subtext">14 years of service</div>
-						</div>
-
-						<div class="info-card">
-							<div class="card-label">
-								<i class="fas fa-users"></i>
-								Team Size
-							</div>
-							<div class="card-value">24 Members</div>
-							<div class="card-value subtext">Across 5 departments</div>
-						</div>
-
-						<div class="info-card">
-							<div class="card-label">
-								<i class="fas fa-building"></i>
-								Branch Type
-							</div>
-							<div class="card-value">Main Branch</div>
-							<div class="card-value subtext">Regional headquarters</div>
-						</div>
-
-						<div class="info-card">
-							<div class="card-label">
-								<i class="fas fa-star"></i>
-								Performance
-							</div>
-							<div class="card-value">A+ Rating</div>
-							<div class="card-value subtext">Q4 2023 assessment</div>
-						</div>
-					</div>
+				<div class="header-center">
+					<form class="branch-search" id="branch-search-form" role="search">
+						<input
+							type="search"
+							id="branch-search-input"
+							placeholder="Enter SOL ID or Branch Name"
+							aria-label="Search branch"
+						/>
+						<button type="submit">Search</button>
+						<div class="search-suggestions" id="search-suggestions"></div>
+					</form>
 				</div>
 
-				<!-- Branch Manager Section -->
-				<div class="manager-profile">
-					<div class="manager-header">
-						<h2 class="manager-title">Branch Manager</h2>
-						<div class="manager-tenure">
-							<i class="fas fa-clock"></i>
-							Tenure: 3 Years 6 Months
-						</div>
-					</div>
-
-					<div class="manager-details">
-						<div class="manager-avatar">AR</div>
-						<h3 class="manager-name">Ashish Ashokji Rathi</h3>
-
-						<div class="manager-contact">
-							<div class="contact-item">
-								<i class="fas fa-phone"></i>
-								<span class="contact-label">Phone:</span>
-								<span class="contact-value">+91 94228 17278</span>
-							</div>
-
-							<div class="contact-item">
-								<i class="fas fa-calendar-check"></i>
-								<span class="contact-label">Joined:</span>
-								<span class="contact-value">2nd January, 2021</span>
-							</div>
-
-							<div class="contact-item">
-								<i class="fas fa-envelope"></i>
-								<span class="contact-label">Email:</span>
-								<span class="contact-value">ashish.rathi@bankpinnacle.com</span>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Statistics Section -->
-				<div class="stats-section">
-					<h2 class="section-title">Branch Performance Metrics</h2>
-					<div class="stats-grid">
-						<div class="stat-card">
-							<div class="stat-value">1,512</div>
-							<div class="stat-label">Active Accounts</div>
-						</div>
-
-						<div class="stat-card">
-							<div class="stat-value">₹42.7Cr</div>
-							<div class="stat-label">Total Deposits</div>
-						</div>
-
-						<div class="stat-card">
-							<div class="stat-value">98.2%</div>
-							<div class="stat-label">Customer Satisfaction</div>
-						</div>
-
-						<div class="stat-card">
-							<div class="stat-value">24</div>
-							<div class="stat-label">Awards & Recognitions</div>
-						</div>
-					</div>
-				</div>
+				<a
+					href="#"
+					class="back-button"
+					onclick="
+						window.history.back();
+						return false;
+					"
+				>
+					Back to Drishti
+				</a>
 			</div>
 
-			<!-- Footer -->
-			<div class="footer">
-				<p>Pinnacle Bank Gondia Main Branch • Last updated: March 2024</p>
-				<p style="margin-top: 5px; font-size: 13px; opacity: 0.8">
-					<i class="fas fa-map-marker-alt"></i> Station Road, Gondia - 441601,
-					Maharashtra
-				</p>
+			<div class="header-bottom">
+				<span id="branch-zone">--</span>, <span id="branch-region">--</span>,
+				<span id="branch-state">--</span>
 			</div>
-		</div>
+		</header>
 
 		<script>
-			// Simple interaction enhancements
-			document.addEventListener("DOMContentLoaded", function () {
-				// Add animation to cards on load
-				const cards = document.querySelectorAll(".info-card, .stat-card");
-				cards.forEach((card, index) => {
-					card.style.opacity = "0";
-					card.style.transform = "translateY(20px)";
+			const branchNameEl = document.getElementById("branch-name");
+			const branchSolEl = document.getElementById("branch-sol");
+			const branchZoneEl = document.getElementById("branch-zone");
+			const branchRegionEl = document.getElementById("branch-region");
+			const branchStateEl = document.getElementById("branch-state");
 
-					setTimeout(() => {
-						card.style.transition = "opacity 0.5s ease, transform 0.5s ease";
-						card.style.opacity = "1";
-						card.style.transform = "translateY(0)";
-					}, index * 100);
-				});
+			const searchInput = document.getElementById("branch-search-input");
+			const searchSuggestions = document.getElementById("search-suggestions");
+			const searchForm = document.getElementById("branch-search-form");
+			let selectedSuggestionIndex = -1;
 
-				// Format the phone number for better readability
-				const phoneElement = document.querySelector(".contact-value");
-				if (phoneElement && phoneElement.textContent.includes("9422817278")) {
-					phoneElement.textContent = "+91 94228 17278";
+
+			function debounce(fn, delay) {
+				let timer;
+				return function (...args) {
+					clearTimeout(timer);
+					timer = setTimeout(() => fn.apply(this, args), delay);
+				};
+			}
+
+			// Load branch header data by SOL ID
+			function loadBranchHeader(sol_id) {
+				fetch(
+					`/api/method/custom_report.branch_v1.get_branch_header_data?sol_id=${sol_id}`,
+				)
+					.then((r) => r.json())
+					.then((r) => {
+						const b = r.message;
+						if (b) {
+							branchNameEl.innerHTML = b.branch + " <span>- " + b.sol_id + "</span>";
+							branchSolEl.textContent = b.sol_id;
+							branchZoneEl.textContent = b.zone || "--";
+							branchRegionEl.textContent = b.region || "--";
+							branchStateEl.textContent = b.state || "--";
+						} else {
+							branchNameEl.textContent = "Branch Not Found";
+							branchSolEl.textContent = "";
+							branchZoneEl.textContent = "--";
+							branchRegionEl.textContent = "--";
+							branchStateEl.textContent = "--";
+						}
+					})
+					.catch(console.error);
+			}
+
+			// Fetch branch suggestions
+			const fetchSuggestions = debounce(() => {
+				const txt = searchInput.value.trim();
+				if (!txt) {
+					searchSuggestions.style.display = "none";
+					return;
 				}
 
-				// Add current date to footer
-				const now = new Date();
-				const options = { year: "numeric", month: "long", day: "numeric" };
-				const dateString = now.toLocaleDateString("en-US", options);
+				fetch(
+					`/api/method/custom_report.branch_v1.search_branches?txt=${encodeURIComponent(txt)}`,
+				)
+					.then((r) => r.json())
+					.then((r) => {
+						const branches = r.message || [];
+						searchSuggestions.innerHTML = "";
+						selectedSuggestionIndex = -1;
 
-				const footerDate = document.createElement("p");
-				footerDate.style.marginTop = "5px";
-				footerDate.style.fontSize = "12px";
-				footerDate.style.opacity = "0.7";
-				footerDate.innerHTML = `<i class="far fa-calendar"></i> Generated on: ${dateString}`;
+						if (branches.length > 0) {
+							branches.forEach((b) => {
+								const div = document.createElement("div");
+								const suggestionText = `${b.branch} - ${b.sol_id} (${b.state})`;
+								const regex = new RegExp(txt, "gi");
+								div.innerHTML = suggestionText.replace(regex, (match) => `<strong>${match}</strong>`);
+								div.dataset.solId = b.sol_id;
+								div.onclick = () => {
+									selectSuggestion(b.sol_id);
+								};
+								searchSuggestions.appendChild(div);
+							});
+							searchSuggestions.style.display = "block";
+						} else searchSuggestions.style.display = "none";
+					})
+					.catch(console.error);
+			}, 300);
 
-				document.querySelector(".footer").appendChild(footerDate);
+			function updateHighlight() {
+				const suggestions = searchSuggestions.querySelectorAll("div");
+				suggestions.forEach((suggestion, index) => {
+					if (index === selectedSuggestionIndex) {
+						suggestion.classList.add("selected");
+						suggestion.scrollIntoView({ block: "nearest" });
+					} else {
+						suggestion.classList.remove("selected");
+					}
+				});
+			}
+
+			function selectSuggestion(sol_id) {
+				searchInput.value = "";
+				searchSuggestions.style.display = "none";
+				selectedSuggestionIndex = -1;
+				updateURLAndLoad(sol_id);
+			}
+
+			searchInput.addEventListener("input", fetchSuggestions);
+
+			searchInput.addEventListener("keydown", (e) => {
+				const suggestions = searchSuggestions.querySelectorAll("div");
+				if (searchSuggestions.style.display === "none" || suggestions.length === 0) {
+					return;
+				}
+
+				if (e.key === "ArrowDown") {
+					e.preventDefault();
+					selectedSuggestionIndex++;
+					if (selectedSuggestionIndex >= suggestions.length) {
+						selectedSuggestionIndex = 0;
+					}
+					updateHighlight();
+				} else if (e.key === "ArrowUp") {
+					e.preventDefault();
+					selectedSuggestionIndex--;
+					if (selectedSuggestionIndex < 0) {
+						selectedSuggestionIndex = suggestions.length - 1;
+					}
+					updateHighlight();
+				} else if (e.key === "Enter") {
+					e.preventDefault();
+					if (selectedSuggestionIndex !== -1) {
+						const selected = suggestions[selectedSuggestionIndex];
+						selectSuggestion(selected.dataset.solId);
+					}
+				} else if (e.key === "Escape") {
+					searchSuggestions.style.display = "none";
+				}
+			});
+
+			searchForm.addEventListener("submit", (e) => {
+				e.preventDefault();
+				const val = searchInput.value.trim();
+				if (val) {
+					fetch(
+						`/api/method/custom_report.branch_v1.search_branches?txt=${encodeURIComponent(val)}`,
+					)
+						.then((r) => r.json())
+						.then((r) => {
+							if (r.message && r.message.length > 0)
+								updateURLAndLoad(r.message[0].sol_id);
+						})
+						.catch(console.error);
+				}
+			});
+
+			function updateURLAndLoad(sol_id) {
+				const url = new URL(window.location);
+				url.searchParams.set("sol_id", sol_id);
+				window.history.pushState({}, "", url);
+				loadBranchHeader(sol_id);
+			}
+
+			// Load branch from URL on page load
+			document.addEventListener("DOMContentLoaded", () => {
+				const params = new URLSearchParams(window.location.search);
+				const sol_id = params.get("sol_id");
+				if (sol_id) loadBranchHeader(sol_id);
+			});
+
+			// Hide suggestions when clicking outside
+			document.addEventListener("click", (e) => {
+				if (!searchForm.contains(e.target)) searchSuggestions.style.display = "none";
 			});
 		</script>
 	</body>
