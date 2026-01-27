@@ -523,13 +523,16 @@
 								                                        <label>Branch Vintage</label>
 								                                        <span id="branch-vintage">--</span>
 								                                    </div>
-								                                    <div>
-								                                        <label>Reporting Person</label>
-								                                        <span id="ch-name">--</span>
-								                                    </div>
-								                                    <!-- Row 2 -->
-								                                    <div>
-								                                        <label>BM Vintage</label>
+								                                    									<div>
+								                                    										<label>Reporting Person</label>
+								                                    										<span id="ch-name">--</span>
+								                                    									</div>
+								                                    									<div>
+								                                    										<label>Branch Opening Date</label>
+								                                    										<span id="branch-opening-date">--</span>
+								                                    									</div>
+								                                    									<!-- Row 2 -->
+								                                    									<div>								                                        <label>BM Vintage</label>
 								                                        <span id="bm-vintage">--</span>
 								                                    </div>
 								                                    <div>
@@ -1067,6 +1070,7 @@
 					branchVintage: document.getElementById("branch-vintage"),
 					branchEmail: document.getElementById("branch-email"), // New
 					chMobile: document.getElementById("ch-mobile"), // New
+					branchOpeningDate: document.getElementById("branch-opening-date"), // New
 					photo: document.getElementById("bm-photo"),
 
 					// Staff Detail Counts
@@ -1120,8 +1124,19 @@
 				},
 
 				formatDate(d) {
-					if (!d) return "--";
-					return new Date(d).toLocaleDateString("en-GB");
+					if (!d) return "--"; // Handle null or empty input
+
+					// Extract only the date part (YYYY-MM-DD)
+					const datePart = d.split(' ')[0]; // Assumes format "YYYY-MM-DD HH:MM:SS"
+
+					const date = new Date(datePart);
+
+					// Check if the date is valid
+					if (isNaN(date.getTime())) {
+						return "--"; // Handle invalid date strings gracefully
+					}
+
+					return date.toLocaleDateString("en-GB"); // Format as DD/MM/YYYY
 				},
 
 				formatIndianNumber(num) {
