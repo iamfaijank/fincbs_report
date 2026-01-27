@@ -7,11 +7,29 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "branch_details_section",
   "sol_id",
+  "branch_opening_date",
+  "branch_vintage",
+  "column_break_yroz",
+  "branch_name",
   "branch_today_date",
+  "branch_location_category",
+  "branch_manager_details_section",
+  "bm_doj",
+  "bm_vintage",
+  "bm_today_date",
+  "column_break_jiix",
   "bm_name",
   "bm_mob_no",
-  "bm_vintage",
+  "staff_details_section",
+  "bdo",
+  "bde",
+  "ro",
+  "column_break_chvl",
+  "staff_count",
+  "total_no_of_budgeted_staff",
+  "section_break_xsaz",
   "total_ytd_target",
   "total_mtd_target",
   "ca_book",
@@ -29,14 +47,9 @@
   "district",
   "smbg_demand",
   "dd_acollection",
-  "bdo",
   "bde_and_productivity",
   "bdo_productivity",
   "column_break_dkfe",
-  "branch_name",
-  "branch_vintage",
-  "bm_doj",
-  "staff_count",
   "total_ytd_achievement",
   "total_mtd_achievement",
   "sa_book",
@@ -54,13 +67,9 @@
   "rd_demand",
   "smbg_collection",
   "tasc_value",
-  "bde",
   "dd_collection",
   "bde_productivity",
   "column_break_zeaz",
-  "branch_opening_date",
-  "branch_location_category",
-  "bm_today_date",
   "staff_nos",
   "total_book",
   "fd_book",
@@ -68,17 +77,16 @@
   "total_sa_no_of_customers",
   "total_dds_no_of_customers",
   "total_ss_agent",
-  "total_no_of_budgeted_staff",
   "nmab_ac",
   "smbg_demand_vs_collection",
   "ntb",
   "ats",
   "actionable",
   "ch_name",
+  "ch_mob_no",
   "rd_collection",
   "dds_demand",
   "tasc",
-  "ro",
   "bdo_and_productivity",
   "rd_smbg_collection"
  ],
@@ -132,6 +140,7 @@
    "label": "Staff Nos"
   },
   {
+   "description": "Actual Manpower Count",
    "fieldname": "staff_count",
    "fieldtype": "Data",
    "label": "Staff Count"
@@ -251,9 +260,10 @@
    "label": "Total Active SS Agent #"
   },
   {
+   "description": "HR budgeted Staff",
    "fieldname": "total_no_of_budgeted_staff",
    "fieldtype": "Data",
-   "label": "Total No of Budgeted Staff"
+   "label": "Budgeted Staff"
   },
   {
    "fieldname": "total_staff_onboarded",
@@ -454,12 +464,48 @@
    "fieldname": "bm_mob_no",
    "fieldtype": "Data",
    "label": "BM Mob No."
+  },
+  {
+   "fieldname": "ch_mob_no",
+   "fieldtype": "Data",
+   "label": "CH Mob No."
+  },
+  {
+   "fieldname": "staff_details_section",
+   "fieldtype": "Section Break",
+   "label": "Staff Details"
+  },
+  {
+   "fieldname": "column_break_chvl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "branch_manager_details_section",
+   "fieldtype": "Section Break",
+   "label": "Branch Manager Details"
+  },
+  {
+   "fieldname": "column_break_jiix",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_xsaz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "branch_details_section",
+   "fieldtype": "Section Break",
+   "label": "Branch Details"
+  },
+  {
+   "fieldname": "column_break_yroz",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-15 12:54:17.102001",
+ "modified": "2026-01-27 18:03:32.102081",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Branch Profile Data",

@@ -315,57 +315,152 @@
 				min-width: calc(50% - 15px);
 			}
 
-			/* Staff Detail Section */
+			/* New Staff Detail Section Styles */
+			.total-staff-overview-card {
+				background: #ffffff;
+				border-radius: 16px;
+				padding: 0; /* Remove padding to allow button to be full-width */
+				box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+				display: flex;
+				flex-direction: column;
+			}
+			.staff-detail-content {
+				padding: 24px;
+				flex-grow: 1;
+			}
+
+			.total-staff-overview-card h2 {
+				font-size: 16px;
+				font-weight: 600;
+				color: #475569;
+				margin-bottom: 8px;
+				border-bottom: none;
+				padding-bottom: 0;
+			}
+			/* Generic Staff Detail Section - Restored padding for other sections */
 			.staff-detail-section {
 				background: #ffffff;
 				border-radius: 16px;
-				padding: 24px;
+				padding: 24px; /* Original padding */
 				box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
 			}
 
-			.staff-detail-section h2 {
-				font-size: 20px;
+			.total-staff-count {
+				font-size: 36px;
 				font-weight: 700;
-				color: #0f172a;
-				margin-bottom: 20px;
-				border-bottom: 1px solid #e2e8f0;
-				padding-bottom: 15px;
+				color: #1e293b;
+				margin-bottom: 16px;
+			}
+			/* Comparison Cards */
+			.comparison-cards-container {
+				display: flex;
+				gap: 16px;
+				margin-bottom: 24px;
+				flex-wrap: wrap; /* Allow cards to wrap on smaller screens */
 			}
 
-			.staff-cards-grid {
-				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-				gap: 20px;
-			}
-
-			.staff-card {
+			.comparison-card {
+				flex: 1; /* Each card takes equal width */
 				background: #f8fafc;
 				border-radius: 12px;
-				padding: 18px;
+				padding: 16px;
 				text-align: center;
 				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-				transition:
-					transform 0.2s ease,
-					box-shadow 0.2s ease;
+				transition: all 0.2s ease;
 				border: 1px solid #e2e8f0;
+				min-width: 150px; /* Ensure cards don't get too small */
 			}
 
-			.staff-card:hover {
-				transform: translateY(-5px);
-				box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-			}
-
-			.staff-card-title {
-				font-size: 14px;
+			.comparison-card .card-title {
+				font-size: 13px;
 				font-weight: 600;
 				color: #64748b;
 				margin-bottom: 8px;
 			}
 
-			.staff-card-count {
-				font-size: 24px; /* Reduced from 28px */
+			.comparison-card .card-value {
+				font-size: 22px;
 				font-weight: 700;
-				color: var(--primary-1);
+				color: #1e293b;
+			}
+
+			/* Comparison Status Colors */
+			.comparison-card.status-green {
+				border-color: #10b981;
+				background-color: #ecfdf5;
+			}
+
+			.comparison-card.status-red {
+				border-color: #ef4444;
+				background-color: #fef2f2;
+			}
+			.progress-bar-segmented {
+				display: flex;
+				height: 8px;
+				border-radius: 4px;
+				overflow: hidden;
+				margin-bottom: 24px;
+				background-color: #e2e8f0;
+			}
+
+			.progress-segment {
+				height: 100%;
+				transition: width 0.5s ease-in-out;
+			}
+
+			.bdo-color { background-color: #3b82f6; }
+			.ro-color { background-color: #10b981; }
+			.ro-color { background-color: #10b981; }
+			.bde-color { background-color: #ef4444; } /* A new distinct color for BDE */
+
+			.staff-breakdown-list {
+				list-style: none;
+				padding: 0;
+				margin: 0;
+				display: flex;
+				flex-direction: column;
+				gap: 16px;
+			}
+
+			.breakdown-item {
+				display: flex;
+				align-items: center;
+				font-size: 14px;
+			}
+
+			.breakdown-item .color-dot {
+				width: 8px;
+				height: 8px;
+				border-radius: 50%;
+				margin-right: 12px;
+			}
+
+			.breakdown-item .role-name {
+				color: #334155;
+				font-weight: 500;
+			}
+
+			.breakdown-item .role-count {
+				margin-left: auto;
+				color: #1e293b;
+				font-weight: 600;
+			}
+			.view-details-button {
+				background-color: #1e293b;
+				color: white;
+				border: none;
+				width: 100%;
+				padding: 16px;
+				font-size: 14px;
+				font-weight: 600;
+				cursor: pointer;
+				border-bottom-left-radius: 16px;
+				border-bottom-right-radius: 16px;
+				transition: background-color 0.2s ease;
+				margin-top: auto; /* Pushes button to the bottom */
+			}
+			.view-details-button:hover {
+				background-color: #334155;
 			}
 
 			/* Agent Details Spinner */
@@ -642,26 +737,44 @@
 						</section>
 		
 						<div class="details-row">
-							<section class="staff-detail-section">
-								<h2>Staff Detail</h2>
-								<div class="staff-cards-grid">
-									<div class="staff-card">
-										<div class="staff-card-title">Sub Staff</div>
-										<div class="staff-card-count" id="substaff-count">--</div>
+							<section class="total-staff-overview-card">
+								<div class="staff-detail-content">
+									<h2>Total Staff Detail</h2>
+									<div class="total-staff-count" id="total-staff-count-large">--</div>
+									<div class="comparison-cards-container">
+										<div class="comparison-card" id="budgeted-staff-card">
+											<div class="card-title">Budgeted Staff</div>
+											<div class="card-value" id="budgeted-staff-value">--</div>
+										</div>
+										<div class="comparison-card" id="staff-count-card">
+											<div class="card-title">Staff Count</div>
+											<div class="card-value" id="staff-count-value">--</div>
+										</div>
 									</div>
-									<div class="staff-card">
-										<div class="staff-card-title">BDO</div>
-										<div class="staff-card-count" id="bdo-count">--</div>
+									<div class="progress-bar-segmented">
+										<div id="bde-progress" class="progress-segment bde-color" style="width: 0%"></div>
+										<div id="bdo-progress" class="progress-segment bdo-color" style="width: 0%"></div>
+										<div id="ro-progress" class="progress-segment ro-color" style="width: 0%"></div>
 									</div>
-									<div class="staff-card">
-										<div class="staff-card-title">RO</div>
-										<div class="staff-card-count" id="ro-count">--</div>
-									</div>
-									<div class="staff-card">
-										<div class="staff-card-title">Total Staff</div>
-										<div class="staff-card-count" id="total-staff-count">--</div>
-									</div>
+									<ul class="staff-breakdown-list">
+										<li class="breakdown-item">
+											<span class="color-dot bde-color"></span>
+											<span class="role-name">BDE</span>
+											<span class="role-count" id="bde-count">--</span>
+										</li>
+										<li class="breakdown-item">
+											<span class="color-dot bdo-color"></span>
+											<span class="role-name">BDO</span>
+											<span class="role-count" id="bdo-count">--</span>
+										</li>
+										<li class="breakdown-item">
+											<span class="color-dot ro-color"></span>
+											<span class="role-name">RO</span>
+											<span class="role-count" id="ro-count">--</span>
+										</li>
+									</ul>
 								</div>
+								<button class="view-details-button">View Manpower Detail</button>
 							</section>
 		
 							<section class="staff-detail-section">
@@ -1210,11 +1323,22 @@
 					branchOpeningDate: document.getElementById("branch-opening-date"), // New
 					photo: document.getElementById("bm-photo"),
 
+					// New Staff Detail Elements
+					totalStaffCountLarge: document.getElementById("total-staff-count-large"),
+					bdeProgress: document.getElementById("bde-progress"),
+					bdoProgress: document.getElementById("bdo-progress"),
+					roProgress: document.getElementById("ro-progress"),
+
+					// Comparison Cards
+					budgetedStaffCard: document.getElementById("budgeted-staff-card"),
+					budgetedStaffValue: document.getElementById("budgeted-staff-value"),
+					staffCountCard: document.getElementById("staff-count-card"),
+					staffCountValue: document.getElementById("staff-count-value"),
+
 					// Staff Detail Counts
-					substaffCount: document.getElementById("substaff-count"),
+					bdeCount: document.getElementById("bde-count"),
 					bdoCount: document.getElementById("bdo-count"),
 					roCount: document.getElementById("ro-count"),
-					totalStaffCount: document.getElementById("total-staff-count"),
 		
 					// Agent Spinner Elements
 					ddsSpinnerProgress: document.getElementById("dds-spinner-progress"),
@@ -1327,10 +1451,42 @@
 						this.el.branchEmail.textContent = this.value(branchEmailValue); // Use the passed value
 						this.el.chMobile.textContent = this.value(d.ch_mob_no); // Placeholder for reporting person mobile
 
-						this.el.substaffCount.textContent = this.value(d.staff_nos); // Using staff_nos for substaff
-						this.el.bdoCount.textContent = this.value(d.bdo);
-						this.el.roCount.textContent = this.value(d.ro);
-						this.el.totalStaffCount.textContent = this.value(d.staff_count); // Using staff_count for total staff
+						// Staff details
+						const bdeCount = parseInt(d.bde) || 0;
+						const bdoCount = parseInt(d.bdo) || 0;
+						const roCount = parseInt(d.ro) || 0;
+						const totalStaff = bdeCount + bdoCount + roCount;
+						
+						this.el.totalStaffCountLarge.textContent = this.formatIndianNumber(totalStaff);
+						this.el.bdeCount.textContent = this.formatIndianNumber(bdeCount);
+						this.el.bdoCount.textContent = this.formatIndianNumber(bdoCount);
+						this.el.roCount.textContent = this.formatIndianNumber(roCount);
+
+						// Update progress bar
+						if (totalStaff > 0) {
+							this.el.bdeProgress.style.width = `${(bdeCount / totalStaff) * 100}%`;
+							this.el.bdoProgress.style.width = `${(bdoCount / totalStaff) * 100}%`;
+							this.el.roProgress.style.width = `${(roCount / totalStaff) * 100}%`;
+						} else {
+							this.el.bdeProgress.style.width = '0%';
+							this.el.bdoProgress.style.width = '0%';
+							this.el.roProgress.style.width = '0%';
+						}
+
+						// Comparison Cards for Staffing Capacity
+						const budgetedStaff = parseInt(d.total_no_of_budgeted_staff) || 0;
+						const currentStaff = parseInt(d.staff_count) || 0;
+
+						this.el.budgetedStaffValue.textContent = this.formatIndianNumber(budgetedStaff);
+						this.el.staffCountValue.textContent = this.formatIndianNumber(currentStaff);
+
+						// Apply comparison styling
+						this.el.staffCountCard.classList.remove('status-green', 'status-red'); // Clean previous
+						if (currentStaff <= budgetedStaff) {
+							this.el.staffCountCard.classList.add('status-green');
+						} else {
+							this.el.staffCountCard.classList.add('status-red');
+						}
 		
 						// Update DDS and SS agent spinners
 						this.updateSpinner(
