@@ -278,24 +278,7 @@
 				margin-bottom: 16px;
 			}
 
-			.bm-grid {
-				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-				gap: 14px;
-				font-size: 13px;
-			}
 
-			.bm-grid label {
-				display: block;
-				color: #64748b;
-				font-weight: 600;
-				margin-bottom: 2px;
-			}
-
-			.bm-grid span {
-				color: #1e293b;
-				font-weight: 500;
-			}
 
 			/* Staff Detail Section */
 			.staff-detail-section {
@@ -361,9 +344,7 @@
 					margin: 0 auto;
 				}
 
-				.bm-grid {
-					text-align: left;
-				}
+
 			}
 
 			@keyframes spin {
@@ -511,44 +492,52 @@
 								<div class="bm-sub">
 									<span id="branch-name">--</span> •
 									<span id="branch-district">--</span>
-								</div>
-		
-								                                <div class="bm-grid">
-								                                    <!-- Row 1 -->
-								                                    <div>
-								                                        <label>Date of Joining</label>
-								                                        <span id="bm-doj">--</span>
-								                                    </div>
-								                                    <div>
-								                                        <label>Branch Vintage</label>
-								                                        <span id="branch-vintage">--</span>
-								                                    </div>
-								                                    									<div>
-								                                    										<label>Reporting Person</label>
-								                                    										<span id="ch-name">--</span>
-								                                    									</div>
-								                                    									<div>
-								                                    										<label>Branch Opening Date</label>
-								                                    										<span id="branch-opening-date">--</span>
-								                                    									</div>
-								                                    									<!-- Row 2 -->
-								                                    									<div>								                                        <label>BM Vintage</label>
-								                                        <span id="bm-vintage">--</span>
-								                                    </div>
-								                                    <div>
-								                                        <label>Branch Email</label>
-								                                        <span id="branch-email">--</span>
-								                                    </div>
-								                                    <div>
-								                                        <label>Reporting Person Mobile</label>
-								                                        <span id="ch-mobile">--</span>
-								                                    </div>
-								                                    <!-- Row 3 -->
-								                                    <div>
-								                                        <label>BM Mobile</label>
-								                                        <span id="bm-mobile">--</span>
-								                                    </div>
-								                                </div>							</div>
+							</div>
+
+<table style="width:100%; border-collapse: collapse;">
+    <tr style="vertical-align: top;">
+        <td style="padding: 10px 0; width: 33%;">
+            <label style="display: block; color: #64748b; font-weight: 600; margin-bottom: 2px;">BM Date of Joining</label>
+            <span id="bm-doj" style="color: #1e293b; font-weight: 500;">--</span>
+        </td>
+        <td style="padding: 10px 0; width: 33%;">
+            <label style="display: block; color: #64748b; font-weight: 600; margin-bottom: 2px;">BM Vintage</label>
+            <span id="bm-vintage" style="color: #1e293b; font-weight: 500;">--</span>
+        </td>
+        <td style="padding: 10px 0; width: 33%;">
+            <label style="display: block; color: #64748b; font-weight: 600; margin-bottom: 2px;">BM Mobile</label>
+            <span id="bm-mobile" style="color: #1e293b; font-weight: 500;">--</span>
+        </td>
+    </tr>
+    <tr style="vertical-align: top;">
+        <td style="padding: 10px 0; width: 33%;">
+            <label style="display: block; color: #64748b; font-weight: 600; margin-bottom: 2px;">Branch Opening Date</label>
+            <span id="branch-opening-date" style="color: #1e293b; font-weight: 500;">--</span>
+        </td>
+        <td style="padding: 10px 0; width: 33%;">
+            <label style="display: block; color: #64748b; font-weight: 600; margin-bottom: 2px;">Branch Vintage</label>
+            <span id="branch-vintage" style="color: #1e293b; font-weight: 500;">--</span>
+        </td>
+        <td style="padding: 10px 0; width: 33%;">
+            <label style="display: block; color: #64748b; font-weight: 600; margin-bottom: 2px;">Branch Email</label>
+            <span id="branch-email" style="color: #1e293b; font-weight: 500;">--</span>
+        </td>
+    </tr>
+    <tr style="vertical-align: top;">
+        <td style="padding: 10px 0; width: 33%;">
+            <label style="display: block; color: #64748b; font-weight: 600; margin-bottom: 2px;">Reporting Person</label>
+            <span id="ch-name" style="color: #1e293b; font-weight: 500;">--</span>
+        </td>
+        <td style="padding: 10px 0; width: 33%;">
+            <label style="display: block; color: #64748b; font-weight: 600; margin-bottom: 2px;">Reporting Person Mobile</label>
+            <span id="ch-mobile" style="color: #1e293b; font-weight: 500;">--</span>
+        </td>
+        <td style="padding: 10px 0; width: 33%;">
+            <!-- Empty cell for alignment -->
+        </td>
+    </tr>
+</table>
+
 						</section>
 		
 						<section class="staff-detail-section">
