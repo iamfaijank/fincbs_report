@@ -54,6 +54,7 @@ def get_branch_header_data(sol_id: str):
             "zone",
             "region",
             "state",
+            "email"
         ],
         as_dict=True,
     ) or {}
