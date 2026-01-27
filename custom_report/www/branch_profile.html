@@ -513,37 +513,39 @@
 									<span id="branch-district">--</span>
 								</div>
 		
-								<div class="bm-grid">
-									<div>
-										<label>Mobile</label>
-										<span id="bm-mobile">--</span>
-									</div>
-									<div>
-										<label>Date of Joining</label>
-										<span id="bm-doj">--</span>
-									</div>
-									<div>
-										<label>BM Vintage</label>
-										<span id="bm-vintage">--</span>
-									</div>
-									<div>
-										<label>Reporting Person</label>
-										<span id="ch-name">--</span>
-									</div>
-									<div>
-										<label>Branch Vintage</label>
-										<span id="branch-vintage">--</span>
-									</div>
-									<div>
-										<label>Staff Count</label>
-										<span id="staff-count">--</span>
-									</div>
-									<div>
-										<label>Branch Category</label>
-										<span id="branch-category">--</span>
-									</div>
-								</div>
-							</div>
+								                                <div class="bm-grid">
+								                                    <!-- Row 1 -->
+								                                    <div>
+								                                        <label>Date of Joining</label>
+								                                        <span id="bm-doj">--</span>
+								                                    </div>
+								                                    <div>
+								                                        <label>Branch Vintage</label>
+								                                        <span id="branch-vintage">--</span>
+								                                    </div>
+								                                    <div>
+								                                        <label>Reporting Person</label>
+								                                        <span id="ch-name">--</span>
+								                                    </div>
+								                                    <!-- Row 2 -->
+								                                    <div>
+								                                        <label>BM Vintage</label>
+								                                        <span id="bm-vintage">--</span>
+								                                    </div>
+								                                    <div>
+								                                        <label>Branch Email</label>
+								                                        <span id="branch-email">--</span>
+								                                    </div>
+								                                    <div>
+								                                        <label>Reporting Person Mobile</label>
+								                                        <span id="ch-mobile">--</span>
+								                                    </div>
+								                                    <!-- Row 3 -->
+								                                    <div>
+								                                        <label>BM Mobile</label>
+								                                        <span id="bm-mobile">--</span>
+								                                    </div>
+								                                </div>							</div>
 						</section>
 		
 						<section class="staff-detail-section">
@@ -880,7 +882,7 @@
 						});
 
 						/* 🔗 Load Branch Manager Profile */
-						BranchManagerProfile.load(solId);
+						BranchManagerProfile.load(solId, data.email); // Pass data.email
 						this.toggleBranchDataVisibility(true); // Show data and hide message
 					} catch (e) {
 						this.el.branchName.textContent = "Branch not found";
@@ -1063,8 +1065,8 @@
 					branchName: document.getElementById("branch-name"),
 					branchDistrict: document.getElementById("branch-district"),
 					branchVintage: document.getElementById("branch-vintage"),
-					staffCount: document.getElementById("staff-count"),
-					category: document.getElementById("branch-category"),
+					branchEmail: document.getElementById("branch-email"), // New
+					chMobile: document.getElementById("ch-mobile"), // New
 					photo: document.getElementById("bm-photo"),
 
 					// Staff Detail Counts
@@ -1139,7 +1141,7 @@
 					return parts.length > 1 ? formatted + "." + parts[1] : formatted;
 				},
 
-				async load(solId) {
+				async load(solId, branchEmailValue) { // Added branchEmailValue
 					try {
 						const r = await fetch(
 							`/api/method/custom_report.branch_v1.get_branch_profile_data?sol_id=${solId}`,
@@ -1156,8 +1158,8 @@
 						this.el.branchName.textContent = this.value(d.branch_name);
 						this.el.branchDistrict.textContent = this.value(d.district);
 						this.el.branchVintage.textContent = this.value(d.branch_vintage);
-						this.el.staffCount.textContent = this.value(d.staff_nos || d.staff_count);
-						this.el.category.textContent = this.value(d.branch_location_category);
+						this.el.branchEmail.textContent = this.value(branchEmailValue); // Use the passed value
+						this.el.chMobile.textContent = this.value(d.ch_mob_no); // Placeholder for reporting person mobile
 
 						this.el.substaffCount.textContent = this.value(d.staff_nos); // Using staff_nos for substaff
 						this.el.bdoCount.textContent = this.value(d.bdo);
