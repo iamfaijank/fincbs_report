@@ -491,209 +491,213 @@
 				</a>
 			</div>
 		</header>
-		<main class="page-content">
-			<section class="bm-card" id="bm-profile">
-				<div class="bm-left">
-					<div class="bm-avatar">
-						<img id="bm-photo" alt="Branch Manager" />
+				<main class="page-content">
+					<div id="no-branch-selected-message" style="display: none; text-align: center; margin-top: 50px; font-size: 1.2em; color: #666; padding: 20px; border-radius: 8px; background: #fff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);">
+						<p>Please select a branch to view its complete details.</p>
+						<p style="font-size: 0.9em; color: #999; margin-top: 10px;">You can use the search bar above to find a branch.</p>
 					</div>
-				</div>
-
-				<div class="bm-right">
-					<div class="bm-title">Branch Manager</div>
-
-					<div class="bm-name" id="bm-name">Loading...</div>
-					<div class="bm-sub">
-						<span id="branch-name">--</span> •
-						<span id="branch-district">--</span>
+					<div id="branch-data-container">
+						<section class="bm-card" id="bm-profile">
+							<div class="bm-left">
+								<div class="bm-avatar">
+									<img id="bm-photo" alt="Branch Manager" />
+								</div>
+							</div>
+		
+							<div class="bm-right">
+								<div class="bm-title">Branch Manager</div>
+		
+								<div class="bm-name" id="bm-name">Loading...</div>
+								<div class="bm-sub">
+									<span id="branch-name">--</span> •
+									<span id="branch-district">--</span>
+								</div>
+		
+								<div class="bm-grid">
+									<div>
+										<label>Mobile</label>
+										<span id="bm-mobile">--</span>
+									</div>
+									<div>
+										<label>Date of Joining</label>
+										<span id="bm-doj">--</span>
+									</div>
+									<div>
+										<label>BM Vintage</label>
+										<span id="bm-vintage">--</span>
+									</div>
+									<div>
+										<label>Reporting Person</label>
+										<span id="ch-name">--</span>
+									</div>
+									<div>
+										<label>Branch Vintage</label>
+										<span id="branch-vintage">--</span>
+									</div>
+									<div>
+										<label>Staff Count</label>
+										<span id="staff-count">--</span>
+									</div>
+									<div>
+										<label>Branch Category</label>
+										<span id="branch-category">--</span>
+									</div>
+								</div>
+							</div>
+						</section>
+		
+						<section class="staff-detail-section">
+							<h2>Staff Detail</h2>
+							<div class="staff-cards-grid">
+								<div class="staff-card">
+									<div class="staff-card-title">Sub Staff</div>
+									<div class="staff-card-count" id="substaff-count">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">BDO</div>
+									<div class="staff-card-count" id="bdo-count">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">RO</div>
+									<div class="staff-card-count" id="ro-count">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">Total Active DDS Agent</div>
+									<div class="staff-card-count" id="total-active-dds-agent-count">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">Total DDS Agent</div>
+									<div class="staff-card-count" id="total-dds-agent-count">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">Total Active SS Agent</div>
+									<div class="staff-card-count" id="total-active-ss-agent-count">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">Total SS Agent</div>
+									<div class="staff-card-count" id="total-ss-agent-count">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">Total Staff</div>
+									<div class="staff-card-count" id="total-staff-count">--</div>
+								</div>
+							</div>
+						</section>
+		
+						<section class="staff-detail-section">
+							<h2>Deposit & Book Position</h2>
+							<div class="staff-cards-grid">
+								<div class="staff-card">
+									<div class="staff-card-title">Total Book</div>
+									<div class="staff-card-count" id="total-book">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">SA Book</div>
+									<div class="staff-card-count" id="sa-book">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">CA Book</div>
+									<div class="staff-card-count" id="ca-book">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">FD Book</div>
+									<div class="staff-card-count" id="fd-book">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">RD Book</div>
+									<div class="staff-card-count" id="rd-book">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">DDS Book</div>
+									<div class="staff-card-count" id="dds-book">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">SMBG Book</div>
+									<div class="staff-card-count" id="smbg-book">--</div>
+								</div>
+							</div>
+						</section>
+		
+						<section class="staff-detail-section">
+							<h2>Customers Details</h2>
+							<div class="staff-cards-grid">
+								<div class="staff-card">
+									<div class="staff-card-title">Total Customers</div>
+									<div class="staff-card-count" id="total-customers-id">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">CA Customers</div>
+									<div class="staff-card-count" id="total-ca-no-of-customers">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">SA Customers</div>
+									<div class="staff-card-count" id="total-sa-no-of-customers">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">FD Customers</div>
+									<div class="staff-card-count" id="total-fd-no-of-customers">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">RD Customers</div>
+									<div class="staff-card-count" id="total-rd-no-of_customers">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">DDS Customers</div>
+									<div class="staff-card-count" id="total-dds-no-of-customers">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">SMBG Customers</div>
+									<div class="staff-card-count" id="total-smbg-no-of-customers">--</div>
+								</div>
+							</div>
+						</section>
+		
+						<section class="staff-detail-section">
+							<h2>Demand & Collection Performance</h2>
+							<div class="staff-cards-grid">
+								<div class="staff-card">
+									<div class="staff-card-title">DD Collection</div>
+									<div class="staff-card-count" id="dd-collection">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">RD Collection</div>
+									<div class="staff-card-count" id="rd-collection">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">DDS Demand</div>
+									<div class="staff-card-count" id="dds-demand">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">DDS Demand vs Collection</div>
+									<div class="staff-card-count" id="dds-demand-vs-collection">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">SMBG Demand</div>
+									<div class="staff-card-count" id="smbg-demand">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">SMBG Collection</div>
+									<div class="staff-card-count" id="smbg-collection">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">SMBG Demand vs Collection</div>
+									<div class="staff-card-count" id="smbg-demand-vs-collection">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">RD Demand</div>
+									<div class="staff-card-count" id="rd-demand">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">RD SMBG Collection</div>
+									<div class="staff-card-count" id="rd-smbg-collection">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">RD SMBG Pending</div>
+									<div class="staff-card-count" id="rd-smbg-pending">--</div>
+								</div>
+							</div>
+						</section>
 					</div>
-
-					<div class="bm-grid">
-						<div>
-							<label>Mobile</label>
-							<span id="bm-mobile">--</span>
-						</div>
-						<div>
-							<label>Date of Joining</label>
-							<span id="bm-doj">--</span>
-						</div>
-						<div>
-							<label>BM Vintage</label>
-							<span id="bm-vintage">--</span>
-						</div>
-						<div>
-							<label>Reporting Person</label>
-							<span id="ch-name">--</span>
-						</div>
-						<div>
-							<label>Branch Vintage</label>
-							<span id="branch-vintage">--</span>
-						</div>
-						<div>
-							<label>Staff Count</label>
-							<span id="staff-count">--</span>
-						</div>
-						<div>
-							<label>Branch Category</label>
-							<span id="branch-category">--</span>
-						</div>
-					</div>
-				</div>
-			</section>
-
-			<section class="staff-detail-section">
-				<h2>Staff Detail</h2>
-				<div class="staff-cards-grid">
-					<div class="staff-card">
-						<div class="staff-card-title">Sub Staff</div>
-						<div class="staff-card-count" id="substaff-count">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">BDO</div>
-						<div class="staff-card-count" id="bdo-count">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">RO</div>
-						<div class="staff-card-count" id="ro-count">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">Total Active DDS Agent</div>
-						<div class="staff-card-count" id="total-active-dds-agent-count">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">Total DDS Agent</div>
-						<div class="staff-card-count" id="total-dds-agent-count">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">Total Active SS Agent</div>
-						<div class="staff-card-count" id="total-active-ss-agent-count">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">Total SS Agent</div>
-						<div class="staff-card-count" id="total-ss-agent-count">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">Total Staff</div>
-						<div class="staff-card-count" id="total-staff-count">--</div>
-					</div>
-				</div>
-			</section>
-
-			<section class="staff-detail-section">
-				<h2>Deposit & Book Position</h2>
-				<div class="staff-cards-grid">
-					<div class="staff-card">
-						<div class="staff-card-title">Total Book</div>
-						<div class="staff-card-count" id="total-book">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">SA Book</div>
-						<div class="staff-card-count" id="sa-book">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">CA Book</div>
-						<div class="staff-card-count" id="ca-book">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">FD Book</div>
-						<div class="staff-card-count" id="fd-book">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">RD Book</div>
-						<div class="staff-card-count" id="rd-book">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">DDS Book</div>
-						<div class="staff-card-count" id="dds-book">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">SMBG Book</div>
-						<div class="staff-card-count" id="smbg-book">--</div>
-					</div>
-				</div>
-			</section>
-
-			<section class="staff-detail-section">
-				<h2>Customers Details</h2>
-				<div class="staff-cards-grid">
-					<div class="staff-card">
-						<div class="staff-card-title">Total Customers</div>
-						<div class="staff-card-count" id="total-customers-id">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">CA Customers</div>
-						<div class="staff-card-count" id="total-ca-no-of-customers">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">SA Customers</div>
-						<div class="staff-card-count" id="total-sa-no-of-customers">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">FD Customers</div>
-						<div class="staff-card-count" id="total-fd-no-of-customers">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">RD Customers</div>
-						<div class="staff-card-count" id="total-rd-no-of_customers">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">DDS Customers</div>
-						<div class="staff-card-count" id="total-dds-no-of-customers">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">SMBG Customers</div>
-						<div class="staff-card-count" id="total-smbg-no-of-customers">--</div>
-					</div>
-				</div>
-			</section>
-
-			<section class="staff-detail-section">
-				<h2>Demand & Collection Performance</h2>
-				<div class="staff-cards-grid">
-					<div class="staff-card">
-						<div class="staff-card-title">DD Collection</div>
-						<div class="staff-card-count" id="dd-collection">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">RD Collection</div>
-						<div class="staff-card-count" id="rd-collection">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">DDS Demand</div>
-						<div class="staff-card-count" id="dds-demand">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">DDS Demand vs Collection</div>
-						<div class="staff-card-count" id="dds-demand-vs-collection">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">SMBG Demand</div>
-						<div class="staff-card-count" id="smbg-demand">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">SMBG Collection</div>
-						<div class="staff-card-count" id="smbg-collection">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">SMBG Demand vs Collection</div>
-						<div class="staff-card-count" id="smbg-demand-vs-collection">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">RD Demand</div>
-						<div class="staff-card-count" id="rd-demand">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">RD SMBG Collection</div>
-						<div class="staff-card-count" id="rd-smbg-collection">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">RD SMBG Pending</div>
-						<div class="staff-card-count" id="rd-smbg-pending">--</div>
-					</div>
-				</div>
-			</section>
-		</main>
-
 		<script>
 			/* =========================================================
 	   BRANCH DASHBOARD (HEADER + SEARCH)
@@ -719,6 +723,8 @@
 					searchForm: document.getElementById("branch-search-form"),
 					suggestionsBox: document.getElementById("search-suggestions"),
 					suggestionsContainer: document.getElementById("suggestions-container"),
+					branchDataContainer: document.getElementById("branch-data-container"), // New
+					noBranchSelectedMessage: document.getElementById("no-branch-selected-message"), // New
 				},
 
 				/* ---------------- Utilities ---------------- */
@@ -730,12 +736,7 @@
 					};
 				},
 
-				value(v) {
-					if (!v || v === "#N/A") return "--";
-					return v;
-				},
-
-				value(v) {
+				value(v) { // Corrected: removed duplicate definition
 					if (!v || v === "#N/A") return "--";
 					return v;
 				},
@@ -822,9 +823,24 @@
 					return res.json();
 				},
 
+				toggleBranchDataVisibility(show) {
+					this.el.branchDataContainer.style.display = show ? "" : "none";
+					this.el.noBranchSelectedMessage.style.display = show ? "none" : "block";
+					// Also clear header info if hiding data
+					if (!show) {
+						this.el.branchName.textContent = "Branch Profile";
+						this.el.branchZone.textContent = "--";
+						this.el.branchRegion.textContent = "--";
+						this.el.branchState.textContent = "--";
+					}
+				},
+
 				/* ---------------- Branch Header ---------------- */
 				async loadBranch(solId, pushState = true) {
-					if (!solId) return;
+					if (!solId) {
+						this.toggleBranchDataVisibility(false); // Hide data and show message
+						return;
+					}
 
 					this.state.currentSolId = solId;
 					this.hideSuggestions();
@@ -865,12 +881,14 @@
 
 						/* 🔗 Load Branch Manager Profile */
 						BranchManagerProfile.load(solId);
+						this.toggleBranchDataVisibility(true); // Show data and hide message
 					} catch (e) {
 						this.el.branchName.textContent = "Branch not found";
 						this.el.branchZone.textContent =
 							this.el.branchRegion.textContent =
 							this.el.branchState.textContent =
 								"--";
+						this.toggleBranchDataVisibility(false); // Hide data and show message on error
 					}
 				},
 
@@ -1024,7 +1042,11 @@
 
 					const params = new URLSearchParams(location.search);
 					const sol = params.get("sol_id");
-					if (sol) this.loadBranch(sol, false);
+					if (sol) {
+						this.loadBranch(sol, false);
+					} else {
+						this.toggleBranchDataVisibility(false); // Initial state: no branch selected
+					}
 				},
 			};
 
