@@ -302,11 +302,21 @@
 				font-weight: 500;
 			}
 
+			.details-row {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 30px;
+				margin-top: 30px;
+			}
 
+			.details-row > section {
+				margin-top: 0;
+				flex: 1;
+				min-width: calc(50% - 15px);
+			}
 
 			/* Staff Detail Section */
 			.staff-detail-section {
-				margin-top: 30px;
 				background: #ffffff;
 				border-radius: 16px;
 				padding: 24px;
@@ -358,6 +368,82 @@
 				color: var(--primary-1);
 			}
 
+			/* Agent Details Spinner */
+			.agent-cards-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+				gap: 20px;
+				justify-items: center;
+			}
+
+			.spinner-card {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 12px;
+				padding: 18px;
+				width: 100%;
+				text-align: center;
+			}
+
+			.spinner-container {
+				position: relative;
+				width: 120px;
+				height: 120px;
+			}
+
+			.spinner-svg {
+				transform: rotate(-90deg);
+				width: 100%;
+				height: 100%;
+			}
+
+			.spinner-circle {
+				fill: none;
+				stroke-width: 4;
+			}
+
+			.spinner-background {
+				stroke: #e2e8f0;
+			}
+
+			.spinner-progress {
+				stroke: var(--primary-1);
+				stroke-linecap: round;
+				transition: stroke-dasharray 0.5s ease;
+			}
+
+			.spinner-percentage {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				font-size: 22px;
+				font-weight: 700;
+				color: var(--primary-1);
+			}
+
+			.spinner-label {
+				font-size: 16px;
+				font-weight: 600;
+				color: #0f172a;
+			}
+
+			.spinner-data {
+				font-size: 12px;
+				color: #64748b;
+			}
+
+			@media (max-width: 992px) {
+				.details-row {
+					flex-direction: column;
+					gap: 30px;
+				}
+				.details-row > section {
+					min-width: 100%;
+				}
+			}
+
 			@media (max-width: 768px) {
 				.bm-card {
 					grid-template-columns: 1fr;
@@ -367,8 +453,6 @@
 				.bm-avatar {
 					margin: 0 auto;
 				}
-
-
 			}
 
 			@keyframes spin {
@@ -485,7 +569,7 @@
 					<svg
 						width="16"
 						height="16"
-						viewBox="0 0 24 24"
+						viewBox="0 0 24"
 						fill="none"
 						stroke="currentColor"
 						stroke-width="2"
@@ -557,43 +641,90 @@
 
 						</section>
 		
-						<section class="staff-detail-section">
-							<h2>Staff Detail</h2>
-							<div class="staff-cards-grid">
-								<div class="staff-card">
-									<div class="staff-card-title">Sub Staff</div>
-									<div class="staff-card-count" id="substaff-count">--</div>
+						<div class="details-row">
+							<section class="staff-detail-section">
+								<h2>Staff Detail</h2>
+								<div class="staff-cards-grid">
+									<div class="staff-card">
+										<div class="staff-card-title">Sub Staff</div>
+										<div class="staff-card-count" id="substaff-count">--</div>
+									</div>
+									<div class="staff-card">
+										<div class="staff-card-title">BDO</div>
+										<div class="staff-card-count" id="bdo-count">--</div>
+									</div>
+									<div class="staff-card">
+										<div class="staff-card-title">RO</div>
+										<div class="staff-card-count" id="ro-count">--</div>
+									</div>
+									<div class="staff-card">
+										<div class="staff-card-title">Total Staff</div>
+										<div class="staff-card-count" id="total-staff-count">--</div>
+									</div>
 								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">BDO</div>
-									<div class="staff-card-count" id="bdo-count">--</div>
+							</section>
+		
+							<section class="staff-detail-section">
+								<h2>Agent Details</h2>
+								<div class="agent-cards-grid">
+									<!-- DDS Agent Spinner -->
+									<div class="spinner-card">
+										<div class="spinner-container">
+											<svg class="spinner-svg" viewBox="0 0 36 36">
+												<circle
+													class="spinner-circle spinner-background"
+													cx="18"
+													cy="18"
+													r="15.9155"
+												></circle>
+												<circle
+													id="dds-spinner-progress"
+													class="spinner-circle spinner-progress"
+													cx="18"
+													cy="18"
+													r="15.9155"
+													stroke-dasharray="0, 100"
+												></circle>
+											</svg>
+											<div id="dds-spinner-percentage" class="spinner-percentage">0%</div>
+										</div>
+										<div class="spinner-label">DDS Agents</div>
+										<div class="spinner-data">
+											<div>Total = <span id="dds-total">--</span></div>
+											<div>Active = <span id="dds-active">--</span></div>
+										</div>
+									</div>
+		
+									<!-- SS Agent Spinner -->
+									<div class="spinner-card">
+										<div class="spinner-container">
+											<svg class="spinner-svg" viewBox="0 0 36 36">
+												<circle
+													class="spinner-circle spinner-background"
+													cx="18"
+													cy="18"
+													r="15.9155"
+												></circle>
+												<circle
+													id="ss-spinner-progress"
+													class="spinner-circle spinner-progress"
+													cx="18"
+													cy="18"
+													r="15.9155"
+													stroke-dasharray="0, 100"
+												></circle>
+											</svg>
+											<div id="ss-spinner-percentage" class="spinner-percentage">0%</div>
+										</div>
+										<div class="spinner-label">SS Agents</div>
+										<div class="spinner-data">
+											<div>Total = <span id="ss-total">--</span></div>
+											<div>Active = <span id="ss-active">--</span></div>
+										</div>
+									</div>
 								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">RO</div>
-									<div class="staff-card-count" id="ro-count">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">Total Active DDS Agent</div>
-									<div class="staff-card-count" id="total-active-dds-agent-count">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">Total DDS Agent</div>
-									<div class="staff-card-count" id="total-dds-agent-count">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">Total Active SS Agent</div>
-									<div class="staff-card-count" id="total-active-ss-agent-count">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">Total SS Agent</div>
-									<div class="staff-card-count" id="total-ss-agent-count">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">Total Staff</div>
-									<div class="staff-card-count" id="total-staff-count">--</div>
-								</div>
-							</div>
-						</section>
+							</section>
+						</div>
 		
 						<section class="staff-detail-section">
 							<h2>Deposit & Book Position</h2>
@@ -1083,15 +1214,17 @@
 					substaffCount: document.getElementById("substaff-count"),
 					bdoCount: document.getElementById("bdo-count"),
 					roCount: document.getElementById("ro-count"),
-					totalActiveDdsAgentCount: document.getElementById(
-						"total-active-dds-agent-count",
-					),
-					totalDdsAgentCount: document.getElementById("total-dds-agent-count"),
-					totalActiveSsAgentCount: document.getElementById(
-						"total-active-ss-agent-count",
-					),
-					totalSsAgentCount: document.getElementById("total-ss-agent-count"),
 					totalStaffCount: document.getElementById("total-staff-count"),
+		
+					// Agent Spinner Elements
+					ddsSpinnerProgress: document.getElementById("dds-spinner-progress"),
+					ddsSpinnerPercentage: document.getElementById("dds-spinner-percentage"),
+					ddsTotal: document.getElementById("dds-total"),
+					ddsActive: document.getElementById("dds-active"),
+					ssSpinnerProgress: document.getElementById("ss-spinner-progress"),
+					ssSpinnerPercentage: document.getElementById("ss-spinner-percentage"),
+					ssTotal: document.getElementById("ss-total"),
+					ssActive: document.getElementById("ss-active"),
 
 					// Deposit & Book Position
 					totalBook: document.getElementById("total-book"),
@@ -1162,6 +1295,17 @@
 					return parts.length > 1 ? formatted + "." + parts[1] : formatted;
 				},
 
+				updateSpinner(progressEl, percentageEl, totalEl, activeEl, active, total) {
+					const activeNum = parseInt(active) || 0;
+					const totalNum = parseInt(total) || 0;
+					const percentage = totalNum > 0 ? (activeNum / totalNum) * 100 : 0;
+		
+					progressEl.style.strokeDasharray = `${percentage}, 100`;
+					percentageEl.textContent = `${Math.round(percentage)}%`;
+					totalEl.textContent = this.formatIndianNumber(totalNum);
+					activeEl.textContent = this.formatIndianNumber(activeNum);
+				},
+
 				async load(solId, branchEmailValue) { // Added branchEmailValue
 					try {
 						const r = await fetch(
@@ -1186,15 +1330,26 @@
 						this.el.substaffCount.textContent = this.value(d.staff_nos); // Using staff_nos for substaff
 						this.el.bdoCount.textContent = this.value(d.bdo);
 						this.el.roCount.textContent = this.value(d.ro);
-						this.el.totalActiveDdsAgentCount.textContent = this.value(
-							d.total_active_dds_agent,
-						);
-						this.el.totalDdsAgentCount.textContent = this.value(d.total_dds_agent);
-						this.el.totalActiveSsAgentCount.textContent = this.value(
-							d.total_active_ss_agent,
-						);
-						this.el.totalSsAgentCount.textContent = this.value(d.total_ss_agent);
 						this.el.totalStaffCount.textContent = this.value(d.staff_count); // Using staff_count for total staff
+		
+						// Update DDS and SS agent spinners
+						this.updateSpinner(
+							this.el.ddsSpinnerProgress,
+							this.el.ddsSpinnerPercentage,
+							this.el.ddsTotal,
+							this.el.ddsActive,
+							d.total_active_dds_agent,
+							d.total_dds_agent,
+						);
+		
+						this.updateSpinner(
+							this.el.ssSpinnerProgress,
+							this.el.ssSpinnerPercentage,
+							this.el.ssTotal,
+							this.el.ssActive,
+							d.total_active_ss_agent,
+							d.total_ss_agent,
+						);
 
 						// Populate Deposit & Book Position
 						this.el.totalBook.textContent = this.formatIndianNumber(d.total_book);
