@@ -705,6 +705,9 @@
 					selectedIndex: -1,
 					cache: new Map(),
 					abortController: null,
+					LOCAL_STORAGE_KEY: "recentBranches",
+					MAX_RECENT_BRANCHES: 5,
+					recentBranches: [],
 				},
 
 				el: {
@@ -725,6 +728,75 @@
 						clearTimeout(t);
 						t = setTimeout(() => fn.apply(this, args), delay);
 					};
+				},
+
+				value(v) {
+					if (!v || v === "#N/A") return "--";
+					return v;
+				},
+
+				value(v) {
+					if (!v || v === "#N/A") return "--";
+					return v;
+				},
+
+				loadRecentBranches() {
+					try {
+						const stored = localStorage.getItem(this.state.LOCAL_STORAGE_KEY);
+						this.state.recentBranches = stored ? JSON.parse(stored) : [];
+					} catch (e) {
+						console.error("Failed to load recent branches from localStorage", e);
+						this.state.recentBranches = [];
+					}
+				},
+
+				saveRecentBranch(branch) {
+					// Ensure the branch has sol_id, branch, region, state
+					if (!branch || !branch.sol_id || !branch.branch) return;
+
+					// Create a clean object to store
+					const newRecent = {
+						sol_id: branch.sol_id,
+						branch: branch.branch,
+						region: branch.region || "--",
+						state: branch.state || "--",
+					};
+
+					// Remove if already exists to move it to the top
+					this.state.recentBranches = this.state.recentBranches.filter(
+						(b) => b.sol_id !== newRecent.sol_id,
+					);
+
+					// Add new branch to the beginning
+					this.state.recentBranches.unshift(newRecent);
+
+					// Keep only the latest N suggestions
+					if (this.state.recentBranches.length > this.state.MAX_RECENT_BRANCHES) {
+						this.state.recentBranches = this.state.recentBranches.slice(
+							0,
+							this.state.MAX_RECENT_BRANCHES,
+						);
+					}
+
+					try {
+						localStorage.setItem(
+							this.state.LOCAL_STORAGE_KEY,
+							JSON.stringify(this.state.recentBranches),
+						);
+					} catch (e) {
+						console.error("Failed to save recent branches to localStorage", e);
+					}
+				},
+
+				renderRecentSuggestions(filterText = "") {
+					this.hideSuggestions(); // Clear any existing suggestions
+					const filtered = this.state.recentBranches.filter(
+						(b) =>
+							b.branch.toLowerCase().includes(filterText.toLowerCase()) ||
+							b.sol_id.includes(filterText),
+					);
+					this.state.suggestions = filtered;
+					this.renderSuggestions(filterText, true); // Pass true to indicate it's from cache
 				},
 
 				getCache(key) {
@@ -783,6 +855,14 @@
 						this.el.branchRegion.textContent = data.region || "--";
 						this.el.branchState.textContent = data.state || "--";
 
+						// Save the successfully loaded branch to recent searches
+						this.saveRecentBranch({
+							sol_id: data.sol_id,
+							branch: data.branch,
+							region: data.region,
+							state: data.state,
+						});
+
 						/* 🔗 Load Branch Manager Profile */
 						BranchManagerProfile.load(solId);
 					} catch (e) {
@@ -796,10 +876,19 @@
 
 				/* ---------------- Search Suggestions ---------------- */
 				async fetchSuggestions(txt) {
+					// This function now handles API calls based on text, or shows recent if blank
+					if (txt.length === 0) {
+						// If input is blank, show recent suggestions (if any)
+						this.renderRecentSuggestions("");
+						return;
+					}
+
 					if (txt.length < 2) {
 						this.hideSuggestions();
 						return;
 					}
+
+					this.state.suggestions = []; // Clear suggestions before API call
 
 					const key = "search_" + txt.toLowerCase();
 					let list = this.getCache(key);
@@ -814,13 +903,13 @@
 						}
 
 						this.state.suggestions = list.slice(0, 5);
-						this.renderSuggestions(txt);
+						this.renderSuggestions(txt); // Call main render function
 					} catch (e) {
 						this.hideSuggestions();
 					}
 				},
 
-				renderSuggestions(searchTxt) {
+				renderSuggestions(searchTxt, isFromCache = false) {
 					const box = this.el.suggestionsContainer;
 					box.innerHTML = "";
 					this.state.selectedIndex = -1;
@@ -837,10 +926,20 @@
 						div.className = "suggestion-item";
 						div.dataset.solId = b.sol_id;
 
+						let branchNameHtml = b.branch.replace(
+							regex,
+							'<span class="suggestion-highlight">$1</span>',
+						);
+						if (isFromCache) {
+							branchNameHtml = `(Recent) ${branchNameHtml}`;
+						}
+
 						div.innerHTML = `
 					<div>
-						${b.branch.replace(regex, '<span class="suggestion-highlight">$1</span>')}
-						<div style="font-size:11px;color:#64748b">${b.region} • ${b.state}</div>
+						${branchNameHtml}
+						<div style="font-size:11px;color:#64748b">${this.value(b.region)} • ${this.value(
+							b.state,
+						)}</div>
 					</div>
 					<span class="suggestion-sol">${b.sol_id}</span>
 				`;
@@ -894,10 +993,15 @@
 
 				/* ---------------- Init ---------------- */
 				init() {
+					this.loadRecentBranches(); // Load recent branches on init
 					const debouncedSearch = this.debounce(this.fetchSuggestions, 250);
 
 					this.el.searchInput.addEventListener("input", (e) =>
 						debouncedSearch.call(this, e.target.value.trim()),
+					);
+					// Show recent suggestions when search input is focused
+					this.el.searchInput.addEventListener("focus", () =>
+						this.renderRecentSuggestions(this.el.searchInput.value.trim()),
 					);
 
 					this.el.searchInput.addEventListener("keydown", (e) => this.handleKey(e));
