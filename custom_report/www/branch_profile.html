@@ -724,16 +724,10 @@
 }
 
 .manpower-percentage {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 12px;
-    font-weight: 800;
-    color: #ffffff;
-    z-index: 15;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    pointer-events: none;
+    font-size: 20px;
+    font-weight: 900;
+    color: #333333;
+    margin-bottom: 4px;
 }
 
 .gauge-labels {
@@ -1027,21 +1021,21 @@
                     </div>
                 </div>
         
-                                <div style="position:relative">
+                                        <div style="position:relative">
         
-                                    <div id="excess-tag" class="excess-indicator" style="display:none"></div>
+                                            <div id="excess-tag" class="excess-indicator" style="display:none"></div>
         
-                                    <div class="gauge-wrapper">
+                                            <div id="manpower-percentage" class="manpower-percentage">--%</div>
         
-                                         <div id="bar-blue" class="bar-blue" style="width: 0%"></div>
+                                            <div class="gauge-wrapper">
         
-                                         <div id="bar-red" class="bar-red" style="width: 0%"></div>
+                                                 <div id="bar-blue" class="bar-blue" style="width: 0%"></div>
         
-                                         <div id="budget-marker" class="budget-line" style="display:none"></div>
+                                                 <div id="bar-red" class="bar-red" style="width: 0%"></div>
         
-                                         <div id="manpower-percentage" class="manpower-percentage">--%</div>
+                                                 <div id="budget-marker" class="budget-line" style="display:none"></div>
         
-                                    </div>
+                                            </div>
                     <div class="gauge-labels">
                          <div style="color: #097c80;">Budgeted Staff: <span id="budget-label-val">--</span></div>
                          <div style="color: #333333;">Total Active Staff: <span id="actual-label-val">--</span></div>
