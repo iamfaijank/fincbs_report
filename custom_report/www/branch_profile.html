@@ -1069,14 +1069,18 @@
 									</div>
 								</div>
 
-								<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; padding-top: 15px; border-top: 1px solid #f1f5f9;">
+								<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 20px; padding-top: 15px; border-top: 1px solid #f1f5f9;">
 									<div>
 										<div style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">Target</div>
-										<div id="cat-target-val" style="font-size: 16px; font-weight: 700; color: #333333;">₹ 50,00,000</div>
+										<div id="cat-target-val" style="font-size: 14px; font-weight: 700; color: #333333;">₹ 50,00,000</div>
 									</div>
 									<div>
 										<div style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">Achievement</div>
-										<div id="cat-achievement-val" style="font-size: 16px; font-weight: 700; color: #10b981;">₹ 42,50,000</div>
+										<div id="cat-achievement-val" style="font-size: 14px; font-weight: 700; color: #10b981;">₹ 42,50,000</div>
+									</div>
+									<div>
+										<div style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">% Ach.</div>
+										<div id="cat-percentage-val" style="font-size: 14px; font-weight: 700; color: var(--primary-1);">85.00%</div>
 									</div>
 								</div>
 							</section>
@@ -1554,6 +1558,7 @@
 							const statusEl = document.getElementById('performance-status');
 							const targetEl = document.getElementById('cat-target-val');
 							const achievementEl = document.getElementById('cat-achievement-val');
+							const percentageEl = document.getElementById('cat-percentage-val');
 							const badges = document.querySelectorAll('#category-hierarchy .hierarchy-badge');
 
 							// Reset badges
@@ -1563,16 +1568,19 @@
 								statusEl.textContent = "Accelerator";
 								targetEl.textContent = "₹ 50,00,000";
 								achievementEl.textContent = "₹ 42,50,000";
+								percentageEl.textContent = "85.00%";
 								badges[2].classList.add('active'); // Accelerator
 							} else if (period === 'ytd') {
 								statusEl.textContent = "Master";
 								targetEl.textContent = "₹ 4,50,00,000";
 								achievementEl.textContent = "₹ 4,10,00,000";
+								percentageEl.textContent = "91.11%";
 								badges[1].classList.add('active'); // Master
 							} else if (period === 'yearly') {
 								statusEl.textContent = "Pinnacle";
 								targetEl.textContent = "₹ 12,00,00,000";
 								achievementEl.textContent = "₹ 11,80,00,000";
+								percentageEl.textContent = "98.33%";
 								badges[0].classList.add('active'); // Pinnacle
 							}
 						});
