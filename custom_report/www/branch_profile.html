@@ -518,7 +518,7 @@
 				transition: stroke-dasharray 0.5s ease;
 			}
 
-			/* Elegant Flowing Animation */
+			/* Liquid Trail Animation */
 			.spinner-container::after {
 				content: "";
 				position: absolute;
@@ -529,21 +529,20 @@
 				border-radius: 50%;
 				background: conic-gradient(
 					from 0deg,
-					transparent 0%,
-					rgba(9, 124, 128, 0) 35%,
-					rgba(9, 124, 128, 0.4) 50%,
-					rgba(9, 124, 128, 0) 65%,
-					transparent 100%
+					rgba(9, 124, 128, 1) 0deg,    /* Leading Edge (Bright) */
+					rgba(9, 124, 128, 0.6) 20deg, /* Mid Trail */
+					rgba(9, 124, 128, 0) 120deg,  /* Fading Tail */
+					transparent 360deg
 				);
-				animation: flow-rotate 3s infinite cubic-bezier(0.4, 0, 0.2, 1);
+				animation: liquid-spin 1.5s linear infinite;
 				pointer-events: none;
 				z-index: 5;
-				/* Precise mask for 85px container to match the SVG stroke path */
+				/* Precise mask to overlay exactly on the spinner stroke */
 				-webkit-mask: radial-gradient(transparent 34px, black 35px, black 39px, transparent 40px);
 				mask: radial-gradient(transparent 34px, black 35px, black 39px, transparent 40px);
 			}
 
-			@keyframes flow-rotate {
+			@keyframes liquid-spin {
 				from { transform: rotate(0deg); }
 				to { transform: rotate(360deg); }
 			}
