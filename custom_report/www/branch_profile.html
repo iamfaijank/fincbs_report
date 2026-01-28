@@ -921,9 +921,6 @@
             <div id="staff-status-badge" class="status-badge">Checking...</div>
         </div>
 
-        <div class="staff-main-count" id="total-staff-display">--</div>
-        <div class="staff-meta-text">Total Actual Staff (Budget: <span id="budget-val-text">--</span>)</div>
-
         <div style="position:relative">
             <div id="excess-tag" class="excess-indicator" style="display:none"></div>
             <div class="gauge-labels">
@@ -1587,8 +1584,6 @@ const BranchManagerProfile = {
                     photo: document.getElementById("bm-photo"),
 
                     // --- New Staff Overflow UI Elements ---
-                    staffMainDisplay: document.getElementById("total-staff-display"),
-                    budgetValText: document.getElementById("budget-val-text"),
                     staffStatusBadge: document.getElementById("staff-status-badge"),
                     excessTag: document.getElementById("excess-tag"),
                     barBlue: document.getElementById("bar-blue"),
@@ -1706,8 +1701,6 @@ const BranchManagerProfile = {
                         const roCount = parseInt(d.ro) || 0;
 
                         // Set Text Values
-                        this.el.staffMainDisplay.textContent = this.formatIndianNumber(actual);
-                        this.el.budgetValText.textContent = this.formatIndianNumber(budget);
                         this.el.budgetLabelVal.textContent = this.formatIndianNumber(budget);
                         this.el.actualLabelVal.textContent = this.formatIndianNumber(actual);
                         this.el.bdeChip.textContent = this.formatIndianNumber(bdeCount);
