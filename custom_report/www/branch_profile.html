@@ -492,8 +492,8 @@
 
 			.spinner-container {
 				position: relative;
-				width: 75px;
-				height: 75px;
+				width: 85px;
+				height: 85px;
 				flex-shrink: 0;
 			}
 
@@ -523,9 +523,23 @@
 				top: 50%;
 				left: 50%;
 				transform: translate(-50%, -50%);
-				font-size: 15px;
-				font-weight: 700;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				line-height: 1;
+			}
+			.perc-val {
+				font-size: 16px;
+				font-weight: 800;
 				color: var(--primary-1);
+			}
+			.perc-label {
+				font-size: 9px;
+				font-weight: 700;
+				color: #64748b;
+				text-transform: uppercase;
+				margin-bottom: 2px;
 			}
 
 			.spinner-label {
@@ -1072,7 +1086,10 @@
 												<circle class="spinner-circle spinner-background" cx="18" cy="18" r="15.9155"></circle>
 												<circle id="dds-spinner-progress" class="spinner-circle spinner-progress" cx="18" cy="18" r="15.9155" stroke-dasharray="0, 100"></circle>
 											</svg>
-											<div id="dds-spinner-percentage" class="spinner-percentage">0%</div>
+											<div id="dds-spinner-percentage" class="spinner-percentage">
+												<span class="perc-label">Active</span>
+												<span class="perc-val">0%</span>
+											</div>
 										</div>
 									</div>
 		
@@ -1091,7 +1108,10 @@
 												<circle class="spinner-circle spinner-background" cx="18" cy="18" r="15.9155"></circle>
 												<circle id="ss-spinner-progress" class="spinner-circle spinner-progress" cx="18" cy="18" r="15.9155" stroke-dasharray="0, 100"></circle>
 											</svg>
-											<div id="ss-spinner-percentage" class="spinner-percentage">0%</div>
+											<div id="ss-spinner-percentage" class="spinner-percentage">
+												<span class="perc-label">Active</span>
+												<span class="perc-val">0%</span>
+											</div>
 										</div>
 									</div>
 								</div>
@@ -1771,7 +1791,10 @@ const BranchManagerProfile = {
                     const inactivePercentage = totalNum > 0 ? (inactiveNum / totalNum) * 100 : 0;
 
                     progressEl.style.strokeDasharray = `${activePercentage}, 100`;
-                    percentageEl.textContent = `${Math.round(activePercentage)}%`;
+                    const valEl = percentageEl.querySelector('.perc-val');
+                    if (valEl) valEl.textContent = `${Math.round(activePercentage)}%`;
+                    else percentageEl.textContent = `${Math.round(activePercentage)}%`;
+                    
                     totalEl.textContent = this.formatIndianNumber(totalNum);
                     activeEl.textContent = this.formatIndianNumber(activeNum);
                     
