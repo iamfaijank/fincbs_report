@@ -529,6 +529,130 @@
 				color: #64748b;
 			}
 
+/* Modern Staff Overflow UI */
+.total-staff-overview-card {
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.staff-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.status-badge.overstaffed {
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+.status-badge.normal {
+    background: #ecfdf5;
+    color: #10b981;
+}
+
+.gauge-container {
+    margin: 24px 0;
+}
+
+/* Overflow Progress Bar */
+.overflow-bar-wrapper {
+    height: 24px;
+    background: #f1f5f9;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+}
+
+.bar-budget {
+    height: 100%;
+    background: #2563eb; /* Blue for Budget */
+    transition: width 0.5s ease;
+}
+
+.bar-excess {
+    height: 100%;
+    background: #dc2626; /* Red for Excess */
+    transition: width 0.5s ease;
+    position: relative;
+}
+
+.budget-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: white;
+    z-index: 2;
+    box-shadow: 0 0 4px rgba(0,0,0,0.3);
+}
+
+.excess-label {
+    position: absolute;
+    top: -25px;
+    right: 0;
+    color: #dc2626;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.staff-main-count {
+    font-size: 42px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 10px 0;
+}
+
+.staff-meta-text {
+    color: #64748b;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+/* Independent Designation Chips */
+.designation-chips {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.chip {
+    flex: 1;
+    background: #f8fafc;
+    padding: 10px;
+    border-radius: 10px;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+}
+
+.chip-label {
+    display: block;
+    font-size: 10px;
+    color: #64748b;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.chip-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e293b;
+}
 			@media (max-width: 992px) {
 				.details-row {
 					flex-direction: column;
@@ -738,44 +862,42 @@
 		
 						<div class="details-row">
 							<section class="total-staff-overview-card">
-								<div class="staff-detail-content">
-									<h2>Total Staff Detail</h2>
-									<div class="total-staff-count" id="total-staff-count-large">--</div>
-									<div class="comparison-cards-container">
-										<div class="comparison-card" id="budgeted-staff-card">
-											<div class="card-title">Budgeted Staff</div>
-											<div class="card-value" id="budgeted-staff-value">--</div>
-										</div>
-										<div class="comparison-card" id="staff-count-card">
-											<div class="card-title">Staff Count</div>
-											<div class="card-value" id="staff-count-value">--</div>
-										</div>
-									</div>
-									<div class="progress-bar-segmented">
-										<div id="bde-progress" class="progress-segment bde-color" style="width: 0%"></div>
-										<div id="bdo-progress" class="progress-segment bdo-color" style="width: 0%"></div>
-										<div id="ro-progress" class="progress-segment ro-color" style="width: 0%"></div>
-									</div>
-									<ul class="staff-breakdown-list">
-										<li class="breakdown-item">
-											<span class="color-dot bde-color"></span>
-											<span class="role-name">BDE</span>
-											<span class="role-count" id="bde-count">--</span>
-										</li>
-										<li class="breakdown-item">
-											<span class="color-dot bdo-color"></span>
-											<span class="role-name">BDO</span>
-											<span class="role-count" id="bdo-count">--</span>
-										</li>
-										<li class="breakdown-item">
-											<span class="color-dot ro-color"></span>
-											<span class="role-name">RO</span>
-											<span class="role-count" id="ro-count">--</span>
-										</li>
-									</ul>
-								</div>
-								<button class="view-details-button">View Manpower Detail</button>
-							</section>
+    <div class="staff-detail-content">
+        <div class="staff-header-flex">
+            <h2 style="margin:0">Manpower Status</h2>
+            <div id="staff-status-badge" class="status-badge">Checking...</div>
+        </div>
+
+        <div class="staff-main-count" id="total-staff-display">--</div>
+        <div class="staff-meta-text">Total Actual Staff (Budget: <span id="budget-val-text">--</span>)</div>
+
+        <div class="gauge-container">
+            <div style="position:relative">
+                <div id="excess-tag" class="excess-label" style="display:none"></div>
+                <div class="overflow-bar-wrapper">
+                    <div id="bar-blue" class="bar-budget" style="width: 0%"></div>
+                    <div id="bar-red" class="bar-excess" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="designation-chips">
+            <div class="chip">
+                <span class="chip-label">BDE</span>
+                <span class="chip-value" id="bde-chip-val">--</span>
+            </div>
+            <div class="chip">
+                <span class="chip-label">BDO</span>
+                <span class="chip-value" id="bdo-chip-val">--</span>
+            </div>
+            <div class="chip">
+                <span class="chip-label">RO</span>
+                <span class="chip-value" id="ro-chip-val">--</span>
+            </div>
+        </div>
+    </div>
+    <button class="view-details-button">View Detailed Manpower Table</button>
+</section>
 		
 							<section class="staff-detail-section">
 								<h2>Agent Details</h2>
@@ -1308,274 +1430,225 @@
 			/* =========================================================
 	   BRANCH MANAGER PROFILE
 	   ========================================================= */
-			const BranchManagerProfile = {
-				el: {
-					name: document.getElementById("bm-name"),
-					mobile: document.getElementById("bm-mobile"),
-					vintage: document.getElementById("bm-vintage"),
-					doj: document.getElementById("bm-doj"),
-					chName: document.getElementById("ch-name"),
-					branchName: document.getElementById("branch-name"),
-					branchDistrict: document.getElementById("branch-district"),
-					branchVintage: document.getElementById("branch-vintage"),
-					branchEmail: document.getElementById("branch-email"), // New
-					chMobile: document.getElementById("ch-mobile"), // New
-					branchOpeningDate: document.getElementById("branch-opening-date"), // New
-					photo: document.getElementById("bm-photo"),
+const BranchManagerProfile = {
+                el: {
+                    name: document.getElementById("bm-name"),
+                    mobile: document.getElementById("bm-mobile"),
+                    vintage: document.getElementById("bm-vintage"),
+                    doj: document.getElementById("bm-doj"),
+                    chName: document.getElementById("ch-name"),
+                    branchName: document.getElementById("branch-name"),
+                    branchDistrict: document.getElementById("branch-district"),
+                    branchVintage: document.getElementById("branch-vintage"),
+                    branchEmail: document.getElementById("branch-email"),
+                    chMobile: document.getElementById("ch-mobile"),
+                    branchOpeningDate: document.getElementById("branch-opening-date"),
+                    photo: document.getElementById("bm-photo"),
 
-					// New Staff Detail Elements
-					totalStaffCountLarge: document.getElementById("total-staff-count-large"),
-					bdeProgress: document.getElementById("bde-progress"),
-					bdoProgress: document.getElementById("bdo-progress"),
-					roProgress: document.getElementById("ro-progress"),
+                    // --- New Staff Overflow UI Elements ---
+                    staffMainDisplay: document.getElementById("total-staff-display"),
+                    budgetValText: document.getElementById("budget-val-text"),
+                    staffStatusBadge: document.getElementById("staff-status-badge"),
+                    excessTag: document.getElementById("excess-tag"),
+                    barBlue: document.getElementById("bar-blue"),
+                    barRed: document.getElementById("bar-red"),
+                    
+                    // Designation Chips
+                    bdeChip: document.getElementById("bde-chip-val"),
+                    bdoChip: document.getElementById("bdo-chip-val"),
+                    roChip: document.getElementById("ro-chip-val"),
+                    // --------------------------------------
 
-					// Comparison Cards
-					budgetedStaffCard: document.getElementById("budgeted-staff-card"),
-					budgetedStaffValue: document.getElementById("budgeted-staff-value"),
-					staffCountCard: document.getElementById("staff-count-card"),
-					staffCountValue: document.getElementById("staff-count-value"),
+                    // Agent Spinner Elements
+                    ddsSpinnerProgress: document.getElementById("dds-spinner-progress"),
+                    ddsSpinnerPercentage: document.getElementById("dds-spinner-percentage"),
+                    ddsTotal: document.getElementById("dds-total"),
+                    ddsActive: document.getElementById("dds-active"),
+                    ssSpinnerProgress: document.getElementById("ss-spinner-progress"),
+                    ssSpinnerPercentage: document.getElementById("ss-spinner-percentage"),
+                    ssTotal: document.getElementById("ss-total"),
+                    ssActive: document.getElementById("ss-active"),
 
-					// Staff Detail Counts
-					bdeCount: document.getElementById("bde-count"),
-					bdoCount: document.getElementById("bdo-count"),
-					roCount: document.getElementById("ro-count"),
-		
-					// Agent Spinner Elements
-					ddsSpinnerProgress: document.getElementById("dds-spinner-progress"),
-					ddsSpinnerPercentage: document.getElementById("dds-spinner-percentage"),
-					ddsTotal: document.getElementById("dds-total"),
-					ddsActive: document.getElementById("dds-active"),
-					ssSpinnerProgress: document.getElementById("ss-spinner-progress"),
-					ssSpinnerPercentage: document.getElementById("ss-spinner-percentage"),
-					ssTotal: document.getElementById("ss-total"),
-					ssActive: document.getElementById("ss-active"),
+                    // Deposit & Book Position
+                    totalBook: document.getElementById("total-book"),
+                    saBook: document.getElementById("sa-book"),
+                    caBook: document.getElementById("ca-book"),
+                    fdBook: document.getElementById("fd-book"),
+                    rdBook: document.getElementById("rd-book"),
+                    ddsBook: document.getElementById("dds-book"),
+                    smbgBook: document.getElementById("smbg-book"),
 
-					// Deposit & Book Position
-					totalBook: document.getElementById("total-book"),
-					saBook: document.getElementById("sa-book"),
-					caBook: document.getElementById("ca-book"),
-					fdBook: document.getElementById("fd-book"),
-					rdBook: document.getElementById("rd-book"),
-					ddsBook: document.getElementById("dds-book"),
-					smbgBook: document.getElementById("smbg-book"),
+                    // Customer Base Snapshot
+                    totalCustomersId: document.getElementById("total-customers-id"),
+                    totalCaNoOfCustomers: document.getElementById("total-ca-no-of-customers"),
+                    totalSaNoOfCustomers: document.getElementById("total-sa-no-of-customers"),
+                    totalFdNoOfCustomers: document.getElementById("total-fd-no-of-customers"),
+                    totalRdNoOfCustomers: document.getElementById("total-rd-no-of_customers"),
+                    totalDdsNoOfCustomers: document.getElementById("total-dds-no-of-customers"),
+                    totalSmbgNoOfCustomers: document.getElementById("total-smbg-no-of-customers"),
 
-					// Customer Base Snapshot
-					totalCustomersId: document.getElementById("total-customers-id"),
-					totalCaNoOfCustomers: document.getElementById("total-ca-no-of-customers"),
-					totalSaNoOfCustomers: document.getElementById("total-sa-no-of-customers"),
-					totalFdNoOfCustomers: document.getElementById("total-fd-no-of-customers"),
-					totalRdNoOfCustomers: document.getElementById("total-rd-no-of_customers"),
-					totalDdsNoOfCustomers: document.getElementById("total-dds-no-of-customers"),
-					totalSmbgNoOfCustomers: document.getElementById("total-smbg-no-of-customers"),
+                    // Demand & Collection Performance
+                    ddCollection: document.getElementById("dd-collection"),
+                    rdCollection: document.getElementById("rd-collection"),
+                    ddsDemand: document.getElementById("dds-demand"),
+                    ddsDemandVsCollection: document.getElementById("dds-demand-vs-collection"),
+                    smbgDemand: document.getElementById("smbg-demand"),
+                    smbgCollection: document.getElementById("smbg-collection"),
+                    smbgDemandVsCollection: document.getElementById("smbg-demand-vs-collection"),
+                    rdDemand: document.getElementById("rd-demand"),
+                    rdSmbgCollection: document.getElementById("rd-smbg-collection"),
+                    rdSmbgPending: document.getElementById("rd-smbg-pending"),
+                },
 
-					// Demand & Collection Performance
-					ddCollection: document.getElementById("dd-collection"),
-					rdCollection: document.getElementById("rd-collection"),
-					ddsDemand: document.getElementById("dds-demand"),
-					ddsDemandVsCollection: document.getElementById("dds-demand-vs-collection"),
-					smbgDemand: document.getElementById("smbg-demand"),
-					smbgCollection: document.getElementById("smbg-collection"),
-					smbgDemandVsCollection: document.getElementById("smbg-demand-vs-collection"),
-					rdDemand: document.getElementById("rd-demand"),
-					rdSmbgCollection: document.getElementById("rd-smbg-collection"),
-					rdSmbgPending: document.getElementById("rd-smbg-pending"),
-				},
+                value(v) {
+                    if (!v || v === "#N/A") return "--";
+                    return v;
+                },
 
-				value(v) {
-					if (!v || v === "#N/A") return "--";
-					return v;
-				},
+                formatDate(d) {
+                    if (!d) return "--";
+                    const datePart = d.split(' ')[0];
+                    const date = new Date(datePart);
+                    if (isNaN(date.getTime())) return "--";
+                    return date.toLocaleDateString("en-GB");
+                },
 
-				formatDate(d) {
-					if (!d) return "--"; // Handle null or empty input
+                formatIndianNumber(num) {
+                    if (isNaN(num) || num === null || num === undefined) return "--";
+                    const parts = num.toString().split(".");
+                    let lastThree = parts[0].substring(parts[0].length - 3);
+                    const otherNumbers = parts[0].substring(0, parts[0].length - 3);
+                    if (otherNumbers != "") lastThree = "," + lastThree;
+                    const formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
+                    return parts.length > 1 ? formatted + "." + parts[1] : formatted;
+                },
 
-					// Extract only the date part (YYYY-MM-DD)
-					const datePart = d.split(' ')[0]; // Assumes format "YYYY-MM-DD HH:MM:SS"
+                updateSpinner(progressEl, percentageEl, totalEl, activeEl, active, total) {
+                    const activeNum = parseInt(active) || 0;
+                    const totalNum = parseInt(total) || 0;
+                    const percentage = totalNum > 0 ? (activeNum / totalNum) * 100 : 0;
+                    progressEl.style.strokeDasharray = `${percentage}, 100`;
+                    percentageEl.textContent = `${Math.round(percentage)}%`;
+                    totalEl.textContent = this.formatIndianNumber(totalNum);
+                    activeEl.textContent = this.formatIndianNumber(activeNum);
+                },
 
-					const date = new Date(datePart);
+                async load(solId, branchEmailValue) {
+                    try {
+                        const r = await fetch(
+                            `/api/method/custom_report.branch_v1.get_branch_profile_data?sol_id=${solId}`,
+                        );
+                        const j = await r.json();
+                        const d = j.message || {};
 
-					// Check if the date is valid
-					if (isNaN(date.getTime())) {
-						return "--"; // Handle invalid date strings gracefully
-					}
+                        // Header Info
+                        this.el.name.textContent = this.value(d.bm_name);
+                        this.el.mobile.textContent = this.value(d.bm_mob_no);
+                        this.el.vintage.textContent = this.value(d.bm_vintage);
+                        this.el.doj.textContent = this.formatDate(d.bm_doj);
+                        this.el.branchOpeningDate.textContent = this.formatDate(d.branch_opening_date);
+                        this.el.chName.textContent = this.value(d.ch_name);
+                        this.el.branchName.textContent = this.value(d.branch_name);
+                        this.el.branchDistrict.textContent = this.value(d.district);
+                        this.el.branchVintage.textContent = this.value(d.branch_vintage);
+                        this.el.branchEmail.textContent = this.value(branchEmailValue);
+                        this.el.chMobile.textContent = this.value(d.ch_mob_no);
 
-					return date.toLocaleDateString("en-GB"); // Format as DD/MM/YYYY
-				},
+                        // --- Staff Details & Overflow Logic ---
+                        const budgetedStaff = parseInt(d.total_no_of_budgeted_staff) || 0;
+                        const currentStaff = parseInt(d.staff_count) || 0;
+                        const bdeCount = parseInt(d.bde) || 0;
+                        const bdoCount = parseInt(d.bdo) || 0;
+                        const roCount = parseInt(d.ro) || 0;
 
-				formatIndianNumber(num) {
-					if (isNaN(num) || num === null || num === undefined) return "--";
+                        // Set Text Values
+                        this.el.staffMainDisplay.textContent = this.formatIndianNumber(currentStaff);
+                        this.el.budgetValText.textContent = this.formatIndianNumber(budgetedStaff);
+                        this.el.bdeChip.textContent = this.formatIndianNumber(bdeCount);
+                        this.el.bdoChip.textContent = this.formatIndianNumber(bdoCount);
+                        this.el.roChip.textContent = this.formatIndianNumber(roCount);
 
-					const parts = num.toString().split(".");
+                        if (currentStaff > budgetedStaff) {
+                            // OVERSTAFFED
+                            const excess = currentStaff - budgetedStaff;
+                            this.el.staffStatusBadge.textContent = "Status: Overstaffed";
+                            this.el.staffStatusBadge.className = "status-badge overstaffed";
+                            
+                            this.el.excessTag.style.display = "block";
+                            this.el.excessTag.textContent = `+${excess} Excess`;
 
-					let lastThree = parts[0].substring(parts[0].length - 3);
+                            // Bar widths normalized to total actual staff
+                            const bWidth = (budgetedStaff / currentStaff) * 100;
+                            const eWidth = (excess / currentStaff) * 100;
+                            this.el.barBlue.style.width = `${bWidth}%`;
+                            this.el.barRed.style.width = `${eWidth}%`;
+                        } else {
+                            // OPTIMAL / UNDERSTAFFED
+                            this.el.staffStatusBadge.textContent = "Status: Optimal";
+                            this.el.staffStatusBadge.className = "status-badge normal";
+                            this.el.excessTag.style.display = "none";
+                            
+                            const fillPercent = budgetedStaff > 0 ? (currentStaff / budgetedStaff) * 100 : 0;
+                            this.el.barBlue.style.width = `${fillPercent}%`;
+                            this.el.barRed.style.width = `0%`;
+                        }
+                        // ----------------------------------------
 
-					const otherNumbers = parts[0].substring(0, parts[0].length - 3);
+                        // Update DDS and SS agent spinners
+                        this.updateSpinner(
+                            this.el.ddsSpinnerProgress,
+                            this.el.ddsSpinnerPercentage,
+                            this.el.ddsTotal,
+                            this.el.ddsActive,
+                            d.total_active_dds_agent,
+                            d.total_dds_agent,
+                        );
+                        this.updateSpinner(
+                            this.el.ssSpinnerProgress,
+                            this.el.ssSpinnerPercentage,
+                            this.el.ssTotal,
+                            this.el.ssActive,
+                            d.total_active_ss_agent,
+                            d.total_ss_agent,
+                        );
 
-					if (otherNumbers != "") lastThree = "," + lastThree;
+                        // Populate Deposit & Book Position
+                        this.el.totalBook.textContent = this.formatIndianNumber(d.total_book);
+                        this.el.saBook.textContent = this.formatIndianNumber(d.sa_book);
+                        this.el.caBook.textContent = this.formatIndianNumber(d.ca_book);
+                        this.el.fdBook.textContent = this.formatIndianNumber(d.fd_book);
+                        this.el.rdBook.textContent = this.formatIndianNumber(d.rd_book);
+                        this.el.ddsBook.textContent = this.formatIndianNumber(d.dds_book);
+                        this.el.smbgBook.textContent = this.formatIndianNumber(d.smbg_book);
 
-					const formatted =
-						otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
+                        // Populate Customer Base Snapshot
+                        this.el.totalCustomersId.textContent = this.formatIndianNumber(d.total_customers_id);
+                        this.el.totalCaNoOfCustomers.textContent = this.formatIndianNumber(d.total_ca_no_of_customers);
+                        this.el.totalSaNoOfCustomers.textContent = this.formatIndianNumber(d.total_sa_no_of_customers);
+                        this.el.totalFdNoOfCustomers.textContent = this.formatIndianNumber(d.total_fd_no_of_customers);
+                        this.el.totalRdNoOfCustomers.textContent = this.formatIndianNumber(d.total_rd_no_of_customers);
+                        this.el.totalDdsNoOfCustomers.textContent = this.formatIndianNumber(d.total_dds_no_of_customers);
+                        this.el.totalSmbgNoOfCustomers.textContent = this.formatIndianNumber(d.total_smbg_no_of_customers);
 
-					return parts.length > 1 ? formatted + "." + parts[1] : formatted;
-				},
+                        // Populate Demand & Collection Performance
+                        this.el.ddCollection.textContent = this.formatIndianNumber(d.dd_collection);
+                        this.el.rdCollection.textContent = this.formatIndianNumber(d.rd_collection);
+                        this.el.ddsDemand.textContent = this.formatIndianNumber(d.dds_demand);
+                        this.el.ddsDemandVsCollection.textContent = this.formatIndianNumber(parseFloat(d.dds_demand_vs_collection || 0).toFixed(2)) + "%";
+                        this.el.smbgDemand.textContent = this.formatIndianNumber(d.smbg_demand);
+                        this.el.smbgCollection.textContent = this.formatIndianNumber(d.smbg_collection);
+                        this.el.smbgDemandVsCollection.textContent = this.formatIndianNumber(parseFloat(d.smbg_demand_vs_collection || 0).toFixed(2)) + "%";
+                        this.el.rdDemand.textContent = this.formatIndianNumber(d.rd_demand);
+                        this.el.rdSmbgCollection.textContent = this.formatIndianNumber(d.rd_smbg_collection);
+                        this.el.rdSmbgPending.textContent = this.formatIndianNumber(d.rd_smbg_pending);
 
-				updateSpinner(progressEl, percentageEl, totalEl, activeEl, active, total) {
-					const activeNum = parseInt(active) || 0;
-					const totalNum = parseInt(total) || 0;
-					const percentage = totalNum > 0 ? (activeNum / totalNum) * 100 : 0;
-		
-					progressEl.style.strokeDasharray = `${percentage}, 100`;
-					percentageEl.textContent = `${Math.round(percentage)}%`;
-					totalEl.textContent = this.formatIndianNumber(totalNum);
-					activeEl.textContent = this.formatIndianNumber(activeNum);
-				},
-
-				async load(solId, branchEmailValue) { // Added branchEmailValue
-					try {
-						const r = await fetch(
-							`/api/method/custom_report.branch_v1.get_branch_profile_data?sol_id=${solId}`,
-						);
-						const j = await r.json();
-						const d = j.message || {};
-
-						this.el.name.textContent = this.value(d.bm_name);
-						this.el.mobile.textContent = this.value(d.bm_mob_no);
-						this.el.vintage.textContent = this.value(d.bm_vintage);
-						this.el.doj.textContent = this.formatDate(d.bm_doj);
-						this.el.branchOpeningDate.textContent = this.formatDate(d.branch_opening_date);
-						this.el.chName.textContent = this.value(d.ch_name);
-
-						this.el.branchName.textContent = this.value(d.branch_name);
-						this.el.branchDistrict.textContent = this.value(d.district);
-						this.el.branchVintage.textContent = this.value(d.branch_vintage);
-						this.el.branchEmail.textContent = this.value(branchEmailValue); // Use the passed value
-						this.el.chMobile.textContent = this.value(d.ch_mob_no); // Placeholder for reporting person mobile
-
-						// Staff details
-						const bdeCount = parseInt(d.bde) || 0;
-						const bdoCount = parseInt(d.bdo) || 0;
-						const roCount = parseInt(d.ro) || 0;
-						const totalStaff = bdeCount + bdoCount + roCount;
-						
-						this.el.totalStaffCountLarge.textContent = this.formatIndianNumber(totalStaff);
-						this.el.bdeCount.textContent = this.formatIndianNumber(bdeCount);
-						this.el.bdoCount.textContent = this.formatIndianNumber(bdoCount);
-						this.el.roCount.textContent = this.formatIndianNumber(roCount);
-
-						// Update progress bar
-						if (totalStaff > 0) {
-							this.el.bdeProgress.style.width = `${(bdeCount / totalStaff) * 100}%`;
-							this.el.bdoProgress.style.width = `${(bdoCount / totalStaff) * 100}%`;
-							this.el.roProgress.style.width = `${(roCount / totalStaff) * 100}%`;
-						} else {
-							this.el.bdeProgress.style.width = '0%';
-							this.el.bdoProgress.style.width = '0%';
-							this.el.roProgress.style.width = '0%';
-						}
-
-						// Comparison Cards for Staffing Capacity
-						const budgetedStaff = parseInt(d.total_no_of_budgeted_staff) || 0;
-						const currentStaff = parseInt(d.staff_count) || 0;
-
-						this.el.budgetedStaffValue.textContent = this.formatIndianNumber(budgetedStaff);
-						this.el.staffCountValue.textContent = this.formatIndianNumber(currentStaff);
-
-						// Apply comparison styling
-						this.el.staffCountCard.classList.remove('status-green', 'status-red'); // Clean previous
-						if (currentStaff <= budgetedStaff) {
-							this.el.staffCountCard.classList.add('status-green');
-						} else {
-							this.el.staffCountCard.classList.add('status-red');
-						}
-		
-						// Update DDS and SS agent spinners
-						this.updateSpinner(
-							this.el.ddsSpinnerProgress,
-							this.el.ddsSpinnerPercentage,
-							this.el.ddsTotal,
-							this.el.ddsActive,
-							d.total_active_dds_agent,
-							d.total_dds_agent,
-						);
-		
-						this.updateSpinner(
-							this.el.ssSpinnerProgress,
-							this.el.ssSpinnerPercentage,
-							this.el.ssTotal,
-							this.el.ssActive,
-							d.total_active_ss_agent,
-							d.total_ss_agent,
-						);
-
-						// Populate Deposit & Book Position
-						this.el.totalBook.textContent = this.formatIndianNumber(d.total_book);
-						this.el.saBook.textContent = this.formatIndianNumber(d.sa_book);
-						this.el.caBook.textContent = this.formatIndianNumber(d.ca_book);
-						this.el.fdBook.textContent = this.formatIndianNumber(d.fd_book);
-						this.el.rdBook.textContent = this.formatIndianNumber(d.rd_book);
-						this.el.ddsBook.textContent = this.formatIndianNumber(d.dds_book);
-						this.el.smbgBook.textContent = this.formatIndianNumber(d.smbg_book);
-
-						// Populate Customer Base Snapshot
-						this.el.totalCustomersId.textContent = this.formatIndianNumber(
-							d.total_customers_id,
-						);
-						this.el.totalCaNoOfCustomers.textContent = this.formatIndianNumber(
-							d.total_ca_no_of_customers,
-						);
-						this.el.totalSaNoOfCustomers.textContent = this.formatIndianNumber(
-							d.total_sa_no_of_customers,
-						);
-						this.el.totalFdNoOfCustomers.textContent = this.formatIndianNumber(
-							d.total_fd_no_of_customers,
-						);
-						this.el.totalRdNoOfCustomers.textContent = this.formatIndianNumber(
-							d.total_rd_no_of_customers,
-						);
-						this.el.totalDdsNoOfCustomers.textContent = this.formatIndianNumber(
-							d.total_dds_no_of_customers,
-						);
-						this.el.totalSmbgNoOfCustomers.textContent = this.formatIndianNumber(
-							d.total_smbg_no_of_customers,
-						);
-
-						// Populate Demand & Collection Performance
-						this.el.ddCollection.textContent = this.formatIndianNumber(
-							d.dd_collection,
-						);
-						this.el.rdCollection.textContent = this.formatIndianNumber(
-							d.rd_collection,
-						);
-						this.el.ddsDemand.textContent = this.formatIndianNumber(d.dds_demand);
-						this.el.ddsDemandVsCollection.textContent =
-							this.formatIndianNumber(
-								parseFloat(d.dds_demand_vs_collection).toFixed(2),
-							) + "%";
-						this.el.smbgDemand.textContent = this.formatIndianNumber(d.smbg_demand);
-						this.el.smbgCollection.textContent = this.formatIndianNumber(
-							d.smbg_collection,
-						);
-						this.el.smbgDemandVsCollection.textContent =
-							this.formatIndianNumber(
-								parseFloat(d.smbg_demand_vs_collection).toFixed(2),
-							) + "%";
-						this.el.rdDemand.textContent = this.formatIndianNumber(d.rd_demand);
-						this.el.rdSmbgCollection.textContent = this.formatIndianNumber(
-							d.rd_smbg_collection,
-						);
-						this.el.rdSmbgPending.textContent = this.formatIndianNumber(
-							d.rd_smbg_pending,
-						);
-
-						this.el.photo.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-							d.bm_name || "BM",
-						)}&background=097c80&color=fff&size=256`;
-					} catch (e) {
-						this.el.name.textContent = "Branch Manager data unavailable";
-					}
-				},
-			};
-
+                        this.el.photo.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(d.bm_name || "BM")}&background=097c80&color=fff&size=256`;
+                    } catch (e) {
+                        console.error("Profile Load Error:", e);
+                        this.el.name.textContent = "Branch Manager data unavailable";
+                    }
+                },
+            };
 			document.addEventListener("DOMContentLoaded", () => BranchDashboard.init());
 		</script>
 	</body>
