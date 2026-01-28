@@ -549,6 +549,13 @@
 				font-weight: 600;
 				color: #64748b;
 			}
+			.count-inactive {
+				font-size: 11px;
+				font-weight: 700;
+				color: #dc2626;
+				margin-top: 2px;
+				display: block;
+			}
 
 			/* Category Card Specific Styles */
 			.category-tabs {
@@ -1057,6 +1064,7 @@
 											<div class="spinner-data" style="margin-top: 0;">
 												<span id="dds-active" class="count-active">--</span>
 												<span class="count-total"> / <span id="dds-total">--</span></span>
+												<span class="count-inactive">Inactive: <span id="dds-inactive-count">--</span> (<span id="dds-inactive-perc">--%</span>)</span>
 											</div>
 										</div>
 										<div class="spinner-container">
@@ -1075,6 +1083,7 @@
 											<div class="spinner-data" style="margin-top: 0;">
 												<span id="ss-active" class="count-active">--</span>
 												<span class="count-total"> / <span id="ss-total">--</span></span>
+												<span class="count-inactive">Inactive: <span id="ss-inactive-count">--</span> (<span id="ss-inactive-perc">--%</span>)</span>
 											</div>
 										</div>
 										<div class="spinner-container">
@@ -1687,10 +1696,14 @@ const BranchManagerProfile = {
                     ddsSpinnerPercentage: document.getElementById("dds-spinner-percentage"),
                     ddsTotal: document.getElementById("dds-total"),
                     ddsActive: document.getElementById("dds-active"),
+                    ddsInactiveCount: document.getElementById("dds-inactive-count"),
+                    ddsInactivePerc: document.getElementById("dds-inactive-perc"),
                     ssSpinnerProgress: document.getElementById("ss-spinner-progress"),
                     ssSpinnerPercentage: document.getElementById("ss-spinner-percentage"),
                     ssTotal: document.getElementById("ss-total"),
                     ssActive: document.getElementById("ss-active"),
+                    ssInactiveCount: document.getElementById("ss-inactive-count"),
+                    ssInactivePerc: document.getElementById("ss-inactive-perc"),
 
                     // Deposit & Book Position
                     totalBook: document.getElementById("total-book"),
@@ -1750,14 +1763,20 @@ const BranchManagerProfile = {
                     return parts.length > 1 ? formatted + "." + parts[1] : formatted;
                 },
 
-                updateSpinner(progressEl, percentageEl, totalEl, activeEl, active, total) {
+                updateSpinner(progressEl, percentageEl, totalEl, activeEl, inactiveCountEl, inactivePercEl, active, total) {
                     const activeNum = parseInt(active) || 0;
                     const totalNum = parseInt(total) || 0;
-                    const percentage = totalNum > 0 ? (activeNum / totalNum) * 100 : 0;
-                    progressEl.style.strokeDasharray = `${percentage}, 100`;
-                    percentageEl.textContent = `${Math.round(percentage)}%`;
+                    const inactiveNum = totalNum - activeNum;
+                    const activePercentage = totalNum > 0 ? (activeNum / totalNum) * 100 : 0;
+                    const inactivePercentage = totalNum > 0 ? (inactiveNum / totalNum) * 100 : 0;
+
+                    progressEl.style.strokeDasharray = `${activePercentage}, 100`;
+                    percentageEl.textContent = `${Math.round(activePercentage)}%`;
                     totalEl.textContent = this.formatIndianNumber(totalNum);
                     activeEl.textContent = this.formatIndianNumber(activeNum);
+                    
+                    if (inactiveCountEl) inactiveCountEl.textContent = this.formatIndianNumber(inactiveNum);
+                    if (inactivePercEl) inactivePercEl.textContent = inactivePercentage.toFixed(1) + "%";
                 },
 
                 updateCategoryUI(period) {
@@ -1867,6 +1886,8 @@ const BranchManagerProfile = {
                             this.el.ddsSpinnerPercentage,
                             this.el.ddsTotal,
                             this.el.ddsActive,
+                            this.el.ddsInactiveCount,
+                            this.el.ddsInactivePerc,
                             d.total_active_dds_agent,
                             d.total_dds_agent,
                         );
@@ -1875,6 +1896,8 @@ const BranchManagerProfile = {
                             this.el.ssSpinnerPercentage,
                             this.el.ssTotal,
                             this.el.ssActive,
+                            this.el.ssInactiveCount,
+                            this.el.ssInactivePerc,
                             d.total_active_ss_agent,
                             d.total_ss_agent,
                         );
