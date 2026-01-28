@@ -727,7 +727,8 @@
     font-size: 20px;
     font-weight: 900;
     color: #333333;
-    margin-bottom: 4px;
+    text-align: center;
+    margin-top: 12px;
 }
 
 .gauge-labels {
@@ -1025,22 +1026,17 @@
         
                                             <div id="excess-tag" class="excess-indicator" style="display:none"></div>
         
-                                            <div id="manpower-percentage" class="manpower-percentage">--%</div>
+                                                        <div class="gauge-labels">
         
-                                            <div class="gauge-wrapper">
+                                                             <div style="color: #097c80;">Budgeted Staff: <span id="budget-label-val">--</span></div>
         
-                                                 <div id="bar-blue" class="bar-blue" style="width: 0%"></div>
+                                                             <div style="color: #333333;">Total Active Staff: <span id="actual-label-val">--</span></div>
         
-                                                 <div id="bar-red" class="bar-red" style="width: 0%"></div>
+                                                        </div>
         
-                                                 <div id="budget-marker" class="budget-line" style="display:none"></div>
+                                                        <div id="manpower-percentage" class="manpower-percentage">--%</div>
         
-                                            </div>
-                    <div class="gauge-labels">
-                         <div style="color: #097c80;">Budgeted Staff: <span id="budget-label-val">--</span></div>
-                         <div style="color: #333333;">Total Active Staff: <span id="actual-label-val">--</span></div>
-                    </div>
-                </div>    </div>
+                                                    </div>    </div>
     <button class="view-details-button">View Detailed Manpower Table</button>
 </section>
 		
