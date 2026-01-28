@@ -516,14 +516,36 @@
 				stroke: var(--primary-1);
 				stroke-linecap: round;
 				transition: stroke-dasharray 0.5s ease;
-				filter: drop-shadow(0 0 2px rgba(9, 124, 128, 0.5));
-				animation: spinner-glow 3s infinite ease-in-out;
 			}
 
-			@keyframes spinner-glow {
-				0% { filter: drop-shadow(0 0 2px rgba(9, 124, 128, 0.4)); opacity: 0.9; }
-				50% { filter: drop-shadow(0 0 8px rgba(9, 124, 128, 0.8)); opacity: 1; }
-				100% { filter: drop-shadow(0 0 2px rgba(9, 124, 128, 0.4)); opacity: 0.9; }
+			/* Elegant Flowing Animation */
+			.spinner-container::after {
+				content: "";
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				border-radius: 50%;
+				background: conic-gradient(
+					from 0deg,
+					transparent 0%,
+					rgba(9, 124, 128, 0) 35%,
+					rgba(9, 124, 128, 0.4) 50%,
+					rgba(9, 124, 128, 0) 65%,
+					transparent 100%
+				);
+				animation: flow-rotate 3s infinite cubic-bezier(0.4, 0, 0.2, 1);
+				pointer-events: none;
+				z-index: 5;
+				/* Precise mask for 85px container to match the SVG stroke path */
+				-webkit-mask: radial-gradient(transparent 34px, black 35px, black 39px, transparent 40px);
+				mask: radial-gradient(transparent 34px, black 35px, black 39px, transparent 40px);
+			}
+
+			@keyframes flow-rotate {
+				from { transform: rotate(0deg); }
+				to { transform: rotate(360deg); }
 			}
 
 			.spinner-percentage {
