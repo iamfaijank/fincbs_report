@@ -1583,36 +1583,9 @@
 							categoryTabs.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
 							tab.classList.add('active');
 
-							// Dummy Data Switch
+							// Actual Data Switch
 							const period = tab.dataset.period;
-							const statusEl = document.getElementById('performance-status');
-							const targetEl = document.getElementById('cat-target-val');
-							const achievementEl = document.getElementById('cat-achievement-val');
-							const percentageEl = document.getElementById('cat-percentage-val');
-							const badges = document.querySelectorAll('#category-hierarchy .hierarchy-badge');
-
-							// Reset badges
-							badges.forEach(b => b.classList.remove('active'));
-
-							if (period === 'monthly') {
-								statusEl.textContent = "Accelerator";
-								targetEl.textContent = "₹ 50,00,000";
-								achievementEl.textContent = "₹ 42,50,000";
-								percentageEl.textContent = "85.00%";
-								badges[2].classList.add('active'); // Accelerator
-							} else if (period === 'ytd') {
-								statusEl.textContent = "Master";
-								targetEl.textContent = "₹ 4,50,00,000";
-								achievementEl.textContent = "₹ 4,10,00,000";
-								percentageEl.textContent = "91.11%";
-								badges[1].classList.add('active'); // Master
-							} else if (period === 'yearly') {
-								statusEl.textContent = "Pinnacle";
-								targetEl.textContent = "₹ 12,00,00,000";
-								achievementEl.textContent = "₹ 11,80,00,000";
-								percentageEl.textContent = "98.33%";
-								badges[0].classList.add('active'); // Pinnacle
-							}
+							BranchManagerProfile.updateCategoryUI(period);
 						});
 					}
 
@@ -1659,6 +1632,15 @@ const BranchManagerProfile = {
                     roChip: document.getElementById("ro-chip-val"),
                     // --------------------------------------
 
+                    // --- Category Section Elements ---
+                    categoryCard: document.getElementById("category-card"),
+                    performanceStatus: document.getElementById("performance-status"),
+                    catTargetVal: document.getElementById("cat-target-val"),
+                    catAchievementVal: document.getElementById("cat-achievement-val"),
+                    catPercentageVal: document.getElementById("cat-percentage-val"),
+                    categoryHierarchy: document.getElementById("category-hierarchy"),
+                    // ---------------------------------
+
                     // Agent Spinner Elements
                     ddsSpinnerProgress: document.getElementById("dds-spinner-progress"),
                     ddsSpinnerPercentage: document.getElementById("dds-spinner-percentage"),
@@ -1700,6 +1682,10 @@ const BranchManagerProfile = {
                     rdSmbgPending: document.getElementById("rd-smbg-pending"),
                 },
 
+                state: {
+                    performanceData: null
+                },
+
                 value(v) {
                     if (!v || v === "#N/A") return "--";
                     return v;
@@ -1731,6 +1717,38 @@ const BranchManagerProfile = {
                     percentageEl.textContent = `${Math.round(percentage)}%`;
                     totalEl.textContent = this.formatIndianNumber(totalNum);
                     activeEl.textContent = this.formatIndianNumber(activeNum);
+                },
+
+                updateCategoryUI(period) {
+                    if (!this.state.performanceData) return;
+
+                    const data = this.state.performanceData[period];
+                    if (!data) return;
+
+                    // Update Labels
+                    this.el.performanceStatus.textContent = data.category;
+                    this.el.catTargetVal.textContent = "₹ " + this.formatIndianNumber(data.target);
+                    this.el.catAchievementVal.textContent = "₹ " + this.formatIndianNumber(data.achievement);
+                    this.el.catPercentageVal.textContent = data.percentage;
+
+                    // Update Hierarchy Badges
+                    const badges = this.el.categoryHierarchy.querySelectorAll('.hierarchy-badge');
+                    badges.forEach(b => b.classList.remove('active'));
+
+                    const categoryMap = {
+                        "Pinnacle": 0,
+                        "Master": 1,
+                        "Accelerator": 2,
+                        "Starter": 3,
+                        "Learner": 4,
+                        "Zero Level": 5,
+                        "Zero": 5
+                    };
+
+                    const index = categoryMap[data.category];
+                    if (index !== undefined && badges[index]) {
+                        badges[index].classList.add('active');
+                    }
                 },
 
                 async load(solId, branchEmailValue) {
@@ -1847,6 +1865,15 @@ const BranchManagerProfile = {
                         this.el.rdSmbgPending.textContent = this.formatIndianNumber(d.rd_smbg_pending);
 
                         this.el.photo.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(d.bm_name || "BM")}&background=097c80&color=fff&size=256`;
+
+                        // --- Fetch Performance Data ---
+                        const perfR = await fetch(`/api/method/custom_report.branch_v1.get_performance_data?sol_id=${solId}`);
+                        const perfJ = await perfR.json();
+                        if (perfJ.message && perfJ.message.data_exists) {
+                            this.state.performanceData = perfJ.message.performance;
+                            this.updateCategoryUI('monthly');
+                        }
+                        // ------------------------------
                     } catch (e) {
                         console.error("Profile Load Error:", e);
                         this.el.name.textContent = "Branch Manager data unavailable";
