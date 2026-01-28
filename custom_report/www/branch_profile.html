@@ -981,48 +981,47 @@
 						<div class="details-row">
 							<section class="total-staff-overview-card">
     <div class="staff-detail-content">
-        <div class="staff-header-flex">
-            <h2 style="margin:0">Manpower Status</h2>
-            <div id="staff-status-badge" class="status-badge">Checking...</div>
-        </div>
-
-        <div style="position:relative">
-            <div id="excess-tag" class="excess-indicator" style="display:none"></div>
-            <div class="gauge-wrapper">
-                 <div id="bar-blue" class="bar-blue" style="width: 0%"></div>
-                 <div id="bar-red" class="bar-red" style="width: 0%"></div>
-                 <div id="budget-marker" class="budget-line" style="display:none"></div>
-            </div>
-            <div class="gauge-labels">
-                 <div style="color: #097c80;">Budgeted Staff: <span id="budget-label-val">--</span></div>
-                 <div style="color: #333333;">Total Active Staff: <span id="actual-label-val">--</span></div>
-            </div>
-        </div>
-
-        <div class="designation-chips">
-            <div class="chip">
-                <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 4px;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                    <span class="chip-label" style="margin:0">BDE</span>
+                <div class="staff-header-flex">
+                    <h2 style="margin:0">Manpower Status</h2>
+                    <div id="staff-status-badge" class="status-badge">Checking...</div>
                 </div>
-                <span class="chip-value" id="bde-chip-val">--</span>
-            </div>
-            <div class="chip">
-                <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 4px;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
-                    <span class="chip-label" style="margin:0">BDO</span>
+        
+                <div class="designation-chips" style="margin-bottom: 25px; margin-top: 0;">
+                    <div class="chip">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 4px;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            <span class="chip-label" style="margin:0">BDE</span>
+                        </div>
+                        <span class="chip-value" id="bde-chip-val">--</span>
+                    </div>
+                    <div class="chip">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 4px;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                            <span class="chip-label" style="margin:0">BDO</span>
+                        </div>
+                        <span class="chip-value" id="bdo-chip-val">--</span>
+                    </div>
+                    <div class="chip">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 4px;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                            <span class="chip-label" style="margin:0">RO</span>
+                        </div>
+                        <span class="chip-value" id="ro-chip-val">--</span>
+                    </div>
                 </div>
-                <span class="chip-value" id="bdo-chip-val">--</span>
-            </div>
-            <div class="chip">
-                <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 4px;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                    <span class="chip-label" style="margin:0">RO</span>
-                </div>
-                <span class="chip-value" id="ro-chip-val">--</span>
-            </div>
-        </div>
-    </div>
+        
+                <div style="position:relative">
+                    <div id="excess-tag" class="excess-indicator" style="display:none"></div>
+                    <div class="gauge-wrapper">
+                         <div id="bar-blue" class="bar-blue" style="width: 0%"></div>
+                         <div id="bar-red" class="bar-red" style="width: 0%"></div>
+                         <div id="budget-marker" class="budget-line" style="display:none"></div>
+                    </div>
+                    <div class="gauge-labels">
+                         <div style="color: #097c80;">Budgeted Staff: <span id="budget-label-val">--</span></div>
+                         <div style="color: #333333;">Total Active Staff: <span id="actual-label-val">--</span></div>
+                    </div>
+                </div>    </div>
     <button class="view-details-button">View Detailed Manpower Table</button>
 </section>
 		
