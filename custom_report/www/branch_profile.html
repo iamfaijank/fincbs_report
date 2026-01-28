@@ -1055,21 +1055,61 @@
 								<div class="agent-cards-grid">
 									<!-- DDS Agent Spinner -->
 									<div class="spinner-card">
-										                                        <div class="spinner-label">DDS Agents</div>
-										                                        <div class="spinner-data">
-										                                            <span id="dds-active" class="count-active">--</span>
-										                                            <span class="count-total"> / <span id="dds-total">--</span></span>
-										                                        </div>
-										                                    </div>
-										        
-										                                    <!-- SS Agent Spinner -->
-										                                    <div class="spinner-card">
-										                                        <div class="spinner-label">SS Agents</div>
-										                                        <div class="spinner-data">
-										                                            <span id="ss-active" class="count-active">--</span>
-										                                            <span class="count-total"> / <span id="ss-total">--</span></span>
-										                                        </div>
-										                                    </div>								</div>
+										                                        									<!-- DDS Agent Spinner -->
+										                                        									<div class="spinner-card">
+										                                        										<div class="spinner-label">DDS Agents</div>
+										                                        										<div class="spinner-container">
+										                                        											<svg class="spinner-svg" viewBox="0 0 36 36">
+										                                        												<circle
+										                                        													class="spinner-circle spinner-background"
+										                                        													cx="18"
+										                                        													cy="18"
+										                                        													r="15.9155"
+										                                        												></circle>
+										                                        												<circle
+										                                        													id="dds-spinner-progress"
+										                                        													class="spinner-circle spinner-progress"
+										                                        													cx="18"
+										                                        													cy="18"
+										                                        													r="15.9155"
+										                                        													stroke-dasharray="0, 100"
+										                                        												></circle>
+										                                        											</svg>
+										                                        											<div id="dds-spinner-percentage" class="spinner-percentage">0%</div>
+										                                        										</div>
+										                                        										<div class="spinner-data">
+										                                        											<span id="dds-active" class="count-active">--</span>
+										                                        											<span class="count-total"> / <span id="dds-total">--</span></span>
+										                                        										</div>
+										                                        									</div>
+										                                        		
+										                                        									<!-- SS Agent Spinner -->
+										                                        									<div class="spinner-card">
+										                                        										<div class="spinner-label">SS Agents</div>
+										                                        										<div class="spinner-container">
+										                                        											<svg class="spinner-svg" viewBox="0 0 36 36">
+										                                        												<circle
+										                                        													class="spinner-circle spinner-background"
+										                                        													cx="18"
+										                                        													cy="18"
+										                                        													r="15.9155"
+										                                        												></circle>
+										                                        												<circle
+										                                        													id="ss-spinner-progress"
+										                                        													class="spinner-circle spinner-progress"
+										                                        													cx="18"
+										                                        													cy="18"
+										                                        													r="15.9155"
+										                                        													stroke-dasharray="0, 100"
+										                                        												></circle>
+										                                        											</svg>
+										                                        											<div id="ss-spinner-percentage" class="spinner-percentage">0%</div>
+										                                        										</div>
+										                                        										<div class="spinner-data">
+										                                        											<span id="ss-active" class="count-active">--</span>
+										                                        											<span class="count-total"> / <span id="ss-total">--</span></span>
+										                                        										</div>
+										                                        									</div>								</div>
 							</section>
 
 							<section class="staff-detail-section" id="category-card">
