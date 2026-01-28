@@ -15,6 +15,7 @@
   "branch_name",
   "branch_today_date",
   "branch_location_category",
+  "district",
   "branch_manager_details_section",
   "bm_doj",
   "bm_vintage",
@@ -22,6 +23,8 @@
   "column_break_jiix",
   "bm_name",
   "bm_mob_no",
+  "ch_name",
+  "ch_mob_no",
   "staff_details_section",
   "bdo",
   "bde",
@@ -29,66 +32,71 @@
   "column_break_chvl",
   "staff_count",
   "total_no_of_budgeted_staff",
-  "section_break_xsaz",
-  "total_ytd_target",
-  "total_mtd_target",
-  "ca_book",
-  "rd_book",
-  "total_customers_id",
-  "total_fd_no_of_customers",
-  "total_smbg_no_of_customers",
+  "agent_details_section",
+  "total_active_ss_agent",
+  "total_ss_agent",
+  "column_break_qlqo",
   "total_active_dds_agent",
-  "total_staff_onboarded",
+  "total_dds_agent",
+  "deposit_and_book_section",
+  "total_book",
+  "ca_book",
+  "sa_book",
+  "fd_book",
+  "column_break_ygoo",
+  "rd_book",
+  "dds_book",
+  "smbg_book",
+  "column_break_glhr",
+  "tasc_value",
+  "casa_value",
+  "customers_details_section",
+  "total_customers_id",
+  "total_ca_no_of_customers",
+  "total_sa_no_of_customers",
+  "total_fd_no_of_customers",
+  "column_break_fqur",
+  "total_dds_no_of_customers",
+  "total_rd_no_of_customers",
+  "total_smbg_no_of_customers",
+  "tasc",
+  "casa",
+  "demand_collection_section",
+  "rd_demand",
+  "smbg_demand",
+  "dds_demand",
+  "dds_demand_vs_collection",
+  "column_break_pyso",
+  "rd_collection",
+  "smbg_collection",
+  "dds_collection",
+  "smbg_demand_vs_collection",
+  "productivity_details_section",
+  "total_productivity",
+  "bdo_and_productivity",
+  "nmab_ac",
   "mab_ac",
   "rd_smbg_pending",
+  "column_break_oycy",
+  "bde_and_productivity",
+  "bde_productivity",
+  "bdo_productivity",
+  "total_less_than_2100_casa",
+  "rd_smbg_collection",
+  "section_break_xsaz",
+  "ntb",
+  "total_staff_onboarded",
+  "ats",
   "nav",
   "crm",
   "headless",
-  "district",
-  "smbg_demand",
-  "dd_acollection",
-  "bde_and_productivity",
-  "bdo_productivity",
   "column_break_dkfe",
-  "total_ytd_achievement",
-  "total_mtd_achievement",
-  "sa_book",
-  "dds_book",
-  "total_ca_no_of_customers",
-  "total_rd_no_of_customers",
-  "total_dds_agent",
-  "total_active_ss_agent",
-  "total_productivity",
-  "dds_demand_vs_collection",
-  "total_less_than_2100_casa",
   "erv",
   "activity_dashboard",
   "audit_rating",
-  "rd_demand",
-  "smbg_collection",
-  "tasc_value",
-  "dd_collection",
-  "bde_productivity",
   "column_break_zeaz",
   "staff_nos",
-  "total_book",
-  "fd_book",
-  "smbg_book",
-  "total_sa_no_of_customers",
-  "total_dds_no_of_customers",
-  "total_ss_agent",
-  "nmab_ac",
-  "smbg_demand_vs_collection",
-  "ntb",
-  "ats",
-  "actionable",
-  "ch_name",
-  "ch_mob_no",
-  "rd_collection",
-  "dds_demand",
-  "tasc",
-  "bdo_and_productivity",
-  "rd_smbg_collection"
+  "actionable"
  ],
  "fields": [
   {
@@ -144,26 +152,6 @@
    "fieldname": "staff_count",
    "fieldtype": "Data",
    "label": "Staff Count"
-  },
-  {
-   "fieldname": "total_ytd_target",
-   "fieldtype": "Data",
-   "label": "Total YTD Target"
-  },
-  {
-   "fieldname": "total_ytd_achievement",
-   "fieldtype": "Data",
-   "label": "Total YTD Achievement"
-  },
-  {
-   "fieldname": "total_mtd_target",
-   "fieldtype": "Data",
-   "label": "Total MTD Target"
-  },
-  {
-   "fieldname": "total_mtd_achievement",
-   "fieldtype": "Data",
-   "label": "Total MTD Achievement"
   },
   {
    "fieldname": "total_book",
@@ -373,7 +361,7 @@
   {
    "fieldname": "smbg_demand",
    "fieldtype": "Data",
-   "label": "SMBG Deamnd"
+   "label": "SMBG Demand"
   },
   {
    "fieldname": "smbg_collection",
@@ -384,11 +372,6 @@
    "fieldname": "dds_demand",
    "fieldtype": "Data",
    "label": "DDS Demand"
-  },
-  {
-   "fieldname": "dd_acollection",
-   "fieldtype": "Data",
-   "label": "DD ACollection"
   },
   {
    "fieldname": "tasc_value",
@@ -414,11 +397,6 @@
    "fieldname": "ro",
    "fieldtype": "Data",
    "label": "RO"
-  },
-  {
-   "fieldname": "dd_collection",
-   "fieldtype": "Data",
-   "label": "DD COLLECTION"
   },
   {
    "fieldname": "rd_smbg_collection",
@@ -471,6 +449,7 @@
    "label": "CH Mob No."
   },
   {
+   "collapsible": 1,
    "fieldname": "staff_details_section",
    "fieldtype": "Section Break",
    "label": "Staff Details"
@@ -480,6 +459,7 @@
    "fieldtype": "Column Break"
   },
   {
+   "collapsible": 1,
    "fieldname": "branch_manager_details_section",
    "fieldtype": "Section Break",
    "label": "Branch Manager Details"
@@ -489,10 +469,13 @@
    "fieldtype": "Column Break"
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_xsaz",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Other Details"
   },
   {
+   "collapsible": 1,
    "fieldname": "branch_details_section",
    "fieldtype": "Section Break",
    "label": "Branch Details"
@@ -500,12 +483,82 @@
   {
    "fieldname": "column_break_yroz",
    "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "deposit_and_book_section",
+   "fieldtype": "Section Break",
+   "label": "Deposit & Book Position"
+  },
+  {
+   "fieldname": "column_break_ygoo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_glhr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "casa_value",
+   "fieldtype": "Data",
+   "label": "CASA VALUE"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "customers_details_section",
+   "fieldtype": "Section Break",
+   "label": "Customers Details"
+  },
+  {
+   "fieldname": "casa",
+   "fieldtype": "Data",
+   "label": "CASA#"
+  },
+  {
+   "fieldname": "column_break_fqur",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "demand_collection_section",
+   "fieldtype": "Section Break",
+   "label": "Demand & Collection Performance"
+  },
+  {
+   "fieldname": "column_break_pyso",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "dds_collection",
+   "fieldtype": "Data",
+   "label": "DDS Collection"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "agent_details_section",
+   "fieldtype": "Section Break",
+   "label": "Agent Details"
+  },
+  {
+   "fieldname": "column_break_qlqo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "productivity_details_section",
+   "fieldtype": "Section Break",
+   "label": "Productivity Details"
+  },
+  {
+   "fieldname": "column_break_oycy",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
+ "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-27 18:03:32.102081",
+ "modified": "2026-01-28 18:14:27.603683",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Branch Profile Data",
