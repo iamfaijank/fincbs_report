@@ -516,35 +516,13 @@
 				stroke: var(--primary-1);
 				stroke-linecap: round;
 				transition: stroke-dasharray 0.5s ease;
+				animation: subtle-pulse 4s infinite ease-in-out;
 			}
 
-			/* Liquid Trail Animation */
-			.spinner-container::after {
-				content: "";
-				position: absolute;
-				top: 0;
-				left: 0;
-				right: 0;
-				bottom: 0;
-				border-radius: 50%;
-				background: conic-gradient(
-					from 0deg,
-					rgba(9, 124, 128, 1) 0deg,    /* Leading Edge (Bright) */
-					rgba(9, 124, 128, 0.6) 20deg, /* Mid Trail */
-					rgba(9, 124, 128, 0) 120deg,  /* Fading Tail */
-					transparent 360deg
-				);
-				animation: liquid-spin 1.5s linear infinite;
-				pointer-events: none;
-				z-index: 5;
-				/* Precise mask to overlay exactly on the spinner stroke */
-				-webkit-mask: radial-gradient(transparent 34px, black 35px, black 39px, transparent 40px);
-				mask: radial-gradient(transparent 34px, black 35px, black 39px, transparent 40px);
-			}
-
-			@keyframes liquid-spin {
-				from { transform: rotate(0deg); }
-				to { transform: rotate(360deg); }
+			@keyframes subtle-pulse {
+				0% { opacity: 0.75; filter: drop-shadow(0 0 1px var(--primary-1)); }
+				50% { opacity: 1; filter: drop-shadow(0 0 4px var(--primary-1)); }
+				100% { opacity: 0.75; filter: drop-shadow(0 0 1px var(--primary-1)); }
 			}
 
 			.spinner-percentage {
