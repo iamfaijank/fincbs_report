@@ -543,72 +543,68 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 }
 
 .status-badge {
-    padding: 4px 12px;
+    padding: 5px 12px;
     border-radius: 20px;
     font-size: 11px;
-    font-weight: 700;
+    font-weight: bold;
     text-transform: uppercase;
 }
 
-.status-badge.overstaffed {
-    background: #fee2e2;
-    color: #dc2626;
-    border: 1px solid #fecaca;
+.status-badge.overstaffed { 
+    background: #fee2e2; 
+    color: #dc2626; 
+    border: 1px solid #fecaca; 
 }
 
-.status-badge.normal {
-    background: #ecfdf5;
-    color: #10b981;
+.status-badge.optimal { 
+    background: #ecfdf5; 
+    color: #10b981; 
+    border: 1px solid #d1fae5; 
 }
 
-.gauge-container {
-    margin: 24px 0;
-}
-
-/* Overflow Progress Bar */
-.overflow-bar-wrapper {
-    height: 24px;
+/* The Gauge Logic */
+.gauge-wrapper {
+    position: relative;
+    height: 28px;
     background: #f1f5f9;
-    border-radius: 12px;
-    position: relative;
-    overflow: hidden;
+    border-radius: 14px;
     display: flex;
+    overflow: hidden;
+    margin: 25px 0;
 }
 
-.bar-budget {
-    height: 100%;
-    background: #2563eb; /* Blue for Budget */
-    transition: width 0.5s ease;
+.bar-blue { 
+    background: #2563eb; 
+    height: 100%; 
+    transition: width 0.6s ease; 
 }
 
-.bar-excess {
-    height: 100%;
-    background: #dc2626; /* Red for Excess */
-    transition: width 0.5s ease;
-    position: relative;
+.bar-red { 
+    background: #dc2626; 
+    height: 100%; 
+    transition: width 0.6s ease; 
 }
 
-.budget-marker {
+.budget-line {
     position: absolute;
     top: 0;
     bottom: 0;
     width: 2px;
-    background: white;
-    z-index: 2;
-    box-shadow: 0 0 4px rgba(0,0,0,0.3);
+    border-left: 2px dashed rgba(255,255,255,0.8);
+    z-index: 5;
 }
 
-.excess-label {
+.excess-indicator {
     position: absolute;
-    top: -25px;
+    top: -22px;
     right: 0;
-    color: #dc2626;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 800;
+    color: #dc2626;
 }
 
 .staff-main-count {
@@ -871,27 +867,35 @@
         <div class="staff-main-count" id="total-staff-display">--</div>
         <div class="staff-meta-text">Total Actual Staff (Budget: <span id="budget-val-text">--</span>)</div>
 
-        <div class="gauge-container">
-            <div style="position:relative">
-                <div id="excess-tag" class="excess-label" style="display:none"></div>
-                <div class="overflow-bar-wrapper">
-                    <div id="bar-blue" class="bar-budget" style="width: 0%"></div>
-                    <div id="bar-red" class="bar-excess" style="width: 0%"></div>
-                </div>
+        <div style="position:relative">
+            <div id="excess-tag" class="excess-indicator" style="display:none"></div>
+            <div class="gauge-wrapper">
+                 <div id="bar-blue" class="bar-blue" style="width: 0%"></div>
+                 <div id="bar-red" class="bar-red" style="width: 0%"></div>
+                 <div id="budget-marker" class="budget-line" style="display:none"></div>
             </div>
         </div>
 
         <div class="designation-chips">
             <div class="chip">
-                <span class="chip-label">BDE</span>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 4px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <span class="chip-label" style="margin:0">BDE</span>
+                </div>
                 <span class="chip-value" id="bde-chip-val">--</span>
             </div>
             <div class="chip">
-                <span class="chip-label">BDO</span>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 4px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                    <span class="chip-label" style="margin:0">BDO</span>
+                </div>
                 <span class="chip-value" id="bdo-chip-val">--</span>
             </div>
             <div class="chip">
-                <span class="chip-label">RO</span>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 4px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    <span class="chip-label" style="margin:0">RO</span>
+                </div>
                 <span class="chip-value" id="ro-chip-val">--</span>
             </div>
         </div>
@@ -1452,6 +1456,7 @@ const BranchManagerProfile = {
                     excessTag: document.getElementById("excess-tag"),
                     barBlue: document.getElementById("bar-blue"),
                     barRed: document.getElementById("bar-red"),
+                    budgetMarker: document.getElementById("budget-marker"),
                     
                     // Designation Chips
                     bdeChip: document.getElementById("bde-chip-val"),
@@ -1555,42 +1560,45 @@ const BranchManagerProfile = {
                         this.el.chMobile.textContent = this.value(d.ch_mob_no);
 
                         // --- Staff Details & Overflow Logic ---
-                        const budgetedStaff = parseInt(d.total_no_of_budgeted_staff) || 0;
-                        const currentStaff = parseInt(d.staff_count) || 0;
+                        const budget = parseInt(d.total_no_of_budgeted_staff) || 0;
+                        const actual = parseInt(d.staff_count) || 0;
                         const bdeCount = parseInt(d.bde) || 0;
                         const bdoCount = parseInt(d.bdo) || 0;
                         const roCount = parseInt(d.ro) || 0;
 
                         // Set Text Values
-                        this.el.staffMainDisplay.textContent = this.formatIndianNumber(currentStaff);
-                        this.el.budgetValText.textContent = this.formatIndianNumber(budgetedStaff);
+                        this.el.staffMainDisplay.textContent = this.formatIndianNumber(actual);
+                        this.el.budgetValText.textContent = this.formatIndianNumber(budget);
                         this.el.bdeChip.textContent = this.formatIndianNumber(bdeCount);
                         this.el.bdoChip.textContent = this.formatIndianNumber(bdoCount);
                         this.el.roChip.textContent = this.formatIndianNumber(roCount);
 
-                        if (currentStaff > budgetedStaff) {
-                            // OVERSTAFFED
-                            const excess = currentStaff - budgetedStaff;
-                            this.el.staffStatusBadge.textContent = "Status: Overstaffed";
+                        if (actual > budget) {
+                            const excess = actual - budget;
                             this.el.staffStatusBadge.className = "status-badge overstaffed";
+                            this.el.staffStatusBadge.textContent = "Critical: Overstaffed";
                             
                             this.el.excessTag.style.display = "block";
                             this.el.excessTag.textContent = `+${excess} Excess`;
 
-                            // Bar widths normalized to total actual staff
-                            const bWidth = (budgetedStaff / currentStaff) * 100;
-                            const eWidth = (excess / currentStaff) * 100;
-                            this.el.barBlue.style.width = `${bWidth}%`;
-                            this.el.barRed.style.width = `${eWidth}%`;
+                            // Calculate widths relative to the 'Actual' total
+                            const blueWidth = (budget / actual) * 100;
+                            const redWidth = (excess / actual) * 100;
+                            
+                            this.el.barBlue.style.width = blueWidth + "%";
+                            this.el.barRed.style.width = redWidth + "%";
+                            this.el.budgetMarker.style.left = blueWidth + "%";
+                            this.el.budgetMarker.style.display = "block";
                         } else {
-                            // OPTIMAL / UNDERSTAFFED
-                            this.el.staffStatusBadge.textContent = "Status: Optimal";
-                            this.el.staffStatusBadge.className = "status-badge normal";
+                            this.el.staffStatusBadge.className = "status-badge optimal";
+                            this.el.staffStatusBadge.textContent = "Optimal";
                             this.el.excessTag.style.display = "none";
                             
-                            const fillPercent = budgetedStaff > 0 ? (currentStaff / budgetedStaff) * 100 : 0;
-                            this.el.barBlue.style.width = `${fillPercent}%`;
-                            this.el.barRed.style.width = `0%`;
+                            // Normal progress relative to Budget
+                            const fillPercent = budget > 0 ? (actual / budget) * 100 : 0;
+                            this.el.barBlue.style.width = fillPercent + "%";
+                            this.el.barRed.style.width = "0%";
+                            this.el.budgetMarker.style.display = "none";
                         }
                         // ----------------------------------------
 
