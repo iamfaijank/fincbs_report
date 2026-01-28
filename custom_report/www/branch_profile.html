@@ -568,7 +568,7 @@
 				margin-top: 15px;
 			}
 			.hierarchy-badge {
-				padding: 6px 4px;
+				padding: 8px 4px;
 				border-radius: 4px;
 				font-size: 10px;
 				font-weight: 700;
@@ -577,7 +577,16 @@
 				border: 1px solid #e2e8f0;
 				text-transform: uppercase;
 				text-align: center;
-				white-space: nowrap;
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				gap: 2px;
+				line-height: 1.1;
+			}
+			.hierarchy-badge .criteria {
+				font-size: 8px;
+				font-weight: 500;
+				opacity: 0.8;
 			}
 			.hierarchy-badge.active {
 				background: rgba(9, 124, 128, 0.1);
@@ -1062,12 +1071,30 @@
 									<div id="performance-status" style="font-size: 20px; font-weight: 800; color: var(--primary-1); margin: 4px 0;">Accelerator</div>
 
 									<div class="category-hierarchy" id="category-hierarchy">
-										<span class="hierarchy-badge">Pinnacle</span>
-										<span class="hierarchy-badge">Master</span>
-										<span class="hierarchy-badge active">Accelerator</span>
-										<span class="hierarchy-badge">Starter</span>
-										<span class="hierarchy-badge">Learner</span>
-										<span class="hierarchy-badge">Zero</span>
+										<div class="hierarchy-badge">
+											<span>Pinnacle</span>
+											<span class="criteria">>100%</span>
+										</div>
+										<div class="hierarchy-badge">
+											<span>Master</span>
+											<span class="criteria">80-100%</span>
+										</div>
+										<div class="hierarchy-badge active">
+											<span>Accelerator</span>
+											<span class="criteria">60-80%</span>
+										</div>
+										<div class="hierarchy-badge">
+											<span>Starter</span>
+											<span class="criteria">40-60%</span>
+										</div>
+										<div class="hierarchy-badge">
+											<span>Learner</span>
+											<span class="criteria">20-40%</span>
+										</div>
+										<div class="hierarchy-badge">
+											<span>Zero</span>
+											<span class="criteria">0-20%</span>
+										</div>
 									</div>
 								</div>
 
