@@ -144,7 +144,7 @@
 				overflow: hidden;
 				display: none;
 				z-index: 1001;
-				color: #1e293b;
+				color: #333333;
 			}
 
 			.suggestions-container {
@@ -269,86 +269,566 @@
 			.bm-name {
 				font-size: 22px;
 				font-weight: 700;
-				color: #0f172a;
+				color: #333333;
 			}
 
 			.bm-sub {
 				font-size: 13px;
 				color: #475569;
 				margin-bottom: 16px;
+				display: none;
 			}
 
-			.bm-grid {
+			.bm-info-grid {
 				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-				gap: 14px;
-				font-size: 13px;
+				grid-template-columns: repeat(3, 1fr); /* 3 equal columns */
+				gap: 10px 20px; /* Row gap, Column gap */
+				font-size: 12px; /* Default font size for this grid */
 			}
 
-			.bm-grid label {
+			.bm-info-grid > div {
+				padding: 5px 0; /* Add some padding to each item */
+			}
+
+			.bm-info-grid label {
 				display: block;
 				color: #64748b;
 				font-weight: 600;
 				margin-bottom: 2px;
 			}
 
-			.bm-grid span {
-				color: #1e293b;
+			.bm-info-grid span {
+				color: #333333;
 				font-weight: 500;
 			}
 
-			/* Staff Detail Section */
-			.staff-detail-section {
+			.details-row {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 30px;
 				margin-top: 30px;
+			}
+
+			.details-row > section {
+				margin-top: 0;
+				flex: 1;
+				min-width: calc(33.33% - 20px);
+			}
+
+			/* New Staff Detail Section Styles */
+			.total-staff-overview-card {
 				background: #ffffff;
 				border-radius: 16px;
+				padding: 0; /* Remove padding to allow button to be full-width */
+				box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+				display: flex;
+				flex-direction: column;
+			}
+			.staff-detail-content {
 				padding: 24px;
+				flex-grow: 1;
+			}
+
+			.total-staff-overview-card h2 {
+				font-size: 16px;
+				font-weight: 600;
+				color: #475569;
+				margin-bottom: 8px;
+				border-bottom: none;
+				padding-bottom: 0;
+			}
+			/* Generic Staff Detail Section - Restored padding for other sections */
+			.staff-detail-section {
+				background: #ffffff;
+				border-radius: 16px;
+				padding: 24px; /* Original padding */
 				box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
 			}
 
-			.staff-detail-section h2 {
-				font-size: 20px;
+			.total-staff-count {
+				font-size: 36px;
 				font-weight: 700;
-				color: #0f172a;
-				margin-bottom: 20px;
-				border-bottom: 1px solid #e2e8f0;
-				padding-bottom: 15px;
+				color: #333333;
+				margin-bottom: 16px;
+			}
+			/* Comparison Cards */
+			.comparison-cards-container {
+				display: flex;
+				gap: 16px;
+				margin-bottom: 24px;
+				flex-wrap: wrap; /* Allow cards to wrap on smaller screens */
 			}
 
-			.staff-cards-grid {
-				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-				gap: 20px;
-			}
-
-			.staff-card {
+			.comparison-card {
+				flex: 1; /* Each card takes equal width */
 				background: #f8fafc;
 				border-radius: 12px;
-				padding: 18px;
+				padding: 16px;
 				text-align: center;
 				box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-				transition:
-					transform 0.2s ease,
-					box-shadow 0.2s ease;
+				transition: all 0.2s ease;
 				border: 1px solid #e2e8f0;
+				min-width: 150px; /* Ensure cards don't get too small */
 			}
 
-			.staff-card:hover {
-				transform: translateY(-5px);
-				box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-			}
-
-			.staff-card-title {
-				font-size: 14px;
+			.comparison-card .card-title {
+				font-size: 13px;
 				font-weight: 600;
 				color: #64748b;
 				margin-bottom: 8px;
 			}
 
-			.staff-card-count {
-				font-size: 24px; /* Reduced from 28px */
+			.comparison-card .card-value {
+				font-size: 22px;
 				font-weight: 700;
+				color: #333333;
+			}
+
+			/* Comparison Status Colors */
+			.comparison-card.status-green {
+				border-color: #10b981;
+				background-color: #ecfdf5;
+			}
+
+			.comparison-card.status-red {
+				border-color: #ef4444;
+				background-color: #fef2f2;
+			}
+			.progress-bar-segmented {
+				display: flex;
+				height: 8px;
+				border-radius: 4px;
+				overflow: hidden;
+				margin-bottom: 24px;
+				background-color: #e2e8f0;
+			}
+
+			.progress-segment {
+				height: 100%;
+				transition: width 0.5s ease-in-out;
+			}
+
+			.bdo-color { background-color: #3b82f6; }
+			.ro-color { background-color: #10b981; }
+			.ro-color { background-color: #10b981; }
+			.bde-color { background-color: #ef4444; } /* A new distinct color for BDE */
+
+			.staff-breakdown-list {
+				list-style: none;
+				padding: 0;
+				margin: 0;
+				display: flex;
+				flex-direction: column;
+				gap: 16px;
+			}
+
+			.breakdown-item {
+				display: flex;
+				align-items: center;
+				font-size: 14px;
+			}
+
+			.breakdown-item .color-dot {
+				width: 8px;
+				height: 8px;
+				border-radius: 50%;
+				margin-right: 12px;
+			}
+
+			.breakdown-item .role-name {
+				color: #333333;
+				font-weight: 500;
+			}
+
+			.breakdown-item .role-count {
+				margin-left: auto;
+				color: #333333;
+				font-weight: 600;
+			}
+			.view-details-button {
+				background-color: #097c80;
+				color: white;
+				border: none;
+				width: 100%;
+				padding: 16px;
+				font-size: 14px;
+				font-weight: 600;
+				cursor: pointer;
+				border-bottom-left-radius: 16px;
+				border-bottom-right-radius: 16px;
+				transition: background-color 0.2s ease;
+				margin-top: auto; /* Pushes button to the bottom */
+			}
+			.view-details-button:hover {
+				background-color: var(--primary-2);
+			}
+
+			/* Agent Details Spinner */
+			.agent-cards-grid {
+				display: flex;
+				flex-direction: column;
+				gap: 12px;
+				margin-top: 20px;
+			}
+
+			.spinner-card {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 15px;
+				padding: 16px 20px;
+				width: 100%;
+				background: #f8fafc;
+				border-radius: 12px;
+				border: 1px solid #e2e8f0;
+			}
+
+			.spinner-left-stack {
+				display: flex;
+				flex-direction: column;
+				align-items: flex-start;
+				gap: 6px;
+			}
+
+			.spinner-container {
+				position: relative;
+				width: 85px;
+				height: 85px;
+				flex-shrink: 0;
+			}
+
+			.spinner-svg {
+				transform: rotate(-90deg);
+				width: 100%;
+				height: 100%;
+			}
+
+			.spinner-circle {
+				fill: none;
+				stroke-width: 4;
+			}
+
+			.spinner-background {
+				stroke: #e2e8f0;
+			}
+
+			.spinner-progress {
+				stroke: var(--primary-1);
+				stroke-linecap: round;
+				transition: stroke-dasharray 0.5s ease;
+				animation: subtle-pulse 3s infinite ease-in-out;
+			}
+
+			@keyframes subtle-pulse {
+				0% { opacity: 0.6; }
+				50% { opacity: 1; }
+				100% { opacity: 0.6; }
+			}
+
+			.spinner-percentage {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				line-height: 1;
+			}
+			.perc-val {
+				font-size: 16px;
+				font-weight: 800;
 				color: var(--primary-1);
+			}
+			.perc-label {
+				font-size: 9px;
+				font-weight: 700;
+				color: #64748b;
+				text-transform: uppercase;
+				margin-bottom: 2px;
+			}
+
+			.spinner-label {
+				font-size: 16px;
+				font-weight: 700;
+				color: #333333;
+			}
+
+			.spinner-data {
+				font-size: 14px;
+				color: #64748b;
+				margin-top: 4px;
+			}
+			.count-active {
+				font-size: 22px;
+				font-weight: 800;
+				color: #097c80;
+			}
+			.count-total {
+				font-size: 15px;
+				font-weight: 600;
+				color: #64748b;
+			}
+			.count-inactive {
+				font-size: 11px;
+				font-weight: 700;
+				color: #dc2626;
+				margin-top: 2px;
+				display: block;
+			}
+
+			/* Category Card Specific Styles */
+			.category-tabs {
+				display: flex;
+				gap: 4px;
+				background: #f1f5f9;
+				padding: 4px;
+				border-radius: 8px;
+			}
+			.category-tab {
+				padding: 6px 12px;
+				cursor: pointer;
+				border-radius: 6px;
+				font-size: 11px;
+				font-weight: 700;
+				color: #64748b;
+				transition: all 0.2s;
+				text-transform: uppercase;
+			}
+			.category-tab.active {
+				background: #ffffff;
+				color: var(--primary-1);
+				box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+			}
+
+			.category-hierarchy {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 6px;
+				margin-top: 15px;
+			}
+			.hierarchy-badge {
+				padding: 10px 4px;
+				border-radius: 6px;
+				font-size: 11px;
+				font-weight: 700;
+				background: #f8fafc;
+				color: #94a3b8;
+				border: 1px solid #e2e8f0;
+				text-transform: uppercase;
+				text-align: center;
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				gap: 4px;
+				line-height: 1.2;
+			}
+			.hierarchy-badge .criteria {
+				font-size: 9px;
+				font-weight: 600;
+				opacity: 0.9;
+			}
+			.hierarchy-badge.active {
+				background: rgba(9, 124, 128, 0.1);
+				color: var(--primary-1);
+				border-color: var(--primary-1);
+			}
+
+			/* FY Filter Styles */
+			.fy-filter-wrapper {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				margin-top: 12px;
+			}
+			.fy-label {
+				font-size: 10px;
+				font-weight: 800;
+				color: #64748b;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+			}
+			.fy-select-compact {
+				background: #f1f5f9;
+				border: 1px solid #e2e8f0;
+				border-radius: 6px;
+				padding: 4px 8px;
+				font-size: 11px;
+				font-weight: 700;
+				color: #333333;
+				cursor: pointer;
+				outline: none;
+				transition: all 0.2s;
+			}
+			.fy-select-compact:hover {
+				background: #e2e8f0;
+			}
+
+/* Modern Staff Overflow UI */
+.total-staff-overview-card {
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.staff-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 35px;
+}
+
+.status-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.status-badge.overstaffed { 
+    background: #fee2e2; 
+    color: #dc2626; 
+    border: 1px solid #fecaca; 
+}
+
+.status-badge.optimal { 
+    background: #ecfdf5; 
+    color: #10b981; 
+    border: 1px solid #d1fae5; 
+}
+
+/* The Gauge Logic */
+.gauge-wrapper {
+    position: relative;
+    height: 28px;
+    background: #f1f5f9;
+    border-radius: 14px;
+    display: flex;
+    overflow: hidden;
+    margin: 15px 0 5px 0;
+}
+
+.bar-blue { 
+    background: #097c80; 
+    height: 100%; 
+    transition: width 0.6s ease; 
+}
+
+.bar-red { 
+    background: #dc2626; 
+    height: 100%; 
+    transition: width 0.6s ease; 
+    animation: subtle-pulse 3s infinite ease-in-out;
+}
+
+.budget-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    border-left: 2px dashed rgba(255,255,255,0.8);
+    z-index: 5;
+}
+
+.excess-indicator {
+    position: absolute;
+    top: -22px;
+    font-size: 11px;
+    font-weight: 800;
+    color: #dc2626;
+    white-space: nowrap;
+    transform: translateX(-50%);
+    background: #fee2e2;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #fecaca;
+    z-index: 10;
+}
+
+.excess-indicator::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 4px;
+    border-style: solid;
+    border-color: #fecaca transparent transparent transparent;
+}
+
+.manpower-percentage {
+    font-size: 20px;
+    font-weight: 900;
+    color: #333333;
+    text-align: center;
+    margin-top: 12px;
+}
+
+.gauge-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.staff-main-count {
+    font-size: 42px;
+    font-weight: 800;
+    color: #333333;
+    margin: 10px 0;
+}
+
+.staff-meta-text {
+    color: #64748b;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+/* Independent Designation Chips */
+.designation-chips {
+    display: flex;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 20px;
+}
+
+.chip {
+    flex: 1;
+    background: #f8fafc;
+    padding: 10px;
+    border-radius: 10px;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+}
+
+.chip-label {
+    display: block;
+    font-size: 11px;
+    color: #64748b;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.chip-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #333333;
+}
+			@media (max-width: 992px) {
+				.details-row {
+					flex-direction: column;
+					gap: 30px;
+				}
+				.details-row > section {
+					min-width: 100%;
+				}
 			}
 
 			@media (max-width: 768px) {
@@ -359,10 +839,6 @@
 
 				.bm-avatar {
 					margin: 0 auto;
-				}
-
-				.bm-grid {
-					text-align: left;
 				}
 			}
 
@@ -480,7 +956,7 @@
 					<svg
 						width="16"
 						height="16"
-						viewBox="0 0 24 24"
+						viewBox="0 0 24"
 						fill="none"
 						stroke="currentColor"
 						stroke-width="2"
@@ -491,209 +967,345 @@
 				</a>
 			</div>
 		</header>
-		<main class="page-content">
-			<section class="bm-card" id="bm-profile">
-				<div class="bm-left">
-					<div class="bm-avatar">
-						<img id="bm-photo" alt="Branch Manager" />
+				<main class="page-content">
+					<div id="no-branch-selected-message" style="display: none; text-align: center; margin-top: 50px; font-size: 1.2em; color: #666; padding: 20px; border-radius: 8px; background: #fff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);">
+						<p>Please select a branch to view its complete details.</p>
+						<p style="font-size: 0.9em; color: #999; margin-top: 10px;">You can use the search bar above to find a branch.</p>
 					</div>
-				</div>
+					<div id="branch-data-container">
+						<section class="bm-card" id="bm-profile">
+							<div class="bm-left">
+								<div class="bm-avatar">
+									<img id="bm-photo" alt="Branch Manager" />
+								</div>
+							</div>
+		
+							<div class="bm-right">
+								<div class="bm-title">Branch Manager</div>
+		
+								<div class="bm-name" id="bm-name">Loading...</div>
+								<div class="bm-sub">
+									<span id="branch-name">--</span> •
+									<span id="branch-district">--</span>
+							</div>
 
-				<div class="bm-right">
-					<div class="bm-title">Branch Manager</div>
+<div class="bm-info-grid">
+    <div>
+        <label>BM Date of Joining</label>
+        <span id="bm-doj">--</span>
+    </div>
+    <div>
+        <label>Branch Opening Date</label>
+        <span id="branch-opening-date">--</span>
+    </div>
+    <div>
+        <label>Reporting Person</label>
+        <span id="ch-name">--</span>
+    </div>
 
-					<div class="bm-name" id="bm-name">Loading...</div>
-					<div class="bm-sub">
-						<span id="branch-name">--</span> •
-						<span id="branch-district">--</span>
-					</div>
+    <div>
+        <label>BM Vintage</label>
+        <span id="bm-vintage">--</span>
+    </div>
+    <div>
+        <label>Branch Vintage</label>
+        <span id="branch-vintage">--</span>
+    </div>
+    <div>
+        <label>Reporting Person Mobile</label>
+        <span id="ch-mobile">--</span>
+    </div>
 
-					<div class="bm-grid">
-						<div>
-							<label>Mobile</label>
-							<span id="bm-mobile">--</span>
+    <div>
+        <label>BM Mobile</label>
+        <span id="bm-mobile">--</span>
+    </div>
+    <div>
+        <label>Branch Email</label>
+        <span id="branch-email">--</span>
+    </div>
+</div>
+
+						</section>
+		
+						<div class="details-row">
+							<section class="total-staff-overview-card">
+    <div class="staff-detail-content">
+                <div class="staff-header-flex">
+                    <h2 style="margin:0">Manpower Status</h2>
+                    <div id="staff-status-badge" class="status-badge">Checking...</div>
+                </div>
+        
+                <div class="designation-chips" style="margin-bottom: 25px; margin-top: 0;">
+                    <div class="chip">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 4px;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            <span class="chip-label" style="margin:0">BDE</span>
+                        </div>
+                        <span class="chip-value" id="bde-chip-val">--</span>
+                    </div>
+                    <div class="chip">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 4px;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                            <span class="chip-label" style="margin:0">BDO</span>
+                        </div>
+                        <span class="chip-value" id="bdo-chip-val">--</span>
+                    </div>
+                    <div class="chip">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 4px;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                            <span class="chip-label" style="margin:0">RO</span>
+                        </div>
+                        <span class="chip-value" id="ro-chip-val">--</span>
+                    </div>
+                </div>
+        
+        <div style="position:relative">
+            <div id="excess-tag" class="excess-indicator" style="display:none"></div>
+            <div class="gauge-wrapper">
+                 <div id="bar-blue" class="bar-blue" style="width: 0%"></div>
+                 <div id="bar-red" class="bar-red" style="width: 0%"></div>
+                 <div id="budget-marker" class="budget-line" style="display:none"></div>
+            </div>
+            <div class="gauge-labels">
+                 <div style="color: #097c80;">Budgeted Staff: <span id="budget-label-val">--</span></div>
+                 <div style="color: #333333;">Total Active Staff: <span id="actual-label-val">--</span></div>
+            </div>
+            <div id="manpower-percentage" class="manpower-percentage">--%</div>
+        </div>    </div>
+    <button class="view-details-button">View Detailed Manpower Table</button>
+</section>
+		
+							<section class="staff-detail-section">
+								<h2>Agent Details</h2>
+								<div class="agent-cards-grid">
+									<!-- DDS Agent Card -->
+									<div class="spinner-card">
+										<div class="spinner-left-stack">
+											<div class="spinner-label">DDS Agents</div>
+											<div class="spinner-data" style="margin-top: 0;">
+												<span id="dds-active" class="count-active">--</span>
+												<span class="count-total"> / <span id="dds-total">--</span></span>
+												<span class="count-inactive">Inactive: <span id="dds-inactive-count">--</span> (<span id="dds-inactive-perc">--%</span>)</span>
+											</div>
+										</div>
+										<div class="spinner-container">
+											<svg class="spinner-svg" viewBox="0 0 36 36">
+												<circle class="spinner-circle spinner-background" cx="18" cy="18" r="15.9155"></circle>
+												<circle id="dds-spinner-progress" class="spinner-circle spinner-progress" cx="18" cy="18" r="15.9155" stroke-dasharray="0, 100"></circle>
+											</svg>
+											<div id="dds-spinner-percentage" class="spinner-percentage">
+												<span class="perc-label">Active</span>
+												<span class="perc-val">0%</span>
+											</div>
+										</div>
+									</div>
+		
+									<!-- SS Agent Card -->
+									<div class="spinner-card">
+										<div class="spinner-left-stack">
+											<div class="spinner-label">SS Agents</div>
+											<div class="spinner-data" style="margin-top: 0;">
+												<span id="ss-active" class="count-active">--</span>
+												<span class="count-total"> / <span id="ss-total">--</span></span>
+												<span class="count-inactive">Inactive: <span id="ss-inactive-count">--</span> (<span id="ss-inactive-perc">--%</span>)</span>
+											</div>
+										</div>
+										<div class="spinner-container">
+											<svg class="spinner-svg" viewBox="0 0 36 36">
+												<circle class="spinner-circle spinner-background" cx="18" cy="18" r="15.9155"></circle>
+												<circle id="ss-spinner-progress" class="spinner-circle spinner-progress" cx="18" cy="18" r="15.9155" stroke-dasharray="0, 100"></circle>
+											</svg>
+											<div id="ss-spinner-percentage" class="spinner-percentage">
+												<span class="perc-label">Active</span>
+												<span class="perc-val">0%</span>
+											</div>
+										</div>
+									</div>
+								</div>
+							</section>
+
+							<section class="staff-detail-section" id="category-card">
+								<div class="staff-header-flex" style="flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 20px;">
+									<div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+										<h2 style="margin:0">Category</h2>
+										<div class="category-tabs" id="category-tabs">
+											<div class="category-tab active" data-period="monthly">Monthly</div>
+											<div class="category-tab" data-period="ytd">YTD</div>
+											<div class="category-tab" data-period="yearly">Yearly</div>
+										</div>
+									</div>
+									<div class="fy-filter-wrapper">
+										<span class="fy-label">Financial Year:</span>
+										<select class="fy-select-compact" id="fy-select">
+											<option value="2025-2026">2025-2026</option>
+										</select>
+									</div>
+								</div>
+
+								<div style="margin-top: 8px;">
+									<div style="font-size: 13px; color: #64748b; font-weight: 600;">Current Performance Level</div>
+									<div id="performance-status" style="font-size: 20px; font-weight: 800; color: var(--primary-1); margin: 4px 0;">Accelerator</div>
+
+									<div class="category-hierarchy" id="category-hierarchy">
+										<div class="hierarchy-badge">
+											<span>Pinnacle</span>
+											<span class="criteria">>100%</span>
+										</div>
+										<div class="hierarchy-badge">
+											<span>Master</span>
+											<span class="criteria">80-100%</span>
+										</div>
+										<div class="hierarchy-badge active">
+											<span>Accelerator</span>
+											<span class="criteria">60-80%</span>
+										</div>
+										<div class="hierarchy-badge">
+											<span>Starter</span>
+											<span class="criteria">40-60%</span>
+										</div>
+										<div class="hierarchy-badge">
+											<span>Learner</span>
+											<span class="criteria">20-40%</span>
+										</div>
+										<div class="hierarchy-badge">
+											<span>Zero</span>
+											<span class="criteria">0-20%</span>
+										</div>
+									</div>
+								</div>
+
+								<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 10px; padding-top: 15px; border-top: 1px solid #f1f5f9;">
+									<div>
+										<div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Target</div>
+										<div id="cat-target-val" style="font-size: 15px; font-weight: 700; color: #333333;">₹ 50,00,000</div>
+									</div>
+									<div>
+										<div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Achievement</div>
+										<div id="cat-achievement-val" style="font-size: 15px; font-weight: 700; color: #10b981;">₹ 42,50,000</div>
+									</div>
+									<div>
+										<div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">% Ach.</div>
+										<div id="cat-percentage-val" style="font-size: 15px; font-weight: 700; color: var(--primary-1);">85.00%</div>
+									</div>
+								</div>
+							</section>
 						</div>
-						<div>
-							<label>Date of Joining</label>
-							<span id="bm-doj">--</span>
-						</div>
-						<div>
-							<label>BM Vintage</label>
-							<span id="bm-vintage">--</span>
-						</div>
-						<div>
-							<label>Reporting Person</label>
-							<span id="ch-name">--</span>
-						</div>
-						<div>
-							<label>Branch Vintage</label>
-							<span id="branch-vintage">--</span>
-						</div>
-						<div>
-							<label>Staff Count</label>
-							<span id="staff-count">--</span>
-						</div>
-						<div>
-							<label>Branch Category</label>
-							<span id="branch-category">--</span>
-						</div>
+		
+						<section class="staff-detail-section">
+							<h2>Deposit & Book Position</h2>
+							<div class="staff-cards-grid">
+								<div class="staff-card">
+									<div class="staff-card-title">Total Book</div>
+									<div class="staff-card-count" id="total-book">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">SA Book</div>
+									<div class="staff-card-count" id="sa-book">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">CA Book</div>
+									<div class="staff-card-count" id="ca-book">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">FD Book</div>
+									<div class="staff-card-count" id="fd-book">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">RD Book</div>
+									<div class="staff-card-count" id="rd-book">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">DDS Book</div>
+									<div class="staff-card-count" id="dds-book">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">SMBG Book</div>
+									<div class="staff-card-count" id="smbg-book">--</div>
+								</div>
+							</div>
+						</section>
+		
+						<section class="staff-detail-section">
+							<h2>Customers Details</h2>
+							<div class="staff-cards-grid">
+								<div class="staff-card">
+									<div class="staff-card-title">Total Customers</div>
+									<div class="staff-card-count" id="total-customers-id">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">CA Customers</div>
+									<div class="staff-card-count" id="total-ca-no-of-customers">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">SA Customers</div>
+									<div class="staff-card-count" id="total-sa-no-of-customers">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">FD Customers</div>
+									<div class="staff-card-count" id="total-fd-no-of-customers">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">RD Customers</div>
+									<div class="staff-card-count" id="total-rd-no-of_customers">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">DDS Customers</div>
+									<div class="staff-card-count" id="total-dds-no-of-customers">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">SMBG Customers</div>
+									<div class="staff-card-count" id="total-smbg-no-of-customers">--</div>
+								</div>
+							</div>
+						</section>
+		
+						<section class="staff-detail-section">
+							<h2>Demand & Collection Performance</h2>
+							<div class="staff-cards-grid">
+								<div class="staff-card">
+									<div class="staff-card-title">DD Collection</div>
+									<div class="staff-card-count" id="dd-collection">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">RD Collection</div>
+									<div class="staff-card-count" id="rd-collection">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">DDS Demand</div>
+									<div class="staff-card-count" id="dds-demand">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">DDS Demand vs Collection</div>
+									<div class="staff-card-count" id="dds-demand-vs-collection">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">SMBG Demand</div>
+									<div class="staff-card-count" id="smbg-demand">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">SMBG Collection</div>
+									<div class="staff-card-count" id="smbg-collection">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">SMBG Demand vs Collection</div>
+									<div class="staff-card-count" id="smbg-demand-vs-collection">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">RD Demand</div>
+									<div class="staff-card-count" id="rd-demand">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">RD SMBG Collection</div>
+									<div class="staff-card-count" id="rd-smbg-collection">--</div>
+								</div>
+								<div class="staff-card">
+									<div class="staff-card-title">RD SMBG Pending</div>
+									<div class="staff-card-count" id="rd-smbg-pending">--</div>
+								</div>
+							</div>
+						</section>
 					</div>
-				</div>
-			</section>
-
-			<section class="staff-detail-section">
-				<h2>Staff Detail</h2>
-				<div class="staff-cards-grid">
-					<div class="staff-card">
-						<div class="staff-card-title">Sub Staff</div>
-						<div class="staff-card-count" id="substaff-count">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">BDO</div>
-						<div class="staff-card-count" id="bdo-count">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">RO</div>
-						<div class="staff-card-count" id="ro-count">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">Total Active DDS Agent</div>
-						<div class="staff-card-count" id="total-active-dds-agent-count">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">Total DDS Agent</div>
-						<div class="staff-card-count" id="total-dds-agent-count">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">Total Active SS Agent</div>
-						<div class="staff-card-count" id="total-active-ss-agent-count">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">Total SS Agent</div>
-						<div class="staff-card-count" id="total-ss-agent-count">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">Total Staff</div>
-						<div class="staff-card-count" id="total-staff-count">--</div>
-					</div>
-				</div>
-			</section>
-
-			<section class="staff-detail-section">
-				<h2>Deposit & Book Position</h2>
-				<div class="staff-cards-grid">
-					<div class="staff-card">
-						<div class="staff-card-title">Total Book</div>
-						<div class="staff-card-count" id="total-book">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">SA Book</div>
-						<div class="staff-card-count" id="sa-book">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">CA Book</div>
-						<div class="staff-card-count" id="ca-book">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">FD Book</div>
-						<div class="staff-card-count" id="fd-book">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">RD Book</div>
-						<div class="staff-card-count" id="rd-book">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">DDS Book</div>
-						<div class="staff-card-count" id="dds-book">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">SMBG Book</div>
-						<div class="staff-card-count" id="smbg-book">--</div>
-					</div>
-				</div>
-			</section>
-
-			<section class="staff-detail-section">
-				<h2>Customers Details</h2>
-				<div class="staff-cards-grid">
-					<div class="staff-card">
-						<div class="staff-card-title">Total Customers</div>
-						<div class="staff-card-count" id="total-customers-id">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">CA Customers</div>
-						<div class="staff-card-count" id="total-ca-no-of-customers">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">SA Customers</div>
-						<div class="staff-card-count" id="total-sa-no-of-customers">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">FD Customers</div>
-						<div class="staff-card-count" id="total-fd-no-of-customers">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">RD Customers</div>
-						<div class="staff-card-count" id="total-rd-no-of_customers">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">DDS Customers</div>
-						<div class="staff-card-count" id="total-dds-no-of-customers">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">SMBG Customers</div>
-						<div class="staff-card-count" id="total-smbg-no-of-customers">--</div>
-					</div>
-				</div>
-			</section>
-
-			<section class="staff-detail-section">
-				<h2>Demand & Collection Performance</h2>
-				<div class="staff-cards-grid">
-					<div class="staff-card">
-						<div class="staff-card-title">DD Collection</div>
-						<div class="staff-card-count" id="dd-collection">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">RD Collection</div>
-						<div class="staff-card-count" id="rd-collection">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">DDS Demand</div>
-						<div class="staff-card-count" id="dds-demand">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">DDS Demand vs Collection</div>
-						<div class="staff-card-count" id="dds-demand-vs-collection">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">SMBG Demand</div>
-						<div class="staff-card-count" id="smbg-demand">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">SMBG Collection</div>
-						<div class="staff-card-count" id="smbg-collection">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">SMBG Demand vs Collection</div>
-						<div class="staff-card-count" id="smbg-demand-vs-collection">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">RD Demand</div>
-						<div class="staff-card-count" id="rd-demand">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">RD SMBG Collection</div>
-						<div class="staff-card-count" id="rd-smbg-collection">--</div>
-					</div>
-					<div class="staff-card">
-						<div class="staff-card-title">RD SMBG Pending</div>
-						<div class="staff-card-count" id="rd-smbg-pending">--</div>
-					</div>
-				</div>
-			</section>
-		</main>
-
 		<script>
 			/* =========================================================
 	   BRANCH DASHBOARD (HEADER + SEARCH)
@@ -705,6 +1317,9 @@
 					selectedIndex: -1,
 					cache: new Map(),
 					abortController: null,
+					LOCAL_STORAGE_KEY: "recentBranches",
+					MAX_RECENT_BRANCHES: 5,
+					recentBranches: [],
 				},
 
 				el: {
@@ -716,6 +1331,8 @@
 					searchForm: document.getElementById("branch-search-form"),
 					suggestionsBox: document.getElementById("search-suggestions"),
 					suggestionsContainer: document.getElementById("suggestions-container"),
+					branchDataContainer: document.getElementById("branch-data-container"), // New
+					noBranchSelectedMessage: document.getElementById("no-branch-selected-message"), // New
 				},
 
 				/* ---------------- Utilities ---------------- */
@@ -725,6 +1342,70 @@
 						clearTimeout(t);
 						t = setTimeout(() => fn.apply(this, args), delay);
 					};
+				},
+
+				value(v) { // Corrected: removed duplicate definition
+					if (!v || v === "#N/A") return "--";
+					return v;
+				},
+
+				loadRecentBranches() {
+					try {
+						const stored = localStorage.getItem(this.state.LOCAL_STORAGE_KEY);
+						this.state.recentBranches = stored ? JSON.parse(stored) : [];
+					} catch (e) {
+						console.error("Failed to load recent branches from localStorage", e);
+						this.state.recentBranches = [];
+					}
+				},
+
+				saveRecentBranch(branch) {
+					// Ensure the branch has sol_id, branch, region, state
+					if (!branch || !branch.sol_id || !branch.branch) return;
+
+					// Create a clean object to store
+					const newRecent = {
+						sol_id: branch.sol_id,
+						branch: branch.branch,
+						region: branch.region || "--",
+						state: branch.state || "--",
+					};
+
+					// Remove if already exists to move it to the top
+					this.state.recentBranches = this.state.recentBranches.filter(
+						(b) => b.sol_id !== newRecent.sol_id,
+					);
+
+					// Add new branch to the beginning
+					this.state.recentBranches.unshift(newRecent);
+
+					// Keep only the latest N suggestions
+					if (this.state.recentBranches.length > this.state.MAX_RECENT_BRANCHES) {
+						this.state.recentBranches = this.state.recentBranches.slice(
+							0,
+							this.state.MAX_RECENT_BRANCHES,
+						);
+					}
+
+					try {
+						localStorage.setItem(
+							this.state.LOCAL_STORAGE_KEY,
+							JSON.stringify(this.state.recentBranches),
+						);
+					} catch (e) {
+						console.error("Failed to save recent branches to localStorage", e);
+					}
+				},
+
+				renderRecentSuggestions(filterText = "") {
+					this.hideSuggestions(); // Clear any existing suggestions
+					const filtered = this.state.recentBranches.filter(
+						(b) =>
+							b.branch.toLowerCase().includes(filterText.toLowerCase()) ||
+							b.sol_id.includes(filterText),
+					);
+					this.state.suggestions = filtered;
+					this.renderSuggestions(filterText, true); // Pass true to indicate it's from cache
 				},
 
 				getCache(key) {
@@ -750,9 +1431,24 @@
 					return res.json();
 				},
 
+				toggleBranchDataVisibility(show) {
+					this.el.branchDataContainer.style.display = show ? "" : "none";
+					this.el.noBranchSelectedMessage.style.display = show ? "none" : "block";
+					// Also clear header info if hiding data
+					if (!show) {
+						this.el.branchName.textContent = "Branch Profile";
+						this.el.branchZone.textContent = "--";
+						this.el.branchRegion.textContent = "--";
+						this.el.branchState.textContent = "--";
+					}
+				},
+
 				/* ---------------- Branch Header ---------------- */
 				async loadBranch(solId, pushState = true) {
-					if (!solId) return;
+					if (!solId) {
+						this.toggleBranchDataVisibility(false); // Hide data and show message
+						return;
+					}
 
 					this.state.currentSolId = solId;
 					this.hideSuggestions();
@@ -783,23 +1479,42 @@
 						this.el.branchRegion.textContent = data.region || "--";
 						this.el.branchState.textContent = data.state || "--";
 
+						// Save the successfully loaded branch to recent searches
+						this.saveRecentBranch({
+							sol_id: data.sol_id,
+							branch: data.branch,
+							region: data.region,
+							state: data.state,
+						});
+
 						/* 🔗 Load Branch Manager Profile */
-						BranchManagerProfile.load(solId);
+						BranchManagerProfile.load(solId, data.email); // Pass data.email
+						this.toggleBranchDataVisibility(true); // Show data and hide message
 					} catch (e) {
 						this.el.branchName.textContent = "Branch not found";
 						this.el.branchZone.textContent =
 							this.el.branchRegion.textContent =
 							this.el.branchState.textContent =
 								"--";
+						this.toggleBranchDataVisibility(false); // Hide data and show message on error
 					}
 				},
 
 				/* ---------------- Search Suggestions ---------------- */
 				async fetchSuggestions(txt) {
+					// This function now handles API calls based on text, or shows recent if blank
+					if (txt.length === 0) {
+						// If input is blank, show recent suggestions (if any)
+						this.renderRecentSuggestions("");
+						return;
+					}
+
 					if (txt.length < 2) {
 						this.hideSuggestions();
 						return;
 					}
+
+					this.state.suggestions = []; // Clear suggestions before API call
 
 					const key = "search_" + txt.toLowerCase();
 					let list = this.getCache(key);
@@ -814,13 +1529,13 @@
 						}
 
 						this.state.suggestions = list.slice(0, 5);
-						this.renderSuggestions(txt);
+						this.renderSuggestions(txt); // Call main render function
 					} catch (e) {
 						this.hideSuggestions();
 					}
 				},
 
-				renderSuggestions(searchTxt) {
+				renderSuggestions(searchTxt, isFromCache = false) {
 					const box = this.el.suggestionsContainer;
 					box.innerHTML = "";
 					this.state.selectedIndex = -1;
@@ -837,10 +1552,20 @@
 						div.className = "suggestion-item";
 						div.dataset.solId = b.sol_id;
 
+						let branchNameHtml = b.branch.replace(
+							regex,
+							'<span class="suggestion-highlight">$1</span>',
+						);
+						if (isFromCache) {
+							branchNameHtml = `(Recent) ${branchNameHtml}`;
+						}
+
 						div.innerHTML = `
 					<div>
-						${b.branch.replace(regex, '<span class="suggestion-highlight">$1</span>')}
-						<div style="font-size:11px;color:#64748b">${b.region} • ${b.state}</div>
+						${branchNameHtml}
+						<div style="font-size:11px;color:#64748b">${this.value(b.region)} • ${this.value(
+							b.state,
+						)}</div>
 					</div>
 					<span class="suggestion-sol">${b.sol_id}</span>
 				`;
@@ -894,10 +1619,15 @@
 
 				/* ---------------- Init ---------------- */
 				init() {
+					this.loadRecentBranches(); // Load recent branches on init
 					const debouncedSearch = this.debounce(this.fetchSuggestions, 250);
 
 					this.el.searchInput.addEventListener("input", (e) =>
 						debouncedSearch.call(this, e.target.value.trim()),
+					);
+					// Show recent suggestions when search input is focused
+					this.el.searchInput.addEventListener("focus", () =>
+						this.renderRecentSuggestions(this.el.searchInput.value.trim()),
 					);
 
 					this.el.searchInput.addEventListener("keydown", (e) => this.handleKey(e));
@@ -918,203 +1648,338 @@
 						if (sol) this.loadBranch(sol, false);
 					});
 
+					/* --- Category Tab Logic --- */
+					const categoryTabs = document.getElementById('category-tabs');
+					if (categoryTabs) {
+						categoryTabs.addEventListener('click', (e) => {
+							const tab = e.target.closest('.category-tab');
+							if (!tab) return;
+
+							// Update Active Tab UI
+							categoryTabs.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+							tab.classList.add('active');
+
+							// Actual Data Switch
+							const period = tab.dataset.period;
+							BranchManagerProfile.updateCategoryUI(period);
+						});
+					}
+
 					const params = new URLSearchParams(location.search);
 					const sol = params.get("sol_id");
-					if (sol) this.loadBranch(sol, false);
+					if (sol) {
+						this.loadBranch(sol, false);
+					} else {
+						this.toggleBranchDataVisibility(false); // Initial state: no branch selected
+					}
 				},
 			};
 
 			/* =========================================================
 	   BRANCH MANAGER PROFILE
 	   ========================================================= */
-			const BranchManagerProfile = {
-				el: {
-					name: document.getElementById("bm-name"),
-					mobile: document.getElementById("bm-mobile"),
-					vintage: document.getElementById("bm-vintage"),
-					doj: document.getElementById("bm-doj"),
-					chName: document.getElementById("ch-name"),
-					branchName: document.getElementById("branch-name"),
-					branchDistrict: document.getElementById("branch-district"),
-					branchVintage: document.getElementById("branch-vintage"),
-					staffCount: document.getElementById("staff-count"),
-					category: document.getElementById("branch-category"),
-					photo: document.getElementById("bm-photo"),
+const BranchManagerProfile = {
+                el: {
+                    name: document.getElementById("bm-name"),
+                    mobile: document.getElementById("bm-mobile"),
+                    vintage: document.getElementById("bm-vintage"),
+                    doj: document.getElementById("bm-doj"),
+                    chName: document.getElementById("ch-name"),
+                    branchName: document.getElementById("branch-name"),
+                    branchDistrict: document.getElementById("branch-district"),
+                    branchVintage: document.getElementById("branch-vintage"),
+                    branchEmail: document.getElementById("branch-email"),
+                    chMobile: document.getElementById("ch-mobile"),
+                    branchOpeningDate: document.getElementById("branch-opening-date"),
+                    photo: document.getElementById("bm-photo"),
 
-					// Staff Detail Counts
-					substaffCount: document.getElementById("substaff-count"),
-					bdoCount: document.getElementById("bdo-count"),
-					roCount: document.getElementById("ro-count"),
-					totalActiveDdsAgentCount: document.getElementById(
-						"total-active-dds-agent-count",
-					),
-					totalDdsAgentCount: document.getElementById("total-dds-agent-count"),
-					totalActiveSsAgentCount: document.getElementById(
-						"total-active-ss-agent-count",
-					),
-					totalSsAgentCount: document.getElementById("total-ss-agent-count"),
-					totalStaffCount: document.getElementById("total-staff-count"),
+                    // --- New Staff Overflow UI Elements ---
+                    staffStatusBadge: document.getElementById("staff-status-badge"),
+                    excessTag: document.getElementById("excess-tag"),
+                    barBlue: document.getElementById("bar-blue"),
+                    barRed: document.getElementById("bar-red"),
+                    budgetMarker: document.getElementById("budget-marker"),
+                    manpowerPercentage: document.getElementById("manpower-percentage"),
+                    budgetLabelVal: document.getElementById("budget-label-val"),
+                    actualLabelVal: document.getElementById("actual-label-val"),
+                    
+                    // Designation Chips
+                    bdeChip: document.getElementById("bde-chip-val"),
+                    bdoChip: document.getElementById("bdo-chip-val"),
+                    roChip: document.getElementById("ro-chip-val"),
+                    // --------------------------------------
 
-					// Deposit & Book Position
-					totalBook: document.getElementById("total-book"),
-					saBook: document.getElementById("sa-book"),
-					caBook: document.getElementById("ca-book"),
-					fdBook: document.getElementById("fd-book"),
-					rdBook: document.getElementById("rd-book"),
-					ddsBook: document.getElementById("dds-book"),
-					smbgBook: document.getElementById("smbg-book"),
+                    // --- Category Section Elements ---
+                    categoryCard: document.getElementById("category-card"),
+                    performanceStatus: document.getElementById("performance-status"),
+                    catTargetVal: document.getElementById("cat-target-val"),
+                    catAchievementVal: document.getElementById("cat-achievement-val"),
+                    catPercentageVal: document.getElementById("cat-percentage-val"),
+                    categoryHierarchy: document.getElementById("category-hierarchy"),
+                    fySelect: document.getElementById("fy-select"),
+                    // ---------------------------------
 
-					// Customer Base Snapshot
-					totalCustomersId: document.getElementById("total-customers-id"),
-					totalCaNoOfCustomers: document.getElementById("total-ca-no-of-customers"),
-					totalSaNoOfCustomers: document.getElementById("total-sa-no-of-customers"),
-					totalFdNoOfCustomers: document.getElementById("total-fd-no-of-customers"),
-					totalRdNoOfCustomers: document.getElementById("total-rd-no-of_customers"),
-					totalDdsNoOfCustomers: document.getElementById("total-dds-no-of-customers"),
-					totalSmbgNoOfCustomers: document.getElementById("total-smbg-no-of-customers"),
+                    // Agent Spinner Elements
+                    ddsSpinnerProgress: document.getElementById("dds-spinner-progress"),
+                    ddsSpinnerPercentage: document.getElementById("dds-spinner-percentage"),
+                    ddsTotal: document.getElementById("dds-total"),
+                    ddsActive: document.getElementById("dds-active"),
+                    ddsInactiveCount: document.getElementById("dds-inactive-count"),
+                    ddsInactivePerc: document.getElementById("dds-inactive-perc"),
+                    ssSpinnerProgress: document.getElementById("ss-spinner-progress"),
+                    ssSpinnerPercentage: document.getElementById("ss-spinner-percentage"),
+                    ssTotal: document.getElementById("ss-total"),
+                    ssActive: document.getElementById("ss-active"),
+                    ssInactiveCount: document.getElementById("ss-inactive-count"),
+                    ssInactivePerc: document.getElementById("ss-inactive-perc"),
 
-					// Demand & Collection Performance
-					ddCollection: document.getElementById("dd-collection"),
-					rdCollection: document.getElementById("rd-collection"),
-					ddsDemand: document.getElementById("dds-demand"),
-					ddsDemandVsCollection: document.getElementById("dds-demand-vs-collection"),
-					smbgDemand: document.getElementById("smbg-demand"),
-					smbgCollection: document.getElementById("smbg-collection"),
-					smbgDemandVsCollection: document.getElementById("smbg-demand-vs-collection"),
-					rdDemand: document.getElementById("rd-demand"),
-					rdSmbgCollection: document.getElementById("rd-smbg-collection"),
-					rdSmbgPending: document.getElementById("rd-smbg-pending"),
-				},
+                    // Deposit & Book Position
+                    totalBook: document.getElementById("total-book"),
+                    saBook: document.getElementById("sa-book"),
+                    caBook: document.getElementById("ca-book"),
+                    fdBook: document.getElementById("fd-book"),
+                    rdBook: document.getElementById("rd-book"),
+                    ddsBook: document.getElementById("dds-book"),
+                    smbgBook: document.getElementById("smbg-book"),
 
-				value(v) {
-					if (!v || v === "#N/A") return "--";
-					return v;
-				},
+                    // Customer Base Snapshot
+                    totalCustomersId: document.getElementById("total-customers-id"),
+                    totalCaNoOfCustomers: document.getElementById("total-ca-no-of-customers"),
+                    totalSaNoOfCustomers: document.getElementById("total-sa-no-of-customers"),
+                    totalFdNoOfCustomers: document.getElementById("total-fd-no-of-customers"),
+                    totalRdNoOfCustomers: document.getElementById("total-rd-no-of_customers"),
+                    totalDdsNoOfCustomers: document.getElementById("total-dds-no-of-customers"),
+                    totalSmbgNoOfCustomers: document.getElementById("total-smbg-no-of-customers"),
 
-				formatDate(d) {
-					if (!d) return "--";
-					return new Date(d).toLocaleDateString("en-GB");
-				},
+                    // Demand & Collection Performance
+                    ddCollection: document.getElementById("dd-collection"),
+                    rdCollection: document.getElementById("rd-collection"),
+                    ddsDemand: document.getElementById("dds-demand"),
+                    ddsDemandVsCollection: document.getElementById("dds-demand-vs-collection"),
+                    smbgDemand: document.getElementById("smbg-demand"),
+                    smbgCollection: document.getElementById("smbg-collection"),
+                    smbgDemandVsCollection: document.getElementById("smbg-demand-vs-collection"),
+                    rdDemand: document.getElementById("rd-demand"),
+                    rdSmbgCollection: document.getElementById("rd-smbg-collection"),
+                    rdSmbgPending: document.getElementById("rd-smbg-pending"),
+                },
 
-				formatIndianNumber(num) {
-					if (isNaN(num) || num === null || num === undefined) return "--";
+                state: {
+                    performanceData: null
+                },
 
-					const parts = num.toString().split(".");
+                value(v) {
+                    if (!v || v === "#N/A") return "--";
+                    return v;
+                },
 
-					let lastThree = parts[0].substring(parts[0].length - 3);
+                formatDate(d) {
+                    if (!d) return "--";
+                    const datePart = d.split(' ')[0];
+                    const date = new Date(datePart);
+                    if (isNaN(date.getTime())) return "--";
+                    return date.toLocaleDateString("en-GB");
+                },
 
-					const otherNumbers = parts[0].substring(0, parts[0].length - 3);
+                formatIndianNumber(num) {
+                    if (isNaN(num) || num === null || num === undefined) return "--";
+                    const parts = num.toString().split(".");
+                    let lastThree = parts[0].substring(parts[0].length - 3);
+                    const otherNumbers = parts[0].substring(0, parts[0].length - 3);
+                    if (otherNumbers != "") lastThree = "," + lastThree;
+                    const formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
+                    return parts.length > 1 ? formatted + "." + parts[1] : formatted;
+                },
 
-					if (otherNumbers != "") lastThree = "," + lastThree;
+                updateSpinner(progressEl, percentageEl, totalEl, activeEl, inactiveCountEl, inactivePercEl, active, total) {
+                    const activeNum = parseInt(active) || 0;
+                    const totalNum = parseInt(total) || 0;
+                    const inactiveNum = totalNum - activeNum;
+                    const activePercentage = totalNum > 0 ? (activeNum / totalNum) * 100 : 0;
+                    const inactivePercentage = totalNum > 0 ? (inactiveNum / totalNum) * 100 : 0;
 
-					const formatted =
-						otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
+                    progressEl.style.strokeDasharray = `${activePercentage}, 100`;
+                    const valEl = percentageEl.querySelector('.perc-val');
+                    if (valEl) valEl.textContent = `${Math.round(activePercentage)}%`;
+                    else percentageEl.textContent = `${Math.round(activePercentage)}%`;
+                    
+                    totalEl.textContent = this.formatIndianNumber(totalNum);
+                    activeEl.textContent = this.formatIndianNumber(activeNum);
+                    
+                    if (inactiveCountEl) inactiveCountEl.textContent = this.formatIndianNumber(inactiveNum);
+                    if (inactivePercEl) inactivePercEl.textContent = inactivePercentage.toFixed(1) + "%";
+                },
 
-					return parts.length > 1 ? formatted + "." + parts[1] : formatted;
-				},
+                updateCategoryUI(period) {
+                    if (!this.state.performanceData) return;
 
-				async load(solId) {
-					try {
-						const r = await fetch(
-							`/api/method/custom_report.branch_v1.get_branch_profile_data?sol_id=${solId}`,
-						);
-						const j = await r.json();
-						const d = j.message || {};
+                    const data = this.state.performanceData[period];
+                    if (!data) return;
 
-						this.el.name.textContent = this.value(d.bm_name);
-						this.el.mobile.textContent = this.value(d.bm_mob_no);
-						this.el.vintage.textContent = this.value(d.bm_vintage);
-						this.el.doj.textContent = this.formatDate(d.bm_doj);
-						this.el.chName.textContent = this.value(d.ch_name);
+                    // Update Labels
+                    this.el.performanceStatus.textContent = data.category;
+                    this.el.catTargetVal.textContent = "₹ " + this.formatIndianNumber(data.target);
+                    this.el.catAchievementVal.textContent = "₹ " + this.formatIndianNumber(data.achievement);
+                    this.el.catPercentageVal.textContent = data.percentage;
 
-						this.el.branchName.textContent = this.value(d.branch_name);
-						this.el.branchDistrict.textContent = this.value(d.district);
-						this.el.branchVintage.textContent = this.value(d.branch_vintage);
-						this.el.staffCount.textContent = this.value(d.staff_nos || d.staff_count);
-						this.el.category.textContent = this.value(d.branch_location_category);
+                    // Update Hierarchy Badges
+                    const badges = this.el.categoryHierarchy.querySelectorAll('.hierarchy-badge');
+                    badges.forEach(b => b.classList.remove('active'));
 
-						this.el.substaffCount.textContent = this.value(d.staff_nos); // Using staff_nos for substaff
-						this.el.bdoCount.textContent = this.value(d.bdo);
-						this.el.roCount.textContent = this.value(d.ro);
-						this.el.totalActiveDdsAgentCount.textContent = this.value(
-							d.total_active_dds_agent,
-						);
-						this.el.totalDdsAgentCount.textContent = this.value(d.total_dds_agent);
-						this.el.totalActiveSsAgentCount.textContent = this.value(
-							d.total_active_ss_agent,
-						);
-						this.el.totalSsAgentCount.textContent = this.value(d.total_ss_agent);
-						this.el.totalStaffCount.textContent = this.value(d.staff_count); // Using staff_count for total staff
+                    const categoryMap = {
+                        "Pinnacle": 0,
+                        "Master": 1,
+                        "Accelerator": 2,
+                        "Starter": 3,
+                        "Learner": 4,
+                        "Zero Level": 5,
+                        "Zero": 5
+                    };
 
-						// Populate Deposit & Book Position
-						this.el.totalBook.textContent = this.formatIndianNumber(d.total_book);
-						this.el.saBook.textContent = this.formatIndianNumber(d.sa_book);
-						this.el.caBook.textContent = this.formatIndianNumber(d.ca_book);
-						this.el.fdBook.textContent = this.formatIndianNumber(d.fd_book);
-						this.el.rdBook.textContent = this.formatIndianNumber(d.rd_book);
-						this.el.ddsBook.textContent = this.formatIndianNumber(d.dds_book);
-						this.el.smbgBook.textContent = this.formatIndianNumber(d.smbg_book);
+                    const index = categoryMap[data.category];
+                    if (index !== undefined && badges[index]) {
+                        badges[index].classList.add('active');
+                    }
+                },
 
-						// Populate Customer Base Snapshot
-						this.el.totalCustomersId.textContent = this.formatIndianNumber(
-							d.total_customers_id,
-						);
-						this.el.totalCaNoOfCustomers.textContent = this.formatIndianNumber(
-							d.total_ca_no_of_customers,
-						);
-						this.el.totalSaNoOfCustomers.textContent = this.formatIndianNumber(
-							d.total_sa_no_of_customers,
-						);
-						this.el.totalFdNoOfCustomers.textContent = this.formatIndianNumber(
-							d.total_fd_no_of_customers,
-						);
-						this.el.totalRdNoOfCustomers.textContent = this.formatIndianNumber(
-							d.total_rd_no_of_customers,
-						);
-						this.el.totalDdsNoOfCustomers.textContent = this.formatIndianNumber(
-							d.total_dds_no_of_customers,
-						);
-						this.el.totalSmbgNoOfCustomers.textContent = this.formatIndianNumber(
-							d.total_smbg_no_of_customers,
-						);
+                async load(solId, branchEmailValue) {
+                    try {
+                        const r = await fetch(
+                            `/api/method/custom_report.branch_v1.get_branch_profile_data?sol_id=${solId}`,
+                        );
+                        const j = await r.json();
+                        const d = j.message || {};
 
-						// Populate Demand & Collection Performance
-						this.el.ddCollection.textContent = this.formatIndianNumber(
-							d.dd_collection,
-						);
-						this.el.rdCollection.textContent = this.formatIndianNumber(
-							d.rd_collection,
-						);
-						this.el.ddsDemand.textContent = this.formatIndianNumber(d.dds_demand);
-						this.el.ddsDemandVsCollection.textContent =
-							this.formatIndianNumber(
-								parseFloat(d.dds_demand_vs_collection).toFixed(2),
-							) + "%";
-						this.el.smbgDemand.textContent = this.formatIndianNumber(d.smbg_demand);
-						this.el.smbgCollection.textContent = this.formatIndianNumber(
-							d.smbg_collection,
-						);
-						this.el.smbgDemandVsCollection.textContent =
-							this.formatIndianNumber(
-								parseFloat(d.smbg_demand_vs_collection).toFixed(2),
-							) + "%";
-						this.el.rdDemand.textContent = this.formatIndianNumber(d.rd_demand);
-						this.el.rdSmbgCollection.textContent = this.formatIndianNumber(
-							d.rd_smbg_collection,
-						);
-						this.el.rdSmbgPending.textContent = this.formatIndianNumber(
-							d.rd_smbg_pending,
-						);
+                        // Header Info
+                        this.el.name.textContent = this.value(d.bm_name);
+                        this.el.mobile.textContent = this.value(d.bm_mob_no);
+                        this.el.vintage.textContent = this.value(d.bm_vintage);
+                        this.el.doj.textContent = this.formatDate(d.bm_doj);
+                        this.el.branchOpeningDate.textContent = this.formatDate(d.branch_opening_date);
+                        this.el.chName.textContent = this.value(d.ch_name);
+                        this.el.branchName.textContent = this.value(d.branch_name);
+                        this.el.branchDistrict.textContent = this.value(d.district);
+                        this.el.branchVintage.textContent = this.value(d.branch_vintage);
+                        this.el.branchEmail.textContent = this.value(branchEmailValue);
+                        this.el.chMobile.textContent = this.value(d.ch_mob_no);
 
-						this.el.photo.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-							d.bm_name || "BM",
-						)}&background=097c80&color=fff&size=256`;
-					} catch (e) {
-						this.el.name.textContent = "Branch Manager data unavailable";
-					}
-				},
-			};
+                        // --- Staff Details & Overflow Logic ---
+                        const budget = parseInt(d.total_no_of_budgeted_staff) || 0;
+                        const actual = parseInt(d.staff_count) || 0;
+                        const bdeCount = parseInt(d.bde) || 0;
+                        const bdoCount = parseInt(d.bdo) || 0;
+                        const roCount = parseInt(d.ro) || 0;
 
+                        // Set Text Values
+                        this.el.budgetLabelVal.textContent = this.formatIndianNumber(budget);
+                        this.el.actualLabelVal.textContent = this.formatIndianNumber(actual);
+                        this.el.bdeChip.textContent = this.formatIndianNumber(bdeCount);
+                        this.el.bdoChip.textContent = this.formatIndianNumber(bdoCount);
+                        this.el.roChip.textContent = this.formatIndianNumber(roCount);
+
+                        // Calculate Manpower Percentage
+                        const mpPerc = budget > 0 ? (actual / budget * 100) : 0;
+                        this.el.manpowerPercentage.textContent = mpPerc.toFixed(2) + "%";
+
+                        if (actual > budget) {
+                            const excess = actual - budget;
+                            this.el.staffStatusBadge.className = "status-badge overstaffed";
+                            this.el.staffStatusBadge.textContent = "Critical: Overstaffed";
+                            
+                            // Calculate widths relative to the 'Actual' total
+                            const blueWidth = (budget / actual) * 100;
+                            const redWidth = (excess / actual) * 100;
+                            
+                            this.el.excessTag.style.display = "block";
+                            this.el.excessTag.style.left = blueWidth + "%";
+                            this.el.excessTag.textContent = `+${excess} Excess`;
+
+                            this.el.barBlue.style.width = blueWidth + "%";
+                            this.el.barRed.style.width = redWidth + "%";
+                            this.el.budgetMarker.style.left = blueWidth + "%";
+                            this.el.budgetMarker.style.display = "block";
+                        } else {
+                            this.el.staffStatusBadge.className = "status-badge optimal";
+                            this.el.staffStatusBadge.textContent = "Optimal";
+                            this.el.excessTag.style.display = "none";
+                            
+                            // Normal progress relative to Budget
+                            const fillPercent = budget > 0 ? (actual / budget) * 100 : 0;
+                            this.el.barBlue.style.width = fillPercent + "%";
+                            this.el.barRed.style.width = "0%";
+                            this.el.budgetMarker.style.display = "none";
+                        }
+                        // ----------------------------------------
+
+                        // Update DDS and SS agent spinners
+                        this.updateSpinner(
+                            this.el.ddsSpinnerProgress,
+                            this.el.ddsSpinnerPercentage,
+                            this.el.ddsTotal,
+                            this.el.ddsActive,
+                            this.el.ddsInactiveCount,
+                            this.el.ddsInactivePerc,
+                            d.total_active_dds_agent,
+                            d.total_dds_agent,
+                        );
+                        this.updateSpinner(
+                            this.el.ssSpinnerProgress,
+                            this.el.ssSpinnerPercentage,
+                            this.el.ssTotal,
+                            this.el.ssActive,
+                            this.el.ssInactiveCount,
+                            this.el.ssInactivePerc,
+                            d.total_active_ss_agent,
+                            d.total_ss_agent,
+                        );
+
+                        // Populate Deposit & Book Position
+                        this.el.totalBook.textContent = this.formatIndianNumber(d.total_book);
+                        this.el.saBook.textContent = this.formatIndianNumber(d.sa_book);
+                        this.el.caBook.textContent = this.formatIndianNumber(d.ca_book);
+                        this.el.fdBook.textContent = this.formatIndianNumber(d.fd_book);
+                        this.el.rdBook.textContent = this.formatIndianNumber(d.rd_book);
+                        this.el.ddsBook.textContent = this.formatIndianNumber(d.dds_book);
+                        this.el.smbgBook.textContent = this.formatIndianNumber(d.smbg_book);
+
+                        // Populate Customer Base Snapshot
+                        this.el.totalCustomersId.textContent = this.formatIndianNumber(d.total_customers_id);
+                        this.el.totalCaNoOfCustomers.textContent = this.formatIndianNumber(d.total_ca_no_of_customers);
+                        this.el.totalSaNoOfCustomers.textContent = this.formatIndianNumber(d.total_sa_no_of_customers);
+                        this.el.totalFdNoOfCustomers.textContent = this.formatIndianNumber(d.total_fd_no_of_customers);
+                        this.el.totalRdNoOfCustomers.textContent = this.formatIndianNumber(d.total_rd_no_of_customers);
+                        this.el.totalDdsNoOfCustomers.textContent = this.formatIndianNumber(d.total_dds_no_of_customers);
+                        this.el.totalSmbgNoOfCustomers.textContent = this.formatIndianNumber(d.total_smbg_no_of_customers);
+
+                        // Populate Demand & Collection Performance
+                        this.el.ddCollection.textContent = this.formatIndianNumber(d.dd_collection);
+                        this.el.rdCollection.textContent = this.formatIndianNumber(d.rd_collection);
+                        this.el.ddsDemand.textContent = this.formatIndianNumber(d.dds_demand);
+                        this.el.ddsDemandVsCollection.textContent = this.formatIndianNumber(parseFloat(d.dds_demand_vs_collection || 0).toFixed(2)) + "%";
+                        this.el.smbgDemand.textContent = this.formatIndianNumber(d.smbg_demand);
+                        this.el.smbgCollection.textContent = this.formatIndianNumber(d.smbg_collection);
+                        this.el.smbgDemandVsCollection.textContent = this.formatIndianNumber(parseFloat(d.smbg_demand_vs_collection || 0).toFixed(2)) + "%";
+                        this.el.rdDemand.textContent = this.formatIndianNumber(d.rd_demand);
+                        this.el.rdSmbgCollection.textContent = this.formatIndianNumber(d.rd_smbg_collection);
+                        this.el.rdSmbgPending.textContent = this.formatIndianNumber(d.rd_smbg_pending);
+
+                        this.el.photo.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(d.bm_name || "BM")}&background=097c80&color=fff&size=256`;
+
+                        // --- Fetch Performance Data ---
+                        const selectedFy = this.el.fySelect.value;
+                        const perfR = await fetch(`/api/method/custom_report.branch_v1.get_performance_data?sol_id=${solId}&fy=${selectedFy}`);
+                        const perfJ = await perfR.json();
+                        if (perfJ.message && perfJ.message.data_exists) {
+                            this.state.performanceData = perfJ.message.performance;
+                            this.updateCategoryUI('monthly');
+                        }
+                        // ------------------------------
+                    } catch (e) {
+                        console.error("Profile Load Error:", e);
+                        this.el.name.textContent = "Branch Manager data unavailable";
+                    }
+                },
+            };
 			document.addEventListener("DOMContentLoaded", () => BranchDashboard.init());
 		</script>
 	</body>

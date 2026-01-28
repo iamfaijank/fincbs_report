@@ -1,6 +1,6 @@
 import frappe
-from frappe.utils import getdate
 from typing import Dict, Optional
+from frappe.utils import flt, getdate
 
 
 # ============================================================================
@@ -54,6 +54,7 @@ def get_branch_header_data(sol_id: str):
             "zone",
             "region",
             "state",
+            "email"
         ],
         as_dict=True,
     ) or {}
@@ -238,65 +239,77 @@ def get_targets(sol_id: str, fiscal_year: str) -> Dict[str, float]:
         for row in rows
     }
 
+def get_achievement_category(percentage):
+    """
+    Returns only the Category Name based on percentage
+    """
+    p = flt(percentage)
+    if p > 100: return "Pinnacle"
+    if p >= 80: return "Master"
+    if p >= 60: return "Accelerator"
+    if p >= 40: return "Starter"
+    if p >= 20: return "Learner"
+    return "Zero Level"
 
-# ============================================================================
-# DRISHTI DASHBOARD API
-# ============================================================================
+def format_ui_output(achievement, target):
+    """
+    Calculates percentage and formats it as '00.00 %'
+    """
+    ach = flt(achievement)
+    tar = flt(target)
+    perc = (ach / tar * 100) if tar > 0 else 0
+    
+    return {
+        "target": tar,
+        "achievement": ach,
+        "percentage": "{:05.2f} %".format(perc),
+        "category": get_achievement_category(perc)
+    }
 
 @frappe.whitelist()
-def get_drishti_dashboard_data(financial_year: str, filters: str):
-	"""
-	Fetch all master data required for the Drishti dashboard.
-	This is a complex and potentially slow query, so it should be used with care.
-	"""
-	# NOTE: This is a placeholder implementation.
-	# The actual implementation will require fetching and processing data
-	# from various doctypes like Sahayog Branch, Branch Category Report, etc.
+def get_performance_data(sol_id, date=None):
+    try:
+        # 1. Fetch Latest Record for the SOL
+        # Agar date pass nahi ki, toh latest record uthayega
+        latest_record = frappe.db.sql("""
+            SELECT date, achievement, yearly_achievement 
+            FROM `tabBranch Category Report`
+            WHERE sol_id = %s 
+            ORDER BY date DESC 
+            LIMIT 1
+        """, (sol_id,), as_dict=1)
 
-	dummy_data = {
-		"consolidated_branches": [
-			{
-				"sol_id": "1001",
-				"branch_name": "GONDIA",
-				"zone": "ZONE-1",
-				"region": "REGION-1",
-				"latest_category": "Pinnacle",
-				"monthly_data": {
-					"APR": {"category": "Pinnacle", "target": 50000, "achievement": 60000},
-					"MAY": {"category": "Pinnacle", "target": 55000, "achievement": 58000},
-				},
-			},
-			{
-				"sol_id": "1002",
-				"branch_name": "NAGPUR",
-				"zone": "ZONE-1",
-				"region": "REGION-1",
-				"latest_category": "Master",
-				"monthly_data": {
-					"APR": {"category": "Accelerator", "target": 40000, "achievement": 35000},
-					"MAY": {"category": "Master", "target": 42000, "achievement": 45000},
-				},
-			},
-		],
-		"months": {
-			"APR": {
-				"grouped_by_category": {
-					"Pinnacle": {"ZONE-1": {"branch_count": 1}},
-					"Accelerator": {"ZONE-1": {"branch_count": 1}},
-				}
-			},
-			"MAY": {
-				"grouped_by_category": {
-					"Pinnacle": {"ZONE-1": {"branch_count": 1}},
-					"Master": {"ZONE-1": {"branch_count": 1}},
-				}
-			},
-		},
-		"financial_year": financial_year,
-	}
+        if not latest_record:
+            return {
+                "status": "no_data",
+                "message": "No data found for this branch",
+                "data_exists": False
+            }
 
-	return {
-		"status": "success",
-		"data": dummy_data,
-	}
+        res = latest_record[0]
+        report_date = res.date
+        
+        # 2. Get Targets
+        fiscal_year = get_fiscal_year(report_date)
+        targets = get_targets(sol_id, fiscal_year) 
 
+        # 3. Final Response with Monthly, YTD, and Yearly segments
+        return {
+            "status": "success",
+            "data_exists": True,
+            "sol_id": sol_id,
+            "report_date": report_date.strftime('%Y-%m-%d'),
+            "financial_year": fiscal_year,
+            "performance": {
+                "monthly": format_ui_output(res.achievement, targets.get("monthly", 0)),
+                "ytd": format_ui_output(res.achievement, targets.get("ytd", 0)),
+                "yearly": format_ui_output(res.yearly_achievement, targets.get("yearly", 0))
+            }
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Branch Performance Error: {sol_id}", frappe.get_traceback())
+        return {
+            "status": "error", 
+            "message": str(e)
+        }
