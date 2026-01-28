@@ -465,27 +465,36 @@
 
 			/* Agent Details Spinner */
 			.agent-cards-grid {
-				display: grid;
-				grid-template-columns: 1fr 1fr;
-				gap: 10px;
-				justify-items: center;
+				display: flex;
+				flex-direction: column;
+				gap: 12px;
 				margin-top: 20px;
 			}
 
 			.spinner-card {
 				display: flex;
-				flex-direction: column;
 				align-items: center;
-				gap: 8px;
-				padding: 10px;
+				justify-content: space-between;
+				gap: 15px;
+				padding: 12px 16px;
 				width: 100%;
-				text-align: center;
+				background: #f8fafc;
+				border-radius: 12px;
+				border: 1px solid #e2e8f0;
+			}
+
+			.spinner-left-stack {
+				display: flex;
+				flex-direction: column;
+				align-items: flex-start;
+				gap: 4px;
 			}
 
 			.spinner-container {
 				position: relative;
-				width: 80px;
-				height: 80px;
+				width: 60px;
+				height: 60px;
+				flex-shrink: 0;
 			}
 
 			.spinner-svg {
@@ -1041,59 +1050,39 @@
 							<section class="staff-detail-section">
 								<h2>Agent Details</h2>
 								<div class="agent-cards-grid">
-									<!-- DDS Agent Spinner -->
+									<!-- DDS Agent Card -->
 									<div class="spinner-card">
-										<div class="spinner-label">DDS Agents</div>
+										<div class="spinner-left-stack">
+											<div class="spinner-label">DDS Agents</div>
+											<div class="spinner-data" style="margin-top: 0;">
+												<span id="dds-active" class="count-active">--</span>
+												<span class="count-total"> / <span id="dds-total">--</span></span>
+											</div>
+										</div>
 										<div class="spinner-container">
 											<svg class="spinner-svg" viewBox="0 0 36 36">
-												<circle
-													class="spinner-circle spinner-background"
-													cx="18"
-													cy="18"
-													r="15.9155"
-												></circle>
-												<circle
-													id="dds-spinner-progress"
-													class="spinner-circle spinner-progress"
-													cx="18"
-													cy="18"
-													r="15.9155"
-													stroke-dasharray="0, 100"
-												></circle>
+												<circle class="spinner-circle spinner-background" cx="18" cy="18" r="15.9155"></circle>
+												<circle id="dds-spinner-progress" class="spinner-circle spinner-progress" cx="18" cy="18" r="15.9155" stroke-dasharray="0, 100"></circle>
 											</svg>
-											<div id="dds-spinner-percentage" class="spinner-percentage">0%</div>
-										</div>
-										<div class="spinner-data">
-											<span id="dds-active" class="count-active">--</span>
-											<span class="count-total"> / <span id="dds-total">--</span></span>
+											<div id="dds-spinner-percentage" class="spinner-percentage" style="font-size: 13px;">0%</div>
 										</div>
 									</div>
 		
-									<!-- SS Agent Spinner -->
+									<!-- SS Agent Card -->
 									<div class="spinner-card">
-										<div class="spinner-label">SS Agents</div>
+										<div class="spinner-left-stack">
+											<div class="spinner-label">SS Agents</div>
+											<div class="spinner-data" style="margin-top: 0;">
+												<span id="ss-active" class="count-active">--</span>
+												<span class="count-total"> / <span id="ss-total">--</span></span>
+											</div>
+										</div>
 										<div class="spinner-container">
 											<svg class="spinner-svg" viewBox="0 0 36 36">
-												<circle
-													class="spinner-circle spinner-background"
-													cx="18"
-													cy="18"
-													r="15.9155"
-												></circle>
-												<circle
-													id="ss-spinner-progress"
-													class="spinner-circle spinner-progress"
-													cx="18"
-													cy="18"
-													r="15.9155"
-													stroke-dasharray="0, 100"
-												></circle>
+												<circle class="spinner-circle spinner-background" cx="18" cy="18" r="15.9155"></circle>
+												<circle id="ss-spinner-progress" class="spinner-circle spinner-progress" cx="18" cy="18" r="15.9155" stroke-dasharray="0, 100"></circle>
 											</svg>
-											<div id="ss-spinner-percentage" class="spinner-percentage">0%</div>
-										</div>
-										<div class="spinner-data">
-											<span id="ss-active" class="count-active">--</span>
-											<span class="count-total"> / <span id="ss-total">--</span></span>
+											<div id="ss-spinner-percentage" class="spinner-percentage" style="font-size: 13px;">0%</div>
 										</div>
 									</div>
 								</div>
