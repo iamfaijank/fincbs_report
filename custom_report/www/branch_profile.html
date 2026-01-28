@@ -516,6 +516,14 @@
 				stroke: var(--primary-1);
 				stroke-linecap: round;
 				transition: stroke-dasharray 0.5s ease;
+				filter: drop-shadow(0 0 2px rgba(9, 124, 128, 0.5));
+				animation: spinner-glow 3s infinite ease-in-out;
+			}
+
+			@keyframes spinner-glow {
+				0% { filter: drop-shadow(0 0 2px rgba(9, 124, 128, 0.4)); opacity: 0.9; }
+				50% { filter: drop-shadow(0 0 8px rgba(9, 124, 128, 0.8)); opacity: 1; }
+				100% { filter: drop-shadow(0 0 2px rgba(9, 124, 128, 0.4)); opacity: 0.9; }
 			}
 
 			.spinner-percentage {
