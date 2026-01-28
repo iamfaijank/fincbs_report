@@ -594,6 +594,36 @@
 				border-color: var(--primary-1);
 			}
 
+			/* FY Filter Styles */
+			.fy-filter-wrapper {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				margin-top: 12px;
+			}
+			.fy-label {
+				font-size: 10px;
+				font-weight: 800;
+				color: #64748b;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+			}
+			.fy-select-compact {
+				background: #f1f5f9;
+				border: 1px solid #e2e8f0;
+				border-radius: 6px;
+				padding: 4px 8px;
+				font-size: 11px;
+				font-weight: 700;
+				color: #333333;
+				cursor: pointer;
+				outline: none;
+				transition: all 0.2s;
+			}
+			.fy-select-compact:hover {
+				background: #e2e8f0;
+			}
+
 /* Modern Staff Overflow UI */
 .total-staff-overview-card {
     background: #ffffff;
@@ -1058,12 +1088,20 @@
 							</section>
 
 							<section class="staff-detail-section" id="category-card">
-								<div class="staff-header-flex">
-									<h2 style="margin:0">Category</h2>
-									<div class="category-tabs" id="category-tabs">
-										<div class="category-tab active" data-period="monthly">Monthly</div>
-										<div class="category-tab" data-period="ytd">YTD</div>
-										<div class="category-tab" data-period="yearly">Yearly</div>
+								<div class="staff-header-flex" style="flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 20px;">
+									<div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+										<h2 style="margin:0">Category</h2>
+										<div class="category-tabs" id="category-tabs">
+											<div class="category-tab active" data-period="monthly">Monthly</div>
+											<div class="category-tab" data-period="ytd">YTD</div>
+											<div class="category-tab" data-period="yearly">Yearly</div>
+										</div>
+									</div>
+									<div class="fy-filter-wrapper">
+										<span class="fy-label">Financial Year:</span>
+										<select class="fy-select-compact" id="fy-select">
+											<option value="2025-2026">2025-2026</option>
+										</select>
 									</div>
 								</div>
 
@@ -1639,6 +1677,7 @@ const BranchManagerProfile = {
                     catAchievementVal: document.getElementById("cat-achievement-val"),
                     catPercentageVal: document.getElementById("cat-percentage-val"),
                     categoryHierarchy: document.getElementById("category-hierarchy"),
+                    fySelect: document.getElementById("fy-select"),
                     // ---------------------------------
 
                     // Agent Spinner Elements
@@ -1867,7 +1906,8 @@ const BranchManagerProfile = {
                         this.el.photo.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(d.bm_name || "BM")}&background=097c80&color=fff&size=256`;
 
                         // --- Fetch Performance Data ---
-                        const perfR = await fetch(`/api/method/custom_report.branch_v1.get_performance_data?sol_id=${solId}`);
+                        const selectedFy = this.el.fySelect.value;
+                        const perfR = await fetch(`/api/method/custom_report.branch_v1.get_performance_data?sol_id=${solId}&fy=${selectedFy}`);
                         const perfJ = await perfR.json();
                         if (perfJ.message && perfJ.message.data_exists) {
                             this.state.performanceData = perfJ.message.performance;
