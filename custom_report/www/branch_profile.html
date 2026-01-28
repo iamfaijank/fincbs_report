@@ -601,10 +601,20 @@
 .excess-indicator {
     position: absolute;
     top: -22px;
-    right: 0;
     font-size: 12px;
     font-weight: 800;
     color: #dc2626;
+    white-space: nowrap;
+    transform: translateX(-50%);
+}
+
+.gauge-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
 }
 
 .staff-main-count {
@@ -873,6 +883,10 @@
                  <div id="bar-blue" class="bar-blue" style="width: 0%"></div>
                  <div id="bar-red" class="bar-red" style="width: 0%"></div>
                  <div id="budget-marker" class="budget-line" style="display:none"></div>
+            </div>
+            <div class="gauge-labels">
+                 <div style="color: #2563eb;">Budgeted: <span id="budget-label-val">--</span></div>
+                 <div style="color: #0f172a;">Actual: <span id="actual-label-val">--</span></div>
             </div>
         </div>
 
@@ -1457,6 +1471,8 @@ const BranchManagerProfile = {
                     barBlue: document.getElementById("bar-blue"),
                     barRed: document.getElementById("bar-red"),
                     budgetMarker: document.getElementById("budget-marker"),
+                    budgetLabelVal: document.getElementById("budget-label-val"),
+                    actualLabelVal: document.getElementById("actual-label-val"),
                     
                     // Designation Chips
                     bdeChip: document.getElementById("bde-chip-val"),
@@ -1569,6 +1585,8 @@ const BranchManagerProfile = {
                         // Set Text Values
                         this.el.staffMainDisplay.textContent = this.formatIndianNumber(actual);
                         this.el.budgetValText.textContent = this.formatIndianNumber(budget);
+                        this.el.budgetLabelVal.textContent = this.formatIndianNumber(budget);
+                        this.el.actualLabelVal.textContent = this.formatIndianNumber(actual);
                         this.el.bdeChip.textContent = this.formatIndianNumber(bdeCount);
                         this.el.bdoChip.textContent = this.formatIndianNumber(bdoCount);
                         this.el.roChip.textContent = this.formatIndianNumber(roCount);
@@ -1578,13 +1596,14 @@ const BranchManagerProfile = {
                             this.el.staffStatusBadge.className = "status-badge overstaffed";
                             this.el.staffStatusBadge.textContent = "Critical: Overstaffed";
                             
-                            this.el.excessTag.style.display = "block";
-                            this.el.excessTag.textContent = `+${excess} Excess`;
-
                             // Calculate widths relative to the 'Actual' total
                             const blueWidth = (budget / actual) * 100;
                             const redWidth = (excess / actual) * 100;
                             
+                            this.el.excessTag.style.display = "block";
+                            this.el.excessTag.style.left = blueWidth + "%";
+                            this.el.excessTag.textContent = `+${excess} Excess`;
+
                             this.el.barBlue.style.width = blueWidth + "%";
                             this.el.barRed.style.width = redWidth + "%";
                             this.el.budgetMarker.style.left = blueWidth + "%";
