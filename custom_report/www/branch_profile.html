@@ -312,7 +312,7 @@
 			.details-row > section {
 				margin-top: 0;
 				flex: 1;
-				min-width: calc(50% - 15px);
+				min-width: calc(33.33% - 20px);
 			}
 
 			/* New Staff Detail Section Styles */
@@ -528,6 +528,52 @@
 				font-size: 14px;
 				color: #475569;
 				font-weight: 500;
+			}
+
+			/* Category Card Specific Styles */
+			.category-tabs {
+				display: flex;
+				gap: 4px;
+				background: #f1f5f9;
+				padding: 4px;
+				border-radius: 8px;
+			}
+			.category-tab {
+				padding: 6px 12px;
+				cursor: pointer;
+				border-radius: 6px;
+				font-size: 11px;
+				font-weight: 700;
+				color: #64748b;
+				transition: all 0.2s;
+				text-transform: uppercase;
+			}
+			.category-tab.active {
+				background: #ffffff;
+				color: var(--primary-1);
+				box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+			}
+
+			.category-hierarchy {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 6px;
+				margin-top: 15px;
+			}
+			.hierarchy-badge {
+				padding: 4px 8px;
+				border-radius: 4px;
+				font-size: 10px;
+				font-weight: 700;
+				background: #f8fafc;
+				color: #94a3b8;
+				border: 1px solid #e2e8f0;
+				text-transform: uppercase;
+			}
+			.hierarchy-badge.active {
+				background: rgba(9, 124, 128, 0.1);
+				color: var(--primary-1);
+				border-color: var(--primary-1);
 			}
 
 /* Modern Staff Overflow UI */
@@ -975,6 +1021,42 @@
 											<div>Total = <span id="ss-total">--</span></div>
 											<div>Active = <span id="ss-active">--</span></div>
 										</div>
+									</div>
+								</div>
+							</section>
+
+							<section class="staff-detail-section" id="category-card">
+								<div class="staff-header-flex">
+									<h2 style="margin:0">Category</h2>
+									<div class="category-tabs" id="category-tabs">
+										<div class="category-tab active" data-period="monthly">Monthly</div>
+										<div class="category-tab" data-period="ytd">YTD</div>
+										<div class="category-tab" data-period="yearly">Yearly</div>
+									</div>
+								</div>
+
+								<div style="margin-top: 15px;">
+									<div style="font-size: 13px; color: #64748b; font-weight: 600;">Current Performance Level</div>
+									<div id="performance-status" style="font-size: 20px; font-weight: 800; color: var(--primary-1); margin: 4px 0;">Accelerator</div>
+
+									<div class="category-hierarchy" id="category-hierarchy">
+										<span class="hierarchy-badge">Pinnacle</span>
+										<span class="hierarchy-badge">Master</span>
+										<span class="hierarchy-badge active">Accelerator</span>
+										<span class="hierarchy-badge">Starter</span>
+										<span class="hierarchy-badge">Learner</span>
+										<span class="hierarchy-badge">Zero</span>
+									</div>
+								</div>
+
+								<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; padding-top: 15px; border-top: 1px solid #f1f5f9;">
+									<div>
+										<div style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">Target</div>
+										<div id="cat-target-val" style="font-size: 16px; font-weight: 700; color: #1e293b;">₹ 50,00,000</div>
+									</div>
+									<div>
+										<div style="font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase;">Achievement</div>
+										<div id="cat-achievement-val" style="font-size: 16px; font-weight: 700; color: #10b981;">₹ 42,50,000</div>
 									</div>
 								</div>
 							</section>
@@ -1435,6 +1517,46 @@
 						const sol = new URLSearchParams(location.search).get("sol_id");
 						if (sol) this.loadBranch(sol, false);
 					});
+
+					/* --- Category Tab Logic --- */
+					const categoryTabs = document.getElementById('category-tabs');
+					if (categoryTabs) {
+						categoryTabs.addEventListener('click', (e) => {
+							const tab = e.target.closest('.category-tab');
+							if (!tab) return;
+
+							// Update Active Tab UI
+							categoryTabs.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+							tab.classList.add('active');
+
+							// Dummy Data Switch
+							const period = tab.dataset.period;
+							const statusEl = document.getElementById('performance-status');
+							const targetEl = document.getElementById('cat-target-val');
+							const achievementEl = document.getElementById('cat-achievement-val');
+							const badges = document.querySelectorAll('#category-hierarchy .hierarchy-badge');
+
+							// Reset badges
+							badges.forEach(b => b.classList.remove('active'));
+
+							if (period === 'monthly') {
+								statusEl.textContent = "Accelerator";
+								targetEl.textContent = "₹ 50,00,000";
+								achievementEl.textContent = "₹ 42,50,000";
+								badges[2].classList.add('active'); // Accelerator
+							} else if (period === 'ytd') {
+								statusEl.textContent = "Master";
+								targetEl.textContent = "₹ 4,50,00,000";
+								achievementEl.textContent = "₹ 4,10,00,000";
+								badges[1].classList.add('active'); // Master
+							} else if (period === 'yearly') {
+								statusEl.textContent = "Pinnacle";
+								targetEl.textContent = "₹ 12,00,00,000";
+								achievementEl.textContent = "₹ 11,80,00,000";
+								badges[0].classList.add('active'); // Pinnacle
+							}
+						});
+					}
 
 					const params = new URLSearchParams(location.search);
 					const sol = params.get("sol_id");
