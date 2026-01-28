@@ -289,9 +289,8 @@ def get_performance_data(sol_id, date=None):
         res = latest_record[0]
         report_date = res.date
         
-        # 2. Get Targets (Assuming these are standard helper functions in your app)
-        from frappe.utils.data import get_fiscal_year
-        fiscal_year = get_fiscal_year(report_date)[0]
+        # 2. Get Targets
+        fiscal_year = get_fiscal_year(report_date)
         targets = get_targets(sol_id, fiscal_year) 
 
         # 3. Final Response with Monthly, YTD, and Yearly segments
@@ -303,7 +302,7 @@ def get_performance_data(sol_id, date=None):
             "financial_year": fiscal_year,
             "performance": {
                 "monthly": format_ui_output(res.achievement, targets.get("monthly", 0)),
-                "ytd": format_ui_output(res.achievement, targets.get("ytd", targets.get("ytd ", 0))),
+                "ytd": format_ui_output(res.achievement, targets.get("ytd", 0)),
                 "yearly": format_ui_output(res.yearly_achievement, targets.get("yearly", 0))
             }
         }
