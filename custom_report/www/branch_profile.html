@@ -688,55 +688,76 @@
 																text-align: left;
 																border-bottom: 2px solid #e2e8f0;
 															}
-															.financial-table td {
-																padding: 14px 12px;
-																border-bottom: 1px solid #f1f5f9;
-																color: #333333;
-																font-weight: 500;
-																transition: all 0.2s ease;
-															}
-															.financial-table tr.sub-item td:first-child {
-																padding-left: 36px; /* Indentation for sub-items */
-															}
-																							.financial-table .amount-col {
-																								text-align: right;
-																								font-variant-numeric: tabular-nums;
-																								font-weight: 700;
-																								white-space: nowrap;
-																								padding-right: 40px; /* Space between amount and percentage */
-																							}
-																							.financial-table .bar-col {
-																								width: 25%;
-																								padding: 0 12px;
-																								vertical-align: middle;
-																							}																			.financial-table .data-wrapper {
-																				display: flex;
-																				flex-direction: column;
-																				align-items: flex-end;
-																				gap: 2px;
-																			}
-																			.financial-table .perc-share {
-																				font-size: 11px;
-																				color: #64748b;
-																				font-weight: 600;
-																			}
-																			.financial-table .comp-bar-bg {
-																				width: 100%;
-																				height: 6px;
-																				background: #f1f5f9;
-																				border-radius: 3px;
-																				overflow: hidden;
-																			}
-																			.financial-table .comp-bar-fill {
-																				height: 100%;
-																				background: var(--primary-1);
-																				border-radius: 3px;
-																				transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-																			}
+																														.financial-table td {
+																															padding: 14px 12px;
+																															border-bottom: 1px solid #f1f5f9;
+																															border-top: 1px solid transparent;
+																															color: #333333;
+																															font-weight: 500;
+																															transition: all 0.2s ease;
+																														}
+																														.financial-table th:first-child, 
+																														.financial-table td:first-child {
+																															width: 40%;
+																														}
+																														.financial-table tr.sub-item td:first-child {
+																															padding-left: 36px; /* Indentation for sub-items */
+																														}
+																														.financial-table .amount-col {
+																															text-align: right;
+																															font-variant-numeric: tabular-nums;
+																															font-weight: 700;
+																															white-space: nowrap;
+																															width: 35%;
+																														}
+																														.financial-table .bar-col {
+																															width: 25%;
+																															padding: 0 12px;
+																															vertical-align: middle;
+																														}
+																														.financial-table .data-wrapper {
+																															display: flex;
+																															flex-direction: column;
+																															align-items: flex-end;
+																															gap: 2px;
+																														}
+																														.financial-table .perc-share {
+																															font-size: 11px;
+																															color: #64748b;
+																															font-weight: 600;
+																														}
+																														.financial-table .comp-bar-bg {
+																															width: 100%;
+																															height: 6px;
+																															background: #f1f5f9;
+																															border-radius: 3px;
+																															overflow: hidden;
+																														}
+																														.financial-table .comp-bar-fill {
+																															height: 100%;
+																															background: var(--primary-1);
+																															border-radius: 3px;
+																															transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+																														}
 															
-																			.financial-table tr:hover .comp-bar-bg {
-																				background: #e2e8f0;
-																			}											
+																														.financial-table tr:hover td {
+																															background-color: #fffbeb !important;
+																															border-top-color: #fbbf24 !important;
+																															border-bottom-color: #fbbf24 !important;
+																														}
+																														.financial-table tr:hover td:first-child {
+																															border-left: 2px solid #fbbf24 !important;
+																															border-top-left-radius: 8px;
+																															border-bottom-left-radius: 8px;
+																														}
+																														.financial-table tr:hover td:last-child {
+																															border-right: 2px solid #fbbf24 !important;
+																															border-top-right-radius: 8px;
+																															border-bottom-right-radius: 8px;
+																														}
+																														.financial-table tr:hover .comp-bar-bg {
+																															background: #e2e8f0;
+																														}											
 															.financial-table tr:nth-child(even) td {
 																background-color: #fafbfd;
 															}
