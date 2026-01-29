@@ -705,12 +705,18 @@
 																																			font-weight: 700;
 																																			white-space: nowrap;
 																																		}
-																																		.financial-table .bar-col {
-																																			width: 25%;
-																																			padding: 0 12px;
-																																			vertical-align: middle;
-																																		}
-																																		.financial-table .data-wrapper {
+																																						.financial-table .bar-col {
+																																							width: 25%;
+																																							padding: 0 12px;
+																																							vertical-align: middle;
+																																							text-align: right;
+																																						}
+																																						.financial-table .bar-wrapper {
+																																							display: flex;
+																																							align-items: center;
+																																							justify-content: flex-end;
+																																							gap: 10px;
+																																						}																																		.financial-table .data-wrapper {
 																																			display: flex;
 																																			flex-direction: column;
 																																			align-items: flex-end;
@@ -1381,7 +1387,7 @@
 												<span id="sa-book">--</span>
 											</td>
 											<td class="bar-col">
-												<div style="display: flex; align-items: center; gap: 10px;">
+												<div class="bar-wrapper">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="sa-book-bar"></div></div>
 													<span class="perc-share" id="sa-book-perc">--</span>
 												</div>
@@ -1396,7 +1402,7 @@
 												<span id="ca-book">--</span>
 											</td>
 											<td class="bar-col">
-												<div style="display: flex; align-items: center; gap: 10px;">
+												<div class="bar-wrapper">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="ca-book-bar"></div></div>
 													<span class="perc-share" id="ca-book-perc">--</span>
 												</div>
@@ -1411,7 +1417,7 @@
 												<span id="fd-book">--</span>
 											</td>
 											<td class="bar-col">
-												<div style="display: flex; align-items: center; gap: 10px;">
+												<div class="bar-wrapper">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="fd-book-bar"></div></div>
 													<span class="perc-share" id="fd-book-perc">--</span>
 												</div>
@@ -1426,7 +1432,7 @@
 												<span id="rd-book">--</span>
 											</td>
 											<td class="bar-col">
-												<div style="display: flex; align-items: center; gap: 10px;">
+												<div class="bar-wrapper">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="rd-book-bar"></div></div>
 													<span class="perc-share" id="rd-book-perc">--</span>
 												</div>
@@ -1441,7 +1447,7 @@
 												<span id="dds-book">--</span>
 											</td>
 											<td class="bar-col">
-												<div style="display: flex; align-items: center; gap: 10px;">
+												<div class="bar-wrapper">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="dds-book-bar"></div></div>
 													<span class="perc-share" id="dds-book-perc">--</span>
 												</div>
@@ -1456,7 +1462,7 @@
 												<span id="smbg-book">--</span>
 											</td>
 											<td class="bar-col">
-												<div style="display: flex; align-items: center; gap: 10px;">
+												<div class="bar-wrapper">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="smbg-book-bar"></div></div>
 													<span class="perc-share" id="smbg-book-perc">--</span>
 												</div>
@@ -1499,7 +1505,7 @@
 												<span id="total-sa-no-of-customers">--</span>
 											</td>
 											<td class="bar-col">
-												<div style="display: flex; align-items: center; gap: 10px;">
+												<div class="bar-wrapper">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="sa-cust-bar"></div></div>
 													<span class="perc-share" id="sa-cust-perc">--</span>
 												</div>
@@ -1514,7 +1520,7 @@
 												<span id="total-ca-no-of-customers">--</span>
 											</td>
 											<td class="bar-col">
-												<div style="display: flex; align-items: center; gap: 10px;">
+												<div class="bar-wrapper">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="ca-cust-bar"></div></div>
 													<span class="perc-share" id="ca-cust-perc">--</span>
 												</div>
@@ -1529,7 +1535,7 @@
 												<span id="total-fd-no-of-customers">--</span>
 											</td>
 											<td class="bar-col">
-												<div style="display: flex; align-items: center; gap: 10px;">
+												<div class="bar-wrapper">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="fd-cust-bar"></div></div>
 													<span class="perc-share" id="fd-cust-perc">--</span>
 												</div>
@@ -1544,7 +1550,7 @@
 												<span id="total-rd-no-of_customers">--</span>
 											</td>
 											<td class="bar-col">
-												<div style="display: flex; align-items: center; gap: 10px;">
+												<div class="bar-wrapper">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="rd-cust-bar"></div></div>
 													<span class="perc-share" id="rd-cust-perc">--</span>
 												</div>
@@ -1559,7 +1565,7 @@
 												<span id="total-dds-no-of-customers">--</span>
 											</td>
 											<td class="bar-col">
-												<div style="display: flex; align-items: center; gap: 10px;">
+												<div class="bar-wrapper">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="dds-cust-bar"></div></div>
 													<span class="perc-share" id="dds-cust-perc">--</span>
 												</div>
@@ -1574,7 +1580,7 @@
 												<span id="total-smbg-no-of-customers">--</span>
 											</td>
 											<td class="bar-col">
-												<div style="display: flex; align-items: center; gap: 10px;">
+												<div class="bar-wrapper">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="smbg-cust-bar"></div></div>
 													<span class="perc-share" id="smbg-cust-perc">--</span>
 												</div>
