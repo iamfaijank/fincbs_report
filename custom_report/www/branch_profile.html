@@ -2137,7 +2137,7 @@ const BranchManagerProfile = {
                         this.el.totalSmbgNoOfCustomers.textContent = this.formatIndianNumber(d.total_smbg_no_of_customers);
 
                         // Populate Demand & Collection Performance
-                        this.el.ddCollection.textContent = "₹ " + this.formatIndianNumber(d.dd_collection);
+                        this.el.ddCollection.textContent = "₹ " + this.formatIndianNumber(d.dds_collection);
                         this.el.rdCollection.textContent = "₹ " + this.formatIndianNumber(d.rd_collection);
                         this.el.ddsDemand.textContent = "₹ " + this.formatIndianNumber(d.dds_demand);
                         this.el.ddsDemandVsCollection.textContent = this.formatIndianNumber(parseFloat(d.dds_demand_vs_collection || 0).toFixed(2)) + "%";
