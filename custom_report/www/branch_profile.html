@@ -485,21 +485,23 @@
 				font-weight: 600;
 			}
 			.view-details-button {
-				background-color: #097c80;
-				color: white;
+				background-color: transparent;
+				color: #097c80;
 				border: none;
-				width: 100%;
-				padding: 16px;
-				font-size: 14px;
-				font-weight: 600;
+				width: fit-content;
+				padding: 8px 0;
+				font-size: 13px;
+				font-weight: 700;
 				cursor: pointer;
-				border-bottom-left-radius: 16px;
-				border-bottom-right-radius: 16px;
-				transition: background-color 0.2s ease;
-				margin-top: auto; /* Pushes button to the bottom */
+				transition: all 0.2s ease;
+				margin: 15px auto 0 auto;
+				text-decoration: underline;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
 			}
 			.view-details-button:hover {
-				background-color: var(--primary-2);
+				color: var(--primary-2);
+				text-decoration: none;
 			}
 
 			/* Agent Details Spinner */
@@ -1244,7 +1246,7 @@
             </div>
             <div id="manpower-percentage" class="manpower-percentage">--%</div>
         </div>    </div>
-    <button class="view-details-button">View Detailed Manpower Table</button>
+    <button class="view-details-button" onclick="document.getElementById('manpower-details-section').scrollIntoView({ behavior: 'smooth' })">View Detailed Manpower Table</button>
 </section>
 		
 							<section class="staff-detail-section">
@@ -1790,7 +1792,7 @@
 							</div>
 						</section>
 
-						<section class="staff-detail-section">
+						<section class="staff-detail-section" id="manpower-details-section">
 							<h2>Manpower Details</h2>
 							<div class="financial-table-container">
 								<table class="financial-table">
