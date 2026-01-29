@@ -208,6 +208,37 @@
 				text-decoration: none;
 			}
 
+			/* FORMAT TOGGLE */
+			.format-toggle {
+				display: flex;
+				background: rgba(255, 255, 255, 0.1);
+				padding: 4px;
+				border-radius: 8px;
+				gap: 4px;
+				margin-right: 12px;
+			}
+
+			.format-btn {
+				padding: 6px 12px;
+				border: none;
+				background: transparent;
+				color: var(--white);
+				font-size: 12px;
+				font-weight: 700;
+				cursor: pointer;
+				border-radius: 6px;
+				transition: var(--transition);
+				text-transform: uppercase;
+				opacity: 0.7;
+			}
+
+			.format-btn.active {
+				background: var(--white);
+				color: var(--primary-1);
+				opacity: 1;
+				box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+			}
+
 			/* LOADING STATES */
 			.loading {
 				opacity: 0.7;
@@ -1031,9 +1062,15 @@
 					</div>
 				</div>
 
-				<a
-					href="#"
-					class="back-button"
+				<div style="display: flex; align-items: center;">
+					<div class="format-toggle" id="format-toggle">
+						<button class="format-btn active" data-mode="words">Words</button>
+						<button class="format-btn" data-mode="number">Numbers</button>
+					</div>
+
+					<a
+						href="#"
+						class="back-button"
 					onclick="
 						window.history.back();
 						return false;
@@ -1505,6 +1542,7 @@
 					LOCAL_STORAGE_KEY: "recentBranches",
 					MAX_RECENT_BRANCHES: 5,
 					recentBranches: [],
+					formatMode: "words",
 				},
 
 				el: {
@@ -1850,6 +1888,24 @@
 						});
 					}
 
+					/* --- Format Toggle Logic --- */
+					const formatToggle = document.getElementById('format-toggle');
+					if (formatToggle) {
+						formatToggle.addEventListener('click', (e) => {
+							const btn = e.target.closest('.format-btn');
+							if (!btn) return;
+
+							this.state.formatMode = btn.dataset.mode;
+							
+							// Update UI
+							formatToggle.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+							btn.classList.add('active');
+
+							// Re-render
+							BranchManagerProfile.render();
+						});
+					}
+
 					const params = new URLSearchParams(location.search);
 					const sol = params.get("sol_id");
 					if (sol) {
@@ -1950,12 +2006,40 @@ const BranchManagerProfile = {
                 },
 
                 state: {
-                    performanceData: null
+                    performanceData: null,
+                    rawData: null
                 },
 
                 value(v) {
                     if (!v || v === "#N/A") return "--";
                     return v;
+                },
+
+                formatCurrency(value) {
+                    if (!value || value === 0 || value === "0") return "--";
+                    const numValue = parseFloat(value);
+                    if (isNaN(numValue)) return value;
+
+                    if (BranchDashboard.state.formatMode === "words") {
+                        if (Math.abs(numValue) >= 10000000) {
+                            return `${(numValue / 10000000).toFixed(2)} Cr`;
+                        }
+                        if (Math.abs(numValue) >= 100000) {
+                            return `${(numValue / 100000).toFixed(2)} L`;
+                        }
+                        if (Math.abs(numValue) >= 1000) {
+                            return `${(numValue / 1000).toFixed(2)} K`;
+                        }
+                        return numValue.toFixed(2);
+                    } else {
+                        return this.formatIndianNumber(numValue);
+                    }
+                },
+
+                formatAmount(value) {
+                    const formatted = this.formatCurrency(value);
+                    if (formatted === "--") return "--";
+                    return "₹ " + formatted;
                 },
 
                 formatDate(d) {
@@ -2003,8 +2087,8 @@ const BranchManagerProfile = {
 
                     // Update Labels
                     this.el.performanceStatus.textContent = data.category;
-                    this.el.catTargetVal.textContent = "₹ " + this.formatIndianNumber(data.target);
-                    this.el.catAchievementVal.textContent = "₹ " + this.formatIndianNumber(data.achievement);
+                    this.el.catTargetVal.textContent = this.formatAmount(data.target);
+                    this.el.catAchievementVal.textContent = this.formatAmount(data.achievement);
                     this.el.catPercentageVal.textContent = data.percentage;
 
                     // Update Hierarchy Badges
@@ -2027,6 +2111,132 @@ const BranchManagerProfile = {
                     }
                 },
 
+                render() {
+                    if (!this.state.rawData) return;
+                    const d = this.state.rawData;
+                    const branchEmailValue = d._branch_email_value; // Retrieve stored email
+
+                    // Header Info
+                    this.el.name.textContent = this.value(d.bm_name);
+                    this.el.mobile.textContent = this.value(d.bm_mob_no);
+                    this.el.vintage.textContent = this.value(d.bm_vintage);
+                    this.el.doj.textContent = this.formatDate(d.bm_doj);
+                    this.el.branchOpeningDate.textContent = this.formatDate(d.branch_opening_date);
+                    this.el.chName.textContent = this.value(d.ch_name);
+                    this.el.branchName.textContent = this.value(d.branch_name);
+                    this.el.branchDistrict.textContent = this.value(d.district);
+                    this.el.branchVintage.textContent = this.value(d.branch_vintage);
+                    this.el.branchEmail.textContent = this.value(branchEmailValue);
+                    this.el.chMobile.textContent = this.value(d.ch_mob_no);
+
+                    // --- Staff Details & Overflow Logic ---
+                    const budget = parseInt(d.total_no_of_budgeted_staff) || 0;
+                    const actual = parseInt(d.staff_count) || 0;
+                    const bdeCount = parseInt(d.bde) || 0;
+                    const bdoCount = parseInt(d.bdo) || 0;
+                    const roCount = parseInt(d.ro) || 0;
+
+                    // Set Text Values
+                    this.el.budgetLabelVal.textContent = this.formatIndianNumber(budget);
+                    this.el.actualLabelVal.textContent = this.formatIndianNumber(actual);
+                    this.el.bdeChip.textContent = this.formatIndianNumber(bdeCount);
+                    this.el.bdoChip.textContent = this.formatIndianNumber(bdoCount);
+                    this.el.roChip.textContent = this.formatIndianNumber(roCount);
+
+                    // Calculate Manpower Percentage
+                    const mpPerc = budget > 0 ? (actual / budget * 100) : 0;
+                    this.el.manpowerPercentage.textContent = mpPerc.toFixed(2) + "%";
+
+                    if (actual > budget) {
+                        const excess = actual - budget;
+                        this.el.staffStatusBadge.className = "status-badge overstaffed";
+                        this.el.staffStatusBadge.textContent = "Critical: Overstaffed";
+                        
+                        // Calculate widths relative to the 'Actual' total
+                        const blueWidth = (budget / actual) * 100;
+                        const redWidth = (excess / actual) * 100;
+                        
+                        this.el.excessTag.style.display = "block";
+                        this.el.excessTag.style.left = blueWidth + "%";
+                        this.el.excessTag.textContent = `+${excess} Excess`;
+
+                        this.el.barBlue.style.width = blueWidth + "%";
+                        this.el.barRed.style.width = redWidth + "%";
+                        this.el.budgetMarker.style.left = blueWidth + "%";
+                        this.el.budgetMarker.style.display = "block";
+                    } else {
+                        this.el.staffStatusBadge.className = "status-badge optimal";
+                        this.el.staffStatusBadge.textContent = "Optimal";
+                        this.el.excessTag.style.display = "none";
+                        
+                        // Normal progress relative to Budget
+                        const fillPercent = budget > 0 ? (actual / budget) * 100 : 0;
+                        this.el.barBlue.style.width = fillPercent + "%";
+                        this.el.barRed.style.width = "0%";
+                        this.el.budgetMarker.style.display = "none";
+                    }
+
+                    // Update DDS and SS agent spinners
+                    this.updateSpinner(
+                        this.el.ddsSpinnerProgress,
+                        this.el.ddsSpinnerPercentage,
+                        this.el.ddsTotal,
+                        this.el.ddsActive,
+                        this.el.ddsInactiveCount,
+                        this.el.ddsInactivePerc,
+                        d.total_active_dds_agent,
+                        d.total_dds_agent,
+                    );
+                    this.updateSpinner(
+                        this.el.ssSpinnerProgress,
+                        this.el.ssSpinnerPercentage,
+                        this.el.ssTotal,
+                        this.el.ssActive,
+                        this.el.ssInactiveCount,
+                        this.el.ssInactivePerc,
+                        d.total_active_ss_agent,
+                        d.total_ss_agent,
+                    );
+
+                    // Populate Deposit & Book Position
+                    this.el.totalBook.textContent = this.formatAmount(d.total_book);
+                    this.el.saBook.textContent = this.formatAmount(d.sa_book);
+                    this.el.caBook.textContent = this.formatAmount(d.ca_book);
+                    this.el.fdBook.textContent = this.formatAmount(d.fd_book);
+                    this.el.rdBook.textContent = this.formatAmount(d.rd_book);
+                    this.el.ddsBook.textContent = this.formatAmount(d.dds_book);
+                    this.el.smbgBook.textContent = this.formatAmount(d.smbg_book);
+
+                    // Populate Customer Base Snapshot
+                    this.el.totalCustomersId.textContent = this.formatIndianNumber(d.total_customers_id);
+                    this.el.totalCaNoOfCustomers.textContent = this.formatIndianNumber(d.total_ca_no_of_customers);
+                    this.el.totalSaNoOfCustomers.textContent = this.formatIndianNumber(d.total_sa_no_of_customers);
+                    this.el.totalFdNoOfCustomers.textContent = this.formatIndianNumber(d.total_fd_no_of_customers);
+                    this.el.totalRdNoOfCustomers.textContent = this.formatIndianNumber(d.total_rd_no_of_customers);
+                    this.el.totalDdsNoOfCustomers.textContent = this.formatIndianNumber(d.total_dds_no_of_customers);
+                    this.el.totalSmbgNoOfCustomers.textContent = this.formatIndianNumber(d.total_smbg_no_of_customers);
+
+                    // Populate Demand & Collection Performance
+                    this.el.ddCollection.textContent = this.formatAmount(d.dds_collection);
+                    this.el.rdCollection.textContent = this.formatAmount(d.rd_collection);
+                    this.el.ddsDemand.textContent = this.formatAmount(d.dds_demand);
+                    this.el.ddsDemandVsCollection.textContent = this.formatIndianNumber(parseFloat(d.dds_demand_vs_collection || 0).toFixed(2)) + "%";
+                    this.el.smbgDemand.textContent = this.formatAmount(d.smbg_demand);
+                    this.el.smbgCollection.textContent = this.formatAmount(d.smbg_collection);
+                    this.el.smbgDemandVsCollection.textContent = this.formatIndianNumber(parseFloat(d.smbg_demand_vs_collection || 0).toFixed(2)) + "%";
+                    this.el.rdDemand.textContent = this.formatAmount(d.rd_demand);
+                    this.el.rdSmbgCollection.textContent = this.formatAmount(d.rd_smbg_collection);
+                    this.el.rdSmbgPending.textContent = this.formatAmount(d.rd_smbg_pending);
+
+                    this.el.photo.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(d.bm_name || "BM")}&background=097c80&color=fff&size=256`;
+                    
+                    // Re-render performance category with current tab
+                    const activeTab = document.querySelector('#category-tabs .category-tab.active');
+                    if (activeTab) {
+                        this.updateCategoryUI(activeTab.dataset.period);
+                    }
+                },
+
                 async load(solId, branchEmailValue) {
                     try {
                         const r = await fetch(
@@ -2034,121 +2244,10 @@ const BranchManagerProfile = {
                         );
                         const j = await r.json();
                         const d = j.message || {};
+                        d._branch_email_value = branchEmailValue; // Store email in raw data
+                        this.state.rawData = d;
 
-                        // Header Info
-                        this.el.name.textContent = this.value(d.bm_name);
-                        this.el.mobile.textContent = this.value(d.bm_mob_no);
-                        this.el.vintage.textContent = this.value(d.bm_vintage);
-                        this.el.doj.textContent = this.formatDate(d.bm_doj);
-                        this.el.branchOpeningDate.textContent = this.formatDate(d.branch_opening_date);
-                        this.el.chName.textContent = this.value(d.ch_name);
-                        this.el.branchName.textContent = this.value(d.branch_name);
-                        this.el.branchDistrict.textContent = this.value(d.district);
-                        this.el.branchVintage.textContent = this.value(d.branch_vintage);
-                        this.el.branchEmail.textContent = this.value(branchEmailValue);
-                        this.el.chMobile.textContent = this.value(d.ch_mob_no);
-
-                        // --- Staff Details & Overflow Logic ---
-                        const budget = parseInt(d.total_no_of_budgeted_staff) || 0;
-                        const actual = parseInt(d.staff_count) || 0;
-                        const bdeCount = parseInt(d.bde) || 0;
-                        const bdoCount = parseInt(d.bdo) || 0;
-                        const roCount = parseInt(d.ro) || 0;
-
-                        // Set Text Values
-                        this.el.budgetLabelVal.textContent = this.formatIndianNumber(budget);
-                        this.el.actualLabelVal.textContent = this.formatIndianNumber(actual);
-                        this.el.bdeChip.textContent = this.formatIndianNumber(bdeCount);
-                        this.el.bdoChip.textContent = this.formatIndianNumber(bdoCount);
-                        this.el.roChip.textContent = this.formatIndianNumber(roCount);
-
-                        // Calculate Manpower Percentage
-                        const mpPerc = budget > 0 ? (actual / budget * 100) : 0;
-                        this.el.manpowerPercentage.textContent = mpPerc.toFixed(2) + "%";
-
-                        if (actual > budget) {
-                            const excess = actual - budget;
-                            this.el.staffStatusBadge.className = "status-badge overstaffed";
-                            this.el.staffStatusBadge.textContent = "Critical: Overstaffed";
-                            
-                            // Calculate widths relative to the 'Actual' total
-                            const blueWidth = (budget / actual) * 100;
-                            const redWidth = (excess / actual) * 100;
-                            
-                            this.el.excessTag.style.display = "block";
-                            this.el.excessTag.style.left = blueWidth + "%";
-                            this.el.excessTag.textContent = `+${excess} Excess`;
-
-                            this.el.barBlue.style.width = blueWidth + "%";
-                            this.el.barRed.style.width = redWidth + "%";
-                            this.el.budgetMarker.style.left = blueWidth + "%";
-                            this.el.budgetMarker.style.display = "block";
-                        } else {
-                            this.el.staffStatusBadge.className = "status-badge optimal";
-                            this.el.staffStatusBadge.textContent = "Optimal";
-                            this.el.excessTag.style.display = "none";
-                            
-                            // Normal progress relative to Budget
-                            const fillPercent = budget > 0 ? (actual / budget) * 100 : 0;
-                            this.el.barBlue.style.width = fillPercent + "%";
-                            this.el.barRed.style.width = "0%";
-                            this.el.budgetMarker.style.display = "none";
-                        }
-                        // ----------------------------------------
-
-                        // Update DDS and SS agent spinners
-                        this.updateSpinner(
-                            this.el.ddsSpinnerProgress,
-                            this.el.ddsSpinnerPercentage,
-                            this.el.ddsTotal,
-                            this.el.ddsActive,
-                            this.el.ddsInactiveCount,
-                            this.el.ddsInactivePerc,
-                            d.total_active_dds_agent,
-                            d.total_dds_agent,
-                        );
-                        this.updateSpinner(
-                            this.el.ssSpinnerProgress,
-                            this.el.ssSpinnerPercentage,
-                            this.el.ssTotal,
-                            this.el.ssActive,
-                            this.el.ssInactiveCount,
-                            this.el.ssInactivePerc,
-                            d.total_active_ss_agent,
-                            d.total_ss_agent,
-                        );
-
-                        // Populate Deposit & Book Position
-                        this.el.totalBook.textContent = "₹ " + this.formatIndianNumber(d.total_book);
-                        this.el.saBook.textContent = "₹ " + this.formatIndianNumber(d.sa_book);
-                        this.el.caBook.textContent = "₹ " + this.formatIndianNumber(d.ca_book);
-                        this.el.fdBook.textContent = "₹ " + this.formatIndianNumber(d.fd_book);
-                        this.el.rdBook.textContent = "₹ " + this.formatIndianNumber(d.rd_book);
-                        this.el.ddsBook.textContent = "₹ " + this.formatIndianNumber(d.dds_book);
-                        this.el.smbgBook.textContent = "₹ " + this.formatIndianNumber(d.smbg_book);
-
-                        // Populate Customer Base Snapshot
-                        this.el.totalCustomersId.textContent = this.formatIndianNumber(d.total_customers_id);
-                        this.el.totalCaNoOfCustomers.textContent = this.formatIndianNumber(d.total_ca_no_of_customers);
-                        this.el.totalSaNoOfCustomers.textContent = this.formatIndianNumber(d.total_sa_no_of_customers);
-                        this.el.totalFdNoOfCustomers.textContent = this.formatIndianNumber(d.total_fd_no_of_customers);
-                        this.el.totalRdNoOfCustomers.textContent = this.formatIndianNumber(d.total_rd_no_of_customers);
-                        this.el.totalDdsNoOfCustomers.textContent = this.formatIndianNumber(d.total_dds_no_of_customers);
-                        this.el.totalSmbgNoOfCustomers.textContent = this.formatIndianNumber(d.total_smbg_no_of_customers);
-
-                        // Populate Demand & Collection Performance
-                        this.el.ddCollection.textContent = "₹ " + this.formatIndianNumber(d.dds_collection);
-                        this.el.rdCollection.textContent = "₹ " + this.formatIndianNumber(d.rd_collection);
-                        this.el.ddsDemand.textContent = "₹ " + this.formatIndianNumber(d.dds_demand);
-                        this.el.ddsDemandVsCollection.textContent = this.formatIndianNumber(parseFloat(d.dds_demand_vs_collection || 0).toFixed(2)) + "%";
-                        this.el.smbgDemand.textContent = "₹ " + this.formatIndianNumber(d.smbg_demand);
-                        this.el.smbgCollection.textContent = "₹ " + this.formatIndianNumber(d.smbg_collection);
-                        this.el.smbgDemandVsCollection.textContent = this.formatIndianNumber(parseFloat(d.smbg_demand_vs_collection || 0).toFixed(2)) + "%";
-                        this.el.rdDemand.textContent = "₹ " + this.formatIndianNumber(d.rd_demand);
-                        this.el.rdSmbgCollection.textContent = "₹ " + this.formatIndianNumber(d.rd_smbg_collection);
-                        this.el.rdSmbgPending.textContent = "₹ " + this.formatIndianNumber(d.rd_smbg_pending);
-
-                        this.el.photo.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(d.bm_name || "BM")}&background=097c80&color=fff&size=256`;
+                        this.render();
 
                         // --- Fetch Performance Data ---
                         const selectedFy = this.el.fySelect.value;
