@@ -629,15 +629,76 @@
 				font-weight: 600;
 				opacity: 0.9;
 			}
-			.hierarchy-badge.active {
-				background: rgba(9, 124, 128, 0.1);
-				color: var(--primary-1);
-				border-color: var(--primary-1);
-			}
-
-			/* FY Filter Styles */
-			.fy-filter-wrapper {
-				display: flex;
+							.hierarchy-badge.active {
+								background: rgba(9, 124, 128, 0.1);
+								color: var(--primary-1);
+								border-color: var(--primary-1);
+							}
+			
+							/* Financial Table Styles */
+							.financial-table-container {
+								margin-top: 15px;
+								overflow-x: auto;
+							}
+							.financial-table {
+								width: 100%;
+								border-collapse: separate;
+								border-spacing: 0;
+								font-size: 14px;
+							}
+							.financial-table th {
+								background: #f8fafc;
+								color: #64748b;
+								font-weight: 700;
+								text-transform: uppercase;
+								font-size: 11px;
+								padding: 12px 16px;
+								text-align: left;
+								border-bottom: 2px solid #e2e8f0;
+							}
+							.financial-table td {
+								padding: 12px 16px;
+								border-bottom: 1px solid #f1f5f9;
+								color: #333333;
+								font-weight: 500;
+							}
+							.financial-table tr:last-child td {
+								border-bottom: none;
+							}
+							.financial-table tr.total-row {
+								background: #f0fdfa;
+								font-weight: 700;
+							}
+							.financial-table tr.total-row td {
+								color: var(--primary-1);
+								font-weight: 700;
+								border-top: 2px solid #ccfbf1;
+							}
+							.financial-table .amount-col {
+								text-align: right;
+								font-family: 'Inter', sans-serif;
+								font-weight: 600;
+							}
+							.financial-table .label-col {
+								display: flex;
+								align-items: center;
+								gap: 10px;
+							}
+							.acc-dot {
+								width: 8px;
+								height: 8px;
+								border-radius: 50%;
+								background: #cbd5e1;
+							}
+							.acc-dot.sa { background: #3b82f6; }
+							.acc-dot.ca { background: #10b981; }
+							.acc-dot.fd { background: #f59e0b; }
+							.acc-dot.rd { background: #ef4444; }
+							.acc-dot.dds { background: #8b5cf6; }
+							.acc-dot.smbg { background: #ec4899; }
+			
+							/* FY Filter Styles */
+							.fy-filter-wrapper {				display: flex;
 				align-items: center;
 				gap: 10px;
 				margin-top: 12px;
@@ -1194,115 +1255,213 @@
 		
 						<section class="staff-detail-section">
 							<h2>Deposit & Book Position</h2>
-							<div class="staff-cards-grid">
-								<div class="staff-card">
-									<div class="staff-card-title">Total Book</div>
-									<div class="staff-card-count" id="total-book">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">SA Book</div>
-									<div class="staff-card-count" id="sa-book">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">CA Book</div>
-									<div class="staff-card-count" id="ca-book">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">FD Book</div>
-									<div class="staff-card-count" id="fd-book">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">RD Book</div>
-									<div class="staff-card-count" id="rd-book">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">DDS Book</div>
-									<div class="staff-card-count" id="dds-book">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">SMBG Book</div>
-									<div class="staff-card-count" id="smbg-book">--</div>
-								</div>
+							<div class="financial-table-container">
+								<table class="financial-table">
+									<thead>
+										<tr>
+											<th>Account Type</th>
+											<th class="amount-col">Book Position (Balance)</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr class="total-row">
+											<td class="label-col">
+												<strong>Total Book</strong>
+											</td>
+											<td class="amount-col" id="total-book">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot sa"></span>
+												<span>Savings Account (SA)</span>
+											</td>
+											<td class="amount-col" id="sa-book">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot ca"></span>
+												<span>Current Account (CA)</span>
+											</td>
+											<td class="amount-col" id="ca-book">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot fd"></span>
+												<span>Fixed Deposit (FD)</span>
+											</td>
+											<td class="amount-col" id="fd-book">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot rd"></span>
+												<span>Recurring Deposit (RD)</span>
+											</td>
+											<td class="amount-col" id="rd-book">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot dds"></span>
+												<span>DDS Book</span>
+											</td>
+											<td class="amount-col" id="dds-book">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot smbg"></span>
+												<span>SMBG Book</span>
+											</td>
+											<td class="amount-col" id="smbg-book">--</td>
+										</tr>
+									</tbody>
+								</table>
 							</div>
 						</section>
 		
 						<section class="staff-detail-section">
 							<h2>Customers Details</h2>
-							<div class="staff-cards-grid">
-								<div class="staff-card">
-									<div class="staff-card-title">Total Customers</div>
-									<div class="staff-card-count" id="total-customers-id">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">CA Customers</div>
-									<div class="staff-card-count" id="total-ca-no-of-customers">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">SA Customers</div>
-									<div class="staff-card-count" id="total-sa-no-of-customers">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">FD Customers</div>
-									<div class="staff-card-count" id="total-fd-no-of-customers">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">RD Customers</div>
-									<div class="staff-card-count" id="total-rd-no-of_customers">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">DDS Customers</div>
-									<div class="staff-card-count" id="total-dds-no-of-customers">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">SMBG Customers</div>
-									<div class="staff-card-count" id="total-smbg-no-of-customers">--</div>
-								</div>
+							<div class="financial-table-container">
+								<table class="financial-table">
+									<thead>
+										<tr>
+											<th>Category</th>
+											<th class="amount-col">Customer Count</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr class="total-row">
+											<td class="label-col">
+												<strong>Total Customers</strong>
+											</td>
+											<td class="amount-col" id="total-customers-id">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot sa"></span>
+												<span>SA Customers</span>
+											</td>
+											<td class="amount-col" id="total-sa-no-of-customers">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot ca"></span>
+												<span>CA Customers</span>
+											</td>
+											<td class="amount-col" id="total-ca-no-of-customers">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot fd"></span>
+												<span>FD Customers</span>
+											</td>
+											<td class="amount-col" id="total-fd-no-of-customers">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot rd"></span>
+												<span>RD Customers</span>
+											</td>
+											<td class="amount-col" id="total-rd-no-of_customers">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot dds"></span>
+												<span>DDS Customers</span>
+											</td>
+											<td class="amount-col" id="total-dds-no-of-customers">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot smbg"></span>
+												<span>SMBG Customers</span>
+											</td>
+											<td class="amount-col" id="total-smbg-no-of-customers">--</td>
+										</tr>
+									</tbody>
+								</table>
 							</div>
 						</section>
 		
 						<section class="staff-detail-section">
 							<h2>Demand & Collection Performance</h2>
-							<div class="staff-cards-grid">
-								<div class="staff-card">
-									<div class="staff-card-title">DD Collection</div>
-									<div class="staff-card-count" id="dd-collection">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">RD Collection</div>
-									<div class="staff-card-count" id="rd-collection">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">DDS Demand</div>
-									<div class="staff-card-count" id="dds-demand">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">DDS Demand vs Collection</div>
-									<div class="staff-card-count" id="dds-demand-vs-collection">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">SMBG Demand</div>
-									<div class="staff-card-count" id="smbg-demand">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">SMBG Collection</div>
-									<div class="staff-card-count" id="smbg-collection">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">SMBG Demand vs Collection</div>
-									<div class="staff-card-count" id="smbg-demand-vs-collection">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">RD Demand</div>
-									<div class="staff-card-count" id="rd-demand">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">RD SMBG Collection</div>
-									<div class="staff-card-count" id="rd-smbg-collection">--</div>
-								</div>
-								<div class="staff-card">
-									<div class="staff-card-title">RD SMBG Pending</div>
-									<div class="staff-card-count" id="rd-smbg-pending">--</div>
-								</div>
+							<div class="financial-table-container">
+								<table class="financial-table">
+									<thead>
+										<tr>
+											<th>Metric</th>
+											<th class="amount-col">Performance</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot dds"></span>
+												<span>DDS Demand</span>
+											</td>
+											<td class="amount-col" id="dds-demand">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot dds"></span>
+												<span>DDS Collection</span>
+											</td>
+											<td class="amount-col" id="dd-collection">--</td>
+										</tr>
+										<tr class="total-row">
+											<td class="label-col">
+												<span>DDS Demand vs Collection</span>
+											</td>
+											<td class="amount-col" id="dds-demand-vs-collection">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot smbg"></span>
+												<span>SMBG Demand</span>
+											</td>
+											<td class="amount-col" id="smbg-demand">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot smbg"></span>
+												<span>SMBG Collection</span>
+											</td>
+											<td class="amount-col" id="smbg-collection">--</td>
+										</tr>
+										<tr class="total-row">
+											<td class="label-col">
+												<span>SMBG Demand vs Collection</span>
+											</td>
+											<td class="amount-col" id="smbg-demand-vs-collection">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot rd"></span>
+												<span>RD Demand</span>
+											</td>
+											<td class="amount-col" id="rd-demand">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot rd"></span>
+												<span>RD Collection</span>
+											</td>
+											<td class="amount-col" id="rd-collection">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot rd"></span>
+												<span>RD SMBG Collection</span>
+											</td>
+											<td class="amount-col" id="rd-smbg-collection">--</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span class="acc-dot rd"></span>
+												<span>RD SMBG Pending</span>
+											</td>
+											<td class="amount-col" id="rd-smbg-pending">--</td>
+										</tr>
+									</tbody>
+								</table>
 							</div>
 						</section>
 					</div>
