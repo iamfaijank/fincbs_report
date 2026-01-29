@@ -2397,10 +2397,10 @@ const BranchManagerProfile = {
                     const totalCustVal = parseFloat(d.total_customers_id) || 0;
                     this.el.totalCustomersId.textContent = this.formatIndianNumber(totalCustVal);
                     
-                    const updateCustComp = (id, val, total) => {
-                        const amountEl = document.getElementById(id);
-                        const percEl = document.getElementById(id + '-perc');
-                        const barEl = document.getElementById(id + '-bar');
+                    const updateCustComp = (amountId, compPrefix, val, total) => {
+                        const amountEl = document.getElementById(amountId);
+                        const percEl = document.getElementById(compPrefix + '-perc');
+                        const barEl = document.getElementById(compPrefix + '-bar');
                         const numVal = parseFloat(val) || 0;
                         const perc = total > 0 ? (numVal / total * 100) : 0;
                         
@@ -2409,12 +2409,12 @@ const BranchManagerProfile = {
                         if (barEl) barEl.style.width = perc + '%';
                     };
 
-                    updateCustComp('total-sa-no-of-customers', d.total_sa_no_of_customers, totalCustVal);
-                    updateCustComp('total-ca-no-of-customers', d.total_ca_no_of_customers, totalCustVal);
-                    updateCustComp('total-fd-no-of-customers', d.total_fd_no_of_customers, totalCustVal);
-                    updateCustComp('total-rd-no-of_customers', d.total_rd_no_of_customers, totalCustVal);
-                    updateCustComp('total-dds-no-of-customers', d.total_dds_no_of_customers, totalCustVal);
-                    updateCustComp('total-smbg-no-of-customers', d.total_smbg_no_of_customers, totalCustVal);
+                    updateCustComp('total-sa-no-of-customers', 'sa-cust', d.total_sa_no_of_customers, totalCustVal);
+                    updateCustComp('total-ca-no-of-customers', 'ca-cust', d.total_ca_no_of_customers, totalCustVal);
+                    updateCustComp('total-fd-no-of-customers', 'fd-cust', d.total_fd_no_of_customers, totalCustVal);
+                    updateCustComp('total-rd-no-of_customers', 'rd-cust', d.total_rd_no_of_customers, totalCustVal);
+                    updateCustComp('total-dds-no-of-customers', 'dds-cust', d.total_dds_no_of_customers, totalCustVal);
+                    updateCustComp('total-smbg-no-of-customers', 'smbg-cust', d.total_smbg_no_of_customers, totalCustVal);
 
                     // Populate Demand & Collection Performance
                     this.el.ddCollection.textContent = this.formatAmount(d.dds_collection);
