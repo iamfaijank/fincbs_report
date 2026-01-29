@@ -644,7 +644,7 @@
 												width: 100%;
 												border-collapse: separate;
 												border-spacing: 0;
-												font-size: 15px;
+												font-size: 17px;
 												table-layout: auto;
 											}
 											.financial-table th {
@@ -652,21 +652,35 @@
 												color: #64748b;
 												font-weight: 700;
 												text-transform: uppercase;
-												font-size: 12px;
-												padding: 12px 10px;
+												font-size: 13px;
+												padding: 14px 12px;
 												text-align: left;
 												border-bottom: 2px solid #e2e8f0;
 											}
 											.financial-table td {
-												padding: 12px 10px;
+												padding: 16px 12px;
 												border-bottom: 1px solid #f1f5f9;
 												color: #333333;
 												font-weight: 500;
-												transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+												border-top: 1px solid transparent;
+												border-bottom: 1px solid transparent;
+												transition: all 0.2s ease;
 											}
 											.financial-table tr:hover td {
 												background-color: #fefce8 !important; /* Light yellow highlight */
 												color: #000;
+												border-top: 1px solid #eab308;
+												border-bottom: 1px solid #eab308;
+											}
+											.financial-table tr:hover td:first-child {
+												border-left: 1px solid #eab308;
+												border-top-left-radius: 4px;
+												border-bottom-left-radius: 4px;
+											}
+											.financial-table tr:hover td:last-child {
+												border-right: 1px solid #eab308;
+												border-top-right-radius: 4px;
+												border-bottom-right-radius: 4px;
 											}
 											.financial-table tr:nth-child(even) td {
 												background-color: #fafbfd;
