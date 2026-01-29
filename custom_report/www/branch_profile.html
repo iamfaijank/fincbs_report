@@ -1709,6 +1709,109 @@
 								                                									</tbody>
 								                                								</table>							</div>
 						</section>
+
+						<section class="staff-detail-section">
+							<h2>Productivity Details</h2>
+							<div class="financial-table-container">
+								<table class="financial-table">
+									<thead>
+										<tr>
+											<th>Metric</th>
+											<th class="amount-col">Value</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td class="label-col">
+												<span>Total Productivity</span>
+											</td>
+											<td class="amount-col">
+												<span id="total-productivity">--</span>
+											</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span>BDO & Productivity</span>
+											</td>
+											<td class="amount-col">
+												<span id="bdo-and-productivity">--</span>
+											</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span>BDE & Productivity</span>
+											</td>
+											<td class="amount-col">
+												<span id="bde-and-productivity">--</span>
+											</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span>BDO Productivity</span>
+											</td>
+											<td class="amount-col">
+												<span id="bdo-productivity">--</span>
+											</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span>NMAB AC</span>
+											</td>
+											<td class="amount-col">
+												<span id="nmab-ac">--</span>
+											</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span>MAB AC</span>
+											</td>
+											<td class="amount-col">
+												<span id="mab-ac">--</span>
+											</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span>RD SMBG Pending</span>
+											</td>
+											<td class="amount-col">
+												<span id="prod-rd-smbg-pending">--</span>
+											</td>
+										</tr>
+										<tr>
+											<td class="label-col">
+												<span>RD SMBG Collection</span>
+											</td>
+											<td class="amount-col">
+												<span id="prod-rd-smbg-collection">--</span>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</section>
+
+						<section class="staff-detail-section">
+							<h2>Manpower Details</h2>
+							<div class="financial-table-container">
+								<table class="financial-table">
+									<thead>
+										<tr>
+											<th>Employee ID</th>
+											<th>Employee Name</th>
+											<th>Joining Date</th>
+											<th>Experience</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td colspan="4" style="text-align: center; color: #64748b; padding: 20px;">
+												No manpower data available.
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</section>
 					</div>
 		<script>
 			/* =========================================================
@@ -2173,6 +2276,16 @@ const BranchManagerProfile = {
                     rdDemand: document.getElementById("rd-demand"),
                     rdSmbgCollection: document.getElementById("rd-smbg-collection"),
                     rdSmbgPending: document.getElementById("rd-smbg-pending"),
+
+                    // Productivity Details
+                    totalProductivity: document.getElementById("total-productivity"),
+                    bdoAndProductivity: document.getElementById("bdo-and-productivity"),
+                    bdeAndProductivity: document.getElementById("bde-and-productivity"),
+                    bdoProductivity: document.getElementById("bdo-productivity"),
+                    nmabAc: document.getElementById("nmab-ac"),
+                    mabAc: document.getElementById("mab-ac"),
+                    prodRdSmbgPending: document.getElementById("prod-rd-smbg-pending"),
+                    prodRdSmbgCollection: document.getElementById("prod-rd-smbg-collection"),
                 },
 
                 state: {
@@ -2425,6 +2538,16 @@ const BranchManagerProfile = {
                     this.el.rdDemand.textContent = this.formatAmount(d.rd_demand);
                     this.el.rdSmbgCollection.textContent = this.formatAmount(d.rd_smbg_collection);
                     this.el.rdSmbgPending.textContent = this.formatAmount(d.rd_smbg_pending);
+
+                    // Populate Productivity Details
+                    if (this.el.totalProductivity) this.el.totalProductivity.textContent = this.formatIndianNumber(d.total_productivity);
+                    if (this.el.bdoAndProductivity) this.el.bdoAndProductivity.textContent = this.formatIndianNumber(d.bdo_and_productivity);
+                    if (this.el.bdeAndProductivity) this.el.bdeAndProductivity.textContent = this.formatIndianNumber(d.bde_and_productivity);
+                    if (this.el.bdoProductivity) this.el.bdoProductivity.textContent = this.formatIndianNumber(d.bdo_productivity);
+                    if (this.el.nmabAc) this.el.nmabAc.textContent = this.formatIndianNumber(d.nmab_ac);
+                    if (this.el.mabAc) this.el.mabAc.textContent = this.formatIndianNumber(d.mab_ac);
+                    if (this.el.prodRdSmbgPending) this.el.prodRdSmbgPending.textContent = this.formatAmount(d.rd_smbg_pending);
+                    if (this.el.prodRdSmbgCollection) this.el.prodRdSmbgCollection.textContent = this.formatAmount(d.rd_smbg_collection);
 
                     this.el.photo.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(d.bm_name || "BM")}&background=097c80&color=fff&size=256`;
                     
