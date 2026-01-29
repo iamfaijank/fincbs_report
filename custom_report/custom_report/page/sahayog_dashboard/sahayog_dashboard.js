@@ -495,7 +495,7 @@ class DrishtiDashboard {
 
 				self.updateFilterTagsUI();
 				self.updateUrlFromState();
-				self.loadData();
+				self.render();
 			});
 	}
 
@@ -798,7 +798,7 @@ class DrishtiDashboard {
 				view: this.state.viewType,
 				target_type: this.state.targetType,
 				filters: JSON.stringify({
-					zones: this.state.selectedZones.length > 0 ? this.state.selectedZones : [],
+					zones: [],
 				}),
 				selected_date: this.state.selectedDate,
 			},
