@@ -698,18 +698,18 @@
 															.financial-table tr.sub-item td:first-child {
 																padding-left: 36px; /* Indentation for sub-items */
 															}
-																			.financial-table .amount-col {
-																				text-align: right;
-																				font-variant-numeric: tabular-nums;
-																				font-weight: 700;
-																				white-space: nowrap;
-																			}
-																			.financial-table .bar-col {
-																				width: 30%;
-																				padding: 0 15px;
-																				vertical-align: middle;
-																			}
-																			.financial-table .data-wrapper {
+																							.financial-table .amount-col {
+																								text-align: right;
+																								font-variant-numeric: tabular-nums;
+																								font-weight: 700;
+																								white-space: nowrap;
+																								padding-right: 40px; /* Space between amount and percentage */
+																							}
+																							.financial-table .bar-col {
+																								width: 25%;
+																								padding: 0 12px;
+																								vertical-align: middle;
+																							}																			.financial-table .data-wrapper {
 																				display: flex;
 																				flex-direction: column;
 																				align-items: flex-end;
@@ -1341,8 +1341,8 @@
 									<thead>
 										<tr>
 											<th>Account Type</th>
-											<th class="bar-col">Composition</th>
 											<th class="amount-col">Book Position</th>
+											<th class="bar-col">Composition</th>
 										</tr>
 									</thead>
 									<tbody>
@@ -1350,17 +1350,20 @@
 											<td class="label-col">
 												<strong>Total Book</strong>
 											</td>
-											<td class="bar-col"></td>
 											<td class="amount-col">
 												<div class="data-wrapper">
 													<span id="total-book">--</span>
 												</div>
 											</td>
+											<td class="bar-col"></td>
 										</tr>
 										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot sa"></span>
 												<span>Savings Account (SA)</span>
+											</td>
+											<td class="amount-col">
+												<span id="sa-book">--</span>
 											</td>
 											<td class="bar-col">
 												<div style="display: flex; align-items: center; gap: 10px;">
@@ -1368,14 +1371,14 @@
 													<span class="perc-share" id="sa-book-perc">--</span>
 												</div>
 											</td>
-											<td class="amount-col">
-												<span id="sa-book">--</span>
-											</td>
 										</tr>
 										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot ca"></span>
 												<span>Current Account (CA)</span>
+											</td>
+											<td class="amount-col">
+												<span id="ca-book">--</span>
 											</td>
 											<td class="bar-col">
 												<div style="display: flex; align-items: center; gap: 10px;">
@@ -1383,14 +1386,14 @@
 													<span class="perc-share" id="ca-book-perc">--</span>
 												</div>
 											</td>
-											<td class="amount-col">
-												<span id="ca-book">--</span>
-											</td>
 										</tr>
 										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot fd"></span>
 												<span>Fixed Deposit (FD)</span>
+											</td>
+											<td class="amount-col">
+												<span id="fd-book">--</span>
 											</td>
 											<td class="bar-col">
 												<div style="display: flex; align-items: center; gap: 10px;">
@@ -1398,14 +1401,14 @@
 													<span class="perc-share" id="fd-book-perc">--</span>
 												</div>
 											</td>
-											<td class="amount-col">
-												<span id="fd-book">--</span>
-											</td>
 										</tr>
 										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot rd"></span>
 												<span>Recurring Deposit (RD)</span>
+											</td>
+											<td class="amount-col">
+												<span id="rd-book">--</span>
 											</td>
 											<td class="bar-col">
 												<div style="display: flex; align-items: center; gap: 10px;">
@@ -1413,14 +1416,14 @@
 													<span class="perc-share" id="rd-book-perc">--</span>
 												</div>
 											</td>
-											<td class="amount-col">
-												<span id="rd-book">--</span>
-											</td>
 										</tr>
 										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot dds"></span>
 												<span>DDS Book</span>
+											</td>
+											<td class="amount-col">
+												<span id="dds-book">--</span>
 											</td>
 											<td class="bar-col">
 												<div style="display: flex; align-items: center; gap: 10px;">
@@ -1428,23 +1431,20 @@
 													<span class="perc-share" id="dds-book-perc">--</span>
 												</div>
 											</td>
-											<td class="amount-col">
-												<span id="dds-book">--</span>
-											</td>
 										</tr>
 										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot smbg"></span>
 												<span>SMBG Book</span>
 											</td>
+											<td class="amount-col">
+												<span id="smbg-book">--</span>
+											</td>
 											<td class="bar-col">
 												<div style="display: flex; align-items: center; gap: 10px;">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="smbg-book-bar"></div></div>
 													<span class="perc-share" id="smbg-book-perc">--</span>
 												</div>
-											</td>
-											<td class="amount-col">
-												<span id="smbg-book">--</span>
 											</td>
 										</tr>
 									</tbody>
@@ -1459,8 +1459,8 @@
 									<thead>
 										<tr>
 											<th>Category</th>
-											<th class="bar-col">Composition</th>
 											<th class="amount-col">Customer Count</th>
+											<th class="bar-col">Composition</th>
 										</tr>
 									</thead>
 									<tbody>
@@ -1468,17 +1468,20 @@
 											<td class="label-col">
 												<strong>Total Customers</strong>
 											</td>
-											<td class="bar-col"></td>
 											<td class="amount-col">
 												<div class="data-wrapper">
 													<span id="total-customers-id">--</span>
 												</div>
 											</td>
+											<td class="bar-col"></td>
 										</tr>
 										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot sa"></span>
 												<span>SA Customers</span>
+											</td>
+											<td class="amount-col">
+												<span id="total-sa-no-of-customers">--</span>
 											</td>
 											<td class="bar-col">
 												<div style="display: flex; align-items: center; gap: 10px;">
@@ -1486,14 +1489,14 @@
 													<span class="perc-share" id="sa-cust-perc">--</span>
 												</div>
 											</td>
-											<td class="amount-col">
-												<span id="total-sa-no-of-customers">--</span>
-											</td>
 										</tr>
 										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot ca"></span>
 												<span>CA Customers</span>
+											</td>
+											<td class="amount-col">
+												<span id="total-ca-no-of-customers">--</span>
 											</td>
 											<td class="bar-col">
 												<div style="display: flex; align-items: center; gap: 10px;">
@@ -1501,14 +1504,14 @@
 													<span class="perc-share" id="ca-cust-perc">--</span>
 												</div>
 											</td>
-											<td class="amount-col">
-												<span id="total-ca-no-of-customers">--</span>
-											</td>
 										</tr>
 										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot fd"></span>
 												<span>FD Customers</span>
+											</td>
+											<td class="amount-col">
+												<span id="total-fd-no-of-customers">--</span>
 											</td>
 											<td class="bar-col">
 												<div style="display: flex; align-items: center; gap: 10px;">
@@ -1516,14 +1519,14 @@
 													<span class="perc-share" id="fd-cust-perc">--</span>
 												</div>
 											</td>
-											<td class="amount-col">
-												<span id="total-fd-no-of-customers">--</span>
-											</td>
 										</tr>
 										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot rd"></span>
 												<span>RD Customers</span>
+											</td>
+											<td class="amount-col">
+												<span id="total-rd-no-of_customers">--</span>
 											</td>
 											<td class="bar-col">
 												<div style="display: flex; align-items: center; gap: 10px;">
@@ -1531,14 +1534,14 @@
 													<span class="perc-share" id="rd-cust-perc">--</span>
 												</div>
 											</td>
-											<td class="amount-col">
-												<span id="total-rd-no-of_customers">--</span>
-											</td>
 										</tr>
 										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot dds"></span>
 												<span>DDS Customers</span>
+											</td>
+											<td class="amount-col">
+												<span id="total-dds-no-of-customers">--</span>
 											</td>
 											<td class="bar-col">
 												<div style="display: flex; align-items: center; gap: 10px;">
@@ -1546,23 +1549,20 @@
 													<span class="perc-share" id="dds-cust-perc">--</span>
 												</div>
 											</td>
-											<td class="amount-col">
-												<span id="total-dds-no-of-customers">--</span>
-											</td>
 										</tr>
 										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot smbg"></span>
 												<span>SMBG Customers</span>
 											</td>
+											<td class="amount-col">
+												<span id="total-smbg-no-of-customers">--</span>
+											</td>
 											<td class="bar-col">
 												<div style="display: flex; align-items: center; gap: 10px;">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="smbg-cust-bar"></div></div>
 													<span class="perc-share" id="smbg-cust-perc">--</span>
 												</div>
-											</td>
-											<td class="amount-col">
-												<span id="total-smbg-no-of-customers">--</span>
 											</td>
 										</tr>
 									</tbody>
@@ -1573,124 +1573,123 @@
 						<section class="staff-detail-section">
 							<h2>Demand & Collection Performance</h2>
 							<div class="financial-table-container">
-								<table class="financial-table">
-									<thead>
-										<tr>
-											<th>Metric</th>
-											<th class="bar-col"></th>
-											<th class="amount-col">Performance</th>
-										</tr>
-									</thead>
-									<tbody>
-										<tr>
-											<td class="label-col">
-												<span class="acc-dot dds"></span>
-												<span>DDS Demand</span>
-											</td>
-											<td class="bar-col"></td>
-											<td class="amount-col">
-												<span id="dds-demand">--</span>
-											</td>
-										</tr>
-										<tr>
-											<td class="label-col">
-												<span class="acc-dot dds"></span>
-												<span>DDS Collection</span>
-											</td>
-											<td class="bar-col"></td>
-											<td class="amount-col">
-												<span id="dd-collection">--</span>
-											</td>
-										</tr>
-										<tr class="total-row">
-											<td class="label-col">
-												<span>DDS Demand vs Collection</span>
-											</td>
-											<td class="bar-col"></td>
-											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="dds-demand-vs-collection">--</span>
-												</div>
-											</td>
-										</tr>
-										<tr>
-											<td class="label-col">
-												<span class="acc-dot smbg"></span>
-												<span>SMBG Demand</span>
-											</td>
-											<td class="bar-col"></td>
-											<td class="amount-col">
-												<span id="smbg-demand">--</span>
-											</td>
-										</tr>
-										<tr>
-											<td class="label-col">
-												<span class="acc-dot smbg"></span>
-												<span>SMBG Collection</span>
-											</td>
-											<td class="bar-col"></td>
-											<td class="amount-col">
-												<span id="smbg-collection">--</span>
-											</td>
-										</tr>
-										<tr class="total-row">
-											<td class="label-col">
-												<span>SMBG Demand vs Collection</span>
-											</td>
-											<td class="bar-col"></td>
-											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="smbg-demand-vs-collection">--</span>
-												</div>
-											</td>
-										</tr>
-										<tr>
-											<td class="label-col">
-												<span class="acc-dot rd"></span>
-												<span>RD Demand</span>
-											</td>
-											<td class="bar-col"></td>
-											<td class="amount-col">
-												<span id="rd-demand">--</span>
-											</td>
-										</tr>
-										<tr>
-											<td class="label-col">
-												<span class="acc-dot rd"></span>
-												<span>RD Collection</span>
-											</td>
-											<td class="bar-col"></td>
-											<td class="amount-col">
-												<span id="rd-collection">--</span>
-											</td>
-										</tr>
-										<tr class="total-row">
-											<td class="label-col">
-												<span class="acc-dot rd"></span>
-												<span>RD SMBG Total Collection</span>
-											</td>
-											<td class="bar-col"></td>
-											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="rd-smbg-collection">--</span>
-												</div>
-											</td>
-										</tr>
-										<tr>
-											<td class="label-col">
-												<span class="acc-dot rd"></span>
-												<span>RD SMBG Pending</span>
-											</td>
-											<td class="bar-col"></td>
-											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="rd-smbg-pending">--</span>
-												</div>
-											</td>
-										</tr>
-									</tbody>
-								</table>
-							</div>
+								                                <table class="financial-table">
+								                                    <thead>
+								                                        <tr>
+								                                            <th>Metric</th>
+								                                            <th class="amount-col">Performance</th>
+								                                            <th class="bar-col"></th>
+								                                        </tr>
+								                                    </thead>
+								                                    <tbody>
+								                                        <tr>
+								                                            <td class="label-col">
+								                                                <span class="acc-dot dds"></span>
+								                                                <span>DDS Demand</span>
+								                                            </td>
+								                                            <td class="amount-col">
+								                                                <span id="dds-demand">--</span>
+								                                            </td>
+								                                            <td class="bar-col"></td>
+								                                        </tr>
+								                                        <tr>
+								                                            <td class="label-col">
+								                                                <span class="acc-dot dds"></span>
+								                                                <span>DDS Collection</span>
+								                                            </td>
+								                                            <td class="amount-col">
+								                                                <span id="dd-collection">--</span>
+								                                            </td>
+								                                            <td class="bar-col"></td>
+								                                        </tr>
+								                                        <tr class="total-row">
+								                                            <td class="label-col">
+								                                                <span>DDS Demand vs Collection</span>
+								                                            </td>
+								                                            <td class="amount-col">
+								                                                <div class="data-wrapper">
+								                                                    <span id="dds-demand-vs-collection">--</span>
+								                                                </div>
+								                                            </td>
+								                                            <td class="bar-col"></td>
+								                                        </tr>
+								                                        <tr>
+								                                            <td class="label-col">
+								                                                <span class="acc-dot smbg"></span>
+								                                                <span>SMBG Demand</span>
+								                                            </td>
+								                                            <td class="amount-col">
+								                                                <span id="smbg-demand">--</span>
+								                                            </td>
+								                                            <td class="bar-col"></td>
+								                                        </tr>
+								                                        <tr>
+								                                            <td class="label-col">
+								                                                <span class="acc-dot smbg"></span>
+								                                                <span>SMBG Collection</span>
+								                                            </td>
+								                                            <td class="amount-col">
+								                                                <span id="smbg-collection">--</span>
+								                                            </td>
+								                                            <td class="bar-col"></td>
+								                                        </tr>
+								                                        <tr class="total-row">
+								                                            <td class="label-col">
+								                                                <span>SMBG Demand vs Collection</span>
+								                                            </td>
+								                                            <td class="amount-col">
+								                                                <div class="data-wrapper">
+								                                                    <span id="smbg-demand-vs-collection">--</span>
+								                                                </div>
+								                                            </td>
+								                                            <td class="bar-col"></td>
+								                                        </tr>
+								                                        <tr>
+								                                            <td class="label-col">
+								                                                <span class="acc-dot rd"></span>
+								                                                <span>RD Demand</span>
+								                                            </td>
+								                                            <td class="amount-col">
+								                                                <span id="rd-demand">--</span>
+								                                            </td>
+								                                            <td class="bar-col"></td>
+								                                        </tr>
+								                                        <tr>
+								                                            <td class="label-col">
+								                                                <span class="acc-dot rd"></span>
+								                                                <span>RD Collection</span>
+								                                            </td>
+								                                            <td class="amount-col">
+								                                                <span id="rd-collection">--</span>
+								                                            </td>
+								                                            <td class="bar-col"></td>
+								                                        </tr>
+								                                        <tr class="total-row">
+								                                            <td class="label-col">
+								                                                <span class="acc-dot rd"></span>
+								                                                <span>RD SMBG Total Collection</span>
+								                                            </td>
+								                                            <td class="amount-col">
+								                                                <div class="data-wrapper">
+								                                                    <span id="rd-smbg-collection">--</span>
+								                                                </div>
+								                                            </td>
+								                                            <td class="bar-col"></td>
+								                                        </tr>
+								                                        <tr>
+								                                            <td class="label-col">
+								                                                <span class="acc-dot rd"></span>
+								                                                <span>RD SMBG Pending</span>
+								                                            </td>
+								                                            <td class="amount-col">
+								                                                <div class="data-wrapper">
+								                                                    <span id="rd-smbg-pending">--</span>
+								                                                </div>
+								                                            </td>
+								                                            <td class="bar-col"></td>
+								                                        </tr>
+								                                    </tbody>
+								                                </table>							</div>
 						</section>
 					</div>
 		<script>
