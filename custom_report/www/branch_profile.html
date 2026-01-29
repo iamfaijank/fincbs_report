@@ -2119,13 +2119,13 @@ const BranchManagerProfile = {
                         );
 
                         // Populate Deposit & Book Position
-                        this.el.totalBook.textContent = this.formatIndianNumber(d.total_book);
-                        this.el.saBook.textContent = this.formatIndianNumber(d.sa_book);
-                        this.el.caBook.textContent = this.formatIndianNumber(d.ca_book);
-                        this.el.fdBook.textContent = this.formatIndianNumber(d.fd_book);
-                        this.el.rdBook.textContent = this.formatIndianNumber(d.rd_book);
-                        this.el.ddsBook.textContent = this.formatIndianNumber(d.dds_book);
-                        this.el.smbgBook.textContent = this.formatIndianNumber(d.smbg_book);
+                        this.el.totalBook.textContent = "₹ " + this.formatIndianNumber(d.total_book);
+                        this.el.saBook.textContent = "₹ " + this.formatIndianNumber(d.sa_book);
+                        this.el.caBook.textContent = "₹ " + this.formatIndianNumber(d.ca_book);
+                        this.el.fdBook.textContent = "₹ " + this.formatIndianNumber(d.fd_book);
+                        this.el.rdBook.textContent = "₹ " + this.formatIndianNumber(d.rd_book);
+                        this.el.ddsBook.textContent = "₹ " + this.formatIndianNumber(d.dds_book);
+                        this.el.smbgBook.textContent = "₹ " + this.formatIndianNumber(d.smbg_book);
 
                         // Populate Customer Base Snapshot
                         this.el.totalCustomersId.textContent = this.formatIndianNumber(d.total_customers_id);
