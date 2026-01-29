@@ -495,7 +495,7 @@ class DrishtiDashboard {
 
 				self.updateFilterTagsUI();
 				self.updateUrlFromState();
-				self.loadData();
+				self.render();
 			});
 	}
 
@@ -798,7 +798,7 @@ class DrishtiDashboard {
 				view: this.state.viewType,
 				target_type: this.state.targetType,
 				filters: JSON.stringify({
-					zones: this.state.selectedZones.length > 0 ? this.state.selectedZones : [],
+					zones: [],
 				}),
 				selected_date: this.state.selectedDate,
 			},
@@ -1160,7 +1160,9 @@ class DrishtiDashboard {
             document.head.appendChild(style);
         }
 
-        const grandTotals = {};
+        const grandTotals = {
+            branches: 0
+        };
         months.forEach(month => {
             grandTotals[month.key] = { target: 0, achievement: 0 };
         });
@@ -1168,6 +1170,9 @@ class DrishtiDashboard {
         // Accumulate grand totals only from zone total items (isZoneTotal === true)
         zoneData.forEach(item => {
             if (item.isZoneTotal) { // Only sum from the main zone aggregates to avoid double-counting regions
+                const firstMonthData = item.months[months[0].key];
+                grandTotals.branches += firstMonthData?.branches || 0;
+                
                 months.forEach(month => {
                     const mdata = item.months[month.key];
                     if (mdata) {
@@ -1229,7 +1234,8 @@ class DrishtiDashboard {
 
         // Grand Total Row
         html += `<tfoot><tr style="background-color: #0d1b2a; color: #e0e1dd; font-weight: bold;">`;
-        html += `<td colspan="3" style="text-align: left; padding-left: 8px;">TOTAL</td>`; // Spanning Sr, Zone/Region, Branches columns
+        html += `<td colspan="2" style="text-align: left; padding-left: 8px;">TOTAL</td>`; // Spanning Sr, Zone/Region
+        html += `<td>${grandTotals.branches}</td>`; // Branches column
 
         months.forEach(month => {
             const totalTarget = grandTotals[month.key].target;
@@ -2099,8 +2105,8 @@ class DrishtiDashboard {
 		html += `<td>
 			<div class="branch-info">
 				<div class="branch-code-name">
-					<a onclick="window.location.href='/app/branch-profile?sol_id=${branch.sol_id}'; return false;" class="branch-code-link">${branch.sol_id}</a>
-					<a onclick="window.location.href='/app/branch-profile?sol_id=${branch.sol_id}'; return false;" class="branch-name-link">${branch.branch}</a>
+					<a onclick="window.location.href='/branch_profile?sol_id=${branch.sol_id}'; return false;" class="branch-code-link">${branch.sol_id}</a>
+					<a onclick="window.location.href='/branch_profile?sol_id=${branch.sol_id}'; return false;" class="branch-name-link">${branch.branch}</a>
 				</div>
 				<div class="branch-zone-region">
 					<span class="zone-badge">${branch.zone}</span>
