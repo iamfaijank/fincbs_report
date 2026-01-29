@@ -251,7 +251,7 @@
    "description": "HR budgeted Staff",
    "fieldname": "total_no_of_budgeted_staff",
    "fieldtype": "Data",
-   "label": "Budgeted Staff"
+   "label": "Budget Staff"
   },
   {
    "fieldname": "total_staff_onboarded",
@@ -558,7 +558,7 @@
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-28 18:14:27.603683",
+ "modified": "2026-01-29 15:03:22.910537",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Branch Profile Data",
