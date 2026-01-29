@@ -671,82 +671,101 @@
 								margin-top: 15px;
 								overflow: hidden;
 							}
-											.financial-table {
-												width: 100%;
-												border-collapse: separate;
-												border-spacing: 0;
-												font-size: 17px;
-												table-layout: auto;
-											}
-											.financial-table th {
-												background: #f8fafc;
-												color: #64748b;
-												font-weight: 700;
-												text-transform: uppercase;
-												font-size: 13px;
-												padding: 14px 12px;
-												text-align: left;
-												border-bottom: 2px solid #e2e8f0;
-											}
-											.financial-table td {
-												padding: 16px 12px;
-												border-bottom: 1px solid #f1f5f9;
-												color: #333333;
-												font-weight: 500;
-												border-top: 1px solid transparent;
-												border-bottom: 1px solid transparent;
-												transition: all 0.2s ease;
-											}
-											.financial-table tr:hover td {
-												background-color: #fefce8 !important; /* Light yellow highlight */
-												color: #000;
-												border-top: 1px solid #eab308;
-												border-bottom: 1px solid #eab308;
-											}
-											.financial-table tr:hover td:first-child {
-												border-left: 1px solid #eab308;
-												border-top-left-radius: 4px;
-												border-bottom-left-radius: 4px;
-											}
-											.financial-table tr:hover td:last-child {
-												border-right: 1px solid #eab308;
-												border-top-right-radius: 4px;
-												border-bottom-right-radius: 4px;
-											}
-											.financial-table tr:nth-child(even) td {
-												background-color: #fafbfd;
-											}
-											.financial-table tr:last-child td {
-												border-bottom: none;
-											}
-											.financial-table tr.total-row {
-												background: #f0fdfa !important;
-												font-weight: 700;
-											}
-											.financial-table tr.total-row:hover td {
-												background-color: #fefce8 !important;
-												color: var(--primary-1);
-											}							.financial-table tr.total-row td {
-								color: var(--primary-1);
-								font-weight: 700;
-								border-top: 2px solid #ccfbf1;
-							}
-							.financial-table .amount-col {
-								text-align: right;
-								font-family: 'Inter', sans-serif;
-								font-weight: 600;
-							}
-							.financial-table .label-col {
-								display: flex;
-								align-items: center;
-								gap: 10px;
-							}
-							.acc-dot {
-								width: 8px;
-								height: 8px;
-								border-radius: 50%;
-								background: #cbd5e1;
-							}
+															.financial-table {
+																width: 100%;
+																border-collapse: separate;
+																border-spacing: 0;
+																font-size: 16px;
+																table-layout: auto;
+															}
+															.financial-table th {
+																background: #f8fafc;
+																color: #64748b;
+																font-weight: 700;
+																text-transform: uppercase;
+																font-size: 12px;
+																padding: 16px 12px;
+																text-align: left;
+																border-bottom: 2px solid #e2e8f0;
+															}
+															.financial-table td {
+																padding: 14px 12px;
+																border-bottom: 1px solid #f1f5f9;
+																color: #333333;
+																font-weight: 500;
+																transition: all 0.2s ease;
+															}
+															.financial-table tr.sub-item td:first-child {
+																padding-left: 36px; /* Indentation for sub-items */
+															}
+															.financial-table .amount-col {
+																text-align: right;
+																font-variant-numeric: tabular-nums;
+																font-weight: 700;
+																width: 40%;
+															}
+															.financial-table .data-wrapper {
+																display: flex;
+																flex-direction: column;
+																align-items: flex-end;
+																gap: 4px;
+															}
+															.financial-table .perc-share {
+																font-size: 11px;
+																color: #64748b;
+																font-weight: 600;
+															}
+															.financial-table .comp-bar-bg {
+																width: 100px;
+																height: 4px;
+																background: #e2e8f0;
+																border-radius: 2px;
+																overflow: hidden;
+															}
+															.financial-table .comp-bar-fill {
+																height: 100%;
+																background: var(--primary-1);
+																border-radius: 2px;
+																transition: width 0.8s ease-out;
+															}
+											
+															.financial-table tr:hover td {
+																background-color: #fffbeb !important;
+																border-top-color: #fef3c7;
+																border-bottom-color: #fef3c7;
+															}
+															.financial-table tr:hover .comp-bar-bg {
+																background: #cbd5e1;
+															}
+											
+															.financial-table tr:nth-child(even) td {
+																background-color: #fafbfd;
+															}
+															.financial-table tr:last-child td {
+																border-bottom: none;
+															}
+															.financial-table tr.total-row {
+																background: #f0fdfa !important;
+															}
+															.financial-table tr.total-row td {
+																color: var(--primary-1);
+																font-weight: 800;
+																font-size: 17px;
+																border-top: 2px solid #ccfbf1;
+																border-bottom: 2px solid #ccfbf1;
+															}
+															
+															.financial-table .label-col {
+																display: flex;
+																align-items: center;
+																gap: 12px;
+															}
+															.acc-dot {
+																width: 8px;
+																height: 8px;
+																border-radius: 50%;
+																flex-shrink: 0;
+															}
 							.acc-dot.sa { background: #3b82f6; }
 							.acc-dot.ca { background: #10b981; }
 							.acc-dot.fd { background: #f59e0b; }
@@ -1331,49 +1350,89 @@
 											<td class="label-col">
 												<strong>Total Book</strong>
 											</td>
-											<td class="amount-col" id="total-book">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="total-book">--</span>
+												</div>
+											</td>
 										</tr>
-										<tr>
+										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot sa"></span>
 												<span>Savings Account (SA)</span>
 											</td>
-											<td class="amount-col" id="sa-book">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="sa-book">--</span>
+													<span class="perc-share" id="sa-book-perc">--</span>
+													<div class="comp-bar-bg"><div class="comp-bar-fill" id="sa-book-bar"></div></div>
+												</div>
+											</td>
 										</tr>
-										<tr>
+										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot ca"></span>
 												<span>Current Account (CA)</span>
 											</td>
-											<td class="amount-col" id="ca-book">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="ca-book">--</span>
+													<span class="perc-share" id="ca-book-perc">--</span>
+													<div class="comp-bar-bg"><div class="comp-bar-fill" id="ca-book-bar"></div></div>
+												</div>
+											</td>
 										</tr>
-										<tr>
+										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot fd"></span>
 												<span>Fixed Deposit (FD)</span>
 											</td>
-											<td class="amount-col" id="fd-book">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="fd-book">--</span>
+													<span class="perc-share" id="fd-book-perc">--</span>
+													<div class="comp-bar-bg"><div class="comp-bar-fill" id="fd-book-bar"></div></div>
+												</div>
+											</td>
 										</tr>
-										<tr>
+										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot rd"></span>
 												<span>Recurring Deposit (RD)</span>
 											</td>
-											<td class="amount-col" id="rd-book">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="rd-book">--</span>
+													<span class="perc-share" id="rd-book-perc">--</span>
+													<div class="comp-bar-bg"><div class="comp-bar-fill" id="rd-book-bar"></div></div>
+												</div>
+											</td>
 										</tr>
-										<tr>
+										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot dds"></span>
 												<span>DDS Book</span>
 											</td>
-											<td class="amount-col" id="dds-book">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="dds-book">--</span>
+													<span class="perc-share" id="dds-book-perc">--</span>
+													<div class="comp-bar-bg"><div class="comp-bar-fill" id="dds-book-bar"></div></div>
+												</div>
+											</td>
 										</tr>
-										<tr>
+										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot smbg"></span>
 												<span>SMBG Book</span>
 											</td>
-											<td class="amount-col" id="smbg-book">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="smbg-book">--</span>
+													<span class="perc-share" id="smbg-book-perc">--</span>
+													<div class="comp-bar-bg"><div class="comp-bar-fill" id="smbg-book-bar"></div></div>
+												</div>
+											</td>
 										</tr>
 									</tbody>
 								</table>
@@ -1395,49 +1454,89 @@
 											<td class="label-col">
 												<strong>Total Customers</strong>
 											</td>
-											<td class="amount-col" id="total-customers-id">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="total-customers-id">--</span>
+												</div>
+											</td>
 										</tr>
-										<tr>
+										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot sa"></span>
 												<span>SA Customers</span>
 											</td>
-											<td class="amount-col" id="total-sa-no-of-customers">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="total-sa-no-of-customers">--</span>
+													<span class="perc-share" id="sa-cust-perc">--</span>
+													<div class="comp-bar-bg"><div class="comp-bar-fill" id="sa-cust-bar"></div></div>
+												</div>
+											</td>
 										</tr>
-										<tr>
+										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot ca"></span>
 												<span>CA Customers</span>
 											</td>
-											<td class="amount-col" id="total-ca-no-of-customers">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="total-ca-no-of-customers">--</span>
+													<span class="perc-share" id="ca-cust-perc">--</span>
+													<div class="comp-bar-bg"><div class="comp-bar-fill" id="ca-cust-bar"></div></div>
+												</div>
+											</td>
 										</tr>
-										<tr>
+										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot fd"></span>
 												<span>FD Customers</span>
 											</td>
-											<td class="amount-col" id="total-fd-no-of-customers">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="total-fd-no-of-customers">--</span>
+													<span class="perc-share" id="fd-cust-perc">--</span>
+													<div class="comp-bar-bg"><div class="comp-bar-fill" id="fd-cust-bar"></div></div>
+												</div>
+											</td>
 										</tr>
-										<tr>
+										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot rd"></span>
 												<span>RD Customers</span>
 											</td>
-											<td class="amount-col" id="total-rd-no-of_customers">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="total-rd-no-of_customers">--</span>
+													<span class="perc-share" id="rd-cust-perc">--</span>
+													<div class="comp-bar-bg"><div class="comp-bar-fill" id="rd-cust-bar"></div></div>
+												</div>
+											</td>
 										</tr>
-										<tr>
+										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot dds"></span>
 												<span>DDS Customers</span>
 											</td>
-											<td class="amount-col" id="total-dds-no-of-customers">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="total-dds-no-of-customers">--</span>
+													<span class="perc-share" id="dds-cust-perc">--</span>
+													<div class="comp-bar-bg"><div class="comp-bar-fill" id="dds-cust-bar"></div></div>
+												</div>
+											</td>
 										</tr>
-										<tr>
+										<tr class="sub-item">
 											<td class="label-col">
 												<span class="acc-dot smbg"></span>
 												<span>SMBG Customers</span>
 											</td>
-											<td class="amount-col" id="total-smbg-no-of-customers">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="total-smbg-no-of-customers">--</span>
+													<span class="perc-share" id="smbg-cust-perc">--</span>
+													<div class="comp-bar-bg"><div class="comp-bar-fill" id="smbg-cust-bar"></div></div>
+												</div>
+											</td>
 										</tr>
 									</tbody>
 								</table>
@@ -1460,68 +1559,108 @@
 												<span class="acc-dot dds"></span>
 												<span>DDS Demand</span>
 											</td>
-											<td class="amount-col" id="dds-demand">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="dds-demand">--</span>
+												</div>
+											</td>
 										</tr>
 										<tr>
 											<td class="label-col">
 												<span class="acc-dot dds"></span>
 												<span>DDS Collection</span>
 											</td>
-											<td class="amount-col" id="dd-collection">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="dd-collection">--</span>
+												</div>
+											</td>
 										</tr>
 										<tr class="total-row">
 											<td class="label-col">
 												<span>DDS Demand vs Collection</span>
 											</td>
-											<td class="amount-col" id="dds-demand-vs-collection">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="dds-demand-vs-collection">--</span>
+												</div>
+											</td>
 										</tr>
 										<tr>
 											<td class="label-col">
 												<span class="acc-dot smbg"></span>
 												<span>SMBG Demand</span>
 											</td>
-											<td class="amount-col" id="smbg-demand">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="smbg-demand">--</span>
+												</div>
+											</td>
 										</tr>
 										<tr>
 											<td class="label-col">
 												<span class="acc-dot smbg"></span>
 												<span>SMBG Collection</span>
 											</td>
-											<td class="amount-col" id="smbg-collection">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="smbg-collection">--</span>
+												</div>
+											</td>
 										</tr>
 										<tr class="total-row">
 											<td class="label-col">
 												<span>SMBG Demand vs Collection</span>
 											</td>
-											<td class="amount-col" id="smbg-demand-vs-collection">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="smbg-demand-vs-collection">--</span>
+												</div>
+											</td>
 										</tr>
 										<tr>
 											<td class="label-col">
 												<span class="acc-dot rd"></span>
 												<span>RD Demand</span>
 											</td>
-											<td class="amount-col" id="rd-demand">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="rd-demand">--</span>
+												</div>
+											</td>
 										</tr>
 										<tr>
 											<td class="label-col">
 												<span class="acc-dot rd"></span>
 												<span>RD Collection</span>
 											</td>
-											<td class="amount-col" id="rd-collection">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="rd-collection">--</span>
+												</div>
+											</td>
 										</tr>
-										<tr>
+										<tr class="total-row">
 											<td class="label-col">
 												<span class="acc-dot rd"></span>
-												<span>RD SMBG Collection</span>
+												<span>RD SMBG Total Collection</span>
 											</td>
-											<td class="amount-col" id="rd-smbg-collection">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="rd-smbg-collection">--</span>
+												</div>
+											</td>
 										</tr>
 										<tr>
 											<td class="label-col">
 												<span class="acc-dot rd"></span>
 												<span>RD SMBG Pending</span>
 											</td>
-											<td class="amount-col" id="rd-smbg-pending">--</td>
+											<td class="amount-col">
+												<div class="data-wrapper">
+													<span id="rd-smbg-pending">--</span>
+												</div>
+											</td>
 										</tr>
 									</tbody>
 								</table>
@@ -1974,23 +2113,11 @@ const BranchManagerProfile = {
                     ssInactiveCount: document.getElementById("ss-inactive-count"),
                     ssInactivePerc: document.getElementById("ss-inactive-perc"),
 
-                    // Deposit & Book Position
+                    // Deposit & Book Position (Direct mappings removed, handled by updateComp)
                     totalBook: document.getElementById("total-book"),
-                    saBook: document.getElementById("sa-book"),
-                    caBook: document.getElementById("ca-book"),
-                    fdBook: document.getElementById("fd-book"),
-                    rdBook: document.getElementById("rd-book"),
-                    ddsBook: document.getElementById("dds-book"),
-                    smbgBook: document.getElementById("smbg-book"),
 
                     // Customer Base Snapshot
                     totalCustomersId: document.getElementById("total-customers-id"),
-                    totalCaNoOfCustomers: document.getElementById("total-ca-no-of-customers"),
-                    totalSaNoOfCustomers: document.getElementById("total-sa-no-of-customers"),
-                    totalFdNoOfCustomers: document.getElementById("total-fd-no-of-customers"),
-                    totalRdNoOfCustomers: document.getElementById("total-rd-no-of_customers"),
-                    totalDdsNoOfCustomers: document.getElementById("total-dds-no-of-customers"),
-                    totalSmbgNoOfCustomers: document.getElementById("total-smbg-no-of-customers"),
 
                     // Demand & Collection Performance
                     ddCollection: document.getElementById("dd-collection"),
@@ -2198,23 +2325,51 @@ const BranchManagerProfile = {
                         d.total_ss_agent,
                     );
 
-                    // Populate Deposit & Book Position
+                    // --- COMPOSITION UPDATES (DEPOSIT & BOOK) ---
+                    const totalBookVal = parseFloat(d.total_book) || 0;
                     this.el.totalBook.textContent = this.formatAmount(d.total_book);
-                    this.el.saBook.textContent = this.formatAmount(d.sa_book);
-                    this.el.caBook.textContent = this.formatAmount(d.ca_book);
-                    this.el.fdBook.textContent = this.formatAmount(d.fd_book);
-                    this.el.rdBook.textContent = this.formatAmount(d.rd_book);
-                    this.el.ddsBook.textContent = this.formatAmount(d.dds_book);
-                    this.el.smbgBook.textContent = this.formatAmount(d.smbg_book);
+                    
+                    const updateComp = (id, val, total) => {
+                        const amountEl = document.getElementById(id);
+                        const percEl = document.getElementById(id + '-perc');
+                        const barEl = document.getElementById(id + '-bar');
+                        const numVal = parseFloat(val) || 0;
+                        const perc = total > 0 ? (numVal / total * 100) : 0;
+                        
+                        if (amountEl) amountEl.textContent = this.formatAmount(val);
+                        if (percEl) percEl.textContent = perc.toFixed(1) + '%';
+                        if (barEl) barEl.style.width = perc + '%';
+                    };
 
-                    // Populate Customer Base Snapshot
-                    this.el.totalCustomersId.textContent = this.formatIndianNumber(d.total_customers_id);
-                    this.el.totalCaNoOfCustomers.textContent = this.formatIndianNumber(d.total_ca_no_of_customers);
-                    this.el.totalSaNoOfCustomers.textContent = this.formatIndianNumber(d.total_sa_no_of_customers);
-                    this.el.totalFdNoOfCustomers.textContent = this.formatIndianNumber(d.total_fd_no_of_customers);
-                    this.el.totalRdNoOfCustomers.textContent = this.formatIndianNumber(d.total_rd_no_of_customers);
-                    this.el.totalDdsNoOfCustomers.textContent = this.formatIndianNumber(d.total_dds_no_of_customers);
-                    this.el.totalSmbgNoOfCustomers.textContent = this.formatIndianNumber(d.total_smbg_no_of_customers);
+                    updateComp('sa-book', d.sa_book, totalBookVal);
+                    updateComp('ca-book', d.ca_book, totalBookVal);
+                    updateComp('fd-book', d.fd_book, totalBookVal);
+                    updateComp('rd-book', d.rd_book, totalBookVal);
+                    updateComp('dds-book', d.dds_book, totalBookVal);
+                    updateComp('smbg-book', d.smbg_book, totalBookVal);
+
+                    // --- COMPOSITION UPDATES (CUSTOMERS) ---
+                    const totalCustVal = parseFloat(d.total_customers_id) || 0;
+                    this.el.totalCustomersId.textContent = this.formatIndianNumber(totalCustVal);
+                    
+                    const updateCustComp = (id, val, total) => {
+                        const amountEl = document.getElementById(id);
+                        const percEl = document.getElementById(id + '-perc');
+                        const barEl = document.getElementById(id + '-bar');
+                        const numVal = parseFloat(val) || 0;
+                        const perc = total > 0 ? (numVal / total * 100) : 0;
+                        
+                        if (amountEl) amountEl.textContent = this.formatIndianNumber(numVal);
+                        if (percEl) percEl.textContent = perc.toFixed(1) + '%';
+                        if (barEl) barEl.style.width = perc + '%';
+                    };
+
+                    updateCustComp('total-sa-no-of-customers', d.total_sa_no_of_customers, totalCustVal);
+                    updateCustComp('total-ca-no-of-customers', d.total_ca_no_of_customers, totalCustVal);
+                    updateCustComp('total-fd-no-of-customers', d.total_fd_no_of_customers, totalCustVal);
+                    updateCustComp('total-rd-no-of_customers', d.total_rd_no_of_customers, totalCustVal);
+                    updateCustComp('total-dds-no-of-customers', d.total_dds_no_of_customers, totalCustVal);
+                    updateCustComp('total-smbg-no-of-customers', d.total_smbg_no_of_customers, totalCustVal);
 
                     // Populate Demand & Collection Performance
                     this.el.ddCollection.textContent = this.formatAmount(d.dds_collection);
