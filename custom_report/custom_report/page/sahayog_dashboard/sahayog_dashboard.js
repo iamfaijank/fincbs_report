@@ -2105,8 +2105,8 @@ class DrishtiDashboard {
 		html += `<td>
 			<div class="branch-info">
 				<div class="branch-code-name">
-					<a onclick="window.location.href='/app/branch-profile?sol_id=${branch.sol_id}'; return false;" class="branch-code-link">${branch.sol_id}</a>
-					<a onclick="window.location.href='/app/branch-profile?sol_id=${branch.sol_id}'; return false;" class="branch-name-link">${branch.branch}</a>
+					<a onclick="window.location.href='/branch_profile?sol_id=${branch.sol_id}'; return false;" class="branch-code-link">${branch.sol_id}</a>
+					<a onclick="window.location.href='/branch_profile?sol_id=${branch.sol_id}'; return false;" class="branch-name-link">${branch.branch}</a>
 				</div>
 				<div class="branch-zone-region">
 					<span class="zone-badge">${branch.zone}</span>
