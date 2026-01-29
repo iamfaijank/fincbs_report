@@ -698,46 +698,45 @@
 															.financial-table tr.sub-item td:first-child {
 																padding-left: 36px; /* Indentation for sub-items */
 															}
-															.financial-table .amount-col {
-																text-align: right;
-																font-variant-numeric: tabular-nums;
-																font-weight: 700;
-																width: 40%;
-															}
-															.financial-table .data-wrapper {
-																display: flex;
-																flex-direction: column;
-																align-items: flex-end;
-																gap: 4px;
-															}
-															.financial-table .perc-share {
-																font-size: 11px;
-																color: #64748b;
-																font-weight: 600;
-															}
-															.financial-table .comp-bar-bg {
-																width: 100px;
-																height: 4px;
-																background: #e2e8f0;
-																border-radius: 2px;
-																overflow: hidden;
-															}
-															.financial-table .comp-bar-fill {
-																height: 100%;
-																background: var(--primary-1);
-																border-radius: 2px;
-																transition: width 0.8s ease-out;
-															}
-											
-															.financial-table tr:hover td {
-																background-color: #fffbeb !important;
-																border-top-color: #fef3c7;
-																border-bottom-color: #fef3c7;
-															}
-															.financial-table tr:hover .comp-bar-bg {
-																background: #cbd5e1;
-															}
-											
+																			.financial-table .amount-col {
+																				text-align: right;
+																				font-variant-numeric: tabular-nums;
+																				font-weight: 700;
+																				white-space: nowrap;
+																			}
+																			.financial-table .bar-col {
+																				width: 30%;
+																				padding: 0 15px;
+																				vertical-align: middle;
+																			}
+																			.financial-table .data-wrapper {
+																				display: flex;
+																				flex-direction: column;
+																				align-items: flex-end;
+																				gap: 2px;
+																			}
+																			.financial-table .perc-share {
+																				font-size: 11px;
+																				color: #64748b;
+																				font-weight: 600;
+																			}
+																			.financial-table .comp-bar-bg {
+																				width: 100%;
+																				height: 6px;
+																				background: #f1f5f9;
+																				border-radius: 3px;
+																				overflow: hidden;
+																			}
+																			.financial-table .comp-bar-fill {
+																				height: 100%;
+																				background: var(--primary-1);
+																				border-radius: 3px;
+																				transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+																			}
+															
+																			.financial-table tr:hover .comp-bar-bg {
+																				background: #e2e8f0;
+																			}											
 															.financial-table tr:nth-child(even) td {
 																background-color: #fafbfd;
 															}
@@ -1342,7 +1341,8 @@
 									<thead>
 										<tr>
 											<th>Account Type</th>
-											<th class="amount-col">Book Position (Balance)</th>
+											<th class="bar-col">Composition</th>
+											<th class="amount-col">Book Position</th>
 										</tr>
 									</thead>
 									<tbody>
@@ -1350,6 +1350,7 @@
 											<td class="label-col">
 												<strong>Total Book</strong>
 											</td>
+											<td class="bar-col"></td>
 											<td class="amount-col">
 												<div class="data-wrapper">
 													<span id="total-book">--</span>
@@ -1361,12 +1362,14 @@
 												<span class="acc-dot sa"></span>
 												<span>Savings Account (SA)</span>
 											</td>
-											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="sa-book">--</span>
-													<span class="perc-share" id="sa-book-perc">--</span>
+											<td class="bar-col">
+												<div style="display: flex; align-items: center; gap: 10px;">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="sa-book-bar"></div></div>
+													<span class="perc-share" id="sa-book-perc">--</span>
 												</div>
+											</td>
+											<td class="amount-col">
+												<span id="sa-book">--</span>
 											</td>
 										</tr>
 										<tr class="sub-item">
@@ -1374,12 +1377,14 @@
 												<span class="acc-dot ca"></span>
 												<span>Current Account (CA)</span>
 											</td>
-											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="ca-book">--</span>
-													<span class="perc-share" id="ca-book-perc">--</span>
+											<td class="bar-col">
+												<div style="display: flex; align-items: center; gap: 10px;">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="ca-book-bar"></div></div>
+													<span class="perc-share" id="ca-book-perc">--</span>
 												</div>
+											</td>
+											<td class="amount-col">
+												<span id="ca-book">--</span>
 											</td>
 										</tr>
 										<tr class="sub-item">
@@ -1387,12 +1392,14 @@
 												<span class="acc-dot fd"></span>
 												<span>Fixed Deposit (FD)</span>
 											</td>
-											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="fd-book">--</span>
-													<span class="perc-share" id="fd-book-perc">--</span>
+											<td class="bar-col">
+												<div style="display: flex; align-items: center; gap: 10px;">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="fd-book-bar"></div></div>
+													<span class="perc-share" id="fd-book-perc">--</span>
 												</div>
+											</td>
+											<td class="amount-col">
+												<span id="fd-book">--</span>
 											</td>
 										</tr>
 										<tr class="sub-item">
@@ -1400,12 +1407,14 @@
 												<span class="acc-dot rd"></span>
 												<span>Recurring Deposit (RD)</span>
 											</td>
-											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="rd-book">--</span>
-													<span class="perc-share" id="rd-book-perc">--</span>
+											<td class="bar-col">
+												<div style="display: flex; align-items: center; gap: 10px;">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="rd-book-bar"></div></div>
+													<span class="perc-share" id="rd-book-perc">--</span>
 												</div>
+											</td>
+											<td class="amount-col">
+												<span id="rd-book">--</span>
 											</td>
 										</tr>
 										<tr class="sub-item">
@@ -1413,12 +1422,14 @@
 												<span class="acc-dot dds"></span>
 												<span>DDS Book</span>
 											</td>
-											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="dds-book">--</span>
-													<span class="perc-share" id="dds-book-perc">--</span>
+											<td class="bar-col">
+												<div style="display: flex; align-items: center; gap: 10px;">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="dds-book-bar"></div></div>
+													<span class="perc-share" id="dds-book-perc">--</span>
 												</div>
+											</td>
+											<td class="amount-col">
+												<span id="dds-book">--</span>
 											</td>
 										</tr>
 										<tr class="sub-item">
@@ -1426,12 +1437,14 @@
 												<span class="acc-dot smbg"></span>
 												<span>SMBG Book</span>
 											</td>
-											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="smbg-book">--</span>
-													<span class="perc-share" id="smbg-book-perc">--</span>
+											<td class="bar-col">
+												<div style="display: flex; align-items: center; gap: 10px;">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="smbg-book-bar"></div></div>
+													<span class="perc-share" id="smbg-book-perc">--</span>
 												</div>
+											</td>
+											<td class="amount-col">
+												<span id="smbg-book">--</span>
 											</td>
 										</tr>
 									</tbody>
@@ -1446,6 +1459,7 @@
 									<thead>
 										<tr>
 											<th>Category</th>
+											<th class="bar-col">Composition</th>
 											<th class="amount-col">Customer Count</th>
 										</tr>
 									</thead>
@@ -1454,6 +1468,7 @@
 											<td class="label-col">
 												<strong>Total Customers</strong>
 											</td>
+											<td class="bar-col"></td>
 											<td class="amount-col">
 												<div class="data-wrapper">
 													<span id="total-customers-id">--</span>
@@ -1465,12 +1480,14 @@
 												<span class="acc-dot sa"></span>
 												<span>SA Customers</span>
 											</td>
-											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="total-sa-no-of-customers">--</span>
-													<span class="perc-share" id="sa-cust-perc">--</span>
+											<td class="bar-col">
+												<div style="display: flex; align-items: center; gap: 10px;">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="sa-cust-bar"></div></div>
+													<span class="perc-share" id="sa-cust-perc">--</span>
 												</div>
+											</td>
+											<td class="amount-col">
+												<span id="total-sa-no-of-customers">--</span>
 											</td>
 										</tr>
 										<tr class="sub-item">
@@ -1478,12 +1495,14 @@
 												<span class="acc-dot ca"></span>
 												<span>CA Customers</span>
 											</td>
-											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="total-ca-no-of-customers">--</span>
-													<span class="perc-share" id="ca-cust-perc">--</span>
+											<td class="bar-col">
+												<div style="display: flex; align-items: center; gap: 10px;">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="ca-cust-bar"></div></div>
+													<span class="perc-share" id="ca-cust-perc">--</span>
 												</div>
+											</td>
+											<td class="amount-col">
+												<span id="total-ca-no-of-customers">--</span>
 											</td>
 										</tr>
 										<tr class="sub-item">
@@ -1491,12 +1510,14 @@
 												<span class="acc-dot fd"></span>
 												<span>FD Customers</span>
 											</td>
-											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="total-fd-no-of-customers">--</span>
-													<span class="perc-share" id="fd-cust-perc">--</span>
+											<td class="bar-col">
+												<div style="display: flex; align-items: center; gap: 10px;">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="fd-cust-bar"></div></div>
+													<span class="perc-share" id="fd-cust-perc">--</span>
 												</div>
+											</td>
+											<td class="amount-col">
+												<span id="total-fd-no-of-customers">--</span>
 											</td>
 										</tr>
 										<tr class="sub-item">
@@ -1504,12 +1525,14 @@
 												<span class="acc-dot rd"></span>
 												<span>RD Customers</span>
 											</td>
-											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="total-rd-no-of_customers">--</span>
-													<span class="perc-share" id="rd-cust-perc">--</span>
+											<td class="bar-col">
+												<div style="display: flex; align-items: center; gap: 10px;">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="rd-cust-bar"></div></div>
+													<span class="perc-share" id="rd-cust-perc">--</span>
 												</div>
+											</td>
+											<td class="amount-col">
+												<span id="total-rd-no-of_customers">--</span>
 											</td>
 										</tr>
 										<tr class="sub-item">
@@ -1517,12 +1540,14 @@
 												<span class="acc-dot dds"></span>
 												<span>DDS Customers</span>
 											</td>
-											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="total-dds-no-of-customers">--</span>
-													<span class="perc-share" id="dds-cust-perc">--</span>
+											<td class="bar-col">
+												<div style="display: flex; align-items: center; gap: 10px;">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="dds-cust-bar"></div></div>
+													<span class="perc-share" id="dds-cust-perc">--</span>
 												</div>
+											</td>
+											<td class="amount-col">
+												<span id="total-dds-no-of-customers">--</span>
 											</td>
 										</tr>
 										<tr class="sub-item">
@@ -1530,12 +1555,14 @@
 												<span class="acc-dot smbg"></span>
 												<span>SMBG Customers</span>
 											</td>
-											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="total-smbg-no-of-customers">--</span>
-													<span class="perc-share" id="smbg-cust-perc">--</span>
+											<td class="bar-col">
+												<div style="display: flex; align-items: center; gap: 10px;">
 													<div class="comp-bar-bg"><div class="comp-bar-fill" id="smbg-cust-bar"></div></div>
+													<span class="perc-share" id="smbg-cust-perc">--</span>
 												</div>
+											</td>
+											<td class="amount-col">
+												<span id="total-smbg-no-of-customers">--</span>
 											</td>
 										</tr>
 									</tbody>
@@ -1550,6 +1577,7 @@
 									<thead>
 										<tr>
 											<th>Metric</th>
+											<th class="bar-col"></th>
 											<th class="amount-col">Performance</th>
 										</tr>
 									</thead>
@@ -1559,10 +1587,9 @@
 												<span class="acc-dot dds"></span>
 												<span>DDS Demand</span>
 											</td>
+											<td class="bar-col"></td>
 											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="dds-demand">--</span>
-												</div>
+												<span id="dds-demand">--</span>
 											</td>
 										</tr>
 										<tr>
@@ -1570,16 +1597,16 @@
 												<span class="acc-dot dds"></span>
 												<span>DDS Collection</span>
 											</td>
+											<td class="bar-col"></td>
 											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="dd-collection">--</span>
-												</div>
+												<span id="dd-collection">--</span>
 											</td>
 										</tr>
 										<tr class="total-row">
 											<td class="label-col">
 												<span>DDS Demand vs Collection</span>
 											</td>
+											<td class="bar-col"></td>
 											<td class="amount-col">
 												<div class="data-wrapper">
 													<span id="dds-demand-vs-collection">--</span>
@@ -1591,10 +1618,9 @@
 												<span class="acc-dot smbg"></span>
 												<span>SMBG Demand</span>
 											</td>
+											<td class="bar-col"></td>
 											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="smbg-demand">--</span>
-												</div>
+												<span id="smbg-demand">--</span>
 											</td>
 										</tr>
 										<tr>
@@ -1602,16 +1628,16 @@
 												<span class="acc-dot smbg"></span>
 												<span>SMBG Collection</span>
 											</td>
+											<td class="bar-col"></td>
 											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="smbg-collection">--</span>
-												</div>
+												<span id="smbg-collection">--</span>
 											</td>
 										</tr>
 										<tr class="total-row">
 											<td class="label-col">
 												<span>SMBG Demand vs Collection</span>
 											</td>
+											<td class="bar-col"></td>
 											<td class="amount-col">
 												<div class="data-wrapper">
 													<span id="smbg-demand-vs-collection">--</span>
@@ -1623,10 +1649,9 @@
 												<span class="acc-dot rd"></span>
 												<span>RD Demand</span>
 											</td>
+											<td class="bar-col"></td>
 											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="rd-demand">--</span>
-												</div>
+												<span id="rd-demand">--</span>
 											</td>
 										</tr>
 										<tr>
@@ -1634,10 +1659,9 @@
 												<span class="acc-dot rd"></span>
 												<span>RD Collection</span>
 											</td>
+											<td class="bar-col"></td>
 											<td class="amount-col">
-												<div class="data-wrapper">
-													<span id="rd-collection">--</span>
-												</div>
+												<span id="rd-collection">--</span>
 											</td>
 										</tr>
 										<tr class="total-row">
@@ -1645,6 +1669,7 @@
 												<span class="acc-dot rd"></span>
 												<span>RD SMBG Total Collection</span>
 											</td>
+											<td class="bar-col"></td>
 											<td class="amount-col">
 												<div class="data-wrapper">
 													<span id="rd-smbg-collection">--</span>
@@ -1656,6 +1681,7 @@
 												<span class="acc-dot rd"></span>
 												<span>RD SMBG Pending</span>
 											</td>
+											<td class="bar-col"></td>
 											<td class="amount-col">
 												<div class="data-wrapper">
 													<span id="rd-smbg-pending">--</span>
