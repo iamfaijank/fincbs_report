@@ -129,6 +129,55 @@ def get_performance_data(sol_id: str, date: Optional[str] = None):
         }
 
 
+
+
+# ============================================================================
+# Employee DATA API
+# ============================================================================
+
+from frappe.query_builder import DocType
+
+@frappe.whitelist()
+def get_employee_details_by_sol(sol_id: str):
+    """
+    Fetch employee details using Frappe Query Builder
+    """
+    if not sol_id:
+        return {"status": "error", "message": "SOL ID missing"}
+
+    try:
+        # 1. Define the Table/Doctype
+        Employee = DocType("Employee")
+
+        # 2. Build the Query
+        query = (
+            frappe.qb.from_(Employee)
+            .select(
+                Employee.sol_id,
+                Employee.pip_status,
+                Employee.employee_name,
+                Employee.employee_number,
+                Employee.date_of_joining,
+                Employee.designation,
+                Employee.cell_number
+            )
+            .where(Employee.sol_id == sol_id)
+            .orderby(Employee.employee_name)
+        )
+
+        # 3. Execute the query
+        employees = query.run(as_dict=True)
+
+        return {
+            "status": "success",
+            "count": len(employees),
+            "data": employees
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Employee QB API Error")
+        return {"status": "error", "message": str(e)}
+
 # ============================================================================
 # CRM DATA API (OPTIMIZED – SINGLE QUERY)
 # ============================================================================
