@@ -784,6 +784,12 @@
 																border-top: 2px solid #ccfbf1;
 																border-bottom: 2px solid #ccfbf1;
 															}
+
+                                                            /* PIP Row Highlight - Overrides nth-child striping */
+                                                            .financial-table tr.pip-row td {
+                                                                background-color: #fee2e2 !important;
+                                                                border-bottom: 1px solid #fecaca;
+                                                            }
 															
 															.financial-table .label-col {
 																display: flex;
@@ -1800,13 +1806,15 @@
 										<tr>
 											<th>Employee ID</th>
 											<th>Employee Name</th>
+											<th>Mobile</th>
 											<th>Joining Date</th>
 											<th>Experience</th>
+											<th style="text-align: center;">PIP Status</th>
 										</tr>
 									</thead>
-									<tbody>
+									<tbody id="manpower-details-tbody">
 										<tr>
-											<td colspan="4" style="text-align: center; color: #64748b; padding: 20px;">
+											<td colspan="6" style="text-align: center; color: #64748b; padding: 20px;">
 												No manpower data available.
 											</td>
 										</tr>
@@ -2288,6 +2296,7 @@ const BranchManagerProfile = {
                     mabAc: document.getElementById("mab-ac"),
                     prodRdSmbgPending: document.getElementById("prod-rd-smbg-pending"),
                     prodRdSmbgCollection: document.getElementById("prod-rd-smbg-collection"),
+                    manpowerDetailsTbody: document.getElementById("manpower-details-tbody"),
                 },
 
                 state: {
@@ -2560,6 +2569,97 @@ const BranchManagerProfile = {
                     }
                 },
 
+                calculateExperience(doj) {
+                    if (!doj) return "--";
+                    const start = new Date(doj);
+                    const now = new Date();
+                    if (isNaN(start.getTime())) return "--";
+                    
+                    let years = now.getFullYear() - start.getFullYear();
+                    let months = now.getMonth() - start.getMonth();
+                    
+                    if (months < 0) {
+                        years--;
+                        months += 12;
+                    }
+                    
+                    if (years === 0 && months === 0) return "New Joinee";
+                    
+                    let parts = [];
+                    if (years > 0) {
+                        parts.push(years === 1 ? "1 yr" : `${years} yrs`);
+                    }
+                    if (months > 0) {
+                        parts.push(months === 1 ? "1 mo" : `${months} mos`);
+                    }
+                    
+                    return parts.join(" ");
+                },
+
+                async loadEmployeeDetails(solId) {
+                    try {
+                        const r = await fetch(`/api/method/custom_report.branch_v1.get_employee_details_by_sol?sol_id=${solId}`);
+                        const j = await r.json();
+                        
+                        // Check if message exists and has data
+                        let employees = [];
+                        if (j.message && j.message.data) {
+                            employees = j.message.data;
+                        }
+
+                        const tbody = this.el.manpowerDetailsTbody;
+                        if (!tbody) return;
+                        
+                        tbody.innerHTML = ""; // Clear existing
+
+                        if (!employees || employees.length === 0) {
+                            tbody.innerHTML = `
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: #64748b; padding: 20px;">
+                                        No manpower data available.
+                                    </td>
+                                </tr>
+                            `;
+                            return;
+                        }
+
+                        employees.forEach(emp => {
+                            const tr = document.createElement("tr");
+                            const isPip = emp.pip_status == 1;
+
+                            if (isPip) {
+                                tr.classList.add("pip-row");
+                            }
+
+                            tr.innerHTML = `
+                                <td>${this.value(emp.employee_number)}</td>
+                                <td>
+                                    <div style="font-weight: 600; color: #333;">${this.value(emp.employee_name)}</div>
+                                    <div style="font-size: 11px; color: #64748b;">${this.value(emp.designation)}</div>
+                                </td>
+                                <td>${this.value(emp.cell_number)}</td>
+                                <td>${this.formatDate(emp.date_of_joining)}</td>
+                                <td>${this.calculateExperience(emp.date_of_joining)}</td>
+                                <td style="text-align: center;">
+                                    ${isPip ? '<span style="color: #dc2626; font-weight: 800; background: #fecaca; padding: 2px 8px; border-radius: 4px; font-size: 10px;">PIP</span>' : ''}
+                                </td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    } catch (e) {
+                        console.error("Failed to load employee details", e);
+                         if (this.el.manpowerDetailsTbody) {
+                            this.el.manpowerDetailsTbody.innerHTML = `
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: #dc2626; padding: 20px;">
+                                        Error loading data.
+                                    </td>
+                                </tr>
+                            `;
+                         }
+                    }
+                },
+
                 async load(solId, branchEmailValue) {
                     try {
                         const r = await fetch(
@@ -2571,6 +2671,7 @@ const BranchManagerProfile = {
                         this.state.rawData = d;
 
                         this.render();
+                        this.loadEmployeeDetails(solId);
 
                         // --- Fetch Performance Data ---
                         const selectedFy = this.el.fySelect.value;
