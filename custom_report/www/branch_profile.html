@@ -2585,10 +2585,10 @@ const BranchManagerProfile = {
                     this.el.rdSmbgPending.textContent = this.formatAmount(d.rd_smbg_pending);
 
                     // Populate Productivity Details
-                    if (this.el.totalProductivity) this.el.totalProductivity.textContent = this.formatIndianNumber(d.total_productivity);
-                    if (this.el.bdoAndProductivity) this.el.bdoAndProductivity.textContent = this.formatIndianNumber(d.bdo_and_productivity);
-                    if (this.el.bdeAndProductivity) this.el.bdeAndProductivity.textContent = this.formatIndianNumber(d.bde_and_productivity);
-                    if (this.el.bdoProductivity) this.el.bdoProductivity.textContent = this.formatIndianNumber(d.bdo_productivity);
+                    if (this.el.totalProductivity) this.el.totalProductivity.textContent = this.formatIndianNumber(parseFloat(d.total_productivity || 0).toFixed(2));
+                    if (this.el.bdoAndProductivity) this.el.bdoAndProductivity.textContent = this.formatIndianNumber(parseFloat(d.bdo_and_productivity || 0).toFixed(2));
+                    if (this.el.bdeAndProductivity) this.el.bdeAndProductivity.textContent = this.formatIndianNumber(parseFloat(d.bde_and_productivity || 0).toFixed(2));
+                    if (this.el.bdoProductivity) this.el.bdoProductivity.textContent = this.formatIndianNumber(parseFloat(d.bdo_productivity || 0).toFixed(2));
                     if (this.el.nmabAc) this.el.nmabAc.textContent = this.formatIndianNumber(d.nmab_ac);
                     if (this.el.mabAc) this.el.mabAc.textContent = this.formatIndianNumber(d.mab_ac);
 
