@@ -4,6 +4,7 @@
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Branch Dashboard</title>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 		<style>
 			:root {
 				--primary-1: #097c80;
@@ -1799,12 +1800,22 @@
 						</section>
 
 						<section class="staff-detail-section" id="manpower-details-section">
-							<h2>Manpower Details</h2>
+							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+								<h2 style="margin: 0;">Manpower Details</h2>
+								<div class="category-tabs" id="manpower-pip-filter">
+									<div class="category-tab active" data-filter="all">All</div>
+									<div class="category-tab" data-filter="pip">PIP</div>
+									<div class="category-tab" data-filter="non-pip">Non-PIP</div>
+								</div>
+							</div>
 							<div class="financial-table-container">
 								<table class="financial-table">
 									<thead>
 										<tr>
-											<th>Employee ID</th>
+											<th id="sort-emp-id" style="cursor: pointer; white-space: nowrap;">
+												Employee ID 
+												<span id="emp-id-sort-icon" class="fa fa-sort" style="margin-left: 5px; color: var(--primary-1);"></span>
+											</th>
 											<th>Employee Name</th>
 											<th>Mobile</th>
 											<th>Joining Date</th>
@@ -2201,6 +2212,42 @@
 						});
 					}
 
+					/* --- Manpower PIP Filter Logic --- */
+					const manpowerPipFilter = document.getElementById('manpower-pip-filter');
+					if (manpowerPipFilter) {
+						manpowerPipFilter.addEventListener('click', (e) => {
+							const tab = e.target.closest('.category-tab');
+							if (!tab) return;
+
+							// Update Active Tab UI
+							manpowerPipFilter.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+							tab.classList.add('active');
+
+							// Update State and Re-render
+							BranchManagerProfile.state.manpowerFilter = tab.dataset.filter;
+							BranchManagerProfile.renderManpowerDetails();
+						});
+					}
+
+					/* --- Manpower Sorting Logic --- */
+					const sortEmpId = document.getElementById('sort-emp-id');
+					if (sortEmpId) {
+						sortEmpId.addEventListener('click', () => {
+							const state = BranchManagerProfile.state;
+							const icon = document.getElementById('emp-id-sort-icon');
+							
+							// Toggle direction
+							state.manpowerSortDir = state.manpowerSortDir === 'asc' ? 'desc' : 'asc';
+							
+							// Update icon
+							if (icon) {
+								icon.className = state.manpowerSortDir === 'asc' ? 'fa fa-sort-asc' : 'fa fa-sort-desc';
+							}
+							
+							BranchManagerProfile.renderManpowerDetails();
+						});
+					}
+
 					const params = new URLSearchParams(location.search);
 					const sol = params.get("sol_id");
 					if (sol) {
@@ -2297,11 +2344,16 @@ const BranchManagerProfile = {
                     prodRdSmbgPending: document.getElementById("prod-rd-smbg-pending"),
                     prodRdSmbgCollection: document.getElementById("prod-rd-smbg-collection"),
                     manpowerDetailsTbody: document.getElementById("manpower-details-tbody"),
+                    manpowerPipFilter: document.getElementById("manpower-pip-filter"),
                 },
 
                 state: {
                     performanceData: null,
-                    rawData: null
+                    rawData: null,
+                    employees: [],
+                    manpowerFilter: 'all',
+                    manpowerSortCol: 'employee_number',
+                    manpowerSortDir: 'desc'
                 },
 
                 value(v) {
@@ -2601,51 +2653,8 @@ const BranchManagerProfile = {
                         const r = await fetch(`/api/method/custom_report.branch_v1.get_employee_details_by_sol?sol_id=${solId}`);
                         const j = await r.json();
                         
-                        // Check if message exists and has data
-                        let employees = [];
-                        if (j.message && j.message.data) {
-                            employees = j.message.data;
-                        }
-
-                        const tbody = this.el.manpowerDetailsTbody;
-                        if (!tbody) return;
-                        
-                        tbody.innerHTML = ""; // Clear existing
-
-                        if (!employees || employees.length === 0) {
-                            tbody.innerHTML = `
-                                <tr>
-                                    <td colspan="6" style="text-align: center; color: #64748b; padding: 20px;">
-                                        No manpower data available.
-                                    </td>
-                                </tr>
-                            `;
-                            return;
-                        }
-
-                        employees.forEach(emp => {
-                            const tr = document.createElement("tr");
-                            const isPip = emp.pip_status == 1;
-
-                            if (isPip) {
-                                tr.classList.add("pip-row");
-                            }
-
-                            tr.innerHTML = `
-                                <td>${this.value(emp.employee_number)}</td>
-                                <td>
-                                    <div style="font-weight: 600; color: #333;">${this.value(emp.employee_name)}</div>
-                                    <div style="font-size: 11px; color: #64748b;">${this.value(emp.designation)}</div>
-                                </td>
-                                <td>${this.value(emp.cell_number)}</td>
-                                <td>${this.formatDate(emp.date_of_joining)}</td>
-                                <td>${this.calculateExperience(emp.date_of_joining)}</td>
-                                <td style="text-align: center;">
-                                    ${isPip ? '<span style="color: #dc2626; font-weight: 800; background: #fecaca; padding: 2px 8px; border-radius: 4px; font-size: 10px;">PIP</span>' : ''}
-                                </td>
-                            `;
-                            tbody.appendChild(tr);
-                        });
+                        this.state.employees = (j.message && j.message.data) ? j.message.data : [];
+                        this.renderManpowerDetails();
                     } catch (e) {
                         console.error("Failed to load employee details", e);
                          if (this.el.manpowerDetailsTbody) {
@@ -2658,6 +2667,82 @@ const BranchManagerProfile = {
                             `;
                          }
                     }
+                },
+
+                renderManpowerDetails() {
+                    const tbody = this.el.manpowerDetailsTbody;
+                    if (!tbody) return;
+                    
+                    tbody.innerHTML = ""; // Clear existing
+                    const filter = this.state.manpowerFilter;
+
+                    let filteredEmployees = this.state.employees.filter(emp => {
+                        if (filter === 'all') return true;
+                        if (filter === 'pip') return emp.pip_status == 1;
+                        if (filter === 'non-pip') return emp.pip_status != 1;
+                        return true;
+                    });
+
+                    // Sorting Logic
+                    const sortCol = this.state.manpowerSortCol;
+                    const sortDir = this.state.manpowerSortDir;
+                    
+                    if (sortCol) {
+                        filteredEmployees.sort((a, b) => {
+                            let valA = a[sortCol] || "";
+                            let valB = b[sortCol] || "";
+
+                            // Try to compare as numbers if they look like numbers
+                            const numA = parseFloat(valA);
+                            const numB = parseFloat(valB);
+                            
+                            if (!isNaN(numA) && !isNaN(numB)) {
+                                return sortDir === 'asc' ? numA - numB : numB - numA;
+                            }
+
+                            // String comparison fallback
+                            if (sortDir === 'asc') {
+                                return valA.toString().localeCompare(valB.toString());
+                            } else {
+                                return valB.toString().localeCompare(valA.toString());
+                            }
+                        });
+                    }
+
+                    if (!filteredEmployees || filteredEmployees.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: #64748b; padding: 20px;">
+                                    No ${filter !== 'all' ? filter.toUpperCase() + ' ' : ''}manpower data available.
+                                </td>
+                            </tr>
+                        `;
+                        return;
+                    }
+
+                    filteredEmployees.forEach(emp => {
+                        const tr = document.createElement("tr");
+                        const isPip = emp.pip_status == 1;
+
+                        if (isPip) {
+                            tr.classList.add("pip-row");
+                        }
+
+                        tr.innerHTML = `
+                            <td>${this.value(emp.employee_number)}</td>
+                            <td>
+                                <div style="font-weight: 600; color: #333;">${this.value(emp.employee_name)}</div>
+                                <div style="font-size: 11px; color: #64748b;">${this.value(emp.designation)}</div>
+                            </td>
+                            <td>${this.value(emp.cell_number)}</td>
+                            <td>${this.formatDate(emp.date_of_joining)}</td>
+                            <td>${this.calculateExperience(emp.date_of_joining)}</td>
+                            <td style="text-align: center;">
+                                ${isPip ? '<span style="color: #dc2626; font-weight: 800; background: #fecaca; padding: 2px 8px; border-radius: 4px; font-size: 10px;">PIP</span>' : ''}
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
                 },
 
                 async load(solId, branchEmailValue) {
