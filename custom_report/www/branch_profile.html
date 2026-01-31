@@ -1830,9 +1830,25 @@
 						</section>
 
 						<section class="staff-detail-section" id="manpower-details-section">
-							<div class="manpower-header-sticky" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-								<h2 style="margin: 0;">Manpower Details</h2>
-								<div class="category-tabs" id="manpower-pip-filter">
+							<div class="manpower-header-sticky" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; flex-wrap: wrap;">
+								<h2 style="margin: 0; white-space: nowrap;">Manpower Details</h2>
+								
+								<div style="flex: 1; min-width: 250px; max-width: 400px; position: relative;">
+									<input 
+										type="text" 
+										id="manpower-search-input" 
+										placeholder="Search by Name or ID..." 
+										style="width: 100%; padding: 8px 12px 8px 35px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; outline: none; transition: border-color 0.2s;"
+										onfocus="this.style.borderColor='var(--primary-1)'"
+										onblur="this.style.borderColor='#e2e8f0'"
+									>
+									<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%);">
+										<circle cx="11" cy="11" r="8"></circle>
+										<path d="M21 21l-4.35-4.35"></path>
+									</svg>
+								</div>
+
+								<div class="category-tabs" id="manpower-pip-filter" style="margin-left: auto;">
 									<div class="category-tab active" data-filter="all">All</div>
 									<div class="category-tab" data-filter="pip">PIP</div>
 									<div class="category-tab" data-filter="non-pip">Non-PIP</div>
@@ -2262,6 +2278,15 @@
 						});
 					}
 
+					/* --- Manpower Search Logic --- */
+					const manpowerSearchInput = document.getElementById('manpower-search-input');
+					if (manpowerSearchInput) {
+						manpowerSearchInput.addEventListener('input', (e) => {
+							BranchManagerProfile.state.manpowerSearchQuery = e.target.value;
+							BranchManagerProfile.renderManpowerDetails();
+						});
+					}
+
 					/* --- Manpower Sorting Logic --- */
 					const sortEmpId = document.getElementById('sort-emp-id');
 					if (sortEmpId) {
@@ -2376,6 +2401,7 @@ const BranchManagerProfile = {
                     mabAc: document.getElementById("mab-ac"),
                     manpowerDetailsTbody: document.getElementById("manpower-details-tbody"),
                     manpowerPipFilter: document.getElementById("manpower-pip-filter"),
+                    manpowerSearchInput: document.getElementById("manpower-search-input"),
                 },
 
                 state: {
@@ -2383,6 +2409,7 @@ const BranchManagerProfile = {
                     rawData: null,
                     employees: [],
                     manpowerFilter: 'all',
+                    manpowerSearchQuery: '',
                     manpowerSortCol: 'employee_number',
                     manpowerSortDir: 'desc'
                 },
@@ -2704,11 +2731,23 @@ const BranchManagerProfile = {
                     
                     tbody.innerHTML = ""; // Clear existing
                     const filter = this.state.manpowerFilter;
+                    const query = this.state.manpowerSearchQuery.toLowerCase().trim();
 
                     let filteredEmployees = this.state.employees.filter(emp => {
-                        if (filter === 'all') return true;
-                        if (filter === 'pip') return emp.pip_status == 1;
-                        if (filter === 'non-pip') return emp.pip_status != 1;
+                        // 1. PIP Filter
+                        let passPip = true;
+                        if (filter === 'pip') passPip = emp.pip_status == 1;
+                        if (filter === 'non-pip') passPip = emp.pip_status != 1;
+                        
+                        if (!passPip) return false;
+
+                        // 2. Search Filter (ID or Name)
+                        if (query) {
+                            const name = (emp.employee_name || "").toLowerCase();
+                            const id = (emp.employee_number || "").toLowerCase();
+                            return name.includes(query) || id.includes(query);
+                        }
+
                         return true;
                     });
 
@@ -2742,7 +2781,7 @@ const BranchManagerProfile = {
                         tbody.innerHTML = `
                             <tr>
                                 <td colspan="9" style="text-align: center; color: #64748b; padding: 20px;">
-                                    No ${filter !== 'all' ? filter.toUpperCase() + ' ' : ''}manpower data available.
+                                    No matching manpower data available.
                                 </td>
                             </tr>
                         `;
