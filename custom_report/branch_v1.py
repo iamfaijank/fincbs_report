@@ -135,48 +135,98 @@ def get_performance_data(sol_id: str, date: Optional[str] = None):
 # Employee DATA API
 # ============================================================================
 
-from frappe.query_builder import DocType
+import frappe
+from frappe.query_builder import DocType, functions as fn, Case
+from frappe.utils import get_first_day, get_last_day, today
 
 @frappe.whitelist()
 def get_employee_details_by_sol(sol_id: str):
     """
-    Fetch employee details using Frappe Query Builder
+    Fetch comprehensive employee details including monthly lead generation 
+    and conversion performance metrics filtered by SOL ID.
+    
+    Args:
+        sol_id (str): The Branch/Service Outlet ID to filter employees.
+        
+    Returns:
+        dict: Success status, record count, and data containing employee info 
+              plus lead analytics (Total, Converted, and Ratio).
     """
     if not sol_id:
-        return {"status": "error", "message": "SOL ID missing"}
+        return {"status": "error", "message": "SOL ID is required"}
 
     try:
-        # 1. Define the Table/Doctype
+        # 1. Initialize Doctypes for Query Builder
         Employee = DocType("Employee")
+        Lead = DocType("Lead")
 
-        # 2. Build the Query
+        # 2. Define the date range for the current month
+        # This ensures we only count leads created between the 1st and today
+        start_date = get_first_day(today())
+        end_date = get_last_day(today())
+
+        # 3. Construct the Query
+        # We use a LEFT JOIN to ensure employees are listed even if they have 0 leads.
+        # The join condition matches Employee.user_id with Lead.lead_owner.
         query = (
             frappe.qb.from_(Employee)
+            .left_join(Lead).on(
+                (Employee.user_id == Lead.lead_owner) & 
+                (Lead.creation.between(start_date, end_date))
+            )
             .select(
+                # Employee Identity and Contact Fields
                 Employee.sol_id,
-                Employee.pip_status,
                 Employee.employee_name,
                 Employee.employee_number,
-                Employee.date_of_joining,
+                Employee.user_id,
                 Employee.designation,
-                Employee.cell_number
+                Employee.cell_number,
+                Employee.date_of_joining,
+                Employee.pip_status,
+                
+                # Aggregate Lead Analytics
+                fn.Count(Lead.name).as_("total_leads"),
+                fn.Sum(
+                    Case().when(Lead.status == "Converted", 1).else_(0)
+                ).as_("total_converted")
             )
             .where(Employee.sol_id == sol_id)
+            .groupby(Employee.name)
             .orderby(Employee.employee_name)
         )
 
-        # 3. Execute the query
-        employees = query.run(as_dict=True)
+        # 4. Execute the query and fetch results as a list of dictionaries
+        employee_records = query.run(as_dict=True)
+
+        # 5. Post-process data to calculate Conversion Ratios
+        for record in employee_records:
+            total = record.get("total_leads") or 0
+            # SQL SUM on Case returns float (e.g. 1.0), converting to int for clean JSON
+            converted = int(record.get("total_converted") or 0)
+            
+            record["total_converted"] = converted
+            
+            # Calculate conversion ratio percentage
+            if total > 0:
+                conversion_ratio = (converted / total) * 100
+                record["conversion_ratio"] = f"{conversion_ratio:.2f}%"
+            else:
+                record["conversion_ratio"] = "0.00%"
 
         return {
             "status": "success",
-            "count": len(employees),
-            "data": employees
+            "count": len(employee_records),
+            "data": employee_records
         }
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Employee QB API Error")
-        return {"status": "error", "message": str(e)}
+        # Log the full error traceback in Frappe Error Log for debugging
+        frappe.log_error(frappe.get_traceback(), "Employee Lead Details API Error")
+        return {
+            "status": "error", 
+            "message": "An internal error occurred while fetching details."
+        }
 
 # ============================================================================
 # CRM DATA API (OPTIMIZED – SINGLE QUERY)
