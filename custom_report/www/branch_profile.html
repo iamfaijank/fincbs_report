@@ -685,10 +685,11 @@
 
 							/* Manpower Details Scrolling Fix */
 							#manpower-details-section {
-								max-height: 800px;
+								max-height: calc(100vh - 100px);
 								display: flex;
 								flex-direction: column;
 								overflow: hidden; /* Prevent double scrollbars */
+								scroll-margin-top: 100px;
 							}
 
 							#manpower-details-section .manpower-header-sticky {
