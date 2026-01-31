@@ -1693,17 +1693,6 @@
 								                                												<span id="rd-collection">--</span>
 								                                											</td>
 								                                										</tr>
-								                                										<tr class="total-row">
-								                                											<td class="label-col">
-								                                												<span class="acc-dot rd"></span>
-								                                												<span>RD SMBG Total Collection</span>
-								                                											</td>
-								                                											<td class="amount-col">
-								                                												<div class="data-wrapper">
-								                                													<span id="rd-smbg-collection">--</span>
-								                                												</div>
-								                                											</td>
-								                                										</tr>
 								                                										<tr>
 								                                											<td class="label-col">
 								                                												<span class="acc-dot rd"></span>
@@ -1712,6 +1701,17 @@
 								                                											<td class="amount-col">
 								                                												<div class="data-wrapper">
 								                                													<span id="rd-smbg-pending">--</span>
+								                                												</div>
+								                                											</td>
+								                                										</tr>
+								                                										<tr class="total-row">
+								                                											<td class="label-col">
+								                                												<span class="acc-dot rd"></span>
+								                                												<span>RD SMBG Collection</span>
+								                                											</td>
+								                                											<td class="amount-col">
+								                                												<div class="data-wrapper">
+								                                													<span id="rd-smbg-collection">--</span>
 								                                												</div>
 								                                											</td>
 								                                										</tr>
@@ -1776,22 +1776,6 @@
 											</td>
 											<td class="amount-col">
 												<span id="mab-ac">--</span>
-											</td>
-										</tr>
-										<tr>
-											<td class="label-col">
-												<span>RD SMBG Pending</span>
-											</td>
-											<td class="amount-col">
-												<span id="prod-rd-smbg-pending">--</span>
-											</td>
-										</tr>
-										<tr>
-											<td class="label-col">
-												<span>RD SMBG Collection</span>
-											</td>
-											<td class="amount-col">
-												<span id="prod-rd-smbg-collection">--</span>
 											</td>
 										</tr>
 									</tbody>
@@ -2341,8 +2325,6 @@ const BranchManagerProfile = {
                     bdoProductivity: document.getElementById("bdo-productivity"),
                     nmabAc: document.getElementById("nmab-ac"),
                     mabAc: document.getElementById("mab-ac"),
-                    prodRdSmbgPending: document.getElementById("prod-rd-smbg-pending"),
-                    prodRdSmbgCollection: document.getElementById("prod-rd-smbg-collection"),
                     manpowerDetailsTbody: document.getElementById("manpower-details-tbody"),
                     manpowerPipFilter: document.getElementById("manpower-pip-filter"),
                 },
@@ -2609,8 +2591,6 @@ const BranchManagerProfile = {
                     if (this.el.bdoProductivity) this.el.bdoProductivity.textContent = this.formatIndianNumber(d.bdo_productivity);
                     if (this.el.nmabAc) this.el.nmabAc.textContent = this.formatIndianNumber(d.nmab_ac);
                     if (this.el.mabAc) this.el.mabAc.textContent = this.formatIndianNumber(d.mab_ac);
-                    if (this.el.prodRdSmbgPending) this.el.prodRdSmbgPending.textContent = this.formatAmount(d.rd_smbg_pending);
-                    if (this.el.prodRdSmbgCollection) this.el.prodRdSmbgCollection.textContent = this.formatAmount(d.rd_smbg_collection);
 
                     this.el.photo.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(d.bm_name || "BM")}&background=097c80&color=fff&size=256`;
                     
