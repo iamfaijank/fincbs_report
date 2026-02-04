@@ -55,11 +55,12 @@ class DrishtiDashboard {
 	}
 
 	setupStyles() {
-        // --- Font and Style Injection ---
-        const fontLink = document.createElement("link");
-        fontLink.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap";
-        fontLink.rel = "stylesheet";
-        document.head.appendChild(fontLink);
+		// --- Font and Style Injection ---
+		const fontLink = document.createElement("link");
+		fontLink.href =
+			"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap";
+		fontLink.rel = "stylesheet";
+		document.head.appendChild(fontLink);
 
 		const style = `
             :root {
@@ -671,7 +672,7 @@ class DrishtiDashboard {
                         <input type="text" id="branch-search" placeholder="Search branch..." 
                                style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; min-width: 200px; background: white; color: #1b263b;" />
                         <button id="clear-filters" class="btn btn-secondary btn-sm" 
-                                style="background: #415a77; border-color: #1b263b; color: white; font-weight: 600;"
+                                style="background: #417d81; border-color: #1b263b; color: white; font-weight: 600;"
                                 title="Resets all filters to their default state and refreshes the dashboard.">
                             🔄 Reset & Refresh
                         </button>
@@ -1110,7 +1111,7 @@ class DrishtiDashboard {
 			const monthDate = new Date(month.date);
 			const monthIndex = monthDate.getMonth();
 			const monthYear = monthDate.getFullYear();
-			
+
 			const monthName = month.display.split("-")[0];
 			const displayYear = `${monthName}-${monthYear}`;
 
@@ -1141,11 +1142,11 @@ class DrishtiDashboard {
 
 		html += "</tr></thead><tbody>";
 
-        const styleId = "days-left-indicator-style";
-        if (!document.getElementById(styleId)) {
-            const style = document.createElement("style");
-            style.id = styleId;
-            style.innerHTML = `
+		const styleId = "days-left-indicator-style";
+		if (!document.getElementById(styleId)) {
+			const style = document.createElement("style");
+			style.id = styleId;
+			style.innerHTML = `
                 @keyframes smooth-blink {
                     0%, 100% { opacity: 1; }
                     50% { opacity: 0.3; }
@@ -1157,32 +1158,32 @@ class DrishtiDashboard {
                     font-size: 12px;
                 }
             `;
-            document.head.appendChild(style);
-        }
+			document.head.appendChild(style);
+		}
 
-        const grandTotals = {
-            branches: 0
-        };
-        months.forEach(month => {
-            grandTotals[month.key] = { target: 0, achievement: 0 };
-        });
+		const grandTotals = {
+			branches: 0,
+		};
+		months.forEach((month) => {
+			grandTotals[month.key] = { target: 0, achievement: 0 };
+		});
 
-        // Accumulate grand totals only from zone total items (isZoneTotal === true)
-        zoneData.forEach(item => {
-            if (item.isZoneTotal) { // Only sum from the main zone aggregates to avoid double-counting regions
-                const firstMonthData = item.months[months[0].key];
-                grandTotals.branches += firstMonthData?.branches || 0;
-                
-                months.forEach(month => {
-                    const mdata = item.months[month.key];
-                    if (mdata) {
-                        grandTotals[month.key].target += mdata.target || 0;
-                        grandTotals[month.key].achievement += mdata.achievement || 0;
-                    }
-                });
-            }
-        });
+		// Accumulate grand totals only from zone total items (isZoneTotal === true)
+		zoneData.forEach((item) => {
+			if (item.isZoneTotal) {
+				// Only sum from the main zone aggregates to avoid double-counting regions
+				const firstMonthData = item.months[months[0].key];
+				grandTotals.branches += firstMonthData?.branches || 0;
 
+				months.forEach((month) => {
+					const mdata = item.months[month.key];
+					if (mdata) {
+						grandTotals[month.key].target += mdata.target || 0;
+						grandTotals[month.key].achievement += mdata.achievement || 0;
+					}
+				});
+			}
+		});
 
 		// Group data by zone from the reaggregated data
 		const zoneGroups = {};
@@ -1232,17 +1233,18 @@ class DrishtiDashboard {
 
 		html += "</tbody>";
 
-        // Grand Total Row
-        html += `<tfoot><tr style="background-color: #0d1b2a; color: #e0e1dd; font-weight: bold;">`;
-        html += `<td colspan="2" style="text-align: left; padding-left: 8px;">TOTAL</td>`; // Spanning Sr, Zone/Region
-        html += `<td>${grandTotals.branches}</td>`; // Branches column
+		// Grand Total Row
+		html += `<tfoot style="background-color: #264a4d; color: #ffffff; font-weight: bold; border-top: 2px solid #3d7579;">`;
+		html += `<tr style="height: 40px;">`;
+		html += `<td colspan="2" style="text-align: left; padding-left: 12px; text-transform: uppercase; letter-spacing: 1px;">TOTAL</td>`;
+		html += `<td style="text-align: center;">${grandTotals.branches}</td>`;
 
-        months.forEach(month => {
-            const totalTarget = grandTotals[month.key].target;
-            const totalAchievement = grandTotals[month.key].achievement;
-            const overallPercentage = totalTarget > 0 ? (totalAchievement / totalTarget) * 100 : 0;
+		months.forEach((month) => {
+			const totalTarget = grandTotals[month.key].target;
+			const totalAchievement = grandTotals[month.key].achievement;
+			const overallPercentage = totalTarget > 0 ? (totalAchievement / totalTarget) * 100 : 0;
 
-            html += `
+			html += `
                 <td>${this.formatNumber(totalTarget)}</td>
                 <td>${this.formatNumber(totalAchievement)}</td>
                 <td>
@@ -1252,10 +1254,10 @@ class DrishtiDashboard {
 					</div>
 				</td>
             `;
-        });
-        html += `</tr></tfoot>`;
+		});
+		html += `</tr></tfoot>`;
 
-        html += "</table>";
+		html += "</table>";
 
 		return html;
 	}
@@ -1308,7 +1310,7 @@ class DrishtiDashboard {
 
 		let html = `<tr class="region-detail-row" data-zone="${zoneName}" style="display: ${
 			isExpanded ? "table-row" : "none"
-		}; border-left: 4px solid #415a77;">`;
+		}; border-left: 4px solid #417d81;">`;
 
 		html += `<td>${sr}</td>`;
 
@@ -1443,7 +1445,8 @@ class DrishtiDashboard {
 			const downCount = filteredChanges.decreased.length;
 
 			const isExpanded = this.state.expandedZones[`cat_${catName}`] || false;
-			const percentage = totalBranches > 0 ? ((count / totalBranches) * 100).toFixed(2) : "0.00";
+			const percentage =
+				totalBranches > 0 ? ((count / totalBranches) * 100).toFixed(2) : "0.00";
 
 			html += `
             <tr class="category-row-redesigned" data-category="${catName}" style="border-left: 5px solid ${
@@ -2042,28 +2045,28 @@ class DrishtiDashboard {
 			const monthDate = new Date(month.date);
 			const monthIndex = monthDate.getMonth();
 			const monthYear = monthDate.getFullYear();
-			
+
 			const monthName = month.display.split("-")[0];
 			const displayYear = `${monthName}-${monthYear}`;
 
 			let daysLeftIndicator = "";
 			if (monthIndex === currentMonth && monthYear === currentYear) {
-				                const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-								const currentDay = today.getDate();
-								const remainingDays = lastDayOfMonth - currentDay + 1;
-				
-								if (remainingDays >= 0) {
-									daysLeftIndicator = `
+				const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+				const currentDay = today.getDate();
+				const remainingDays = lastDayOfMonth - currentDay + 1;
+
+				if (remainingDays >= 0) {
+					daysLeftIndicator = `
 										<br>
 										<span class="days-left-indicator">
 											${remainingDays} Day${remainingDays !== 1 ? "s" : ""} Left
 										</span>
 									`;
-								}
-							}
-				
-							header += `<th colspan="4" class="month-col">${displayYear}${daysLeftIndicator}</th>`;
-						});
+				}
+			}
+
+			header += `<th colspan="4" class="month-col">${displayYear}${daysLeftIndicator}</th>`;
+		});
 		header += `</tr><tr class="branch-table-subheader">`;
 
 		months.forEach(() => {
@@ -2077,11 +2080,11 @@ class DrishtiDashboard {
 
 		header += `</tr></thead>`;
 
-        const styleId = "days-left-indicator-style";
-        if (!document.getElementById(styleId)) {
-            const style = document.createElement("style");
-            style.id = styleId;
-            style.innerHTML = `
+		const styleId = "days-left-indicator-style";
+		if (!document.getElementById(styleId)) {
+			const style = document.createElement("style");
+			style.id = styleId;
+			style.innerHTML = `
                 @keyframes smooth-blink {
                     0%, 100% { opacity: 1; }
                     50% { opacity: 0.3; }
@@ -2093,8 +2096,8 @@ class DrishtiDashboard {
                     font-size: 12px;
                 }
             `;
-            document.head.appendChild(style);
-        }
+			document.head.appendChild(style);
+		}
 
 		return header;
 	}
@@ -2305,13 +2308,13 @@ class DrishtiDashboard {
 
                 .filter-tag:hover {
                     background: #f8f9fa;
-                    border-color: #415a77;
+                    border-color: #417d81;
                     transform: translateY(-1px);
                 }
 
                 .filter-tag.active {
-                    background: #415a77;
-                    border-color: #415a77;
+                    background: #417d81;
+                    border-color: #417d81;
                     color: #e0e1dd;
                 }
 
@@ -2344,12 +2347,12 @@ class DrishtiDashboard {
 
                 .btn-group .btn:hover {
                     background: #f8f9fa;
-                    border-color: #415a77;
+                    border-color: #417d81;
                 }
 
                 .btn-group .btn.active {
-                    background: #415a77;
-                    border-color: #415a77;
+                    background: #417d81;
+                    border-color: #417d81;
                     color: #e0e1dd;
                 }
 
@@ -2367,12 +2370,12 @@ class DrishtiDashboard {
 
                 .tab-btn:hover {
                     background: #f8f9fa;
-                    color: #415a77;
+                    color: #417d81;
                 }
 
                 .tab-btn.active {
-                    border-bottom-color: #415a77;
-                    color: #415a77;
+                    border-bottom-color: #417d81;
+                    color: #417d81;
                     background: #e0e1dd;
                 }
 
@@ -2383,22 +2386,42 @@ class DrishtiDashboard {
                     font-size: 12px;
                 }
 
-                .zone-table-header th {
-                    background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
-                    color: #e0e1dd;
-                    padding: 12px 8px;
-                    text-align: center;
-                    font-weight: 600;
-                    border: 1px solid #778da9;
-                }
+             .zone-table-header th {
+    /* Primary color #3d7579 with a subtle darkening for depth */
+    background: linear-gradient(180deg, #3d7579 0%, #346569 100%);
+    
+    /* Pure white for maximum readability and a clean look */
+    color: #ffffff;
+    
+    /* Professional spacing and typography */
+    padding: 14px 10px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
 
-                .zone-table-subheader th {
-                    background: #1b263b;
-                    color: #e0e1dd;
-                    padding: 8px;
-                    font-size: 11px;
-                    border: 1px solid #778da9;
-                }
+    /* Border adjusted to a darker shade of your teal to look integrated */
+    border: 1px solid #2d5659;
+    
+    /* Optional: subtle top highlight for a "premium" feel */
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+               .zone-table-subheader th {
+    /* A slightly lighter, muted teal to distinguish it from the main header */
+    background: #4a8a8f; 
+    
+    /* Pure white for clarity, keeping the font size small as requested */
+    color: #ffffff;
+    padding: 8px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    
+    /* Border that blends with the teal theme instead of the old blue-grey */
+    border: 1px solid #366b6f;
+}
 
                 .zone-wise-table td {
                     padding: 10px 8px;
@@ -2436,7 +2459,7 @@ class DrishtiDashboard {
 
                 .region-detail-row {
                     background: #fff;
-                    border-left: 4px solid #415a77;
+                    border-left: 4px solid #417d81;
                 }
 
                 /* Category Table Styles */
@@ -2481,7 +2504,7 @@ class DrishtiDashboard {
 
                 .zone-breakdown-row {
                     background: #fff;
-                    border-left: 4px solid #415a77;
+                    border-left: 4px solid #417d81;
                 }
 
                 .drill-cell {
@@ -2489,7 +2512,7 @@ class DrishtiDashboard {
                 }
 
                 .drill-link {
-                    color: #415a77;
+                    color: #417d81;
                     text-decoration: underline;
                 }
 
@@ -2503,7 +2526,7 @@ class DrishtiDashboard {
                     margin-left: 10px;
                     font-size: 12px;
                     font-weight: bold;
-                    color: #415a77;
+                    color: #417d81;
                 }
 
                 /* Branch Table Styles */
@@ -2513,22 +2536,42 @@ class DrishtiDashboard {
                     font-size: 12px;
                 }
 
-                .branch-table-header th {
-                    background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
-                    color: #e0e1dd;
-                    padding: 12px 8px;
-                    text-align: center;
-                    font-weight: 600;
-                    border: 1px solid #778da9;
-                }
+              .branch-table-header th {
+    /* Using your teal color #3d7579 with a subtle professional gradient */
+    background: linear-gradient(180deg, #3d7579 0%, #346569 100%);
+    
+    /* Clean white text for better readability */
+    color: #ffffff;
+    
+    /* Standardized padding and typography */
+    padding: 12px 8px;
+    text-align: center;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
 
-                .branch-table-subheader th {
-                    background: #1b263b;
-                    color: #e0e1dd;
-                    padding: 8px;
-                    font-size: 11px;
-                    border: 1px solid #778da9;
-                }
+    /* Matching teal border to replace the old blue-grey */
+    border: 1px solid #2d5659;
+    
+    /* Internal highlight for a modern, polished look */
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+               .branch-table-subheader th {
+    /* A lighter, muted teal that complements #3d7579 */
+    background: #4a8a8f;
+    
+    /* White text for sharp contrast on a smaller font */
+    color: #ffffff;
+    padding: 8px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    
+    /* Matching teal border to replace the old grey-blue */
+    border: 1px solid #366b6f;
+}
 
                 .branch-table-row {
                     border-bottom: 1px solid #e0e1dd;
@@ -2565,7 +2608,7 @@ class DrishtiDashboard {
                 }
 
                 .branch-code-link {
-                    color: #415a77;
+                    color: #417d81;
                     font-weight: 600;
                     text-decoration: none;
                     font-size: 13px;
@@ -2587,7 +2630,7 @@ class DrishtiDashboard {
                 }
 
                 .zone-badge {
-                    background: #415a77;
+                    background: #417d81;
                     color: #e0e1dd;
                     padding: 2px 8px;
                     border-radius: 4px;
