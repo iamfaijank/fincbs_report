@@ -808,6 +808,21 @@ class DrishtiDashboard {
 					self.data = r.message;
 					self.permissions = r.message.permissions;
 					console.log("🛡️ Sahayog Dashboard Permissions:", self.permissions);
+
+					if (self.permissions && self.permissions.has_access === false) {
+						self.page.main.html(`
+							<div style="text-align: center; padding: 100px 20px;">
+								<div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
+								<h2 style="color: #d32f2f;">Access Denied</h2>
+								<p style="font-size: 16px; color: #666;">
+									You do not have a <b>Report Preference</b> set up. <br>
+									Please contact your administrator to grant access.
+								</p>
+							</div>
+						`);
+						return;
+					}
+
 					self.processNewApiResponse();
 					self.updateFilterCounts();
 					self.render();
