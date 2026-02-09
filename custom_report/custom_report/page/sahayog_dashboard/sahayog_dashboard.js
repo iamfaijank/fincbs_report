@@ -807,6 +807,7 @@ class DrishtiDashboard {
 				if (r.message) {
 					self.data = r.message;
 					self.permissions = r.message.permissions;
+					console.log("🛡️ Sahayog Dashboard Permissions:", self.permissions);
 					self.processNewApiResponse();
 					self.updateFilterCounts();
 					self.render();

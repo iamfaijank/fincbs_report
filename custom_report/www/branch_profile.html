@@ -2093,6 +2093,7 @@
 					this.state.currentSolId = solId;
 					this.hideSuggestions();
 					this.el.searchInput.value = "";
+					console.log("🛡️ Branch Profile Permissions State:", this.state.permissions);
 
 					try {
 						const cacheKey = "branch_" + solId;
@@ -2108,25 +2109,32 @@
 
 						if (!data || Object.keys(data).length === 0) throw "Not found";
 
-						// --- 🛡️ Permission Check ---
+						// --- 🛡️ Permission Check (Priority Logic) ---
 						if (this.state.permissions.is_restricted) {
 							const p = this.state.permissions;
 							let allowed = true;
 
-							// Check Zone
-							if (p.allowed_zones.length && !p.allowed_zones.includes(data.zone)) {
-								allowed = false;
+							// Priority 1: Specific SOL IDs
+							if (p.allowed_sol_ids && p.allowed_sol_ids.length > 0) {
+								// Ensure string comparison for Sol ID
+								if (!p.allowed_sol_ids.map(String).includes(String(data.sol_id))) {
+									allowed = false;
+								}
 							}
-							// Check Region (if all_regions not allowed)
-							if (allowed && !p.all_regions_allowed && p.allowed_regions.length && !p.allowed_regions.includes(data.region)) {
-								allowed = false;
-							}
-							// Check Sol ID
-							if (allowed && p.allowed_sol_ids.length && !p.allowed_sol_ids.includes(data.sol_id)) {
-								allowed = false;
+							// Priority 2: Zone & Region (if no specific SOL IDs)
+							else {
+								// Check Zone
+								if (p.allowed_zones.length && !p.allowed_zones.includes(data.zone)) {
+									allowed = false;
+								}
+								// Check Region
+								if (allowed && !p.all_regions_allowed && p.allowed_regions.length && !p.allowed_regions.includes(data.region)) {
+									allowed = false;
+								}
 							}
 
 							if (!allowed) {
+								console.error("🚫 Access Denied for SOL:", solId, "Permissions:", p);
 								this.el.branchName.textContent = "Access Denied";
 								this.el.branchZone.textContent =
 									this.el.branchRegion.textContent =
