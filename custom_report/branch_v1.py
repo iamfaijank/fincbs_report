@@ -33,15 +33,15 @@ def search_branches(txt: str):
         
         # Priority 2: Zone & Region
         else:
-            if perms.get("zones"):
-                conditions.append("zone IN %(zones)s")
-                params["zones"] = perms["zones"]
+            if perms.get("zone_ids"):
+                zone_regex = "|".join(perms["zone_ids"])
+                conditions.append(f"zone REGEXP '({zone_regex})'")
             
-            if not perms.get("all_regions") and perms.get("regions"):
-                conditions.append("region IN %(regions)s")
-                params["regions"] = perms["regions"]
+            if not perms.get("all_regions") and perms.get("region_ids"):
+                region_regex = "|".join(perms["region_ids"])
+                conditions.append(f"region REGEXP '({region_regex})'")
             
-            if not perms.get("zones") and not perms.get("regions") and not perms.get("all_regions"):
+            if not perms.get("zone_ids") and not perms.get("region_ids") and not perms.get("all_regions"):
                 conditions.append("1=0")
 
     where_clause = " AND ".join(conditions)
