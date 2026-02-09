@@ -4,7 +4,7 @@
  "docstatus": 0,
  "doctype": "Page",
  "idx": 0,
- "modified": "2025-12-27 10:52:51.262044",
+ "modified": "2026-02-09 16:38:51.500835",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "sahayog_dashboard",
@@ -16,6 +16,9 @@
   },
   {
    "role": "System Manager"
+  },
+  {
+   "role": "Employee"
   }
  ],
  "script": null,

@@ -7,6 +7,8 @@ from frappe.utils import flt, getdate
 # BRANCH APIs
 # ============================================================================
 
+from custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard import get_user_report_permissions
+
 @frappe.whitelist()
 def search_branches(txt: str):
     """
@@ -17,10 +19,35 @@ def search_branches(txt: str):
     if not txt:
         return []
 
-    txt_like = f"%{txt}%"
+    user = frappe.session.user
+    perms = get_user_report_permissions(user)
+
+    conditions = ["(sol_id LIKE %(txt)s OR branch LIKE %(txt)s)"]
+    params = {"txt": f"%{txt}%"}
+
+    if perms.get("is_restricted"):
+        # Priority 1: Specific SOL IDs
+        if perms.get("sol_ids"):
+            conditions.append("sol_id IN %(sol_ids)s")
+            params["sol_ids"] = perms["sol_ids"]
+        
+        # Priority 2: Zone & Region
+        else:
+            if perms.get("zones"):
+                conditions.append("zone IN %(zones)s")
+                params["zones"] = perms["zones"]
+            
+            if not perms.get("all_regions") and perms.get("regions"):
+                conditions.append("region IN %(regions)s")
+                params["regions"] = perms["regions"]
+            
+            if not perms.get("zones") and not perms.get("regions") and not perms.get("all_regions"):
+                conditions.append("1=0")
+
+    where_clause = " AND ".join(conditions)
 
     return frappe.db.sql(
-        """
+        f"""
         SELECT
             name,
             sol_id,
@@ -29,11 +56,11 @@ def search_branches(txt: str):
             region,
             state
         FROM `tabSahayog Branch`
-        WHERE sol_id LIKE %(txt)s OR branch LIKE %(txt)s
+        WHERE {where_clause}
         ORDER BY sol_id ASC
         LIMIT 10
         """,
-        {"txt": txt_like},
+        params,
         as_dict=True,
     )
 

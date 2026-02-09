@@ -1237,7 +1237,7 @@
 					<svg
 						width="16"
 						height="16"
-						viewBox="0 0 24"
+						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
 						stroke-width="2"
@@ -1953,6 +1953,13 @@
 					MAX_RECENT_BRANCHES: 5,
 					recentBranches: [],
 					formatMode: "words",
+					permissions: {
+						is_restricted: {{ 'true' if user_permissions.is_restricted else 'false' }},
+						allowed_zones: {{ allowed_zones | tojson }},
+						allowed_regions: {{ allowed_regions | tojson }},
+						allowed_sol_ids: {{ allowed_sol_ids | tojson }},
+						all_regions_allowed: {{ 'true' if all_regions_allowed else 'false' }}
+					}
 				},
 
 				el: {
@@ -2086,12 +2093,7 @@
 					this.state.currentSolId = solId;
 					this.hideSuggestions();
 					this.el.searchInput.value = "";
-
-					if (pushState) {
-						const url = new URL(window.location);
-						url.searchParams.set("sol_id", solId);
-						window.history.pushState({}, "", url);
-					}
+					console.log("🛡️ Branch Profile Permissions State:", this.state.permissions);
 
 					try {
 						const cacheKey = "branch_" + solId;
@@ -2105,7 +2107,52 @@
 							if (data) this.setCache(cacheKey, data);
 						}
 
-						if (!data) throw "Not found";
+						if (!data || Object.keys(data).length === 0) throw "Not found";
+
+						// --- 🛡️ Permission Check (Priority Logic) ---
+						if (this.state.permissions.is_restricted) {
+							const p = this.state.permissions;
+							let allowed = true;
+
+							// Priority 1: Specific SOL IDs
+							if (p.allowed_sol_ids && p.allowed_sol_ids.length > 0) {
+								// Ensure string comparison for Sol ID
+								if (!p.allowed_sol_ids.map(String).includes(String(data.sol_id))) {
+									allowed = false;
+								}
+							}
+							// Priority 2: Zone & Region (if no specific SOL IDs)
+							else {
+								// Check Zone
+								if (p.allowed_zones.length && !p.allowed_zones.includes(data.zone)) {
+									allowed = false;
+								}
+								// Check Region
+								if (allowed && !p.all_regions_allowed && p.allowed_regions.length && !p.allowed_regions.includes(data.region)) {
+									allowed = false;
+								}
+							}
+
+							if (!allowed) {
+								console.error("🚫 Access Denied for SOL:", solId, "Permissions:", p);
+								this.el.branchName.textContent = "Access Denied";
+								this.el.branchZone.textContent =
+									this.el.branchRegion.textContent =
+									this.el.branchState.textContent =
+										"--";
+								this.toggleBranchDataVisibility(false);
+								const msgBox = this.el.noBranchSelectedMessage;
+								msgBox.innerHTML = `<p style="color: #dc2626; font-weight: bold;">Unauthorized Access</p><p>You do not have permission to view details for this branch (${solId}).</p>`;
+								msgBox.style.display = "block";
+								return;
+							}
+						}
+
+						if (pushState) {
+							const url = new URL(window.location);
+							url.searchParams.set("sol_id", solId);
+							window.history.pushState({}, "", url);
+						}
 
 						this.el.branchName.textContent = `${data.branch} (${data.sol_id})`;
 						this.el.branchZone.textContent = data.zone || "--";

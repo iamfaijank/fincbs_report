@@ -799,13 +799,15 @@ class DrishtiDashboard {
 				view: this.state.viewType,
 				target_type: this.state.targetType,
 				filters: JSON.stringify({
-					zones: [],
+					zones: this.state.selectedZones,
 				}),
 				selected_date: this.state.selectedDate,
 			},
 			callback: (r) => {
 				if (r.message) {
 					self.data = r.message;
+					self.permissions = r.message.permissions;
+					console.log("🛡️ Sahayog Dashboard Permissions:", self.permissions);
 					self.processNewApiResponse();
 					self.updateFilterCounts();
 					self.render();
