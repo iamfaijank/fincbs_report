@@ -49,8 +49,12 @@
 			}
 
 			@keyframes moveBackground {
-				from { background-position: 0 0; }
-				to { background-position: 1000px 1000px; }
+				from {
+					background-position: 0 0;
+				}
+				to {
+					background-position: 1000px 1000px;
+				}
 			}
 
 			.main-card {
@@ -281,11 +285,17 @@
 				margin-bottom: 20px;
 			}
 			@keyframes spin {
-				to { transform: rotate(360deg); }
+				to {
+					transform: rotate(360deg);
+				}
 			}
 			@keyframes fadeIn {
-				from { opacity: 0; }
-				to { opacity: 1; }
+				from {
+					opacity: 0;
+				}
+				to {
+					opacity: 1;
+				}
 			}
 
 			.checklist {
@@ -335,12 +345,17 @@
 				color: white;
 			}
 			.success .check-icon::after {
-				content: '✓';
+				content: "✓";
 			}
 
 			@keyframes blink {
-				0%, 100% { opacity: 1; }
-				50% { opacity: 0.4; }
+				0%,
+				100% {
+					opacity: 1;
+				}
+				50% {
+					opacity: 0.4;
+				}
 			}
 			.blink {
 				animation: blink 1s ease-in-out infinite;
@@ -504,7 +519,7 @@
 					</div>
 
 					<button class="btn-main" :disabled="!isComplete" @click="calculate">
-						Process Premature Exit ➔
+						Calculate Premature ➔
 					</button>
 
 					<div
@@ -603,7 +618,9 @@
 							</div>
 						</div>
 
-						<div style="margin-top: 50px; display: flex; align-items: center; gap: 15px;">
+						<div
+							style="margin-top: 50px; display: flex; align-items: center; gap: 15px"
+						>
 							<button
 								@click="reset"
 								style="
@@ -616,13 +633,30 @@
 									color: #64748b;
 									transition: 0.2s;
 								"
-								onmouseover="this.style.background='#f1f5f9'"
-								onmouseout="this.style.background='none'"
+								onmouseover="this.style.background = '#f1f5f9'"
+								onmouseout="this.style.background = 'none'"
 							>
 								← Back (ESC / Backspace)
 							</button>
-							<div style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-								<span style="padding: 2px 6px; background: #e2e8f0; border-radius: 4px; color: #475569;">0-9</span> New Entry
+							<div
+								style="
+									font-size: 11px;
+									color: #94a3b8;
+									font-weight: 600;
+									text-transform: uppercase;
+									letter-spacing: 0.5px;
+								"
+							>
+								<span
+									style="
+										padding: 2px 6px;
+										background: #e2e8f0;
+										border-radius: 4px;
+										color: #475569;
+									"
+									>0-9</span
+								>
+								New Entry
 							</div>
 						</div>
 					</div>
@@ -708,7 +742,7 @@
 					{ label: "Connecting to Finacle core", status: "pending" },
 					{ label: "Verifying Account Number", status: "pending" },
 					{ label: "Fetching Deposit Details", status: "pending" },
-					{ label: "Calculating Premature Interest & Penalty", status: "pending" }
+					{ label: "Calculating Premature Interest & Penalty", status: "pending" },
 				],
 				data: null,
 
@@ -780,22 +814,23 @@
 				get instructionMsg() {
 					const count = this.digits.filter((d) => d !== "").length;
 					if (count === 0) return "Please type 15-digit Account Number to begin";
-					if (count < 15) return `Great! ${count} digits entered, ${15 - count} more to go...`;
+					if (count < 15)
+						return `Great! ${count} digits entered, ${15 - count} more to go...`;
 					return "Perfect! Everything looks good. Press Enter to proceed ↵";
 				},
 
 				async calculate() {
 					this.isLoading = true;
-					this.calculationSteps.forEach(s => s.status = "pending");
-					
-					const sleep = (ms) => new Promise(res => setTimeout(res, ms));
-					
+					this.calculationSteps.forEach((s) => (s.status = "pending"));
+
+					const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+
 					for (let step of this.calculationSteps) {
 						step.status = "loading";
 						await sleep(800 + Math.random() * 500);
 						step.status = "success";
 					}
-					
+
 					await sleep(300);
 
 					const principal = 500000;
@@ -812,7 +847,7 @@
 						penalty: penalty,
 						total: principal + interest - penalty,
 					};
-					
+
 					this.isLoading = false;
 					this.step = 2;
 				},
