@@ -2578,8 +2578,8 @@ const BranchManagerProfile = {
                     // Header Info
                     this.el.name.textContent = this.value(d.bm_name);
                     this.el.mobile.textContent = this.value(d.bm_mob_no);
-                    this.el.vintage.textContent = this.value(d.bm_vintage);
                     this.el.doj.textContent = this.formatDate(d.bm_doj);
+                    this.el.vintage.textContent = this.calculateExperience(d.bm_doj);
                     this.el.branchOpeningDate.textContent = this.formatDate(d.branch_opening_date);
                     this.el.chName.textContent = this.value(d.ch_name);
                     this.el.branchName.textContent = this.value(d.branch_name);
