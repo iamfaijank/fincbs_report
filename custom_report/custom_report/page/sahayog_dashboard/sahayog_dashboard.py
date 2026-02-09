@@ -30,7 +30,8 @@ def get_user_report_permissions(user):
         "is_restricted": False,
         "all_regions": False,
         "zone_ids": [], # Numeric IDs
-        "region_ids": [] # Numeric IDs
+        "region_ids": [], # Numeric IDs
+        "has_access": True
     }
 
     # System Manager usually sees everything
@@ -39,6 +40,7 @@ def get_user_report_permissions(user):
 
     pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
     if not pref_name:
+        permissions["has_access"] = False
         return permissions
 
     doc = frappe.get_doc("Report Preference", pref_name)
