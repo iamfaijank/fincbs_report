@@ -16,6 +16,45 @@ from datetime import datetime
 CATEGORY_ORDER = ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Zero Level"]
 
 
+def get_user_report_permissions(user):
+    """
+    Fetches permissions from 'Report Preference' for the current user.
+    Returns restricted lists for zones, regions, and sol_ids.
+    """
+    permissions = {
+        "zones": [],
+        "regions": [],
+        "sol_ids": [],
+        "is_restricted": False,
+        "all_regions": False
+    }
+
+    # System Manager usually sees everything
+    if "System Manager" in frappe.get_roles(user):
+        return permissions
+
+    pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
+    if not pref_name:
+        # If no preference is set for a non-admin, they might see nothing 
+        # or you can return default full access. Here we assume restricted.
+        return permissions
+
+    doc = frappe.get_doc("Report Preference", pref_name)
+    permissions["is_restricted"] = True
+    permissions["all_regions"] = doc.all_regions
+    
+    if hasattr(doc, "zone"):
+        permissions["zones"] = [d.zone for d in doc.zone if d.zone]
+    
+    if hasattr(doc, "region"):
+        permissions["regions"] = [d.region for d in doc.region if d.region]
+        
+    if hasattr(doc, "sol_id"):
+        permissions["sol_ids"] = [d.sol_id for d in doc.sol_id if d.sol_id]
+        
+    return permissions
+
+
 def calculate_category(achievement_pct):
     """Runtime category calculation based on Target vs Achievement %."""
     if achievement_pct >= 100: return "Pinnacle"
@@ -249,6 +288,9 @@ def get_sahayog_dashboard(
     filters=None,
     selected_date=None
 ):
+    user = frappe.session.user
+    perms = get_user_report_permissions(user)
+    
     months = get_fy_months_with_dates(financial_year, view, selected_date, target_type)
     if not months:
         return {
@@ -259,26 +301,53 @@ def get_sahayog_dashboard(
             "months": [],
             "zone_wise": [],
             "category_wise": [],
-            "branch_wise": []
+            "branch_wise": [],
+            "permissions": perms
         }
     
     month_keys = [m[0] for m in months]
     
-    zone_filter = []
+    # Merge UI filters with User Permissions
+    combined_filters = {}
+    if perms["is_restricted"]:
+        # 1. Zone Filter: Agar user restricted hai aur zones specified hain
+        if perms["zones"]:
+            combined_filters["zone"] = ["in", perms["zones"]]
+            
+        # 2. Region Filter: Agar 'all_regions' checked NAHI hai aur specific regions hain
+        if not perms["all_regions"] and perms["regions"]:
+            combined_filters["region"] = ["in", perms["regions"]]
+            
+        # 3. Sol ID Filter: Agar specific branches allowed hain
+        if perms["sol_ids"]:
+            combined_filters["sol_id"] = ["in", perms["sol_ids"]]
+
     if filters:
         try:
             f_dict = json.loads(filters)
-            zone_filter = f_dict.get("zones", [])
+            ui_zones = f_dict.get("zones", [])
+            if ui_zones and "all" not in ui_zones:
+                # Intersect UI filter with permissions if restricted
+                if perms["is_restricted"] and perms["zones"]:
+                    allowed_ui_zones = [z for z in ui_zones if z in perms["zones"]]
+                    combined_filters["zone"] = ["in", allowed_ui_zones] if allowed_ui_zones else ["in", ["_NONE_"]]
+                else:
+                    combined_filters["zone"] = ["in", ui_zones]
         except:
             pass
     
-    targets_map = get_targets_map(financial_year, target_type, month_keys)
+    # Filter targets map to only include allowed sol_ids
+    allowed_sol_ids = None
+    if perms["is_restricted"] and perms["sol_ids"]:
+        allowed_sol_ids = perms["sol_ids"]
+        
+    targets_map = get_targets_map(financial_year, target_type, month_keys, allowed_sol_ids)
     
     all_branch_data = []
     for month_key, month_num, year, eff_date in months:
         branch_filters = {"date": eff_date}
-        if zone_filter and "all" not in zone_filter:
-            branch_filters["zone"] = ["in", zone_filter]
+        # Apply combined permissions and UI filters
+        branch_filters.update(combined_filters)
         
         month_data = frappe.get_all(
             "Branch Category Report",
@@ -301,17 +370,22 @@ def get_sahayog_dashboard(
         "months": [{"key": m[0], "display": f"{m[0]}-{str(m[2])[-2:]}", "date": m[3]} for m in months],
         "zone_wise": zone_wise,
         "category_wise": category_wise,
-        "branch_wise": branch_wise
+        "branch_wise": branch_wise,
+        "permissions": perms
     }
 
 
-def get_targets_map(financial_year, target_type, month_keys):
+def get_targets_map(financial_year, target_type, month_keys, allowed_sol_ids=None):
     targets_map = defaultdict(lambda: defaultdict(float))
     
+    base_filters = {"financial_year": financial_year}
+    if allowed_sol_ids:
+        base_filters["sol_id"] = ["in", allowed_sol_ids]
+
     if target_type == "Monthly":
         monthly_targets = frappe.get_all(
             "Target Vs Achivement",
-            filters={"type": "Monthly", "financial_year": financial_year, "month": ["in", month_keys]},
+            filters={**base_filters, "type": "Monthly", "month": ["in", month_keys]},
             fields=["sol_id", "target", "month"]
         )
         for t in monthly_targets:
@@ -322,7 +396,7 @@ def get_targets_map(financial_year, target_type, month_keys):
     elif target_type == "YTD":
         ytd_targets = frappe.get_all(
             "Target Vs Achivement",
-            filters={"type": "YTD", "financial_year": financial_year},
+            filters={**base_filters, "type": "YTD"},
             fields=["sol_id", "target"]
         )
         for t in ytd_targets:
@@ -334,7 +408,7 @@ def get_targets_map(financial_year, target_type, month_keys):
     else:  # Yearly
         yearly_targets = frappe.get_all(
             "Target Vs Achivement",
-            filters={"type": "Yearly", "financial_year": financial_year},
+            filters={**base_filters, "type": "Yearly"},
             fields=["sol_id", "target"]
         )
         for t in yearly_targets:
