@@ -26,31 +26,23 @@ def search_branches(txt: str):
     params = {"txt": f"%{txt}%"}
 
     if perms.get("is_restricted"):
-        # If All Regions is checked and no Zone is specified, it's effectively full access
-        if perms.get("all_regions") and not perms.get("zones"):
-            pass 
+        # Priority 1: Specific SOL IDs
+        if perms.get("sol_ids"):
+            conditions.append("sol_id IN %(sol_ids)s")
+            params["sol_ids"] = perms["sol_ids"]
+        
+        # Priority 2: Zone & Region
         else:
-            allowed_sol_ids = set()
-            
-            # 1. Zone
             if perms.get("zones"):
-                zone_sols = frappe.get_all("Sahayog Branch", filters={"zone": ["in", perms["zones"]]}, pluck="sol_id")
-                allowed_sol_ids.update(zone_sols)
+                conditions.append("zone IN %(zones)s")
+                params["zones"] = perms["zones"]
             
-            # 2. Region (only if all_regions is NOT checked)
             if not perms.get("all_regions") and perms.get("regions"):
-                region_sols = frappe.get_all("Sahayog Branch", filters={"region": ["in", perms["regions"]]}, pluck="sol_id")
-                allowed_sol_ids.update(region_sols)
-                
-            # 3. Explicit Sol IDs
-            if perms.get("sol_ids"):
-                allowed_sol_ids.update(perms["sol_ids"])
-
-            if allowed_sol_ids:
-                conditions.append("sol_id IN %(allowed_sols)s")
-                params["allowed_sols"] = list(allowed_sol_ids)
-            elif not perms.get("all_regions"):
-                conditions.append("1=0") # Force no results
+                conditions.append("region IN %(regions)s")
+                params["regions"] = perms["regions"]
+            
+            if not perms.get("zones") and not perms.get("regions") and not perms.get("all_regions"):
+                conditions.append("1=0")
 
     where_clause = " AND ".join(conditions)
 

@@ -307,34 +307,23 @@ def get_sahayog_dashboard(
     
     month_keys = [m[0] for m in months]
     
-    # Merge UI filters with User Permissions using OR logic (Union)
+    # Merge UI filters with User Permissions (Simplified Logic)
     combined_filters = {}
     if perms["is_restricted"]:
-        # Edge Case: If All Regions is checked and no Zone is specified, it's effectively full access
-        if perms["all_regions"] and not perms["zones"]:
-            pass # No additional filters needed
+        # Priority 1: Specific SOL IDs (if provided, they take precedence)
+        if perms["sol_ids"]:
+            combined_filters["sol_id"] = ["in", perms["sol_ids"]]
+        
+        # Priority 2: Zone & Region (if no specific SOL IDs provided)
         else:
-            allowed_sol_ids = set()
-            
-            # 1. Get SOL IDs from allowed Zones
             if perms["zones"]:
-                zone_sols = frappe.get_all("Sahayog Branch", filters={"zone": ["in", perms["zones"]]}, pluck="sol_id")
-                allowed_sol_ids.update(zone_sols)
-                
-            # 2. Get SOL IDs from allowed Regions (only if all_regions is NOT checked)
+                combined_filters["zone"] = ["in", perms["zones"]]
+            
             if not perms["all_regions"] and perms["regions"]:
-                region_sols = frappe.get_all("Sahayog Branch", filters={"region": ["in", perms["regions"]]}, pluck="sol_id")
-                allowed_sol_ids.update(region_sols)
-                
-            # 3. Add explicitly allowed SOL IDs
-            if perms["sol_ids"]:
-                allowed_sol_ids.update(perms["sol_ids"])
-                
-            # Apply the final consolidated list
-            if allowed_sol_ids:
-                combined_filters["sol_id"] = ["in", list(allowed_sol_ids)]
-            elif not perms["all_regions"]:
-                # If restricted but no match found and not all_regions, show nothing
+                combined_filters["region"] = ["in", perms["regions"]]
+            
+            # If everything is empty but restricted, show nothing
+            if not perms["zones"] and not perms["regions"] and not perms["all_regions"]:
                 combined_filters["sol_id"] = ["in", ["_NONE_"]]
 
     if filters:
