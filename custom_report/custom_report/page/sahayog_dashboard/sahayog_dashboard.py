@@ -9,6 +9,7 @@ import frappe
 from frappe import _
 from frappe.utils import getdate, formatdate
 import json
+import re
 from collections import defaultdict
 from datetime import datetime
 
@@ -20,13 +21,16 @@ def get_user_report_permissions(user):
     """
     Fetches permissions from 'Report Preference' for the current user.
     Returns restricted lists for zones, regions, and sol_ids.
+    Numeric values are extracted for zones and regions to avoid string matching issues.
     """
     permissions = {
         "zones": [],
         "regions": [],
         "sol_ids": [],
         "is_restricted": False,
-        "all_regions": False
+        "all_regions": False,
+        "zone_ids": [], # Numeric IDs
+        "region_ids": [] # Numeric IDs
     }
 
     # System Manager usually sees everything
@@ -35,19 +39,21 @@ def get_user_report_permissions(user):
 
     pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
     if not pref_name:
-        # If no preference is set for a non-admin, they might see nothing 
-        # or you can return default full access. Here we assume restricted.
         return permissions
 
     doc = frappe.get_doc("Report Preference", pref_name)
+    permissions["pref_name"] = pref_name
     permissions["is_restricted"] = True
     permissions["all_regions"] = doc.all_regions
     
     if hasattr(doc, "zone"):
         permissions["zones"] = [d.zone for d in doc.zone if d.zone]
+        # Extract numbers: "ZONE-1" or "Zone - 1" -> "1"
+        permissions["zone_ids"] = [re.sub(r"\D", "", d.zone) for d in doc.zone if d.zone and re.sub(r"\D", "", d.zone)]
     
     if hasattr(doc, "region"):
         permissions["regions"] = [d.region for d in doc.region if d.region]
+        permissions["region_ids"] = [re.sub(r"\D", "", d.region) for d in doc.region if d.region and re.sub(r"\D", "", d.region)]
         
     if hasattr(doc, "sol_id"):
         permissions["sol_ids"] = [d.sol_id for d in doc.sol_id if d.sol_id]
@@ -316,14 +322,37 @@ def get_sahayog_dashboard(
         
         # Priority 2: Zone & Region (if no specific SOL IDs provided)
         else:
-            if perms["zones"]:
-                combined_filters["zone"] = ["in", perms["zones"]]
+            # 🛡️ Numeric Matching Logic for Zones
+            if perms["zone_ids"]:
+                # Match "ZONE-1", "Zone 1", etc. using numeric suffix
+                zone_conditions = []
+                for zid in perms["zone_ids"]:
+                    zone_conditions.append(f"%{zid}")
+                combined_filters["zone"] = ["like", zone_conditions] if len(zone_conditions) == 1 else ["in", perms["zones"]]
+                
+                # If multiple zone IDs, we fetch actual names from DB to use IN
+                if len(perms["zone_ids"]) > 1:
+                    regex_pattern = f"({'|'.join(perms['zone_ids'])})"
+                    matched_zones = frappe.db.sql("""
+                        SELECT DISTINCT zone FROM `tabSahayog Branch` 
+                        WHERE zone REGEXP %s
+                    """, (regex_pattern), pluck=True)
+                    combined_filters["zone"] = ["in", matched_zones] if matched_zones else ["in", ["_NONE_"]]
             
-            if not perms["all_regions"] and perms["regions"]:
-                combined_filters["region"] = ["in", perms["regions"]]
+            # 🛡️ Numeric Matching Logic for Regions
+            if not perms["all_regions"] and perms["region_ids"]:
+                if len(perms["region_ids"]) > 1:
+                    regex_pattern = f"({'|'.join(perms['region_ids'])})"
+                    matched_regions = frappe.db.sql("""
+                        SELECT DISTINCT region FROM `tabSahayog Branch` 
+                        WHERE region REGEXP %s
+                    """, (regex_pattern), pluck=True)
+                    combined_filters["region"] = ["in", matched_regions] if matched_regions else ["in", ["_NONE_"]]
+                else:
+                    combined_filters["region"] = ["like", f"%{perms['region_ids'][0]}"]
             
             # If everything is empty but restricted, show nothing
-            if not perms["zones"] and not perms["regions"] and not perms["all_regions"]:
+            if not perms["zone_ids"] and not perms["region_ids"] and not perms["all_regions"]:
                 combined_filters["sol_id"] = ["in", ["_NONE_"]]
 
     if filters:
