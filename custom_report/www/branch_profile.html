@@ -2584,7 +2584,7 @@ const BranchManagerProfile = {
                     this.el.chName.textContent = this.value(d.ch_name);
                     this.el.branchName.textContent = this.value(d.branch_name);
                     this.el.branchDistrict.textContent = this.value(d.district);
-                    this.el.branchVintage.textContent = this.value(d.branch_vintage);
+                    this.el.branchVintage.textContent = this.calculateExperience(d.branch_opening_date);
                     this.el.branchEmail.textContent = this.value(branchEmailValue);
                     this.el.chMobile.textContent = this.value(d.ch_mob_no);
 
