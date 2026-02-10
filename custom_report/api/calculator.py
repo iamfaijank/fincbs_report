@@ -54,12 +54,16 @@ def get_account_details(foracid=None):
             
             # Fetch Transactions
             logs.append("Fetching transaction history...")
+            
+            # Get Total Sum of Transactions
+            cursor.execute("SELECT SUM(tran_amt) FROM tbaadm.htd WHERE acid = %s", (acid,))
+            total_tran_sum = float(cursor.fetchone()[0] or 0.0)
+            
             tran_query = """
-                SELECT value_date, tran_amt, part_tran_type 
+                SELECT value_date, tran_amt, part_tran_type, tran_particular 
                 FROM tbaadm.htd 
                 WHERE acid = %s 
-                ORDER BY value_date DESC 
-                LIMIT 10
+                ORDER BY value_date DESC, tran_date DESC
             """
             cursor.execute(tran_query, (acid,))
             trans = cursor.fetchall()
@@ -69,7 +73,8 @@ def get_account_details(foracid=None):
                 transactions.append({
                     "date": tr[0].strftime("%d-%b-%Y").upper() if tr[0] else "N/A",
                     "amount": float(tr[1]) if tr[1] is not None else 0.0,
-                    "type": tr[2] # 'C' or 'D'
+                    "type": tr[2], # 'C' or 'D'
+                    "particular": tr[3] if tr[3] else ""
                 })
             
             logs.append(f"Found {len(transactions)} transactions.")
@@ -86,6 +91,7 @@ def get_account_details(foracid=None):
                 "maturity_amount": float(result[9]) if result[9] is not None else 0.0,
                 "deposit_period_mths": int(result[10]) if result[10] is not None else 0,
                 "deposit_amount": float(result[11]) if result[11] is not None else 0.0,
+                "total_tran_sum": total_tran_sum,
                 "transactions": transactions,
                 "status_log": logs,
                 "success": True

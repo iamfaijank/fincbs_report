@@ -866,9 +866,15 @@
 						</div>
 
 						<div class="panel-card panel-transactions">
-							<h3 style="flex-shrink: 0; margin-top: 0; font-size: 14px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 25px;">
-								Recent Transactions
-							</h3>
+							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-shrink: 0;">
+								<h3 style="margin: 0; font-size: 14px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">
+									Recent Transactions
+								</h3>
+								<div style="text-align: right;">
+									<span style="font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 2px;">Total Transacted</span>
+									<span class="mono" style="font-size: 14px; font-weight: 800; color: var(--accent);">[[ formatCurrency(data.total_tran_sum) ]]</span>
+								</div>
+							</div>
 
 							<div class="tran-list" v-if="data.transactions && data.transactions.length">
 								<div v-for="t in data.transactions" class="tran-item">
@@ -892,10 +898,6 @@
 							<div v-else style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0; color: #94a3b8;">
 								<div style="font-size: 24px; margin-bottom: 10px;">📋</div>
 								<div style="font-size: 12px; font-weight: 600;">No transactions found</div>
-							</div>
-
-							<div style="margin-top: 20px; background: #f8fafc; padding: 15px; border-radius: 12px; font-size: 11px; color: #64748b; border: 1px solid #e2e8f0; flex-shrink: 0;">
-								Displaying last 10 transactions from Finacle History.
 							</div>
 						</div>
 
@@ -1180,6 +1182,7 @@
 								maturity_amount: result.maturity_amount || 0,
 								deposit_period_mths: result.deposit_period_mths || 0,
 								deposit_amount: result.deposit_amount || 0,
+								total_tran_sum: result.total_tran_sum || 0,
 								transactions: result.transactions || [],
 							};
 
