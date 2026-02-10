@@ -412,11 +412,16 @@
 				gap: 8px;
 			}
 			.tab-item.active {
-				background: var(--primary);
+				background: #10b981; /* Green */
 				color: white;
-				box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.1);
+				box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.2);
 			}
-			.tab-item:hover:not(.active) {
+			.tab-item.disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+				filter: grayscale(1);
+			}
+			.tab-item:hover:not(.active):not(.disabled) {
 				background: #e2e8f0;
 				color: var(--primary);
 			}
@@ -430,6 +435,18 @@
 			.tab-item:not(.active) .tab-rate {
 				background: #cbd5e1;
 				color: #475569;
+			}
+			.check-badge {
+				width: 16px;
+				height: 16px;
+				background: white;
+				color: #10b981;
+				border-radius: 50%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 10px;
+				font-weight: 800;
 			}
 		</style>
 	</head>
@@ -627,9 +644,12 @@
 							v-for="p in products"
 							:key="p.name"
 							class="tab-item"
-							:class="{ active: selectedProduct.name === p.name }"
-							@click="selectProduct(p)"
+							:class="{ 
+								active: selectedProduct.name === p.name,
+								disabled: selectedProduct.name !== p.name
+							}"
 						>
+							<div v-if="selectedProduct.name === p.name" class="check-badge">✓</div>
 							[[ p.name ]]
 							<span class="tab-rate">[[ p.rate ]]%</span>
 						</div>
@@ -1044,7 +1064,15 @@
 								acct_no: foracid,
 								branch_name: `${result.sol_desc} (${result.sol_id})`,
 								acct_opn_date: result.acct_opn_date || "N/A",
+								schm_code: result.schm_code,
 							};
+
+							// Auto-select product based on scheme code
+							if (result.schm_code === "2005") {
+								this.selectedProduct = this.products.find((p) => p.name === "SMBG");
+							} else {
+								this.selectedProduct = this.products.find((p) => p.name === "RD");
+							}
 
 							this.updateCalculations();
 							this.step = 2;
