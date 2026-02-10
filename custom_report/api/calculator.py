@@ -30,7 +30,8 @@ def get_account_details(foracid=None):
                 g.cif_id, 
                 g.acct_name, 
                 s.sol_id, 
-                s.sol_desc 
+                s.sol_desc,
+                g.acct_opn_date
             FROM tbaadm.gam g
             JOIN tbaadm.sol s ON g.sol_id = s.sol_id
             WHERE g.foracid = %s
@@ -45,6 +46,7 @@ def get_account_details(foracid=None):
                 "acct_name": result[1],
                 "sol_id": result[2],
                 "sol_desc": result[3],
+                "acct_opn_date": result[4].strftime("%d-%b-%Y").upper() if result[4] else "N/A",
                 "status_log": logs,
                 "success": True
             }

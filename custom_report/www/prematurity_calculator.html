@@ -690,15 +690,14 @@
 										[[ data.branch_name ]]
 									</p>
 								</div>
-								<div>
-									<label class="seg-label" style="padding: 0"
-										>DEPOSIT DATE</label
-									>
-									<p style="font-weight: 600; margin: 5px 0" class="mono">
-										[[ data.acct_opn_date ]]
-									</p>
-								</div>
-							</div>
+															<div>
+																<label class="seg-label" style="padding: 0">ACCOUNT OPENING DATE</label>
+																<p style="font-weight: 600; margin: 5px 0" class="mono">
+																	[[ data.acct_opn_date ]]
+																</p>
+															</div>
+														</div>
+								
 
 							<div
 								style="
@@ -976,7 +975,7 @@
 								cust_name: result.acct_name || "N/A",
 								acct_no: foracid,
 								branch_name: `${result.sol_desc} (${result.sol_id})`,
-								acct_opn_date: "01-JAN-2024",
+								acct_opn_date: result.acct_opn_date || "N/A",
 							};
 
 							this.updateCalculations();
