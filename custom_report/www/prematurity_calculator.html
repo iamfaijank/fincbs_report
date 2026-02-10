@@ -560,11 +560,33 @@
 						</div>
 					</div>
 
-					<button class="btn-main" :disabled="!isComplete" @click="calculate">
-						Calculate Premature ➔
+					<button
+						class="btn-main"
+						:disabled="!isComplete || isLoading"
+						@click="calculate"
+					>
+						[[ isLoading ? 'Processing...' : 'Calculate Premature ➔' ]]
 					</button>
 
 					<div
+						v-if="errorMessage"
+						style="
+							margin-top: 20px;
+							color: #ef4444;
+							font-size: 14px;
+							font-weight: 600;
+							background: #fef2f2;
+							padding: 10px 20px;
+							border-radius: 12px;
+							border: 1px solid #fee2e2;
+							display: inline-block;
+						"
+					>
+						⚠️ [[ errorMessage ]]
+					</div>
+
+					<div
+						v-else
 						class="blink"
 						style="
 							margin-top: 25px;
@@ -651,7 +673,9 @@
 										>[[ data.acct_no.slice(0,4) ]]</span
 									>
 									<span style="color: #cbd5e1; font-weight: 300">/</span>
-									<span style="color: #9333ea">[[ data.acct_no.slice(4,8) ]]</span>
+									<span style="color: #9333ea"
+										>[[ data.acct_no.slice(4,8) ]]</span
+									>
 									<span style="color: #cbd5e1; font-weight: 300">/</span>
 									<span style="color: var(--accent)"
 										>[[ data.acct_no.slice(8,15) ]]</span
@@ -667,7 +691,9 @@
 									</p>
 								</div>
 								<div>
-									<label class="seg-label" style="padding: 0">DEPOSIT DATE</label>
+									<label class="seg-label" style="padding: 0"
+										>DEPOSIT DATE</label
+									>
 									<p style="font-weight: 600; margin: 5px 0" class="mono">
 										[[ data.acct_opn_date ]]
 									</p>
@@ -675,7 +701,12 @@
 							</div>
 
 							<div
-								style="margin-top: 50px; display: flex; align-items: center; gap: 15px"
+								style="
+									margin-top: 50px;
+									display: flex;
+									align-items: center;
+									gap: 15px;
+								"
 							>
 								<button
 									@click="reset"
@@ -731,7 +762,9 @@
 								</div>
 								<div class="summary-item">
 									<span>Accrued Interest ([[ selectedProduct.rate ]]%)</span>
-									<span class="mono" style="color: var(--accent); font-weight: 600"
+									<span
+										class="mono"
+										style="color: var(--accent); font-weight: 600"
 										>+ [[ formatCurrency(data.interest) ]]</span
 									>
 								</div>
@@ -739,7 +772,9 @@
 									<span style="color: var(--warning); font-weight: 700"
 										>Premature Penalty</span
 									>
-									<span class="mono" style="color: var(--warning); font-weight: 700"
+									<span
+										class="mono"
+										style="color: var(--warning); font-weight: 700"
 										>- [[ formatCurrency(data.penalty) ]]</span
 									>
 								</div>
@@ -779,8 +814,8 @@
 									line-height: 1.5;
 								"
 							>
-								ℹ️ <strong>Note:</strong> Penalty of 1% has been applied as per banking
-								norms for premature withdrawal before the maturity date.
+								ℹ️ <strong>Note:</strong> Penalty of 1% has been applied as per
+								banking norms for premature withdrawal before the maturity date.
 							</div>
 						</div>
 					</div>
@@ -795,6 +830,7 @@
 				digits: Array(15).fill(""),
 				isError: false,
 				isLoading: false,
+				errorMessage: "",
 				calculationSteps: [
 					{ label: "Connecting to Finacle core", status: "pending" },
 					{ label: "Verifying Account Number", status: "pending" },
@@ -825,6 +861,7 @@
 							const idx = this.digits.findIndex((d) => d === "");
 							if (idx !== -1) {
 								this.digits[idx] = e.key;
+								this.errorMessage = "";
 								this.focusFirst();
 							}
 						}
@@ -848,23 +885,25 @@
 				},
 
 				handleInput(e, index) {
+					this.errorMessage = "";
 					const val = e.target.value;
 					if (!/^\d*$/.test(val)) {
 						this.digits[index] = "";
-						this.isError = true;
-						setTimeout(() => (this.isError = false), 400);
+						this.triggerError();
 						return;
 					}
 					if (val && index < 14) document.getElementById("d-" + (index + 1)).focus();
 				},
 
 				handleBackspace(e, index) {
+					this.errorMessage = "";
 					if (!this.digits[index] && index > 0)
 						document.getElementById("d-" + (index - 1)).focus();
 				},
 
 				handlePaste(e) {
 					e.preventDefault();
+					this.errorMessage = "";
 					const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 15);
 					text.split("").forEach((char, i) => (this.digits[i] = char));
 					this.focusFirst();
@@ -882,44 +921,104 @@
 					return "Perfect! Everything looks good. Press Enter to proceed ↵";
 				},
 
+				triggerError() {
+					this.isError = true;
+					setTimeout(() => (this.isError = false), 400);
+				},
+
 				async calculate() {
 					this.isLoading = true;
-					this.calculationSteps.forEach((s) => (s.status = "pending"));
+					this.errorMessage = "";
+					// Reset steps to pending
+					this.calculationSteps = [
+						{ label: "Initializing DB Connection", status: "pending" },
+						{ label: "Verifying Account in Finacle", status: "pending" },
+						{ label: "Fetching Deposit Details", status: "pending" },
+						{ label: "Calculating Settlement", status: "pending" },
+					];
 
-					const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+					try {
+						const foracid = this.digits.join("");
 
-					for (let step of this.calculationSteps) {
-						step.status = "loading";
-						await sleep(800 + Math.random() * 500);
-						step.status = "success";
+						// Step 1: Requesting
+						this.calculationSteps[0].status = "loading";
+
+						const response = await fetch(
+							"/api/method/custom_report.api.calculator.get_account_details",
+							{
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({ foracid }),
+							},
+						);
+						const resData = await response.json();
+						const result = resData.message;
+
+						// Update Step 1 based on result
+						if (result && result.status_log) {
+							this.calculationSteps[0].status = "success";
+							this.calculationSteps[1].status = "loading";
+							await new Promise((r) => setTimeout(r, 600)); // Visual buffer
+						}
+
+						if (result && result.success) {
+							this.calculationSteps[1].status = "success";
+
+							// Simulate remaining data fetch/calc
+							for (let i = 2; i < this.calculationSteps.length; i++) {
+								this.calculationSteps[i].status = "loading";
+								await new Promise((res) => setTimeout(res, 500));
+								this.calculationSteps[i].status = "success";
+							}
+
+							this.data = {
+								cust_id: result.cif_id || "N/A",
+								cust_name: result.acct_name || "N/A",
+								acct_no: foracid,
+								branch_name: `${result.sol_desc} (${result.sol_id})`,
+								acct_opn_date: "01-JAN-2024",
+							};
+
+							this.updateCalculations();
+							this.step = 2;
+						} else {
+							// If success is false, check where it failed
+							if (result && result.status_log) {
+								const logStr = result.status_log.join(" | ");
+								if (logStr.includes("Database Error")) {
+									this.calculationSteps[0].status = "pending";
+									this.errorMessage = "Database Connection Failed.";
+								} else {
+									this.calculationSteps[1].status = "pending";
+									this.errorMessage = "Account not found in Finacle.";
+								}
+							} else {
+								this.errorMessage = result?.error || "Unknown system error.";
+							}
+							this.triggerError();
+						}
+					} catch (err) {
+						console.error(err);
+						this.errorMessage = "System connection failure.";
+						this.triggerError();
+					} finally {
+						this.isLoading = false;
 					}
-
-					await sleep(300);
-
-					this.updateCalculations();
-					this.isLoading = false;
-					this.step = 2;
 				},
 
 				updateCalculations() {
+					if (!this.data) return;
+
 					const principal = 500000;
-					// Simulating interest calculation based on rate and a mock duration (e.g., 180 days)
 					const days = 145;
 					const rate = this.selectedProduct.rate;
 					const interest = Math.round(principal * (rate / 100) * (days / 365));
 					const penalty = Math.round(principal * 0.01); // 1% penalty
 
-					this.data = {
-						cust_id: "88902144",
-						cust_name: "VALUED CUSTOMER",
-						acct_no: this.digits.join(""),
-						branch_name: "CHANDRAPUR MAIN (0399)",
-						acct_opn_date: "12-OCT-2024",
-						principal: principal,
-						interest: interest,
-						penalty: penalty,
-						total: principal + interest - penalty,
-					};
+					this.data.principal = principal;
+					this.data.interest = interest;
+					this.data.penalty = penalty;
+					this.data.total = principal + interest - penalty;
 				},
 
 				selectProduct(product) {
