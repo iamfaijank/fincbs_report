@@ -24,11 +24,11 @@
 				font-family: "Inter", sans-serif;
 				background: var(--bg);
 				margin: 0;
-				padding: 20px;
+				padding: 0;
 				display: flex;
-				justify-content: center;
-				align-items: center;
-				min-height: 100vh;
+				flex-direction: column;
+				height: 100vh;
+				width: 100vw;
 				position: relative;
 				overflow: hidden;
 			}
@@ -57,30 +57,29 @@
 				}
 			}
 
-			.main-card {
+			.app-container {
+				display: flex;
+				flex-direction: column;
+				height: 100%;
 				width: 100%;
-				max-width: 1150px;
-				background: var(--surface);
-				border-radius: 32px;
-				box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.12);
-				overflow: hidden;
-				border: 1px solid white;
-				transition: height 0.3s ease;
+				z-index: 1;
 			}
 
 			/* Branding Header */
 			.branding-header {
-				padding: 24px 50px;
+				padding: 16px 40px;
 				background: #fff;
 				border-bottom: 1px solid var(--border);
 				display: flex;
 				justify-content: space-between;
 				align-items: center;
+				flex-shrink: 0;
+				box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 			}
 
 			.brand-text {
 				font-weight: 800;
-				font-size: 20px;
+				font-size: 22px;
 				color: var(--primary);
 				letter-spacing: -0.5px;
 			}
@@ -92,147 +91,12 @@
 				letter-spacing: 1px;
 			}
 
-			/* Step 1: Entry Stage */
-			.stage-padding {
-				padding: 60px 40px;
-				text-align: center;
-			}
-			.finacle-wrapper {
-				display: flex;
-				justify-content: center;
-				gap: 18px;
-				margin: 45px 0;
-			}
-
-			.segment {
+			.content-area {
+				flex: 1;
 				display: flex;
 				flex-direction: column;
-				gap: 10px;
-			}
-			.seg-label {
-				font-size: 10px;
-				font-weight: 800;
-				color: #64748b;
-				text-transform: uppercase;
-				text-align: left;
-				padding-left: 14px;
-			}
-
-			.inputs-row {
-				display: flex;
-				gap: 8px;
-				padding: 12px;
-				border-radius: 20px;
-				border: 2px solid #f1f5f9;
-				transition: 0.3s;
-				background: #f8fafc;
-			}
-			.inputs-row:focus-within {
-				background: #fff;
-				border-color: var(--accent);
-				transform: translateY(-4px);
-				box-shadow: 0 10px 20px -5px rgba(13, 148, 136, 0.15);
-			}
-
-			.digit-box {
-				width: 42px;
-				height: 56px;
-				text-align: center;
-				font-family: "JetBrains Mono", monospace;
-				font-size: 24px;
-				font-weight: 700;
-				border: 1px solid #e2e8f0;
-				border-radius: 12px;
-				background: white;
-				color: var(--primary);
-				transition: 0.2s;
-			}
-			.digit-box:focus {
-				outline: none;
-				border-color: var(--accent);
-				color: var(--accent);
-			}
-
-			/* Step 2: Analysis Grid */
-			.dashboard-grid {
-				display: grid;
-				grid-template-columns: 1fr 380px 320px;
-				animation: slideIn 0.5s ease-out;
-			}
-			.panel-left {
-				padding: 40px 50px;
-			}
-			.panel-right {
-				background: #fdfdfd;
-				padding: 40px;
-				border-left: 1px solid var(--border);
-				position: relative;
-			}
-			.panel-transactions {
-				background: #fff;
-				padding: 40px 30px;
-				border-left: 1px solid var(--border);
-			}
-
-			.tran-item {
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-				padding: 12px 0;
-				border-bottom: 1px dashed #e2e8f0;
-			}
-			.tran-dot {
-				width: 6px;
-				height: 6px;
-				border-radius: 50%;
-				margin-right: 10px;
-			}
-			.dot-c { background: #10b981; } /* Credit */
-			.dot-d { background: #ef4444; } /* Debit */
-
-			.btn-main {
-				padding: 18px 50px;
-				background: var(--primary);
-				color: white;
-				border: none;
-				border-radius: 16px;
-				font-weight: 700;
-				cursor: pointer;
-				font-size: 16px;
-				transition: 0.3s;
-			}
-			.btn-main:hover:not(:disabled) {
-				transform: translateY(-2px);
-				box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-				background: #000;
-			}
-			.btn-main:disabled {
-				opacity: 0.4;
-				cursor: not-allowed;
-			}
-
-			/* Summary Cards */
-			.summary-item {
-				display: flex;
-				justify-content: space-between;
-				padding: 15px 0;
-				border-bottom: 1px solid #f1f5f9;
-				font-size: 14px;
-			}
-			.total-banner {
-				margin-top: 40px;
-				background: var(--accent);
-				color: white;
-				padding: 30px;
-				border-radius: 24px;
-				box-shadow: 0 15px 30px -5px rgba(13, 148, 136, 0.3);
-			}
-
-			.mono {
-				font-family: "JetBrains Mono", monospace;
-			}
-			.shake {
-				animation: shake 0.4s;
+				min-height: 0;
+				padding: 20px 40px;
 			}
 
 			/* Step Bar */
@@ -411,6 +275,149 @@
 				animation: shake 0.4s ease-in-out;
 			}
 
+			/* Step 1: Entry Stage */
+			.stage-padding {
+				padding: 60px 40px;
+				text-align: center;
+				flex: 1;
+				overflow-y: auto;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+			}
+			.finacle-wrapper {
+				display: flex;
+				justify-content: center;
+				gap: 18px;
+				margin: 45px 0;
+			}
+
+			.segment {
+				display: flex;
+				flex-direction: column;
+				gap: 10px;
+			}
+			.seg-label {
+				font-size: 10px;
+				font-weight: 800;
+				color: #64748b;
+				text-transform: uppercase;
+				text-align: left;
+				padding-left: 14px;
+			}
+
+			.inputs-row {
+				display: flex;
+				gap: 8px;
+				padding: 12px;
+				border-radius: 20px;
+				border: 2px solid #f1f5f9;
+				transition: 0.3s;
+				background: #fff;
+				box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+			}
+			.inputs-row:focus-within {
+				border-color: var(--accent);
+				transform: translateY(-4px);
+				box-shadow: 0 20px 25px -5px rgba(13, 148, 136, 0.1);
+			}
+
+			.digit-box {
+				width: 46px;
+				height: 60px;
+				text-align: center;
+				font-family: "JetBrains Mono", monospace;
+				font-size: 26px;
+				font-weight: 700;
+				border: 1px solid #e2e8f0;
+				border-radius: 12px;
+				background: white;
+				color: var(--primary);
+				transition: 0.2s;
+			}
+			.digit-box:focus {
+				outline: none;
+				border-color: var(--accent);
+				color: var(--accent);
+			}
+
+			/* Step 2: Analysis Grid */
+			.dashboard-grid {
+				display: grid;
+				grid-template-columns: 1fr 400px 450px;
+				flex: 1;
+				min-height: 0;
+				gap: 24px;
+				animation: slideIn 0.5s ease-out;
+			}
+			.panel-card {
+				background: #fff;
+				border-radius: 24px;
+				border: 1px solid var(--border);
+				box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+				display: flex;
+				flex-direction: column;
+				min-height: 0;
+			}
+			.panel-left {
+				padding: 30px 40px;
+				overflow-y: auto;
+			}
+			.panel-right {
+				padding: 30px;
+				position: relative;
+				overflow-y: auto;
+			}
+			.panel-transactions {
+				padding: 30px;
+				display: flex;
+				flex-direction: column;
+				min-height: 0;
+			}
+
+			.btn-main {
+				padding: 18px 50px;
+				background: var(--primary);
+				color: white;
+				border: none;
+				border-radius: 16px;
+				font-weight: 700;
+				cursor: pointer;
+				font-size: 16px;
+				transition: 0.3s;
+			}
+			.btn-main:hover:not(:disabled) {
+				transform: translateY(-2px);
+				box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+				background: #000;
+			}
+			.btn-main:disabled {
+				opacity: 0.4;
+				cursor: not-allowed;
+			}
+
+			/* Summary Cards */
+			.summary-item {
+				display: flex;
+				justify-content: space-between;
+				padding: 15px 0;
+				border-bottom: 1px solid #f1f5f9;
+				font-size: 14px;
+			}
+			.total-banner {
+				margin-top: 40px;
+				background: var(--accent);
+				color: white;
+				padding: 30px;
+				border-radius: 24px;
+				box-shadow: 0 15px 30px -5px rgba(13, 148, 136, 0.3);
+			}
+
+			.mono {
+				font-family: "JetBrains Mono", monospace;
+			}
+
 			/* Tabs View */
 			.tabs-container {
 				display: flex;
@@ -469,79 +476,117 @@
 				font-size: 10px;
 				font-weight: 800;
 			}
+
+			.tran-list {
+				flex: 1;
+				overflow-y: auto;
+				padding-right: 10px;
+			}
+
+			/* Custom Scrollbar */
+			.tran-list::-webkit-scrollbar {
+				width: 6px;
+			}
+			.tran-list::-webkit-scrollbar-track {
+				background: #f1f5f9;
+				border-radius: 10px;
+			}
+			.tran-list::-webkit-scrollbar-thumb {
+				background: #cbd5e1;
+				border-radius: 10px;
+			}
+			.tran-list::-webkit-scrollbar-thumb:hover {
+				background: #94a3b8;
+			}
+
+			.tran-item {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				padding: 16px 0;
+				border-bottom: 1px dashed #e2e8f0;
+			}
+			.tran-dot {
+				width: 6px;
+				height: 6px;
+				border-radius: 50%;
+				margin-right: 10px;
+			}
+			.dot-c { background: #10b981; } /* Credit */
+			.dot-d { background: #ef4444; } /* Debit */
 		</style>
 	</head>
 	<body @keydown="handleGlobalKey">
 		<div class="bg-dots"></div>
-		<div id="app" v-scope @vue:mounted="init()">
-			<div class="main-card" :class="{ shake: isError }">
-				<!-- Loading State -->
-				<div v-if="isLoading" class="loading-overlay">
+		<div id="app" v-scope @vue:mounted="init()" class="app-container">
+			<div class="branding-header">
+				<div>
+					<span class="brand-text">SAHAYOG</span>
+					<span style="color: #cbd5e1; margin: 0 10px">|</span>
+					<span class="tagline">Prematurity Calculator</span>
+				</div>
+				<div class="step-container">
+					<div class="step-item" :class="{ active: step >= 1 }">
+						<span class="step-num">1</span>
+						<span>Account Number</span>
+					</div>
+					<div class="step-line" :class="{ active: step >= 2 }"></div>
+					<div class="step-item" :class="{ active: step >= 2 }">
+						<span class="step-num">2</span>
+						<span>Prematurity Result</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Loading State -->
+			<div v-if="isLoading" class="loading-overlay">
+				<div
+					style="
+						margin-bottom: 40px;
+						text-align: center;
+						animation: slideIn 0.5s ease;
+					"
+				>
+					<h2 style="margin: 0; color: var(--primary); font-size: 24px">
+						System Processing
+					</h2>
+					<p style="color: #64748b; margin-top: 5px; font-size: 14px">
+						Synchronizing with Finacle Database
+					</p>
+				</div>
+
+				<div class="checklist">
 					<div
-						style="
-							margin-bottom: 40px;
-							text-align: center;
-							animation: slideIn 0.5s ease;
-						"
+						v-for="step in calculationSteps"
+						:key="step.label"
+						class="checklist-item"
+						:class="step.status"
 					>
-						<h2 style="margin: 0; color: var(--primary); font-size: 24px">
-							System Processing
-						</h2>
-						<p style="color: #64748b; margin-top: 5px; font-size: 14px">
-							Synchronizing with Finacle Database
-						</p>
-					</div>
-
-					<div class="checklist">
+						<div class="check-icon"></div>
 						<div
-							v-for="step in calculationSteps"
-							:key="step.label"
-							class="checklist-item"
-							:class="step.status"
+							style="font-size: 13px; font-weight: 600"
+							:style="{ color: step.status === 'pending' ? '#94a3b8' : 'var(--primary)' }"
 						>
-							<div class="check-icon"></div>
-							<div
-								style="font-size: 13px; font-weight: 600"
-								:style="{ color: step.status === 'pending' ? '#94a3b8' : 'var(--primary)' }"
-							>
-								[[ step.label ]]
-							</div>
+							[[ step.label ]]
 						</div>
 					</div>
 				</div>
+			</div>
 
-				<div class="branding-header">
-					<div>
-						<span class="brand-text">SAHAYOG</span>
-						<span style="color: #cbd5e1; margin: 0 10px">|</span>
-						<span class="tagline">Prematurity Calculator</span>
-					</div>
-					<div class="step-container">
-						<div class="step-item" :class="{ active: step >= 1 }">
-							<span class="step-num">1</span>
-							<span>Account Number</span>
-						</div>
-						<div class="step-line" :class="{ active: step >= 2 }"></div>
-						<div class="step-item" :class="{ active: step >= 2 }">
-							<span class="step-num">2</span>
-							<span>Prematurity Result</span>
-						</div>
-					</div>
-				</div>
-
+			<div class="content-area">
 				<div v-if="step === 1" class="stage-padding">
 					<h1
 						style="
-							font-size: 32px;
+							font-size: 42px;
 							font-weight: 800;
 							color: var(--primary);
-							margin-bottom: 8px;
+							margin-bottom: 12px;
 						"
 					>
 						Prematurity Calculator
 					</h1>
-					<p style="color: #64748b; margin-bottom: 40px">
-						Verify account number for Prematurity calculation .
+					<p style="color: #64748b; margin-bottom: 50px; font-size: 18px;">
+						Access real-time Finacle data for instant prematurity settlement calculations.
 					</p>
 
 					<div class="finacle-wrapper">
@@ -614,6 +659,7 @@
 						class="btn-main"
 						:disabled="!isComplete || isLoading"
 						@click="calculate"
+						style="padding: 20px 60px; font-size: 18px; border-radius: 20px;"
 					>
 						[[ isLoading ? 'Processing...' : 'Calculate Premature ➔' ]]
 					</button>
@@ -626,15 +672,16 @@
 					<div
 						v-else-if="errorMessage"
 						style="
-							margin-top: 20px;
+							margin-top: 25px;
 							color: #ef4444;
 							font-size: 14px;
 							font-weight: 600;
 							background: #fef2f2;
-							padding: 10px 20px;
-							border-radius: 12px;
+							padding: 12px 24px;
+							border-radius: 16px;
 							border: 1px solid #fee2e2;
 							display: inline-block;
+							animation: slideIn 0.3s ease;
 						"
 					>
 						⚠️ [[ errorMessage ]]
@@ -659,8 +706,8 @@
 					</div>
 				</div>
 
-				<div v-if="step === 2" style="animation: slideIn 0.5s ease-out">
-					<div class="tabs-container" style="align-items: center; justify-content: space-between; gap: 24px;">
+				<div v-if="step === 2" style="animation: slideIn 0.5s ease-out; display: flex; flex-direction: column; flex: 1; min-height: 0;">
+					<div class="tabs-container" style="align-items: center; justify-content: space-between; gap: 24px; background: none; padding: 0 0 20px 0;">
 						<div style="display: flex; align-items: center; gap: 24px;">
 							<div class="tab-item active" style="cursor: default; padding: 12px 30px;">
 								<div class="check-badge">✓</div>
@@ -668,16 +715,16 @@
 								<span class="tab-rate">[[ selectedProduct.rate ]]%</span>
 							</div>
 							
-							<div style="display: flex; flex-direction: column; gap: 4px; border-left: 2px solid #f1f5f9; padding-left: 24px;">
+							<div style="display: flex; flex-direction: column; gap: 4px; border-left: 2px solid #cbd5e1; padding-left: 24px;">
 								<span style="font-size: 10px; font-weight: 800; color: #9333ea; text-transform: uppercase; letter-spacing: 1px;">Verified Scheme</span>
 								<div style="display: flex; align-items: center; gap: 10px;">
-									<span class="mono" style="font-size: 16px; font-weight: 700; color: var(--primary); background: #f8fafc; padding: 2px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">[[ data.schm_code ]]</span>
+									<span class="mono" style="font-size: 16px; font-weight: 700; color: var(--primary); background: #fff; padding: 2px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">[[ data.schm_code ]]</span>
 									<span style="font-size: 15px; font-weight: 700; color: #475569;">[[ schemeDesc ]]</span>
 								</div>
 							</div>
 						</div>
 
-						<div style="display: flex; gap: 30px; padding-right: 50px;">
+						<div style="display: flex; gap: 30px;">
 							<div style="text-align: right;">
 								<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Deposit Amount</span>
 								<div class="mono" style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ formatCurrency(data.deposit_amount) ]]</div>
@@ -698,7 +745,7 @@
 					</div>
 
 					<div class="dashboard-grid">
-						<div class="panel-left">
+						<div class="panel-card panel-left">
 							<div style="margin-bottom: 40px">
 								<div
 									style="
@@ -752,9 +799,7 @@
 										>[[ data.acct_no.slice(0,4) ]]</span
 									>
 									<span style="color: #cbd5e1; font-weight: 300">/</span>
-									<span style="color: #9333ea"
-										>[[ data.acct_no.slice(4,8) ]]</span
-									>
+									<span style="color: #9333ea">[[ data.acct_no.slice(4,8) ]]</span>
 									<span style="color: #cbd5e1; font-weight: 300">/</span>
 									<span style="color: var(--accent)"
 										>[[ data.acct_no.slice(8,15) ]]</span
@@ -769,22 +814,16 @@
 										[[ data.branch_name ]]
 									</p>
 								</div>
-															<div>
-																<label class="seg-label" style="padding: 0">ACCOUNT OPENING DATE</label>
-																<p style="font-weight: 600; margin: 5px 0" class="mono">
-																	[[ data.acct_opn_date ]]
-																</p>
-															</div>
-														</div>
-								
+								<div>
+									<label class="seg-label" style="padding: 0">ACCOUNT OPENING DATE</label>
+									<p style="font-weight: 600; margin: 5px 0" class="mono">
+										[[ data.acct_opn_date ]]
+									</p>
+								</div>
+							</div>
 
 							<div
-								style="
-									margin-top: 50px;
-									display: flex;
-									align-items: center;
-									gap: 15px;
-								"
+								style="margin-top: 50px; display: flex; align-items: center; gap: 15px"
 							>
 								<button
 									@click="reset"
@@ -826,7 +865,7 @@
 							</div>
 						</div>
 
-						<div class="panel-right">
+						<div class="panel-card panel-right">
 							<h3 style="margin-top: 0; font-size: 16px; font-weight: 700">
 								Prematurity Settlement Breakdown
 							</h3>
@@ -840,9 +879,7 @@
 								</div>
 								<div class="summary-item">
 									<span>Accrued Interest ([[ selectedProduct.rate ]]%)</span>
-									<span
-										class="mono"
-										style="color: var(--accent); font-weight: 600"
+									<span class="mono" style="color: var(--accent); font-weight: 600"
 										>+ [[ formatCurrency(data.interest) ]]</span
 									>
 								</div>
@@ -850,9 +887,7 @@
 									<span style="color: var(--warning); font-weight: 700"
 										>Premature Penalty</span
 									>
-									<span
-										class="mono"
-										style="color: var(--warning); font-weight: 700"
+									<span class="mono" style="color: var(--warning); font-weight: 700"
 										>- [[ formatCurrency(data.penalty) ]]</span
 									>
 								</div>
@@ -881,101 +916,58 @@
 								</div>
 							</div>
 
-														<div
+							<div
+								style="
+									margin-top: 25px;
+									padding: 15px;
+									border-left: 3px solid var(--warning);
+									background: #fffbeb;
+									font-size: 12px;
+									color: #92400e;
+									line-height: 1.5;
+								"
+							>
+								ℹ️ <strong>Note:</strong> Penalty of 1% has been applied as per banking
+								norms for premature withdrawal before the maturity date.
+							</div>
+						</div>
 
-															style="
+						<div class="panel-card panel-transactions">
+							<h3 style="flex-shrink: 0; margin-top: 0; font-size: 14px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 25px;">
+								Recent Transactions
+							</h3>
 
-																margin-top: 25px;
-
-																padding: 15px;
-
-																border-left: 3px solid var(--warning);
-
-																background: #fffbeb;
-
-																font-size: 12px;
-
-																color: #92400e;
-
-																line-height: 1.5;
-
-															"
-
-														>
-
-															ℹ️ <strong>Note:</strong> Penalty of 1% has been applied as per banking
-
-															norms for premature withdrawal before the maturity date.
-
-														</div>
-
-													</div>
-
-							
-
-													<div class="panel-transactions">
-
-														<h3 style="margin-top: 0; font-size: 14px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 25px;">
-
-															Recent Transactions
-
-														</h3>
-
-							
-
-														<div v-if="data.transactions && data.transactions.length">
-
-															<div v-for="t in data.transactions" class="tran-item">
-
-																<div style="display: flex; align-items: center;">
-
-																	<div class="tran-dot" :class="'dot-' + t.type.toLowerCase()"></div>
-
-																	<div>
-
-																		<div style="font-size: 13px; font-weight: 700; color: var(--primary);">[[ t.type === 'C' ? 'Credit' : 'Debit' ]]</div>
-
-																		<div class="mono" style="font-size: 11px; color: #94a3b8;">[[ t.date ]]</div>
-
-																	</div>
-
-																</div>
-
-																<div class="mono" style="font-size: 13px; font-weight: 700;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
-
-																	[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
-
-																</div>
-
-															</div>
-
-														</div>
-
-														<div v-else style="text-align: center; padding: 40px 0; color: #94a3b8;">
-
-															<div style="font-size: 24px; margin-bottom: 10px;">📋</div>
-
-															<div style="font-size: 12px; font-weight: 600;">No transactions found</div>
-
-														</div>
-
-							
-
-														<div style="margin-top: 30px; background: #f8fafc; padding: 15px; border-radius: 12px; font-size: 11px; color: #64748b; border: 1px solid #e2e8f0;">
-
-															Displaying last 10 transactions from Finacle History.
-
-														</div>
-
-													</div>
-
+							<div class="tran-list" v-if="data.transactions && data.transactions.length">
+								<div v-for="t in data.transactions" class="tran-item">
+									<div style="display: flex; align-items: flex-start; flex: 1; min-width: 0;">
+										<div class="tran-dot" :class="'dot-' + t.type.toLowerCase()" style="margin-top: 6px;"></div>
+										<div style="flex: 1; min-width: 0;">
+											<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+												<div style="font-size: 13px; font-weight: 700; color: var(--primary);">[[ t.type === 'C' ? 'Credit' : 'Debit' ]]</div>
+												<div class="mono" style="font-size: 13px; font-weight: 700;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
+													[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
 												</div>
-
 											</div>
-
+											<div class="mono" style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">[[ t.date ]]</div>
+											<div style="font-size: 11px; color: #64748b; line-height: 1.4; word-break: break-all; white-space: normal;">
+												[[ t.particular ]]
+											</div>
 										</div>
+									</div>
+								</div>
+							</div>
+							<div v-else style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0; color: #94a3b8;">
+								<div style="font-size: 24px; margin-bottom: 10px;">📋</div>
+								<div style="font-size: 12px; font-weight: 600;">No transactions found</div>
+							</div>
 
-							
+							<div style="margin-top: 20px; background: #f8fafc; padding: 15px; border-radius: 12px; font-size: 11px; color: #64748b; border: 1px solid #e2e8f0; flex-shrink: 0;">
+								Displaying last 10 transactions from Finacle History.
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
 
 		<script>
@@ -1231,7 +1223,8 @@
 				updateCalculations() {
 					if (!this.data) return;
 
-					const principal = 500000;
+					const principal = this.data.deposit_amount || 500000;
+					// Simulating interest calculation based on rate and a mock duration (e.g., 180 days)
 					const days = 145;
 					const rate = this.selectedProduct.rate;
 					const interest = Math.round(principal * (rate / 100) * (days / 365));
