@@ -37,7 +37,8 @@ def get_account_details(foracid=None):
                 p.schm_desc,
                 t.maturity_date,
                 t.maturity_amount,
-                t.deposit_period_mths
+                t.deposit_period_mths,
+                t.deposit_amount
             FROM tbaadm.gam g
             JOIN tbaadm.sol s ON g.sol_id = s.sol_id
             JOIN tbaadm.gsp p ON g.schm_code = p.schm_code
@@ -84,6 +85,7 @@ def get_account_details(foracid=None):
                 "maturity_date": result[8].strftime("%d-%b-%Y").upper() if result[8] else "N/A",
                 "maturity_amount": float(result[9]) if result[9] is not None else 0.0,
                 "deposit_period_mths": int(result[10]) if result[10] is not None else 0,
+                "deposit_amount": float(result[11]) if result[11] is not None else 0.0,
                 "transactions": transactions,
                 "status_log": logs,
                 "success": True

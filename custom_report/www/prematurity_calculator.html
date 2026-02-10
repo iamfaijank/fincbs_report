@@ -679,6 +679,10 @@
 
 						<div style="display: flex; gap: 30px; padding-right: 50px;">
 							<div style="text-align: right;">
+								<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Deposit Amount</span>
+								<div class="mono" style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ formatCurrency(data.deposit_amount) ]]</div>
+							</div>
+							<div style="text-align: right;">
 								<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Tenure</span>
 								<div style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ data.deposit_period_mths ]] Months</div>
 							</div>
@@ -1183,6 +1187,7 @@
 								maturity_date: result.maturity_date || "N/A",
 								maturity_amount: result.maturity_amount || 0,
 								deposit_period_mths: result.deposit_period_mths || 0,
+								deposit_amount: result.deposit_amount || 0,
 								transactions: result.transactions || [],
 							};
 
