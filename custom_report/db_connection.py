@@ -12,16 +12,16 @@ def get_dr_connection():
         config = frappe.get_single("Finacle DB Credentials")
         
         # Validate mandatory fields before attempting connection
-        if not config.host or not config.database_name or not config.username:
+        if not config.db_host or not config.db_name or not config.db_user:
             frappe.throw(_("DR Database configuration is incomplete. Please check 'Finacle DB Credentials'."))
 
         # Prepare connection parameters
         connection_params = {
-            "host": config.host,
-            "port": config.port or 5432,
-            "database": config.database_name,
-            "user": config.username,
-            "password": config.get_password("password"),
+            "host": config.db_host,
+            "port": config.db_port or 5432,
+            "database": config.db_name,
+            "user": config.db_user,
+            "password": config.get_password("db_password"),
             "connect_timeout": 10  # Prevents the app from hanging if DB is unreachable
         }
 

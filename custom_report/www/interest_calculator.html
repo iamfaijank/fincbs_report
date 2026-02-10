@@ -1,0 +1,1389 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Prematurity Calculator - SAHAYOG</title>
+		<script src="/assets/custom_report/js/petite-vue.iife.js"></script>
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
+			rel="stylesheet"
+		/>
+
+		<style>
+			:root {
+				--primary: #0f172a; /* Navy Blue */
+				--accent: #0d9488; /* Teal for Net Amount */
+				--warning: #f59e0b; /* Amber for Penalty Warning */
+				--bg: #f8fafc;
+				--surface: #ffffff;
+				--border: #e2e8f0;
+			}
+
+			body {
+				font-family: "Inter", sans-serif;
+				background: var(--bg);
+				margin: 0;
+				padding: 0;
+				display: flex;
+				flex-direction: column;
+				height: 100vh;
+				width: 100vw;
+				position: relative;
+				overflow: hidden;
+			}
+
+			/* Animated Background */
+			.bg-dots {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				z-index: -1;
+				background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+				background-size: 30px 30px;
+				mask-image: radial-gradient(ellipse at center, black, transparent 80%);
+				opacity: 0.4;
+				animation: moveBackground 60s linear infinite;
+			}
+
+			@keyframes moveBackground {
+				from {
+					background-position: 0 0;
+				}
+				to {
+					background-position: 1000px 1000px;
+				}
+			}
+
+			.app-container {
+				display: flex;
+				flex-direction: column;
+				height: 100%;
+				width: 100%;
+				z-index: 1;
+			}
+
+			/* Branding Header */
+			.branding-header {
+				padding: 16px 40px;
+				background: #fff;
+				border-bottom: 1px solid var(--border);
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				flex-shrink: 0;
+				box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+			}
+
+			.brand-text {
+				font-weight: 800;
+				font-size: 22px;
+				color: var(--primary);
+				letter-spacing: -0.5px;
+			}
+			.tagline {
+				font-size: 12px;
+				font-weight: 600;
+				color: #94a3b8;
+				text-transform: uppercase;
+				letter-spacing: 1px;
+			}
+
+			.content-area {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				min-height: 0;
+				padding: 20px 40px;
+			}
+
+			/* Step Bar */
+			.step-container {
+				display: flex;
+				align-items: center;
+				gap: 16px;
+			}
+			.step-item {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				font-size: 11px;
+				font-weight: 700;
+				color: #cbd5e1;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+				transition: 0.3s;
+			}
+			.step-item.active {
+				color: var(--primary);
+			}
+			.step-num {
+				width: 22px;
+				height: 22px;
+				border-radius: 50%;
+				background: #f1f5f9;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 10px;
+				transition: 0.3s;
+			}
+			.step-item.active .step-num {
+				background: var(--primary);
+				color: white;
+			}
+			.step-line {
+				width: 30px;
+				height: 2px;
+				background: #f1f5f9;
+				border-radius: 2px;
+			}
+			.step-line.active {
+				background: var(--primary);
+			}
+
+			/* Loading Overlay */
+			.loading-overlay {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(255, 255, 255, 0.9);
+				backdrop-filter: blur(8px);
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				z-index: 100;
+				animation: fadeIn 0.3s ease;
+			}
+			.spinner {
+				width: 40px;
+				height: 40px;
+				border: 3px solid #f1f5f9;
+				border-top: 3px solid var(--primary);
+				border-radius: 50%;
+				animation: spin 1s linear infinite;
+				margin-bottom: 20px;
+			}
+			@keyframes spin {
+				to {
+					transform: rotate(360deg);
+				}
+			}
+			@keyframes fadeIn {
+				from {
+					opacity: 0;
+				}
+				to {
+					opacity: 1;
+				}
+			}
+
+			.checklist {
+				width: 350px;
+				display: flex;
+				flex-direction: column;
+				gap: 12px;
+			}
+			.checklist-item {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				padding: 12px 20px;
+				background: #f8fafc;
+				border-radius: 12px;
+				border: 1px solid #e2e8f0;
+				transition: 0.3s;
+			}
+			.checklist-item.loading {
+				border-color: var(--primary);
+				background: white;
+				transform: scale(1.02);
+				box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+			}
+			.checklist-item.success {
+				border-color: #dcfce7;
+				background: #f0fdf4;
+			}
+			.check-icon {
+				width: 20px;
+				height: 20px;
+				border-radius: 50%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 10px;
+				border: 2px solid #e2e8f0;
+			}
+			.loading .check-icon {
+				border-color: var(--primary);
+				border-top-color: transparent;
+				animation: spin 1s linear infinite;
+			}
+			.success .check-icon {
+				border-color: #22c55e;
+				background: #22c55e;
+				color: white;
+			}
+			.success .check-icon::after {
+				content: "✓";
+			}
+
+			@keyframes blink {
+				0%,
+				100% {
+					opacity: 1;
+				}
+				50% {
+					opacity: 0.4;
+				}
+			}
+			.blink {
+				animation: blink 1s ease-in-out infinite;
+			}
+
+			@keyframes slideIn {
+				from {
+					opacity: 0;
+					transform: translateY(20px);
+				}
+				to {
+					opacity: 1;
+					transform: translateY(0);
+				}
+			}
+			@keyframes shake {
+				0%,
+				100% {
+					transform: translateX(0);
+				}
+				25% {
+					transform: translateX(-6px);
+				}
+				75% {
+					transform: translateX(6px);
+				}
+			}
+
+			.border-error {
+				border-color: #ef4444 !important;
+				background: #fef2f2 !important;
+				animation: shake 0.4s ease-in-out;
+			}
+
+			/* Step 1: Entry Stage */
+			.stage-padding {
+				padding: 60px 40px;
+				text-align: center;
+				flex: 1;
+				overflow-y: auto;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+			}
+			.finacle-wrapper {
+				display: flex;
+				justify-content: center;
+				gap: 18px;
+				margin: 45px 0;
+			}
+
+			.segment {
+				display: flex;
+				flex-direction: column;
+				gap: 10px;
+			}
+			.seg-label {
+				font-size: 10px;
+				font-weight: 800;
+				color: #64748b;
+				text-transform: uppercase;
+				text-align: left;
+				padding-left: 14px;
+			}
+
+			.inputs-row {
+				display: flex;
+				gap: 8px;
+				padding: 12px;
+				border-radius: 20px;
+				border: 2px solid #f1f5f9;
+				transition: 0.3s;
+				background: #fff;
+				box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+			}
+			.inputs-row:focus-within {
+				border-color: var(--accent);
+				transform: translateY(-4px);
+				box-shadow: 0 20px 25px -5px rgba(13, 148, 136, 0.1);
+			}
+
+			.digit-box {
+				width: 46px;
+				height: 60px;
+				text-align: center;
+				font-family: "JetBrains Mono", monospace;
+				font-size: 26px;
+				font-weight: 700;
+				border: 1px solid #e2e8f0;
+				border-radius: 12px;
+				background: white;
+				color: var(--primary);
+				transition: 0.2s;
+			}
+			.digit-box:focus {
+				outline: none;
+				border-color: var(--accent);
+				color: var(--accent);
+			}
+
+			/* Step 2: Analysis Grid */
+			.dashboard-grid {
+				display: grid;
+				grid-template-columns: 1fr 500px 400px;
+				flex: 1;
+				min-height: 0;
+				gap: 24px;
+				animation: slideIn 0.5s ease-out;
+			}
+			.panel-card {
+				background: #fff;
+				border-radius: 24px;
+				border: 1px solid var(--border);
+				box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+				display: flex;
+				flex-direction: column;
+				min-height: 0;
+			}
+			.panel-left {
+				padding: 30px 40px;
+				overflow-y: auto;
+			}
+			.panel-right {
+				padding: 30px;
+				position: relative;
+				display: flex;
+				flex-direction: column;
+				min-height: 0;
+			}
+			.breakdown-scroll {
+				flex: 1;
+				margin-bottom: 20px;
+			}
+			.panel-transactions {
+				padding: 30px;
+				display: flex;
+				flex-direction: column;
+				min-height: 0;
+			}
+
+			.btn-main {
+				padding: 18px 50px;
+				background: var(--primary);
+				color: white;
+				border: none;
+				border-radius: 16px;
+				font-weight: 700;
+				cursor: pointer;
+				font-size: 16px;
+				transition: 0.3s;
+			}
+			.btn-main:hover:not(:disabled) {
+				transform: translateY(-2px);
+				box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+				background: #000;
+			}
+			.btn-main:disabled {
+				opacity: 0.4;
+				cursor: not-allowed;
+			}
+
+			/* Summary Cards */
+			.summary-item {
+				display: flex;
+				justify-content: space-between;
+				padding: 15px 0;
+				border-bottom: 1px solid #f1f5f9;
+				font-size: 14px;
+			}
+			.total-banner {
+				margin-top: 40px;
+				background: var(--accent);
+				color: white;
+				padding: 30px;
+				border-radius: 24px;
+				box-shadow: 0 15px 30px -5px rgba(13, 148, 136, 0.3);
+			}
+
+			.mono {
+				font-family: "JetBrains Mono", monospace;
+			}
+
+			/* Tabs View */
+			.tabs-container {
+				display: flex;
+				gap: 12px;
+				padding: 24px 50px 0;
+				background: #fff;
+			}
+			.tab-item {
+				padding: 12px 24px;
+				border-radius: 14px;
+				background: #f1f5f9;
+				cursor: pointer;
+				font-weight: 700;
+				font-size: 14px;
+				transition: 0.3s;
+				border: 2px solid transparent;
+				color: #64748b;
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+			.tab-item.active {
+				background: #10b981; /* Green */
+				color: white;
+				box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.2);
+			}
+			.tab-item.disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+				filter: grayscale(1);
+			}
+			.tab-item:hover:not(.active):not(.disabled) {
+				background: #e2e8f0;
+				color: var(--primary);
+			}
+			.tab-rate {
+				font-size: 11px;
+				opacity: 0.8;
+				background: rgba(255, 255, 255, 0.2);
+				padding: 2px 6px;
+				border-radius: 6px;
+			}
+			.tab-item:not(.active) .tab-rate {
+				background: #cbd5e1;
+				color: #475569;
+			}
+			.check-badge {
+				width: 16px;
+				height: 16px;
+				background: white;
+				color: #10b981;
+				border-radius: 50%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 10px;
+				font-weight: 800;
+			}
+
+			.tran-list {
+				flex: 1;
+				overflow-y: auto;
+				padding-right: 10px;
+			}
+
+			/* Custom Scrollbar */
+			.tran-list::-webkit-scrollbar {
+				width: 6px;
+			}
+			.tran-list::-webkit-scrollbar-track {
+				background: #f1f5f9;
+				border-radius: 10px;
+			}
+			.tran-list::-webkit-scrollbar-thumb {
+				background: #cbd5e1;
+				border-radius: 10px;
+			}
+			.tran-list::-webkit-scrollbar-thumb:hover {
+				background: #94a3b8;
+			}
+
+			.tran-item {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				padding: 16px 0;
+				border-bottom: 1px dashed #e2e8f0;
+			}
+			.tran-dot {
+				width: 6px;
+				height: 6px;
+				border-radius: 50%;
+				margin-right: 10px;
+			}
+			.dot-c { background: #10b981; } /* Credit */
+			.dot-d { background: #ef4444; } /* Debit */
+		</style>
+	</head>
+	<body @keydown="handleGlobalKey">
+		<div class="bg-dots"></div>
+		<div id="app" v-scope @vue:mounted="init()" class="app-container">
+			<div class="branding-header">
+				<div>
+					<span class="brand-text">SAHAYOG</span>
+					<span style="color: #cbd5e1; margin: 0 10px">|</span>
+					<span class="tagline">Prematurity Calculator</span>
+				</div>
+				<div class="step-container">
+					<div class="step-item" :class="{ active: step >= 1 }">
+						<span class="step-num">1</span>
+						<span>Account Number</span>
+					</div>
+					<div class="step-line" :class="{ active: step >= 2 }"></div>
+					<div class="step-item" :class="{ active: step >= 2 }">
+						<span class="step-num">2</span>
+						<span>Prematurity Result</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Loading State -->
+			<div v-if="isLoading" class="loading-overlay">
+				<div
+					style="
+						margin-bottom: 40px;
+						text-align: center;
+						animation: slideIn 0.5s ease;
+					"
+				>
+					<h2 style="margin: 0; color: var(--primary); font-size: 24px">
+						System Processing
+					</h2>
+					<p style="color: #64748b; margin-top: 5px; font-size: 14px">
+						Synchronizing with Finacle Database
+					</p>
+				</div>
+
+				<div class="checklist">
+					<div
+						v-for="step in calculationSteps"
+						:key="step.label"
+						class="checklist-item"
+						:class="step.status"
+					>
+						<div class="check-icon"></div>
+						<div
+							style="font-size: 13px; font-weight: 600"
+							:style="{ color: step.status === 'pending' ? '#94a3b8' : 'var(--primary)' }"
+						>
+							[[ step.label ]]
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="content-area">
+				<div v-if="step === 1" class="stage-padding">
+					<h1
+						style="
+							font-size: 42px;
+							font-weight: 800;
+							color: var(--primary);
+							margin-bottom: 12px;
+						"
+					>
+						Prematurity Calculator
+					</h1>
+					<p style="color: #64748b; margin-bottom: 50px; font-size: 18px;">
+						Access real-time Finacle data for instant prematurity settlement calculations.
+					</p>
+
+					<div class="finacle-wrapper">
+						<div class="segment">
+							<div class="seg-label" style="color: var(--primary)">SOL ID (4)</div>
+							<div class="inputs-row">
+								<input
+									v-for="i in 4"
+									:key="i-1"
+									type="text"
+									inputmode="numeric"
+									maxlength="1"
+									class="digit-box"
+									:id="'d-'+(i-1)"
+									v-model="digits[i-1]"
+									@input="handleInput($event, i-1)"
+									@keydown.backspace="handleBackspace($event, i-1)"
+									@keydown.enter="isComplete && calculate()"
+									@paste="handlePaste($event)"
+								/>
+							</div>
+						</div>
+						<div class="segment">
+							<div class="seg-label" style="color: #9333ea">Scheme (4)</div>
+							<div class="inputs-row" :class="{ 'border-error': !isSchemeValid && digits.slice(4, 8).join('').length === 4 }">
+								<input
+									v-for="i in 4"
+									:key="i+3"
+									type="text"
+									inputmode="numeric"
+									maxlength="1"
+									class="digit-box"
+									:id="'d-'+(i+3)"
+									v-model="digits[i+3]"
+									@input="handleInput($event, i+3)"
+									@keydown.backspace="handleBackspace($event, i+3)"
+									@keydown.enter="isComplete && calculate()"
+								/>
+							</div>
+							<div v-if="schemeDesc" style="font-size: 11px; font-weight: 700; color: #9333ea; margin-top: 5px; text-align: left; padding-left: 14px; animation: slideIn 0.3s ease;">
+								[[ schemeDesc ]]
+							</div>
+							<div v-if="!isSchemeValid && digits.slice(4, 8).join('').length === 4" style="font-size: 10px; font-weight: 800; color: #ef4444; margin-top: 5px; text-align: left; padding-left: 14px; text-transform: uppercase;">
+								✖ Scheme code not allowed
+							</div>
+						</div>
+						<div class="segment">
+							<div class="seg-label" style="color: var(--accent)">
+								Running Serial (7)
+							</div>
+							<div class="inputs-row">
+								<input
+									v-for="i in 7"
+									:key="i+7"
+									type="text"
+									inputmode="numeric"
+									maxlength="1"
+									class="digit-box"
+									:id="'d-'+(i+7)"
+									v-model="digits[i+7]"
+									@input="handleInput($event, i+7)"
+									@keydown.backspace="handleBackspace($event, i+7)"
+									@keydown.enter="isComplete && calculate()"
+								/>
+							</div>
+						</div>
+					</div>
+
+					<button
+						class="btn-main"
+						:disabled="!isComplete || isLoading"
+						@click="calculate"
+						style="padding: 20px 60px; font-size: 18px; border-radius: 20px;"
+					>
+						[[ isLoading ? 'Processing...' : 'Calculate Premature ➔' ]]
+					</button>
+
+					<div v-if="!isSchemeValid && digits.slice(4, 8).join('').length === 4" 
+						style="margin-top: 25px; color: #ef4444; font-size: 14px; font-weight: 600; background: #fef2f2; padding: 12px 24px; border-radius: 16px; border: 1px solid #fee2e2; display: inline-block; animation: slideIn 0.3s ease;">
+						⚠️ Only SMBG (2005) and RD (2010-2016) schemes are allowed.
+					</div>
+
+					<div
+						v-else-if="errorMessage"
+						style="
+							margin-top: 25px;
+							color: #ef4444;
+							font-size: 14px;
+							font-weight: 600;
+							background: #fef2f2;
+							padding: 12px 24px;
+							border-radius: 16px;
+							border: 1px solid #fee2e2;
+							display: inline-block;
+							animation: slideIn 0.3s ease;
+						"
+					>
+						⚠️ [[ errorMessage ]]
+					</div>
+
+					<div
+						v-else
+						class="blink"
+						style="
+							margin-top: 25px;
+							font-size: 14px;
+							color: #64748b;
+							font-weight: 700;
+							display: flex;
+							align-items: center;
+							justify-content: center;
+							transition: 0.3s;
+						"
+						:style="{ color: isComplete ? 'var(--accent)' : '#64748b' }"
+					>
+						[[ instructionMsg ]]
+					</div>
+				</div>
+
+				<div v-if="step === 2" style="animation: slideIn 0.5s ease-out; display: flex; flex-direction: column; flex: 1; min-height: 0;">
+					<div class="tabs-container" style="align-items: center; justify-content: space-between; gap: 24px; background: none; padding: 0 0 20px 0;">
+						<div style="display: flex; align-items: center; gap: 24px;">
+							<div class="tab-item active" style="cursor: default; padding: 12px 30px;">
+								<div class="check-badge">✓</div>
+								[[ selectedProduct.name ]]
+								<span class="tab-rate">[[ selectedProduct.rate ]]%</span>
+							</div>
+							
+							<div style="display: flex; flex-direction: column; gap: 4px; border-left: 2px solid #cbd5e1; padding-left: 24px;">
+								<span style="font-size: 10px; font-weight: 800; color: #9333ea; text-transform: uppercase; letter-spacing: 1px;">Verified Scheme</span>
+								<div style="display: flex; align-items: center; gap: 10px;">
+									<span class="mono" style="font-size: 16px; font-weight: 700; color: var(--primary); background: #fff; padding: 2px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">[[ data.schm_code ]]</span>
+									<span style="font-size: 15px; font-weight: 700; color: #475569;">[[ schemeDesc ]]</span>
+								</div>
+							</div>
+						</div>
+
+						<div style="display: flex; gap: 30px;">
+							<div style="text-align: right;">
+								<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Deposit Amount</span>
+								<div class="mono" style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ formatCurrency(data.deposit_amount) ]]</div>
+							</div>
+							<div style="text-align: right;">
+								<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Tenure</span>
+								<div style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ data.deposit_period_mths ]] Months</div>
+							</div>
+							<div style="text-align: right;">
+								<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Maturity Date</span>
+								<div class="mono" style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ data.maturity_date ]]</div>
+							</div>
+							<div style="text-align: right;">
+								<span style="font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 1px;">Maturity Amount</span>
+								<div class="mono" style="font-size: 15px; font-weight: 700; color: var(--accent);">[[ formatCurrency(data.maturity_amount) ]]</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="dashboard-grid">
+						<div class="panel-card panel-left">
+							<div style="margin-bottom: 40px">
+								<div
+									style="
+										font-size: 11px;
+										font-weight: 800;
+										color: var(--accent);
+										margin-bottom: 4px;
+										text-transform: uppercase;
+									"
+								>
+									Customer Profile
+								</div>
+								<h2 style="margin: 0; font-size: 28px; font-weight: 800">
+									[[ data.cust_name ]]
+								</h2>
+								<span class="mono" style="color: #94a3b8"
+									>CUST-ID: [[ data.cust_id ]]</span
+								>
+							</div>
+
+							<div
+								style="
+									background: #f8fafc;
+									padding: 24px;
+									border-radius: 20px;
+									border: 1px solid var(--border);
+									margin-bottom: 30px;
+								"
+							>
+								<div
+									style="
+										font-size: 10px;
+										font-weight: 800;
+										color: #94a3b8;
+										margin-bottom: 10px;
+									"
+								>
+									FINACLE ACCOUNT STRUCTURE
+								</div>
+								<div
+									style="
+										font-size: 20px;
+										font-family: &quot;JetBrains Mono&quot;;
+										font-weight: 700;
+										display: flex;
+										gap: 12px;
+										align-items: center;
+									"
+								>
+									<span style="color: var(--primary)"
+										>[[ data.acct_no.slice(0,4) ]]</span
+									>
+									<span style="color: #cbd5e1; font-weight: 300">/</span>
+									<span style="color: #9333ea">[[ data.acct_no.slice(4,8) ]]</span>
+									<span style="color: #cbd5e1; font-weight: 300">/</span>
+									<span style="color: var(--accent)"
+										>[[ data.acct_no.slice(8,15) ]]</span
+									>
+								</div>
+							</div>
+
+							<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px">
+								<div>
+									<label class="seg-label" style="padding: 0">BRANCH</label>
+									<p style="font-weight: 600; margin: 5px 0">
+										[[ data.branch_name ]]
+									</p>
+								</div>
+								<div>
+									<label class="seg-label" style="padding: 0">ACCOUNT OPENING DATE</label>
+									<p style="font-weight: 600; margin: 5px 0" class="mono">
+										[[ data.acct_opn_date ]]
+									</p>
+								</div>
+							</div>
+
+							<div
+								style="margin-top: 50px; display: flex; align-items: center; gap: 15px"
+							>
+								<button
+									@click="reset"
+									style="
+										background: none;
+										border: 1px solid var(--border);
+										padding: 12px 24px;
+										border-radius: 12px;
+										cursor: pointer;
+										font-weight: 600;
+										color: #64748b;
+										transition: 0.2s;
+									"
+									onmouseover="this.style.background = '#f1f5f9'"
+									onmouseout="this.style.background = 'none'"
+								>
+									← Back (ESC / Backspace)
+								</button>
+								<div
+									style="
+										font-size: 11px;
+										color: #94a3b8;
+										font-weight: 600;
+										text-transform: uppercase;
+										letter-spacing: 0.5px;
+									"
+								>
+									<span
+										style="
+											padding: 2px 6px;
+											background: #e2e8f0;
+											border-radius: 4px;
+											color: #475569;
+										"
+										>0-9</span
+									>
+									New Entry
+								</div>
+							</div>
+						</div>
+
+						<div class="panel-card panel-transactions">
+							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-shrink: 0;">
+								<h3 style="margin: 0; font-size: 14px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">
+									Recent Transactions
+								</h3>
+								<div style="text-align: right;">
+									<span style="font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 2px;">Total Transacted</span>
+									<span class="mono" style="font-size: 14px; font-weight: 800; color: var(--accent);">[[ formatCurrency(data.total_tran_sum) ]]</span>
+								</div>
+							</div>
+
+							<div class="tran-list" v-if="data.transactions && data.transactions.length">
+								<div v-for="t in data.transactions" class="tran-item">
+									<div style="display: flex; align-items: flex-start; flex: 1; min-width: 0;">
+										<div class="tran-dot" :class="'dot-' + t.type.toLowerCase()" style="margin-top: 6px;"></div>
+										<div style="flex: 1; min-width: 0;">
+											<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+												<div style="font-size: 13px; font-weight: 700; color: var(--primary);">[[ t.type === 'C' ? 'Credit' : 'Debit' ]]</div>
+												<div class="mono" style="font-size: 13px; font-weight: 700;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
+													[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
+												</div>
+											</div>
+											<div class="mono" style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">[[ t.date ]]</div>
+											<div style="font-size: 11px; color: #64748b; line-height: 1.4; word-break: break-all; white-space: normal;">
+												[[ t.particular ]]
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div v-else style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0; color: #94a3b8;">
+								<div style="font-size: 24px; margin-bottom: 10px;">📋</div>
+								<div style="font-size: 12px; font-weight: 600;">No transactions found</div>
+							</div>
+						</div>
+
+						<div class="panel-card panel-right">
+							<div class="breakdown-scroll">
+								<div style="margin-bottom: 30px; padding-bottom: 25px; border-bottom: 1px solid #f1f5f9;">
+									<label class="seg-label" style="padding: 0; color: var(--accent);">Settlement / Exit Date</label>
+									<div style="margin-top: 10px; display: flex; align-items: center; gap: 15px;">
+										<input 
+											type="date" 
+											v-model="exitDate" 
+											@change="updateCalculations()"
+											style="padding: 10px 14px; border-radius: 12px; border: 2px solid var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--primary); outline: none; width: 160px;"
+										/>
+										<div style="background: var(--accent); color: white; padding: 10px 16px; border-radius: 12px; font-weight: 800; font-family: 'JetBrains Mono', monospace; font-size: 13px; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);">
+											[[ formatDate(exitDate) ]]
+										</div>
+									</div>
+									<div style="margin-top: 12px; font-size: 11px; color: #64748b; line-height: 1.6;">
+										<div style="font-weight: 700; margin-bottom: 8px; color: var(--primary);">💡 Interest Slabs based on Tenure:</div>
+										<div style="display: grid; grid-template-columns: 1fr; gap: 6px;">
+											<div :style="{ color: data.appliedRate === 0 ? '#10b981' : '#64748b', fontWeight: data.appliedRate === 0 ? '700' : '400' }" 
+												style="display: flex; align-items: center; gap: 8px; transition: 0.3s;">
+												<span v-if="data.appliedRate === 0" style="background: #10b981; color: white; width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px;">✓</span>
+												<span v-else style="color: #cbd5e1;">•</span>
+												0% : Before completing 3 years
+											</div>
+											<div :style="{ color: data.appliedRate === 6 ? '#10b981' : '#64748b', fontWeight: data.appliedRate === 6 ? '700' : '400' }" 
+												style="display: flex; align-items: center; gap: 8px; transition: 0.3s;">
+												<span v-if="data.appliedRate === 6" style="background: #10b981; color: white; width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px;">✓</span>
+												<span v-else style="color: #cbd5e1;">•</span>
+												6% : From 3 years until Maturity
+											</div>
+											<div :style="{ color: data.appliedRate === 8 ? '#10b981' : '#64748b', fontWeight: data.appliedRate === 8 ? '700' : '400' }" 
+												style="display: flex; align-items: center; gap: 8px; transition: 0.3s;">
+												<span v-if="data.appliedRate === 8" style="background: #10b981; color: white; width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px;">✓</span>
+												<span v-else style="color: #cbd5e1;">•</span>
+												8% : On or after full Maturity
+											</div>
+										</div>
+									</div>
+									<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color, background: data.slabStatus.color + '15' }" 
+										style="margin-top: 15px; font-size: 12px; font-weight: 700; padding: 10px 15px; border-radius: 10px; display: flex; align-items: center; gap: 8px;">
+										<span style="font-size: 16px;">•</span> [[ data.slabStatus.label ]]
+									</div>
+								</div>
+
+								<h3 style="margin-top: 0; font-size: 16px; font-weight: 700">
+									Prematurity Settlement Breakdown
+								</h3>
+
+								<div style="margin: 30px 0">
+									<div class="summary-item">
+										<span>Principal Amount</span>
+										<span class="mono" style="font-weight: 600"
+											>[[ formatCurrency(data.principal) ]]</span
+										>
+									</div>
+									<div class="summary-item">
+										<span :style="{ color: data.appliedRate === 0 ? '#ef4444' : 'inherit' }">
+											Accrued Interest <strong>([[ data.appliedRate ]]%)</strong>
+										</span>
+										<span class="mono" style="color: var(--accent); font-weight: 600"
+											>+ [[ formatCurrency(data.interest) ]]</span
+										>
+									</div>
+									<div class="summary-item" style="border: none">
+										<span style="color: var(--warning); font-weight: 700"
+											>Premature Penalty</span
+										>
+										<span class="mono" style="color: var(--warning); font-weight: 700"
+											>- [[ formatCurrency(data.penalty) ]]</span
+										>
+									</div>
+								</div>
+							</div>
+
+							<div class="total-banner" style="margin-top: 0; flex-shrink: 0;">
+								<div
+									style="
+										font-size: 11px;
+										font-weight: 800;
+										opacity: 0.9;
+										text-transform: uppercase;
+										letter-spacing: 1px;
+									"
+								>
+									Net Settlement Amount
+								</div>
+								<div
+									style="font-size: 32px; font-weight: 800; margin-top: 5px"
+									class="mono"
+								>
+									[[ formatCurrency(data.total) ]]
+								</div>
+								<div style="font-size: 11px; margin-top: 10px; opacity: 0.8">
+									Transfer to customer's linked savings account.
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			PetiteVue.createApp({
+				$delimiters: ["[[", "]]"],
+				step: 1,
+				digits: Array(15).fill(""),
+				isError: false,
+				isLoading: false,
+				errorMessage: "",
+				schemeDesc: "",
+				isSchemeValid: true,
+				calculationSteps: [
+					{ label: "Connecting to Finacle core", status: "pending" },
+					{ label: "Verifying Account Number", status: "pending" },
+					{ label: "Fetching Deposit Details", status: "pending" },
+					{ label: "Calculating Premature Interest & Penalty", status: "pending" },
+				],
+				data: null,
+				products: [
+					{ name: "SMBG", rate: 8 },
+					{ name: "RD", rate: 8 },
+				],
+				selectedProduct: null,
+				exitDate: new Date().toISOString().split('T')[0],
+
+				init() {
+					this.selectedProduct = this.products[0];
+					this.focusFirst();
+				},
+
+				// Robust date parser for both DD/MM/YYYY and YYYY-MM-DD
+				parseDate(str) {
+					if (!str) return null;
+					if (str.includes('/')) {
+						const [d, m, y] = str.split('/');
+						return new Date(y, m - 1, d);
+					}
+					return new Date(str);
+				},
+
+				// Helper to calculate full months between dates based on anniversary
+				getMonthsDiff(startStr, endStr) {
+					const start = this.parseDate(startStr);
+					const end = this.parseDate(endStr);
+					if (!start || isNaN(start) || !end || isNaN(end)) return 0;
+					
+					let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+					if (end.getDate() < start.getDate()) {
+						months--;
+					}
+					return Math.max(0, months);
+				},
+
+				handleGlobalKey(e) {
+					if (this.isLoading) return;
+					const isNumber = /^\d$/.test(e.key);
+					if (this.step === 1) {
+						if (e.key === "Enter" && this.isComplete) {
+							this.calculate();
+							return;
+						}
+						if (isNumber && document.activeElement.tagName !== "INPUT") {
+							const idx = this.digits.findIndex((d) => d === "");
+							if (idx !== -1) {
+								this.digits[idx] = e.key;
+								this.errorMessage = "";
+								this.focusFirst();
+							}
+						}
+						if (e.key === "Escape") this.reset();
+					} else {
+						if (e.key === "Escape" || e.key === "Backspace") this.reset();
+						if (isNumber) {
+							this.reset();
+							this.digits[0] = e.key;
+						}
+					}
+				},
+
+				focusFirst() {
+					setTimeout(() => {
+						const idx = this.digits.findIndex((d) => d === "");
+						const target = idx === -1 ? "d-14" : "d-" + idx;
+						const el = document.getElementById(target);
+						if (el) el.focus();
+					}, 50);
+				},
+
+				handleInput(e, index) {
+					this.errorMessage = "";
+					const val = e.target.value;
+					if (!/^\d*$/.test(val)) {
+						this.digits[index] = "";
+						this.triggerError();
+						return;
+					}
+					
+					// If index is within scheme part (4-7)
+					if (index >= 4 && index <= 7) {
+						this.checkScheme();
+					}
+
+					if (val && index < 14) document.getElementById("d-" + (index + 1)).focus();
+				},
+
+				handleBackspace(e, index) {
+					this.errorMessage = "";
+					if (!this.digits[index] && index > 0) {
+						document.getElementById("d-" + (index - 1)).focus();
+					}
+					if (index >= 4 && index <= 7) {
+						this.checkScheme();
+					}
+				},
+
+				handlePaste(e) {
+					e.preventDefault();
+					this.errorMessage = "";
+					const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 15);
+					text.split("").forEach((char, i) => (this.digits[i] = char));
+					this.checkScheme();
+					this.focusFirst();
+				},
+
+				async checkScheme() {
+					const code = this.digits.slice(4, 8).join("");
+					const allowedSchemes = ['2005', '2010', '2011', '2012', '2013', '2014', '2015', '2016'];
+					
+					if (code.length === 4) {
+						if (!allowedSchemes.includes(code)) {
+							this.isSchemeValid = false;
+							this.schemeDesc = "";
+							return;
+						}
+						
+						this.isSchemeValid = true;
+						try {
+							const response = await fetch("/api/method/custom_report.api.calculator.get_scheme_details", {
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({ schm_code: code })
+							});
+							const resData = await response.json();
+							if (resData.message && resData.message.success) {
+								this.schemeDesc = resData.message.schm_desc;
+							} else {
+								this.schemeDesc = "";
+							}
+						} catch (err) {
+							this.schemeDesc = "";
+						}
+					} else {
+						this.schemeDesc = "";
+						this.isSchemeValid = true;
+					}
+				},
+
+				get isComplete() {
+					return this.digits.every((d) => d !== "");
+				},
+
+				get instructionMsg() {
+					const count = this.digits.filter((d) => d !== "").length;
+					if (count === 0) return "Please type 15-digit Account Number to begin";
+					if (count < 15)
+						return `Great! ${count} digits entered, ${15 - count} more to go...`;
+					return "Perfect! Everything looks good. Press Enter to proceed ↵";
+				},
+
+				triggerError() {
+					this.isError = true;
+					setTimeout(() => (this.isError = false), 400);
+				},
+
+				async calculate() {
+					if (!this.isSchemeValid) {
+						this.errorMessage = "Only SMBG (2005) and RD (2010-2016) schemes are allowed.";
+						this.triggerError();
+						return;
+					}
+					this.isLoading = true;
+					this.errorMessage = "";
+					// Reset steps to pending
+					this.calculationSteps = [
+						{ label: "Initializing DB Connection", status: "pending" },
+						{ label: "Verifying Account in Finacle", status: "pending" },
+						{ label: "Fetching Deposit Details", status: "pending" },
+						{ label: "Calculating Settlement", status: "pending" },
+					];
+
+					try {
+						const foracid = this.digits.join("");
+
+						// Step 1: Requesting
+						this.calculationSteps[0].status = "loading";
+
+						const response = await fetch(
+							"/api/method/custom_report.api.calculator.get_account_details",
+							{
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({ foracid }),
+							},
+						);
+						const resData = await response.json();
+						const result = resData.message;
+
+						// Update Step 1 based on result
+						if (result && result.status_log) {
+							this.calculationSteps[0].status = "success";
+							this.calculationSteps[1].status = "loading";
+							await new Promise((r) => setTimeout(r, 600)); // Visual buffer
+						}
+
+						if (result && result.success) {
+							this.calculationSteps[1].status = "success";
+
+							// Simulate remaining data fetch/calc
+							for (let i = 2; i < this.calculationSteps.length; i++) {
+								this.calculationSteps[i].status = "loading";
+								await new Promise((res) => setTimeout(res, 500));
+								this.calculationSteps[i].status = "success";
+							}
+
+							this.data = {
+								cust_id: result.cif_id || "N/A",
+								cust_name: result.acct_name || "N/A",
+								acct_no: foracid,
+								branch_name: `${result.sol_desc} (${result.sol_id})`,
+								acct_opn_date: result.acct_opn_date || "N/A",
+								schm_code: result.schm_code,
+								maturity_date: result.maturity_date || "N/A",
+								maturity_amount: result.maturity_amount || 0,
+								deposit_period_mths: result.deposit_period_mths || 0,
+								deposit_amount: result.deposit_amount || 0,
+								total_tran_sum: result.total_tran_sum || 0,
+								transactions: result.transactions || [],
+							};
+
+							// Update scheme description from real data
+							this.schemeDesc = result.schm_desc || this.schemeDesc;
+
+							// Auto-select product based on scheme code
+							if (result.schm_code === "2005") {
+								this.selectedProduct = this.products.find((p) => p.name === "SMBG");
+							} else {
+								this.selectedProduct = this.products.find((p) => p.name === "RD");
+							}
+
+							this.updateCalculations();
+							this.step = 2;
+						} else {
+							// If success is false, check where it failed
+							if (result && result.status_log) {
+								const logStr = result.status_log.join(" | ");
+								if (logStr.includes("Database Error")) {
+									this.calculationSteps[0].status = "pending";
+									this.errorMessage = "Database Connection Failed.";
+								} else {
+									this.calculationSteps[1].status = "pending";
+									this.errorMessage = "Account not found in Finacle.";
+								}
+							} else {
+								this.errorMessage = result?.error || "Unknown system error.";
+							}
+							this.triggerError();
+						}
+					} catch (err) {
+						console.error(err);
+						this.errorMessage = "System connection failure.";
+						this.triggerError();
+					} finally {
+						this.isLoading = false;
+					}
+				},
+
+				updateCalculations() {
+					if (!this.data) return;
+
+					let accruedInterest = 0;
+					let principal = 0;
+					let appliedRate = 0;
+					
+					// Calculate principal based only on Credits (Deposits)
+					if (this.data.transactions && this.data.transactions.length) {
+						principal = this.data.transactions
+							.filter(t => t.type === 'C')
+							.reduce((sum, t) => sum + t.amount, 0);
+					}
+
+					const aod = this.data.acct_opn_date;
+					const maturityDate = this.data.maturity_date;
+					const exitDate = this.exitDate; // YYYY-MM-DD from picker
+
+					const dExit = this.parseDate(exitDate);
+					const dMaturity = this.parseDate(maturityDate);
+
+					// Cap interest accrual at maturity date
+					const isPostMaturity = dExit > dMaturity;
+					const effectiveExitDateStr = isPostMaturity ? maturityDate : exitDate;
+
+					if (this.selectedProduct.name === "RD") {
+						// RD Rule: Sum of (Installment * 8% * Remaining_Months / 12)
+						appliedRate = 8;
+						if (this.data.transactions && this.data.transactions.length) {
+							this.data.transactions.forEach(t => {
+								if (t.type === 'C') {
+									const monthsHeld = this.getMonthsDiff(t.date, effectiveExitDateStr);
+									const interest = t.amount * 0.08 * (monthsHeld / 12);
+									accruedInterest += interest;
+								}
+							});
+						}
+					} else if (this.selectedProduct.name === "SMBG") {
+						// SMBG Rule: Slab based on months elapsed
+						const monthsElapsed = this.getMonthsDiff(aod, effectiveExitDateStr);
+						
+						if (monthsElapsed >= 36) {
+							appliedRate = (dExit >= dMaturity) ? 8 : 6;
+						} else {
+							appliedRate = 0;
+						}
+						
+						accruedInterest = principal * (appliedRate / 100) * (monthsElapsed / 12);
+					}
+
+					this.data.principal = principal;
+					this.data.appliedRate = appliedRate;
+					this.data.interest = Math.round(accruedInterest);
+					this.data.penalty = (dExit >= dMaturity) ? 0 : Math.round(principal * 0.01); // No penalty if matured
+					this.data.total = principal + this.data.interest - this.data.penalty;
+
+					// Slab Status for UI
+					if (this.selectedProduct.name === "SMBG") {
+						const monthsElapsed = this.getMonthsDiff(aod, effectiveExitDateStr);
+						if (monthsElapsed < 36) {
+							this.data.slabStatus = { label: "No interest earned (Minimum 3 years not completed)", color: "#ef4444" };
+						} else if (dExit < dMaturity) {
+							this.data.slabStatus = { label: "Early withdrawal: Reduced 6% interest applied", color: "#f59e0b" };
+						} else {
+							this.data.slabStatus = { label: "Account matured: Full 8% interest applied", color: "#10b981" };
+						}
+					} else {
+						this.data.slabStatus = (dExit >= dMaturity) 
+							? { label: "Account matured: Full 8% interest applied", color: "#10b981" }
+							: { label: "Early withdrawal: Full 8% interest applied", color: "#f59e0b" };
+					}
+				},
+
+				selectProduct(product) {
+					this.selectedProduct = product;
+					if (this.data) {
+						this.updateCalculations();
+					}
+				},
+
+				formatCurrency(val) {
+					return "₹" + val.toLocaleString("en-IN");
+				},
+
+				formatDate(dateStr) {
+					if (!dateStr) return "";
+					const [y, m, d] = dateStr.split('-');
+					return `${d}/${m}/${y}`;
+				},
+
+				reset() {
+					this.step = 1;
+					this.digits = Array(15).fill("");
+					this.selectedProduct = this.products[0];
+					this.data = null;
+					this.schemeDesc = "";
+					this.isSchemeValid = true;
+					this.focusFirst();
+				},
+			}).mount("body");
+		</script>
+	</body>
+</html>
