@@ -367,7 +367,13 @@
 			.panel-right {
 				padding: 30px;
 				position: relative;
-				overflow-y: auto;
+				display: flex;
+				flex-direction: column;
+				min-height: 0;
+			}
+			.breakdown-scroll {
+				flex: 1;
+				margin-bottom: 20px;
 			}
 			.panel-transactions {
 				padding: 30px;
@@ -902,63 +908,65 @@
 						</div>
 
 						<div class="panel-card panel-right">
-							<div style="margin-bottom: 30px; padding-bottom: 25px; border-bottom: 1px solid #f1f5f9;">
-								<label class="seg-label" style="padding: 0; color: var(--accent);">Settlement / Exit Date</label>
-								<div style="margin-top: 10px; display: flex; align-items: center; gap: 15px;">
-									<input 
-										type="date" 
-										v-model="exitDate" 
-										@change="updateCalculations()"
-										style="padding: 10px 14px; border-radius: 12px; border: 2px solid var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--primary); outline: none; width: 160px;"
-									/>
-									<div style="background: var(--accent); color: white; padding: 10px 16px; border-radius: 12px; font-weight: 800; font-family: 'JetBrains Mono', monospace; font-size: 13px; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);">
-										[[ formatDate(exitDate) ]]
+							<div class="breakdown-scroll">
+								<div style="margin-bottom: 30px; padding-bottom: 25px; border-bottom: 1px solid #f1f5f9;">
+									<label class="seg-label" style="padding: 0; color: var(--accent);">Settlement / Exit Date</label>
+									<div style="margin-top: 10px; display: flex; align-items: center; gap: 15px;">
+										<input 
+											type="date" 
+											v-model="exitDate" 
+											@change="updateCalculations()"
+											style="padding: 10px 14px; border-radius: 12px; border: 2px solid var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--primary); outline: none; width: 160px;"
+										/>
+										<div style="background: var(--accent); color: white; padding: 10px 16px; border-radius: 12px; font-weight: 800; font-family: 'JetBrains Mono', monospace; font-size: 13px; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);">
+											[[ formatDate(exitDate) ]]
+										</div>
+									</div>
+									<div style="margin-top: 12px; font-size: 11px; color: #64748b; line-height: 1.6;">
+										<div style="font-weight: 700; margin-bottom: 5px; color: var(--primary);">💡 Interest Slabs based on Tenure:</div>
+										<div style="display: grid; grid-template-columns: 1fr; gap: 2px;">
+											<div>• <strong>0%</strong> : Before completing 3 years</div>
+											<div>• <strong>6%</strong> : From 3 years until Maturity</div>
+											<div>• <strong>8%</strong> : On or after full Maturity</div>
+										</div>
+									</div>
+									<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color, background: data.slabStatus.color + '15' }" 
+										style="margin-top: 15px; font-size: 12px; font-weight: 700; padding: 10px 15px; border-radius: 10px; display: flex; align-items: center; gap: 8px;">
+										<span style="font-size: 16px;">•</span> [[ data.slabStatus.label ]]
 									</div>
 								</div>
-								<div style="margin-top: 12px; font-size: 11px; color: #64748b; line-height: 1.6;">
-									<div style="font-weight: 700; margin-bottom: 5px; color: var(--primary);">💡 Interest Slabs based on Tenure:</div>
-									<div style="display: grid; grid-template-columns: 1fr; gap: 2px;">
-										<div>• <strong>0%</strong> : Before completing 3 years</div>
-										<div>• <strong>6%</strong> : From 3 years until Maturity</div>
-										<div>• <strong>8%</strong> : On or after full Maturity</div>
+
+								<h3 style="margin-top: 0; font-size: 16px; font-weight: 700">
+									Prematurity Settlement Breakdown
+								</h3>
+
+								<div style="margin: 30px 0">
+									<div class="summary-item">
+										<span>Principal Amount</span>
+										<span class="mono" style="font-weight: 600"
+											>[[ formatCurrency(data.principal) ]]</span
+										>
 									</div>
-								</div>
-								<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color, background: data.slabStatus.color + '15' }" 
-									style="margin-top: 15px; font-size: 12px; font-weight: 700; padding: 10px 15px; border-radius: 10px; display: flex; align-items: center; gap: 8px;">
-									<span style="font-size: 16px;">•</span> [[ data.slabStatus.label ]]
+									<div class="summary-item">
+										<span :style="{ color: data.appliedRate === 0 ? '#ef4444' : 'inherit' }">
+											Accrued Interest <strong>([[ data.appliedRate ]]%)</strong>
+										</span>
+										<span class="mono" style="color: var(--accent); font-weight: 600"
+											>+ [[ formatCurrency(data.interest) ]]</span
+										>
+									</div>
+									<div class="summary-item" style="border: none">
+										<span style="color: var(--warning); font-weight: 700"
+											>Premature Penalty</span
+										>
+										<span class="mono" style="color: var(--warning); font-weight: 700"
+											>- [[ formatCurrency(data.penalty) ]]</span
+										>
+									</div>
 								</div>
 							</div>
 
-							<h3 style="margin-top: 0; font-size: 16px; font-weight: 700">
-								Prematurity Settlement Breakdown
-							</h3>
-
-							<div style="margin: 30px 0">
-								<div class="summary-item">
-									<span>Principal Amount</span>
-									<span class="mono" style="font-weight: 600"
-										>[[ formatCurrency(data.principal) ]]</span
-									>
-								</div>
-								<div class="summary-item">
-									<span :style="{ color: data.appliedRate === 0 ? '#ef4444' : 'inherit' }">
-										Accrued Interest <strong>([[ data.appliedRate ]]%)</strong>
-									</span>
-									<span class="mono" style="color: var(--accent); font-weight: 600"
-										>+ [[ formatCurrency(data.interest) ]]</span
-									>
-								</div>
-								<div class="summary-item" style="border: none">
-									<span style="color: var(--warning); font-weight: 700"
-										>Premature Penalty</span
-									>
-									<span class="mono" style="color: var(--warning); font-weight: 700"
-										>- [[ formatCurrency(data.penalty) ]]</span
-									>
-								</div>
-							</div>
-
-							<div class="total-banner">
+							<div class="total-banner" style="margin-top: 0; flex-shrink: 0;">
 								<div
 									style="
 										font-size: 11px;
