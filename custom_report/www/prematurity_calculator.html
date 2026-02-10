@@ -345,7 +345,7 @@
 			/* Step 2: Analysis Grid */
 			.dashboard-grid {
 				display: grid;
-				grid-template-columns: 1fr 400px 450px;
+				grid-template-columns: 1fr 500px 400px;
 				flex: 1;
 				min-height: 0;
 				gap: 24px;
@@ -865,6 +865,40 @@
 							</div>
 						</div>
 
+						<div class="panel-card panel-transactions">
+							<h3 style="flex-shrink: 0; margin-top: 0; font-size: 14px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 25px;">
+								Recent Transactions
+							</h3>
+
+							<div class="tran-list" v-if="data.transactions && data.transactions.length">
+								<div v-for="t in data.transactions" class="tran-item">
+									<div style="display: flex; align-items: flex-start; flex: 1; min-width: 0;">
+										<div class="tran-dot" :class="'dot-' + t.type.toLowerCase()" style="margin-top: 6px;"></div>
+										<div style="flex: 1; min-width: 0;">
+											<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+												<div style="font-size: 13px; font-weight: 700; color: var(--primary);">[[ t.type === 'C' ? 'Credit' : 'Debit' ]]</div>
+												<div class="mono" style="font-size: 13px; font-weight: 700;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
+													[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
+												</div>
+											</div>
+											<div class="mono" style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">[[ t.date ]]</div>
+											<div style="font-size: 11px; color: #64748b; line-height: 1.4; word-break: break-all; white-space: normal;">
+												[[ t.particular ]]
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div v-else style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0; color: #94a3b8;">
+								<div style="font-size: 24px; margin-bottom: 10px;">📋</div>
+								<div style="font-size: 12px; font-weight: 600;">No transactions found</div>
+							</div>
+
+							<div style="margin-top: 20px; background: #f8fafc; padding: 15px; border-radius: 12px; font-size: 11px; color: #64748b; border: 1px solid #e2e8f0; flex-shrink: 0;">
+								Displaying last 10 transactions from Finacle History.
+							</div>
+						</div>
+
 						<div class="panel-card panel-right">
 							<h3 style="margin-top: 0; font-size: 16px; font-weight: 700">
 								Prematurity Settlement Breakdown
@@ -929,40 +963,6 @@
 							>
 								ℹ️ <strong>Note:</strong> Penalty of 1% has been applied as per banking
 								norms for premature withdrawal before the maturity date.
-							</div>
-						</div>
-
-						<div class="panel-card panel-transactions">
-							<h3 style="flex-shrink: 0; margin-top: 0; font-size: 14px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 25px;">
-								Recent Transactions
-							</h3>
-
-							<div class="tran-list" v-if="data.transactions && data.transactions.length">
-								<div v-for="t in data.transactions" class="tran-item">
-									<div style="display: flex; align-items: flex-start; flex: 1; min-width: 0;">
-										<div class="tran-dot" :class="'dot-' + t.type.toLowerCase()" style="margin-top: 6px;"></div>
-										<div style="flex: 1; min-width: 0;">
-											<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-												<div style="font-size: 13px; font-weight: 700; color: var(--primary);">[[ t.type === 'C' ? 'Credit' : 'Debit' ]]</div>
-												<div class="mono" style="font-size: 13px; font-weight: 700;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
-													[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
-												</div>
-											</div>
-											<div class="mono" style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">[[ t.date ]]</div>
-											<div style="font-size: 11px; color: #64748b; line-height: 1.4; word-break: break-all; white-space: normal;">
-												[[ t.particular ]]
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
-							<div v-else style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0; color: #94a3b8;">
-								<div style="font-size: 24px; margin-bottom: 10px;">📋</div>
-								<div style="font-size: 12px; font-weight: 600;">No transactions found</div>
-							</div>
-
-							<div style="margin-top: 20px; background: #f8fafc; padding: 15px; border-radius: 12px; font-size: 11px; color: #64748b; border: 1px solid #e2e8f0; flex-shrink: 0;">
-								Displaying last 10 transactions from Finacle History.
 							</div>
 						</div>
 					</div>
