@@ -32,16 +32,18 @@ def get_account_details(foracid=None):
                 s.sol_id, 
                 s.sol_desc,
                 g.acct_opn_date,
-                g.schm_code
+                g.schm_code,
+                p.schm_desc
             FROM tbaadm.gam g
             JOIN tbaadm.sol s ON g.sol_id = s.sol_id
+            JOIN tbaadm.gsp p ON g.schm_code = p.schm_code
             WHERE g.foracid = %s
         """
         cursor.execute(query, (foracid,))
         result = cursor.fetchone()
         
         if result:
-            logs.append("Account and Branch records located.")
+            logs.append("Account, Branch and Scheme records located.")
             data = {
                 "cif_id": result[0],
                 "acct_name": result[1],
@@ -49,6 +51,7 @@ def get_account_details(foracid=None):
                 "sol_desc": result[3],
                 "acct_opn_date": result[4].strftime("%d-%b-%Y").upper() if result[4] else "N/A",
                 "schm_code": result[5],
+                "schm_desc": result[6],
                 "status_log": logs,
                 "success": True
             }

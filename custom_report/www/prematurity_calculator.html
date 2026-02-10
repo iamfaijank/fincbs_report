@@ -639,19 +639,19 @@
 				</div>
 
 				<div v-if="step === 2" style="animation: slideIn 0.5s ease-out">
-					<div class="tabs-container">
-						<div
-							v-for="p in products"
-							:key="p.name"
-							class="tab-item"
-							:class="{ 
-								active: selectedProduct.name === p.name,
-								disabled: selectedProduct.name !== p.name
-							}"
-						>
-							<div v-if="selectedProduct.name === p.name" class="check-badge">✓</div>
-							[[ p.name ]]
-							<span class="tab-rate">[[ p.rate ]]%</span>
+					<div class="tabs-container" style="align-items: center; gap: 24px;">
+						<div class="tab-item active" style="cursor: default; padding: 12px 30px;">
+							<div class="check-badge">✓</div>
+							[[ selectedProduct.name ]]
+							<span class="tab-rate">[[ selectedProduct.rate ]]%</span>
+						</div>
+						
+						<div style="display: flex; flex-direction: column; gap: 4px; border-left: 2px solid #f1f5f9; padding-left: 24px;">
+							<span style="font-size: 10px; font-weight: 800; color: #9333ea; text-transform: uppercase; letter-spacing: 1px;">Verified Scheme</span>
+							<div style="display: flex; align-items: center; gap: 10px;">
+								<span class="mono" style="font-size: 16px; font-weight: 700; color: var(--primary); background: #f8fafc; padding: 2px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">[[ data.schm_code ]]</span>
+								<span style="font-size: 15px; font-weight: 700; color: #475569;">[[ schemeDesc ]]</span>
+							</div>
 						</div>
 					</div>
 
@@ -1066,6 +1066,9 @@
 								acct_opn_date: result.acct_opn_date || "N/A",
 								schm_code: result.schm_code,
 							};
+
+							// Update scheme description from real data
+							this.schemeDesc = result.schm_desc || this.schemeDesc;
 
 							// Auto-select product based on scheme code
 							if (result.schm_code === "2005") {
