@@ -156,18 +156,39 @@
 			/* Step 2: Analysis Grid */
 			.dashboard-grid {
 				display: grid;
-				grid-template-columns: 1fr 400px;
+				grid-template-columns: 1fr 380px 320px;
 				animation: slideIn 0.5s ease-out;
 			}
 			.panel-left {
-				padding: 50px;
+				padding: 40px 50px;
 			}
 			.panel-right {
 				background: #fdfdfd;
-				padding: 50px;
+				padding: 40px;
 				border-left: 1px solid var(--border);
 				position: relative;
 			}
+			.panel-transactions {
+				background: #fff;
+				padding: 40px 30px;
+				border-left: 1px solid var(--border);
+			}
+
+			.tran-item {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				padding: 12px 0;
+				border-bottom: 1px dashed #e2e8f0;
+			}
+			.tran-dot {
+				width: 6px;
+				height: 6px;
+				border-radius: 50%;
+				margin-right: 10px;
+			}
+			.dot-c { background: #10b981; } /* Credit */
+			.dot-d { background: #ef4444; } /* Debit */
 
 			.btn-main {
 				padding: 18px 50px;
@@ -856,24 +877,101 @@
 								</div>
 							</div>
 
-							<div
-								style="
-									margin-top: 25px;
-									padding: 15px;
-									border-left: 3px solid var(--warning);
-									background: #fffbeb;
-									font-size: 12px;
-									color: #92400e;
-									line-height: 1.5;
-								"
-							>
-								ℹ️ <strong>Note:</strong> Penalty of 1% has been applied as per
-								banking norms for premature withdrawal before the maturity date.
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
+														<div
+
+															style="
+
+																margin-top: 25px;
+
+																padding: 15px;
+
+																border-left: 3px solid var(--warning);
+
+																background: #fffbeb;
+
+																font-size: 12px;
+
+																color: #92400e;
+
+																line-height: 1.5;
+
+															"
+
+														>
+
+															ℹ️ <strong>Note:</strong> Penalty of 1% has been applied as per banking
+
+															norms for premature withdrawal before the maturity date.
+
+														</div>
+
+													</div>
+
+							
+
+													<div class="panel-transactions">
+
+														<h3 style="margin-top: 0; font-size: 14px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 25px;">
+
+															Recent Transactions
+
+														</h3>
+
+							
+
+														<div v-if="data.transactions && data.transactions.length">
+
+															<div v-for="t in data.transactions" class="tran-item">
+
+																<div style="display: flex; align-items: center;">
+
+																	<div class="tran-dot" :class="'dot-' + t.type.toLowerCase()"></div>
+
+																	<div>
+
+																		<div style="font-size: 13px; font-weight: 700; color: var(--primary);">[[ t.type === 'C' ? 'Credit' : 'Debit' ]]</div>
+
+																		<div class="mono" style="font-size: 11px; color: #94a3b8;">[[ t.date ]]</div>
+
+																	</div>
+
+																</div>
+
+																<div class="mono" style="font-size: 13px; font-weight: 700;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
+
+																	[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
+
+																</div>
+
+															</div>
+
+														</div>
+
+														<div v-else style="text-align: center; padding: 40px 0; color: #94a3b8;">
+
+															<div style="font-size: 24px; margin-bottom: 10px;">📋</div>
+
+															<div style="font-size: 12px; font-weight: 600;">No transactions found</div>
+
+														</div>
+
+							
+
+														<div style="margin-top: 30px; background: #f8fafc; padding: 15px; border-radius: 12px; font-size: 11px; color: #64748b; border: 1px solid #e2e8f0;">
+
+															Displaying last 10 transactions from Finacle History.
+
+														</div>
+
+													</div>
+
+												</div>
+
+											</div>
+
+										</div>
+
+							
 		</div>
 
 		<script>
@@ -1085,6 +1183,7 @@
 								maturity_date: result.maturity_date || "N/A",
 								maturity_amount: result.maturity_amount || 0,
 								deposit_period_mths: result.deposit_period_mths || 0,
+								transactions: result.transactions || [],
 							};
 
 							// Update scheme description from real data

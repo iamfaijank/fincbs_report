@@ -27,6 +27,7 @@ def get_account_details(foracid=None):
         logs.append(f"Searching for account: {foracid}...")
         query = """
             SELECT 
+                g.acid,
                 g.cif_id, 
                 g.acct_name, 
                 s.sol_id, 
@@ -47,18 +48,43 @@ def get_account_details(foracid=None):
         result = cursor.fetchone()
         
         if result:
-            logs.append("Account, Branch, Scheme and Maturity records located.")
+            acid = result[0]
+            logs.append("Account details and maturity records located.")
+            
+            # Fetch Transactions
+            logs.append("Fetching transaction history...")
+            tran_query = """
+                SELECT value_date, tran_amt, part_tran_type 
+                FROM tbaadm.htd 
+                WHERE acid = %s 
+                ORDER BY value_date DESC 
+                LIMIT 10
+            """
+            cursor.execute(tran_query, (acid,))
+            trans = cursor.fetchall()
+            
+            transactions = []
+            for tr in trans:
+                transactions.append({
+                    "date": tr[0].strftime("%d-%b-%Y").upper() if tr[0] else "N/A",
+                    "amount": float(tr[1]) if tr[1] is not None else 0.0,
+                    "type": tr[2] # 'C' or 'D'
+                })
+            
+            logs.append(f"Found {len(transactions)} transactions.")
+            
             data = {
-                "cif_id": result[0],
-                "acct_name": result[1],
-                "sol_id": result[2],
-                "sol_desc": result[3],
-                "acct_opn_date": result[4].strftime("%d-%b-%Y").upper() if result[4] else "N/A",
-                "schm_code": result[5],
-                "schm_desc": result[6],
-                "maturity_date": result[7].strftime("%d-%b-%Y").upper() if result[7] else "N/A",
-                "maturity_amount": float(result[8]) if result[8] is not None else 0.0,
-                "deposit_period_mths": int(result[9]) if result[9] is not None else 0,
+                "cif_id": result[1],
+                "acct_name": result[2],
+                "sol_id": result[3],
+                "sol_desc": result[4],
+                "acct_opn_date": result[5].strftime("%d-%b-%Y").upper() if result[5] else "N/A",
+                "schm_code": result[6],
+                "schm_desc": result[7],
+                "maturity_date": result[8].strftime("%d-%b-%Y").upper() if result[8] else "N/A",
+                "maturity_amount": float(result[9]) if result[9] is not None else 0.0,
+                "deposit_period_mths": int(result[10]) if result[10] is not None else 0,
+                "transactions": transactions,
                 "status_log": logs,
                 "success": True
             }
