@@ -902,6 +902,33 @@
 						</div>
 
 						<div class="panel-card panel-right">
+							<div style="margin-bottom: 30px; padding-bottom: 25px; border-bottom: 1px solid #f1f5f9;">
+								<label class="seg-label" style="padding: 0; color: var(--accent);">Settlement / Exit Date</label>
+								<div style="margin-top: 10px; display: flex; align-items: center; gap: 15px;">
+									<input 
+										type="date" 
+										v-model="exitDate" 
+										@change="updateCalculations()"
+										style="padding: 10px 14px; border-radius: 12px; border: 2px solid var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--primary); outline: none; width: 160px;"
+									/>
+									<div style="background: var(--accent); color: white; padding: 10px 16px; border-radius: 12px; font-weight: 800; font-family: 'JetBrains Mono', monospace; font-size: 13px; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);">
+										[[ formatDate(exitDate) ]]
+									</div>
+								</div>
+								<div style="margin-top: 12px; font-size: 11px; color: #64748b; line-height: 1.6;">
+									<div style="font-weight: 700; margin-bottom: 5px; color: var(--primary);">💡 Interest Slabs based on Tenure:</div>
+									<div style="display: grid; grid-template-columns: 1fr; gap: 2px;">
+										<div>• <strong>0%</strong> : Before completing 3 years</div>
+										<div>• <strong>6%</strong> : From 3 years until Maturity</div>
+										<div>• <strong>8%</strong> : On or after full Maturity</div>
+									</div>
+								</div>
+								<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color, background: data.slabStatus.color + '15' }" 
+									style="margin-top: 15px; font-size: 12px; font-weight: 700; padding: 10px 15px; border-radius: 10px; display: flex; align-items: center; gap: 8px;">
+									<span style="font-size: 16px;">•</span> [[ data.slabStatus.label ]]
+								</div>
+							</div>
+
 							<h3 style="margin-top: 0; font-size: 16px; font-weight: 700">
 								Prematurity Settlement Breakdown
 							</h3>
@@ -914,7 +941,9 @@
 									>
 								</div>
 								<div class="summary-item">
-									<span>Accrued Interest ([[ selectedProduct.rate ]]%)</span>
+									<span :style="{ color: data.appliedRate === 0 ? '#ef4444' : 'inherit' }">
+										Accrued Interest <strong>([[ data.appliedRate ]]%)</strong>
+									</span>
 									<span class="mono" style="color: var(--accent); font-weight: 600"
 										>+ [[ formatCurrency(data.interest) ]]</span
 									>
@@ -951,21 +980,6 @@
 									Transfer to customer's linked savings account.
 								</div>
 							</div>
-
-							<div
-								style="
-									margin-top: 25px;
-									padding: 15px;
-									border-left: 3px solid var(--warning);
-									background: #fffbeb;
-									font-size: 12px;
-									color: #92400e;
-									line-height: 1.5;
-								"
-							>
-								ℹ️ <strong>Note:</strong> Penalty of 1% has been applied as per banking
-								norms for premature withdrawal before the maturity date.
-							</div>
 						</div>
 					</div>
 				</div>
@@ -990,14 +1004,38 @@
 				],
 				data: null,
 				products: [
-					{ name: "SMBG", rate: 18 },
+					{ name: "SMBG", rate: 8 },
 					{ name: "RD", rate: 8 },
 				],
 				selectedProduct: null,
+				exitDate: new Date().toISOString().split('T')[0],
 
 				init() {
 					this.selectedProduct = this.products[0];
 					this.focusFirst();
+				},
+
+				// Robust date parser for both DD/MM/YYYY and YYYY-MM-DD
+				parseDate(str) {
+					if (!str) return null;
+					if (str.includes('/')) {
+						const [d, m, y] = str.split('/');
+						return new Date(y, m - 1, d);
+					}
+					return new Date(str);
+				},
+
+				// Helper to calculate full months between dates based on anniversary
+				getMonthsDiff(startStr, endStr) {
+					const start = this.parseDate(startStr);
+					const end = this.parseDate(endStr);
+					if (!start || isNaN(start) || !end || isNaN(end)) return 0;
+					
+					let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+					if (end.getDate() < start.getDate()) {
+						months--;
+					}
+					return Math.max(0, months);
 				},
 
 				handleGlobalKey(e) {
@@ -1226,17 +1264,74 @@
 				updateCalculations() {
 					if (!this.data) return;
 
-					const principal = this.data.deposit_amount || 500000;
-					// Simulating interest calculation based on rate and a mock duration (e.g., 180 days)
-					const days = 145;
-					const rate = this.selectedProduct.rate;
-					const interest = Math.round(principal * (rate / 100) * (days / 365));
-					const penalty = Math.round(principal * 0.01); // 1% penalty
+					let accruedInterest = 0;
+					let principal = 0;
+					let appliedRate = 0;
+					
+					// Calculate principal based only on Credits (Deposits)
+					if (this.data.transactions && this.data.transactions.length) {
+						principal = this.data.transactions
+							.filter(t => t.type === 'C')
+							.reduce((sum, t) => sum + t.amount, 0);
+					}
+
+					const aod = this.data.acct_opn_date;
+					const maturityDate = this.data.maturity_date;
+					const exitDate = this.exitDate; // YYYY-MM-DD from picker
+
+					const dExit = this.parseDate(exitDate);
+					const dMaturity = this.parseDate(maturityDate);
+
+					// Cap interest accrual at maturity date
+					const isPostMaturity = dExit > dMaturity;
+					const effectiveExitDateStr = isPostMaturity ? maturityDate : exitDate;
+
+					if (this.selectedProduct.name === "RD") {
+						// RD Rule: Sum of (Installment * 8% * Remaining_Months / 12)
+						appliedRate = 8;
+						if (this.data.transactions && this.data.transactions.length) {
+							this.data.transactions.forEach(t => {
+								if (t.type === 'C') {
+									const monthsHeld = this.getMonthsDiff(t.date, effectiveExitDateStr);
+									const interest = t.amount * 0.08 * (monthsHeld / 12);
+									accruedInterest += interest;
+								}
+							});
+						}
+					} else if (this.selectedProduct.name === "SMBG") {
+						// SMBG Rule: Slab based on months elapsed
+						const monthsElapsed = this.getMonthsDiff(aod, effectiveExitDateStr);
+						
+						if (monthsElapsed >= 36) {
+							appliedRate = (dExit >= dMaturity) ? 8 : 6;
+						} else {
+							appliedRate = 0;
+						}
+						
+						accruedInterest = principal * (appliedRate / 100) * (monthsElapsed / 12);
+					}
 
 					this.data.principal = principal;
-					this.data.interest = interest;
-					this.data.penalty = penalty;
-					this.data.total = principal + interest - penalty;
+					this.data.appliedRate = appliedRate;
+					this.data.interest = Math.round(accruedInterest);
+					this.data.penalty = (dExit >= dMaturity) ? 0 : Math.round(principal * 0.01); // No penalty if matured
+					this.data.total = principal + this.data.interest - this.data.penalty;
+
+					// Slab Status for UI
+					if (this.selectedProduct.name === "SMBG") {
+						const monthsElapsed = this.getMonthsDiff(aod, effectiveExitDateStr);
+						if (monthsElapsed < 36) {
+							this.data.slabStatus = { label: "No interest earned (Minimum 3 years not completed)", color: "#ef4444" };
+						} else if (dExit < dMaturity) {
+							this.data.slabStatus = { label: "Early withdrawal: Reduced 6% interest applied", color: "#f59e0b" };
+						} else {
+							this.data.slabStatus = { label: "Account matured: Full 8% interest applied", color: "#10b981" };
+						}
+					} else {
+						this.data.slabStatus = (dExit >= dMaturity) 
+							? { label: "Account matured: Full 8% interest applied", color: "#10b981" }
+							: { label: "Early withdrawal: Full 8% interest applied", color: "#f59e0b" };
+					}
 				},
 
 				selectProduct(product) {
@@ -1248,6 +1343,12 @@
 
 				formatCurrency(val) {
 					return "₹" + val.toLocaleString("en-IN");
+				},
+
+				formatDate(dateStr) {
+					if (!dateStr) return "";
+					const [y, m, d] = dateStr.split('-');
+					return `${d}/${m}/${y}`;
 				},
 
 				reset() {

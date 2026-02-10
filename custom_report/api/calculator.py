@@ -71,7 +71,7 @@ def get_account_details(foracid=None):
             transactions = []
             for tr in trans:
                 transactions.append({
-                    "date": tr[0].strftime("%d-%b-%Y").upper() if tr[0] else "N/A",
+                    "date": tr[0].strftime("%d/%m/%Y") if tr[0] else "N/A",
                     "amount": float(tr[1]) if tr[1] is not None else 0.0,
                     "type": tr[2], # 'C' or 'D'
                     "particular": tr[3] if tr[3] else ""
@@ -84,10 +84,10 @@ def get_account_details(foracid=None):
                 "acct_name": result[2],
                 "sol_id": result[3],
                 "sol_desc": result[4],
-                "acct_opn_date": result[5].strftime("%d-%b-%Y").upper() if result[5] else "N/A",
+                "acct_opn_date": result[5].strftime("%d/%m/%Y") if result[5] else "N/A",
                 "schm_code": result[6],
                 "schm_desc": result[7],
-                "maturity_date": result[8].strftime("%d-%b-%Y").upper() if result[8] else "N/A",
+                "maturity_date": result[8].strftime("%d/%m/%Y") if result[8] else "N/A",
                 "maturity_amount": float(result[9]) if result[9] is not None else 0.0,
                 "deposit_period_mths": int(result[10]) if result[10] is not None else 0,
                 "deposit_amount": float(result[11]) if result[11] is not None else 0.0,
