@@ -33,17 +33,21 @@ def get_account_details(foracid=None):
                 s.sol_desc,
                 g.acct_opn_date,
                 g.schm_code,
-                p.schm_desc
+                p.schm_desc,
+                t.maturity_date,
+                t.maturity_amount,
+                t.deposit_period_mths
             FROM tbaadm.gam g
             JOIN tbaadm.sol s ON g.sol_id = s.sol_id
             JOIN tbaadm.gsp p ON g.schm_code = p.schm_code
+            JOIN tbaadm.tam t ON g.acid = t.acid
             WHERE g.foracid = %s
         """
         cursor.execute(query, (foracid,))
         result = cursor.fetchone()
         
         if result:
-            logs.append("Account, Branch and Scheme records located.")
+            logs.append("Account, Branch, Scheme and Maturity records located.")
             data = {
                 "cif_id": result[0],
                 "acct_name": result[1],
@@ -52,6 +56,9 @@ def get_account_details(foracid=None):
                 "acct_opn_date": result[4].strftime("%d-%b-%Y").upper() if result[4] else "N/A",
                 "schm_code": result[5],
                 "schm_desc": result[6],
+                "maturity_date": result[7].strftime("%d-%b-%Y").upper() if result[7] else "N/A",
+                "maturity_amount": float(result[8]) if result[8] is not None else 0.0,
+                "deposit_period_mths": int(result[9]) if result[9] is not None else 0,
                 "status_log": logs,
                 "success": True
             }

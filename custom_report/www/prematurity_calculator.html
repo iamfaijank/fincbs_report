@@ -639,18 +639,35 @@
 				</div>
 
 				<div v-if="step === 2" style="animation: slideIn 0.5s ease-out">
-					<div class="tabs-container" style="align-items: center; gap: 24px;">
-						<div class="tab-item active" style="cursor: default; padding: 12px 30px;">
-							<div class="check-badge">✓</div>
-							[[ selectedProduct.name ]]
-							<span class="tab-rate">[[ selectedProduct.rate ]]%</span>
+					<div class="tabs-container" style="align-items: center; justify-content: space-between; gap: 24px;">
+						<div style="display: flex; align-items: center; gap: 24px;">
+							<div class="tab-item active" style="cursor: default; padding: 12px 30px;">
+								<div class="check-badge">✓</div>
+								[[ selectedProduct.name ]]
+								<span class="tab-rate">[[ selectedProduct.rate ]]%</span>
+							</div>
+							
+							<div style="display: flex; flex-direction: column; gap: 4px; border-left: 2px solid #f1f5f9; padding-left: 24px;">
+								<span style="font-size: 10px; font-weight: 800; color: #9333ea; text-transform: uppercase; letter-spacing: 1px;">Verified Scheme</span>
+								<div style="display: flex; align-items: center; gap: 10px;">
+									<span class="mono" style="font-size: 16px; font-weight: 700; color: var(--primary); background: #f8fafc; padding: 2px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">[[ data.schm_code ]]</span>
+									<span style="font-size: 15px; font-weight: 700; color: #475569;">[[ schemeDesc ]]</span>
+								</div>
+							</div>
 						</div>
-						
-						<div style="display: flex; flex-direction: column; gap: 4px; border-left: 2px solid #f1f5f9; padding-left: 24px;">
-							<span style="font-size: 10px; font-weight: 800; color: #9333ea; text-transform: uppercase; letter-spacing: 1px;">Verified Scheme</span>
-							<div style="display: flex; align-items: center; gap: 10px;">
-								<span class="mono" style="font-size: 16px; font-weight: 700; color: var(--primary); background: #f8fafc; padding: 2px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">[[ data.schm_code ]]</span>
-								<span style="font-size: 15px; font-weight: 700; color: #475569;">[[ schemeDesc ]]</span>
+
+						<div style="display: flex; gap: 30px; padding-right: 50px;">
+							<div style="text-align: right;">
+								<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Tenure</span>
+								<div style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ data.deposit_period_mths ]] Months</div>
+							</div>
+							<div style="text-align: right;">
+								<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Maturity Date</span>
+								<div class="mono" style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ data.maturity_date ]]</div>
+							</div>
+							<div style="text-align: right;">
+								<span style="font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 1px;">Maturity Amount</span>
+								<div class="mono" style="font-size: 15px; font-weight: 700; color: var(--accent);">[[ formatCurrency(data.maturity_amount) ]]</div>
 							</div>
 						</div>
 					</div>
@@ -1065,6 +1082,9 @@
 								branch_name: `${result.sol_desc} (${result.sol_id})`,
 								acct_opn_date: result.acct_opn_date || "N/A",
 								schm_code: result.schm_code,
+								maturity_date: result.maturity_date || "N/A",
+								maturity_amount: result.maturity_amount || 0,
+								deposit_period_mths: result.deposit_period_mths || 0,
 							};
 
 							// Update scheme description from real data
