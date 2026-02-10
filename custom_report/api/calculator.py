@@ -71,6 +71,31 @@ def get_account_details(foracid=None):
             conn.close()
             logs.append("Database connection closed.")
 
+@frappe.whitelist()
+def get_scheme_details(schm_code):
+    if not schm_code:
+        return {"error": "Scheme code is required"}
+
+    conn = None
+    try:
+        conn = get_dr_connection()
+        cursor = conn.cursor()
+        
+        query = "SELECT schm_desc FROM tbaadm.gsp WHERE schm_code = %s"
+        cursor.execute(query, (schm_code,))
+        result = cursor.fetchone()
+        
+        if result:
+            return {"schm_desc": result[0], "success": True}
+        else:
+            return {"error": "Scheme not found", "success": False}
+            
+    except Exception as e:
+        return {"error": str(e), "success": False}
+    finally:
+        if conn:
+            conn.close()
+
 
 
 

@@ -384,6 +384,12 @@
 				}
 			}
 
+			.border-error {
+				border-color: #ef4444 !important;
+				background: #fef2f2 !important;
+				animation: shake 0.4s ease-in-out;
+			}
+
 			/* Tabs View */
 			.tabs-container {
 				display: flex;
@@ -522,7 +528,7 @@
 						</div>
 						<div class="segment">
 							<div class="seg-label" style="color: #9333ea">Scheme (4)</div>
-							<div class="inputs-row">
+							<div class="inputs-row" :class="{ 'border-error': !isSchemeValid && digits.slice(4, 8).join('').length === 4 }">
 								<input
 									v-for="i in 4"
 									:key="i+3"
@@ -536,6 +542,12 @@
 									@keydown.backspace="handleBackspace($event, i+3)"
 									@keydown.enter="isComplete && calculate()"
 								/>
+							</div>
+							<div v-if="schemeDesc" style="font-size: 11px; font-weight: 700; color: #9333ea; margin-top: 5px; text-align: left; padding-left: 14px; animation: slideIn 0.3s ease;">
+								[[ schemeDesc ]]
+							</div>
+							<div v-if="!isSchemeValid && digits.slice(4, 8).join('').length === 4" style="font-size: 10px; font-weight: 800; color: #ef4444; margin-top: 5px; text-align: left; padding-left: 14px; text-transform: uppercase;">
+								✖ Scheme code not allowed
 							</div>
 						</div>
 						<div class="segment">
@@ -568,8 +580,13 @@
 						[[ isLoading ? 'Processing...' : 'Calculate Premature ➔' ]]
 					</button>
 
+					<div v-if="!isSchemeValid && digits.slice(4, 8).join('').length === 4" 
+						style="margin-top: 25px; color: #ef4444; font-size: 14px; font-weight: 600; background: #fef2f2; padding: 12px 24px; border-radius: 16px; border: 1px solid #fee2e2; display: inline-block; animation: slideIn 0.3s ease;">
+						⚠️ Only SMBG (2005) and RD (2010-2016) schemes are allowed.
+					</div>
+
 					<div
-						v-if="errorMessage"
+						v-else-if="errorMessage"
 						style="
 							margin-top: 20px;
 							color: #ef4444;
@@ -830,6 +847,8 @@
 				isError: false,
 				isLoading: false,
 				errorMessage: "",
+				schemeDesc: "",
+				isSchemeValid: true,
 				calculationSteps: [
 					{ label: "Connecting to Finacle core", status: "pending" },
 					{ label: "Verifying Account Number", status: "pending" },
@@ -891,13 +910,23 @@
 						this.triggerError();
 						return;
 					}
+					
+					// If index is within scheme part (4-7)
+					if (index >= 4 && index <= 7) {
+						this.checkScheme();
+					}
+
 					if (val && index < 14) document.getElementById("d-" + (index + 1)).focus();
 				},
 
 				handleBackspace(e, index) {
 					this.errorMessage = "";
-					if (!this.digits[index] && index > 0)
+					if (!this.digits[index] && index > 0) {
 						document.getElementById("d-" + (index - 1)).focus();
+					}
+					if (index >= 4 && index <= 7) {
+						this.checkScheme();
+					}
 				},
 
 				handlePaste(e) {
@@ -905,7 +934,41 @@
 					this.errorMessage = "";
 					const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 15);
 					text.split("").forEach((char, i) => (this.digits[i] = char));
+					this.checkScheme();
 					this.focusFirst();
+				},
+
+				async checkScheme() {
+					const code = this.digits.slice(4, 8).join("");
+					const allowedSchemes = ['2005', '2010', '2011', '2012', '2013', '2014', '2015', '2016'];
+					
+					if (code.length === 4) {
+						if (!allowedSchemes.includes(code)) {
+							this.isSchemeValid = false;
+							this.schemeDesc = "";
+							return;
+						}
+						
+						this.isSchemeValid = true;
+						try {
+							const response = await fetch("/api/method/custom_report.api.calculator.get_scheme_details", {
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({ schm_code: code })
+							});
+							const resData = await response.json();
+							if (resData.message && resData.message.success) {
+								this.schemeDesc = resData.message.schm_desc;
+							} else {
+								this.schemeDesc = "";
+							}
+						} catch (err) {
+							this.schemeDesc = "";
+						}
+					} else {
+						this.schemeDesc = "";
+						this.isSchemeValid = true;
+					}
 				},
 
 				get isComplete() {
@@ -926,6 +989,11 @@
 				},
 
 				async calculate() {
+					if (!this.isSchemeValid) {
+						this.errorMessage = "Only SMBG (2005) and RD (2010-2016) schemes are allowed.";
+						this.triggerError();
+						return;
+					}
 					this.isLoading = true;
 					this.errorMessage = "";
 					// Reset steps to pending
@@ -1036,6 +1104,8 @@
 					this.digits = Array(15).fill("");
 					this.selectedProduct = this.products[0];
 					this.data = null;
+					this.schemeDesc = "";
+					this.isSchemeValid = true;
 					this.focusFirst();
 				},
 			}).mount("body");
