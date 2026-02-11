@@ -1040,25 +1040,21 @@
 										/>
 									</div>
 									<div style="margin-top: 12px; font-size: 11px; color: #64748b; line-height: 1.6;">
-										<div style="font-weight: 700; margin-bottom: 8px; color: var(--primary);">💡 Interest Slabs based on Tenure:</div>
+										<div style="font-weight: 700; margin-bottom: 8px; color: var(--primary);">💡 Applicable Rules for Scheme [[ data.schm_code ]]:</div>
 										<div style="display: grid; grid-template-columns: 1fr; gap: 6px;">
-											<div :style="{ color: data.appliedRate === 0 ? '#10b981' : '#64748b', fontWeight: data.appliedRate === 0 ? '700' : '400' }" 
+											<div v-if="schemeRules[data.schm_code]" v-for="slab in schemeRules[data.schm_code].interest_slabs" 
+												:style="{ color: data.appliedRate === slab[2] ? '#10b981' : '#64748b', fontWeight: data.appliedRate === slab[2] ? '700' : '400' }" 
 												style="display: flex; align-items: center; gap: 8px; transition: 0.3s;">
-												<span v-if="data.appliedRate === 0" style="background: #10b981; color: white; width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px;">✓</span>
+												<span v-if="data.appliedRate === slab[2]" style="background: #10b981; color: white; width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px;">✓</span>
 												<span v-else style="color: #cbd5e1;">•</span>
-												0% : Before completing 3 years
+												[[ slab[2] ]]% : From [[ slab[0] ]] to [[ slab[1] ]] months
 											</div>
-											<div :style="{ color: data.appliedRate === 6 ? '#10b981' : '#64748b', fontWeight: data.appliedRate === 6 ? '700' : '400' }" 
+											<div v-if="schemeRules[data.schm_code]"
+												:style="{ color: data.appliedRate === schemeRules[data.schm_code].base_rate ? '#10b981' : '#64748b', fontWeight: data.appliedRate === schemeRules[data.schm_code].base_rate ? '700' : '400' }" 
 												style="display: flex; align-items: center; gap: 8px; transition: 0.3s;">
-												<span v-if="data.appliedRate === 6" style="background: #10b981; color: white; width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px;">✓</span>
+												<span v-if="data.appliedRate === schemeRules[data.schm_code].base_rate" style="background: #10b981; color: white; width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px;">✓</span>
 												<span v-else style="color: #cbd5e1;">•</span>
-												6% : From 3 years until Maturity
-											</div>
-											<div :style="{ color: data.appliedRate === 8 ? '#10b981' : '#64748b', fontWeight: data.appliedRate === 8 ? '700' : '400' }" 
-												style="display: flex; align-items: center; gap: 8px; transition: 0.3s;">
-												<span v-if="data.appliedRate === 8" style="background: #10b981; color: white; width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px;">✓</span>
-												<span v-else style="color: #cbd5e1;">•</span>
-												8% : On or after full Maturity
+												[[ schemeRules[data.schm_code].base_rate ]]% : On or after [[ schemeRules[data.schm_code].tenure_m ]] months (Maturity)
 											</div>
 										</div>
 									</div>
@@ -1088,9 +1084,9 @@
 										>
 									</div>
 									<div class="summary-item" style="border: none">
-										<span style="color: var(--warning); font-weight: 700"
-											>Premature Penalty</span
-										>
+										<span style="color: var(--warning); font-weight: 700">
+											[[ data.schm_code === '2005' ? 'Service Charge' : 'Premature Penalty' ]]
+										</span>
 										<span class="mono" style="color: var(--warning); font-weight: 700"
 											>- [[ formatCurrency(data.penalty) ]]</span
 										>
@@ -1156,6 +1152,15 @@
 					{ name: "SMBG", rate: 8 },
 					{ name: "RD", rate: 8 },
 				],
+				schemeRules: {
+					"2010": { name: "RD 12M", tenure_m: 12, base_rate: 8.0, penalty_slabs: [[3, 6.0], [6, 4.0]], interest_slabs: [[6, 9, 4.0], [9, 12, 6.0]] },
+					"2011": { name: "RD 24M", tenure_m: 24, base_rate: 8.0, penalty_slabs: [[6, 6.0], [12, 4.0]], interest_slabs: [[12, 18, 4.0], [18, 24, 6.0]] },
+					"2012": { name: "RD 36M", tenure_m: 36, base_rate: 8.0, penalty_slabs: [[9, 6.0], [18, 4.0]], interest_slabs: [[18, 27, 4.0], [27, 36, 6.0]] },
+					"2013": { name: "RD 48M", tenure_m: 48, base_rate: 8.0, penalty_slabs: [[12, 6.0], [24, 4.0]], interest_slabs: [[24, 36, 4.0], [36, 48, 6.0]] },
+					"2014": { name: "RD 60M", tenure_m: 60, base_rate: 8.0, penalty_slabs: [[15, 6.0], [30, 4.0]], interest_slabs: [[30, 45, 4.0], [45, 60, 6.0]] },
+					"2005": { name: "SMBG", tenure_m: 66, base_rate: 8.0, penalty_slabs: [[999, 1.8]], interest_slabs: [[36, 66, 6.0]] },
+					"2016": { name: "RD 120M", tenure_m: 120, base_rate: 8.0, penalty_slabs: [], interest_slabs: [[0, 120, 8.0]] }
+				},
 				selectedProduct: null,
 				exitDate: new Date().toISOString().split('T')[0],
 
@@ -1436,74 +1441,81 @@
 				updateCalculations() {
 					if (!this.data) return;
 
-					let accruedInterest = 0;
-					let principal = 0;
-					let appliedRate = 0;
-					
-					// Calculate principal based only on Credits (Deposits)
-					if (this.data.transactions && this.data.transactions.length) {
-						principal = this.data.transactions
-							.filter(t => t.type === 'C')
-							.reduce((sum, t) => sum + t.amount, 0);
-					}
-
-					const aod = this.data.acct_opn_date;
-					const maturityDate = this.data.maturity_date;
-					const exitDate = this.exitDate; // YYYY-MM-DD from picker
-
+					const exitDate = this.exitDate;
 					const dExit = this.parseDate(exitDate);
-					const dMaturity = this.parseDate(maturityDate);
-
-					// Cap interest accrual at maturity date
-					const isPostMaturity = dExit > dMaturity;
-					const effectiveExitDateStr = isPostMaturity ? maturityDate : exitDate;
-
-					if (this.selectedProduct.name === "RD") {
-						// RD Rule: Sum of (Installment * 8% * Remaining_Months / 12)
-						appliedRate = 8;
-						if (this.data.transactions && this.data.transactions.length) {
-							this.data.transactions.forEach(t => {
-								if (t.type === 'C') {
-									const monthsHeld = this.getMonthsDiff(t.date, effectiveExitDateStr);
-									const interest = t.amount * 0.08 * (monthsHeld / 12);
+					const aod = this.data.acct_opn_date;
+					const dAod = this.parseDate(aod);
+					
+					const monthsHeld = this.getMonthsDiff(aod, exitDate);
+					const rules = this.getApplicableRules(this.data.schm_code, monthsHeld);
+					
+					let principal = 0;
+					let accruedInterest = 0;
+					
+					if (this.data.transactions && this.data.transactions.length) {
+						this.data.transactions.forEach(t => {
+							if (t.type === 'C') {
+								const amt = t.amount;
+								principal += amt;
+								
+								const dVal = this.parseDate(t.date);
+								if (dVal < dExit && rules.appliedRate > 0) {
+									// Quarterly compounding (n=4)
+									// A = P * (1 + r/n)^(nt)
+									const tYears = (dExit - dVal) / (1000 * 60 * 60 * 24 * 365.25);
+									const interest = amt * (Math.pow(1 + (rules.appliedRate / 100) / 4, 4 * tYears) - 1);
 									accruedInterest += interest;
 								}
-							});
-						}
-					} else if (this.selectedProduct.name === "SMBG") {
-						// SMBG Rule: Slab based on months elapsed
-						const monthsElapsed = this.getMonthsDiff(aod, effectiveExitDateStr);
-						
-						if (monthsElapsed >= 36) {
-							appliedRate = (dExit >= dMaturity) ? 8 : 6;
-						} else {
-							appliedRate = 0;
-						}
-						
-						accruedInterest = principal * (appliedRate / 100) * (monthsElapsed / 12);
+							}
+						});
 					}
+
+					const penaltyAmt = (principal * rules.penaltyPct / 100);
 
 					this.data.principal = principal;
-					this.data.appliedRate = appliedRate;
+					this.data.appliedRate = rules.appliedRate;
 					this.data.interest = Math.round(accruedInterest);
-					this.data.penalty = (dExit >= dMaturity) ? 0 : Math.round(principal * 0.01); // No penalty if matured
+					this.data.penalty = Math.round(penaltyAmt);
 					this.data.total = principal + this.data.interest - this.data.penalty;
+					this.data.monthsHeld = monthsHeld;
 
 					// Slab Status for UI
-					if (this.selectedProduct.name === "SMBG") {
-						const monthsElapsed = this.getMonthsDiff(aod, effectiveExitDateStr);
-						if (monthsElapsed < 36) {
-							this.data.slabStatus = { label: "No interest earned (Minimum 3 years not completed)", color: "#ef4444" };
-						} else if (dExit < dMaturity) {
-							this.data.slabStatus = { label: "Early withdrawal: Reduced 6% interest applied", color: "#f59e0b" };
-						} else {
-							this.data.slabStatus = { label: "Account matured: Full 8% interest applied", color: "#10b981" };
-						}
+					if (monthsHeld >= rules.meta.tenure_m) {
+						this.data.slabStatus = { label: `Account matured: Full ${rules.appliedRate}% interest applied`, color: "#10b981" };
+					} else if (rules.appliedRate === 0) {
+						this.data.slabStatus = { label: "No interest earned (Minimum period not completed)", color: "#ef4444" };
 					} else {
-						this.data.slabStatus = (dExit >= dMaturity) 
-							? { label: "Account matured: Full 8% interest applied", color: "#10b981" }
-							: { label: "Early withdrawal: Full 8% interest applied", color: "#f59e0b" };
+						this.data.slabStatus = { label: `Early withdrawal: ${rules.appliedRate}% interest applied`, color: "#f59e0b" };
 					}
+				},
+
+				getApplicableRules(schmCode, monthsHeld) {
+					const rule = this.schemeRules[schmCode];
+					if (!rule) return { meta: { tenure_m: 0 }, appliedRate: 0, penaltyPct: 0 };
+
+					let appliedRate = 0;
+					if (monthsHeld >= rule.tenure_m) {
+						appliedRate = rule.base_rate;
+					} else {
+						for (const [low, high, rate] of rule.interest_slabs) {
+							if (monthsHeld >= low && monthsHeld < high) {
+								appliedRate = rate;
+								break;
+							}
+						}
+					}
+
+					let penaltyPct = 0;
+					if (monthsHeld < rule.tenure_m) {
+						for (const [limit, charge] of rule.penalty_slabs) {
+							if (monthsHeld < limit) {
+								penaltyPct = charge;
+								break;
+							}
+						}
+					}
+
+					return { meta: rule, appliedRate, penaltyPct };
 				},
 
 				selectProduct(product) {
