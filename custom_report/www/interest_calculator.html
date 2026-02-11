@@ -940,10 +940,10 @@
 								</div>
 							</div>
 
-							<div class="tran-list" v-if="data && data.transactions && data.transactions.length">
+							<div class="tran-list" v-if="data">
 								<!-- Standard View -->
-								<div v-if="!isTrackingEnabled">
-									<div v-for="(t, i) in mergedTransactions" :key="'std-' + i" class="tran-item" :style="{ background: t.type === 'MISSED' ? '#fff1f2' : 'transparent' }">
+								<div v-if="!isTrackingEnabled" key="std-view">
+									<div v-for="(t, i) in mergedTransactions" :key="'std-' + t.monthLabel + '-' + i" class="tran-item" :style="{ background: t.type === 'MISSED' ? '#fff1f2' : 'transparent' }">
 										<div style="display: flex; align-items: flex-start; flex: 1; min-width: 0; gap: 16px;">
 											<div class="mono" 
 												:style="{ 
@@ -980,8 +980,8 @@
 								</div>
 
 								<!-- Installment Tracking View -->
-								<div v-else>
-									<div v-for="slot in installmentTracking" :key="'track-' + slot.installmentNum" class="tran-item" 
+								<div v-if="isTrackingEnabled" key="track-view">
+									<div v-for="(slot, i) in installmentTracking" :key="'track-' + slot.month + '-' + i" class="tran-item" 
 										:style="{ opacity: slot.status === 'MISSED' ? '0.8' : '1' }">
 										<div style="display: flex; align-items: center; flex: 1; min-width: 0; gap: 16px;">
 											<div class="mono" 
@@ -1672,6 +1672,10 @@
 					});
 
 					return this.sortOrder === 'desc' ? finalResult.reverse() : finalResult;
+				},
+
+				get displayTransactions() {
+					return this.isTrackingEnabled ? this.installmentTracking : this.mergedTransactions;
 				},
 
 				reset() {
