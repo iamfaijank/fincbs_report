@@ -952,12 +952,13 @@
 													borderColor: t.type === 'C' ? 'rgba(16, 185, 129, 0.2)' : (t.type === 'D' ? 'rgba(239, 68, 68, 0.2)' : '#fecaca')
 												}"
 												style="font-size: 15px; font-weight: 800; width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid; margin-top: 2px;">
-												[[ t.installmentNum ]]
+												[[ t.displayNum ]]
 											</div>
 											<div style="flex: 1; min-width: 0;">
 												<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
 													<div style="font-size: 13px; font-weight: 700; color: var(--primary);">
-														[[ t.type === 'C' ? 'Credit' : (t.type === 'D' ? 'Debit' : 'Missed Installment') ]]
+														[[ t.type === 'C' ? 'Credit' : (t.type === 'D' ? 'Debit' : 'Missed Month') ]]
+														<span v-if="t.installmentNum" style="font-size: 10px; color: #64748b; margin-left: 5px; font-weight: 400;">(Inst. #[[ t.installmentNum ]])</span>
 													</div>
 													<div class="mono" style="font-size: 13px; font-weight: 700;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
 														[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
@@ -965,10 +966,10 @@
 												</div>
 												<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
 													<span class="mono" style="font-size: 10px; font-weight: 800; color: #6366f1; background: #e0e7ff; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; border: 1px solid #c7d2fe;">
-														[[ t.monthLabel || formatMonthYear(t.date) ]]
+														[[ t.monthLabel ]]
 													</span>
 													<span v-if="t.isReal" class="mono" style="font-size: 11px; color: #94a3b8;">[[ t.date ]]</span>
-													<span v-else style="background: #fee2e2; color: #ef4444; font-size: 9px; font-weight: 800; padding: 1px 6px; border-radius: 4px; text-transform: uppercase;">Unpaid</span>
+													<span v-else style="background: #fee2e2; color: #ef4444; font-size: 9px; font-weight: 800; padding: 1px 6px; border-radius: 4px; text-transform: uppercase;">No Transaction</span>
 												</div>
 												<div style="font-size: 11px; color: #64748b; line-height: 1.4; word-break: break-all; white-space: normal;">
 													[[ t.particular ]]
@@ -1563,15 +1564,9 @@
 					const start = this.parseDate(this.data.acct_opn_date);
 					const installment = this.data.deposit_amount || 0;
 					
-					// If no installment amount, fallback to standard transactions
-					if (installment <= 0) return this.sortedTransactions;
-
 					const realTrans = [...(this.data.transactions || [])];
 					const monthsElapsed = this.getMonthsDiff(this.data.acct_opn_date, this.exitDate) + 1;
 					
-					const totalCredits = realTrans.filter(t => t.type === 'C').reduce((s, t) => s + t.amount, 0);
-					const paidCount = Math.floor(totalCredits / installment);
-
 					// Group real transactions by month label
 					const grouped = {};
 					realTrans.forEach(t => {
@@ -1581,23 +1576,33 @@
 					});
 
 					const result = [];
+					let instCount = 0;
+
 					for (let i = 0; i < monthsElapsed; i++) {
 						const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
 						const mLabel = this.formatMonthYear(d);
 						
-						if (grouped[mLabel]) {
+						if (grouped[mLabel] && grouped[mLabel].length > 0) {
 							grouped[mLabel].forEach(t => {
-								result.push({ ...t, isReal: true, monthLabel: mLabel, installmentNum: i + 1 });
+								if (t.type === 'C') instCount++;
+								result.push({ 
+									...t, 
+									isReal: true, 
+									monthLabel: mLabel, 
+									displayNum: i + 1,
+									installmentNum: t.type === 'C' ? instCount : null
+								});
 							});
-						} else if (i >= paidCount) {
-							// Missed month: no transaction and not covered by advances
+						} else {
+							// No transactions in this calendar month
 							result.push({
 								type: 'MISSED',
 								isReal: false,
 								monthLabel: mLabel,
 								amount: installment,
-								particular: 'Installment Missed',
-								installmentNum: i + 1
+								particular: 'No transaction recorded this month',
+								displayNum: i + 1,
+								installmentNum: null
 							});
 						}
 					}
