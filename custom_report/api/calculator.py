@@ -68,7 +68,7 @@ def get_account_details(foracid=None, settlement_date=None):
         """, (acid,))
         raw_trans = cursor.fetchall()
         
-        eligible_principal_sum = 0.0
+        principal_sum = 0.0
         total_interest = 0.0
         transactions = []
         processed_months = set()
@@ -85,11 +85,11 @@ def get_account_details(foracid=None, settlement_date=None):
                     r_diff = relativedelta(sett_dt + relativedelta(days=1), val_date)
                     row_months = (r_diff.years * 12) + r_diff.months
                     
-                    # Rule: Only one installment per month is eligible for interest AND Principal Sum
+                    # Rule: Sum Principal only if it's the first interest-bearing payment of the month
                     if row_months > 0 and month_key not in processed_months:
                         processed_months.add(month_key)
+                        principal_sum += amt # Sum the full transaction amount
                         eligible_amt = min(amt, float(planned_installment or 0))
-                        eligible_principal_sum += eligible_amt # Only sum eligible portions
                         
                         if app_rate > 0:
                             total_interest += eligible_amt * ((1 + app_rate/400)**(row_months/3) - 1)
@@ -110,8 +110,7 @@ def get_account_details(foracid=None, settlement_date=None):
         penalty_amt = 0.0
         rule_meta = RD_SLABS.get(str(schm_code), {"tenure": 0})
         if months_held_total < rule_meta['tenure']:
-            # Penalty now on Eligible Principal Sum as per new request
-            penalty_amt = eligible_principal_sum * (0.018 if schm_code == '2005' else 0.01)
+            penalty_amt = principal_sum * (0.018 if schm_code == '2005' else 0.01)
 
         return {
             "success": True, "cif_id": cif, "acct_name": name, "sol_id": sol_id, "sol_desc": sol_desc,
@@ -119,9 +118,9 @@ def get_account_details(foracid=None, settlement_date=None):
             "maturity_date": mat_dt.strftime("%d/%m/%Y"), "maturity_amount": float(mat_amt or 0),
             "deposit_period_mths": int(period or 0), "deposit_amount": float(planned_installment or 0),
             "planned_installment": float(planned_installment or 0),
-            "transactions": transactions, "principal": round(eligible_principal_sum, 2),
+            "transactions": transactions, "principal": round(principal_sum, 2),
             "interest": int(round(total_interest)), "penalty": int(round(penalty_amt)),
-            "net_payable": int(round(eligible_principal_sum + total_interest - penalty_amt)),
+            "net_payable": int(round(principal_sum + total_interest - penalty_amt)),
             "applied_rate": app_rate, "months_held": months_held_total
         }
     except Exception as e:

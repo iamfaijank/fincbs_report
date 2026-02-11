@@ -586,172 +586,60 @@
 
 				<!-- Loading State -->
 				<div v-if="isLoading" class="loading-overlay">
-					<div
-						style="
-							margin-bottom: 40px;
-							text-align: center;
-							animation: slideIn 0.5s ease;
-						"
-					>
-						<h2 style="margin: 0; color: var(--primary); font-size: 24px">
-							System Processing
-						</h2>
-						<p style="color: #64748b; margin-top: 5px; font-size: 14px">
-							Synchronizing with Finacle Database
-						</p>
+					<div style="margin-bottom: 40px; text-align: center; animation: slideIn 0.5s ease;">
+						<h2 style="margin: 0; color: var(--primary); font-size: 24px">System Processing</h2>
+						<p style="color: #64748b; margin-top: 5px; font-size: 14px">Synchronizing with Finacle Database</p>
 					</div>
 
 					<div class="checklist">
-						<div
-							v-for="step in calculationSteps"
-							:key="step.label"
-							class="checklist-item"
-							:class="step.status"
-						>
+						<div v-for="s in calculationSteps" :key="s.label" class="checklist-item" :class="s.status">
 							<div class="check-icon"></div>
-							<div
-								style="font-size: 13px; font-weight: 600"
-								:style="{ color: step.status === 'pending' ? '#94a3b8' : 'var(--primary)' }"
-							>
-								[[ step.label ]]
+							<div style="font-size: 13px; font-weight: 600" :style="{ color: s.status === 'pending' ? '#94a3b8' : 'var(--primary)' }">
+								[[ s.label ]]
 							</div>
 						</div>
 					</div>
 				</div>
 
 				<div class="content-area">
+					<!-- Step 1 -->
 					<div v-show="step === 1" class="stage-padding">
-						<h1
-							style="
-								font-size: 42px;
-								font-weight: 800;
-								color: var(--primary);
-								margin-bottom: 12px;
-							"
-						>
-							Prematurity Calculator
-						</h1>
-						<p style="color: #64748b; margin-bottom: 50px; font-size: 18px;">
-							Access real-time Finacle data for instant prematurity settlement calculations.
-						</p>
+						<h1 style="font-size: 42px; font-weight: 800; color: var(--primary); margin-bottom: 12px;">Prematurity Calculator</h1>
+						<p style="color: #64748b; margin-bottom: 50px; font-size: 18px;">Access real-time Finacle data for instant prematurity settlement calculations.</p>
 
 						<div class="finacle-wrapper">
 							<div class="segment">
 								<div class="seg-label" style="color: var(--primary)">SOL ID (4)</div>
 								<div class="inputs-row">
-									<input
-										v-for="i in 4"
-										:key="'sol-'+i"
-										type="text"
-										inputmode="numeric"
-										maxlength="1"
-										class="digit-box"
-										:id="'d-'+(i-1)"
-										v-model="digits[i-1]"
-										@input="handleInput($event, i-1)"
-										@keydown.backspace="handleBackspace($event, i-1)"
-										@keydown.enter="isComplete && calculate()"
-										@paste="handlePaste($event)"
-									/>
+									<input v-for="i in 4" :key="'sol-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i-1)" v-model="digits[i-1]" @input="handleInput($event, i-1)" @keydown.backspace="handleBackspace($event, i-1)" @keydown.enter="isComplete && calculate()" @paste="handlePaste($event)"/>
 								</div>
 							</div>
 							<div class="segment">
 								<div class="seg-label" style="color: #9333ea">Scheme (4)</div>
 								<div class="inputs-row" :class="{ 'border-error': !isSchemeValid && digits.slice(4, 8).join('').length === 4 }">
-									<input
-										v-for="i in 4"
-										:key="'schm-'+i"
-										type="text"
-										inputmode="numeric"
-										maxlength="1"
-										class="digit-box"
-										:id="'d-'+(i+3)"
-										v-model="digits[i+3]"
-										@input="handleInput($event, i+3)"
-										@keydown.backspace="handleBackspace($event, i+3)"
-										@keydown.enter="isComplete && calculate()"
-									/>
+									<input v-for="i in 4" :key="'schm-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i+3)" v-model="digits[i+3]" @input="handleInput($event, i+3)" @keydown.backspace="handleBackspace($event, i+3)" @keydown.enter="isComplete && calculate()"/>
 								</div>
-								<div v-if="schemeDesc" style="font-size: 11px; font-weight: 700; color: #9333ea; margin-top: 5px; text-align: left; padding-left: 14px; animation: slideIn 0.3s ease;">
-									[[ schemeDesc ]]
-								</div>
-								<div v-if="!isSchemeValid && digits.slice(4, 8).join('').length === 4" style="font-size: 10px; font-weight: 800; color: #ef4444; margin-top: 5px; text-align: left; padding-left: 14px; text-transform: uppercase;">
-									✖ Scheme code not allowed
-								</div>
+								<div v-if="schemeDesc" style="font-size: 11px; font-weight: 700; color: #9333ea; margin-top: 5px; text-align: left; padding-left: 14px;">[[ schemeDesc ]]</div>
 							</div>
 							<div class="segment">
-								<div class="seg-label" style="color: var(--accent)">
-									Running Serial (7)
-								</div>
+								<div class="seg-label" style="color: var(--accent)">Running Serial (7)</div>
 								<div class="inputs-row">
-									<input
-										v-for="i in 7"
-										:key="'serial-'+i"
-										type="text"
-										inputmode="numeric"
-										maxlength="1"
-										class="digit-box"
-										:id="'d-'+(i+7)"
-										v-model="digits[i+7]"
-										@input="handleInput($event, i+7)"
-										@keydown.backspace="handleBackspace($event, i+7)"
-										@keydown.enter="isComplete && calculate()"
-									/>
+									<input v-for="i in 7" :key="'serial-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i+7)" v-model="digits[i+7]" @input="handleInput($event, i+7)" @keydown.backspace="handleBackspace($event, i+7)" @keydown.enter="isComplete && calculate()"/>
 								</div>
 							</div>
 						</div>
 
-						<button
-							class="btn-main"
-							:disabled="!isComplete || isLoading"
-							@click="calculate"
-							style="padding: 20px 60px; font-size: 18px; border-radius: 20px;"
-						>
+						<button class="btn-main" :disabled="!isComplete || isLoading" @click="calculate" style="padding: 20px 60px; font-size: 18px; border-radius: 20px;">
 							[[ isLoading ? 'Processing...' : 'Calculate Premature ➔' ]]
 						</button>
 
-						<div v-if="!isSchemeValid && digits.slice(4, 8).join('').length === 4" 
-							style="margin-top: 25px; color: #ef4444; font-size: 14px; font-weight: 600; background: #fef2f2; padding: 12px 24px; border-radius: 16px; border: 1px solid #fee2e2; display: inline-block; animation: slideIn 0.3s ease;">
-							⚠️ Only SMBG (2005) and RD (2010-2016) schemes are allowed.
-						</div>
-
-						<div
-							v-else-if="errorMessage"
-							style="
-								margin-top: 25px;
-								color: #ef4444;
-								font-size: 14px;
-								font-weight: 600;
-								background: #fef2f2;
-								padding: 12px 24px;
-								border-radius: 16px;
-								border: 1px solid #fee2e2;
-								display: inline-block;
-								animation: slideIn 0.3s ease;
-							"
-						>
+						<div v-if="errorMessage" style="margin-top: 25px; color: #ef4444; font-size: 14px; font-weight: 600; background: #fef2f2; padding: 12px 24px; border-radius: 16px; border: 1px solid #fee2e2; display: inline-block;">
 							⚠️ [[ errorMessage ]]
 						</div>
-
-						<div
-							v-else
-							class="blink"
-							style="
-								margin-top: 25px;
-								font-size: 14px;
-								color: #64748b;
-								font-weight: 700;
-								display: flex;
-								align-items: center;
-								justify-content: center;
-								transition: 0.3s;
-							"
-							:style="{ color: isComplete ? 'var(--accent)' : '#64748b' }"
-						>
-							[[ instructionMsg ]]
-						</div>
+						<div v-else class="blink" style="margin-top: 25px; font-size: 14px; color: #64748b; font-weight: 700;">[[ instructionMsg ]]</div>
 					</div>
 
+					<!-- Step 2 -->
 					<div v-if="data" v-show="step === 2" style="animation: slideIn 0.5s ease-out; display: flex; flex-direction: column; flex: 1; min-height: 0;">
 						<div class="tabs-container" style="align-items: center; justify-content: space-between; gap: 24px; background: none; padding: 0 0 20px 0;">
 							<div style="display: flex; align-items: center; gap: 24px;">
@@ -760,9 +648,8 @@
 									[[ selectedProduct.name ]]
 									<span class="tab-rate">[[ data.applied_rate ]]%</span>
 								</div>
-								
 								<div style="display: flex; flex-direction: column; gap: 4px; border-left: 2px solid #cbd5e1; padding-left: 24px;">
-									<span style="font-size: 10px; font-weight: 800; color: #9333ea; text-transform: uppercase; letter-spacing: 1px;">Verified Scheme</span>
+									<span style="font-size: 10px; font-weight: 800; color: #9333ea; text-transform: uppercase;">Verified Scheme</span>
 									<div style="display: flex; align-items: center; gap: 10px;">
 										<span class="mono" style="font-size: 16px; font-weight: 700; color: var(--primary); background: #fff; padding: 2px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">[[ data.schm_code ]]</span>
 										<span style="font-size: 15px; font-weight: 700; color: #475569;">[[ schemeDesc ]]</span>
@@ -772,19 +659,19 @@
 
 							<div style="display: flex; gap: 30px;">
 								<div style="text-align: right;">
-									<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Deposit Amount</span>
+									<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Deposit Amount</span>
 									<div class="mono" style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ formatCurrency(data.deposit_amount) ]]</div>
 								</div>
 								<div style="text-align: right;">
-									<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Tenure</span>
+									<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Tenure</span>
 									<div style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ data.deposit_period_mths ]] Months</div>
 								</div>
 								<div style="text-align: right;">
-									<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Maturity Date</span>
+									<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Maturity Date</span>
 									<div class="mono" style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ data.maturity_date ]]</div>
 								</div>
 								<div style="text-align: right;">
-									<span style="font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 1px;">Maturity Amount</span>
+									<span style="font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase;">Maturity Amount</span>
 									<div class="mono" style="font-size: 15px; font-weight: 700; color: var(--accent);">[[ formatCurrency(data.maturity_amount) ]]</div>
 								</div>
 							</div>
@@ -793,132 +680,43 @@
 						<div class="dashboard-grid">
 							<div class="panel-card panel-left">
 								<div style="margin-bottom: 40px">
-									<div
-										style="
-											font-size: 11px;
-											font-weight: 800;
-											color: var(--accent);
-											margin-bottom: 4px;
-											text-transform: uppercase;
-										"
-									>
-										Customer Profile
-									</div>
-									<h2 style="margin: 0; font-size: 28px; font-weight: 800">
-										[[ data.cust_name ]]
-									</h2>
-									<span class="mono" style="color: #94a3b8"
-										>CUST-ID: [[ data.cust_id ]]</span
-									>
+									<div style="font-size: 11px; font-weight: 800; color: var(--accent); margin-bottom: 4px; text-transform: uppercase;">Customer Profile</div>
+									<h2 style="margin: 0; font-size: 28px; font-weight: 800">[[ data.cust_name ]]</h2>
+									<span class="mono" style="color: #94a3b8">CUST-ID: [[ data.cust_id ]]</span>
 								</div>
 
-								<div
-									style="
-										background: #f8fafc;
-										padding: 24px;
-										border-radius: 20px;
-										border: 1px solid var(--border);
-										margin-bottom: 30px;
-									"
-								>
-									<div
-										style="
-											font-size: 10px;
-											font-weight: 800;
-											color: #94a3b8;
-											margin-bottom: 10px;
-											display: flex;
-											justify-content: space-between;
-											align-items: center;
-										"
-									>
+								<div style="background: #f8fafc; padding: 24px; border-radius: 20px; border: 1px solid var(--border); margin-bottom: 30px;">
+									<div style="font-size: 10px; font-weight: 800; color: #94a3b8; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
 										<span>FINACLE ACCOUNT NUMBER</span>
-										<button 
-											@click="copyToClipboard(data.acct_no)"
-											style="background: none; border: none; cursor: pointer; color: var(--accent); font-size: 10px; font-weight: 800; display: flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: 0.2s;"
-											onmouseover="this.style.background = 'rgba(13, 148, 136, 0.1)'"
-											onmouseout="this.style.background = 'none'"
-										>
+										<button @click="copyToClipboard(data.acct_no)" style="background: none; border: none; cursor: pointer; color: var(--accent); font-size: 10px; font-weight: 800; display: flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: 0.2s;">
 											<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
 											COPY
 										</button>
 									</div>
-									<div
-										style="
-											font-size: 20px;
-											font-family: &quot;JetBrains Mono&quot;;
-											font-weight: 700;
-											display: flex;
-											gap: 12px;
-											align-items: center;
-										"
-									>
-										<span style="color: var(--primary)"
-											>[[ data.acct_no.slice(0,4) ]]</span
-										>
+									<div style="font-size: 20px; font-family: 'JetBrains Mono'; font-weight: 700; display: flex; gap: 12px; align-items: center;">
+										<span style="color: var(--primary)">[[ data.acct_no.slice(0,4) ]]</span>
 										<span style="color: #cbd5e1; font-weight: 300">/</span>
 										<span style="color: #9333ea">[[ data.acct_no.slice(4,8) ]]</span>
 										<span style="color: #cbd5e1; font-weight: 300">/</span>
-										<span style="color: var(--accent)"
-											>[[ data.acct_no.slice(8,15) ]]</span
-										>
+										<span style="color: var(--accent)">[[ data.acct_no.slice(8,15) ]]</span>
 									</div>
 								</div>
 
 								<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px">
 									<div>
 										<label class="seg-label" style="padding: 0">BRANCH</label>
-										<p style="font-weight: 600; margin: 5px 0">
-											[[ data.branch_name ]]
-										</p>
+										<p style="font-weight: 600; margin: 5px 0">[[ data.branch_name ]]</p>
 									</div>
 									<div>
 										<label class="seg-label" style="padding: 0">ACCOUNT OPENING DATE</label>
-										<p style="font-weight: 600; margin: 5px 0" class="mono">
-											[[ data.acct_opn_date ]]
-										</p>
+										<p style="font-weight: 600; margin: 5px 0" class="mono">[[ data.acct_opn_date ]]</p>
 									</div>
 								</div>
 
-								<div
-									style="margin-top: 50px; display: flex; align-items: center; gap: 15px"
-								>
-									<button
-										@click="reset"
-										style="
-											background: none;
-											border: 1px solid var(--border);
-											padding: 12px 24px;
-											border-radius: 12px;
-											cursor: pointer;
-											font-weight: 600;
-											color: #64748b;
-											transition: 0.2s;
-										"
-										onmouseover="this.style.background = '#f1f5f9'"
-										onmouseout="this.style.background = 'none'"
-									>
-										← Back (ESC / Backspace)
-									</button>
-									<div
-										style="
-											font-size: 11px;
-											color: #94a3b8;
-											font-weight: 600;
-											text-transform: uppercase;
-											letter-spacing: 0.5px;
-										"
-									>
-										<span
-											style="
-												padding: 2px 6px;
-												background: #e2e8f0;
-												border-radius: 4px;
-												color: #475569;
-											"
-											>0-9</span
-										>
-										New Entry
+								<div style="margin-top: 50px; display: flex; align-items: center; gap: 15px">
+									<button @click="reset" style="background: none; border: 1px solid var(--border); padding: 12px 24px; border-radius: 12px; cursor: pointer; font-weight: 600; color: #64748b;">← Back (ESC / Backspace)</button>
+									<div style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">
+										<span style="padding: 2px 6px; background: #e2e8f0; border-radius: 4px; color: #475569;">0-9</span> New Entry
 									</div>
 								</div>
 							</div>
@@ -926,21 +724,15 @@
 							<div class="panel-card panel-transactions">
 								<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-shrink: 0;">
 									<div style="display: flex; align-items: center; gap: 10px;">
-										<h3 style="margin: 0; font-size: 14px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">
-											Recent Transactions
-										</h3>
-
-										<button @click="toggleSort" 
-											style="background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 8px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: 0.2s;"
-											onmouseover="this.style.background = '#e2e8f0'"
-											onmouseout="this.style.background = '#f1f5f9'">
-											<svg v-if="sortOrder === 'desc'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 18V4"></path></svg>
-											<svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 19h10M11 15h7M11 11h4M3 7l3-3 3 3M6 6v14"></path></svg>
+										<h3 style="margin: 0; font-size: 14px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Recent Transactions</h3>
+										<button @click="toggleSort" style="background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 8px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+											<svg v-if="sortOrder === 'desc'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 18V4"></path></svg>
+											<svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M11 19h10M11 15h7M11 11h4M3 7l3-3 3 3M6 6v14"></path></svg>
 											<span style="font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase;">[[ sortOrder ]]</span>
 										</button>
 									</div>
 									<div style="text-align: right;">
-										<span style="font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 2px;">Total Transacted</span>
+										<span style="font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Total Transacted</span>
 										<span class="mono" style="font-size: 14px; font-weight: 800; color: var(--accent);">[[ formatCurrency(data.total_tran_sum) ]]</span>
 									</div>
 								</div>
@@ -948,57 +740,30 @@
 								<div class="tran-list" v-if="data && sortedTransactions.length" style="flex: 1; min-height: 0; max-height: 550px; overflow-y: auto; padding-right: 8px;">
 									<div v-for="(t, i) in sortedTransactions" :key="t.date + t.amount + t.type + i" class="tran-item" style="padding: 16px 0; border-bottom: 1px solid #f1f5f9;">
 										<div style="display: flex; align-items: flex-start; flex: 1; min-width: 0; gap: 16px;">
-											<!-- Enhanced Serial Number Badge -->
-											<div class="mono" 
-												:style="{ 
-													background: t.type === 'C' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
-													color: t.type === 'C' ? '#10b981' : '#ef4444',
-													borderColor: t.type === 'C' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'
-												}"
-												style="font-size: 14px; font-weight: 800; width: 36px; height: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid; margin-top: 2px;">
+											<div class="mono" :style="{ background: t.type === 'C' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: t.type === 'C' ? '#10b981' : '#ef4444', borderColor: t.type === 'C' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)' }" style="font-size: 14px; font-weight: 800; width: 36px; height: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid; margin-top: 2px;">
 												[[ sortOrder === 'desc' ? sortedTransactions.length - i : i + 1 ]]
 											</div>
-
 											<div style="flex: 1; min-width: 0;">
-												<!-- First Row: Type and Amount -->
 												<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
 													<div>
-														<span style="font-size: 13px; font-weight: 700; color: var(--primary);">
-															[[ t.type === 'C' ? 'Credit' : 'Debit' ]]
-														</span>
+														<span style="font-size: 13px; font-weight: 700; color: var(--primary);">[[ t.type === 'C' ? 'Credit' : 'Debit' ]]</span>
 														<span class="mono" style="font-size: 11px; color: #94a3b8; margin-left: 8px;">[[ t.date ]]</span>
 													</div>
 													<div class="mono" style="font-size: 14px; font-weight: 800;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
 														[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
 													</div>
 												</div>
-
-												<!-- Detailed Breakout Box (Image Style) -->
 												<div v-if="t.type === 'C'" style="margin-top: 6px; padding: 8px 12px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1; display: flex; align-items: center; gap: 15px;">
-													<div style="font-size: 11px; color: #475569;">
-														<strong style="color: #94a3b8; font-size: 9px; text-transform: uppercase; margin-right: 4px;">ELG:</strong> ₹[[ formatCurrency(t.elg_amt).replace('₹', '') ]]
-													</div>
-													<div style="color: #e2e8f0; font-weight: 300;">|</div>
-													<div style="font-size: 11px; color: #475569;">
-														<strong style="color: #94a3b8; font-size: 9px; text-transform: uppercase; margin-right: 4px;">HELD:</strong> [[ t.row_months ]]m
-													</div>
-													<div style="color: #e2e8f0; font-weight: 300;">|</div>
-													<div style="font-size: 11px; color: var(--accent); font-weight: 700;">
-														<strong style="color: #94a3b8; font-size: 9px; text-transform: uppercase; margin-right: 4px;">SCHEME INT (@[[ base_rate || 8 ]]%):</strong> +[[ t.scheme_interest ]]
-													</div>
+													<div style="font-size: 11px; color: #475569;"><strong style="color: #94a3b8; font-size: 9px; text-transform: uppercase;">ELG:</strong> ₹[[ formatCurrency(t.elg_amt).replace('₹', '') ]]</div>
+													<div style="color: #e2e8f0;">|</div>
+													<div style="font-size: 11px; color: #475569;"><strong style="color: #94a3b8; font-size: 9px; text-transform: uppercase;">HELD:</strong> [[ t.row_months ]]m</div>
+													<div style="color: #e2e8f0;">|</div>
+													<div style="font-size: 11px; color: var(--accent); font-weight: 700;"><strong style="color: #94a3b8; font-size: 9px; text-transform: uppercase;">SCHEME INT:</strong> +[[ t.scheme_interest ]]</div>
 												</div>
-
-												<!-- Third Row: Particulars -->
-												<div style="font-size: 11px; color: #64748b; line-height: 1.5; word-break: break-all; white-space: normal; background: #f8fafc; padding: 6px 10px; border-radius: 8px; border-left: 3px solid #e2e8f0; margin-top: 6px;">
-													[[ t.particular ]]
-												</div>
+												<div style="font-size: 11px; color: #64748b; line-height: 1.5; background: #f8fafc; padding: 6px 10px; border-radius: 8px; border-left: 3px solid #e2e8f0; margin-top: 6px;">[[ t.particular ]]</div>
 											</div>
 										</div>
 									</div>
-								</div>
-								<div v-else style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0; color: #94a3b8;">
-									<div style="font-size: 24px; margin-bottom: 10px;">📋</div>
-									<div style="font-size: 12px; font-weight: 600;">No transactions found</div>
 								</div>
 							</div>
 
@@ -1010,105 +775,36 @@
 											<span class="mono" style="font-size: 13px; font-weight: 800; color: var(--accent); background: rgba(13, 148, 136, 0.1); padding: 2px 8px; border-radius: 6px;">[[ formatDate(exitDate) ]]</span>
 										</div>
 										<div style="margin-top: 10px;">
-											<input 
-												type="date" 
-												v-model="exitDate" 
-												@change="updateCalculations()"
-												style="padding: 10px 14px; border-radius: 12px; border: 2px solid var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--primary); outline: none; width: 100%; box-sizing: border-box;"
-											/>
+											<input type="date" v-model="exitDate" @change="updateCalculations()" style="padding: 10px 14px; border-radius: 12px; border: 2px solid var(--accent); font-family: 'JetBrains Mono'; font-size: 13px; font-weight: 700; width: 100%; box-sizing: border-box;"/>
 										</div>
-										
-										<div style="margin-top: 12px; font-size: 11px; color: #64748b; line-height: 1.6;">
+										<div v-if="schemeRules[data.schm_code]" style="margin-top: 12px; font-size: 11px; color: #64748b; line-height: 1.6;">
 											<div style="font-weight: 700; margin-bottom: 8px; color: var(--primary);">💡 Applicable Rules for Scheme [[ data.schm_code ]]:</div>
-											<div v-if="schemeRules[data.schm_code]" style="display: grid; grid-template-columns: 1fr; gap: 6px;">
-												<div v-for="slab in schemeRules[data.schm_code].interest_slabs" 
-													:key="slab[0]+slab[1]"
-													:style="{ color: data.appliedRate === slab[2] ? '#10b981' : '#64748b', fontWeight: data.appliedRate === slab[2] ? '700' : '400' }" 
-													style="display: flex; align-items: center; gap: 8px; transition: 0.3s;">
-													<span v-if="data.appliedRate === slab[2]" style="background: #10b981; color: white; width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px;">✓</span>
-													<span v-else style="color: #cbd5e1;">•</span>
-													[[ slab[2] ]]% : From [[ slab[0] ]] to [[ slab[1] ]] months
-												</div>
-												<div :style="{ color: data.appliedRate === schemeRules[data.schm_code].base_rate ? '#10b981' : '#64748b', fontWeight: data.appliedRate === schemeRules[data.schm_code].base_rate ? '700' : '400' }" 
-													style="display: flex; align-items: center; gap: 8px; transition: 0.3s;">
-													<span v-if="data.appliedRate === schemeRules[data.schm_code].base_rate" style="background: #10b981; color: white; width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px;">✓</span>
-													<span v-else style="color: #cbd5e1;">•</span>
-													[[ schemeRules[data.schm_code].base_rate ]]% : On or after [[ schemeRules[data.schm_code].tenure_m ]] months (Maturity)
-												</div>
+											<div v-for="slab in schemeRules[data.schm_code].interest_slabs" :style="{ color: data.appliedRate === slab[2] ? '#10b981' : '#64748b', fontWeight: data.appliedRate === slab[2] ? '700' : '400' }" style="display: flex; align-items: center; gap: 8px;">
+												<span v-if="data.appliedRate === slab[2]">✓</span><span v-else>•</span> [[ slab[2] ]]% : [[ slab[0] ]]-[[ slab[1] ]] months
+											</div>
+											<div :style="{ color: data.appliedRate === schemeRules[data.schm_code].base_rate ? '#10b981' : '#64748b', fontWeight: data.appliedRate === schemeRules[data.schm_code].base_rate ? '700' : '400' }" style="display: flex; align-items: center; gap: 8px;">
+												<span v-if="data.appliedRate === schemeRules[data.schm_code].base_rate">✓</span><span v-else>•</span> [[ schemeRules[data.schm_code].base_rate ]]% : Mature
 											</div>
 										</div>
-
-										<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color, background: data.slabStatus.color + '15' }" 
-											style="margin-top: 15px; font-size: 12px; font-weight: 700; padding: 10px 15px; border-radius: 10px; display: flex; align-items: center; gap: 8px;">
-											<span style="font-size: 16px;">•</span> [[ data.slabStatus.label ]]
-										</div>
-										<div style="margin-top: 10px; font-size: 10px; color: #94a3b8; font-style: italic; padding: 0 5px;">
-											* Interest is calculated on individual installments, capped at [[ formatCurrency(data.planned_installment) ]] per month as per audit rules.
-										</div>
+										<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color, background: data.slabStatus.color + '15' }" style="margin-top: 15px; font-size: 12px; font-weight: 700; padding: 10px 15px; border-radius: 10px;">[[ data.slabStatus.label ]]</div>
 									</div>
 
-									<h3 style="margin-top: 0; font-size: 16px; font-weight: 700">
-										Prematurity Settlement Breakdown
-									</h3>
-
-									<div style="margin: 30px 0">
-										<div class="summary-item">
-											<span>Principal Amount</span>
-											<span class="mono" style="font-weight: 600"
-												>[[ formatCurrency(data.principal) ]]</span
-											>
-										</div>
-										<div class="summary-item">
-											<span :style="{ color: data.appliedRate === 0 ? '#ef4444' : 'inherit' }">
-												Accrued Interest <strong>([[ data.appliedRate ]]%)</strong>
-											</span>
-											<span class="mono" style="color: var(--accent); font-weight: 600"
-												>+ [[ formatCurrency(data.interest) ]]</span
-											>
-										</div>
-										<div class="summary-item" style="border: none">
-											<span style="color: var(--warning); font-weight: 700">
-												[[ data.schm_code === '2005' ? 'Service Charge' : 'Premature Penalty' ]]
-											</span>
-											<span class="mono" style="color: var(--warning); font-weight: 700"
-												>- [[ formatCurrency(data.penalty) ]]</span
-											>
-										</div>
-									</div>
+									<h3 style="margin-top: 0; font-size: 16px; font-weight: 700">Breakdown</h3>
+									<div class="summary-item"><span>Principal</span><span class="mono">[[ formatCurrency(data.principal) ]]</span></div>
+									<div class="summary-item"><span>Interest ([[ data.appliedRate ]]%)</span><span class="mono" style="color: var(--accent);">+ [[ formatCurrency(data.interest) ]]</span></div>
+									<div class="summary-item" style="border: none"><span style="color: var(--warning);">Penalty</span><span class="mono" style="color: var(--warning);">- [[ formatCurrency(data.penalty) ]]</span></div>
 								</div>
 
-								<div class="total-banner" style="margin-top: 0; flex-shrink: 0;">
-									<div
-										style="
-											font-size: 11px;
-											font-weight: 800;
-											opacity: 0.9;
-											text-transform: uppercase;
-											letter-spacing: 1px;
-										"
-									>
-										Net Settlement Amount
-									</div>
-									<div
-										style="font-size: 32px; font-weight: 800; margin-top: 5px"
-										class="mono"
-									>
-										[[ formatCurrency(data.total) ]]
-									</div>
-									<div style="font-size: 11px; margin-top: 10px; opacity: 0.8">
-										Transfer to customer's linked savings account.
-									</div>
+								<div class="total-banner">
+									<div style="font-size: 11px; font-weight: 800; text-transform: uppercase;">Net Settlement</div>
+									<div style="font-size: 32px; font-weight: 800; margin-top: 5px" class="mono">[[ formatCurrency(data.total) ]]</div>
 								</div>
 							</div>
 						</div>
 					</div>
 				</div>
 
-				<!-- Toast Notification -->
-				<div v-if="toastMsg" 
-					style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 12px 24px; border-radius: 12px; font-size: 13px; font-weight: 700; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 1000; animation: slideIn 0.3s ease; display: flex; align-items: center; gap: 10px;">
-					<span style="color: #10b981;">✓</span> [[ toastMsg ]]
-				</div>
+				<div v-if="toastMsg" style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 12px 24px; border-radius: 12px; font-size: 13px; font-weight: 700; z-index: 1000; display: flex; align-items: center; gap: 10px;">✓ [[ toastMsg ]]</div>
 			</div>
 		</div>
 
@@ -1117,414 +813,188 @@
 				$delimiters: ["[[", "]]"],
 				step: 1,
 				digits: Array(15).fill(""),
-				isError: false,
 				isLoading: false,
 				errorMessage: "",
 				toastMsg: "",
-				sortOrder: 'desc', // 'desc' or 'asc'
+				sortOrder: 'desc',
 				schemeDesc: "",
 				isSchemeValid: true,
 				calculationSteps: [
-					{ label: "Connecting to Finacle core", status: "pending" },
-					{ label: "Verifying Account Number", status: "pending" },
-					{ label: "Fetching Deposit Details", status: "pending" },
-					{ label: "Calculating Premature Interest & Penalty", status: "pending" },
+					{ label: "Connecting", status: "pending" },
+					{ label: "Verifying", status: "pending" },
+					{ label: "Fetching", status: "pending" },
+					{ label: "Calculating", status: "pending" },
 				],
 				data: null,
-				products: [
-					{ name: "SMBG", rate: 8 },
-					{ name: "RD", rate: 8 },
-				],
+				products: [{ name: "SMBG", rate: 8 }, { name: "RD", rate: 8 }],
 				schemeRules: {
-					"2010": { name: "RD 12M", tenure_m: 12, base_rate: 8.0, penalty_slabs: [[3, 6.0], [6, 4.0]], interest_slabs: [[6, 9, 4.0], [9, 12, 6.0]] },
-					"2011": { name: "RD 24M", tenure_m: 24, base_rate: 8.0, penalty_slabs: [[6, 6.0], [12, 4.0]], interest_slabs: [[12, 18, 4.0], [18, 24, 6.0]] },
-					"2012": { name: "RD 36M", tenure_m: 36, base_rate: 8.0, penalty_slabs: [[9, 6.0], [18, 4.0]], interest_slabs: [[18, 27, 4.0], [27, 36, 6.0]] },
-					"2013": { name: "RD 48M", tenure_m: 48, base_rate: 8.0, penalty_slabs: [[12, 6.0], [24, 4.0]], interest_slabs: [[24, 36, 4.0], [36, 48, 6.0]] },
-					"2014": { name: "RD 60M", tenure_m: 60, base_rate: 8.0, penalty_slabs: [[15, 6.0], [30, 4.0]], interest_slabs: [[30, 45, 4.0], [45, 60, 6.0]] },
-					"2015": { name: "RD 60M", tenure_m: 60, base_rate: 8.0, penalty_slabs: [[15, 6.0], [30, 4.0]], interest_slabs: [[30, 45, 4.0], [45, 60, 6.0]] },
-					"2005": { name: "SMBG", tenure_m: 66, base_rate: 8.0, penalty_slabs: [[999, 1.8]], interest_slabs: [[36, 66, 6.0]] },
-					"2016": { name: "RD 120M", tenure_m: 120, base_rate: 8.0, penalty_slabs: [], interest_slabs: [[0, 120, 8.0]] }
+					"2010": { name: "RD 12M", tenure_m: 12, base_rate: 8.0, interest_slabs: [[6, 9, 4.0], [9, 12, 6.0]] },
+					"2011": { name: "RD 24M", tenure_m: 24, base_rate: 8.0, interest_slabs: [[12, 18, 4.0], [18, 24, 6.0]] },
+					"2012": { name: "RD 36M", tenure_m: 36, base_rate: 8.0, interest_slabs: [[18, 27, 4.0], [27, 36, 6.0]] },
+					"2013": { name: "RD 48M", tenure_m: 48, base_rate: 8.0, interest_slabs: [[24, 36, 4.0], [36, 48, 6.0]] },
+					"2014": { name: "RD 60M", tenure_m: 60, base_rate: 8.0, interest_slabs: [[30, 45, 4.0], [45, 60, 6.0]] },
+					"2015": { name: "RD 60M", tenure_m: 60, base_rate: 8.0, interest_slabs: [[30, 45, 4.0], [45, 60, 6.0]] },
+					"2005": { name: "SMBG", tenure_m: 66, base_rate: 8.0, interest_slabs: [[36, 66, 6.0]] },
+					"2016": { name: "RD 120M", tenure_m: 120, base_rate: 8.0, interest_slabs: [[0, 120, 8.0]] }
 				},
 				selectedProduct: null,
 				exitDate: new Date().toISOString().split('T')[0],
 
 				init() {
-					console.log("[DEBUG] init() called");
 					this.selectedProduct = this.products[0];
 					this.focusFirst();
 				},
 
-				// Robust date parser for multiple formats
 				parseDate(str) {
-					try {
-						if (!str) return null;
-						if (str instanceof Date) return str;
-						str = str.toString().trim();
-						
-						// Handle DD/MM/YYYY
-						if (str.includes('/')) {
-							const parts = str.split('/');
-							if (parts.length === 3) {
-								const [d, m, y] = parts.map(Number);
-								return new Date(y, m - 1, d);
-							}
-						}
-						
-						// Handle DD-MM-YYYY or YYYY-MM-DD
-						if (str.includes('-')) {
-							const parts = str.split('-');
-							if (parts.length === 3) {
-								if (parts[0].length === 4) { // YYYY-MM-DD
-									const [y, m, d] = parts.map(Number);
-									return new Date(y, m - 1, d);
-								} else { // DD-MM-YYYY
-									const [d, m, y] = parts.map(Number);
-									return new Date(y, m - 1, d);
-								}
-							}
-						}
-						
-						const d = new Date(str);
-						return isNaN(d.getTime()) ? null : d;
-					} catch (err) {
-						console.error("[DEBUG] parseDate error:", str, err);
-						return null;
+					if (!str) return null;
+					if (str instanceof Date) return str;
+					str = str.toString().trim();
+					if (str.includes('/')) {
+						const parts = str.split('/');
+						if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]);
 					}
+					if (str.includes('-')) {
+						const parts = str.split('-');
+						if (parts.length === 3) {
+							if (parts[0].length === 4) return new Date(parts[0], parts[1] - 1, parts[2]);
+							return new Date(parts[2], parts[1] - 1, parts[0]);
+						}
+					}
+					const d = new Date(str);
+					return isNaN(d.getTime()) ? null : d;
 				},
 
-				// Helper to calculate full months between dates based on anniversary
 				getMonthsDiff(startVal, endVal) {
 					const start = this.parseDate(startVal);
 					const end = this.parseDate(endVal);
 					if (!start || !end) return 0;
-					
 					let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-					if (end.getDate() < start.getDate()) {
-						months--;
-					}
+					if (end.getDate() < start.getDate()) months--;
 					return Math.max(0, months);
 				},
 
 				handleGlobalKey(e) {
 					if (this.isLoading) return;
-					const isNumber = /^\d$/.test(e.key);
-					if (this.step === 1) {
-						if (e.key === "Enter" && this.isComplete) {
-							this.calculate();
-							return;
-						}
-						if (isNumber && document.activeElement.tagName !== "INPUT") {
-							const idx = this.digits.findIndex((d) => d === "");
-							if (idx !== -1) {
-								this.digits[idx] = e.key;
-								this.errorMessage = "";
-								this.focusFirst();
-							}
-						}
-						if (e.key === "Escape") this.reset();
-					} else {
-						if (e.key === "Escape" || e.key === "Backspace") this.reset();
-						if (isNumber) {
-							this.reset();
-							this.digits[0] = e.key;
-						}
-					}
+					if (this.step === 1 && e.key === "Enter" && this.isComplete) this.calculate();
+					if (e.key === "Escape" || (this.step === 2 && e.key === "Backspace" && document.activeElement.tagName !== "INPUT")) this.reset();
 				},
 
 				focusFirst() {
 					setTimeout(() => {
 						const idx = this.digits.findIndex((d) => d === "");
-						const target = idx === -1 ? "d-14" : "d-" + idx;
-						const el = document.getElementById(target);
+						const el = document.getElementById("d-" + (idx === -1 ? 14 : idx));
 						if (el) el.focus();
 					}, 50);
 				},
 
 				handleInput(e, index) {
-					this.errorMessage = "";
-					const val = e.target.value;
-					if (!/^\d*$/.test(val)) {
-						this.digits[index] = "";
-						this.triggerError();
-						return;
-					}
-					
-					// If index is within scheme part (4-7)
-					if (index >= 4 && index <= 7) {
-						this.checkScheme();
-					}
-
-					if (val && index < 14) document.getElementById("d-" + (index + 1)).focus();
+					if (!/^\d*$/.test(e.target.value)) { this.digits[index] = ""; return; }
+					if (index >= 4 && index <= 7) this.checkScheme();
+					if (e.target.value && index < 14) document.getElementById("d-" + (index + 1)).focus();
 				},
 
 				handleBackspace(e, index) {
-					this.errorMessage = "";
-					if (!this.digits[index] && index > 0) {
-						document.getElementById("d-" + (index - 1)).focus();
-					}
-					if (index >= 4 && index <= 7) {
-						this.checkScheme();
-					}
+					if (!this.digits[index] && index > 0) document.getElementById("d-" + (index - 1)).focus();
+					if (index >= 4 && index <= 7) this.checkScheme();
 				},
 
 				handlePaste(e) {
-					e.preventDefault();
-					this.errorMessage = "";
 					const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 15);
 					text.split("").forEach((char, i) => (this.digits[i] = char));
-					this.checkScheme();
-					this.focusFirst();
+					this.checkScheme(); this.focusFirst();
 				},
 
 				async checkScheme() {
 					const code = this.digits.slice(4, 8).join("");
-					const allowedSchemes = ['2005', '2010', '2011', '2012', '2013', '2014', '2015', '2016'];
-					
+					const allowed = ['2005', '2010', '2011', '2012', '2013', '2014', '2015', '2016'];
 					if (code.length === 4) {
-						if (!allowedSchemes.includes(code)) {
-							this.isSchemeValid = false;
-							this.schemeDesc = "";
-							return;
-						}
-						
+						if (!allowed.includes(code)) { this.isSchemeValid = false; this.schemeDesc = ""; return; }
 						this.isSchemeValid = true;
 						try {
-							const response = await fetch("/api/method/custom_report.api.calculator.get_scheme_details", {
-								method: "POST",
-								headers: { "Content-Type": "application/json" },
-								body: JSON.stringify({ schm_code: code })
-							});
-							const resData = await response.json();
-							if (resData.message && resData.message.success) {
-								this.schemeDesc = resData.message.schm_desc;
-							} else {
-								this.schemeDesc = "";
-							}
-						} catch (err) {
-							this.schemeDesc = "";
-						}
-					} else {
-						this.schemeDesc = "";
-						this.isSchemeValid = true;
-					}
+							const res = await (await fetch("/api/method/custom_report.api.calculator.get_scheme_details", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schm_code: code }) })).json();
+							this.schemeDesc = res.message?.success ? res.message.schm_desc : "";
+						} catch (err) { this.schemeDesc = ""; }
+					} else { this.schemeDesc = ""; this.isSchemeValid = true; }
 				},
 
-				get isComplete() {
-					return this.digits.every((d) => d !== "");
-				},
-
+				get isComplete() { return this.digits.every((d) => d !== ""); },
 				get instructionMsg() {
 					const count = this.digits.filter((d) => d !== "").length;
-					if (count === 0) return "Please type 15-digit Account Number to begin";
-					if (count < 15)
-						return `Great! ${count} digits entered, ${15 - count} more to go...`;
-					return "Perfect! Everything looks good. Press Enter to proceed ↵";
-				},
-
-				triggerError() {
-					this.isError = true;
-					setTimeout(() => (this.isError = false), 400);
+					return count === 0 ? "Type 15-digit Account Number" : (count < 15 ? `${count} digits, ${15 - count} more...` : "Press Enter to proceed ↵");
 				},
 
 				async calculate() {
-					console.log("[DEBUG] calculate() started");
-					if (!this.isSchemeValid) {
-						this.errorMessage = "Only SMBG (2005) and RD (2010-2016) schemes are allowed.";
-						this.triggerError();
-						return;
-					}
-					this.isLoading = true;
-					this.errorMessage = "";
-					
-					this.calculationSteps = [
-						{ label: "Initializing DB Connection", status: "pending" },
-						{ label: "Verifying Account in Finacle", status: "pending" },
-						{ label: "Fetching Deposit Details", status: "pending" },
-						{ label: "Calculating Settlement", status: "pending" },
-					];
-
+					if (!this.isSchemeValid) return;
+					this.isLoading = true; this.errorMessage = "";
+					this.calculationSteps.forEach(s => s.status = "pending");
 					try {
 						const foracid = this.digits.join("");
-						console.log("[DEBUG] foracid:", foracid);
-
 						this.calculationSteps[0].status = "loading";
-
-						const response = await fetch(
-							"/api/method/custom_report.api.calculator.get_account_details",
-							{
-								method: "POST",
-								headers: { "Content-Type": "application/json" },
-								body: JSON.stringify({ foracid }),
-							},
-						);
-						const resData = await response.json();
-						const result = resData.message;
-						console.log("[DEBUG] API response received:", result ? "SUCCESS" : "NULL");
-
-						if (result && result.status_log) {
-							this.calculationSteps[0].status = "success";
-							this.calculationSteps[1].status = "loading";
-							await new Promise((r) => setTimeout(r, 600)); 
-						}
-
+						const res = await (await fetch("/api/method/custom_report.api.calculator.get_account_details", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ foracid, settlement_date: this.exitDate }) })).json();
+						const result = res.message;
 						if (result && result.success) {
-							console.log("[DEBUG] Setting data and moving to Step 2");
-							this.calculationSteps[1].status = "success";
-
-							for (let i = 2; i < this.calculationSteps.length; i++) {
-								this.calculationSteps[i].status = "loading";
-								await new Promise((res) => setTimeout(res, 500));
-								this.calculationSteps[i].status = "success";
-							}
-
-							this.data = {
-								cust_id: result.cif_id || "N/A",
-								cust_name: result.acct_name || "N/A",
-								acct_no: foracid,
-								branch_name: `${result.sol_desc} (${result.sol_id})`,
-								acct_opn_date: result.acct_opn_date || "N/A",
-								schm_code: result.schm_code,
-								maturity_date: result.maturity_date || "N/A",
-								maturity_amount: result.maturity_amount || 0,
-								deposit_period_mths: result.deposit_period_mths || 0,
-								deposit_amount: result.deposit_amount || 0,
-								planned_installment: result.planned_installment || 0,
-								total_tran_sum: result.total_tran_sum || 0,
-								transactions: result.transactions || [],
-							};
-
+							this.calculationSteps.fill({ status: "success" });
+							this.data = { ...result, acct_no: foracid };
 							this.schemeDesc = result.schm_desc || this.schemeDesc;
-
-							if (result.schm_code === "2005") {
-								this.selectedProduct = this.products.find((p) => p.name === "SMBG");
-							} else {
-								this.selectedProduct = this.products.find((p) => p.name === "RD");
-							}
-
+							this.selectedProduct = result.schm_code === "2005" ? this.products[0] : this.products[1];
 							this.updateCalculations();
 							this.step = 2;
-							console.log("[DEBUG] State update complete, step=2");
 						} else {
-							console.warn("[DEBUG] API returned error:", result?.error);
-							if (result && result.status_log) {
-								const logStr = result.status_log.join(" | ");
-								if (logStr.includes("Database Error")) {
-									this.calculationSteps[0].status = "pending";
-									this.errorMessage = "Database Connection Failed.";
-								} else {
-									this.calculationSteps[1].status = "pending";
-									this.errorMessage = "Account not found in Finacle.";
-								}
-							} else {
-								this.errorMessage = result?.error || "Unknown system error.";
-							}
-							this.triggerError();
+							this.errorMessage = result?.error || "Account not found";
 						}
-					} catch (err) {
-						console.error("[DEBUG] calculate() error:", err);
-						this.errorMessage = "System connection failure.";
-						this.triggerError();
-					} finally {
-						this.isLoading = false;
-					}
+					} catch (err) { this.errorMessage = "Connection failure"; }
+					finally { this.isLoading = false; }
 				},
 
 				updateCalculations() {
 					if (!this.data) return;
-
-					const exitDate = this.exitDate;
-					const dExit = this.parseDate(exitDate);
-					const aod = this.data.acct_opn_date;
-					const start = this.parseDate(aod);
-					const endAdjusted = new Date(dExit);
-					endAdjusted.setDate(endAdjusted.getDate() + 1);
-					
-					let monthsHeldTotal = (endAdjusted.getFullYear() - start.getFullYear()) * 12 + (endAdjusted.getMonth() - start.getMonth());
-					if (endAdjusted.getDate() < start.getDate()) monthsHeldTotal--;
+					const dExit = this.parseDate(this.exitDate);
+					const start = this.parseDate(this.data.acct_opn_date);
+					const endAdj = new Date(dExit); endAdj.setDate(endAdj.getDate() + 1);
+					let monthsHeldTotal = (endAdj.getFullYear() - start.getFullYear()) * 12 + (endAdj.getMonth() - start.getMonth());
+					if (endAdj.getDate() < start.getDate()) monthsHeldTotal--;
 					
 					const rules = this.getApplicableRules(this.data.schm_code, monthsHeldTotal);
 					const planned = this.data.planned_installment || 0;
-					
-					let eligiblePrincipalSum = 0;
-					let totalAccruedInterest = 0; 
+					let principalSum = 0, accruedIntTotal = 0, totalCash = 0;
 					const processedMonths = new Set();
-					
-					if (this.data.transactions && this.data.transactions.length) {
-						// Sort ASC for calculation consistency
-						const sortedForCalc = [...this.data.transactions].sort((a, b) => {
-							return this.parseDate(a.date) - this.parseDate(b.date);
-						});
 
-						sortedForCalc.forEach((t) => {
-							t.accrued_interest = 0; 
-							t.scheme_interest = 0;
-							t.row_months = 0;
-							t.elg_amt = 0;
-							t.applied_rate = rules.appliedRate;
-							const baseRate = rules.meta.base_rate || 8.0;
-
-							if (t.type === 'C') {
-								const dVal = this.parseDate(t.date);
-								if (dVal < dExit) {
-									const monthKey = `${dVal.getMonth()}-${dVal.getFullYear()}`;
-									const rEnd = new Date(dExit);
-									rEnd.setDate(rEnd.getDate() + 1);
-									let rowMonths = (rEnd.getFullYear() - dVal.getFullYear()) * 12 + (rEnd.getMonth() - dVal.getMonth());
-									if (rEnd.getDate() < dVal.getDate()) rowMonths--;
-									
-									t.row_months = Math.max(0, rowMonths);
-
-									// Rule: One ELG per month for interest calculation and Principal Sum
-									if (t.row_months > 0 && !processedMonths.has(monthKey)) {
-										processedMonths.add(monthKey);
-										const eligibleAmt = Math.min(t.amount, planned);
-										t.elg_amt = eligibleAmt;
-										eligiblePrincipalSum += eligibleAmt; // Only sum eligible portions
-
-										if (t.applied_rate > 0) {
-											const actualInt = eligibleAmt * (Math.pow(1 + (t.applied_rate / 400), t.row_months / 3) - 1);
-											t.accrued_interest = Math.round(actualInt);
-											totalAccruedInterest += t.accrued_interest;
-										}
-										const schemeInt = eligibleAmt * (Math.pow(1 + (baseRate / 400), t.row_months / 3) - 1);
-										t.scheme_interest = Math.round(schemeInt);
+					this.data.transactions.forEach((t) => {
+						t.accrued_interest = 0; t.scheme_interest = 0; t.row_months = 0; t.elg_amt = 0;
+						if (t.type === 'C') {
+							totalCash += t.amount;
+							const dVal = this.parseDate(t.date);
+							if (dVal < dExit) {
+								const mKey = `${dVal.getMonth()}-${dVal.getFullYear()}`;
+								const rEnd = new Date(dExit); rEnd.setDate(rEnd.getDate() + 1);
+								let rm = (rEnd.getFullYear() - dVal.getFullYear()) * 12 + (rEnd.getMonth() - dVal.getMonth());
+								if (rEnd.getDate() < dVal.getDate()) rm--;
+								t.row_months = Math.max(0, rm);
+								if (t.row_months > 0 && !processedMonths.has(mKey)) {
+									processedMonths.add(mKey);
+									principalSum += t.amount;
+									t.elg_amt = Math.min(t.amount, planned);
+									if (rules.appliedRate > 0) {
+										t.accrued_interest = Math.round(t.elg_amt * (Math.pow(1 + (rules.appliedRate / 400), t.row_months / 3) - 1));
+										accruedIntTotal += t.accrued_interest;
 									}
+									t.scheme_interest = Math.round(t.elg_amt * (Math.pow(1 + ((rules.meta.base_rate || 8) / 400), t.row_months / 3) - 1));
 								}
 							}
-						});
-					}
-
-					this.data.principal = eligiblePrincipalSum;
-					this.data.interest = totalAccruedInterest;
-					
-					let penaltyPct = (monthsHeldTotal < rules.meta.tenure_m) ? (this.data.schm_code === '2005' ? 1.8 : 1.0) : 0;
-					this.data.penalty = Math.round(eligiblePrincipalSum * penaltyPct / 100);
-					this.data.total = eligiblePrincipalSum + totalAccruedInterest - this.data.penalty;
+						}
+					});
+					this.data.total_tran_sum = totalCash;
+					this.data.principal = principalSum;
+					this.data.interest = accruedIntTotal;
+					this.data.appliedRate = rules.appliedRate;
+					let penPct = (monthsHeldTotal < rules.meta.tenure_m) ? (this.data.schm_code === '2005' ? 1.8 : 1.0) : 0;
+					this.data.penalty = Math.round(principalSum * penPct / 100);
+					this.data.total = principalSum + accruedIntTotal - this.data.penalty;
 					this.data.monthsHeld = monthsHeldTotal;
-
-					if (monthsHeldTotal >= rules.meta.tenure_m) {
-						this.data.slabStatus = { label: `Account matured: Full ${rules.appliedRate}% interest applied`, color: "#10b981" };
-					} else if (rules.appliedRate === 0) {
-						this.data.slabStatus = { label: "No interest earned (Minimum period not completed)", color: "#ef4444" };
-					} else {
-						this.data.slabStatus = { label: `Early withdrawal: ${rules.appliedRate}% interest applied`, color: "#f59e0b" };
-					}
-				},
-					let penaltyPct = (monthsHeldTotal < rules.meta.tenure_m) ? (this.data.schm_code === '2005' ? 1.8 : 1.0) : 0;
-					this.data.penalty = Math.round(totalCashPrincipal * penaltyPct / 100);
-					this.data.total = totalCashPrincipal + totalAccruedInterest - this.data.penalty;
-					this.data.monthsHeld = monthsHeldTotal;
-
-					if (monthsHeldTotal >= rules.meta.tenure_m) {
-						this.data.slabStatus = { label: `Account matured: Full ${rules.appliedRate}% interest applied`, color: "#10b981" };
-					} else if (rules.appliedRate === 0) {
-						this.data.slabStatus = { label: "No interest earned (Minimum period not completed)", color: "#ef4444" };
-					} else {
-						this.data.slabStatus = { label: `Early withdrawal: ${rules.appliedRate}% interest applied`, color: "#f59e0b" };
-					}
+					this.data.slabStatus = monthsHeldTotal >= rules.meta.tenure_m ? { label: `Matured: ${rules.appliedRate}%`, color: "#10b981" } : (rules.appliedRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Early: ${rules.appliedRate}%`, color: "#f59e0b" });
 				},
 
-				getApplicableRules(schmCode, monthsHeld) {
+				getApplicableRules(sc, m) {
 					const slabs = {
 						"2010": { tenure_m: 12, base_rate: 8.0, interest_slabs: [[6, 9, 4.0], [9, 12, 6.0]] },
 						"2011": { tenure_m: 24, base_rate: 8.0, interest_slabs: [[12, 18, 4.0], [18, 24, 6.0]] },
@@ -1535,82 +1005,20 @@
 						"2005": { tenure_m: 66, base_rate: 8.0, interest_slabs: [[36, 66, 6.0]] },
 						"2016": { tenure_m: 120, base_rate: 8.0, interest_slabs: [[0, 120, 8.0]] }
 					};
-					const rule = slabs[schmCode];
-					// Fail-safe default object
-					if (!rule) return { meta: { tenure_m: 0, base_rate: 0, interest_slabs: [], penalty_slabs: [] }, appliedRate: 0, penaltyPct: 0 };
-
-					let appliedRate = 0;
-					if (monthsHeld >= rule.tenure_m) {
-						appliedRate = rule.base_rate;
-					} else {
-						for (const [low, high, rate] of rule.interest_slabs) {
-							if (monthsHeld >= low && monthsHeld < high) {
-								appliedRate = rate;
-								break;
-							}
-						}
-					}
-					return { meta: rule, appliedRate };
+					const r = slabs[sc];
+					if (!r) return { meta: { tenure_m: 0, base_rate: 0, interest_slabs: [] }, appliedRate: 0 };
+					let ar = m >= r.tenure_m ? r.base_rate : 0;
+					if (m < r.tenure_m) { for (const s of r.interest_slabs) { if (m >= s[0] && m < s[1]) { ar = s[2]; break; } } }
+					return { meta: r, appliedRate: ar };
 				},
 
-				selectProduct(product) {
-					this.selectedProduct = product;
-					if (this.data) {
-						this.updateCalculations();
-					}
-				},
-
-				formatCurrency(val) {
-					if (val === undefined || val === null) return "₹0";
-					return "₹" + val.toLocaleString("en-IN");
-				},
-
-				formatDate(dateStr) {
-					if (!dateStr) return "";
-					const [y, m, d] = dateStr.split('-');
-					return `${d}/${m}/${y}`;
-				},
-
-				formatMonthYear(val) {
-					const d = (val instanceof Date) ? val : this.parseDate(val);
-					if (!d || isNaN(d)) return "";
-					const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-					return months[d.getMonth()] + "/" + d.getFullYear();
-				},
-
-				async copyToClipboard(text) {
-					try {
-						await navigator.clipboard.writeText(text);
-						this.showToast("Account Number Copied!");
-					} catch (err) {
-						console.error("Failed to copy!", err);
-					}
-				},
-
-				showToast(msg) {
-					this.toastMsg = msg;
-					setTimeout(() => (this.toastMsg = ""), 3000);
-				},
-
-				toggleSort() {
-					this.sortOrder = this.sortOrder === 'desc' ? 'asc' : 'desc';
-				},
-
-				get sortedTransactions() {
-					if (!this.data || !this.data.transactions) return [];
-					const list = [...this.data.transactions];
-					return this.sortOrder === 'desc' ? list : list.reverse();
-				},
-
-				reset() {
-					this.step = 1;
-					this.digits = Array(15).fill("");
-					this.selectedProduct = this.products[0];
-					this.data = null;
-					this.schemeDesc = "";
-					this.isSchemeValid = true;
-					this.focusFirst();
-				},
+				selectProduct(p) { this.selectedProduct = p; if (this.data) this.updateCalculations(); },
+				formatCurrency(v) { return v === undefined || v === null ? "₹0" : "₹" + v.toLocaleString("en-IN"); },
+				formatDate(ds) { if (!ds) return ""; const [y, m, d] = ds.split('-'); return `${d}/${m}/${y}`; },
+				async copyToClipboard(t) { try { await navigator.clipboard.writeText(t); this.toastMsg = "Copied!"; setTimeout(() => this.toastMsg = "", 2000); } catch (e) {} },
+				toggleSort() { this.sortOrder = this.sortOrder === 'desc' ? 'asc' : 'desc'; },
+				get sortedTransactions() { if (!this.data || !this.data.transactions) return []; const list = [...this.data.transactions]; return this.sortOrder === 'desc' ? list : list.reverse(); },
+				reset() { this.step = 1; this.digits = Array(15).fill(""); this.data = null; this.schemeDesc = ""; this.isSchemeValid = true; this.focusFirst(); }
 			}).mount("#app");
 		</script>
 	</body>
