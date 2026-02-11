@@ -911,6 +911,20 @@
 									<h3 style="margin: 0; font-size: 14px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">
 										Recent Transactions
 									</h3>
+									
+									<div style="display: flex; align-items: center; gap: 4px; background: #f1f5f9; padding: 2px; border-radius: 8px; border: 1px solid #e2e8f0;">
+										<button @click="isTrackingEnabled = false" 
+											:style="{ background: !isTrackingEnabled ? 'white' : 'transparent', boxShadow: !isTrackingEnabled ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', color: !isTrackingEnabled ? 'var(--primary)' : '#94a3b8' }"
+											style="border: none; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 9px; font-weight: 800; transition: 0.2s; text-transform: uppercase;">
+											Standard
+										</button>
+										<button @click="isTrackingEnabled = true" 
+											:style="{ background: isTrackingEnabled ? 'white' : 'transparent', boxShadow: isTrackingEnabled ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', color: isTrackingEnabled ? 'var(--accent)' : '#94a3b8' }"
+											style="border: none; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 9px; font-weight: 800; transition: 0.2s; text-transform: uppercase;">
+											Tracking
+										</button>
+									</div>
+
 									<button @click="toggleSort" 
 										style="background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 8px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: 0.2s;"
 										onmouseover="this.style.background = '#e2e8f0'"
@@ -926,33 +940,78 @@
 								</div>
 							</div>
 
-							<div class="tran-list" v-if="data.transactions && data.transactions.length">
-								<div v-for="(t, i) in sortedTransactions" class="tran-item">
-									<div style="display: flex; align-items: flex-start; flex: 1; min-width: 0; gap: 16px;">
-										<div class="mono" 
-											:style="{ 
-												background: t.type === 'C' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
-												color: t.type === 'C' ? '#10b981' : '#ef4444',
-												borderColor: t.type === 'C' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'
-											}"
-											style="font-size: 15px; font-weight: 800; width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid; margin-top: 2px;">
-											[[ sortOrder === 'desc' ? data.transactions.length - i : i + 1 ]]
-										</div>
-										<div style="flex: 1; min-width: 0;">
-											<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-												<div style="font-size: 13px; font-weight: 700; color: var(--primary);">[[ t.type === 'C' ? 'Credit' : 'Debit' ]]</div>
-												<div class="mono" style="font-size: 13px; font-weight: 700;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
-													[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
+							<div class="tran-list" v-if="data && data.transactions && data.transactions.length">
+								<!-- Standard View -->
+								<div v-if="!isTrackingEnabled">
+									<div v-for="(t, i) in mergedTransactions" :key="'std-' + i" class="tran-item" :style="{ background: t.type === 'MISSED' ? '#fff1f2' : 'transparent' }">
+										<div style="display: flex; align-items: flex-start; flex: 1; min-width: 0; gap: 16px;">
+											<div class="mono" 
+												:style="{ 
+													background: t.type === 'C' ? 'rgba(16, 185, 129, 0.1)' : (t.type === 'D' ? 'rgba(239, 68, 68, 0.1)' : '#fee2e2'), 
+													color: t.type === 'C' ? '#10b981' : (t.type === 'D' ? '#ef4444' : '#ef4444'),
+													borderColor: t.type === 'C' ? 'rgba(16, 185, 129, 0.2)' : (t.type === 'D' ? 'rgba(239, 68, 68, 0.2)' : '#fecaca')
+												}"
+												style="font-size: 15px; font-weight: 800; width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid; margin-top: 2px;">
+												[[ t.installmentNum ]]
+											</div>
+											<div style="flex: 1; min-width: 0;">
+												<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+													<div style="font-size: 13px; font-weight: 700; color: var(--primary);">
+														[[ t.type === 'C' ? 'Credit' : (t.type === 'D' ? 'Debit' : 'Missed Installment') ]]
+													</div>
+													<div class="mono" style="font-size: 13px; font-weight: 700;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
+														[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
+													</div>
+												</div>
+												<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+													<span class="mono" style="font-size: 10px; font-weight: 800; color: #6366f1; background: #e0e7ff; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; border: 1px solid #c7d2fe;">
+														[[ t.monthLabel || formatMonthYear(t.date) ]]
+													</span>
+													<span v-if="t.isReal" class="mono" style="font-size: 11px; color: #94a3b8;">[[ t.date ]]</span>
+													<span v-else style="background: #fee2e2; color: #ef4444; font-size: 9px; font-weight: 800; padding: 1px 6px; border-radius: 4px; text-transform: uppercase;">Unpaid</span>
+												</div>
+												<div style="font-size: 11px; color: #64748b; line-height: 1.4; word-break: break-all; white-space: normal;">
+													[[ t.particular ]]
 												</div>
 											</div>
-											<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-												<span class="mono" style="font-size: 10px; font-weight: 800; color: #6366f1; background: #e0e7ff; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; border: 1px solid #c7d2fe;">
-													[[ formatMonthYear(t.date) ]]
-												</span>
-												<span class="mono" style="font-size: 11px; color: #94a3b8;">[[ t.date ]]</span>
+										</div>
+									</div>
+								</div>
+
+								<!-- Installment Tracking View -->
+								<div v-else>
+									<div v-for="slot in installmentTracking" :key="'track-' + slot.installmentNum" class="tran-item" 
+										:style="{ opacity: slot.status === 'MISSED' ? '0.8' : '1' }">
+										<div style="display: flex; align-items: center; flex: 1; min-width: 0; gap: 16px;">
+											<div class="mono" 
+												:style="{ 
+													background: slot.status === 'PAID' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
+													color: slot.status === 'PAID' ? '#10b981' : '#ef4444',
+													borderColor: slot.status === 'PAID' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'
+												}"
+												style="font-size: 15px; font-weight: 800; width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid;">
+												[[ slot.installmentNum ]]
 											</div>
-											<div style="font-size: 11px; color: #64748b; line-height: 1.4; word-break: break-all; white-space: normal;">
-												[[ t.particular ]]
+											<div style="flex: 1; min-width: 0;">
+												<div style="display: flex; justify-content: space-between; align-items: center;">
+													<div>
+														<div style="display: flex; align-items: center; gap: 8px;">
+															<span class="mono" style="font-size: 13px; font-weight: 800; color: var(--primary);">
+																[[ slot.month ]]
+															</span>
+															<span :style="{ background: slot.status === 'PAID' ? '#dcfce7' : '#fee2e2', color: slot.status === 'PAID' ? '#166534' : '#991b1b' }"
+																style="font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px;">
+																[[ slot.status ]]
+															</span>
+														</div>
+														<div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+															Monthly Installment #[[ slot.installmentNum ]]
+														</div>
+													</div>
+													<div class="mono" style="font-size: 14px; font-weight: 800;" :style="{ color: slot.status === 'PAID' ? 'var(--primary)' : '#cbd5e1' }">
+														[[ formatCurrency(slot.amount) ]]
+													</div>
+												</div>
 											</div>
 										</div>
 									</div>
@@ -1082,6 +1141,7 @@
 				errorMessage: "",
 				toastMsg: "",
 				sortOrder: 'desc', // 'desc' or 'asc'
+				isTrackingEnabled: false,
 				schemeDesc: "",
 				isSchemeValid: true,
 				calculationSteps: [
@@ -1439,11 +1499,37 @@
 					return `${d}/${m}/${y}`;
 				},
 
-				formatMonthYear(dateStr) {
-					const d = this.parseDate(dateStr);
+				formatMonthYear(val) {
+					const d = (val instanceof Date) ? val : this.parseDate(val);
 					if (!d || isNaN(d)) return "";
 					const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 					return months[d.getMonth()] + "/" + d.getFullYear();
+				},
+
+				get installmentTracking() {
+					if (!this.data || !this.data.acct_opn_date) return [];
+					const start = this.parseDate(this.data.acct_opn_date);
+					const installment = this.data.deposit_amount || 0;
+					if (installment <= 0) return [];
+
+					const totalCredits = this.data.transactions
+						.filter(t => t.type === 'C')
+						.reduce((sum, t) => sum + t.amount, 0);
+					
+					const paidCount = Math.floor(totalCredits / installment);
+					const monthsElapsed = this.getMonthsDiff(this.data.acct_opn_date, this.exitDate) + 1;
+					
+					const slots = [];
+					for (let i = 0; i < monthsElapsed; i++) {
+						const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+						slots.push({
+							month: this.formatMonthYear(d),
+							status: (i < paidCount) ? 'PAID' : 'MISSED',
+							installmentNum: i + 1,
+							amount: installment
+						});
+					}
+					return this.sortOrder === 'desc' ? slots.reverse() : slots;
 				},
 
 				async copyToClipboard(text) {
@@ -1470,6 +1556,53 @@
 					// Assuming the original data is desc (latest first)
 					// If user wants asc, we reverse it.
 					return this.sortOrder === 'desc' ? list : list.reverse();
+				},
+
+				get mergedTransactions() {
+					if (!this.data || !this.data.acct_opn_date) return [];
+					const start = this.parseDate(this.data.acct_opn_date);
+					const installment = this.data.deposit_amount || 0;
+					
+					// If no installment amount, fallback to standard transactions
+					if (installment <= 0) return this.sortedTransactions;
+
+					const realTrans = [...(this.data.transactions || [])];
+					const monthsElapsed = this.getMonthsDiff(this.data.acct_opn_date, this.exitDate) + 1;
+					
+					const totalCredits = realTrans.filter(t => t.type === 'C').reduce((s, t) => s + t.amount, 0);
+					const paidCount = Math.floor(totalCredits / installment);
+
+					// Group real transactions by month label
+					const grouped = {};
+					realTrans.forEach(t => {
+						const m = this.formatMonthYear(t.date);
+						if (!grouped[m]) grouped[m] = [];
+						grouped[m].push(t);
+					});
+
+					const result = [];
+					for (let i = 0; i < monthsElapsed; i++) {
+						const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+						const mLabel = this.formatMonthYear(d);
+						
+						if (grouped[mLabel]) {
+							grouped[mLabel].forEach(t => {
+								result.push({ ...t, isReal: true, monthLabel: mLabel, installmentNum: i + 1 });
+							});
+						} else if (i >= paidCount) {
+							// Missed month: no transaction and not covered by advances
+							result.push({
+								type: 'MISSED',
+								isReal: false,
+								monthLabel: mLabel,
+								amount: installment,
+								particular: 'Installment Missed',
+								installmentNum: i + 1
+							});
+						}
+					}
+
+					return this.sortOrder === 'desc' ? result.reverse() : result;
 				},
 
 				reset() {
