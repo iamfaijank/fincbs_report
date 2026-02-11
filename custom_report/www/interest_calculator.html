@@ -952,7 +952,7 @@
 													borderColor: t.type === 'C' ? 'rgba(16, 185, 129, 0.2)' : (t.type === 'D' ? 'rgba(239, 68, 68, 0.2)' : '#fecaca')
 												}"
 												style="font-size: 15px; font-weight: 800; width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid; margin-top: 2px;">
-												[[ t.displayNum ]]
+												[[ t.type === 'MISSED' ? '' : t.displayNum ]]
 											</div>
 											<div style="flex: 1; min-width: 0;">
 												<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
