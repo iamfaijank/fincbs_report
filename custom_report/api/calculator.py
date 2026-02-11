@@ -9,7 +9,7 @@ RD_SLABS = {
     "2010": {"tenure": 12, "base_rate": 8.0, "slabs": [(6, 9, 4.0), (9, 12, 6.0)]},
     "2011": {"tenure": 24, "base_rate": 8.0, "slabs": [(12, 18, 4.0), (18, 24, 6.0)]},
     "2012": {"tenure": 36, "base_rate": 8.0, "slabs": [(18, 27, 4.0), (27, 36, 6.0)]},
-    "2013": {"tenure": 48, "base_rate": 8.0, "slabs": [(24, 36, 4.0), (36, 48, 6.0)]},
+    "2013": {"tenure": 48, "base_rate": 8.0, "slabs": [(12, 36, 4.0), (36, 48, 6.0)]},
     "2014": {"tenure": 60, "base_rate": 8.0, "slabs": [(30, 45, 4.0), (45, 60, 6.0)]},
     "2015": {"tenure": 60, "base_rate": 8.0, "slabs": [(30, 45, 4.0), (45, 60, 6.0)]},
     "2005": {"tenure": 66, "base_rate": 8.0, "slabs": [(36, 66, 6.0)]},
@@ -68,25 +68,29 @@ def get_account_details(foracid=None, settlement_date=None):
         """, (acid,))
         raw_trans = cursor.fetchall()
         
-        total_principal, total_interest, transactions = 0.0, 0.0, []
+        total_cash_principal = 0.0
+        total_interest = 0.0
+        transactions = []
         processed_months = set()
 
         for val_date, amt, p_type, particular in raw_trans:
             amt = float(amt or 0)
             row_scheme_interest = 0.0
             row_months = 0
-            eligible_amt = min(amt, float(planned_installment or 0))
+            eligible_amt = 0.0
             
             if p_type == 'C':
-                total_principal += amt
+                total_cash_principal += amt # Sum of all credits
                 if val_date < sett_dt:
                     month_key = f"{val_date.month}-{val_date.year}"
                     r_diff = relativedelta(sett_dt + relativedelta(days=1), val_date)
                     row_months = (r_diff.years * 12) + r_diff.months
                     
-                    # Only calculate interest if this month hasn't been paid for yet
+                    # Rule: Only one installment per month is eligible for interest
                     if row_months > 0 and month_key not in processed_months:
                         processed_months.add(month_key)
+                        eligible_amt = min(amt, float(planned_installment or 0))
+                        
                         if app_rate > 0:
                             total_interest += eligible_amt * ((1 + app_rate/400)**(row_months/3) - 1)
                         row_scheme_interest = eligible_amt * ((1 + base_rate/400)**(row_months/3) - 1)
@@ -101,13 +105,14 @@ def get_account_details(foracid=None, settlement_date=None):
                 "elg_amt": eligible_amt
             })
 
-        # Final sort DESC for UI after calculation
+        # Sort DESC for UI
         transactions.reverse()
 
         penalty_amt = 0.0
         rule_meta = RD_SLABS.get(str(schm_code), {"tenure": 0})
         if months_held_total < rule_meta['tenure']:
-            penalty_amt = total_principal * (0.018 if schm_code == '2005' else 0.01)
+            # Penalty calculated on Total Cash Principal
+            penalty_amt = total_cash_principal * (0.018 if schm_code == '2005' else 0.01)
 
         return {
             "success": True, "cif_id": cif, "acct_name": name, "sol_id": sol_id, "sol_desc": sol_desc,
@@ -115,9 +120,9 @@ def get_account_details(foracid=None, settlement_date=None):
             "maturity_date": mat_dt.strftime("%d/%m/%Y"), "maturity_amount": float(mat_amt or 0),
             "deposit_period_mths": int(period or 0), "deposit_amount": float(planned_installment or 0),
             "planned_installment": float(planned_installment or 0),
-            "transactions": transactions, "principal": round(total_principal, 2),
+            "transactions": transactions, "principal": round(total_cash_principal, 2),
             "interest": int(round(total_interest)), "penalty": int(round(penalty_amt)),
-            "net_payable": int(round(total_principal + total_interest - penalty_amt)),
+            "net_payable": int(round(total_cash_principal + total_interest - penalty_amt)),
             "applied_rate": app_rate, "months_held": months_held_total
         }
     except Exception as e:

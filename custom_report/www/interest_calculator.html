@@ -1445,12 +1445,12 @@
 					const rules = this.getApplicableRules(this.data.schm_code, monthsHeldTotal);
 					const planned = this.data.planned_installment || 0;
 					
-					let totalPrincipal = 0;
+					let totalCashPrincipal = 0;
 					let totalAccruedInterest = 0; 
-					const processedMonths = new Set(); // Track months that already received interest
+					const processedMonths = new Set();
 					
 					if (this.data.transactions && this.data.transactions.length) {
-						// Sort by date ASC to ensure the "first" payment of the month gets interest
+						// Sort ASC for calculation consistency
 						const sortedForCalc = [...this.data.transactions].sort((a, b) => {
 							return this.parseDate(a.date) - this.parseDate(b.date);
 						});
@@ -1464,7 +1464,7 @@
 							const baseRate = rules.meta.base_rate || 8.0;
 
 							if (t.type === 'C') {
-								totalPrincipal += t.amount;
+								totalCashPrincipal += t.amount;
 								const dVal = this.parseDate(t.date);
 								if (dVal < dExit) {
 									const monthKey = `${dVal.getMonth()}-${dVal.getFullYear()}`;
@@ -1474,12 +1474,12 @@
 									if (rEnd.getDate() < dVal.getDate()) rowMonths--;
 									
 									t.row_months = Math.max(0, rowMonths);
-									const eligibleAmt = Math.min(t.amount, planned);
-									t.elg_amt = eligibleAmt;
 
-									// Only calculate interest if this month hasn't been processed yet
+									// Rule: One ELG per month for interest calculation
 									if (t.row_months > 0 && !processedMonths.has(monthKey)) {
 										processedMonths.add(monthKey);
+										const eligibleAmt = Math.min(t.amount, planned);
+										t.elg_amt = eligibleAmt;
 
 										if (t.applied_rate > 0) {
 											const actualInt = eligibleAmt * (Math.pow(1 + (t.applied_rate / 400), t.row_months / 3) - 1);
@@ -1494,14 +1494,13 @@
 						});
 					}
 
-					this.data.total_tran_sum = totalPrincipal;
-					this.data.principal = totalPrincipal;
-					this.data.appliedRate = rules.appliedRate;
+					this.data.total_tran_sum = totalCashPrincipal;
+					this.data.principal = totalCashPrincipal;
 					this.data.interest = totalAccruedInterest;
 					
 					let penaltyPct = (monthsHeldTotal < rules.meta.tenure_m) ? (this.data.schm_code === '2005' ? 1.8 : 1.0) : 0;
-					this.data.penalty = Math.round(totalPrincipal * penaltyPct / 100);
-					this.data.total = totalPrincipal + totalAccruedInterest - this.data.penalty;
+					this.data.penalty = Math.round(totalCashPrincipal * penaltyPct / 100);
+					this.data.total = totalCashPrincipal + totalAccruedInterest - this.data.penalty;
 					this.data.monthsHeld = monthsHeldTotal;
 
 					if (monthsHeldTotal >= rules.meta.tenure_m) {
