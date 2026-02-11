@@ -1585,11 +1585,10 @@
 				get mergedTransactions() {
 					if (!this.data || !this.data.acct_opn_date) return [];
 					const start = this.parseDate(this.data.acct_opn_date);
-					const installment = this.data.deposit_amount || 0;
 					
 					const realTrans = [...(this.data.transactions || [])];
 					
-					// Determine the end date of our range: max(exitDate, latest transaction date)
+					// Determine range
 					const transactionDates = realTrans.map(t => this.parseDate(t.date)).filter(d => d);
 					const exitDateObj = this.parseDate(this.exitDate);
 					const endRangeDate = transactionDates.length 
@@ -1598,7 +1597,6 @@
 
 					const monthsElapsed = this.getMonthsDiff(this.data.acct_opn_date, endRangeDate) + 1;
 					
-					// Group real transactions by month label
 					const grouped = {};
 					realTrans.forEach(t => {
 						const m = this.formatMonthYear(t.date);
@@ -1609,7 +1607,7 @@
 
 					const result = [];
 					let instCount = 0;
-					let realTranCount = 0;
+					let realCount = 0;
 
 					for (let i = 0; i < monthsElapsed; i++) {
 						const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
@@ -1618,19 +1616,17 @@
 						if (grouped[mLabel] && grouped[mLabel].length > 0) {
 							grouped[mLabel].forEach(t => {
 								if (t.type === 'C') instCount++;
-								realTranCount++;
+								realCount++;
 								result.push({ 
 									...t, 
 									isReal: true, 
 									monthLabel: mLabel, 
-									displayNum: realTranCount,
+									displayNum: realCount,
 									installmentNum: t.type === 'C' ? instCount : null
 								});
 							});
-							// Remove from grouped once processed to see if anything is left
 							delete grouped[mLabel];
 						} else {
-							// No transactions in this calendar month
 							result.push({
 								type: 'MISSED',
 								isReal: false,
@@ -1643,21 +1639,27 @@
 						}
 					}
 
-					// Add any transactions that might have fallen outside our calculated range
-					// (e.g., transactions before opening date)
+					// Process leftovers
 					Object.keys(grouped).forEach(mLabel => {
 						grouped[mLabel].forEach(t => {
-							result.push({
-								...t,
-								isReal: true,
-								monthLabel: mLabel,
-								displayNum: '?',
-								installmentNum: null
-							});
+							realCount++;
+							result.push({ ...t, isReal: true, monthLabel: mLabel, displayNum: realCount, installmentNum: null });
 						});
 					});
 
-					return this.sortOrder === 'desc' ? result.reverse() : result;
+					// Logic to fix displayNum for descending view: 
+					// We want the latest transaction to show the total count, descending to 1.
+					const totalReal = realCount;
+					const finalResult = result.map(t => {
+						if (!t.isReal) return t;
+						// If desc, we show totalReal - (t.displayNum - 1)
+						// e.g. if total is 5, and this is the 1st (oldest), it shows 1 in ASC, and 5 in DESC.
+						// Wait, usually users want the number to stay with the transaction.
+						// If it's the 1st transaction ever, it should probably stay '1'.
+						return t;
+					});
+
+					return this.sortOrder === 'desc' ? finalResult.reverse() : finalResult;
 				},
 
 				reset() {
