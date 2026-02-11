@@ -1,160 +1,143 @@
 import frappe
 import json
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from custom_report.db_connection import get_dr_connection
 
+# Excel Slab Mapping based on Audit Formula
+RD_SLABS = {
+    "2010": {"tenure": 12, "base_rate": 8.0, "slabs": [(6, 9, 4.0), (9, 12, 6.0)]},
+    "2011": {"tenure": 24, "base_rate": 8.0, "slabs": [(12, 18, 4.0), (18, 24, 6.0)]},
+    "2012": {"tenure": 36, "base_rate": 8.0, "slabs": [(18, 27, 4.0), (27, 36, 6.0)]},
+    "2013": {"tenure": 48, "base_rate": 8.0, "slabs": [(12, 36, 4.0), (36, 48, 6.0)]},
+    "2014": {"tenure": 60, "base_rate": 8.0, "slabs": [(30, 45, 4.0), (45, 60, 6.0)]},
+    "2015": {"tenure": 60, "base_rate": 8.0, "slabs": [(30, 45, 4.0), (45, 60, 6.0)]},
+    "2005": {"tenure": 66, "base_rate": 8.0, "slabs": [(36, 66, 6.0)]},
+    "2016": {"tenure": 120, "base_rate": 8.0, "slabs": [(0, 120, 8.0)]}
+}
+
+def get_excel_interest_rate(schm_code, months_held):
+    rule = RD_SLABS.get(str(schm_code))
+    if not rule: return 0.0
+    if months_held >= rule['tenure']: return rule['base_rate']
+    for low, high, rate in rule['slabs']:
+        if low <= months_held < high:
+            return rate
+    return 0.0
 
 @frappe.whitelist()
-def ping():
-    return "Pong"
+def get_account_details(foracid=None, settlement_date=None):
+    if not foracid: return {"success": False, "error": "Account number is required"}
+    
+    if not settlement_date: sett_dt = datetime.now()
+    else:
+        try:
+            if '-' in settlement_date: sett_dt = datetime.strptime(settlement_date, "%Y-%m-%d")
+            else: sett_dt = datetime.strptime(settlement_date, "%d/%m/%Y")
+        except ValueError: sett_dt = datetime.now()
 
-
-
-@frappe.whitelist()
-def get_account_details(foracid=None):
-    # Support for CLI execution: bench execute custom_report.api.calculator.get_account_details --args '["ACC_NO"]'
-    if not foracid:
-        return {"error": "Account number is required"}
-
-    logs = []
     conn = None
     try:
-        logs.append("Attempting to connect to Finacle DR Database...")
         conn = get_dr_connection()
-        logs.append("Connection established successfully.")
-        
         cursor = conn.cursor()
-        
-        logs.append(f"Searching for account: {foracid}...")
-        query = """
-            SELECT 
-                g.acid,
-                g.cif_id, 
-                g.acct_name, 
-                s.sol_id, 
-                s.sol_desc,
-                g.acct_opn_date,
-                g.schm_code,
-                p.schm_desc,
-                t.maturity_date,
-                t.maturity_amount,
-                t.deposit_period_mths,
-                t.deposit_amount
+        cursor.execute("""
+            SELECT g.acid, g.cif_id, g.acct_name, s.sol_id, s.sol_desc, g.acct_opn_date, g.schm_code, 
+                   p.schm_desc, t.maturity_date, t.maturity_amount, t.deposit_period_mths, t.deposit_amount
             FROM tbaadm.gam g
             JOIN tbaadm.sol s ON g.sol_id = s.sol_id
             JOIN tbaadm.gsp p ON g.schm_code = p.schm_code
             JOIN tbaadm.tam t ON g.acid = t.acid
-            WHERE g.foracid = %s
-        """
-        cursor.execute(query, (foracid,))
-        result = cursor.fetchone()
+            WHERE g.foracid = %s AND g.del_flg = 'N'
+        """, (foracid,))
         
-        if result:
-            acid = result[0]
-            logs.append("Account details and maturity records located.")
+        res = cursor.fetchone()
+        if not res: return {"success": False, "error": "Account not found"}
+
+        acid, cif, name, sol_id, sol_desc, opn_dt, schm_code, schm_desc, mat_dt, mat_amt, period, planned_installment = res
+        
+        diff_total = relativedelta(sett_dt + relativedelta(days=1), opn_dt)
+        months_held_total = (diff_total.years * 12) + diff_total.months
+        app_rate = get_excel_interest_rate(schm_code, months_held_total)
+        base_rate = RD_SLABS.get(str(schm_code), {}).get('base_rate', 8.0)
+
+        cursor.execute("""
+            SELECT value_date, tran_amt, part_tran_type, tran_particular 
+            FROM tbaadm.htd 
+            WHERE acid = %s AND del_flg = 'N'
+            ORDER BY value_date ASC
+        """, (acid,))
+        raw_trans = cursor.fetchall()
+        
+        principal_sum = 0.0
+        total_interest = 0.0
+        transactions = []
+        processed_months = set()
+
+        for val_date, amt, p_type, particular in raw_trans:
+            amt = float(amt or 0)
+            row_scheme_interest = 0.0
+            row_months = 0
+            eligible_amt = 0.0
             
-            # Fetch Transactions
-            logs.append("Fetching transaction history...")
-            
-            # Get Total Sum of Transactions
-            cursor.execute("SELECT SUM(tran_amt) FROM tbaadm.htd WHERE acid = %s", (acid,))
-            total_tran_sum = float(cursor.fetchone()[0] or 0.0)
-            
-            tran_query = """
-                SELECT value_date, tran_amt, part_tran_type, tran_particular 
-                FROM tbaadm.htd 
-                WHERE acid = %s 
-                ORDER BY value_date DESC, tran_date DESC
-            """
-            cursor.execute(tran_query, (acid,))
-            trans = cursor.fetchall()
-            
-            transactions = []
-            for tr in trans:
-                transactions.append({
-                    "date": tr[0].strftime("%d/%m/%Y") if tr[0] else "N/A",
-                    "amount": float(tr[1]) if tr[1] is not None else 0.0,
-                    "type": tr[2], # 'C' or 'D'
-                    "particular": tr[3] if tr[3] else ""
-                })
-            
-            logs.append(f"Found {len(transactions)} transactions.")
-            
-            data = {
-                "cif_id": result[1],
-                "acct_name": result[2],
-                "sol_id": result[3],
-                "sol_desc": result[4],
-                "acct_opn_date": result[5].strftime("%d/%m/%Y") if result[5] else "N/A",
-                "schm_code": result[6],
-                "schm_desc": result[7],
-                "maturity_date": result[8].strftime("%d/%m/%Y") if result[8] else "N/A",
-                "maturity_amount": float(result[9]) if result[9] is not None else 0.0,
-                "deposit_period_mths": int(result[10]) if result[10] is not None else 0,
-                "deposit_amount": float(result[11]) if result[11] is not None else 0.0,
-                "total_tran_sum": total_tran_sum,
-                "transactions": transactions,
-                "status_log": logs,
-                "success": True
-            }
-            # Print for CLI visibility
-            print(json.dumps(data, indent=4))
-            return data
-        else:
-            logs.append("Account not found in tbaadm.gam table.")
-            error_data = {"error": "Account not found", "status_log": logs, "success": False}
-            print(json.dumps(error_data, indent=4))
-            return error_data
-            
+            if p_type == 'C':
+                if val_date < sett_dt:
+                    month_key = f"{val_date.month}-{val_date.year}"
+                    r_diff = relativedelta(sett_dt + relativedelta(days=1), val_date)
+                    row_months = (r_diff.years * 12) + r_diff.months
+                    
+                    # Rule: Sum Principal only if it's the first interest-bearing payment of the month
+                    if row_months > 0 and month_key not in processed_months:
+                        processed_months.add(month_key)
+                        principal_sum += amt # Sum the full transaction amount
+                        eligible_amt = min(amt, float(planned_installment or 0))
+                        
+                        if app_rate > 0:
+                            total_interest += eligible_amt * ((1 + app_rate/400)**(row_months/3) - 1)
+                        row_scheme_interest = eligible_amt * ((1 + base_rate/400)**(row_months/3) - 1)
+
+            transactions.append({
+                "date": val_date.strftime("%d/%m/%Y") if val_date else "N/A",
+                "amount": amt,
+                "type": p_type,
+                "particular": particular or "",
+                "row_interest": int(round(row_scheme_interest)),
+                "row_months": row_months,
+                "elg_amt": eligible_amt
+            })
+
+        transactions.reverse()
+
+        penalty_amt = 0.0
+        rule_meta = RD_SLABS.get(str(schm_code), {"tenure": 0})
+        if months_held_total < rule_meta['tenure']:
+            penalty_amt = principal_sum * (0.018 if schm_code == '2005' else 0.01)
+
+        return {
+            "success": True, "cif_id": cif, "acct_name": name, "sol_id": sol_id, "sol_desc": sol_desc,
+            "acct_opn_date": opn_dt.strftime("%d/%m/%Y"), "schm_code": schm_code, "schm_desc": schm_desc,
+            "maturity_date": mat_dt.strftime("%d/%m/%Y"), "maturity_amount": float(mat_amt or 0),
+            "deposit_period_mths": int(period or 0), "deposit_amount": float(planned_installment or 0),
+            "planned_installment": float(planned_installment or 0),
+            "transactions": transactions, "principal": round(principal_sum, 2),
+            "interest": int(round(total_interest)), "penalty": int(round(penalty_amt)),
+            "net_payable": int(round(principal_sum + total_interest - penalty_amt)),
+            "applied_rate": app_rate, "months_held": months_held_total
+        }
     except Exception as e:
-        error_msg = f"Database Error: {str(e)}"
-        logs.append(error_msg)
-        frappe.log_error(frappe.get_traceback(), "Calculator API Error")
-        error_data = {"error": error_msg, "status_log": logs, "success": False}
-        print(json.dumps(error_data, indent=4))
-        return error_data
+        frappe.log_error(frappe.get_traceback(), "Excel Logic Calculator Failure")
+        return {"success": False, "error": str(e)}
     finally:
-        if conn:
-            conn.close()
-            logs.append("Database connection closed.")
+        if conn: conn.close()
 
 @frappe.whitelist()
 def get_scheme_details(schm_code):
-    if not schm_code:
-        return {"error": "Scheme code is required"}
-
     conn = None
     try:
         conn = get_dr_connection()
         cursor = conn.cursor()
-        
-        query = "SELECT schm_desc FROM tbaadm.gsp WHERE schm_code = %s"
-        cursor.execute(query, (schm_code,))
+        cursor.execute("SELECT schm_desc FROM tbaadm.gsp WHERE schm_code = %s", (schm_code,))
         result = cursor.fetchone()
-        
-        if result:
-            return {"schm_desc": result[0], "success": True}
-        else:
-            return {"error": "Scheme not found", "success": False}
-            
-    except Exception as e:
-        return {"error": str(e), "success": False}
+        return {"schm_desc": result[0], "success": True} if result else {"error": "Scheme not found", "success": False}
+    except Exception as e: return {"error": str(e), "success": False}
     finally:
-        if conn:
-            conn.close()
-
-
-
-
-
-
-#             SELECT g.cif_id,g.acct_name,g.foracid AS Account_NO,g.acct_opn_date,g.schm_code,p.schm_desc,
-#        s.sol_id,s.sol_desc as Branch,t.maturity_date,t.maturity_amount,t.deposit_period_mths, h.value_date,h.tran_amt
-# FROM tbaadm.gam g
-# JOIN tbaadm.gsp p ON g.schm_code=p.schm_code
-# JOIN tbaadm.sol s ON g.sol_id=s.sol_id
-# JOIN tbaadm.tam t ON g.acid=t.acid
-# LEFT JOIN tbaadm.htd h ON g.acid=h.acid
-# LEFT JOIN tbaadm.tph p1 ON g.acid=p1.acid
-# WHERE g.entity_cre_flg='Y' AND g.del_flg='N'
-# and g.schm_code in ('2005','2010','2011','2012','2013','2014','2015','2016')
-# AND g.foracid='103020050365572';
+        if conn: conn.close()
