@@ -1401,7 +1401,7 @@
 					const endAdjusted = new Date(dExit);
 					endAdjusted.setDate(endAdjusted.getDate() + 1);
 					
-					const monthsHeld = (endAdjusted.getFullYear() - start.getFullYear()) * 12 + (endAdjusted.getMonth() - start.getMonth());
+					let monthsHeld = (endAdjusted.getFullYear() - start.getFullYear()) * 12 + (endAdjusted.getMonth() - start.getMonth());
 					if (endAdjusted.getDate() < start.getDate()) monthsHeld--;
 					
 					const rules = this.getApplicableRules(this.data.schm_code, monthsHeld);
@@ -1500,6 +1500,7 @@
 				},
 
 				formatCurrency(val) {
+					if (val === undefined || val === null) return "₹0";
 					return "₹" + val.toLocaleString("en-IN");
 				},
 
