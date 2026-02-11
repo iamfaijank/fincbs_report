@@ -811,7 +811,7 @@
 										margin-bottom: 10px;
 									"
 								>
-									FINACLE ACCOUNT STRUCTURE
+									FINACLE ACCOUNT NUMBER
 								</div>
 								<div
 									style="
@@ -915,7 +915,12 @@
 													[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
 												</div>
 											</div>
-											<div class="mono" style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">[[ t.date ]]</div>
+											<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+												<span class="mono" style="font-size: 10px; font-weight: 800; color: #6366f1; background: #e0e7ff; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; border: 1px solid #c7d2fe;">
+													[[ formatMonthYear(t.date) ]]
+												</span>
+												<span class="mono" style="font-size: 11px; color: #94a3b8;">[[ t.date ]]</span>
+											</div>
 											<div style="font-size: 11px; color: #64748b; line-height: 1.4; word-break: break-all; white-space: normal;">
 												[[ t.particular ]]
 											</div>
@@ -1394,6 +1399,13 @@
 					if (!dateStr) return "";
 					const [y, m, d] = dateStr.split('-');
 					return `${d}/${m}/${y}`;
+				},
+
+				formatMonthYear(dateStr) {
+					const d = this.parseDate(dateStr);
+					if (!d || isNaN(d)) return "";
+					const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+					return months[d.getMonth()] + "/" + d.getFullYear();
 				},
 
 				reset() {
