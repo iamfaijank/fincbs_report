@@ -1609,6 +1609,7 @@
 
 					const result = [];
 					let instCount = 0;
+					let realTranCount = 0;
 
 					for (let i = 0; i < monthsElapsed; i++) {
 						const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
@@ -1617,11 +1618,12 @@
 						if (grouped[mLabel] && grouped[mLabel].length > 0) {
 							grouped[mLabel].forEach(t => {
 								if (t.type === 'C') instCount++;
+								realTranCount++;
 								result.push({ 
 									...t, 
 									isReal: true, 
 									monthLabel: mLabel, 
-									displayNum: i + 1,
+									displayNum: realTranCount,
 									installmentNum: t.type === 'C' ? instCount : null
 								});
 							});
@@ -1635,7 +1637,7 @@
 								monthLabel: mLabel,
 								amount: 0,
 								particular: 'No transaction recorded this month',
-								displayNum: i + 1,
+								displayNum: null,
 								installmentNum: null
 							});
 						}
