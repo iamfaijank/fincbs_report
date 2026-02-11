@@ -960,7 +960,7 @@
 														[[ t.type === 'C' ? 'Credit' : (t.type === 'D' ? 'Debit' : 'Missed Month') ]]
 														<span v-if="t.installmentNum" style="font-size: 10px; color: #64748b; margin-left: 5px; font-weight: 400;">(Inst. #[[ t.installmentNum ]])</span>
 													</div>
-													<div class="mono" style="font-size: 13px; font-weight: 700;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
+													<div v-if="t.type !== 'MISSED'" class="mono" style="font-size: 13px; font-weight: 700;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
 														[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
 													</div>
 												</div>
