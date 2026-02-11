@@ -939,15 +939,17 @@
 											<div class="tran-dot" :class="'dot-' + t.type.toLowerCase()" style="margin-top: 10px; flex-shrink: 0;"></div>
 											
 											<div style="flex: 1; min-width: 0;">
-												<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-													<div style="font-size: 13px; font-weight: 700; color: var(--primary);">
-														[[ t.type === 'C' ? 'Credit' : 'Debit' ]]
-													</div>
+												<div style="text-align: right;">
 													<div class="mono" style="font-size: 13px; font-weight: 700;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
 														[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
 													</div>
+													<div v-if="t.type === 'C'" class="mono" style="font-size: 10px; font-weight: 700; color: var(--accent); margin-top: 2px; background: rgba(13, 148, 136, 0.08); padding: 2px 6px; border-radius: 4px; display: inline-block;">
+														[[ t.row_months || 0 ]]m @ [[ t.applied_rate || 0 ]]% | +[[ formatCurrency(t.accrued_interest).replace('₹', '') ]]
+													</div>
 												</div>
-												<div class="mono" style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">[[ t.date ]]</div>
+											</div>
+
+											<div class="mono" style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">[[ t.date ]]</div>
 												<div style="font-size: 11px; color: #64748b; line-height: 1.4; word-break: break-all; white-space: normal;">
 													[[ t.particular ]]
 												</div>
@@ -999,6 +1001,9 @@
 										<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color, background: data.slabStatus.color + '15' }" 
 											style="margin-top: 15px; font-size: 12px; font-weight: 700; padding: 10px 15px; border-radius: 10px; display: flex; align-items: center; gap: 8px;">
 											<span style="font-size: 16px;">•</span> [[ data.slabStatus.label ]]
+										</div>
+										<div style="margin-top: 10px; font-size: 10px; color: #94a3b8; font-style: italic; padding: 0 5px;">
+											* Interest is calculated on individual installments, capped at [[ formatCurrency(data.planned_installment) ]] per month as per audit rules.
 										</div>
 									</div>
 
@@ -1384,43 +1389,69 @@
 				},
 
 				updateCalculations() {
-					console.log("[DEBUG] updateCalculations() called");
+					console.log("[DEBUG] updateCalculations() called (Excel Satik Logic)");
 					if (!this.data) return;
 
 					const exitDate = this.exitDate;
 					const dExit = this.parseDate(exitDate);
 					const aod = this.data.acct_opn_date;
 					
-					const monthsHeld = this.getMonthsDiff(aod, exitDate);
-					console.log("[DEBUG] monthsHeld:", monthsHeld);
+					// Excel DATEDIF logic: Start, End + 1
+					const start = this.parseDate(aod);
+					const endAdjusted = new Date(dExit);
+					endAdjusted.setDate(endAdjusted.getDate() + 1);
+					
+					const monthsHeld = (endAdjusted.getFullYear() - start.getFullYear()) * 12 + (endAdjusted.getMonth() - start.getMonth());
+					if (endAdjusted.getDate() < start.getDate()) monthsHeld--;
+					
 					const rules = this.getApplicableRules(this.data.schm_code, monthsHeld);
+					const planned = this.data.planned_installment || 0;
 					
 					let principal = 0;
 					let accruedInterest = 0;
 					
 					if (this.data.transactions && this.data.transactions.length) {
-						this.data.transactions.forEach(t => {
+						this.data.transactions.forEach((t) => {
+							t.accrued_interest = 0; 
+							t.row_months = 0;
+							t.applied_rate = rules.appliedRate;
+							
 							if (t.type === 'C') {
-								const amt = t.amount;
-								principal += amt;
+								principal += t.amount;
 								
 								const dVal = this.parseDate(t.date);
-								if (dVal < dExit && rules.appliedRate > 0) {
-									const tYears = (dExit - dVal) / (1000 * 60 * 60 * 24 * 365.25);
-									const interest = amt * (Math.pow(1 + (rules.appliedRate / 100) / 4, 4 * tYears) - 1);
-									accruedInterest += interest;
+								if (dVal < dExit) {
+									// Row-wise months held: Deposit Date, End + 1
+									const rEnd = new Date(dExit);
+									rEnd.setDate(rEnd.getDate() + 1);
+									let rowMonths = (rEnd.getFullYear() - dVal.getFullYear()) * 12 + (rEnd.getMonth() - dVal.getMonth());
+									if (rEnd.getDate() < dVal.getDate()) rowMonths--;
+									
+									t.row_months = Math.max(0, rowMonths);
+
+									if (rules.appliedRate > 0 && t.row_months > 0) {
+										// Excel Cap: min(Transaction Amount, Planned Installment)
+										const eligibleAmt = Math.min(t.amount, planned);
+										
+										// Satik Excel formula: P * (1 + r/400)^(months/3) - P
+										const interest = eligibleAmt * (Math.pow(1 + (rules.appliedRate / 400), t.row_months / 3) - 1);
+										t.accrued_interest = interest;
+										accruedInterest += interest;
+									}
 								}
 							}
 						});
 					}
 
-					const penaltyAmt = (principal * rules.penaltyPct / 100);
+					// Standard 1% penalty or 1.8% for SMBG
+					let penaltyPct = (monthsHeld < rules.meta.tenure_m) ? (this.data.schm_code === '2005' ? 1.8 : 1.0) : 0;
+					const penaltyAmt = (principal * penaltyPct / 100);
 
 					this.data.principal = principal;
 					this.data.appliedRate = rules.appliedRate;
-					this.data.interest = Math.round(accruedInterest);
-					this.data.penalty = Math.round(penaltyAmt);
-					this.data.total = principal + this.data.interest - this.data.penalty;
+					this.data.interest = accruedInterest;
+					this.data.penalty = penaltyAmt;
+					this.data.total = principal + accruedInterest - penaltyAmt;
 					this.data.monthsHeld = monthsHeld;
 
 					if (monthsHeld >= rules.meta.tenure_m) {
@@ -1430,13 +1461,22 @@
 					} else {
 						this.data.slabStatus = { label: `Early withdrawal: ${rules.appliedRate}% interest applied`, color: "#f59e0b" };
 					}
-					console.log("[DEBUG] updateCalculations() finished");
 				},
 
 				getApplicableRules(schmCode, monthsHeld) {
-					const rule = this.schemeRules[schmCode];
-					// Fail-safe default object
-					if (!rule) return { meta: { tenure_m: 0, base_rate: 0, interest_slabs: [], penalty_slabs: [] }, appliedRate: 0, penaltyPct: 0 };
+					// Logic strictly from Excel F4 Formula
+					const slabs = {
+						"2010": { tenure_m: 12, base_rate: 8.0, interest_slabs: [[6, 9, 4.0], [9, 12, 6.0]] },
+						"2011": { tenure_m: 24, base_rate: 8.0, interest_slabs: [[12, 18, 4.0], [18, 24, 6.0]] },
+						"2012": { tenure_m: 36, base_rate: 8.0, interest_slabs: [[18, 27, 4.0], [27, 36, 6.0]] },
+						"2013": { tenure_m: 48, base_rate: 8.0, interest_slabs: [[24, 36, 4.0], [36, 48, 6.0]] },
+						"2014": { tenure_m: 60, base_rate: 8.0, interest_slabs: [[30, 45, 4.0], [45, 60, 6.0]] },
+						"2015": { tenure_m: 60, base_rate: 8.0, interest_slabs: [[30, 45, 4.0], [45, 60, 6.0]] },
+						"2005": { tenure_m: 66, base_rate: 8.0, interest_slabs: [[36, 66, 6.0]] },
+						"2016": { tenure_m: 120, base_rate: 8.0, interest_slabs: [[0, 120, 8.0]] }
+					};
+					const rule = slabs[schmCode];
+					if (!rule) return { meta: { tenure_m: 0 }, appliedRate: 0, penaltyPct: 0 };
 
 					let appliedRate = 0;
 					if (monthsHeld >= rule.tenure_m) {
@@ -1449,18 +1489,7 @@
 							}
 						}
 					}
-
-					let penaltyPct = 0;
-					if (monthsHeld < rule.tenure_m) {
-						for (const [limit, charge] of rule.penalty_slabs) {
-							if (monthsHeld < limit) {
-								penaltyPct = charge;
-								break;
-							}
-						}
-					}
-
-					return { meta: rule, appliedRate, penaltyPct };
+					return { meta: rule, appliedRate };
 				},
 
 				selectProduct(product) {
