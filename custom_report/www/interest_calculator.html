@@ -1445,7 +1445,7 @@
 					const rules = this.getApplicableRules(this.data.schm_code, monthsHeldTotal);
 					const planned = this.data.planned_installment || 0;
 					
-					let totalCashPrincipal = 0;
+					let eligiblePrincipalSum = 0;
 					let totalAccruedInterest = 0; 
 					const processedMonths = new Set();
 					
@@ -1464,7 +1464,6 @@
 							const baseRate = rules.meta.base_rate || 8.0;
 
 							if (t.type === 'C') {
-								totalCashPrincipal += t.amount;
 								const dVal = this.parseDate(t.date);
 								if (dVal < dExit) {
 									const monthKey = `${dVal.getMonth()}-${dVal.getFullYear()}`;
@@ -1475,11 +1474,12 @@
 									
 									t.row_months = Math.max(0, rowMonths);
 
-									// Rule: One ELG per month for interest calculation
+									// Rule: One ELG per month for interest calculation and Principal Sum
 									if (t.row_months > 0 && !processedMonths.has(monthKey)) {
 										processedMonths.add(monthKey);
 										const eligibleAmt = Math.min(t.amount, planned);
 										t.elg_amt = eligibleAmt;
+										eligiblePrincipalSum += eligibleAmt; // Only sum eligible portions
 
 										if (t.applied_rate > 0) {
 											const actualInt = eligibleAmt * (Math.pow(1 + (t.applied_rate / 400), t.row_months / 3) - 1);
@@ -1494,10 +1494,22 @@
 						});
 					}
 
-					this.data.total_tran_sum = totalCashPrincipal;
-					this.data.principal = totalCashPrincipal;
+					this.data.principal = eligiblePrincipalSum;
 					this.data.interest = totalAccruedInterest;
 					
+					let penaltyPct = (monthsHeldTotal < rules.meta.tenure_m) ? (this.data.schm_code === '2005' ? 1.8 : 1.0) : 0;
+					this.data.penalty = Math.round(eligiblePrincipalSum * penaltyPct / 100);
+					this.data.total = eligiblePrincipalSum + totalAccruedInterest - this.data.penalty;
+					this.data.monthsHeld = monthsHeldTotal;
+
+					if (monthsHeldTotal >= rules.meta.tenure_m) {
+						this.data.slabStatus = { label: `Account matured: Full ${rules.appliedRate}% interest applied`, color: "#10b981" };
+					} else if (rules.appliedRate === 0) {
+						this.data.slabStatus = { label: "No interest earned (Minimum period not completed)", color: "#ef4444" };
+					} else {
+						this.data.slabStatus = { label: `Early withdrawal: ${rules.appliedRate}% interest applied`, color: "#f59e0b" };
+					}
+				},
 					let penaltyPct = (monthsHeldTotal < rules.meta.tenure_m) ? (this.data.schm_code === '2005' ? 1.8 : 1.0) : 0;
 					this.data.penalty = Math.round(totalCashPrincipal * penaltyPct / 100);
 					this.data.total = totalCashPrincipal + totalAccruedInterest - this.data.penalty;
