@@ -603,145 +603,145 @@
 				</div>
 
 				<div class="content-area">
-				<div v-show="step === 1" class="stage-padding">
-					<h1
-						style="
-							font-size: 42px;
-							font-weight: 800;
-							color: var(--primary);
-							margin-bottom: 12px;
-						"
-					>
-						Prematurity Calculator
-					</h1>
-					<p style="color: #64748b; margin-bottom: 50px; font-size: 18px;">
-						Access real-time Finacle data for instant prematurity settlement calculations.
-					</p>
+					<div v-show="step === 1" class="stage-padding">
+						<h1
+							style="
+								font-size: 42px;
+								font-weight: 800;
+								color: var(--primary);
+								margin-bottom: 12px;
+							"
+						>
+							Prematurity Calculator
+						</h1>
+						<p style="color: #64748b; margin-bottom: 50px; font-size: 18px;">
+							Access real-time Finacle data for instant prematurity settlement calculations.
+						</p>
 
-					<div class="finacle-wrapper">
-						<div class="segment">
-							<div class="seg-label" style="color: var(--primary)">SOL ID (4)</div>
-							<div class="inputs-row">
-								<input
-									v-for="i in 4"
-									:key="'sol-'+i"
-									type="text"
-									inputmode="numeric"
-									maxlength="1"
-									class="digit-box"
-									:id="'d-'+(i-1)"
-									v-model="digits[i-1]"
-									@input="handleInput($event, i-1)"
-									@keydown.backspace="handleBackspace($event, i-1)"
-									@keydown.enter="isComplete && calculate()"
-									@paste="handlePaste($event)"
-								/>
+						<div class="finacle-wrapper">
+							<div class="segment">
+								<div class="seg-label" style="color: var(--primary)">SOL ID (4)</div>
+								<div class="inputs-row">
+									<input
+										v-for="i in 4"
+										:key="'sol-'+i"
+										type="text"
+										inputmode="numeric"
+										maxlength="1"
+										class="digit-box"
+										:id="'d-'+(i-1)"
+										v-model="digits[i-1]"
+										@input="handleInput($event, i-1)"
+										@keydown.backspace="handleBackspace($event, i-1)"
+										@keydown.enter="isComplete && calculate()"
+										@paste="handlePaste($event)"
+									/>
+								</div>
+							</div>
+							<div class="segment">
+								<div class="seg-label" style="color: #9333ea">Scheme (4)</div>
+								<div class="inputs-row" :class="{ 'border-error': !isSchemeValid && digits.slice(4, 8).join('').length === 4 }">
+									<input
+										v-for="i in 4"
+										:key="'schm-'+i"
+										type="text"
+										inputmode="numeric"
+										maxlength="1"
+										class="digit-box"
+										:id="'d-'+(i+3)"
+										v-model="digits[i+3]"
+										@input="handleInput($event, i+3)"
+										@keydown.backspace="handleBackspace($event, i+3)"
+										@keydown.enter="isComplete && calculate()"
+									/>
+								</div>
+								<div v-if="schemeDesc" style="font-size: 11px; font-weight: 700; color: #9333ea; margin-top: 5px; text-align: left; padding-left: 14px; animation: slideIn 0.3s ease;">
+									[[ schemeDesc ]]
+								</div>
+								<div v-if="!isSchemeValid && digits.slice(4, 8).join('').length === 4" style="font-size: 10px; font-weight: 800; color: #ef4444; margin-top: 5px; text-align: left; padding-left: 14px; text-transform: uppercase;">
+									✖ Scheme code not allowed
+								</div>
+							</div>
+							<div class="segment">
+								<div class="seg-label" style="color: var(--accent)">
+									Running Serial (7)
+								</div>
+								<div class="inputs-row">
+									<input
+										v-for="i in 7"
+										:key="'serial-'+i"
+										type="text"
+										inputmode="numeric"
+										maxlength="1"
+										class="digit-box"
+										:id="'d-'+(i+7)"
+										v-model="digits[i+7]"
+										@input="handleInput($event, i+7)"
+										@keydown.backspace="handleBackspace($event, i+7)"
+										@keydown.enter="isComplete && calculate()"
+									/>
+								</div>
 							</div>
 						</div>
-						<div class="segment">
-							<div class="seg-label" style="color: #9333ea">Scheme (4)</div>
-							<div class="inputs-row" :class="{ 'border-error': !isSchemeValid && digits.slice(4, 8).join('').length === 4 }">
-								<input
-									v-for="i in 4"
-									:key="'schm-'+i"
-									type="text"
-									inputmode="numeric"
-									maxlength="1"
-									class="digit-box"
-									:id="'d-'+(i+3)"
-									v-model="digits[i+3]"
-									@input="handleInput($event, i+3)"
-									@keydown.backspace="handleBackspace($event, i+3)"
-									@keydown.enter="isComplete && calculate()"
-								/>
-							</div>
-							<div v-if="schemeDesc" style="font-size: 11px; font-weight: 700; color: #9333ea; margin-top: 5px; text-align: left; padding-left: 14px; animation: slideIn 0.3s ease;">
-								[[ schemeDesc ]]
-							</div>
-							<div v-if="!isSchemeValid && digits.slice(4, 8).join('').length === 4" style="font-size: 10px; font-weight: 800; color: #ef4444; margin-top: 5px; text-align: left; padding-left: 14px; text-transform: uppercase;">
-								✖ Scheme code not allowed
-							</div>
+
+						<button
+							class="btn-main"
+							:disabled="!isComplete || isLoading"
+							@click="calculate"
+							style="padding: 20px 60px; font-size: 18px; border-radius: 20px;"
+						>
+							[[ isLoading ? 'Processing...' : 'Calculate Premature ➔' ]]
+						</button>
+
+						<div v-if="!isSchemeValid && digits.slice(4, 8).join('').length === 4" 
+							style="margin-top: 25px; color: #ef4444; font-size: 14px; font-weight: 600; background: #fef2f2; padding: 12px 24px; border-radius: 16px; border: 1px solid #fee2e2; display: inline-block; animation: slideIn 0.3s ease;">
+							⚠️ Only SMBG (2005) and RD (2010-2016) schemes are allowed.
 						</div>
-						<div class="segment">
-							<div class="seg-label" style="color: var(--accent)">
-								Running Serial (7)
-							</div>
-							<div class="inputs-row">
-								<input
-									v-for="i in 7"
-									:key="'serial-'+i"
-									type="text"
-									inputmode="numeric"
-									maxlength="1"
-									class="digit-box"
-									:id="'d-'+(i+7)"
-									v-model="digits[i+7]"
-									@input="handleInput($event, i+7)"
-									@keydown.backspace="handleBackspace($event, i+7)"
-									@keydown.enter="isComplete && calculate()"
-								/>
-							</div>
+
+						<div
+							v-else-if="errorMessage"
+							style="
+								margin-top: 25px;
+								color: #ef4444;
+								font-size: 14px;
+								font-weight: 600;
+								background: #fef2f2;
+								padding: 12px 24px;
+								border-radius: 16px;
+								border: 1px solid #fee2e2;
+								display: inline-block;
+								animation: slideIn 0.3s ease;
+							"
+						>
+							⚠️ [[ errorMessage ]]
+						</div>
+
+						<div
+							v-else
+							class="blink"
+							style="
+								margin-top: 25px;
+								font-size: 14px;
+								color: #64748b;
+								font-weight: 700;
+								display: flex;
+								align-items: center;
+								justify-content: center;
+								transition: 0.3s;
+							"
+							:style="{ color: isComplete ? 'var(--accent)' : '#64748b' }"
+						>
+							[[ instructionMsg ]]
 						</div>
 					</div>
 
-					<button
-						class="btn-main"
-						:disabled="!isComplete || isLoading"
-						@click="calculate"
-						style="padding: 20px 60px; font-size: 18px; border-radius: 20px;"
-					>
-						[[ isLoading ? 'Processing...' : 'Calculate Premature ➔' ]]
-					</button>
-
-					<div v-if="!isSchemeValid && digits.slice(4, 8).join('').length === 4" 
-						style="margin-top: 25px; color: #ef4444; font-size: 14px; font-weight: 600; background: #fef2f2; padding: 12px 24px; border-radius: 16px; border: 1px solid #fee2e2; display: inline-block; animation: slideIn 0.3s ease;">
-						⚠️ Only SMBG (2005) and RD (2010-2016) schemes are allowed.
-					</div>
-
-					<div
-						v-else-if="errorMessage"
-						style="
-							margin-top: 25px;
-							color: #ef4444;
-							font-size: 14px;
-							font-weight: 600;
-							background: #fef2f2;
-							padding: 12px 24px;
-							border-radius: 16px;
-							border: 1px solid #fee2e2;
-							display: inline-block;
-							animation: slideIn 0.3s ease;
-						"
-					>
-						⚠️ [[ errorMessage ]]
-					</div>
-
-					<div
-						v-else
-						class="blink"
-						style="
-							margin-top: 25px;
-							font-size: 14px;
-							color: #64748b;
-							font-weight: 700;
-							display: flex;
-							align-items: center;
-							justify-content: center;
-							transition: 0.3s;
-						"
-						:style="{ color: isComplete ? 'var(--accent)' : '#64748b' }"
-					>
-						[[ instructionMsg ]]
-					</div>
-				</div>
-
-				<div v-if="data" v-show="step === 2" style="animation: slideIn 0.5s ease-out; display: flex; flex-direction: column; flex: 1; min-height: 0;">
+					<div v-if="data" v-show="step === 2" style="animation: slideIn 0.5s ease-out; display: flex; flex-direction: column; flex: 1; min-height: 0;">
 						<div class="tabs-container" style="align-items: center; justify-content: space-between; gap: 24px; background: none; padding: 0 0 20px 0;">
 							<div style="display: flex; align-items: center; gap: 24px;">
 								<div class="tab-item active" style="cursor: default; padding: 12px 30px;">
 									<div class="check-badge">✓</div>
 									[[ selectedProduct.name ]]
-									<span class="tab-rate">[[ selectedProduct.rate ]]%</span>
+									<span class="tab-rate">[[ data.applied_rate ]]%</span>
 								</div>
 								
 								<div style="display: flex; flex-direction: column; gap: 4px; border-left: 2px solid #cbd5e1; padding-left: 24px;">
@@ -928,29 +928,47 @@
 									</div>
 								</div>
 
-								<div class="tran-list" v-if="data && sortedTransactions.length" style="flex: 1; overflow-y: auto; padding-right: 8px;">
-									<div v-for="(t, i) in sortedTransactions" :key="t.date + t.amount + t.type + i" class="tran-item">
-										<div style="display: flex; align-items: flex-start; flex: 1; min-width: 0; gap: 12px;">
-											<!-- UI Level Serial Number -->
-											<div class="mono" style="font-size: 11px; font-weight: 800; color: #94a3b8; width: 24px; height: 24px; background: #f1f5f9; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">
+								<div class="tran-list" v-if="data && sortedTransactions.length" style="flex: 1; min-height: 0; overflow-y: auto; padding-right: 8px;">
+									<div v-for="(t, i) in sortedTransactions" :key="t.date + t.amount + t.type + i" class="tran-item" style="padding: 16px 0; border-bottom: 1px solid #f1f5f9;">
+										<div style="display: flex; align-items: flex-start; flex: 1; min-width: 0; gap: 16px;">
+											<!-- Enhanced Serial Number Badge -->
+											<div class="mono" 
+												:style="{ 
+													background: t.type === 'C' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
+													color: t.type === 'C' ? '#10b981' : '#ef4444',
+													borderColor: t.type === 'C' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'
+												}"
+												style="font-size: 14px; font-weight: 800; width: 36px; height: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid; margin-top: 2px;">
 												[[ sortOrder === 'desc' ? sortedTransactions.length - i : i + 1 ]]
 											</div>
 
-											<div class="tran-dot" :class="'dot-' + t.type.toLowerCase()" style="margin-top: 10px; flex-shrink: 0;"></div>
-											
 											<div style="flex: 1; min-width: 0;">
-												<div style="text-align: right;">
-													<div class="mono" style="font-size: 13px; font-weight: 700;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
+												<!-- First Row: Type and Amount -->
+												<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+													<div>
+														<span style="font-size: 13px; font-weight: 700; color: var(--primary);">
+															[[ t.type === 'C' ? 'Credit' : 'Debit' ]]
+														</span>
+														<span class="mono" style="font-size: 11px; color: #94a3b8; margin-left: 8px;">[[ t.date ]]</span>
+													</div>
+													<div class="mono" style="font-size: 14px; font-weight: 800;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
 														[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
 													</div>
-													<div v-if="t.type === 'C'" class="mono" style="font-size: 10px; font-weight: 700; color: var(--accent); margin-top: 2px; background: rgba(13, 148, 136, 0.08); padding: 2px 6px; border-radius: 4px; display: inline-block;">
-														[[ t.row_months || 0 ]]m @ [[ t.applied_rate || 0 ]]% | +[[ formatCurrency(t.accrued_interest).replace('₹', '') ]]
+												</div>
+
+												<!-- Second Row: Calculation Details -->
+												<div v-if="t.type === 'C'" style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+													<div class="mono" style="font-size: 10px; font-weight: 700; color: var(--accent); background: rgba(13, 148, 136, 0.08); padding: 3px 8px; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
+														<span>DURATION: [[ t.row_months || 0 ]]m</span>
+														<span style="opacity: 0.3;">|</span>
+														<span>RATE: [[ t.applied_rate || 0 ]]%</span>
+														<span style="opacity: 0.3;">|</span>
+														<span style="color: var(--accent); font-weight: 800;">INT: +[[ formatCurrency(t.accrued_interest).replace('₹', '') ]]</span>
 													</div>
 												</div>
-											</div>
 
-											<div class="mono" style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">[[ t.date ]]</div>
-												<div style="font-size: 11px; color: #64748b; line-height: 1.4; word-break: break-all; white-space: normal;">
+												<!-- Third Row: Particulars -->
+												<div style="font-size: 11px; color: #64748b; line-height: 1.5; word-break: break-all; white-space: normal; background: #f8fafc; padding: 6px 10px; border-radius: 8px; border-left: 3px solid #e2e8f0;">
 													[[ t.particular ]]
 												</div>
 											</div>
@@ -981,22 +999,23 @@
 										
 										<div style="margin-top: 12px; font-size: 11px; color: #64748b; line-height: 1.6;">
 											<div style="font-weight: 700; margin-bottom: 8px; color: var(--primary);">💡 Applicable Rules for Scheme [[ data.schm_code ]]:</div>
-																					<div v-if="schemeRules[data.schm_code]" style="display: grid; grid-template-columns: 1fr; gap: 6px;">
-																						<div v-for="slab in schemeRules[data.schm_code].interest_slabs" 
-																							:key="slab[0]+slab[1]"
-																							:style="{ color: data.appliedRate === slab[2] ? '#10b981' : '#64748b', fontWeight: data.appliedRate === slab[2] ? '700' : '400' }" 
-																							style="display: flex; align-items: center; gap: 8px; transition: 0.3s;">
-																							<span v-if="data.appliedRate === slab[2]" style="background: #10b981; color: white; width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px;">✓</span>
-																							<span v-else style="color: #cbd5e1;">•</span>
-																							[[ slab[2] ]]% : From [[ slab[0] ]] to [[ slab[1] ]] months
-																						</div>
-																						<div :style="{ color: data.appliedRate === schemeRules[data.schm_code].base_rate ? '#10b981' : '#64748b', fontWeight: data.appliedRate === schemeRules[data.schm_code].base_rate ? '700' : '400' }" 
-																							style="display: flex; align-items: center; gap: 8px; transition: 0.3s;">
-																							<span v-if="data.appliedRate === schemeRules[data.schm_code].base_rate" style="background: #10b981; color: white; width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px;">✓</span>
-																							<span v-else style="color: #cbd5e1;">•</span>
-																							[[ schemeRules[data.schm_code].base_rate ]]% : On or after [[ schemeRules[data.schm_code].tenure_m ]] months (Maturity)
-																						</div>
-																					</div>										</div>
+											<div v-if="schemeRules[data.schm_code]" style="display: grid; grid-template-columns: 1fr; gap: 6px;">
+												<div v-for="slab in schemeRules[data.schm_code].interest_slabs" 
+													:key="slab[0]+slab[1]"
+													:style="{ color: data.appliedRate === slab[2] ? '#10b981' : '#64748b', fontWeight: data.appliedRate === slab[2] ? '700' : '400' }" 
+													style="display: flex; align-items: center; gap: 8px; transition: 0.3s;">
+													<span v-if="data.appliedRate === slab[2]" style="background: #10b981; color: white; width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px;">✓</span>
+													<span v-else style="color: #cbd5e1;">•</span>
+													[[ slab[2] ]]% : From [[ slab[0] ]] to [[ slab[1] ]] months
+												</div>
+												<div :style="{ color: data.appliedRate === schemeRules[data.schm_code].base_rate ? '#10b981' : '#64748b', fontWeight: data.appliedRate === schemeRules[data.schm_code].base_rate ? '700' : '400' }" 
+													style="display: flex; align-items: center; gap: 8px; transition: 0.3s;">
+													<span v-if="data.appliedRate === schemeRules[data.schm_code].base_rate" style="background: #10b981; color: white; width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px;">✓</span>
+													<span v-else style="color: #cbd5e1;">•</span>
+													[[ schemeRules[data.schm_code].base_rate ]]% : On or after [[ schemeRules[data.schm_code].tenure_m ]] months (Maturity)
+												</div>
+											</div>
+										</div>
 
 										<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color, background: data.slabStatus.color + '15' }" 
 											style="margin-top: 15px; font-size: 12px; font-weight: 700; padding: 10px 15px; border-radius: 10px; display: flex; align-items: center; gap: 8px;">
@@ -1348,6 +1367,7 @@
 								maturity_amount: result.maturity_amount || 0,
 								deposit_period_mths: result.deposit_period_mths || 0,
 								deposit_amount: result.deposit_amount || 0,
+								planned_installment: result.planned_installment || 0,
 								total_tran_sum: result.total_tran_sum || 0,
 								transactions: result.transactions || [],
 							};
@@ -1410,12 +1430,13 @@
 					let principal = 0;
 					let accruedInterest = 0;
 					
+					console.log(`[CALC] Scheme: ${this.data.schm_code} | Total Months: ${monthsHeld} | Base Rate: ${rules.appliedRate}%`);
+
 					if (this.data.transactions && this.data.transactions.length) {
-						this.data.transactions.forEach((t) => {
+						this.data.transactions.forEach((t, idx) => {
 							t.accrued_interest = 0; 
 							t.row_months = 0;
 							t.applied_rate = rules.appliedRate;
-							
 							if (t.type === 'C') {
 								principal += t.amount;
 								
@@ -1437,6 +1458,7 @@
 										const interest = eligibleAmt * (Math.pow(1 + (rules.appliedRate / 400), t.row_months / 3) - 1);
 										t.accrued_interest = interest;
 										accruedInterest += interest;
+										console.log(`[CALC] Row #${idx+1}: ₹${t.amount} | Held: ${rowMonths}m | Int: ₹${interest.toFixed(2)}`);
 									}
 								}
 							}
@@ -1461,10 +1483,10 @@
 					} else {
 						this.data.slabStatus = { label: `Early withdrawal: ${rules.appliedRate}% interest applied`, color: "#f59e0b" };
 					}
+					console.log("[DEBUG] updateCalculations() finished");
 				},
 
 				getApplicableRules(schmCode, monthsHeld) {
-					// Logic strictly from Excel F4 Formula
 					const slabs = {
 						"2010": { tenure_m: 12, base_rate: 8.0, interest_slabs: [[6, 9, 4.0], [9, 12, 6.0]] },
 						"2011": { tenure_m: 24, base_rate: 8.0, interest_slabs: [[12, 18, 4.0], [18, 24, 6.0]] },
@@ -1476,7 +1498,8 @@
 						"2016": { tenure_m: 120, base_rate: 8.0, interest_slabs: [[0, 120, 8.0]] }
 					};
 					const rule = slabs[schmCode];
-					if (!rule) return { meta: { tenure_m: 0 }, appliedRate: 0, penaltyPct: 0 };
+					// Fail-safe default object
+					if (!rule) return { meta: { tenure_m: 0, base_rate: 0, interest_slabs: [], penalty_slabs: [] }, appliedRate: 0, penaltyPct: 0 };
 
 					let appliedRate = 0;
 					if (monthsHeld >= rule.tenure_m) {
