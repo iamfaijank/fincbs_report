@@ -38,6 +38,12 @@ SCHEME_RULES = {
         "penalty_slabs": [(15, 6.0), (30, 4.0)], 
         "interest_slabs": [(30, 45, 4.0), (45, 60, 6.0)]
     },
+    "2015": {
+        "name": "RD 60M",
+        "tenure_m": 60, "base_rate": 8.0, 
+        "penalty_slabs": [(15, 6.0), (30, 4.0)], 
+        "interest_slabs": [(30, 45, 4.0), (45, 60, 6.0)]
+    },
     "2005": {
         "name": "SMBG",
         "tenure_m": 66, "base_rate": 8.0, 
