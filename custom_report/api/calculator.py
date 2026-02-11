@@ -6,20 +6,20 @@ from custom_report.db_connection import get_dr_connection
 
 # Excel Slab Mapping based on Audit Formula
 RD_SLABS = {
-    "2010": {"tenure": 12, "slabs": [(6, 9, 4.0), (9, 12, 6.0)]},   # 1 Year
-    "2011": {"tenure": 24, "slabs": [(12, 18, 4.0), (18, 24, 6.0)]}, # 2 Year
-    "2012": {"tenure": 36, "slabs": [(18, 27, 4.0), (27, 36, 6.0)]}, # 3 Year
-    "2013": {"tenure": 48, "slabs": [(24, 36, 4.0), (36, 48, 6.0)]}, # 4 Year
-    "2014": {"tenure": 60, "slabs": [(30, 45, 4.0), (45, 60, 6.0)]}, # 5 Year
-    "2015": {"tenure": 60, "slabs": [(30, 45, 4.0), (45, 60, 6.0)]}, # 5 Year (Same as 2014)
-    "2005": {"tenure": 66, "slabs": [(36, 66, 6.0)]},                # SMBG
-    "2016": {"tenure": 120, "slabs": [(0, 120, 8.0)]}                # RD 120M
+    "2010": {"tenure": 12, "base_rate": 8.0, "slabs": [(6, 9, 4.0), (9, 12, 6.0)]},
+    "2011": {"tenure": 24, "base_rate": 8.0, "slabs": [(12, 18, 4.0), (18, 24, 6.0)]},
+    "2012": {"tenure": 36, "base_rate": 8.0, "slabs": [(18, 27, 4.0), (27, 36, 6.0)]},
+    "2013": {"tenure": 48, "base_rate": 8.0, "slabs": [(24, 36, 4.0), (36, 48, 6.0)]},
+    "2014": {"tenure": 60, "base_rate": 8.0, "slabs": [(30, 45, 4.0), (45, 60, 6.0)]},
+    "2015": {"tenure": 60, "base_rate": 8.0, "slabs": [(30, 45, 4.0), (45, 60, 6.0)]},
+    "2005": {"tenure": 66, "base_rate": 8.0, "slabs": [(36, 66, 6.0)]},
+    "2016": {"tenure": 120, "base_rate": 8.0, "slabs": [(0, 120, 8.0)]}
 }
 
 def get_excel_interest_rate(schm_code, months_held):
     rule = RD_SLABS.get(str(schm_code))
     if not rule: return 0.0
-    if months_held >= rule['tenure']: return 8.0 
+    if months_held >= rule['tenure']: return rule['base_rate']
     for low, high, rate in rule['slabs']:
         if low <= months_held < high:
             return rate
@@ -29,9 +29,7 @@ def get_excel_interest_rate(schm_code, months_held):
 def get_account_details(foracid=None, settlement_date=None):
     if not foracid: return {"success": False, "error": "Account number is required"}
     
-    # Handle settlement date adjustment (Excel +1 logic)
-    if not settlement_date:
-        sett_dt = datetime.now()
+    if not settlement_date: sett_dt = datetime.now()
     else:
         try:
             if '-' in settlement_date: sett_dt = datetime.strptime(settlement_date, "%Y-%m-%d")
@@ -42,8 +40,6 @@ def get_account_details(foracid=None, settlement_date=None):
     try:
         conn = get_dr_connection()
         cursor = conn.cursor()
-        
-        # Main Query to fetch account info
         cursor.execute("""
             SELECT g.acid, g.cif_id, g.acct_name, s.sol_id, s.sol_desc, g.acct_opn_date, g.schm_code, 
                    p.schm_desc, t.maturity_date, t.maturity_amount, t.deposit_period_mths, t.deposit_amount
@@ -59,12 +55,11 @@ def get_account_details(foracid=None, settlement_date=None):
 
         acid, cif, name, sol_id, sol_desc, opn_dt, schm_code, schm_desc, mat_dt, mat_amt, period, planned_installment = res
         
-        # Excel logic for months: DATEDIF(Start, End + 1, "M")
         diff_total = relativedelta(sett_dt + relativedelta(days=1), opn_dt)
         months_held_total = (diff_total.years * 12) + diff_total.months
         app_rate = get_excel_interest_rate(schm_code, months_held_total)
+        base_rate = RD_SLABS.get(str(schm_code), {}).get('base_rate', 8.0)
 
-        # Fetch Transactions
         cursor.execute("""
             SELECT value_date, tran_amt, part_tran_type, tran_particular 
             FROM tbaadm.htd 
@@ -73,70 +68,54 @@ def get_account_details(foracid=None, settlement_date=None):
         """, (acid,))
         raw_trans = cursor.fetchall()
         
-        total_principal = 0.0
-        total_interest = 0.0
-        transactions = []
+        total_principal, total_interest, transactions = 0.0, 0.0, []
         
         for val_date, amt, p_type, particular in raw_trans:
             amt = float(amt or 0)
-            row_interest = 0.0
+            row_premature_interest = 0.0
+            row_scheme_interest = 0.0
             row_months = 0
+            eligible_amt = min(amt, float(planned_installment or 0))
             
             if p_type == 'C':
                 total_principal += amt
                 if val_date < sett_dt:
-                    # Excel Rule: min(Amount Deposited, Planned Installment)
-                    eligible_amt = min(amt, float(planned_installment or 0))
-                    
-                    # Row-wise DATEDIF logic
                     r_diff = relativedelta(sett_dt + relativedelta(days=1), val_date)
                     row_months = (r_diff.years * 12) + r_diff.months
-                    
-                    if app_rate > 0 and row_months > 0:
-                        # Excel Formula: P * (1 + r/400)^(4 * months/12) - P
-                        # Which simplifies to: P * (1 + r/400)^(months/3) - P
-                        row_interest = eligible_amt * ((1 + app_rate/400)**(row_months/3) - 1)
-                        total_interest += row_interest
+                    if row_months > 0:
+                        # 1. Actual Premature Interest (for Total)
+                        if app_rate > 0:
+                            row_premature_interest = eligible_amt * ((1 + app_rate/400)**(row_months/3) - 1)
+                            total_interest += row_premature_interest
+                        # 2. Potential Scheme Interest (for UI Row)
+                        row_scheme_interest = eligible_amt * ((1 + base_rate/400)**(row_months/3) - 1)
 
             transactions.append({
                 "date": val_date.strftime("%d/%m/%Y") if val_date else "N/A",
                 "amount": amt,
                 "type": p_type,
                 "particular": particular or "",
-                "accrued_interest": round(row_interest, 2),
+                "row_interest": int(round(row_scheme_interest)),
                 "row_months": row_months,
-                "applied_rate": app_rate
+                "elg_amt": eligible_amt
             })
 
-        # Penalty logic: 1% of Principal if Premature (except SMBG which is 1.8% fixed)
         penalty_amt = 0.0
         rule_meta = RD_SLABS.get(str(schm_code), {"tenure": 0})
         if months_held_total < rule_meta['tenure']:
-            if schm_code == '2005':
-                penalty_amt = total_principal * 0.018 # Fixed 1.8% for SMBG
-            else:
-                penalty_amt = total_principal * 0.01  # Standard 1% penalty
+            penalty_amt = total_principal * (0.018 if schm_code == '2005' else 0.01)
 
         return {
-            "success": True,
-            "cif_id": cif,
-            "acct_name": name,
-            "sol_id": sol_id,
-            "sol_desc": sol_desc,
-            "acct_opn_date": opn_dt.strftime("%d/%m/%Y"),
-            "schm_code": schm_code,
-            "schm_desc": schm_desc,
-            "maturity_date": mat_dt.strftime("%d/%m/%Y"),
+            "success": True, "cif_id": cif, "acct_name": name, "sol_id": sol_id, "sol_desc": sol_desc,
+            "acct_opn_date": opn_dt.strftime("%d/%m/%Y"), "schm_code": schm_code, "schm_desc": schm_desc,
+            "maturity_date": mat_dt.strftime("%d/%m/%Y"), "maturity_amount": float(mat_amt or 0),
+            "deposit_period_mths": int(period or 0), "deposit_amount": float(planned_installment or 0),
             "planned_installment": float(planned_installment or 0),
-            "transactions": transactions,
-            "principal": round(total_principal, 2),
-            "interest": round(total_interest, 2),
-            "penalty": round(penalty_amt, 2),
-            "net_payable": round(total_principal + total_interest - penalty_amt, 2),
-            "applied_rate": app_rate,
-            "months_held": months_held_total
+            "transactions": transactions, "principal": round(total_principal, 2),
+            "interest": int(round(total_interest)), "penalty": int(round(penalty_amt)),
+            "net_payable": int(round(total_principal + total_interest - penalty_amt)),
+            "applied_rate": app_rate, "months_held": months_held_total
         }
-
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Excel Logic Calculator Failure")
         return {"success": False, "error": str(e)}

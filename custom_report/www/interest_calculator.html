@@ -383,6 +383,23 @@
 				display: flex;
 				flex-direction: column;
 				min-height: 0;
+				height: 100%;
+			}
+
+			/* Modern Scrollbar */
+			.tran-list::-webkit-scrollbar {
+				width: 6px;
+			}
+			.tran-list::-webkit-scrollbar-track {
+				background: #f1f5f9;
+				border-radius: 10px;
+			}
+			.tran-list::-webkit-scrollbar-thumb {
+				background: #cbd5e1;
+				border-radius: 10px;
+			}
+			.tran-list::-webkit-scrollbar-thumb:hover {
+				background: #94a3b8;
 			}
 
 			.btn-main {
@@ -928,7 +945,7 @@
 									</div>
 								</div>
 
-								<div class="tran-list" v-if="data && sortedTransactions.length" style="flex: 1; min-height: 0; overflow-y: auto; padding-right: 8px;">
+								<div class="tran-list" v-if="data && sortedTransactions.length" style="flex: 1; min-height: 0; max-height: 550px; overflow-y: auto; padding-right: 8px;">
 									<div v-for="(t, i) in sortedTransactions" :key="t.date + t.amount + t.type + i" class="tran-item" style="padding: 16px 0; border-bottom: 1px solid #f1f5f9;">
 										<div style="display: flex; align-items: flex-start; flex: 1; min-width: 0; gap: 16px;">
 											<!-- Enhanced Serial Number Badge -->
@@ -956,19 +973,23 @@
 													</div>
 												</div>
 
-												<!-- Second Row: Calculation Details -->
-												<div v-if="t.type === 'C'" style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-													<div class="mono" style="font-size: 10px; font-weight: 700; color: var(--accent); background: rgba(13, 148, 136, 0.08); padding: 3px 8px; border-radius: 6px; display: flex; align-items: center; gap: 6px;">
-														<span>DURATION: [[ t.row_months || 0 ]]m</span>
-														<span style="opacity: 0.3;">|</span>
-														<span>RATE: [[ t.applied_rate || 0 ]]%</span>
-														<span style="opacity: 0.3;">|</span>
-														<span style="color: var(--accent); font-weight: 800;">INT: +[[ formatCurrency(t.accrued_interest).replace('₹', '') ]]</span>
+												<!-- Detailed Breakout Box (Image Style) -->
+												<div v-if="t.type === 'C'" style="margin-top: 6px; padding: 8px 12px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1; display: flex; align-items: center; gap: 15px;">
+													<div style="font-size: 11px; color: #475569;">
+														<strong style="color: #94a3b8; font-size: 9px; text-transform: uppercase; margin-right: 4px;">ELG:</strong> ₹[[ formatCurrency(t.elg_amt).replace('₹', '') ]]
+													</div>
+													<div style="color: #e2e8f0; font-weight: 300;">|</div>
+													<div style="font-size: 11px; color: #475569;">
+														<strong style="color: #94a3b8; font-size: 9px; text-transform: uppercase; margin-right: 4px;">HELD:</strong> [[ t.row_months ]]m
+													</div>
+													<div style="color: #e2e8f0; font-weight: 300;">|</div>
+													<div style="font-size: 11px; color: var(--accent); font-weight: 700;">
+														<strong style="color: #94a3b8; font-size: 9px; text-transform: uppercase; margin-right: 4px;">SCHEME INT (@[[ base_rate || 8 ]]%):</strong> +[[ t.scheme_interest ]]
 													</div>
 												</div>
 
 												<!-- Third Row: Particulars -->
-												<div style="font-size: 11px; color: #64748b; line-height: 1.5; word-break: break-all; white-space: normal; background: #f8fafc; padding: 6px 10px; border-radius: 8px; border-left: 3px solid #e2e8f0;">
+												<div style="font-size: 11px; color: #64748b; line-height: 1.5; word-break: break-all; white-space: normal; background: #f8fafc; padding: 6px 10px; border-radius: 8px; border-left: 3px solid #e2e8f0; margin-top: 6px;">
 													[[ t.particular ]]
 												</div>
 											</div>
@@ -1409,81 +1430,77 @@
 				},
 
 				updateCalculations() {
-					console.log("[DEBUG] updateCalculations() called (Excel Satik Logic)");
 					if (!this.data) return;
 
 					const exitDate = this.exitDate;
 					const dExit = this.parseDate(exitDate);
 					const aod = this.data.acct_opn_date;
-					
-					// Excel DATEDIF logic: Start, End + 1
 					const start = this.parseDate(aod);
 					const endAdjusted = new Date(dExit);
 					endAdjusted.setDate(endAdjusted.getDate() + 1);
 					
-					let monthsHeld = (endAdjusted.getFullYear() - start.getFullYear()) * 12 + (endAdjusted.getMonth() - start.getMonth());
-					if (endAdjusted.getDate() < start.getDate()) monthsHeld--;
+					let monthsHeldTotal = (endAdjusted.getFullYear() - start.getFullYear()) * 12 + (endAdjusted.getMonth() - start.getMonth());
+					if (endAdjusted.getDate() < start.getDate()) monthsHeldTotal--;
 					
-					const rules = this.getApplicableRules(this.data.schm_code, monthsHeld);
+					const rules = this.getApplicableRules(this.data.schm_code, monthsHeldTotal);
 					const planned = this.data.planned_installment || 0;
 					
-					let principal = 0;
-					let accruedInterest = 0;
+					let totalPrincipal = 0;
+					let totalAccruedInterest = 0; 
 					
-					console.log(`[CALC] Scheme: ${this.data.schm_code} | Total Months: ${monthsHeld} | Base Rate: ${rules.appliedRate}%`);
-
 					if (this.data.transactions && this.data.transactions.length) {
-						this.data.transactions.forEach((t, idx) => {
+						this.data.transactions.forEach((t) => {
 							t.accrued_interest = 0; 
+							t.scheme_interest = 0;
 							t.row_months = 0;
+							t.elg_amt = 0;
 							t.applied_rate = rules.appliedRate;
+							const baseRate = rules.meta.base_rate || 8.0;
+
 							if (t.type === 'C') {
-								principal += t.amount;
-								
+								totalPrincipal += t.amount;
 								const dVal = this.parseDate(t.date);
 								if (dVal < dExit) {
-									// Row-wise months held: Deposit Date, End + 1
 									const rEnd = new Date(dExit);
 									rEnd.setDate(rEnd.getDate() + 1);
 									let rowMonths = (rEnd.getFullYear() - dVal.getFullYear()) * 12 + (rEnd.getMonth() - dVal.getMonth());
 									if (rEnd.getDate() < dVal.getDate()) rowMonths--;
 									
 									t.row_months = Math.max(0, rowMonths);
+									const eligibleAmt = Math.min(t.amount, planned);
+									t.elg_amt = eligibleAmt;
 
-									if (rules.appliedRate > 0 && t.row_months > 0) {
-										// Excel Cap: min(Transaction Amount, Planned Installment)
-										const eligibleAmt = Math.min(t.amount, planned);
-										
-										// Satik Excel formula: P * (1 + r/400)^(months/3) - P
-										const interest = eligibleAmt * (Math.pow(1 + (rules.appliedRate / 400), t.row_months / 3) - 1);
-										t.accrued_interest = interest;
-										accruedInterest += interest;
-										console.log(`[CALC] Row #${idx+1}: ₹${t.amount} | Held: ${rowMonths}m | Int: ₹${interest.toFixed(2)}`);
+									if (t.row_months > 0) {
+										if (t.applied_rate > 0) {
+											const actualInt = eligibleAmt * (Math.pow(1 + (t.applied_rate / 400), t.row_months / 3) - 1);
+											t.accrued_interest = Math.round(actualInt);
+											totalAccruedInterest += t.accrued_interest;
+										}
+										const schemeInt = eligibleAmt * (Math.pow(1 + (baseRate / 400), t.row_months / 3) - 1);
+										t.scheme_interest = Math.round(schemeInt);
 									}
 								}
 							}
 						});
 					}
 
-					// Standard 1% penalty or 1.8% for SMBG
-					let penaltyPct = (monthsHeld < rules.meta.tenure_m) ? (this.data.schm_code === '2005' ? 1.8 : 1.0) : 0;
-					const penaltyAmt = (principal * penaltyPct / 100);
-
-					this.data.principal = principal;
+					this.data.total_tran_sum = totalPrincipal;
+					this.data.principal = totalPrincipal;
 					this.data.appliedRate = rules.appliedRate;
-					this.data.interest = accruedInterest;
-					this.data.penalty = penaltyAmt;
-					this.data.total = principal + accruedInterest - penaltyAmt;
-					this.data.monthsHeld = monthsHeld;
+					this.data.interest = totalAccruedInterest;
+					
+					let penaltyPct = (monthsHeldTotal < rules.meta.tenure_m) ? (this.data.schm_code === '2005' ? 1.8 : 1.0) : 0;
+					this.data.penalty = Math.round(totalPrincipal * penaltyPct / 100);
+					this.data.total = totalPrincipal + totalAccruedInterest - this.data.penalty;
+					this.data.monthsHeld = monthsHeldTotal;
 
-					if (monthsHeld >= rules.meta.tenure_m) {
+					if (monthsHeldTotal >= rules.meta.tenure_m) {
 						this.data.slabStatus = { label: `Account matured: Full ${rules.appliedRate}% interest applied`, color: "#10b981" };
 					} else if (rules.appliedRate === 0) {
 						this.data.slabStatus = { label: "No interest earned (Minimum period not completed)", color: "#ef4444" };
 					} else {
 						this.data.slabStatus = { label: `Early withdrawal: ${rules.appliedRate}% interest applied`, color: "#f59e0b" };
 					}
-					console.log("[DEBUG] updateCalculations() finished");
 				},
 
 				getApplicableRules(schmCode, monthsHeld) {
