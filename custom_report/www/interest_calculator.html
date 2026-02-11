@@ -374,7 +374,10 @@
 			.breakdown-scroll {
 				flex: 1;
 				margin-bottom: 20px;
+				overflow-y: auto;
+				padding-right: 10px;
 			}
+
 			.panel-transactions {
 				padding: 30px;
 				display: flex;
@@ -412,12 +415,27 @@
 				font-size: 14px;
 			}
 			.total-banner {
-				margin-top: 40px;
-				background: var(--accent);
+				margin-top: 0px;
+				background: linear-gradient(-45deg, #0d9488, #14b8a6, #0f766e, #0d9488);
+				background-size: 400% 400%;
+				animation: gradientBG 8s ease infinite, fluidGlow 3s ease-in-out infinite;
 				color: white;
 				padding: 30px;
 				border-radius: 24px;
-				box-shadow: 0 15px 30px -5px rgba(13, 148, 136, 0.3);
+				box-shadow: 0 10px 30px -5px rgba(13, 148, 136, 0.5);
+				position: relative;
+				overflow: hidden;
+			}
+
+			@keyframes gradientBG {
+				0% { background-position: 0% 50%; }
+				50% { background-position: 100% 50%; }
+				100% { background-position: 0% 50%; }
+			}
+
+			@keyframes fluidGlow {
+				0%, 100% { box-shadow: 0 10px 30px -5px rgba(13, 148, 136, 0.5), 0 0 20px rgba(20, 184, 166, 0.2); }
+				50% { box-shadow: 0 15px 40px -2px rgba(13, 148, 136, 0.7), 0 0 35px rgba(20, 184, 166, 0.4); }
 			}
 
 			.mono {
@@ -490,18 +508,22 @@
 			}
 
 			/* Custom Scrollbar */
-			.tran-list::-webkit-scrollbar {
+			.tran-list::-webkit-scrollbar,
+			.breakdown-scroll::-webkit-scrollbar {
 				width: 6px;
 			}
-			.tran-list::-webkit-scrollbar-track {
+			.tran-list::-webkit-scrollbar-track,
+			.breakdown-scroll::-webkit-scrollbar-track {
 				background: #f1f5f9;
 				border-radius: 10px;
 			}
-			.tran-list::-webkit-scrollbar-thumb {
+			.tran-list::-webkit-scrollbar-thumb,
+			.breakdown-scroll::-webkit-scrollbar-thumb {
 				background: #cbd5e1;
 				border-radius: 10px;
 			}
-			.tran-list::-webkit-scrollbar-thumb:hover {
+			.tran-list::-webkit-scrollbar-thumb:hover,
+			.breakdown-scroll::-webkit-scrollbar-thumb:hover {
 				background: #94a3b8;
 			}
 
@@ -910,17 +932,17 @@
 						<div class="panel-card panel-right">
 							<div class="breakdown-scroll">
 								<div style="margin-bottom: 30px; padding-bottom: 25px; border-bottom: 1px solid #f1f5f9;">
-									<label class="seg-label" style="padding: 0; color: var(--accent);">Settlement / Exit Date</label>
-									<div style="margin-top: 10px; display: flex; align-items: center; gap: 15px;">
+									<div style="display: flex; justify-content: space-between; align-items: center;">
+										<label class="seg-label" style="padding: 0; color: var(--accent);">Settlement / Exit Date</label>
+										<span class="mono" style="font-size: 13px; font-weight: 800; color: var(--accent); background: rgba(13, 148, 136, 0.1); padding: 2px 8px; border-radius: 6px;">[[ formatDate(exitDate) ]]</span>
+									</div>
+									<div style="margin-top: 10px;">
 										<input 
 											type="date" 
 											v-model="exitDate" 
 											@change="updateCalculations()"
-											style="padding: 10px 14px; border-radius: 12px; border: 2px solid var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--primary); outline: none; width: 160px;"
+											style="padding: 10px 14px; border-radius: 12px; border: 2px solid var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--primary); outline: none; width: 100%; box-sizing: border-box;"
 										/>
-										<div style="background: var(--accent); color: white; padding: 10px 16px; border-radius: 12px; font-weight: 800; font-family: 'JetBrains Mono', monospace; font-size: 13px; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);">
-											[[ formatDate(exitDate) ]]
-										</div>
 									</div>
 									<div style="margin-top: 12px; font-size: 11px; color: #64748b; line-height: 1.6;">
 										<div style="font-weight: 700; margin-bottom: 8px; color: var(--primary);">💡 Interest Slabs based on Tenure:</div>
