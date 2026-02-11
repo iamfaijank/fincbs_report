@@ -64,15 +64,15 @@ def get_account_details(foracid=None, settlement_date=None):
             SELECT value_date, tran_amt, part_tran_type, tran_particular 
             FROM tbaadm.htd 
             WHERE acid = %s AND del_flg = 'N'
-            ORDER BY value_date DESC, tran_date DESC
+            ORDER BY value_date ASC
         """, (acid,))
         raw_trans = cursor.fetchall()
         
         total_principal, total_interest, transactions = 0.0, 0.0, []
-        
+        processed_months = set()
+
         for val_date, amt, p_type, particular in raw_trans:
             amt = float(amt or 0)
-            row_premature_interest = 0.0
             row_scheme_interest = 0.0
             row_months = 0
             eligible_amt = min(amt, float(planned_installment or 0))
@@ -80,14 +80,15 @@ def get_account_details(foracid=None, settlement_date=None):
             if p_type == 'C':
                 total_principal += amt
                 if val_date < sett_dt:
+                    month_key = f"{val_date.month}-{val_date.year}"
                     r_diff = relativedelta(sett_dt + relativedelta(days=1), val_date)
                     row_months = (r_diff.years * 12) + r_diff.months
-                    if row_months > 0:
-                        # 1. Actual Premature Interest (for Total)
+                    
+                    # Only calculate interest if this month hasn't been paid for yet
+                    if row_months > 0 and month_key not in processed_months:
+                        processed_months.add(month_key)
                         if app_rate > 0:
-                            row_premature_interest = eligible_amt * ((1 + app_rate/400)**(row_months/3) - 1)
-                            total_interest += row_premature_interest
-                        # 2. Potential Scheme Interest (for UI Row)
+                            total_interest += eligible_amt * ((1 + app_rate/400)**(row_months/3) - 1)
                         row_scheme_interest = eligible_amt * ((1 + base_rate/400)**(row_months/3) - 1)
 
             transactions.append({
@@ -99,6 +100,9 @@ def get_account_details(foracid=None, settlement_date=None):
                 "row_months": row_months,
                 "elg_amt": eligible_amt
             })
+
+        # Final sort DESC for UI after calculation
+        transactions.reverse()
 
         penalty_amt = 0.0
         rule_meta = RD_SLABS.get(str(schm_code), {"tenure": 0})

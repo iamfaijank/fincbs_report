@@ -1447,9 +1447,15 @@
 					
 					let totalPrincipal = 0;
 					let totalAccruedInterest = 0; 
+					const processedMonths = new Set(); // Track months that already received interest
 					
 					if (this.data.transactions && this.data.transactions.length) {
-						this.data.transactions.forEach((t) => {
+						// Sort by date ASC to ensure the "first" payment of the month gets interest
+						const sortedForCalc = [...this.data.transactions].sort((a, b) => {
+							return this.parseDate(a.date) - this.parseDate(b.date);
+						});
+
+						sortedForCalc.forEach((t) => {
 							t.accrued_interest = 0; 
 							t.scheme_interest = 0;
 							t.row_months = 0;
@@ -1461,6 +1467,7 @@
 								totalPrincipal += t.amount;
 								const dVal = this.parseDate(t.date);
 								if (dVal < dExit) {
+									const monthKey = `${dVal.getMonth()}-${dVal.getFullYear()}`;
 									const rEnd = new Date(dExit);
 									rEnd.setDate(rEnd.getDate() + 1);
 									let rowMonths = (rEnd.getFullYear() - dVal.getFullYear()) * 12 + (rEnd.getMonth() - dVal.getMonth());
@@ -1470,7 +1477,10 @@
 									const eligibleAmt = Math.min(t.amount, planned);
 									t.elg_amt = eligibleAmt;
 
-									if (t.row_months > 0) {
+									// Only calculate interest if this month hasn't been processed yet
+									if (t.row_months > 0 && !processedMonths.has(monthKey)) {
+										processedMonths.add(monthKey);
+
 										if (t.applied_rate > 0) {
 											const actualInt = eligibleAmt * (Math.pow(1 + (t.applied_rate / 400), t.row_months / 3) - 1);
 											t.accrued_interest = Math.round(actualInt);
