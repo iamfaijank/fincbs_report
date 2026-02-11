@@ -809,9 +809,21 @@
 										font-weight: 800;
 										color: #94a3b8;
 										margin-bottom: 10px;
+										display: flex;
+										justify-content: space-between;
+										align-items: center;
 									"
 								>
-									FINACLE ACCOUNT NUMBER
+									<span>FINACLE ACCOUNT NUMBER</span>
+									<button 
+										@click="copyToClipboard(data.acct_no)"
+										style="background: none; border: none; cursor: pointer; color: var(--accent); font-size: 10px; font-weight: 800; display: flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: 0.2s;"
+										onmouseover="this.style.background = 'rgba(13, 148, 136, 0.1)'"
+										onmouseout="this.style.background = 'none'"
+									>
+										<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+										COPY
+									</button>
 								</div>
 								<div
 									style="
@@ -905,9 +917,17 @@
 							</div>
 
 							<div class="tran-list" v-if="data.transactions && data.transactions.length">
-								<div v-for="t in data.transactions" class="tran-item">
-									<div style="display: flex; align-items: flex-start; flex: 1; min-width: 0;">
-										<div class="tran-dot" :class="'dot-' + t.type.toLowerCase()" style="margin-top: 6px;"></div>
+								<div v-for="(t, i) in data.transactions" class="tran-item">
+									<div style="display: flex; align-items: flex-start; flex: 1; min-width: 0; gap: 16px;">
+										<div class="mono" 
+											:style="{ 
+												background: t.type === 'C' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
+												color: t.type === 'C' ? '#10b981' : '#ef4444',
+												borderColor: t.type === 'C' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'
+											}"
+											style="font-size: 15px; font-weight: 800; width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid; margin-top: 2px;">
+											[[ i + 1 ]]
+										</div>
 										<div style="flex: 1; min-width: 0;">
 											<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
 												<div style="font-size: 13px; font-weight: 700; color: var(--primary);">[[ t.type === 'C' ? 'Credit' : 'Debit' ]]</div>
@@ -1034,6 +1054,12 @@
 					</div>
 				</div>
 			</div>
+
+			<!-- Toast Notification -->
+			<div v-if="toastMsg" 
+				style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 12px 24px; border-radius: 12px; font-size: 13px; font-weight: 700; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 1000; animation: slideIn 0.3s ease; display: flex; align-items: center; gap: 10px;">
+				<span style="color: #10b981;">✓</span> [[ toastMsg ]]
+			</div>
 		</div>
 
 		<script>
@@ -1044,6 +1070,7 @@
 				isError: false,
 				isLoading: false,
 				errorMessage: "",
+				toastMsg: "",
 				schemeDesc: "",
 				isSchemeValid: true,
 				calculationSteps: [
@@ -1406,6 +1433,20 @@
 					if (!d || isNaN(d)) return "";
 					const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 					return months[d.getMonth()] + "/" + d.getFullYear();
+				},
+
+				async copyToClipboard(text) {
+					try {
+						await navigator.clipboard.writeText(text);
+						this.showToast("Account Number Copied!");
+					} catch (err) {
+						console.error("Failed to copy!", err);
+					}
+				},
+
+				showToast(msg) {
+					this.toastMsg = msg;
+					setTimeout(() => (this.toastMsg = ""), 3000);
 				},
 
 				reset() {
