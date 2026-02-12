@@ -930,9 +930,9 @@
 											<div class="tran-particular-text">[[ t.particular ]]</div>
 										</div>
 										<div class="tran-right">
-											<div v-if="t.type === 'C' && t.scheme_interest > 0" class="interest-value">
+											<div v-if="t.type === 'C'" class="interest-value">
 												<span class="iv-label">INTEREST</span>
-												<span class="iv-amount">[[ formatCurrency(t.scheme_interest) ]]</span>
+												<span class="iv-amount">[[ formatCurrency(t.scheme_interest || 0) ]]</span>
 											</div>
 										</div>
 									</div>
