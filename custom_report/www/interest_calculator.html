@@ -565,6 +565,65 @@
 				width: 100%;
 			}
 
+			/* Summary Header Redesign */
+			.summary-header-grid {
+				display: flex;
+				align-items: center;
+				gap: 40px;
+			}
+			.secondary-info-grid {
+				display: grid;
+				grid-template-columns: repeat(3, auto);
+				gap: 30px;
+				padding-right: 40px;
+				border-right: 1px solid #e2e8f0;
+			}
+			.info-item {
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+				text-align: right;
+				align-items: flex-end;
+			}
+			.info-label {
+				font-size: 9px;
+				font-weight: 800;
+				color: #94a3b8;
+				text-transform: uppercase;
+				letter-spacing: 1px;
+			}
+			.info-value {
+				font-size: 15px;
+				font-weight: 700;
+				color: var(--primary);
+			}
+			.hero-maturity {
+				text-align: right;
+				display: flex;
+				flex-direction: column;
+				gap: 2px;
+			}
+			.hero-label {
+				font-size: 11px;
+				font-weight: 800;
+				color: #10b981;
+				text-transform: uppercase;
+				letter-spacing: 1.5px;
+			}
+			.hero-value {
+				font-size: 32px;
+				font-weight: 800;
+				color: #10b981;
+				letter-spacing: -1px;
+				line-height: 1;
+			}
+			.subtle-context {
+				font-size: 11px;
+				color: #cbd5e1;
+				font-weight: 600;
+				margin-top: 4px;
+			}
+
 			/* Global Scrollbar Hiding */
 			* {
 				scrollbar-width: none; /* Firefox */
@@ -1028,26 +1087,29 @@
 								</div>
 							</div>
 
-							<div style="display: flex; gap: 30px;">
-								<div style="text-align: right;">
-									<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">A/c Opening Date</span>
-									<div class="mono" style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ data.acct_opn_date ]]</div>
+							<div class="summary-header-grid">
+								<div class="secondary-info-grid" style="grid-template-columns: repeat(4, auto);">
+									<div class="info-item">
+										<span class="info-label">Deposit Amount</span>
+										<div class="info-value mono">[[ formatCurrency(data.deposit_amount) ]]</div>
+									</div>
+									<div class="info-item">
+										<span class="info-label">Tenure</span>
+										<div class="info-value">[[ data.deposit_period_mths ]] Months</div>
+									</div>
+									<div class="info-item">
+										<span class="info-label">Opening Date</span>
+										<div class="info-value mono">[[ data.acct_opn_date ]]</div>
+									</div>
+									<div class="info-item">
+										<span class="info-label">Maturity Date</span>
+										<div class="info-value mono">[[ data.maturity_date ]]</div>
+									</div>
 								</div>
-								<div style="text-align: right;">
-									<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Deposit Amount</span>
-									<div class="mono" style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ formatCurrency(data.deposit_amount) ]]</div>
-								</div>
-								<div style="text-align: right;">
-									<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Tenure</span>
-									<div style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ data.deposit_period_mths ]] Months</div>
-								</div>
-								<div style="text-align: right;">
-									<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Maturity Date</span>
-									<div class="mono" style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ data.maturity_date ]]</div>
-								</div>
-								<div style="text-align: right;">
-									<span style="font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase;">Maturity Amount</span>
-									<div class="mono" style="font-size: 15px; font-weight: 700; color: var(--accent);">[[ formatCurrency(data.maturity_amount) ]]</div>
+
+								<div class="hero-maturity">
+									<span class="hero-label">Maturity Amount</span>
+									<div class="hero-value mono">[[ formatCurrency(data.maturity_amount) ]]</div>
 								</div>
 							</div>
 						</div>
