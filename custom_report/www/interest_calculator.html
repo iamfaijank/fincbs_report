@@ -980,6 +980,84 @@
 			}
 			.dot-c { background: #10b981; } /* Credit */
 			.dot-d { background: #ef4444; } /* Debit */
+
+			/* Timeline Styles */
+			.timeline-container {
+				width: 100%;
+				overflow-x: auto;
+				padding: 25px 0 15px; /* Added top padding for sr no */
+				margin-bottom: 5px;
+				flex-shrink: 0;
+				-webkit-overflow-scrolling: touch;
+				scrollbar-width: none;
+			}
+			.timeline-container::-webkit-scrollbar { display: none; }
+			
+			.timeline-track {
+				display: flex;
+				gap: 8px; /* Reduced gap */
+				padding: 0;
+				min-width: max-content;
+			}
+			.timeline-card-wrapper {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 2px; /* Reduced gap between sr no and card */
+				position: relative;
+			}
+			.tm-count { 
+				font-size: 10px; /* Increased font size */
+				font-weight: 800; 
+				color: #cbd5e1; 
+				transition: 0.2s;
+			}
+			.active .tm-count {
+				color: var(--accent);
+			}
+
+			.timeline-card {
+				width: 32px;
+				height: 36px; /* Reduced height */
+				background: #fff;
+				border: 1.2px solid #e2e8f0;
+				border-radius: 6px;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				transition: all 0.2s ease;
+				flex-shrink: 0;
+				position: relative;
+			}
+			.timeline-card:hover {
+				transform: translateY(-2px);
+				border-color: var(--accent);
+				box-shadow: 0 4px 8px -2px rgba(65, 125, 129, 0.1);
+			}
+			.timeline-card.active {
+				background: #f0f9f9;
+				border-color: var(--accent);
+			}
+			.timeline-card.selected {
+				background: var(--accent);
+				border-color: var(--accent);
+				color: white;
+				box-shadow: 0 6px 12px -3px rgba(65, 125, 129, 0.3);
+			}
+			.timeline-card.selected .tm-month { color: white; }
+			.timeline-card.selected .tm-year { color: rgba(255,255,255,0.7); }
+
+			.tm-month { font-size: 9px; font-weight: 800; color: var(--primary); transition: 0.2s; line-height: 1; }
+			.tm-year { font-size: 8px; font-weight: 700; color: #94a3b8; transition: 0.2s; margin-top: 1px; }
+			
+			@media (max-width: 1200px) {
+				.timeline-track { padding: 0 20px; gap: 4px; }
+				.timeline-card { width: 34px; height: 42px; border-radius: 6px; }
+				.tm-month { font-size: 9px; }
+				.tm-year { font-size: 6px; }
+			}
 		</style>
 	</head>
 	<body>
@@ -1038,6 +1116,7 @@
 								<div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
 									<div style="display: flex; align-items: center; border-bottom: 2px solid var(--accent); width: 280px; padding: 10px 0; transition: 0.3s;" :style="{ borderColor: errorMessage ? '#ef4444' : (!isSchemeValid && accountNumber.replace(/\s/g, '').length >= 8 ? '#ef4444' : (accountNumber.replace(/\s/g, '').length > 0 ? 'var(--accent)' : '#cbd5e1')) }">
 										<input 
+											id="account-input"
 											type="text" 
 											inputmode="numeric" 
 											maxlength="17" 
@@ -1118,6 +1197,26 @@
 								<div class="hero-maturity">
 									<span class="hero-label">Maturity Amount</span>
 									<div class="hero-value mono">[[ formatCurrency(data.maturity_amount) ]]</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Interactive Timeline -->
+						<div class="timeline-container" v-if="timelineMonths.length > 0">
+							<div class="timeline-track">
+								<div v-for="(m, idx) in timelineMonths" :key="m.dateStr" 
+									class="timeline-card-wrapper"
+									:class="{ active: exitDate >= m.dateStr }">
+									<span class="tm-count">[[ idx + 1 ]]</span>
+									<div class="timeline-card" 
+										:class="{ 
+											active: exitDate >= m.dateStr, 
+											selected: isSameMonth(m.dateStr, exitDate) 
+										}"
+										@click="setTimelineDate(m.dateStr)">
+										<span class="tm-month">[[ m.label ]]</span>
+										<span class="tm-year">[[ m.year ]]</span>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -1373,6 +1472,7 @@
 
 				init() {
 					this.selectedProduct = this.products[0];
+					this.focusInput();
 					
 					// Global keyboard listeners
 					window.addEventListener('keydown', (e) => this.handleGlobalKey(e));
@@ -1718,6 +1818,67 @@
 				},
 				toggleSort() { this.sortOrder = this.sortOrder === 'desc' ? 'asc' : 'desc'; },
 				get sortedTransactions() { if (!this.data || !this.data.transactions) return []; const list = [...this.data.transactions]; return this.sortOrder === 'desc' ? list : list.reverse(); },
+				
+				get timelineMonths() {
+					if (!this.data || !this.data.acct_opn_date || !this.data.deposit_period_mths) return [];
+					const start = this.parseDate(this.data.acct_opn_date);
+					if (!start) return [];
+					
+					const tenure = parseInt(this.data.deposit_period_mths) || 0;
+					let months = [];
+					
+					for (let i = 1; i <= tenure; i++) {
+						let curr = new Date(start.getFullYear(), start.getMonth() + i, 1);
+						const year = curr.getFullYear();
+						const month = curr.getMonth();
+						// Maintain the opening day if possible, or cap at month end
+						const day = Math.min(start.getDate(), new Date(year, month + 1, 0).getDate());
+						
+						months.push({
+							label: curr.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
+							year: year.toString().slice(-2),
+							dateStr: `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+						});
+					}
+					return months;
+				},
+				isSameMonth(d1, d2) {
+					if (!d1 || !d2) return false;
+					return d1.slice(0, 7) === d2.slice(0, 7);
+				},
+				setTimelineDate(dateStr) {
+					// dateStr is the YYYY-MM-DD from the clicked card
+					const [y, m, d] = dateStr.split('-').map(Number);
+					// Extract the current day from the existing exitDate
+					const [cy, cm, cd] = this.exitDate.split('-').map(Number);
+					
+					// Create a new date using clicked Year/Month but current Day
+					let newDate = new Date(y, m - 1, cd);
+					
+					// Handle month overflow (e.g., 31st in a 30-day month)
+					if (newDate.getMonth() !== m - 1) {
+						newDate = new Date(y, m, 0); // Last day of clicked month
+					}
+					
+					const y_str = newDate.getFullYear();
+					const m_str = String(newDate.getMonth() + 1).padStart(2, '0');
+					const d_str = String(newDate.getDate()).padStart(2, '0');
+					const finalDateStr = `${y_str}-${m_str}-${d_str}`;
+
+					if (this.maxExitDate && finalDateStr > this.maxExitDate) {
+						this.exitDate = this.maxExitDate;
+					} else {
+						this.exitDate = finalDateStr;
+					}
+					this.updateCalculations();
+				},
+				focusInput() {
+					setTimeout(() => {
+						const el = document.getElementById("account-input");
+						if (el) el.focus();
+					}, 100);
+				},
+				
 				reset() { 
 					this.step = 1; 
 					window.location.hash = '#/account_number';
@@ -1725,6 +1886,7 @@
 					this.data = null; 
 					this.schemeDesc = ""; 
 					this.isSchemeValid = true; 
+					this.focusInput();
 				}
 			}).mount("#app");
 		</script>
