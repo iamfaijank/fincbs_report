@@ -463,17 +463,24 @@
 				display: flex;
 				flex-direction: column;
 				min-height: 0;
+				height: 100%;
+				overflow: hidden;
 			}
 			.panel-left {
-				padding: 30px 40px;
+				padding: 30px;
+				display: flex;
+				flex-direction: column;
+				flex: 1;
+				min-height: 0;
 				overflow-y: auto;
 			}
 			.panel-right {
 				padding: 30px;
-				position: relative;
 				display: flex;
 				flex-direction: column;
+				flex: 1;
 				min-height: 0;
+				position: relative;
 			}
 			.breakdown-scroll {
 				flex: 1;
@@ -486,8 +493,8 @@
 				padding: 30px;
 				display: flex;
 				flex-direction: column;
+				flex: 1;
 				min-height: 0;
-				height: 100%;
 			}
 
 			/* Modern Scrollbar */
@@ -1022,7 +1029,7 @@
 									</div>
 								</div>
 
-								<div class="tran-list" v-if="data && sortedTransactions.length" style="flex: 1; min-height: 0; max-height: 550px; overflow-y: auto; padding-right: 8px;">
+								<div class="tran-list" v-if="data && sortedTransactions.length" style="flex: 1; min-height: 0; overflow-y: auto; padding-right: 8px;">
 									<div v-for="(t, i) in sortedTransactions" :key="t.date + t.amount + t.type + i" class="tran-row" style="align-items: flex-start; padding: 16px;">
 										<div class="month-badge" style="margin-top: 2px;">
 											<span class="m-name">[[ getMonthAbbr(t.date) ]]</span>
