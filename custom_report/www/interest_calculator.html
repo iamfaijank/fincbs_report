@@ -587,6 +587,14 @@
 				100% { background-position: 0% 50%; }
 			}
 
+			@keyframes softBlink {
+				0%, 100% { opacity: 1; }
+				50% { opacity: 0.6; }
+			}
+			.blink-interest {
+				animation: softBlink 2s ease-in-out infinite;
+			}
+
 			.mono {
 				font-family: "JetBrains Mono", monospace;
 			}
@@ -1095,7 +1103,7 @@
 									</div>
 									<div class="summary-card" style="text-align: right;">
 										<div class="summary-card-label">Total Interest</div>
-										<div class="summary-card-value" style="color: #10b981;">[[ formatCurrency(data.interest) ]]</div>
+										<div class="summary-card-value blink-interest" style="color: #10b981;">[[ formatCurrency(data.interest) ]]</div>
 									</div>
 								</div>
 
