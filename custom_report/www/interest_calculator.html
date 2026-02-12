@@ -28,6 +28,7 @@
 				display: flex;
 				flex-direction: column;
 				height: 100vh;
+				height: 100dvh;
 				width: 100vw;
 				position: relative;
 				overflow: hidden;
@@ -271,20 +272,41 @@
 
 			/* Step 1: Entry Stage */
 			.stage-padding {
-				padding: 60px 40px;
+				padding: 20px;
 				text-align: center;
 				flex: 1;
-				overflow-y: auto;
 				display: flex;
 				flex-direction: column;
 				align-items: center;
 				justify-content: center;
+				min-height: 0;
+				width: 100%;
+				box-sizing: border-box;
+				overflow: hidden;
 			}
+			.stage-scroll-content {
+				flex: 1;
+				width: 100%;
+				overflow-y: auto;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				padding: 20px 0;
+			}
+			.stage-footer {
+				width: 100%;
+				padding: 20px 0;
+				flex-shrink: 0;
+				background: var(--bg);
+				border-top: 1px solid rgba(0,0,0,0.05);
+			}
+
 			.finacle-wrapper {
 				display: flex;
 				justify-content: center;
 				gap: 18px;
-				margin: 45px 0;
+				margin: 30px 0;
+				flex-wrap: wrap;
 			}
 
 			.segment {
@@ -347,18 +369,89 @@
 			}
 
 			@media (max-width: 1200px) {
-				.dashboard-grid {
-					grid-template-columns: 1fr;
-					overflow-y: auto;
-					padding-bottom: 40px;
-				}
 				body {
-					height: auto;
 					overflow-y: auto;
+					height: auto;
+					min-height: 100dvh;
 				}
 				.app-container {
 					height: auto;
-					min-height: 100vh;
+					min-height: 100dvh;
+				}
+				.content-area {
+					padding: 10px 20px;
+					height: auto;
+					flex: none;
+				}
+				.dashboard-grid {
+					grid-template-columns: 1fr;
+					height: auto;
+					overflow: visible;
+				}
+				.branding-header {
+					padding: 12px 20px;
+					position: sticky;
+					top: 0;
+					z-index: 50;
+				}
+				.brand-text { font-size: 18px; }
+				.step-container { gap: 8px; }
+				.step-item span:last-child { display: none; }
+				
+				/* Step 1 Mobile Scroll & Sticky Footer */
+				.stage-padding {
+					height: auto;
+					min-height: calc(100dvh - 100px);
+					display: block;
+				}
+				.stage-scroll-content {
+					overflow: visible;
+					height: auto;
+					flex: none;
+				}
+				.stage-footer {
+					position: sticky;
+					bottom: 0;
+					padding: 15px 0;
+					box-shadow: 0 -10px 20px rgba(0,0,0,0.05);
+					z-index: 40;
+				}
+
+				/* Step 2 Mobile Adjustments */
+				.tabs-container {
+					padding: 0 0 15px 0;
+					flex-direction: column;
+					align-items: stretch !important;
+					gap: 15px !important;
+				}
+				.tabs-container > div {
+					justify-content: flex-start !important;
+					flex-wrap: wrap;
+					gap: 15px !important;
+				}
+				.panel-left, .panel-right, .panel-transactions {
+					padding: 20px !important;
+					height: auto !important;
+					max-height: none !important;
+				}
+				.panel-left h2 { font-size: 22px !important; }
+				.digit-box { width: 35px; height: 50px; font-size: 20px; }
+				.finacle-wrapper { gap: 10px; }
+				
+				.acct-no-display {
+					font-size: 14px !important;
+					gap: 5px !important;
+				}
+				.cust-id-grid {
+					gap: 4px !important;
+				}
+				.cust-id-char {
+					width: 22px !important;
+					height: 30px !important;
+					font-size: 14px !important;
+				}
+				.tran-list {
+					max-height: 400px !important;
 				}
 			}
 
@@ -737,46 +830,50 @@
 				<div class="content-area">
 					<!-- Step 1 -->
 					<div v-show="step === 1" class="stage-padding">
-						<h1 style="font-size: 42px; font-weight: 800; color: var(--primary); margin-bottom: 12px;">Interest Calculator</h1>
-						<p style="color: #64748b; margin-bottom: 50px; font-size: 18px;">Access real-time Finacle data for instant interest settlement calculations.</p>
+						<div class="stage-scroll-content">
+							<h1 style="font-size: clamp(24px, 5vw, 42px); font-weight: 800; color: var(--primary); margin-bottom: 12px;">Interest Calculator</h1>
+							<p style="color: #64748b; margin-bottom: 30px; font-size: clamp(14px, 2vw, 18px);">Access real-time Finacle data for instant interest settlement calculations.</p>
 
-						<div class="finacle-wrapper">
-							<div class="segment">
-								<div class="seg-label" style="color: var(--primary)">SOL ID (4)</div>
-								<div class="inputs-row">
-									<input v-for="i in 4" :key="'sol-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i-1)" v-model="digits[i-1]" @input="handleInput($event, i-1)" @keydown.backspace="handleBackspace($event, i-1)" @keydown.delete="digits = Array(15).fill(''); focusFirst()" @keydown.enter="isComplete && calculate()" @paste="handlePaste($event)"/>
+							<div class="finacle-wrapper">
+								<div class="segment">
+									<div class="seg-label" style="color: var(--primary)">SOL ID (4)</div>
+									<div class="inputs-row">
+										<input v-for="i in 4" :key="'sol-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i-1)" v-model="digits[i-1]" @input="handleInput($event, i-1)" @keydown.backspace="handleBackspace($event, i-1)" @keydown.delete="digits = Array(15).fill(''); focusFirst()" @keydown.enter="isComplete && calculate()" @paste="handlePaste($event)"/>
+									</div>
+								</div>
+								<div class="segment">
+									<div class="seg-label" style="color: #9333ea">Scheme (4)</div>
+									<div class="inputs-row" :class="{ 'border-error': !isSchemeValid && digits.slice(4, 8).join('').length === 4 }">
+										<input v-for="i in 4" :key="'schm-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i+3)" v-model="digits[i+3]" @input="handleInput($event, i+3)" @keydown.backspace="handleBackspace($event, i+3)" @keydown.delete="digits = Array(15).fill(''); focusFirst()" @keydown.enter="isComplete && calculate()"/>
+									</div>
+									<div v-if="schemeDesc" style="font-size: 11px; font-weight: 700; color: #9333ea; margin-top: 5px; text-align: left; padding-left: 14px;">[[ schemeDesc ]]</div>
+								</div>
+								<div class="segment">
+									<div class="seg-label" style="color: var(--accent)">Running Serial (7)</div>
+									<div class="inputs-row">
+										<input v-for="i in 7" :key="'serial-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i+7)" v-model="digits[i+7]" @input="handleInput($event, i+7)" @keydown.backspace="handleBackspace($event, i+7)" @keydown.delete="digits = Array(15).fill(''); focusFirst()" @keydown.enter="isComplete && calculate()"/>
+									</div>
 								</div>
 							</div>
-							<div class="segment">
-								<div class="seg-label" style="color: #9333ea">Scheme (4)</div>
-								<div class="inputs-row" :class="{ 'border-error': !isSchemeValid && digits.slice(4, 8).join('').length === 4 }">
-									<input v-for="i in 4" :key="'schm-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i+3)" v-model="digits[i+3]" @input="handleInput($event, i+3)" @keydown.backspace="handleBackspace($event, i+3)" @keydown.delete="digits = Array(15).fill(''); focusFirst()" @keydown.enter="isComplete && calculate()"/>
-								</div>
-								<div v-if="schemeDesc" style="font-size: 11px; font-weight: 700; color: #9333ea; margin-top: 5px; text-align: left; padding-left: 14px;">[[ schemeDesc ]]</div>
-							</div>
-							<div class="segment">
-								<div class="seg-label" style="color: var(--accent)">Running Serial (7)</div>
-								<div class="inputs-row">
-									<input v-for="i in 7" :key="'serial-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i+7)" v-model="digits[i+7]" @input="handleInput($event, i+7)" @keydown.backspace="handleBackspace($event, i+7)" @keydown.delete="digits = Array(15).fill(''); focusFirst()" @keydown.enter="isComplete && calculate()"/>
-								</div>
+
+							<div v-if="digits.some(d => d !== '')" style="margin-bottom: 20px; animation: fadeIn 0.3s ease;">
+								<button @click="reset" style="background: #f1f5f9; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 10px; cursor: pointer; font-weight: 700; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; transition: 0.2s; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
+									<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+									Clear Account Number
+								</button>
 							</div>
 						</div>
 
-						<div v-if="digits.some(d => d !== '')" style="margin-bottom: 30px; animation: fadeIn 0.3s ease;">
-							<button @click="reset" style="background: #f1f5f9; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 10px; cursor: pointer; font-weight: 700; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; transition: 0.2s; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
-								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"></path></svg>
-								Clear Account Number
+						<div class="stage-footer">
+							<button class="btn-main" :disabled="!isComplete || isLoading" @click="calculate" style="padding: 16px 50px; font-size: 18px; border-radius: 20px; width: 100%; max-width: 400px;">
+								[[ isLoading ? 'Processing...' : 'Calculate Premature ➔' ]]
 							</button>
-						</div>
 
-						<button class="btn-main" :disabled="!isComplete || isLoading" @click="calculate" style="padding: 20px 60px; font-size: 18px; border-radius: 20px;">
-							[[ isLoading ? 'Processing...' : 'Calculate Premature ➔' ]]
-						</button>
-
-						<div v-if="errorMessage" style="margin-top: 25px; color: #ef4444; font-size: 14px; font-weight: 600; background: #fef2f2; padding: 12px 24px; border-radius: 16px; border: 1px solid #fee2e2; display: inline-block;">
-							⚠️ [[ errorMessage ]]
+							<div v-if="errorMessage" style="margin-top: 15px; color: #ef4444; font-size: 14px; font-weight: 600; background: #fef2f2; padding: 10px 20px; border-radius: 12px; border: 1px solid #fee2e2; display: inline-block;">
+								⚠️ [[ errorMessage ]]
+							</div>
+							<div v-else class="blink" style="margin-top: 15px; font-size: 14px; color: #64748b; font-weight: 700;">[[ instructionMsg ]]</div>
 						</div>
-						<div v-else class="blink" style="margin-top: 25px; font-size: 14px; color: #64748b; font-weight: 700;">[[ instructionMsg ]]</div>
 					</div>
 
 					<!-- Step 2 -->
@@ -786,7 +883,7 @@
 								<div class="tab-item active" style="cursor: default; padding: 12px 30px;">
 									<div class="check-badge">✓</div>
 									[[ selectedProduct.name ]]
-									<span class="tab-rate">[[ data.applied_rate ]]%</span>
+									<span class="tab-rate">[[ data.baseRate ]]%</span>
 								</div>
 								<div style="display: flex; flex-direction: column; gap: 4px; border-left: 2px solid #cbd5e1; padding-left: 24px;">
 									<span style="font-size: 10px; font-weight: 800; color: #9333ea; text-transform: uppercase;">Verified Scheme</span>
@@ -846,8 +943,8 @@
 												[[ lastCopied === 'cust_id' ? 'Copied' : 'COPY' ]]
 											</button>
 										</div>
-										<div style="display: flex; gap: 6px; justify-content: center; background: white; padding: 12px; border-radius: 12px; border: 1px dashed #cbd5e1;">
-											<div v-for="char in data.cust_id.toString().split('')" :key="char + Math.random()" style="width: 28px; height: 36px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono'; font-size: 16px; font-weight: 700; color: var(--primary); box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);">
+										<div class="cust-id-grid" style="display: flex; gap: 6px; justify-content: center; background: white; padding: 12px; border-radius: 12px; border: 1px dashed #cbd5e1;">
+											<div v-for="char in data.cust_id.toString().split('')" :key="char + Math.random()" class="cust-id-char" style="width: 28px; height: 36px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono'; font-size: 16px; font-weight: 700; color: var(--primary); box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);">
 												[[ char ]]
 											</div>
 										</div>
@@ -863,7 +960,7 @@
 												[[ lastCopied === 'acct_no' ? 'Copied' : 'COPY' ]]
 											</button>
 										</div>
-										<div style="font-size: 18px; font-family: 'JetBrains Mono'; font-weight: 700; display: flex; gap: 10px; align-items: center; justify-content: center; background: white; padding: 8px 12px; border-radius: 8px; border: 1px dashed #cbd5e1;">
+										<div class="acct-no-display" style="font-size: 18px; font-family: 'JetBrains Mono'; font-weight: 700; display: flex; gap: 10px; align-items: center; justify-content: center; background: white; padding: 8px 12px; border-radius: 8px; border: 1px dashed #cbd5e1;">
 											<span style="color: var(--primary)">[[ data.acct_no.slice(0,4) ]]</span>
 											<span style="color: #cbd5e1; font-weight: 300">/</span>
 											<span style="color: #9333ea">[[ data.acct_no.slice(4,8) ]]</span>
@@ -1189,6 +1286,7 @@
 					this.data.principal = principalSum;
 					this.data.interest = accruedIntTotal;
 					this.data.appliedRate = rules.appliedRate;
+					this.data.baseRate = rules.meta.base_rate;
 					let penPct = (monthsHeldTotal < rules.meta.tenure_m) ? (this.data.schm_code === '2005' ? 1.8 : 1.0) : 0;
 					this.data.penalty = Math.round(principalSum * penPct / 100);
 					this.data.total = principalSum + accruedIntTotal - this.data.penalty;
