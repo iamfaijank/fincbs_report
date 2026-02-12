@@ -13,7 +13,7 @@
 		<style>
 			:root {
 				--primary: #0f172a; /* Navy Blue */
-				--accent: #0d9488; /* Teal for Net Amount */
+				--accent: #417d81; /* Custom Theme Color */
 				--warning: #f59e0b; /* Amber for Penalty Warning */
 				--bg: #f8fafc;
 				--surface: #ffffff;
@@ -438,7 +438,13 @@
 					padding: 20px !important;
 				}
 				.panel-left h2 { font-size: 22px !important; }
-				.digit-box { width: 35px; height: 50px; font-size: 20px; }
+				.digit-box { 
+					width: clamp(16px, 5.2vw, 35px); 
+					height: clamp(35px, 8vw, 50px); 
+					font-size: clamp(14px, 4vw, 20px); 
+					border-radius: 6px;
+				}
+				.inputs-row { gap: 4px; padding: 8px; border-radius: 12px; }
 				.finacle-wrapper { gap: 10px; }
 				
 				.acct-no-display {
@@ -632,13 +638,13 @@
 			}
 			.total-banner {
 				margin-top: 0px;
-				background: linear-gradient(-45deg, #0d9488, #14b8a6, #0f766e, #0d9488);
+				background: linear-gradient(-45deg, #417d81, #5a9ba0, #2d5a5d, #417d81);
 				background-size: 400% 400%;
 				animation: gradientBG 8s ease infinite;
 				color: white;
 				padding: 30px;
 				border-radius: 24px;
-				box-shadow: 0 15px 35px -5px rgba(13, 148, 136, 0.3);
+				box-shadow: 0 15px 35px -5px rgba(65, 125, 129, 0.3);
 				position: relative;
 				overflow: hidden;
 			}
@@ -683,9 +689,9 @@
 				gap: 8px;
 			}
 			.tab-item.active {
-				background: #10b981; /* Green */
+				background: var(--accent);
 				color: white;
-				box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.2);
+				box-shadow: 0 10px 15px -3px rgba(65, 125, 129, 0.2);
 			}
 			.tab-item.disabled {
 				opacity: 0.5;
@@ -711,7 +717,7 @@
 				width: 16px;
 				height: 16px;
 				background: white;
-				color: #10b981;
+				color: var(--accent);
 				border-radius: 50%;
 				display: flex;
 				align-items: center;
@@ -746,7 +752,7 @@
 				position: relative;
 				border: 1px solid transparent !important;
 				background: #fff !important;
-				box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.1);
+				box-shadow: 0 10px 25px -5px rgba(65, 125, 129, 0.1);
 			}
 			.border-svg {
 				position: absolute;
@@ -763,7 +769,7 @@
 				rx: 20px;
 				ry: 20px;
 				fill: none;
-				stroke: #10b981;
+				stroke: var(--accent);
 				stroke-width: 2;
 				stroke-dasharray: 5, 5;
 				animation: marching-ants 0.8s linear infinite;
@@ -855,7 +861,7 @@
 			.tran-title {
 				font-size: 17px;
 				font-weight: 800;
-				color: #10b981;
+				color: var(--accent);
 				font-family: 'JetBrains Mono', monospace;
 				letter-spacing: -0.5px;
 			}
@@ -1021,50 +1027,53 @@
 
 				<div class="content-area">
 					<!-- Step 1 -->
-					<div v-show="step === 1" class="stage-padding">
-						<div class="stage-scroll-content">
-							<h1 style="font-size: clamp(24px, 5vw, 42px); font-weight: 800; color: var(--primary); margin-bottom: 12px;">Interest Calculator</h1>
-							<p style="color: #64748b; margin-bottom: 30px; font-size: clamp(14px, 2vw, 18px);">Access real-time Finacle data for instant interest settlement calculations.</p>
+					<div v-show="step === 1" class="stage-padding" style="max-width: 450px; margin: 0 auto; justify-content: flex-start; padding-top: 60px;">
+						<div class="stage-scroll-content" style="align-items: center; text-align: center;">
+							<h1 style="font-size: 24px; font-weight: 700; color: var(--primary); margin-bottom: 8px;">Enter Account Number</h1>
+							<p style="color: #64748b; margin-bottom: 40px; font-size: 15px; line-height: 1.5; padding: 0 20px;">
+								SAHAYOG will verify your Finacle account details for instant interest calculation.
+							</p>
 
-							<div class="finacle-wrapper">
-								<div class="segment">
-									<div class="seg-label" style="color: var(--primary)">SOL ID (4)</div>
-									<div class="inputs-row">
-										<input v-for="i in 4" :key="'sol-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i-1)" v-model="digits[i-1]" @input="handleInput($event, i-1)" @keydown.backspace="handleBackspace($event, i-1)" @keydown.delete="digits = Array(15).fill(''); focusFirst()" @keydown.enter="isComplete && calculate()" @paste="handlePaste($event)"/>
+							<div style="width: 100%; position: relative; margin-bottom: 20px;">
+								<div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+									<div style="display: flex; align-items: center; border-bottom: 2px solid var(--accent); width: 280px; padding: 10px 0; transition: 0.3s;" :style="{ borderColor: errorMessage ? '#ef4444' : (!isSchemeValid && accountNumber.replace(/\s/g, '').length >= 8 ? '#ef4444' : (accountNumber.replace(/\s/g, '').length > 0 ? 'var(--accent)' : '#cbd5e1')) }">
+										<input 
+											type="text" 
+											inputmode="numeric" 
+											maxlength="17" 
+											v-model="accountNumber" 
+											@input="handleAccountNumberInput"
+											@keydown.enter="accountNumber.replace(/\s/g, '').length === 15 && calculate()"
+											placeholder="0000 0000 0000000"
+											style="width: 100%; border: none; outline: none; background: transparent; font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--primary); text-align: center; letter-spacing: 2px;"
+											:class="{ 'border-error': errorMessage || (!isSchemeValid && accountNumber.replace(/\s/g, '').length >= 8) }"
+										/>
+									</div>
+									<div v-if="!isSchemeValid && accountNumber.replace(/\s/g, '').length >= 8" style="color: #ef4444; font-size: 12px; font-weight: 700; margin-top: 8px;">
+										Invalid or Unsupported Scheme
+									</div>
+									<div v-else-if="schemeDesc" style="font-size: 12px; font-weight: 700; color: #9333ea; margin-top: 8px; min-height: 18px;">
+										[[ schemeDesc ]]
+									</div>
+									<div v-else style="font-size: 11px; color: #94a3b8; margin-top: 8px; min-height: 18px;">
+										Finacle Account Number
 									</div>
 								</div>
-								<div class="segment">
-									<div class="seg-label" style="color: #9333ea">Scheme (4)</div>
-									<div class="inputs-row" :class="{ 'border-error': !isSchemeValid && digits.slice(4, 8).join('').length === 4 }">
-										<input v-for="i in 4" :key="'schm-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i+3)" v-model="digits[i+3]" @input="handleInput($event, i+3)" @keydown.backspace="handleBackspace($event, i+3)" @keydown.delete="digits = Array(15).fill(''); focusFirst()" @keydown.enter="isComplete && calculate()"/>
-									</div>
-									<div v-if="schemeDesc" style="font-size: 11px; font-weight: 700; color: #9333ea; margin-top: 5px; text-align: left; padding-left: 14px;">[[ schemeDesc ]]</div>
-								</div>
-								<div class="segment">
-									<div class="seg-label" style="color: var(--accent)">Running Serial (7)</div>
-									<div class="inputs-row">
-										<input v-for="i in 7" :key="'serial-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i+7)" v-model="digits[i+7]" @input="handleInput($event, i+7)" @keydown.backspace="handleBackspace($event, i+7)" @keydown.delete="digits = Array(15).fill(''); focusFirst()" @keydown.enter="isComplete && calculate()"/>
-									</div>
-								</div>
-							</div>
-
-							<div v-if="digits.some(d => d !== '')" style="margin-bottom: 20px; animation: fadeIn 0.3s ease;">
-								<button @click="reset" style="background: #f1f5f9; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 10px; cursor: pointer; font-weight: 700; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; transition: 0.2s; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
-									<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"></path></svg>
-									Clear Account Number
-								</button>
 							</div>
 						</div>
 
-						<div class="stage-footer">
-							<button class="btn-main" :disabled="!isComplete || isLoading" @click="calculate" style="padding: 16px 50px; font-size: 18px; border-radius: 20px; width: 100%; max-width: 400px;">
-								[[ isLoading ? 'Processing...' : 'Calculate Premature ➔' ]]
+						<div class="stage-footer" style="background: transparent; border: none; display: flex; flex-direction: column; align-items: center;">
+							<button class="btn-main" :disabled="accountNumber.replace(/\s/g, '').length < 15 || isLoading || !isSchemeValid" @click="calculate" style="padding: 14px 40px; font-size: 16px; border-radius: 30px; width: auto; min-width: 180px; background: var(--accent); color: white; box-shadow: 0 4px 12px rgba(65, 125, 129, 0.3);">
+								[[ isLoading ? 'Verifying...' : 'Next' ]]
 							</button>
 
-							<div v-if="errorMessage" style="margin-top: 15px; color: #ef4444; font-size: 14px; font-weight: 600; background: #fef2f2; padding: 10px 20px; border-radius: 12px; border: 1px solid #fee2e2; display: inline-block;">
-								⚠️ [[ errorMessage ]]
+							<div v-if="errorMessage" class="border-error" style="margin-top: 20px; color: #ef4444; font-size: 13px; font-weight: 700; background: #fef2f2; padding: 12px 20px; border-radius: 12px; border: 1px solid #fee2e2; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.1);">
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+								[[ errorMessage ]]
 							</div>
-							<div v-else class="blink" style="margin-top: 15px; font-size: 14px; color: #64748b; font-weight: 700;">[[ instructionMsg ]]</div>
+							<div v-else-if="accountNumber.replace(/\s/g, '').length === 15 && isSchemeValid" style="margin-top: 20px; font-size: 13px; color: var(--accent); font-weight: 700; animation: fadeIn 0.3s ease;">
+								Ready to verify account ➔
+							</div>
 						</div>
 					</div>
 
@@ -1331,7 +1340,7 @@
 			PetiteVue.createApp({
 				$delimiters: ["[[", "]]"],
 				step: 1,
-				digits: Array(15).fill(""),
+				accountNumber: "",
 				isLoading: false,
 				errorMessage: "",
 				lastCopied: "",
@@ -1364,7 +1373,6 @@
 
 				init() {
 					this.selectedProduct = this.products[0];
-					this.focusFirst();
 					
 					// Global keyboard listeners
 					window.addEventListener('keydown', (e) => this.handleGlobalKey(e));
@@ -1426,7 +1434,7 @@
 
 				handleGlobalKey(e) {
 					if (this.isLoading) return;
-					if (this.step === 1 && e.key === "Enter" && this.isComplete) this.calculate();
+					if (this.step === 1 && e.key === "Enter" && this.accountNumber.replace(/\s/g, '').length === 15) this.calculate();
 					if (e.key === "Escape" || (this.step === 2 && e.key === "Backspace" && document.activeElement.tagName !== "INPUT")) this.reset();
 					
 					// Arrow key date navigation
@@ -1443,33 +1451,29 @@
 					}
 				},
 
-				focusFirst() {
-					setTimeout(() => {
-						const idx = this.digits.findIndex((d) => d === "");
-						const el = document.getElementById("d-" + (idx === -1 ? 14 : idx));
-						if (el) el.focus();
-					}, 50);
-				},
-
-				handleInput(e, index) {
-					if (!/^\d*$/.test(e.target.value)) { this.digits[index] = ""; return; }
-					if (index >= 4 && index <= 7) this.checkScheme();
-					if (e.target.value && index < 14) document.getElementById("d-" + (index + 1)).focus();
-				},
-
-				handleBackspace(e, index) {
-					if (!this.digits[index] && index > 0) document.getElementById("d-" + (index - 1)).focus();
-					if (index >= 4 && index <= 7) this.checkScheme();
-				},
-
-				handlePaste(e) {
-					const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 15);
-					text.split("").forEach((char, i) => (this.digits[i] = char));
-					this.checkScheme(); this.focusFirst();
+				handleAccountNumberInput(e) {
+					this.errorMessage = "";
+					let raw = e.target.value.replace(/\D/g, '').slice(0, 15);
+					let formatted = raw;
+					if (raw.length > 4) {
+						formatted = raw.slice(0, 4) + ' ' + raw.slice(4);
+					}
+					if (raw.length > 8) {
+						formatted = raw.slice(0, 4) + ' ' + raw.slice(4, 8) + ' ' + raw.slice(8);
+					}
+					this.accountNumber = formatted;
+					
+					const digitsOnly = raw;
+					if (digitsOnly.length >= 8) {
+						this.checkScheme();
+					} else {
+						this.schemeDesc = "";
+					}
 				},
 
 				async checkScheme() {
-					const code = this.digits.slice(4, 8).join("");
+					const digitsOnly = this.accountNumber.replace(/\s/g, '');
+					const code = digitsOnly.slice(4, 8);
 					const allowed = ['2005', '2010', '2011', '2012', '2013', '2014', '2015', '2016'];
 					if (code.length === 4) {
 						if (!allowed.includes(code)) { this.isSchemeValid = false; this.schemeDesc = ""; return; }
@@ -1481,18 +1485,13 @@
 					} else { this.schemeDesc = ""; this.isSchemeValid = true; }
 				},
 
-				get isComplete() { return this.digits.every((d) => d !== ""); },
-				get instructionMsg() {
-					const count = this.digits.filter((d) => d !== "").length;
-					return count === 0 ? "Type 15-digit Account Number" : (count < 15 ? `${count} digits, ${15 - count} more...` : "Press Enter to proceed ↵");
-				},
-
 				async calculate() {
-					if (!this.isSchemeValid) return;
+					const digitsOnly = this.accountNumber.replace(/\s/g, '');
+					if (digitsOnly.length < 15 || !this.isSchemeValid) return;
 					this.isLoading = true; this.errorMessage = "";
 					this.calculationSteps.forEach(s => s.status = "pending");
 					try {
-						const foracid = this.digits.join("");
+						const foracid = digitsOnly;
 						
 						// Step 1: Connecting
 						this.calculationSteps[0].status = "loading";
@@ -1722,11 +1721,10 @@
 				reset() { 
 					this.step = 1; 
 					window.location.hash = '#/account_number';
-					this.digits = Array(15).fill(""); 
+					this.accountNumber = ""; 
 					this.data = null; 
 					this.schemeDesc = ""; 
 					this.isSchemeValid = true; 
-					this.focusFirst(); 
 				}
 			}).mount("#app");
 		</script>
