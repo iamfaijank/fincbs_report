@@ -362,9 +362,8 @@
 			.dashboard-grid {
 				display: grid;
 				grid-template-columns: repeat(3, 1fr);
-				flex: 1;
-				min-height: 0;
 				gap: 24px;
+				align-items: start;
 				animation: slideIn 0.5s ease-out;
 			}
 
@@ -462,28 +461,20 @@
 				box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 				display: flex;
 				flex-direction: column;
-				min-height: 0;
-				height: 100%;
 				overflow: hidden;
 			}
 			.panel-left {
 				padding: 30px;
 				display: flex;
 				flex-direction: column;
-				flex: 1;
-				min-height: 0;
-				overflow-y: auto;
 			}
 			.panel-right {
 				padding: 30px;
 				display: flex;
 				flex-direction: column;
-				flex: 1;
-				min-height: 0;
 				position: relative;
 			}
 			.breakdown-scroll {
-				flex: 1;
 				margin-bottom: 20px;
 				overflow-y: auto;
 				padding-right: 10px;
@@ -493,8 +484,6 @@
 				padding: 30px;
 				display: flex;
 				flex-direction: column;
-				flex: 1;
-				min-height: 0;
 			}
 
 			/* Modern Scrollbar */
@@ -546,11 +535,11 @@
 				margin-top: 0px;
 				background: linear-gradient(-45deg, #0d9488, #14b8a6, #0f766e, #0d9488);
 				background-size: 400% 400%;
-				animation: gradientBG 8s ease infinite, fluidGlow 3s ease-in-out infinite;
+				animation: gradientBG 8s ease infinite;
 				color: white;
 				padding: 30px;
 				border-radius: 24px;
-				box-shadow: 0 10px 30px -5px rgba(13, 148, 136, 0.5);
+				box-shadow: 0 15px 35px -5px rgba(13, 148, 136, 0.3);
 				position: relative;
 				overflow: hidden;
 			}
@@ -559,11 +548,6 @@
 				0% { background-position: 0% 50%; }
 				50% { background-position: 100% 50%; }
 				100% { background-position: 0% 50%; }
-			}
-
-			@keyframes fluidGlow {
-				0%, 100% { box-shadow: 0 10px 30px -5px rgba(13, 148, 136, 0.5), 0 0 20px rgba(20, 184, 166, 0.2); }
-				50% { box-shadow: 0 15px 40px -2px rgba(13, 148, 136, 0.7), 0 0 35px rgba(20, 184, 166, 0.4); }
 			}
 
 			.mono {
@@ -771,6 +755,46 @@
 				font-weight: 800;
 				color: var(--accent);
 				font-family: 'JetBrains Mono', monospace;
+			}
+
+			.date-adjust-group {
+				display: flex;
+				gap: 8px;
+				margin-top: 12px;
+				flex-wrap: wrap;
+			}
+			.btn-adjust {
+				flex: 1;
+				min-width: 70px;
+				padding: 8px 4px;
+				background: #fff;
+				border: 1px solid #e2e8f0;
+				border-radius: 10px;
+				font-size: 9px;
+				font-weight: 700;
+				color: #64748b;
+				cursor: pointer;
+				transition: 0.2s;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+			}
+			.btn-adjust.btn-month {
+				background: #eff6ff; /* Soft Blue for Months */
+				border-color: #dbeafe;
+				color: #2563eb;
+			}
+			.btn-adjust.btn-year {
+				background: #f5f3ff; /* Soft Purple for Years */
+				border-color: #ddd6fe;
+				color: #7c3aed;
+			}
+			.btn-adjust:hover {
+				transform: translateY(-1px);
+				box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+				filter: brightness(0.98);
+			}
+			.btn-adjust:active {
+				transform: translateY(0);
 			}
 
 			/* Custom Scrollbar */
@@ -998,7 +1022,7 @@
 									</div>
 								</div>
 
-								<div style="margin-top: auto; padding-top: 40px; display: flex; align-items: center; gap: 15px">
+								<div style="margin-top: 30px; padding-top: 20px; border-top: 1px dashed #e2e8f0; display: flex; align-items: center; gap: 15px">
 									<button @click="reset" style="background: white; border: 1px solid var(--border); padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: 700; color: #64748b; font-size: 13px; transition: 0.2s;" onmouseover="this.style.borderColor='var(--accent)'; this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'; this.style.color='#64748b'">
 										← Reset Session
 									</button>
@@ -1029,7 +1053,7 @@
 									</div>
 								</div>
 
-								<div class="tran-list" v-if="data && sortedTransactions.length" style="flex: 1; min-height: 0; overflow-y: auto; padding-right: 8px;">
+								<div class="tran-list" v-if="data && sortedTransactions.length" style="min-height: 0; overflow-y: auto; padding-right: 8px;">
 									<div v-for="(t, i) in sortedTransactions" :key="t.date + t.amount + t.type + i" class="tran-row" style="align-items: flex-start; padding: 16px;">
 										<div class="month-badge" style="margin-top: 2px;">
 											<span class="m-name">[[ getMonthAbbr(t.date) ]]</span>
@@ -1061,6 +1085,12 @@
 										</div>
 										<div style="margin-top: 10px;">
 											<input type="date" v-model="exitDate" @change="updateCalculations()" style="padding: 10px 14px; border-radius: 12px; border: 2px solid var(--accent); font-family: 'JetBrains Mono'; font-size: 13px; font-weight: 700; width: 100%; box-sizing: border-box;"/>
+										</div>
+										<div class="date-adjust-group">
+											<button @click="adjustDate(0, -1)" class="btn-adjust btn-year">−1 Year</button>
+											<button @click="adjustDate(-1, 0)" class="btn-adjust btn-month">−1 Month</button>
+											<button @click="adjustDate(1, 0)" class="btn-adjust btn-month">+1 Month</button>
+											<button @click="adjustDate(0, 1)" class="btn-adjust btn-year">+1 Year</button>
 										</div>
 										
 										<div style="margin-top: 20px; display: flex; gap: 12px; align-items: stretch;">
@@ -1098,15 +1128,15 @@
 										<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color, background: data.slabStatus.color + '15' }" style="margin-top: 12px; font-size: 11px; font-weight: 800; padding: 8px 12px; border-radius: 10px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid currentColor;">[[ data.slabStatus.label ]]</div>
 									</div>
 
-									<h3 style="margin-top: 0; font-size: 16px; font-weight: 700">Breakdown</h3>
+									<h3 style="margin-top: 10px; font-size: 16px; font-weight: 700">Breakdown</h3>
 									<div class="summary-item"><span>Principal</span><span class="mono">[[ formatCurrency(data.principal) ]]</span></div>
 									<div class="summary-item"><span>Interest ([[ data.appliedRate ]]%)</span><span class="mono" style="color: var(--accent);">+ [[ formatCurrency(data.interest) ]]</span></div>
-									<div class="summary-item" style="border: none"><span style="color: var(--warning);">Penalty</span><span class="mono" style="color: var(--warning);">- [[ formatCurrency(data.penalty) ]]</span></div>
-								</div>
+									<div class="summary-item" style="border: none; margin-bottom: 15px;"><span style="color: var(--warning);">Penalty</span><span class="mono" style="color: var(--warning);">- [[ formatCurrency(data.penalty) ]]</span></div>
 
-								<div class="total-banner">
-									<div style="font-size: 11px; font-weight: 800; text-transform: uppercase;">Net Settlement</div>
-									<div style="font-size: 32px; font-weight: 800; margin-top: 5px" class="mono">[[ formatCurrency(data.total) ]]</div>
+									<div class="total-banner" style="padding: 20px;">
+										<div style="font-size: 11px; font-weight: 800; text-transform: uppercase;">Net Settlement</div>
+										<div style="font-size: 32px; font-weight: 800; margin-top: 5px" class="mono">[[ formatCurrency(data.total) ]]</div>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -1414,6 +1444,39 @@
 					const date = this.parseDate(dateStr);
 					if (!date) return "";
 					return date.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+				},
+				adjustDate(mDiff, yDiff) {
+					if (!this.data || !this.exitDate) return;
+					
+					// Manually parse YYYY-MM-DD to avoid timezone shifts
+					const [year, month, day] = this.exitDate.split('-').map(Number);
+					const start = this.parseDate(this.data.acct_opn_date);
+					
+					// Calculate target month and year
+					let targetMonth = (month - 1) + mDiff;
+					let targetYear = year + yDiff;
+					
+					// Use target components to find the last valid day of that month
+					// (e.g., if original day was 31 and target month is Feb, it should be 28/29)
+					let newDate = new Date(targetYear, targetMonth, day);
+					
+					// If the month overflowed (e.g., March 3 instead of Feb 31), 
+					// set to the last day of the intended month.
+					if (newDate.getMonth() !== (targetMonth % 12 + 12) % 12) {
+						newDate = new Date(targetYear, targetMonth + 1, 0);
+					}
+
+					if (newDate < start) {
+						newDate = new Date(start);
+					}
+
+					// Format back to YYYY-MM-DD locally
+					const y = newDate.getFullYear();
+					const m = String(newDate.getMonth() + 1).padStart(2, '0');
+					const d = String(newDate.getDate()).padStart(2, '0');
+					
+					this.exitDate = `${y}-${m}-${d}`;
+					this.updateCalculations();
 				},
 				async copyToClipboard(t, id) {
 					const text = String(t);
