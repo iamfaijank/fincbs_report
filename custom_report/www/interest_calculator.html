@@ -1046,16 +1046,36 @@
 										<div style="margin-top: 10px;">
 											<input type="date" v-model="exitDate" @change="updateCalculations()" style="padding: 10px 14px; border-radius: 12px; border: 2px solid var(--accent); font-family: 'JetBrains Mono'; font-size: 13px; font-weight: 700; width: 100%; box-sizing: border-box;"/>
 										</div>
-										<div v-if="schemeRules[data.schm_code]" style="margin-top: 12px; font-size: 11px; color: #64748b; line-height: 1.6;">
-											<div style="font-weight: 700; margin-bottom: 8px; color: var(--primary);">💡 Applicable Rules for Scheme [[ data.schm_code ]]:</div>
-											<div v-for="slab in schemeRules[data.schm_code].interest_slabs" :style="{ color: data.appliedRate === slab[2] ? '#10b981' : '#64748b', fontWeight: data.appliedRate === slab[2] ? '700' : '400' }" style="display: flex; align-items: center; gap: 8px;">
-												<span v-if="data.appliedRate === slab[2]">✓</span><span v-else>•</span> [[ slab[2] ]]% : [[ slab[0] ]]-[[ slab[1] ]] months
+										
+										<div style="margin-top: 20px; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0;">
+											<div style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px;">Calculated Tenure</div>
+											<div style="display: flex; align-items: baseline; gap: 6px;">
+												<span style="font-size: 20px; font-weight: 800; color: var(--primary);">[[ data.monthsHeld ]]</span>
+												<span style="font-size: 13px; font-weight: 700; color: #64748b;">Months</span>
+												<span v-if="data.monthsHeld >= 12" style="font-size: 12px; color: #94a3b8; font-weight: 600;">
+													(~ [[ (data.monthsHeld / 12).toFixed(1) ]] Years)
+												</span>
 											</div>
-											<div :style="{ color: data.appliedRate === schemeRules[data.schm_code].base_rate ? '#10b981' : '#64748b', fontWeight: data.appliedRate === schemeRules[data.schm_code].base_rate ? '700' : '400' }" style="display: flex; align-items: center; gap: 8px;">
-												<span v-if="data.appliedRate === schemeRules[data.schm_code].base_rate">✓</span><span v-else>•</span> [[ schemeRules[data.schm_code].base_rate ]]% : Mature
+											<div style="font-size: 11px; color: #94a3b8; margin-top: 4px; font-weight: 500;">
+												From [[ data.acct_opn_date ]] to [[ formatDate(exitDate) ]]
 											</div>
 										</div>
-										<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color, background: data.slabStatus.color + '15' }" style="margin-top: 15px; font-size: 12px; font-weight: 700; padding: 10px 15px; border-radius: 10px;">[[ data.slabStatus.label ]]</div>
+
+										<div v-if="schemeRules[data.schm_code]" style="margin-top: 20px; font-size: 11px; color: #64748b; line-height: 1.6;">
+											<div style="font-weight: 700; margin-bottom: 8px; color: var(--primary); display: flex; align-items: center; gap: 6px;">
+												<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+												Applicable Rules for Scheme [[ data.schm_code ]]
+											</div>
+											<div v-for="slab in schemeRules[data.schm_code].interest_slabs" :style="{ color: data.appliedRate === slab[2] ? '#10b981' : '#64748b', fontWeight: data.appliedRate === slab[2] ? '800' : '400' }" style="display: flex; align-items: center; gap: 8px; padding: 2px 0;">
+												<span v-if="data.appliedRate === slab[2]" style="color: #10b981">●</span><span v-else>○</span> 
+												[[ slab[2] ]]% : [[ slab[0] ]]-[[ slab[1] ]] Months
+											</div>
+											<div :style="{ color: data.appliedRate === schemeRules[data.schm_code].base_rate ? '#10b981' : '#64748b', fontWeight: data.appliedRate === schemeRules[data.schm_code].base_rate ? '800' : '400' }" style="display: flex; align-items: center; gap: 8px; padding: 2px 0;">
+												<span v-if="data.appliedRate === schemeRules[data.schm_code].base_rate" style="color: #10b981">●</span><span v-else>○</span> 
+												[[ schemeRules[data.schm_code].base_rate ]]% : Mature
+											</div>
+										</div>
+										<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color, background: data.slabStatus.color + '15' }" style="margin-top: 15px; font-size: 12px; font-weight: 800; padding: 10px 15px; border-radius: 10px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">[[ data.slabStatus.label ]]</div>
 									</div>
 
 									<h3 style="margin-top: 0; font-size: 16px; font-weight: 700">Breakdown</h3>
@@ -1099,7 +1119,7 @@
 					"2010": { name: "RD 12M", tenure_m: 12, base_rate: 8.0, interest_slabs: [[6, 9, 4.0], [9, 12, 6.0]] },
 					"2011": { name: "RD 24M", tenure_m: 24, base_rate: 8.0, interest_slabs: [[12, 18, 4.0], [18, 24, 6.0]] },
 					"2012": { name: "RD 36M", tenure_m: 36, base_rate: 8.0, interest_slabs: [[18, 27, 4.0], [27, 36, 6.0]] },
-					"2013": { name: "RD 48M", tenure_m: 48, base_rate: 8.0, interest_slabs: [[24, 36, 4.0], [36, 48, 6.0]] },
+					"2013": { name: "RD 48M", tenure_m: 48, base_rate: 8.0, interest_slabs: [[12, 36, 4.0], [36, 48, 6.0]] },
 					"2014": { name: "RD 60M", tenure_m: 60, base_rate: 8.0, interest_slabs: [[30, 45, 4.0], [45, 60, 6.0]] },
 					"2015": { name: "RD 60M", tenure_m: 60, base_rate: 8.0, interest_slabs: [[30, 45, 4.0], [45, 60, 6.0]] },
 					"2005": { name: "SMBG", tenure_m: 66, base_rate: 8.0, interest_slabs: [[36, 66, 6.0]] },
@@ -1272,17 +1292,21 @@
 					if (!this.data) return;
 					const dExit = this.parseDate(this.exitDate);
 					const start = this.parseDate(this.data.acct_opn_date);
-					const endAdj = new Date(dExit); endAdj.setDate(endAdj.getDate() + 1);
+					
+					// Match backend: relativedelta(sett_dt + 1 day, opn_dt)
+					const endAdj = new Date(dExit); 
+					endAdj.setDate(endAdj.getDate() + 1);
+					
 					let monthsHeldTotal = (endAdj.getFullYear() - start.getFullYear()) * 12 + (endAdj.getMonth() - start.getMonth());
 					if (endAdj.getDate() < start.getDate()) monthsHeldTotal--;
 					
-					// Reset all interests first
-					this.data.transactions.forEach(t => { t.accrued_interest = 0; t.scheme_interest = 0; });
-
 					const rules = this.getApplicableRules(this.data.schm_code, monthsHeldTotal);
 					const planned = this.data.planned_installment || 0;
 					let principalSum = 0, accruedIntTotal = 0, totalCash = 0;
 					const processedMonths = new Set();
+
+					// Reset all interests first
+					this.data.transactions.forEach(t => { t.accrued_interest = 0; t.scheme_interest = 0; });
 
 					// Sort by date ascending to ensure the 'earliest' date of a month is processed first
 					const sortedTrans = [...this.data.transactions].sort((a, b) => this.parseDate(a.date) - this.parseDate(b.date));
@@ -1293,14 +1317,18 @@
 							totalCash += t.amount;
 							const dVal = this.parseDate(t.date);
 							if (dVal < dExit) {
-								const mKey = `${dVal.getMonth()}-${dVal.getFullYear()}`;
-								const rEnd = new Date(dExit); rEnd.setDate(rEnd.getDate() + 1);
-								let rm = (rEnd.getFullYear() - dVal.getFullYear()) * 12 + (rEnd.getMonth() - dVal.getMonth());
-								if (rEnd.getDate() < dVal.getDate()) rm--;
+								const month_key = `${dVal.getMonth() + 1}-${dVal.getFullYear()}`;
+								
+								// Calculate months from transaction date to settlement date (+1 day)
+								const tEndAdj = new Date(dExit);
+								tEndAdj.setDate(tEndAdj.getDate() + 1);
+								let rm = (tEndAdj.getFullYear() - dVal.getFullYear()) * 12 + (tEndAdj.getMonth() - dVal.getMonth());
+								if (tEndAdj.getDate() < dVal.getDate()) rm--;
+								
 								t.row_months = Math.max(0, rm);
 								
-								if (t.row_months > 0 && !processedMonths.has(mKey)) {
-									processedMonths.add(mKey);
+								if (t.row_months > 0 && !processedMonths.has(month_key)) {
+									processedMonths.add(month_key);
 									principalSum += t.amount;
 									t.elg_amt = Math.min(t.amount, planned);
 									if (rules.appliedRate > 0) {
@@ -1335,19 +1363,26 @@
 
 				getApplicableRules(sc, m) {
 					const slabs = {
-						"2010": { tenure_m: 12, base_rate: 8.0, interest_slabs: [[6, 9, 4.0], [9, 12, 6.0]] },
-						"2011": { tenure_m: 24, base_rate: 8.0, interest_slabs: [[12, 18, 4.0], [18, 24, 6.0]] },
-						"2012": { tenure_m: 36, base_rate: 8.0, interest_slabs: [[18, 27, 4.0], [27, 36, 6.0]] },
-						"2013": { tenure_m: 48, base_rate: 8.0, interest_slabs: [[24, 36, 4.0], [36, 48, 6.0]] },
-						"2014": { tenure_m: 60, base_rate: 8.0, interest_slabs: [[30, 45, 4.0], [45, 60, 6.0]] },
-						"2015": { tenure_m: 60, base_rate: 8.0, interest_slabs: [[30, 45, 4.0], [45, 60, 6.0]] },
+						"2010": { tenure_m: 12, base_rate: 8.0, interest_slabs: [[6, 12, 4.0], [9, 12, 6.0]] }, // Note: overlapping slabs usually means highest matching applies or last matching. Backend uses first match.
+						"2011": { tenure_m: 24, base_rate: 8.0, interest_slabs: [[12, 24, 4.0], [18, 24, 6.0]] },
+						"2012": { tenure_m: 36, base_rate: 8.0, interest_slabs: [[18, 36, 4.0], [27, 36, 6.0]] },
+						"2013": { tenure_m: 48, base_rate: 8.0, interest_slabs: [[12, 48, 4.0], [36, 48, 6.0]] },
+						"2014": { tenure_m: 60, base_rate: 8.0, interest_slabs: [[30, 60, 4.0], [45, 60, 6.0]] },
+						"2015": { tenure_m: 60, base_rate: 8.0, interest_slabs: [[30, 60, 4.0], [45, 60, 6.0]] },
 						"2005": { tenure_m: 66, base_rate: 8.0, interest_slabs: [[36, 66, 6.0]] },
 						"2016": { tenure_m: 120, base_rate: 8.0, interest_slabs: [[0, 120, 8.0]] }
 					};
-					const r = slabs[sc];
+					// Re-mapping to match backend precisely (using the schemeRules we updated)
+					const r = this.schemeRules[sc];
 					if (!r) return { meta: { tenure_m: 0, base_rate: 0, interest_slabs: [] }, appliedRate: 0 };
-					let ar = m >= r.tenure_m ? r.base_rate : 0;
-					if (m < r.tenure_m) { for (const s of r.interest_slabs) { if (m >= s[0] && m < s[1]) { ar = s[2]; break; } } }
+					if (m >= r.tenure_m) return { meta: r, appliedRate: r.base_rate };
+					let ar = 0.0;
+					for (const s of r.interest_slabs) {
+						if (m >= s[0] && m < s[1]) {
+							ar = s[2];
+							break; // Return the first matching slab as per backend logic
+						}
+					}
 					return { meta: r, appliedRate: ar };
 				},
 
