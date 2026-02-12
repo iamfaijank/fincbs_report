@@ -976,7 +976,7 @@
 			.dot-d { background: #ef4444; } /* Debit */
 		</style>
 	</head>
-	<body @keydown="handleGlobalKey">
+	<body>
 		<div id="app" v-scope @vue:mounted="init()" v-cloak>
 			<div class="bg-dots"></div>
 			<div class="app-container">
@@ -1352,6 +1352,9 @@
 				init() {
 					this.selectedProduct = this.products[0];
 					this.focusFirst();
+					
+					// Global keyboard listener
+					window.addEventListener('keydown', (e) => this.handleGlobalKey(e));
 					
 					window.addEventListener('hashchange', () => {
 						const hash = window.location.hash;
