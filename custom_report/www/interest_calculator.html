@@ -1322,13 +1322,13 @@
 						}
 					});
 					this.data.total_tran_sum = totalCash;
-					this.data.principal = principalSum;
+					this.data.principal = totalCash; // Use total cash as principal
 					this.data.interest = accruedIntTotal;
 					this.data.appliedRate = rules.appliedRate;
 					this.data.baseRate = rules.meta.base_rate;
 					let penPct = (monthsHeldTotal < rules.meta.tenure_m) ? (this.data.schm_code === '2005' ? 1.8 : 1.0) : 0;
-					this.data.penalty = Math.round(principalSum * penPct / 100);
-					this.data.total = principalSum + accruedIntTotal - this.data.penalty;
+					this.data.penalty = Math.round(totalCash * penPct / 100);
+					this.data.total = totalCash + accruedIntTotal - this.data.penalty;
 					this.data.monthsHeld = monthsHeldTotal;
 					this.data.slabStatus = monthsHeldTotal >= rules.meta.tenure_m ? { label: `Matured: ${rules.appliedRate}%`, color: "#10b981" } : (rules.appliedRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Early: ${rules.appliedRate}%`, color: "#f59e0b" });
 				},
