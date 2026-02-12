@@ -85,6 +85,11 @@
 				color: var(--primary);
 				letter-spacing: -0.5px;
 			}
+			.brand-logo {
+				height: 32px;
+				width: auto;
+				display: block;
+			}
 			.tagline {
 				font-size: 12px;
 				font-weight: 600;
@@ -893,9 +898,17 @@
 			<div class="bg-dots"></div>
 			<div class="app-container">
 				<div class="branding-header">
-					<div>
-						<span class="brand-text">SAHAYOG</span>
-						<span style="color: #cbd5e1; margin: 0 10px">|</span>
+					<div style="display: flex; align-items: center; gap: 12px;">
+						<!-- Logo with Text Fallback -->
+						<a href="/app/sahayog-home" style="text-decoration: none; cursor: pointer;">
+							<div id="brand-container">
+								<img src="/assets/sahayog/images/sahayog_logo_2025.png" alt="SAHAYOG" class="brand-logo" onerror="this.style.display='none'; document.getElementById('text-fallback').style.display='block';">
+								<div id="text-fallback" style="display: none;">
+									<span class="brand-text">SAHAYOG</span>
+								</div>
+							</div>
+						</a>
+						<span style="color: #cbd5e1; margin: 0 4px">|</span>
 						<span class="tagline">Interest Calculator</span>
 					</div>
 					<div class="step-container">
