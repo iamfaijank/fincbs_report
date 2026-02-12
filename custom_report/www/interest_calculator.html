@@ -628,20 +628,20 @@
 							<div class="segment">
 								<div class="seg-label" style="color: var(--primary)">SOL ID (4)</div>
 								<div class="inputs-row">
-									<input v-for="i in 4" :key="'sol-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i-1)" v-model="digits[i-1]" @input="handleInput($event, i-1)" @keydown.backspace="handleBackspace($event, i-1)" @keydown.enter="isComplete && calculate()" @paste="handlePaste($event)"/>
+									<input v-for="i in 4" :key="'sol-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i-1)" v-model="digits[i-1]" @input="handleInput($event, i-1)" @keydown.backspace="handleBackspace($event, i-1)" @keydown.delete="digits = Array(15).fill(''); focusFirst()" @keydown.enter="isComplete && calculate()" @paste="handlePaste($event)"/>
 								</div>
 							</div>
 							<div class="segment">
 								<div class="seg-label" style="color: #9333ea">Scheme (4)</div>
 								<div class="inputs-row" :class="{ 'border-error': !isSchemeValid && digits.slice(4, 8).join('').length === 4 }">
-									<input v-for="i in 4" :key="'schm-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i+3)" v-model="digits[i+3]" @input="handleInput($event, i+3)" @keydown.backspace="handleBackspace($event, i+3)" @keydown.enter="isComplete && calculate()"/>
+									<input v-for="i in 4" :key="'schm-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i+3)" v-model="digits[i+3]" @input="handleInput($event, i+3)" @keydown.backspace="handleBackspace($event, i+3)" @keydown.delete="digits = Array(15).fill(''); focusFirst()" @keydown.enter="isComplete && calculate()"/>
 								</div>
 								<div v-if="schemeDesc" style="font-size: 11px; font-weight: 700; color: #9333ea; margin-top: 5px; text-align: left; padding-left: 14px;">[[ schemeDesc ]]</div>
 							</div>
 							<div class="segment">
 								<div class="seg-label" style="color: var(--accent)">Running Serial (7)</div>
 								<div class="inputs-row">
-									<input v-for="i in 7" :key="'serial-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i+7)" v-model="digits[i+7]" @input="handleInput($event, i+7)" @keydown.backspace="handleBackspace($event, i+7)" @keydown.enter="isComplete && calculate()"/>
+									<input v-for="i in 7" :key="'serial-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i+7)" v-model="digits[i+7]" @input="handleInput($event, i+7)" @keydown.backspace="handleBackspace($event, i+7)" @keydown.delete="digits = Array(15).fill(''); focusFirst()" @keydown.enter="isComplete && calculate()"/>
 								</div>
 							</div>
 						</div>
