@@ -535,6 +535,128 @@
 				padding-right: 10px;
 			}
 
+			/* Redesigned Transaction View */
+			.tran-summary-grid {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 12px;
+				margin-bottom: 20px;
+				flex-shrink: 0;
+			}
+			.summary-card {
+				background: #f8fafc;
+				padding: 16px;
+				border-radius: 20px;
+				border: 1px solid #e2e8f0;
+				transition: 0.3s;
+			}
+			.summary-card:hover {
+				border-color: var(--accent);
+				background: #fff;
+				box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+			}
+			.summary-card-label {
+				font-size: 10px;
+				font-weight: 800;
+				color: #94a3b8;
+				text-transform: uppercase;
+				letter-spacing: 1px;
+				margin-bottom: 6px;
+			}
+			.summary-card-value {
+				font-size: 20px;
+				font-weight: 800;
+				color: var(--primary);
+			}
+
+			.tran-row {
+				background: #fff;
+				border-radius: 18px;
+				padding: 14px;
+				margin-bottom: 12px;
+				border: 1px solid #f1f5f9;
+				display: flex;
+				align-items: center;
+				gap: 16px;
+				box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+				transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+			}
+			.tran-row:hover {
+				transform: translateY(-2px);
+				box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.05);
+				border-color: #e2e8f0;
+			}
+			.month-badge {
+				width: 52px;
+				height: 52px;
+				border-radius: 16px;
+				background: #f1f5f9;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				flex-shrink: 0;
+				border: 1px solid #e2e8f0;
+			}
+			.month-badge .m-name {
+				font-size: 13px;
+				font-weight: 900;
+				color: var(--primary);
+				text-transform: uppercase;
+				line-height: 1;
+			}
+			.month-badge .m-year {
+				font-size: 9px;
+				font-weight: 700;
+				color: #94a3b8;
+				margin-top: 2px;
+			}
+			.tran-details {
+				flex: 1;
+				min-width: 0;
+			}
+			.tran-title {
+				font-size: 14px;
+				font-weight: 700;
+				color: var(--primary);
+				margin-bottom: 4px;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			.tran-subtitle {
+				font-size: 11px;
+				color: #64748b;
+				font-family: 'JetBrains Mono', monospace;
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+			.interest-pill {
+				background: #f0fdf4;
+				color: #10b981;
+				border: 1px solid #dcfce7;
+				padding: 2px 10px;
+				border-radius: 100px;
+				font-size: 10px;
+				font-weight: 800;
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				margin-left: 8px;
+			}
+			.tran-amount {
+				text-align: right;
+				font-size: 16px;
+				font-weight: 800;
+				color: #10b981;
+				font-family: 'JetBrains Mono', monospace;
+				flex-shrink: 0;
+			}
+			.tran-amount.debit {
+				color: #ef4444;
+			}
+
 			/* Custom Scrollbar */
 			.tran-list::-webkit-scrollbar,
 			.breakdown-scroll::-webkit-scrollbar {
@@ -769,45 +891,44 @@
 							</div>
 
 							<div class="panel-card panel-transactions">
-								<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-shrink: 0;">
-									<div style="display: flex; align-items: center; gap: 10px;">
-										<h3 style="margin: 0; font-size: 14px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Recent Transactions</h3>
-										<button @click="toggleSort" style="background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 8px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-											<svg v-if="sortOrder === 'desc'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 18V4"></path></svg>
-											<svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M11 19h10M11 15h7M11 11h4M3 7l3-3 3 3M6 6v14"></path></svg>
-											<span style="font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase;">[[ sortOrder ]]</span>
-										</button>
+								<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0;">
+									<h3 style="margin: 0; font-size: 13px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1.5px;">Transaction History</h3>
+									<button @click="toggleSort" style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 6px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='#e2e8f0'">
+										<svg v-if="sortOrder === 'desc'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 18V4"></path></svg>
+										<svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><path d="M11 19h10M11 15h7M11 11h4M3 7l3-3 3 3M6 6v14"></path></svg>
+										<span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">[[ sortOrder === 'desc' ? 'Newest' : 'Oldest' ]]</span>
+									</button>
+								</div>
+
+								<div class="tran-summary-grid">
+									<div class="summary-card">
+										<div class="summary-card-label">Total Transacted</div>
+										<div class="summary-card-value" style="color: var(--accent);">[[ formatCurrency(data.total_tran_sum) ]]</div>
 									</div>
-									<div style="text-align: right;">
-										<span style="font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Total Transacted</span>
-										<span class="mono" style="font-size: 14px; font-weight: 800; color: var(--accent);">[[ formatCurrency(data.total_tran_sum) ]]</span>
+									<div class="summary-card">
+										<div class="summary-card-label">Total Interest</div>
+										<div class="summary-card-value" style="color: #10b981;">[[ formatCurrency(data.interest) ]]</div>
 									</div>
 								</div>
 
 								<div class="tran-list" v-if="data && sortedTransactions.length" style="flex: 1; min-height: 0; max-height: 550px; overflow-y: auto; padding-right: 8px;">
-									<div v-for="(t, i) in sortedTransactions" :key="t.date + t.amount + t.type + i" class="tran-item" style="padding: 16px 0; border-bottom: 1px solid #f1f5f9;">
-										<div style="display: flex; align-items: flex-start; flex: 1; min-width: 0; gap: 16px;">
-											<div class="mono" :style="{ background: t.type === 'C' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: t.type === 'C' ? '#10b981' : '#ef4444', borderColor: t.type === 'C' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)' }" style="font-size: 14px; font-weight: 800; width: 36px; height: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid; margin-top: 2px;">
-												[[ sortOrder === 'desc' ? sortedTransactions.length - i : i + 1 ]]
-											</div>
-											<div style="flex: 1; min-width: 0;">
-												<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-													<div>
-														<span style="font-size: 13px; font-weight: 700; color: var(--primary);">[[ t.type === 'C' ? 'Credit' : 'Debit' ]]</span>
-														<span class="mono" style="font-size: 11px; color: #94a3b8; margin-left: 8px;">[[ t.date ]]</span>
-													</div>
-													<div style="display: flex; align-items: center; gap: 10px;">
-														<span v-if="t.type === 'C'" style="font-size: 11px; color: var(--accent); font-weight: 800; background: #f0fdf4; padding: 2px 6px; border-radius: 6px; border: 1px solid #dcfce7; display: inline-flex; align-items: center; gap: 4px; font-family: 'Inter', sans-serif;">
-															<span style="font-size: 8px; color: #94a3b8; font-weight: 700; text-transform: uppercase;">Int:</span>
-															+[[ t.scheme_interest ]]
-														</span>
-														<div class="mono" style="font-size: 14px; font-weight: 800;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
-															[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
-														</div>
-													</div>
+									<div v-for="(t, i) in sortedTransactions" :key="t.date + t.amount + t.type + i" class="tran-row">
+										<div class="month-badge">
+											<span class="m-name">[[ getMonthAbbr(t.date) ]]</span>
+											<span class="m-year">[[ t.date.split('/')[2] ]]</span>
+										</div>
+										<div class="tran-details">
+											<div class="tran-title">[[ t.particular ]]</div>
+											<div class="tran-subtitle">
+												<span>[[ t.date ]]</span>
+												<div v-if="t.type === 'C' && t.scheme_interest > 0" class="interest-pill">
+													<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+													Interest: [[ formatCurrency(t.scheme_interest) ]]
 												</div>
-												<div style="font-size: 11px; color: #64748b; line-height: 1.5; background: #f8fafc; padding: 6px 10px; border-radius: 8px; border-left: 3px solid #e2e8f0; margin-top: 6px;">[[ t.particular ]]</div>
 											</div>
+										</div>
+										<div class="tran-amount" :class="{ debit: t.type === 'D' }">
+											[[ t.type === 'C' ? '+' : '-' ]][[ formatCurrency(t.amount).replace('₹', '') ]]
 										</div>
 									</div>
 								</div>
@@ -1091,6 +1212,12 @@
 				selectProduct(p) { this.selectedProduct = p; if (this.data) this.updateCalculations(); },
 				formatCurrency(v) { return v === undefined || v === null ? "₹0" : "₹" + v.toLocaleString("en-IN"); },
 				formatDate(ds) { if (!ds) return ""; const [y, m, d] = ds.split('-'); return `${d}/${m}/${y}`; },
+				getMonthAbbr(dateStr) {
+					if (!dateStr) return "";
+					const date = this.parseDate(dateStr);
+					if (!date) return "";
+					return date.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+				},
 				async copyToClipboard(t, id) {
 					const text = String(t);
 					try {
