@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Prematurity Calculator - SAHAYOG</title>
+		<title>Interest Calculator - SAHAYOG</title>
 		<script src="/assets/custom_report/js/petite-vue.iife.js"></script>
 		<link
 			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap"
@@ -345,12 +345,29 @@
 			/* Step 2: Analysis Grid */
 			.dashboard-grid {
 				display: grid;
-				grid-template-columns: 1fr 500px 400px;
+				grid-template-columns: repeat(3, 1fr);
 				flex: 1;
 				min-height: 0;
 				gap: 24px;
 				animation: slideIn 0.5s ease-out;
 			}
+
+			@media (max-width: 1200px) {
+				.dashboard-grid {
+					grid-template-columns: 1fr;
+					overflow-y: auto;
+					padding-bottom: 40px;
+				}
+				body {
+					height: auto;
+					overflow-y: auto;
+				}
+				.app-container {
+					height: auto;
+					min-height: 100vh;
+				}
+			}
+
 			.panel-card {
 				background: #fff;
 				border-radius: 24px;
@@ -569,7 +586,7 @@
 					<div>
 						<span class="brand-text">SAHAYOG</span>
 						<span style="color: #cbd5e1; margin: 0 10px">|</span>
-						<span class="tagline">Prematurity Calculator</span>
+						<span class="tagline">Interest Calculator</span>
 					</div>
 					<div class="step-container">
 						<div class="step-item" :class="{ active: step >= 1 }">
@@ -604,29 +621,36 @@
 				<div class="content-area">
 					<!-- Step 1 -->
 					<div v-show="step === 1" class="stage-padding">
-						<h1 style="font-size: 42px; font-weight: 800; color: var(--primary); margin-bottom: 12px;">Prematurity Calculator</h1>
-						<p style="color: #64748b; margin-bottom: 50px; font-size: 18px;">Access real-time Finacle data for instant prematurity settlement calculations.</p>
+						<h1 style="font-size: 42px; font-weight: 800; color: var(--primary); margin-bottom: 12px;">Interest Calculator</h1>
+						<p style="color: #64748b; margin-bottom: 50px; font-size: 18px;">Access real-time Finacle data for instant interest settlement calculations.</p>
 
 						<div class="finacle-wrapper">
 							<div class="segment">
 								<div class="seg-label" style="color: var(--primary)">SOL ID (4)</div>
 								<div class="inputs-row">
-									<input v-for="i in 4" :key="'sol-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i-1)" v-model="digits[i-1]" @input="handleInput($event, i-1)" @keydown.backspace="handleBackspace($event, i-1)" @keydown.enter="isComplete && calculate()" @paste="handlePaste($event)"/>
+									<input v-for="i in 4" :key="'sol-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i-1)" v-model="digits[i-1]" @input="handleInput($event, i-1)" @keydown.backspace="handleBackspace($event, i-1)" @keydown.delete="digits = Array(15).fill(''); focusFirst()" @keydown.enter="isComplete && calculate()" @paste="handlePaste($event)"/>
 								</div>
 							</div>
 							<div class="segment">
 								<div class="seg-label" style="color: #9333ea">Scheme (4)</div>
 								<div class="inputs-row" :class="{ 'border-error': !isSchemeValid && digits.slice(4, 8).join('').length === 4 }">
-									<input v-for="i in 4" :key="'schm-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i+3)" v-model="digits[i+3]" @input="handleInput($event, i+3)" @keydown.backspace="handleBackspace($event, i+3)" @keydown.enter="isComplete && calculate()"/>
+									<input v-for="i in 4" :key="'schm-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i+3)" v-model="digits[i+3]" @input="handleInput($event, i+3)" @keydown.backspace="handleBackspace($event, i+3)" @keydown.delete="digits = Array(15).fill(''); focusFirst()" @keydown.enter="isComplete && calculate()"/>
 								</div>
 								<div v-if="schemeDesc" style="font-size: 11px; font-weight: 700; color: #9333ea; margin-top: 5px; text-align: left; padding-left: 14px;">[[ schemeDesc ]]</div>
 							</div>
 							<div class="segment">
 								<div class="seg-label" style="color: var(--accent)">Running Serial (7)</div>
 								<div class="inputs-row">
-									<input v-for="i in 7" :key="'serial-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i+7)" v-model="digits[i+7]" @input="handleInput($event, i+7)" @keydown.backspace="handleBackspace($event, i+7)" @keydown.enter="isComplete && calculate()"/>
+									<input v-for="i in 7" :key="'serial-'+i" type="text" inputmode="numeric" maxlength="1" class="digit-box" :id="'d-'+(i+7)" v-model="digits[i+7]" @input="handleInput($event, i+7)" @keydown.backspace="handleBackspace($event, i+7)" @keydown.delete="digits = Array(15).fill(''); focusFirst()" @keydown.enter="isComplete && calculate()"/>
 								</div>
 							</div>
+						</div>
+
+						<div v-if="digits.some(d => d !== '')" style="margin-bottom: 30px; animation: fadeIn 0.3s ease;">
+							<button @click="reset" style="background: #f1f5f9; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 10px; cursor: pointer; font-weight: 700; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; transition: 0.2s; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
+								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+								Clear Account Number
+							</button>
 						</div>
 
 						<button class="btn-main" :disabled="!isComplete || isLoading" @click="calculate" style="padding: 20px 60px; font-size: 18px; border-radius: 20px;">
@@ -659,6 +683,10 @@
 
 							<div style="display: flex; gap: 30px;">
 								<div style="text-align: right;">
+									<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">A/c Opening Date</span>
+									<div class="mono" style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ data.acct_opn_date ]]</div>
+								</div>
+								<div style="text-align: right;">
 									<span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Deposit Amount</span>
 									<div class="mono" style="font-size: 15px; font-weight: 700; color: var(--primary);">[[ formatCurrency(data.deposit_amount) ]]</div>
 								</div>
@@ -679,44 +707,74 @@
 
 						<div class="dashboard-grid">
 							<div class="panel-card panel-left">
-								<div style="margin-bottom: 40px">
-									<div style="font-size: 11px; font-weight: 800; color: var(--accent); margin-bottom: 4px; text-transform: uppercase;">Customer Profile</div>
-									<h2 style="margin: 0; font-size: 28px; font-weight: 800">[[ data.cust_name ]]</h2>
-									<span class="mono" style="color: #94a3b8">CUST-ID: [[ data.cust_id ]]</span>
-								</div>
-
-								<div style="background: #f8fafc; padding: 24px; border-radius: 20px; border: 1px solid var(--border); margin-bottom: 30px;">
-									<div style="font-size: 10px; font-weight: 800; color: #94a3b8; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-										<span>FINACLE ACCOUNT NUMBER</span>
-										<button @click="copyToClipboard(data.acct_no)" style="background: none; border: none; cursor: pointer; color: var(--accent); font-size: 10px; font-weight: 800; display: flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; transition: 0.2s;">
-											<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-											COPY
-										</button>
+								<div style="margin-bottom: 25px;">
+									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+										<span style="font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px;">Customer Profile</span>
 									</div>
-									<div style="font-size: 20px; font-family: 'JetBrains Mono'; font-weight: 700; display: flex; gap: 12px; align-items: center;">
-										<span style="color: var(--primary)">[[ data.acct_no.slice(0,4) ]]</span>
-										<span style="color: #cbd5e1; font-weight: 300">/</span>
-										<span style="color: #9333ea">[[ data.acct_no.slice(4,8) ]]</span>
-										<span style="color: #cbd5e1; font-weight: 300">/</span>
-										<span style="color: var(--accent)">[[ data.acct_no.slice(8,15) ]]</span>
+									<div style="display: flex; align-items: center; gap: 16px;">
+										<div style="width: 56px; height: 56px; background: linear-gradient(135deg, var(--primary), #334155); color: white; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; flex-shrink: 0; box-shadow: 0 8px 16px -4px rgba(15, 23, 42, 0.15); border: 2px solid #fff;">
+											[[ (names = data.cust_name.trim().split(/\s+/), names.length > 1 ? names[0][0] + names[names.length-1][0] : names[0][0]).toUpperCase() ]]
+										</div>
+										<h2 style="margin: 0; font-size: 28px; font-weight: 800; color: var(--primary); line-height: 1.1; letter-spacing: -0.5px;">[[ data.cust_name ]]</h2>
 									</div>
 								</div>
 
-								<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px">
-									<div>
-										<label class="seg-label" style="padding: 0">BRANCH</label>
-										<p style="font-weight: 600; margin: 5px 0">[[ data.branch_name ]]</p>
+								<div style="display: grid; gap: 16px;">
+									<!-- Customer ID Section -->
+									<div style="background: #f8fafc; padding: 16px 20px; border-radius: 16px; border: 1px solid var(--border);">
+										<div style="font-size: 10px; font-weight: 800; color: #94a3b8; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+											<span style="letter-spacing: 0.5px;">CUSTOMER ID</span>
+											<button @click="copyToClipboard(data.cust_id, 'cust_id')" :style="{ borderColor: lastCopied === 'cust_id' ? 'var(--accent)' : '#e2e8f0', color: 'var(--accent)' }" style="background: white; border: 1px solid #e2e8f0; cursor: pointer; font-size: 10px; font-weight: 800; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; transition: 0.2s;">
+												<svg v-if="lastCopied !== 'cust_id'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+												<svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+												[[ lastCopied === 'cust_id' ? 'Copied' : 'COPY' ]]
+											</button>
+										</div>
+										<div style="display: flex; gap: 6px; justify-content: center; background: white; padding: 12px; border-radius: 12px; border: 1px dashed #cbd5e1;">
+											<div v-for="char in data.cust_id.toString().split('')" :key="char + Math.random()" style="width: 28px; height: 36px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono'; font-size: 16px; font-weight: 700; color: var(--primary); box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);">
+												[[ char ]]
+											</div>
+										</div>
 									</div>
-									<div>
-										<label class="seg-label" style="padding: 0">ACCOUNT OPENING DATE</label>
-										<p style="font-weight: 600; margin: 5px 0" class="mono">[[ data.acct_opn_date ]]</p>
+
+									<!-- Account Number Section -->
+									<div style="background: #f8fafc; padding: 16px 20px; border-radius: 16px; border: 1px solid var(--border);">
+										<div style="font-size: 10px; font-weight: 800; color: #94a3b8; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+											<span style="letter-spacing: 0.5px;">FINACLE ACCOUNT NUMBER</span>
+											<button @click="copyToClipboard(data.acct_no, 'acct_no')" :style="{ borderColor: lastCopied === 'acct_no' ? 'var(--accent)' : '#e2e8f0', color: 'var(--accent)' }" style="background: white; border: 1px solid #e2e8f0; cursor: pointer; font-size: 10px; font-weight: 800; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; transition: 0.2s;">
+												<svg v-if="lastCopied !== 'acct_no'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+												<svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+												[[ lastCopied === 'acct_no' ? 'Copied' : 'COPY' ]]
+											</button>
+										</div>
+										<div style="font-size: 18px; font-family: 'JetBrains Mono'; font-weight: 700; display: flex; gap: 10px; align-items: center; justify-content: center; background: white; padding: 8px 12px; border-radius: 8px; border: 1px dashed #cbd5e1;">
+											<span style="color: var(--primary)">[[ data.acct_no.slice(0,4) ]]</span>
+											<span style="color: #cbd5e1; font-weight: 300">/</span>
+											<span style="color: #9333ea">[[ data.acct_no.slice(4,8) ]]</span>
+											<span style="color: #cbd5e1; font-weight: 300">/</span>
+											<span style="color: var(--accent)">[[ data.acct_no.slice(8,15) ]]</span>
+										</div>
+									</div>
+
+									<!-- Branch Info Section -->
+									<div style="display: grid; grid-template-columns: 100px 1fr; gap: 16px; background: #fff; padding: 16px; border-radius: 16px; border: 1px solid #f1f5f9;">
+										<div>
+											<label class="seg-label" style="padding: 0; margin-bottom: 4px; display: block; font-size: 9px;">SOL ID</label>
+											<div class="mono" style="font-weight: 700; font-size: 15px; color: var(--primary);">[[ data.sol_id ]]</div>
+										</div>
+										<div style="border-left: 1px solid #f1f5f9; padding-left: 16px;">
+											<label class="seg-label" style="padding: 0; margin-bottom: 4px; display: block; font-size: 9px;">BRANCH NAME</label>
+											<div style="font-weight: 700; font-size: 15px; color: var(--primary); text-transform: uppercase;">[[ data.branch_name ]]</div>
+										</div>
 									</div>
 								</div>
 
-								<div style="margin-top: 50px; display: flex; align-items: center; gap: 15px">
-									<button @click="reset" style="background: none; border: 1px solid var(--border); padding: 12px 24px; border-radius: 12px; cursor: pointer; font-weight: 600; color: #64748b;">← Back (ESC / Backspace)</button>
-									<div style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">
-										<span style="padding: 2px 6px; background: #e2e8f0; border-radius: 4px; color: #475569;">0-9</span> New Entry
+								<div style="margin-top: auto; padding-top: 40px; display: flex; align-items: center; gap: 15px">
+									<button @click="reset" style="background: white; border: 1px solid var(--border); padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: 700; color: #64748b; font-size: 13px; transition: 0.2s;" onmouseover="this.style.borderColor='var(--accent)'; this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'; this.style.color='#64748b'">
+										← Reset Session
+									</button>
+									<div style="font-size: 10px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+										<span style="padding: 3px 6px; background: #f1f5f9; border-radius: 4px; color: #64748b; margin-right: 5px;">ESC</span> to return
 									</div>
 								</div>
 							</div>
@@ -749,16 +807,15 @@
 														<span style="font-size: 13px; font-weight: 700; color: var(--primary);">[[ t.type === 'C' ? 'Credit' : 'Debit' ]]</span>
 														<span class="mono" style="font-size: 11px; color: #94a3b8; margin-left: 8px;">[[ t.date ]]</span>
 													</div>
-													<div class="mono" style="font-size: 14px; font-weight: 800;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
-														[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
+													<div style="display: flex; align-items: center; gap: 10px;">
+														<span v-if="t.type === 'C'" style="font-size: 11px; color: var(--accent); font-weight: 800; background: #f0fdf4; padding: 2px 6px; border-radius: 6px; border: 1px solid #dcfce7; display: inline-flex; align-items: center; gap: 4px; font-family: 'Inter', sans-serif;">
+															<span style="font-size: 8px; color: #94a3b8; font-weight: 700; text-transform: uppercase;">Int:</span>
+															+[[ t.scheme_interest ]]
+														</span>
+														<div class="mono" style="font-size: 14px; font-weight: 800;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
+															[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
+														</div>
 													</div>
-												</div>
-												<div v-if="t.type === 'C'" style="margin-top: 6px; padding: 8px 12px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1; display: flex; align-items: center; gap: 15px;">
-													<div style="font-size: 11px; color: #475569;"><strong style="color: #94a3b8; font-size: 9px; text-transform: uppercase;">ELG:</strong> ₹[[ formatCurrency(t.elg_amt).replace('₹', '') ]]</div>
-													<div style="color: #e2e8f0;">|</div>
-													<div style="font-size: 11px; color: #475569;"><strong style="color: #94a3b8; font-size: 9px; text-transform: uppercase;">HELD:</strong> [[ t.row_months ]]m</div>
-													<div style="color: #e2e8f0;">|</div>
-													<div style="font-size: 11px; color: var(--accent); font-weight: 700;"><strong style="color: #94a3b8; font-size: 9px; text-transform: uppercase;">SCHEME INT:</strong> +[[ t.scheme_interest ]]</div>
 												</div>
 												<div style="font-size: 11px; color: #64748b; line-height: 1.5; background: #f8fafc; padding: 6px 10px; border-radius: 8px; border-left: 3px solid #e2e8f0; margin-top: 6px;">[[ t.particular ]]</div>
 											</div>
@@ -802,11 +859,9 @@
 							</div>
 						</div>
 					</div>
-				</div>
-
-				<div v-if="toastMsg" style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 12px 24px; border-radius: 12px; font-size: 13px; font-weight: 700; z-index: 1000; display: flex; align-items: center; gap: 10px;">✓ [[ toastMsg ]]</div>
-			</div>
-		</div>
+								</div>
+							</div>
+						</div>
 
 		<script>
 			PetiteVue.createApp({
@@ -816,6 +871,7 @@
 				isLoading: false,
 				errorMessage: "",
 				toastMsg: "",
+				lastCopied: "",
 				sortOrder: 'desc',
 				schemeDesc: "",
 				isSchemeValid: true,
@@ -934,7 +990,17 @@
 						const result = res.message;
 						if (result && result.success) {
 							this.calculationSteps.fill({ status: "success" });
-							this.data = { ...result, acct_no: foracid };
+							if (result.maturity_date) {
+								const [d, m, y] = result.maturity_date.split("/");
+								this.exitDate = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+							}
+							this.data = { 
+								...result, 
+								acct_no: foracid, 
+								branch_name: result.sol_desc,
+								cust_name: result.acct_name,
+								cust_id: result.cif_id
+							};
 							this.schemeDesc = result.schm_desc || this.schemeDesc;
 							this.selectedProduct = result.schm_code === "2005" ? this.products[0] : this.products[1];
 							this.updateCalculations();
@@ -1015,7 +1081,29 @@
 				selectProduct(p) { this.selectedProduct = p; if (this.data) this.updateCalculations(); },
 				formatCurrency(v) { return v === undefined || v === null ? "₹0" : "₹" + v.toLocaleString("en-IN"); },
 				formatDate(ds) { if (!ds) return ""; const [y, m, d] = ds.split('-'); return `${d}/${m}/${y}`; },
-				async copyToClipboard(t) { try { await navigator.clipboard.writeText(t); this.toastMsg = "Copied!"; setTimeout(() => this.toastMsg = "", 2000); } catch (e) {} },
+				async copyToClipboard(t, id) {
+					const text = String(t);
+					try {
+						if (navigator.clipboard && window.isSecureContext) {
+							await navigator.clipboard.writeText(text);
+						} else {
+							const textArea = document.createElement("textarea");
+							textArea.value = text;
+							textArea.style.position = "fixed";
+							textArea.style.left = "-9999px";
+							textArea.style.top = "0";
+							document.body.appendChild(textArea);
+							textArea.focus();
+							textArea.select();
+							document.execCommand('copy');
+							textArea.remove();
+						}
+						this.lastCopied = id;
+						setTimeout(() => { this.lastCopied = ""; }, 2000);
+					} catch (err) {
+						console.error('Copy failed', err);
+					}
+				},
 				toggleSort() { this.sortOrder = this.sortOrder === 'desc' ? 'asc' : 'desc'; },
 				get sortedTransactions() { if (!this.data || !this.data.transactions) return []; const list = [...this.data.transactions]; return this.sortOrder === 'desc' ? list : list.reverse(); },
 				reset() { this.step = 1; this.digits = Array(15).fill(""); this.data = null; this.schemeDesc = ""; this.isSchemeValid = true; this.focusFirst(); }
