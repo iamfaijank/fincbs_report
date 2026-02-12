@@ -1227,7 +1227,7 @@
 
 							<div class="panel-card panel-right">
 								<div class="breakdown-scroll">
-									<div style="margin-bottom: 30px; padding-bottom: 25px; border-bottom: 1px solid #f1f5f9;">
+									<div style="margin-bottom: 9px; border-bottom: 1px solid #f1f5f9;">
 										<div style="display: flex; justify-content: space-between; align-items: flex-start;">
 											<span class="card-heading" style="margin-bottom: 0;">Settlement / Exit Date</span>
 											<span class="mono" style="font-size: 13px; font-weight: 800; color: var(--accent); background: rgba(13, 148, 136, 0.1); padding: 2px 8px; border-radius: 6px;">[[ formatDate(exitDate) ]]</span>
@@ -1242,7 +1242,7 @@
 											<button @click="adjustDate(0, 1)" class="btn-adjust btn-year">+1 Year</button>
 										</div>
 										
-										<div style="margin-top: 20px; display: flex; gap: 12px; align-items: stretch;">
+										<div style="margin-top: 10px; display: flex; gap: 12px; align-items: stretch;">
 											<!-- Tenure Card -->
 											<div style="flex: 1; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: center;">
 												<div style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px;">Calculated Tenure</div>
@@ -1274,10 +1274,10 @@
 												</div>
 											</div>
 										</div>
-										<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color, background: data.slabStatus.color + '15' }" style="margin-top: 12px; font-size: 11px; font-weight: 800; padding: 8px 12px; border-radius: 10px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid currentColor;">[[ data.slabStatus.label ]]</div>
+										<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color, background: data.slabStatus.color + '15' }" style="margin-top: 8px; font-size: 11px; font-weight: 800; padding: 8px 12px; border-radius: 10px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid currentColor;">[[ data.slabStatus.label ]]</div>
 									</div>
 
-									<h3 style="margin-top: 5px; font-size: 15px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">Settlement Breakdown</h3>
+									<h3 style="margin-top: 0px; font-size: 15px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">Settlement Breakdown</h3>
 									
 									<div class="summary-item">
 										<span class="item-label">Principal Amount</span>
