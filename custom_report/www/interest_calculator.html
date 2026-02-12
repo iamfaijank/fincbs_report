@@ -646,6 +646,13 @@
 							</div>
 						</div>
 
+						<div v-if="digits.some(d => d !== '')" style="margin-bottom: 30px; animation: fadeIn 0.3s ease;">
+							<button @click="reset" style="background: #f1f5f9; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 10px; cursor: pointer; font-weight: 700; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; transition: 0.2s; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
+								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+								Clear Account Number
+							</button>
+						</div>
+
 						<button class="btn-main" :disabled="!isComplete || isLoading" @click="calculate" style="padding: 20px 60px; font-size: 18px; border-radius: 20px;">
 							[[ isLoading ? 'Processing...' : 'Calculate Premature ➔' ]]
 						</button>
