@@ -370,22 +370,22 @@
 				display: grid;
 				grid-template-columns: repeat(3, 1fr);
 				gap: 24px;
-				height: calc(100vh - 180px); /* Account for header and tabs */
-				min-height: 0;
+				height: auto;
+				min-height: min-content;
 				animation: slideIn 0.5s ease-out;
 			}
 
 			@media (max-width: 1200px) {
 				body {
-					overflow: hidden;
-					height: 100dvh;
+					overflow: auto;
+					height: auto;
 				}
 				.app-container {
-					height: 100dvh;
+					height: auto;
 				}
 				.content-area {
 					padding: 10px 20px;
-					overflow: hidden;
+					overflow: visible;
 				}
 				.dashboard-grid {
 					grid-template-columns: 1fr;
@@ -460,33 +460,33 @@
 				box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 				display: flex;
 				flex-direction: column;
-				overflow: hidden;
-				height: 100%;
+				overflow: visible;
+				height: auto;
 			}
 			.panel-left {
 				padding: 30px;
 				display: flex;
 				flex-direction: column;
-				overflow: hidden; /* Lock as per SPA request */
+				overflow: visible; 
 			}
 			.panel-right {
 				padding: 30px;
 				display: flex;
 				flex-direction: column;
 				position: relative;
-				overflow: hidden; /* Lock as per SPA request */
+				overflow: visible; 
 			}
 			.breakdown-scroll {
 				margin-bottom: 20px;
 				padding-right: 10px;
-				overflow-y: auto; /* Allow breakdown to scroll if needed */
+				overflow-y: visible;
 			}
 
 			.panel-transactions {
 				padding: 30px;
 				display: flex;
 				flex-direction: column;
-				height: 100%;
+				height: auto;
 				min-height: 0;
 			}
 
