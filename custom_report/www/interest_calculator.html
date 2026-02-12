@@ -1309,6 +1309,12 @@
 								</div>
 							</div>
 						</div>
+			<!-- Toast Notification -->
+			<div v-if="toastMsg" style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 12px; font-size: 13px; font-weight: 700; z-index: 1000; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); animation: slideUp 0.3s ease-out; display: flex; align-items: center; gap: 10px;">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+				[[ toastMsg ]]
+			</div>
+		</div>
 
 		<script>
 			PetiteVue.createApp({
@@ -1627,11 +1633,8 @@
 					let targetYear = year + yDiff;
 					
 					// Use target components to find the last valid day of that month
-					// (e.g., if original day was 31 and target month is Feb, it should be 28/29)
 					let newDate = new Date(targetYear, targetMonth, day);
 					
-					// If the month overflowed (e.g., March 3 instead of Feb 31), 
-					// set to the last day of the intended month.
 					if (newDate.getMonth() !== (targetMonth % 12 + 12) % 12) {
 						newDate = new Date(targetYear, targetMonth + 1, 0);
 					}
@@ -1640,12 +1643,20 @@
 						newDate = new Date(start);
 					}
 
-					// Format back to YYYY-MM-DD locally
-					const y = newDate.getFullYear();
-					const m = String(newDate.getMonth() + 1).padStart(2, '0');
-					const d = String(newDate.getDate()).padStart(2, '0');
+					// Format back to YYYY-MM-DD locally to compare with maxExitDate string
+					const y_str = newDate.getFullYear();
+					const m_str = String(newDate.getMonth() + 1).padStart(2, '0');
+					const d_str = String(newDate.getDate()).padStart(2, '0');
+					const dateStr = `${y_str}-${m_str}-${d_str}`;
+
+					if (this.maxExitDate && dateStr > this.maxExitDate) {
+						this.exitDate = this.maxExitDate;
+						this.toastMsg = `Exit date cannot exceed maturity date (${this.maxDateDisplay})`;
+						setTimeout(() => { this.toastMsg = ""; }, 3000);
+					} else {
+						this.exitDate = dateStr;
+					}
 					
-					this.exitDate = `${y}-${m}-${d}`;
 					this.updateCalculations();
 				},
 				validateExitDate() {
@@ -1692,12 +1703,6 @@
 				}
 			}).mount("#app");
 		</script>
-
-		<!-- Toast Notification -->
-		<div v-if="toastMsg" style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 12px; font-size: 13px; font-weight: 700; z-index: 1000; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); animation: slideUp 0.3s ease-out; display: flex; align-items: center; gap: 10px;">
-			<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-			[[ toastMsg ]]
-		</div>
 
 		<style>
 			@keyframes slideUp {
