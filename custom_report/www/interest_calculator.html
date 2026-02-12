@@ -724,10 +724,10 @@
 									<div style="background: #f8fafc; padding: 16px 20px; border-radius: 16px; border: 1px solid var(--border);">
 										<div style="font-size: 10px; font-weight: 800; color: #94a3b8; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
 											<span style="letter-spacing: 0.5px;">CUSTOMER ID</span>
-											<button @click="copyToClipboard(data.cust_id, 'cust_id')" :style="{ borderColor: lastCopied === 'cust_id' ? 'var(--accent)' : '#e2e8f0', color: lastCopied === 'cust_id' ? 'var(--accent)' : 'var(--accent)' }" style="background: white; border: 1px solid #e2e8f0; cursor: pointer; font-size: 10px; font-weight: 800; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; transition: 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="if(this.innerText.trim() !== 'COPIED') this.style.borderColor='#e2e8f0'">
+											<button @click="copyToClipboard(data.cust_id, 'cust_id')" :style="{ borderColor: lastCopied === 'cust_id' ? 'var(--accent)' : '#e2e8f0', color: 'var(--accent)' }" style="background: white; border: 1px solid #e2e8f0; cursor: pointer; font-size: 10px; font-weight: 800; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; transition: 0.2s;">
 												<svg v-if="lastCopied !== 'cust_id'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
 												<svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-												[[ lastCopied === 'cust_id' ? 'COPIED' : 'COPY' ]]
+												[[ lastCopied === 'cust_id' ? 'Copied' : 'COPY' ]]
 											</button>
 										</div>
 										<div style="display: flex; gap: 6px; justify-content: center; background: white; padding: 12px; border-radius: 12px; border: 1px dashed #cbd5e1;">
@@ -741,10 +741,10 @@
 									<div style="background: #f8fafc; padding: 16px 20px; border-radius: 16px; border: 1px solid var(--border);">
 										<div style="font-size: 10px; font-weight: 800; color: #94a3b8; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
 											<span style="letter-spacing: 0.5px;">FINACLE ACCOUNT NUMBER</span>
-											<button @click="copyToClipboard(data.acct_no, 'acct_no')" :style="{ borderColor: lastCopied === 'acct_no' ? 'var(--accent)' : '#e2e8f0', color: lastCopied === 'acct_no' ? 'var(--accent)' : 'var(--accent)' }" style="background: white; border: 1px solid #e2e8f0; cursor: pointer; font-size: 10px; font-weight: 800; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; transition: 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="if(this.innerText.trim() !== 'COPIED') this.style.borderColor='#e2e8f0'">
+											<button @click="copyToClipboard(data.acct_no, 'acct_no')" :style="{ borderColor: lastCopied === 'acct_no' ? 'var(--accent)' : '#e2e8f0', color: 'var(--accent)' }" style="background: white; border: 1px solid #e2e8f0; cursor: pointer; font-size: 10px; font-weight: 800; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; transition: 0.2s;">
 												<svg v-if="lastCopied !== 'acct_no'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
 												<svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-												[[ lastCopied === 'acct_no' ? 'COPIED' : 'COPY' ]]
+												[[ lastCopied === 'acct_no' ? 'Copied' : 'COPY' ]]
 											</button>
 										</div>
 										<div style="font-size: 18px; font-family: 'JetBrains Mono'; font-weight: 700; display: flex; gap: 10px; align-items: center; justify-content: center; background: white; padding: 8px 12px; border-radius: 8px; border: 1px dashed #cbd5e1;">
@@ -859,11 +859,9 @@
 							</div>
 						</div>
 					</div>
-				</div>
-
-				<div v-if="toastMsg" style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 12px 24px; border-radius: 12px; font-size: 13px; font-weight: 700; z-index: 1000; display: flex; align-items: center; gap: 10px;">✓ [[ toastMsg ]]</div>
-			</div>
-		</div>
+								</div>
+							</div>
+						</div>
 
 		<script>
 			PetiteVue.createApp({
@@ -1083,13 +1081,28 @@
 				selectProduct(p) { this.selectedProduct = p; if (this.data) this.updateCalculations(); },
 				formatCurrency(v) { return v === undefined || v === null ? "₹0" : "₹" + v.toLocaleString("en-IN"); },
 				formatDate(ds) { if (!ds) return ""; const [y, m, d] = ds.split('-'); return `${d}/${m}/${y}`; },
-				async copyToClipboard(t, id) { 
-					try { 
-						await navigator.clipboard.writeText(t); 
-						this.toastMsg = "Copied!"; 
+				async copyToClipboard(t, id) {
+					const text = String(t);
+					try {
+						if (navigator.clipboard && window.isSecureContext) {
+							await navigator.clipboard.writeText(text);
+						} else {
+							const textArea = document.createElement("textarea");
+							textArea.value = text;
+							textArea.style.position = "fixed";
+							textArea.style.left = "-9999px";
+							textArea.style.top = "0";
+							document.body.appendChild(textArea);
+							textArea.focus();
+							textArea.select();
+							document.execCommand('copy');
+							textArea.remove();
+						}
 						this.lastCopied = id;
-						setTimeout(() => { this.toastMsg = ""; this.lastCopied = ""; }, 2000); 
-					} catch (e) {} 
+						setTimeout(() => { this.lastCopied = ""; }, 2000);
+					} catch (err) {
+						console.error('Copy failed', err);
+					}
 				},
 				toggleSort() { this.sortOrder = this.sortOrder === 'desc' ? 'asc' : 'desc'; },
 				get sortedTransactions() { if (!this.data || !this.data.transactions) return []; const list = [...this.data.transactions]; return this.sortOrder === 'desc' ? list : list.reverse(); },
