@@ -616,45 +616,50 @@
 				min-width: 0;
 			}
 			.tran-title {
-				font-size: 14px;
-				font-weight: 700;
-				color: var(--primary);
-				margin-bottom: 4px;
-				white-space: nowrap;
-				overflow: hidden;
-				text-overflow: ellipsis;
+				font-size: 17px;
+				font-weight: 800;
+				color: #10b981;
+				font-family: 'JetBrains Mono', monospace;
+				letter-spacing: -0.5px;
+			}
+			.tran-title.debit {
+				color: #ef4444;
 			}
 			.tran-subtitle {
 				font-size: 11px;
+				color: #94a3b8;
+				font-weight: 600;
+				margin-top: 1px;
+			}
+			.tran-particular-text {
+				font-size: 12px;
 				color: #64748b;
-				font-family: 'JetBrains Mono', monospace;
-				display: flex;
-				align-items: center;
-				gap: 8px;
+				margin-top: 4px;
+				line-height: 1.4;
+				font-weight: 500;
 			}
-			.interest-pill {
-				background: #f0fdf4;
-				color: #10b981;
-				border: 1px solid #dcfce7;
-				padding: 2px 10px;
-				border-radius: 100px;
-				font-size: 10px;
-				font-weight: 800;
-				display: inline-flex;
-				align-items: center;
-				gap: 4px;
-				margin-left: 8px;
-			}
-			.tran-amount {
+			.tran-right {
 				text-align: right;
-				font-size: 16px;
-				font-weight: 800;
-				color: #10b981;
-				font-family: 'JetBrains Mono', monospace;
 				flex-shrink: 0;
 			}
-			.tran-amount.debit {
-				color: #ef4444;
+			.interest-value {
+				display: flex;
+				flex-direction: column;
+				align-items: flex-end;
+				gap: 2px;
+			}
+			.iv-label {
+				font-size: 8px;
+				font-weight: 800;
+				color: #94a3b8;
+				text-transform: uppercase;
+				letter-spacing: 1px;
+			}
+			.iv-amount {
+				font-size: 15px;
+				font-weight: 800;
+				color: var(--accent);
+				font-family: 'JetBrains Mono', monospace;
 			}
 
 			/* Custom Scrollbar */
@@ -912,23 +917,23 @@
 								</div>
 
 								<div class="tran-list" v-if="data && sortedTransactions.length" style="flex: 1; min-height: 0; max-height: 550px; overflow-y: auto; padding-right: 8px;">
-									<div v-for="(t, i) in sortedTransactions" :key="t.date + t.amount + t.type + i" class="tran-row">
-										<div class="month-badge">
+									<div v-for="(t, i) in sortedTransactions" :key="t.date + t.amount + t.type + i" class="tran-row" style="align-items: flex-start; padding: 16px;">
+										<div class="month-badge" style="margin-top: 2px;">
 											<span class="m-name">[[ getMonthAbbr(t.date) ]]</span>
 											<span class="m-year">[[ t.date.split('/')[2] ]]</span>
 										</div>
 										<div class="tran-details">
-											<div class="tran-title">[[ t.particular ]]</div>
-											<div class="tran-subtitle">
-												<span>[[ t.date ]]</span>
-												<div v-if="t.type === 'C' && t.scheme_interest > 0" class="interest-pill">
-													<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-													Interest: [[ formatCurrency(t.scheme_interest) ]]
-												</div>
+											<div class="tran-title" :class="{ debit: t.type === 'D' }">
+												[[ t.type === 'C' ? '+' : '-' ]][[ formatCurrency(t.amount).replace('₹', '') ]]
 											</div>
+											<div class="tran-subtitle">[[ t.date ]]</div>
+											<div class="tran-particular-text">[[ t.particular ]]</div>
 										</div>
-										<div class="tran-amount" :class="{ debit: t.type === 'D' }">
-											[[ t.type === 'C' ? '+' : '-' ]][[ formatCurrency(t.amount).replace('₹', '') ]]
+										<div class="tran-right">
+											<div v-if="t.type === 'C' && t.scheme_interest > 0" class="interest-value">
+												<span class="iv-label">INTEREST</span>
+												<span class="iv-amount">[[ formatCurrency(t.scheme_interest) ]]</span>
+											</div>
 										</div>
 									</div>
 								</div>
