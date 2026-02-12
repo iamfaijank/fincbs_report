@@ -516,7 +516,7 @@
 				display: flex;
 				justify-content: space-between;
 				align-items: center;
-				padding: 12px 0;
+				padding: 8px 0;
 				font-size: 14px;
 				color: #64748b;
 			}
@@ -530,12 +530,8 @@
 				font-family: 'JetBrains Mono', monospace;
 			}
 			.summary-item.highlight {
-				background: #f0fdf4;
-				padding: 16px 20px;
-				border-radius: 18px;
-				margin: 12px 0;
-				border: 1px solid #dcfce7;
-				box-shadow: 0 4px 10px rgba(16, 185, 129, 0.04);
+				padding: 8px 0;
+				margin: 0;
 			}
 			.summary-item.highlight .item-label {
 				color: #166534;
@@ -545,11 +541,8 @@
 				font-size: 16px;
 			}
 			.summary-item.penalty-active {
-				background: #fff1f2;
-				padding: 12px 20px;
-				border-radius: 14px;
-				margin-top: 4px;
-				border: 1px solid #ffe4e6;
+				padding: 8px 0;
+				margin-top: 0;
 			}
 			.summary-item.penalty-active .item-label {
 				color: #9f1239;
@@ -560,7 +553,7 @@
 
 			.receipt-divider {
 				border-top: 2px dashed #e2e8f0;
-				margin: 15px 0;
+				margin: 10px 0;
 				height: 0;
 				width: 100%;
 			}
@@ -1284,7 +1277,7 @@
 										<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color, background: data.slabStatus.color + '15' }" style="margin-top: 12px; font-size: 11px; font-weight: 800; padding: 8px 12px; border-radius: 10px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid currentColor;">[[ data.slabStatus.label ]]</div>
 									</div>
 
-									<h3 style="margin-top: 10px; font-size: 15px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">Settlement Breakdown</h3>
+									<h3 style="margin-top: 5px; font-size: 15px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">Settlement Breakdown</h3>
 									
 									<div class="summary-item">
 										<span class="item-label">Principal Amount</span>
@@ -1303,7 +1296,7 @@
 
 									<div class="receipt-divider"></div>
 
-									<div class="total-banner" style="padding: 20px;">
+									<div class="total-banner" style="padding: 15px;">
 										<div style="font-size: 11px; font-weight: 800; text-transform: uppercase; opacity: 0.9;">Final Net Settlement</div>
 										<div style="font-size: 32px; font-weight: 800; margin-top: 5px" class="mono">[[ formatCurrency(data.total) ]]</div>
 									</div>
