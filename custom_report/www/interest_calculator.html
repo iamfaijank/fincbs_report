@@ -1408,6 +1408,17 @@
 					if (this.isLoading) return;
 					if (this.step === 1 && e.key === "Enter" && this.isComplete) this.calculate();
 					if (e.key === "Escape" || (this.step === 2 && e.key === "Backspace" && document.activeElement.tagName !== "INPUT")) this.reset();
+					
+					// Arrow key date navigation
+					if (this.step === 2 && document.activeElement.tagName !== "INPUT") {
+						if (e.key === "ArrowLeft") {
+							e.preventDefault();
+							this.adjustDate(-1, 0);
+						} else if (e.key === "ArrowRight") {
+							e.preventDefault();
+							this.adjustDate(1, 0);
+						}
+					}
 				},
 
 				focusFirst() {
