@@ -1235,7 +1235,7 @@
 											<span class="mono" style="font-size: 13px; font-weight: 800; color: var(--accent); background: rgba(13, 148, 136, 0.1); padding: 2px 8px; border-radius: 6px;">[[ formatDate(exitDate) ]]</span>
 										</div>
 										<div style="margin-top: 10px;">
-											<input type="date" v-model="exitDate" @change="updateCalculations()" style="padding: 10px 14px; border-radius: 12px; border: 2px solid var(--accent); font-family: 'JetBrains Mono'; font-size: 13px; font-weight: 700; width: 100%; box-sizing: border-box;"/>
+											<input type="date" v-model="exitDate" :max="maxExitDate" @change="updateCalculations()" style="padding: 10px 14px; border-radius: 12px; border: 2px solid var(--accent); font-family: 'JetBrains Mono'; font-size: 13px; font-weight: 700; width: 100%; box-sizing: border-box;"/>
 										</div>
 										<div class="date-adjust-group">
 											<button @click="adjustDate(0, -1)" class="btn-adjust btn-year">−1 Year</button>
@@ -1329,6 +1329,8 @@
 					{ label: "Calculating", status: "pending" },
 				],
 				data: null,
+				maxExitDate: "",
+				maxDateDisplay: "",
 				products: [{ name: "SMBG", rate: 8 }, { name: "RD", rate: 8 }],
 				schemeRules: {
 					"2010": { name: "RD 12M", tenure_m: 12, base_rate: 8.0, interest_slabs: [[6, 9, 4.0], [9, 12, 6.0]] },
@@ -1482,7 +1484,9 @@
 							
 							if (result.maturity_date) {
 								const [d, m, y] = result.maturity_date.split("/");
-								this.exitDate = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+								this.maxExitDate = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+								this.maxDateDisplay = result.maturity_date;
+								this.exitDate = this.maxExitDate;
 							}
 							this.data = { 
 								...result, 
@@ -1505,6 +1509,7 @@
 
 				updateCalculations() {
 					if (!this.data) return;
+					this.validateExitDate();
 					const dExit = this.parseDate(this.exitDate);
 					const start = this.parseDate(this.data.acct_opn_date);
 					
@@ -1643,6 +1648,14 @@
 					this.exitDate = `${y}-${m}-${d}`;
 					this.updateCalculations();
 				},
+				validateExitDate() {
+					if (!this.maxExitDate || !this.exitDate) return;
+					if (this.exitDate > this.maxExitDate) {
+						this.exitDate = this.maxExitDate;
+						this.toastMsg = `Exit date cannot exceed maturity date (${this.maxDateDisplay})`;
+						setTimeout(() => { this.toastMsg = ""; }, 3000);
+					}
+				},
 				async copyToClipboard(t, id) {
 					const text = String(t);
 					try {
@@ -1679,5 +1692,18 @@
 				}
 			}).mount("#app");
 		</script>
+
+		<!-- Toast Notification -->
+		<div v-if="toastMsg" style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 12px; font-size: 13px; font-weight: 700; z-index: 1000; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); animation: slideUp 0.3s ease-out; display: flex; align-items: center; gap: 10px;">
+			<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+			[[ toastMsg ]]
+		</div>
+
+		<style>
+			@keyframes slideUp {
+				from { transform: translate(-50%, 20px); opacity: 0; }
+				to { transform: translate(-50%, 0); opacity: 1; }
+			}
+		</style>
 	</body>
 </html>
