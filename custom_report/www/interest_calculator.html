@@ -684,10 +684,35 @@
 				border: 1px solid #e2e8f0;
 				transition: 0.3s;
 			}
-			.summary-card:hover {
-				border-color: var(--accent);
-				background: #fff;
-				box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+			.summary-card.interest-card {
+				position: relative;
+				border: 1px solid transparent !important;
+				background: #fff !important;
+				box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.1);
+			}
+			.border-svg {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				pointer-events: none;
+				border-radius: 20px;
+			}
+			.border-rect {
+				width: 100%;
+				height: 100%;
+				rx: 20px;
+				ry: 20px;
+				fill: none;
+				stroke: #10b981;
+				stroke-width: 2;
+				stroke-dasharray: 5, 5;
+				animation: marching-ants 0.8s linear infinite;
+			}
+			@keyframes marching-ants {
+				from { stroke-dashoffset: 10; }
+				to { stroke-dashoffset: 0; }
 			}
 			.summary-card-label {
 				font-size: 10px;
@@ -1114,7 +1139,8 @@
 										<div class="summary-card-label">Total Transacted</div>
 										<div class="summary-card-value" style="color: var(--accent);">[[ formatCurrency(data.total_tran_sum) ]]</div>
 									</div>
-									<div class="summary-card" style="text-align: right;">
+									<div class="summary-card interest-card" style="text-align: right;">
+										<svg class="border-svg"><rect class="border-rect"></rect></svg>
 										<div class="summary-card-label">Total Interest</div>
 										<div class="summary-card-value blink-interest" style="color: #10b981;">[[ formatCurrency(data.interest) ]]</div>
 									</div>
