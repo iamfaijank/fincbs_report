@@ -749,16 +749,15 @@
 														<span style="font-size: 13px; font-weight: 700; color: var(--primary);">[[ t.type === 'C' ? 'Credit' : 'Debit' ]]</span>
 														<span class="mono" style="font-size: 11px; color: #94a3b8; margin-left: 8px;">[[ t.date ]]</span>
 													</div>
-													<div class="mono" style="font-size: 14px; font-weight: 800;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
-														[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
+													<div style="display: flex; align-items: center; gap: 10px;">
+														<span v-if="t.type === 'C'" style="font-size: 11px; color: var(--accent); font-weight: 800; background: #f0fdf4; padding: 2px 6px; border-radius: 6px; border: 1px solid #dcfce7; display: inline-flex; align-items: center; gap: 4px; font-family: 'Inter', sans-serif;">
+															<span style="font-size: 8px; color: #94a3b8; font-weight: 700; text-transform: uppercase;">Int:</span>
+															+[[ t.scheme_interest ]]
+														</span>
+														<div class="mono" style="font-size: 14px; font-weight: 800;" :style="{ color: t.type === 'C' ? '#10b981' : '#ef4444' }">
+															[[ t.type === 'C' ? '+' : '-' ]] [[ formatCurrency(t.amount).replace('₹', '') ]]
+														</div>
 													</div>
-												</div>
-												<div v-if="t.type === 'C'" style="margin-top: 6px; padding: 8px 12px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1; display: flex; align-items: center; gap: 15px;">
-													<div style="font-size: 11px; color: #475569;"><strong style="color: #94a3b8; font-size: 9px; text-transform: uppercase;">ELG:</strong> ₹[[ formatCurrency(t.elg_amt).replace('₹', '') ]]</div>
-													<div style="color: #e2e8f0;">|</div>
-													<div style="font-size: 11px; color: #475569;"><strong style="color: #94a3b8; font-size: 9px; text-transform: uppercase;">HELD:</strong> [[ t.row_months ]]m</div>
-													<div style="color: #e2e8f0;">|</div>
-													<div style="font-size: 11px; color: var(--accent); font-weight: 700;"><strong style="color: #94a3b8; font-size: 9px; text-transform: uppercase;">SCHEME INT:</strong> +[[ t.scheme_interest ]]</div>
 												</div>
 												<div style="font-size: 11px; color: #64748b; line-height: 1.5; background: #f8fafc; padding: 6px 10px; border-radius: 8px; border-left: 3px solid #e2e8f0; margin-top: 6px;">[[ t.particular ]]</div>
 											</div>
