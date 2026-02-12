@@ -1276,12 +1276,18 @@
 					let monthsHeldTotal = (endAdj.getFullYear() - start.getFullYear()) * 12 + (endAdj.getMonth() - start.getMonth());
 					if (endAdj.getDate() < start.getDate()) monthsHeldTotal--;
 					
+					// Reset all interests first
+					this.data.transactions.forEach(t => { t.accrued_interest = 0; t.scheme_interest = 0; });
+
 					const rules = this.getApplicableRules(this.data.schm_code, monthsHeldTotal);
 					const planned = this.data.planned_installment || 0;
 					let principalSum = 0, accruedIntTotal = 0, totalCash = 0;
 					const processedMonths = new Set();
 
-					this.data.transactions.forEach((t) => {
+					// Sort by date ascending to ensure the 'earliest' date of a month is processed first
+					const sortedTrans = [...this.data.transactions].sort((a, b) => this.parseDate(a.date) - this.parseDate(b.date));
+
+					sortedTrans.forEach((t) => {
 						t.accrued_interest = 0; t.scheme_interest = 0; t.row_months = 0; t.elg_amt = 0;
 						if (t.type === 'C') {
 							totalCash += t.amount;
@@ -1292,6 +1298,7 @@
 								let rm = (rEnd.getFullYear() - dVal.getFullYear()) * 12 + (rEnd.getMonth() - dVal.getMonth());
 								if (rEnd.getDate() < dVal.getDate()) rm--;
 								t.row_months = Math.max(0, rm);
+								
 								if (t.row_months > 0 && !processedMonths.has(mKey)) {
 									processedMonths.add(mKey);
 									principalSum += t.amount;
@@ -1303,6 +1310,15 @@
 									t.scheme_interest = Math.round(t.elg_amt * (Math.pow(1 + ((rules.meta.base_rate || 8) / 400), t.row_months / 3) - 1));
 								}
 							}
+						}
+					});
+					
+					// Update the original array items (PetiteVue reactivity)
+					this.data.transactions.forEach(orig => {
+						const match = sortedTrans.find(s => s.date === orig.date && s.amount === orig.amount && s.particular === orig.particular);
+						if (match) {
+							orig.accrued_interest = match.accrued_interest;
+							orig.scheme_interest = match.scheme_interest;
 						}
 					});
 					this.data.total_tran_sum = totalCash;
