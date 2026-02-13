@@ -1413,36 +1413,38 @@
 													<span v-if="data.appliedRate === schemeRules[data.schm_code].base_rate" style="color: #10b981">●</span><span v-else style="opacity: 0.3">○</span> 
 													[[ schemeRules[data.schm_code].base_rate ]]% : Mature
 												</div>
-											</div>
-										</div>
-										<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color, background: data.slabStatus.color + '15' }" style="margin-top: 8px; font-size: 11px; font-weight: 800; padding: 8px 12px; border-radius: 10px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid currentColor;">[[ data.slabStatus.label ]]</div>
-									</div>
-
-									<h3 style="margin-top: 0px; font-size: 15px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">Settlement Breakdown</h3>
-									
-									<div class="summary-item">
-										<span class="item-label">Principal Amount</span>
-										<span class="item-value">[[ formatCurrency(data.principal) ]]</span>
-									</div>
-									
-									<div class="summary-item highlight">
-										<span class="item-label">Calculated Interest ([[ data.appliedRate ]]%)</span>
-										<span class="item-value">+ [[ formatCurrency(data.interest) ]]</span>
-									</div>
-									
-									<div class="summary-item" :class="{ 'penalty-active': data.penalty > 0 }">
-										<span class="item-label">Penalty / Deductions</span>
-										<span class="item-value">- [[ formatCurrency(data.penalty) ]]</span>
-									</div>
-
-									<div class="receipt-divider"></div>
-
-									<div class="total-banner" style="padding: 15px;">
-										<div style="font-size: 11px; font-weight: 800; text-transform: uppercase; opacity: 0.9;">Final Net Settlement</div>
-										<div style="font-size: 32px; font-weight: 800; margin-top: 5px" class="mono">[[ formatCurrency(data.total) ]]</div>
-									</div>
-								</div>
-							</div>
+																					</div>
+																				</div>
+											
+																				<h3 style="margin-top: 0px; font-size: 15px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">Settlement Breakdown</h3>
+																				
+																				<div class="summary-item">
+																					<span class="item-label">Principal Amount</span>
+																					<span class="item-value">[[ formatCurrency(data.principal) ]]</span>
+																				</div>
+																				
+																				<div class="summary-item highlight">
+																					<span class="item-label">Calculated Interest ([[ data.appliedRate ]]%)</span>
+																					<span class="item-value">+ [[ formatCurrency(data.interest) ]]</span>
+																				</div>
+																				
+																				<div class="summary-item" :class="{ 'penalty-active': data.penalty > 0 }">
+																					<span class="item-label">Penalty / Deductions</span>
+																					<span class="item-value">- [[ formatCurrency(data.penalty) ]]</span>
+																				</div>
+											
+																				<div class="receipt-divider"></div>
+											
+																				<div class="total-banner" style="padding: 15px;">
+																					<div style="display: flex; justify-content: space-between; align-items: center;">
+																						<div style="font-size: 11px; font-weight: 800; text-transform: uppercase; opacity: 0.9;">Final Net Settlement</div>
+																						<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color }" style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
+																							[[ data.slabStatus.label ]]
+																						</div>
+																					</div>
+																					<div style="font-size: 32px; font-weight: 800; margin-top: 5px" class="mono">[[ formatCurrency(data.total) ]]</div>
+																				</div>
+																			</div>							</div>
 						</div>
 					</div>
 								</div>
@@ -1729,7 +1731,7 @@
 					this.data.penalty = Math.round(totalCash * penPct / 100);
 					this.data.total = totalCash + accruedIntTotal - this.data.penalty;
 					this.data.monthsHeld = monthsHeldTotal;
-					this.data.slabStatus = monthsHeldTotal >= rules.meta.tenure_m ? { label: `Matured: ${rules.appliedRate}%`, color: "#10b981" } : (rules.appliedRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Early: ${rules.appliedRate}%`, color: "#f59e0b" });
+					this.data.slabStatus = monthsHeldTotal >= rules.meta.tenure_m ? { label: `Matured: ${rules.appliedRate}%`, color: "#10b981" } : (rules.appliedRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Prematured: ${rules.appliedRate}%`, color: "#f59e0b" });
 				},
 
 				getApplicableRules(sc, m) {
