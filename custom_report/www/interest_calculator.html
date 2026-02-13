@@ -31,11 +31,12 @@
 				padding: 0;
 				display: flex;
 				flex-direction: column;
-				height: 100vh;
-				height: 100dvh;
+				min-height: 100vh;
+				min-height: 100dvh;
 				width: 100%;
 				position: relative;
-				overflow: hidden;
+				overflow-y: auto;
+				overflow-x: hidden;
 			}
 
 			/* Animated Background */
@@ -65,8 +66,6 @@
 			.app-container {
 				display: flex;
 				flex-direction: column;
-				min-height: 100vh;
-				min-height: 100dvh;
 				width: 100%;
 				z-index: 1;
 			}
@@ -81,6 +80,9 @@
 				align-items: center;
 				flex-shrink: 0;
 				box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+				position: sticky;
+				top: 0;
+				z-index: 100;
 			}
 
 			.brand-text {
@@ -103,12 +105,9 @@
 			}
 
 			.content-area {
-				flex: 1;
 				display: flex;
 				flex-direction: column;
-				min-height: 0;
 				padding: 20px 40px;
-				overflow-y: auto;
 			}
 
 			/* Step Bar */
@@ -1720,7 +1719,7 @@
 					this.data.baseRate = rules.meta.base_rate;
 					let penPct = (monthsHeldTotal < rules.meta.tenure_m) ? (this.data.schm_code === '2005' ? 1.8 : 1.0) : 0;
 					this.data.penalty = Math.round(totalCash * penPct / 100);
-					this.data.total = totalCash + accruedIntTotal - this.data.penalty;
+					this.data.total = Math.round(totalCash + accruedIntTotal - this.data.penalty);
 					this.data.monthsHeld = monthsHeldTotal;
 					this.data.slabStatus = monthsHeldTotal >= rules.meta.tenure_m ? { label: `Matured: ${rules.appliedRate}%`, color: "#10b981" } : (rules.appliedRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Prematured: ${rules.appliedRate}%`, color: "#f59e0b" });
 				},
@@ -1751,7 +1750,10 @@
 				},
 
 				selectProduct(p) { this.selectedProduct = p; if (this.data) this.updateCalculations(); },
-				formatCurrency(v) { return v === undefined || v === null ? "₹0" : "₹" + v.toLocaleString("en-IN"); },
+				formatCurrency(v) { 
+					if (v === undefined || v === null) return "₹0";
+					return "₹" + Math.round(v).toLocaleString("en-IN"); 
+				},
 				formatDate(ds) { if (!ds) return ""; const [y, m, d] = ds.split('-'); return `${d}/${m}/${y}`; },
 				getMonthAbbr(dateStr) {
 					if (!dateStr) return "";

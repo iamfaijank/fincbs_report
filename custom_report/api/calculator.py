@@ -100,7 +100,7 @@ def get_account_details(foracid=None, settlement_date=None):
                 "amount": amt,
                 "type": p_type,
                 "particular": particular or "",
-                "row_interest": int(round(row_scheme_interest)),
+                "row_interest": int(row_scheme_interest + 0.5),
                 "row_months": row_months,
                 "elg_amt": eligible_amt
             })
@@ -118,9 +118,9 @@ def get_account_details(foracid=None, settlement_date=None):
             "maturity_date": mat_dt.strftime("%d/%m/%Y"), "maturity_amount": float(mat_amt or 0),
             "deposit_period_mths": int(period or 0), "deposit_amount": float(planned_installment or 0),
             "planned_installment": float(planned_installment or 0),
-            "transactions": transactions, "principal": round(principal_sum, 2),
-            "interest": int(round(total_interest)), "penalty": int(round(penalty_amt)),
-            "net_payable": int(round(principal_sum + total_interest - penalty_amt)),
+            "transactions": transactions, "principal": int(principal_sum + 0.5),
+            "interest": int(total_interest + 0.5), "penalty": int(penalty_amt + 0.5),
+            "net_payable": int(principal_sum + total_interest - penalty_amt + 0.5),
             "applied_rate": app_rate, "months_held": months_held_total
         }
     except Exception as e:
