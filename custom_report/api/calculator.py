@@ -25,6 +25,79 @@ def get_excel_interest_rate(schm_code, months_held):
             return rate
     return 0.0
 
+def get_service_charge_percent(schm_code, months_held):
+    sc = str(schm_code)
+    # RD Schemes
+    if sc == "2010":
+        if months_held < 3: return 6.0
+        if months_held < 6: return 4.0
+        return 0.0
+    if sc == "2011":
+        if months_held < 6: return 6.0
+        if months_held < 12: return 4.0
+        return 0.0
+    if sc == "2012":
+        if months_held < 9: return 6.0
+        if months_held < 18: return 4.0
+        return 0.0
+    if sc == "2013":
+        if months_held < 12: return 6.0
+        if months_held < 24: return 4.0
+        return 0.0
+    if sc in ["2014", "2015"]:
+        if months_held < 15: return 6.0
+        if months_held < 30: return 4.0
+        return 0.0
+    
+    # Static & Tiered Percentages
+    if sc in ["2005", "2006"]: return 18.0
+    if sc in ["2002", "2003", "2203"]: return 11.0
+    if sc in ["2101", "2104"]: return 3.0
+    if sc in ["2018"]: return 2.5
+    if sc in ["2019", "2023"]: return 3.5
+    
+    if sc in ["2001", "2027", "2103", "2201"]:
+        if months_held < 12: return 11.0 if sc == "2201" else 9.5
+        if months_held < 24: return 9.5 if sc == "2201" else 8.0
+        if months_held < 36: return 8.0 if sc == "2201" else 6.5
+        if months_held < 48: return 6.5 if sc == "2201" else 5.0
+        if sc == "2201" and months_held < 60: return 5.0
+        return 3.5
+
+    if sc == "2004":
+        if months_held < 3: return 6.0
+        if months_held < 8: return 4.0
+        return 0.0
+        
+    if sc in ["2020", "2024"]:
+        limit = 13 if sc == "2020" else 12
+        return 5.0 if months_held < limit else 3.5
+        
+    if sc in ["2021", "2025"]:
+        limit1 = 13 if sc == "2021" else 12
+        limit2 = 26 if sc == "2021" else 24
+        if months_held < limit1: return 6.5
+        if months_held < limit2: return 5.0
+        return 3.5
+        
+    if sc == "2026":
+        if months_held < 12: return 8.0
+        if months_held < 24: return 6.5
+        if months_held < 36: return 5.0
+        return 3.5
+        
+    if sc == "2022":
+        return 5.0 if months_held < 26 else 3.5
+        
+    if sc in ["2028", "2029", "2030"]:
+        return 5.0 if months_held < 24 else 3.5
+        
+    if sc in ["2102", "2105", "2202"]:
+        if months_held < 12: return 5.0
+        return 3.0 if sc == "2102" else 3.5
+
+    return 0.0
+
 @frappe.whitelist()
 def get_account_details(foracid=None, settlement_date=None):
     if not foracid: return {"success": False, "error": "Account number is required"}
@@ -100,17 +173,17 @@ def get_account_details(foracid=None, settlement_date=None):
                 "amount": amt,
                 "type": p_type,
                 "particular": particular or "",
-                "row_interest": int(round(row_scheme_interest)),
+                "row_interest": int(row_scheme_interest + 0.5),
                 "row_months": row_months,
                 "elg_amt": eligible_amt
             })
 
         transactions.reverse()
 
-        penalty_amt = 0.0
-        rule_meta = RD_SLABS.get(str(schm_code), {"tenure": 0})
-        if months_held_total < rule_meta['tenure']:
-            penalty_amt = principal_sum * (0.018 if schm_code == '2005' else 0.01)
+        # Calculate Service Charge with 18% GST
+        sc_percent = get_service_charge_percent(schm_code, months_held_total)
+        base_charge = principal_sum * (sc_percent / 100.0)
+        penalty_amt = base_charge * 1.18 # Add 18% GST
 
         return {
             "success": True, "cif_id": cif, "acct_name": name, "sol_id": sol_id, "sol_desc": sol_desc,
@@ -118,9 +191,9 @@ def get_account_details(foracid=None, settlement_date=None):
             "maturity_date": mat_dt.strftime("%d/%m/%Y"), "maturity_amount": float(mat_amt or 0),
             "deposit_period_mths": int(period or 0), "deposit_amount": float(planned_installment or 0),
             "planned_installment": float(planned_installment or 0),
-            "transactions": transactions, "principal": round(principal_sum, 2),
-            "interest": int(round(total_interest)), "penalty": int(round(penalty_amt)),
-            "net_payable": int(round(principal_sum + total_interest - penalty_amt)),
+            "transactions": transactions, "principal": int(principal_sum + 0.5),
+            "interest": int(total_interest + 0.5), "penalty": int(penalty_amt + 0.5),
+            "net_payable": int(principal_sum + total_interest - penalty_amt + 0.5),
             "applied_rate": app_rate, "months_held": months_held_total
         }
     except Exception as e:

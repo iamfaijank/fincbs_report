@@ -31,11 +31,12 @@
 				padding: 0;
 				display: flex;
 				flex-direction: column;
-				height: 100vh;
-				height: 100dvh;
+				min-height: 100vh;
+				min-height: 100dvh;
 				width: 100%;
 				position: relative;
-				overflow: hidden;
+				overflow-y: auto;
+				overflow-x: hidden;
 			}
 
 			/* Animated Background */
@@ -65,8 +66,6 @@
 			.app-container {
 				display: flex;
 				flex-direction: column;
-				min-height: 100vh;
-				min-height: 100dvh;
 				width: 100%;
 				z-index: 1;
 			}
@@ -81,6 +80,9 @@
 				align-items: center;
 				flex-shrink: 0;
 				box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+				position: sticky;
+				top: 0;
+				z-index: 100;
 			}
 
 			.brand-text {
@@ -103,12 +105,9 @@
 			}
 
 			.content-area {
-				flex: 1;
 				display: flex;
 				flex-direction: column;
-				min-height: 0;
 				padding: 20px 40px;
-				overflow: hidden; /* Strict SPA: No content area scroll */
 			}
 
 			/* Step Bar */
@@ -285,7 +284,6 @@
 			.stage-padding {
 				padding: 20px;
 				text-align: center;
-				flex: 1;
 				display: flex;
 				flex-direction: column;
 				align-items: center;
@@ -293,7 +291,6 @@
 				min-height: 0;
 				width: 100%;
 				box-sizing: border-box;
-				overflow: hidden;
 			}
 			.stage-scroll-content {
 				flex: 1;
@@ -381,16 +378,8 @@
 			}
 
 			@media (max-width: 1200px) {
-				body {
-					overflow: auto;
-					height: auto;
-				}
-				.app-container {
-					height: auto;
-				}
 				.content-area {
 					padding: 10px 20px;
-					overflow: visible;
 				}
 				.dashboard-grid {
 					grid-template-columns: 1fr;
@@ -946,6 +935,7 @@
 			}
 
 			/* Custom Scrollbar */
+			.content-area::-webkit-scrollbar,
 			.tran-list::-webkit-scrollbar,
 			.breakdown-scroll::-webkit-scrollbar {
 				width: 6px;
@@ -1172,7 +1162,7 @@
 					</div>
 
 					<!-- Step 2 -->
-					<div v-if="data" v-show="step === 2" style="animation: slideIn 0.5s ease-out; display: flex; flex-direction: column; flex: 1; min-height: 0;">
+					<div v-if="data" v-show="step === 2" style="animation: slideIn 0.5s ease-out; display: flex; flex-direction: column; min-height: 0;">
 						<div class="tabs-container" style="align-items: center; justify-content: space-between; gap: 24px; background: none; padding: 0 0 10px 0;">
 							<div style="display: flex; align-items: center; gap: 24px;">
 								<div class="tab-item active" style="cursor: default; padding: 12px 30px;">
@@ -1429,7 +1419,7 @@
 																				</div>
 																				
 																				<div class="summary-item" :class="{ 'penalty-active': data.penalty > 0 }">
-																					<span class="item-label">Penalty / Deductions</span>
+																					<span class="item-label">Service Charges + GST(18%)</span>
 																					<span class="item-value">- [[ formatCurrency(data.penalty) ]]</span>
 																				</div>
 											
@@ -1727,9 +1717,13 @@
 					this.data.interest = accruedIntTotal;
 					this.data.appliedRate = rules.appliedRate;
 					this.data.baseRate = rules.meta.base_rate;
-					let penPct = (monthsHeldTotal < rules.meta.tenure_m) ? (this.data.schm_code === '2005' ? 1.8 : 1.0) : 0;
-					this.data.penalty = Math.round(totalCash * penPct / 100);
-					this.data.total = totalCash + accruedIntTotal - this.data.penalty;
+					
+					// Calculate Service Charge with 18% GST
+					const scPercent = this.getServiceChargePercent(this.data.schm_code, monthsHeldTotal);
+					const baseCharge = totalCash * (scPercent / 100.0);
+					this.data.penalty = Math.round(baseCharge * 1.18);
+					
+					this.data.total = Math.round(totalCash + accruedIntTotal - this.data.penalty);
 					this.data.monthsHeld = monthsHeldTotal;
 					this.data.slabStatus = monthsHeldTotal >= rules.meta.tenure_m ? { label: `Matured: ${rules.appliedRate}%`, color: "#10b981" } : (rules.appliedRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Prematured: ${rules.appliedRate}%`, color: "#f59e0b" });
 				},
@@ -1759,8 +1753,96 @@
 					return { meta: r, appliedRate: ar };
 				},
 
+				getServiceChargePercent(schm_code, months_held) {
+					const sc = String(schm_code);
+					if (sc === "2010") {
+						if (months_held < 3) return 6.0;
+						if (months_held < 6) return 4.0;
+						return 0.0;
+					}
+					if (sc === "2011") {
+						if (months_held < 6) return 6.0;
+						if (months_held < 12) return 4.0;
+						return 0.0;
+					}
+					if (sc === "2012") {
+						if (months_held < 9) return 6.0;
+						if (months_held < 18) return 4.0;
+						return 0.0;
+					}
+					if (sc === "2013") {
+						if (months_held < 12) return 6.0;
+						if (months_held < 24) return 4.0;
+						return 0.0;
+					}
+					if (sc === "2014" || sc === "2015") {
+						if (months_held < 15) return 6.0;
+						if (months_held < 30) return 4.0;
+						return 0.0;
+					}
+					
+					if (sc === "2005" || sc === "2006") return 18.0;
+					if (sc === "2002" || sc === "2003" || sc === "2203") return 11.0;
+					if (sc === "2101" || sc === "2104") return 3.0;
+					if (sc === "2018") return 2.5;
+					if (sc === "2019" || sc === "2023") return 3.5;
+					
+					if (sc === "2001" || sc === "2027" || sc === "2103" || sc === "2201") {
+						if (months_held < 12) return sc === "2201" ? 11.0 : 9.5;
+						if (months_held < 24) return sc === "2201" ? 9.5 : 8.0;
+						if (months_held < 36) return sc === "2201" ? 8.0 : 6.5;
+						if (months_held < 48) return sc === "2201" ? 6.5 : 5.0;
+						if (sc === "2201" && months_held < 60) return 5.0;
+						return 3.5;
+					}
+
+					if (sc === "2004") {
+						if (months_held < 3) return 6.0;
+						if (months_held < 8) return 4.0;
+						return 0.0;
+					}
+					
+					if (sc === "2020" || sc === "2024") {
+						let limit = sc === "2020" ? 13 : 12;
+						return months_held < limit ? 5.0 : 3.5;
+					}
+					
+					if (sc === "2021" || sc === "2025") {
+						let limit1 = sc === "2021" ? 13 : 12;
+						let limit2 = sc === "2021" ? 26 : 24;
+						if (months_held < limit1) return 6.5;
+						if (months_held < limit2) return 5.0;
+						return 3.5;
+					}
+					
+					if (sc === "2026") {
+						if (months_held < 12) return 8.0;
+						if (months_held < 24) return 6.5;
+						if (months_held < 36) return 5.0;
+						return 3.5;
+					}
+					
+					if (sc === "2022") {
+						return months_held < 26 ? 5.0 : 3.5;
+					}
+					
+					if (sc === "2028" || sc === "2029" || sc === "2030") {
+						return months_held < 24 ? 5.0 : 3.5;
+					}
+					
+					if (sc === "2102" || sc === "2105" || sc === "2202") {
+						if (months_held < 12) return 5.0;
+						return sc === "2102" ? 3.0 : 3.5;
+					}
+
+					return 0.0;
+				},
+
 				selectProduct(p) { this.selectedProduct = p; if (this.data) this.updateCalculations(); },
-				formatCurrency(v) { return v === undefined || v === null ? "₹0" : "₹" + v.toLocaleString("en-IN"); },
+				formatCurrency(v) { 
+					if (v === undefined || v === null) return "₹0";
+					return "₹" + Math.round(v).toLocaleString("en-IN"); 
+				},
 				formatDate(ds) { if (!ds) return ""; const [y, m, d] = ds.split('-'); return `${d}/${m}/${y}`; },
 				getMonthAbbr(dateStr) {
 					if (!dateStr) return "";
