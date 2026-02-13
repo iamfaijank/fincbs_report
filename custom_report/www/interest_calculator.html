@@ -108,7 +108,7 @@
 				flex-direction: column;
 				min-height: 0;
 				padding: 20px 40px;
-				overflow: hidden; /* Strict SPA: No content area scroll */
+				overflow-y: auto;
 			}
 
 			/* Step Bar */
@@ -285,7 +285,6 @@
 			.stage-padding {
 				padding: 20px;
 				text-align: center;
-				flex: 1;
 				display: flex;
 				flex-direction: column;
 				align-items: center;
@@ -293,7 +292,6 @@
 				min-height: 0;
 				width: 100%;
 				box-sizing: border-box;
-				overflow: hidden;
 			}
 			.stage-scroll-content {
 				flex: 1;
@@ -381,16 +379,8 @@
 			}
 
 			@media (max-width: 1200px) {
-				body {
-					overflow: auto;
-					height: auto;
-				}
-				.app-container {
-					height: auto;
-				}
 				.content-area {
 					padding: 10px 20px;
-					overflow: visible;
 				}
 				.dashboard-grid {
 					grid-template-columns: 1fr;
@@ -946,6 +936,7 @@
 			}
 
 			/* Custom Scrollbar */
+			.content-area::-webkit-scrollbar,
 			.tran-list::-webkit-scrollbar,
 			.breakdown-scroll::-webkit-scrollbar {
 				width: 6px;
@@ -1172,7 +1163,7 @@
 					</div>
 
 					<!-- Step 2 -->
-					<div v-if="data" v-show="step === 2" style="animation: slideIn 0.5s ease-out; display: flex; flex-direction: column; flex: 1; min-height: 0;">
+					<div v-if="data" v-show="step === 2" style="animation: slideIn 0.5s ease-out; display: flex; flex-direction: column; min-height: 0;">
 						<div class="tabs-container" style="align-items: center; justify-content: space-between; gap: 24px; background: none; padding: 0 0 10px 0;">
 							<div style="display: flex; align-items: center; gap: 24px;">
 								<div class="tab-item active" style="cursor: default; padding: 12px 30px;">
