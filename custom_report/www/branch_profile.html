@@ -1958,7 +1958,8 @@
 						allowed_zones: {{ allowed_zones | tojson }},
 						allowed_regions: {{ allowed_regions | tojson }},
 						allowed_sol_ids: {{ allowed_sol_ids | tojson }},
-						all_regions_allowed: {{ 'true' if all_regions_allowed else 'false' }}
+						all_regions_allowed: {{ 'true' if all_regions_allowed else 'false' }},
+						has_access: {{ 'true' if user_permissions.has_access else 'false' }}
 					}
 				},
 
@@ -1987,6 +1988,12 @@
 				value(v) { // Corrected: removed duplicate definition
 					if (!v || v === "#N/A") return "--";
 					return v;
+				},
+
+				extractNumber(s) {
+					if (!s) return null;
+					const match = String(s).match(/\d+/);
+					return match ? match[0] : null;
 				},
 
 				loadRecentBranches() {
@@ -2124,12 +2131,18 @@
 							// Priority 2: Zone & Region (if no specific SOL IDs)
 							else {
 								// Check Zone
-								if (p.allowed_zones.length && !p.allowed_zones.includes(data.zone)) {
-									allowed = false;
+								if (p.allowed_zones.length) {
+									const branchZoneNum = this.extractNumber(data.zone);
+									if (!p.allowed_zones.some(z => this.extractNumber(z) === branchZoneNum)) {
+										allowed = false;
+									}
 								}
 								// Check Region
-								if (allowed && !p.all_regions_allowed && p.allowed_regions.length && !p.allowed_regions.includes(data.region)) {
-									allowed = false;
+								if (allowed && !p.all_regions_allowed && p.allowed_regions.length) {
+									const branchRegionNum = this.extractNumber(data.region);
+									if (!p.allowed_regions.some(r => this.extractNumber(r) === branchRegionNum)) {
+										allowed = false;
+									}
 								}
 							}
 
