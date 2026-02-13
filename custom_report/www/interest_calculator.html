@@ -586,8 +586,8 @@
 				display: flex;
 				flex-direction: column;
 				gap: 4px;
-				text-align: right;
-				align-items: flex-end;
+				text-align: center;
+				align-items: center;
 			}
 			.info-label {
 				font-size: 9px;
@@ -1192,16 +1192,16 @@
 							<div class="summary-header-grid">
 								<div class="secondary-info-grid" style="grid-template-columns: repeat(4, auto);">
 									<div class="info-item">
+										<span class="info-label">Opening Date</span>
+										<div class="info-value mono">[[ data.acct_opn_date ]]</div>
+									</div>
+									<div class="info-item">
 										<span class="info-label">Deposit Amount</span>
 										<div class="info-value mono">[[ formatCurrency(data.deposit_amount) ]]</div>
 									</div>
 									<div class="info-item">
 										<span class="info-label">Tenure</span>
 										<div class="info-value">[[ data.deposit_period_mths ]] Months</div>
-									</div>
-									<div class="info-item">
-										<span class="info-label">Opening Date</span>
-										<div class="info-value mono">[[ data.acct_opn_date ]]</div>
 									</div>
 									<div class="info-item">
 										<span class="info-label">Maturity Date</span>
