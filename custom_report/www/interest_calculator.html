@@ -586,8 +586,8 @@
 				display: flex;
 				flex-direction: column;
 				gap: 4px;
-				text-align: right;
-				align-items: flex-end;
+				text-align: center;
+				align-items: center;
 			}
 			.info-label {
 				font-size: 9px;
@@ -985,7 +985,7 @@
 			.timeline-container {
 				width: 100%;
 				overflow-x: auto;
-				padding: 25px 0 15px; /* Added top padding for sr no */
+				padding: 0 0 15px;
 				margin-bottom: 5px;
 				flex-shrink: 0;
 				-webkit-overflow-scrolling: touch;
@@ -995,30 +995,45 @@
 			
 			.timeline-track {
 				display: flex;
-				gap: 8px; /* Reduced gap */
-				padding: 0;
-				min-width: max-content;
+				justify-content: space-between;
+				gap: 8px;
+				padding: 0 2px;
+				min-width: 100%;
+				box-sizing: border-box;
+				position: relative;
+			}
+			.timeline-track::before {
+				content: "";
+				position: absolute;
+				top: 33px; /* Center of the card relative to tm-count + gaps */
+				left: 14px;
+				right: 14px;
+				border-top: 2px dotted #e2e8f0;
+				z-index: 0;
 			}
 			.timeline-card-wrapper {
 				display: flex;
 				flex-direction: column;
 				align-items: center;
-				gap: 2px; /* Reduced gap between sr no and card */
+				gap: 4px;
 				position: relative;
+				flex-shrink: 0;
+				z-index: 1;
 			}
 			.tm-count { 
-				font-size: 10px; /* Increased font size */
+				font-size: 13px;
 				font-weight: 800; 
 				color: #cbd5e1; 
 				transition: 0.2s;
+				line-height: 1;
 			}
 			.active .tm-count {
 				color: var(--accent);
 			}
 
 			.timeline-card {
-				width: 32px;
-				height: 36px; /* Reduced height */
+				width: 28px;
+				height: 28px;
 				background: #fff;
 				border: 1.2px solid #e2e8f0;
 				border-radius: 6px;
@@ -1049,13 +1064,13 @@
 			.timeline-card.selected .tm-month { color: white; }
 			.timeline-card.selected .tm-year { color: rgba(255,255,255,0.7); }
 
-			.tm-month { font-size: 9px; font-weight: 800; color: var(--primary); transition: 0.2s; line-height: 1; }
-			.tm-year { font-size: 8px; font-weight: 700; color: #94a3b8; transition: 0.2s; margin-top: 1px; }
+			.tm-month { font-size: 8px; font-weight: 800; color: var(--primary); transition: 0.2s; line-height: 1; }
+			.tm-year { font-size: 7px; font-weight: 700; color: #94a3b8; transition: 0.2s; margin-top: 1px; }
 			
 			@media (max-width: 1200px) {
-				.timeline-track { padding: 0 20px; gap: 4px; }
-				.timeline-card { width: 34px; height: 42px; border-radius: 6px; }
-				.tm-month { font-size: 9px; }
+				.timeline-track { padding: 0 10px; gap: 6px; }
+				.timeline-card { width: 28px; height: 28px; border-radius: 6px; }
+				.tm-month { font-size: 8px; }
 				.tm-year { font-size: 6px; }
 			}
 		</style>
@@ -1158,7 +1173,7 @@
 
 					<!-- Step 2 -->
 					<div v-if="data" v-show="step === 2" style="animation: slideIn 0.5s ease-out; display: flex; flex-direction: column; flex: 1; min-height: 0;">
-						<div class="tabs-container" style="align-items: center; justify-content: space-between; gap: 24px; background: none; padding: 0 0 20px 0;">
+						<div class="tabs-container" style="align-items: center; justify-content: space-between; gap: 24px; background: none; padding: 0 0 10px 0;">
 							<div style="display: flex; align-items: center; gap: 24px;">
 								<div class="tab-item active" style="cursor: default; padding: 12px 30px;">
 									<div class="check-badge">✓</div>
@@ -1177,16 +1192,16 @@
 							<div class="summary-header-grid">
 								<div class="secondary-info-grid" style="grid-template-columns: repeat(4, auto);">
 									<div class="info-item">
+										<span class="info-label">Opening Date</span>
+										<div class="info-value mono">[[ data.acct_opn_date ]]</div>
+									</div>
+									<div class="info-item">
 										<span class="info-label">Deposit Amount</span>
 										<div class="info-value mono">[[ formatCurrency(data.deposit_amount) ]]</div>
 									</div>
 									<div class="info-item">
 										<span class="info-label">Tenure</span>
 										<div class="info-value">[[ data.deposit_period_mths ]] Months</div>
-									</div>
-									<div class="info-item">
-										<span class="info-label">Opening Date</span>
-										<div class="info-value mono">[[ data.acct_opn_date ]]</div>
 									</div>
 									<div class="info-item">
 										<span class="info-label">Maturity Date</span>
@@ -1283,7 +1298,7 @@
 									</div>
 								</div>
 
-								<div style="margin-top: 30px; padding-top: 20px; border-top: 1px dashed #e2e8f0; display: flex; align-items: center; gap: 15px">
+								<div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e2e8f0; display: flex; align-items: center; gap: 15px">
 									<button @click="reset" style="background: white; border: 1px solid var(--border); padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: 700; color: #64748b; font-size: 13px; transition: 0.2s;" onmouseover="this.style.borderColor='var(--accent)'; this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'; this.style.color='#64748b'">
 										← Reset Session
 									</button>
@@ -1398,36 +1413,38 @@
 													<span v-if="data.appliedRate === schemeRules[data.schm_code].base_rate" style="color: #10b981">●</span><span v-else style="opacity: 0.3">○</span> 
 													[[ schemeRules[data.schm_code].base_rate ]]% : Mature
 												</div>
-											</div>
-										</div>
-										<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color, background: data.slabStatus.color + '15' }" style="margin-top: 8px; font-size: 11px; font-weight: 800; padding: 8px 12px; border-radius: 10px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid currentColor;">[[ data.slabStatus.label ]]</div>
-									</div>
-
-									<h3 style="margin-top: 0px; font-size: 15px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">Settlement Breakdown</h3>
-									
-									<div class="summary-item">
-										<span class="item-label">Principal Amount</span>
-										<span class="item-value">[[ formatCurrency(data.principal) ]]</span>
-									</div>
-									
-									<div class="summary-item highlight">
-										<span class="item-label">Calculated Interest ([[ data.appliedRate ]]%)</span>
-										<span class="item-value">+ [[ formatCurrency(data.interest) ]]</span>
-									</div>
-									
-									<div class="summary-item" :class="{ 'penalty-active': data.penalty > 0 }">
-										<span class="item-label">Penalty / Deductions</span>
-										<span class="item-value">- [[ formatCurrency(data.penalty) ]]</span>
-									</div>
-
-									<div class="receipt-divider"></div>
-
-									<div class="total-banner" style="padding: 15px;">
-										<div style="font-size: 11px; font-weight: 800; text-transform: uppercase; opacity: 0.9;">Final Net Settlement</div>
-										<div style="font-size: 32px; font-weight: 800; margin-top: 5px" class="mono">[[ formatCurrency(data.total) ]]</div>
-									</div>
-								</div>
-							</div>
+																					</div>
+																				</div>
+											
+																				<h3 style="margin-top: 0px; font-size: 15px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">Settlement Breakdown</h3>
+																				
+																				<div class="summary-item">
+																					<span class="item-label">Principal Amount</span>
+																					<span class="item-value">[[ formatCurrency(data.principal) ]]</span>
+																				</div>
+																				
+																				<div class="summary-item highlight">
+																					<span class="item-label">Calculated Interest ([[ data.appliedRate ]]%)</span>
+																					<span class="item-value">+ [[ formatCurrency(data.interest) ]]</span>
+																				</div>
+																				
+																				<div class="summary-item" :class="{ 'penalty-active': data.penalty > 0 }">
+																					<span class="item-label">Penalty / Deductions</span>
+																					<span class="item-value">- [[ formatCurrency(data.penalty) ]]</span>
+																				</div>
+											
+																				<div class="receipt-divider"></div>
+											
+																				<div class="total-banner" style="padding: 15px;">
+																					<div style="display: flex; justify-content: space-between; align-items: center;">
+																						<div style="font-size: 11px; font-weight: 800; text-transform: uppercase; opacity: 0.9;">Final Net Settlement</div>
+																						<div v-if="data.slabStatus" :style="{ color: data.slabStatus.color }" style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
+																							[[ data.slabStatus.label ]]
+																						</div>
+																					</div>
+																					<div style="font-size: 32px; font-weight: 800; margin-top: 5px" class="mono">[[ formatCurrency(data.total) ]]</div>
+																				</div>
+																			</div>							</div>
 						</div>
 					</div>
 								</div>
@@ -1714,7 +1731,7 @@
 					this.data.penalty = Math.round(totalCash * penPct / 100);
 					this.data.total = totalCash + accruedIntTotal - this.data.penalty;
 					this.data.monthsHeld = monthsHeldTotal;
-					this.data.slabStatus = monthsHeldTotal >= rules.meta.tenure_m ? { label: `Matured: ${rules.appliedRate}%`, color: "#10b981" } : (rules.appliedRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Early: ${rules.appliedRate}%`, color: "#f59e0b" });
+					this.data.slabStatus = monthsHeldTotal >= rules.meta.tenure_m ? { label: `Matured: ${rules.appliedRate}%`, color: "#10b981" } : (rules.appliedRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Prematured: ${rules.appliedRate}%`, color: "#f59e0b" });
 				},
 
 				getApplicableRules(sc, m) {
