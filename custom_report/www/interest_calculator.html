@@ -1313,8 +1313,8 @@
 										</div>
 										<div class="tran-right">
 											<div v-if="t.type === 'C'" class="interest-value">
-												<span class="iv-label">INTEREST</span>
-												<span class="iv-amount">[[ formatCurrency(t.scheme_interest || 0) ]]</span>
+												<span class="iv-label">INT @ [[ data.appliedRate ]]%</span>
+												<span class="iv-amount">[[ formatCurrency(t.accrued_interest || 0) ]]</span>
 											</div>
 										</div>
 									</div>
@@ -1634,86 +1634,98 @@
 					const dMaturity = this.parseDate(this.data.maturity_date);
 					const start = this.parseDate(this.data.acct_opn_date);
 					
-					// Match backend: relativedelta(sett_dt + 1 day, opn_dt)
-					const endAdj = new Date(dExit); 
-					endAdj.setDate(endAdj.getDate() + 1);
-					
-					let monthsHeldTotal = (endAdj.getFullYear() - start.getFullYear()) * 12 + (endAdj.getMonth() - start.getMonth());
-					if (endAdj.getDate() < start.getDate()) monthsHeldTotal--;
+					// Calculate months held (standard boundary)
+					let monthsHeldTotal = (dExit.getFullYear() - start.getFullYear()) * 12 + (dExit.getMonth() - start.getMonth());
+					if (dExit.getDate() < start.getDate()) monthsHeldTotal--;
 					
 					const rules = this.getApplicableRules(this.data.schm_code, monthsHeldTotal);
-					const planned = this.data.planned_installment || 0;
-					let principalSum = 0, accruedIntTotal = 0, totalCash = 0;
-					const processedMonths = new Set();
+					const appRate = rules.appliedRate;
+					const baseRate = rules.meta.base_rate || 8;
+					
+					// Logic for Cumulative Running Balance (Quarterly Compounding)
+					let principalSum = 0;
+					let totalInterest = 0;
+					let compoundedInt = 0;
+					let accruedCurrQtr = 0;
+					
+					let compoundedIntBase = 0;
+					let accruedCurrQtrBase = 0;
 
-					// Reset all interests first
-					this.data.transactions.forEach(t => { t.accrued_interest = 0; t.scheme_interest = 0; });
-
-					// Sort by date ascending to ensure the 'earliest' date of a month is processed first
-					const sortedTrans = [...this.data.transactions].sort((a, b) => this.parseDate(a.date) - this.parseDate(b.date));
-
-					sortedTrans.forEach((t) => {
-						t.accrued_interest = 0; t.scheme_interest = 0; t.row_months = 0; t.elg_amt = 0;
+					// Map credits by month offset
+					const creditsByMonth = {};
+					this.data.transactions.forEach(t => {
 						if (t.type === 'C') {
 							const dVal = this.parseDate(t.date);
-							// Strictly before Maturity Date and also before/on Exit Date boundary
 							if (dVal < dExit && dVal < dMaturity) {
-								totalCash += t.amount;
-								const month_key = `${dVal.getMonth() + 1}-${dVal.getFullYear()}`;
+								let m_off = (dVal.getFullYear() - start.getFullYear()) * 12 + (dVal.getMonth() - start.getMonth());
+								if (dVal.getDate() < start.getDate()) m_off--;
+								creditsByMonth[m_off] = (creditsByMonth[m_off] || 0) + t.amount;
+							}
+						}
+						// Reset interests for all rows
+						t.accrued_interest = 0;
+						t.scheme_interest = 0;
+					});
+
+					const monthlyInterests = {};
+					for (let m = 0; m <= monthsHeldTotal; m++) {
+						principalSum += (creditsByMonth[m] || 0);
+						
+						let m_int = (principalSum + compoundedInt) * (appRate / 1200.0);
+						let m_base_int = (principalSum + compoundedIntBase) * (baseRate / 1200.0);
+						
+						totalInterest += m_int;
+						accruedCurrQtr += m_int;
+						accruedCurrQtrBase += m_base_int
+						
+						if ((m + 1) % 3 === 0) {
+							compoundedInt += accruedCurrQtr;
+							accruedCurrQtr = 0;
+							compoundedIntBase += accruedCurrQtrBase;
+							accruedCurrQtrBase = 0;
+						}
+						
+						monthlyInterests[m] = { app: m_int, base: m_base_int };
+					}
+
+					// Map back to transactions (first credit of the month)
+					const processedMonths = new Set();
+					let totalCash = 0;
+					this.data.transactions.forEach(t => {
+						if (t.type === 'C') {
+							totalCash += t.amount;
+							const dVal = this.parseDate(t.date);
+							if (dVal < dExit && dVal < dMaturity) {
+								let m_off = (dVal.getFullYear() - start.getFullYear()) * 12 + (dVal.getMonth() - start.getMonth());
+								if (dVal.getDate() < start.getDate()) m_off--;
 								
-								// Calculate months from transaction date to settlement date (+1 day)
-								const tEndAdj = new Date(dExit);
-								tEndAdj.setDate(tEndAdj.getDate() + 1);
-								let rm = (tEndAdj.getFullYear() - dVal.getFullYear()) * 12 + (tEndAdj.getMonth() - dVal.getMonth());
-								if (tEndAdj.getDate() < dVal.getDate()) rm--;
-								
-								t.row_months = Math.max(0, rm);
-								
-								if (t.row_months > 0 && !processedMonths.has(month_key)) {
-									processedMonths.add(month_key);
-									principalSum += t.amount;
-									t.elg_amt = Math.min(t.amount, planned);
-									if (rules.appliedRate > 0) {
-										// Calculate with high precision, round only for display if needed
-										t.accrued_interest = t.elg_amt * (Math.pow(1 + (rules.appliedRate / 400), t.row_months / 3) - 1);
-										accruedIntTotal += t.accrued_interest;
-									}
-									t.scheme_interest = t.elg_amt * (Math.pow(1 + ((rules.meta.base_rate || 8) / 400), t.row_months / 3) - 1);
+								if (!processedMonths.has(m_off) && monthlyInterests[m_off]) {
+									t.accrued_interest = Math.round(monthlyInterests[m_off].app);
+									t.scheme_interest = Math.round(monthlyInterests[m_off].base);
+									processedMonths.add(m_off);
 								}
 							}
 						}
 					});
-					
-					// Update the original array items (PetiteVue reactivity)
-					this.data.transactions.forEach(orig => {
-						const match = sortedTrans.find(s => s.date === orig.date && s.amount === orig.amount && s.particular === orig.particular);
-						if (match) {
-							orig.accrued_interest = Math.round(match.accrued_interest);
-							orig.scheme_interest = Math.round(match.scheme_interest);
-						}
-					});
+
 					this.data.total_tran_sum = totalCash;
-					this.data.principal = totalCash; // Use total cash as principal
-					this.data.interest = Math.round(accruedIntTotal);
-					this.data.appliedRate = rules.appliedRate;
-					this.data.baseRate = rules.meta.base_rate;
+					this.data.principal = totalCash;
+					this.data.interest = Math.round(totalInterest);
+					this.data.appliedRate = appRate;
+					this.data.baseRate = baseRate;
 					
-					// Calculate Service Charge with 18% GST
 					const scPercent = this.getServiceChargePercent(this.data.schm_code, monthsHeldTotal);
-					const baseCharge = totalCash * (scPercent / 100.0);
-					this.data.penalty = Math.round(baseCharge * 1.18);
+					this.data.penalty = Math.round((totalCash * scPercent / 100.0) * 1.18);
 					
-					// FORCE MATCH: If at maturity, net settlement must exactly equal maturity amount
 					if (dExit >= dMaturity && monthsHeldTotal >= rules.meta.tenure_m) {
 						this.data.total = Math.round(this.data.maturity_amount);
-						// Sync interest to ensure breakdown adds up: total = principal + interest - penalty
 						this.data.interest = this.data.total - totalCash + this.data.penalty;
 					} else {
-						this.data.total = Math.round(totalCash + accruedIntTotal - this.data.penalty);
+						this.data.total = Math.round(totalCash + totalInterest - this.data.penalty);
 					}
 					
 					this.data.monthsHeld = monthsHeldTotal;
-					this.data.slabStatus = monthsHeldTotal >= rules.meta.tenure_m ? { label: `Matured: ${rules.appliedRate}%`, color: "#10b981" } : (rules.appliedRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Prematured: ${rules.appliedRate}%`, color: "#f59e0b" });
+					this.data.slabStatus = monthsHeldTotal >= rules.meta.tenure_m ? { label: `Matured: ${appRate}%`, color: "#10b981" } : (appRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Prematured: ${appRate}%`, color: "#f59e0b" });
 				},
 
 				getApplicableRules(sc, m) {
