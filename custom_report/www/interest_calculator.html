@@ -1631,6 +1631,7 @@
 					if (!this.data) return;
 					this.validateExitDate();
 					const dExit = this.parseDate(this.exitDate);
+					const dMaturity = this.parseDate(this.data.maturity_date);
 					const start = this.parseDate(this.data.acct_opn_date);
 					
 					// Match backend: relativedelta(sett_dt + 1 day, opn_dt)
@@ -1654,9 +1655,10 @@
 					sortedTrans.forEach((t) => {
 						t.accrued_interest = 0; t.scheme_interest = 0; t.row_months = 0; t.elg_amt = 0;
 						if (t.type === 'C') {
-							totalCash += t.amount;
 							const dVal = this.parseDate(t.date);
-							if (dVal < dExit) {
+							// Strictly before Maturity Date and also before/on Exit Date boundary
+							if (dVal < dExit && dVal < dMaturity) {
+								totalCash += t.amount;
 								const month_key = `${dVal.getMonth() + 1}-${dVal.getFullYear()}`;
 								
 								// Calculate months from transaction date to settlement date (+1 day)
