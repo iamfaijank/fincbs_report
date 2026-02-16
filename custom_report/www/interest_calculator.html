@@ -2123,9 +2123,9 @@
 					const tenureMonths = parseInt(this.data.deposit_period_mths) || 0;
 					const totalCalendarMonths = (dExit.getFullYear() - start.getFullYear()) * 12 + (dExit.getMonth() - start.getMonth());
 					
-					// The ledger should strictly stop at the last actual transaction month
-					// We take the minimum of (settlement date, tenure, and last transaction)
-					const displayLimit = Math.min(totalCalendarMonths, tenureMonths, maxTxnMonth);
+					// The ledger should show up to the furthest point between settlement and last transaction
+					// This ensures that reducing months doesn't hide existing DB records
+					const displayLimit = Math.min(Math.max(totalCalendarMonths, maxTxnMonth), tenureMonths);
 
 					let totalInstallments = 0;
 					let totalInterestAccrued = 0;
