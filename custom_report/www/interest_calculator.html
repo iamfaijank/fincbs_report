@@ -1471,49 +1471,99 @@
 
 						
 
-															<div class="tran-list" v-if="data && sortedTransactions.length" style="flex: 1; min-height: 0; overflow-y: auto; padding-right: 8px;">
+																							<div class="tran-list" v-if="data && sortedTransactions.length" style="flex: 1; min-height: 0; overflow-y: auto; padding-right: 8px;">
 
-																<div v-for="(t, i) in sortedTransactions" :key="t.date + t.amount + t.type + i" class="tran-row" style="align-items: flex-start; padding: 16px; gap: 12px;">
+						
 
-																	<div class="tran-sr-no">[[ sortOrder === 'desc' ? sortedTransactions.length - i : i + 1 ]]</div>
+																								<div v-for="(t, i) in sortedTransactions" :key="t.date + t.amount + t.type + i" class="tran-row" :class="{ 'row-skip': t.isSkip }" style="align-items: flex-start; padding: 16px; gap: 12px;">
 
-																	<div class="month-badge" style="margin-top: 2px;">
+						
 
-																		<span class="m-name">[[ getMonthAbbr(t.date) ]]</span>
+																									<div class="tran-sr-no">[[ sortOrder === 'desc' ? sortedTransactions.length - i : i + 1 ]]</div>
 
-																		<span class="m-year">[[ t.date.split('/')[2] ]]</span>
+						
 
-																	</div>
+																									<div class="month-badge" style="margin-top: 2px;">
 
-																	<div class="tran-details">
+						
 
-																		<div class="tran-title" :class="{ debit: t.type === 'D' }">
+																										<span class="m-name">[[ getMonthAbbr(t.date) ]]</span>
 
-																			[[ t.type === 'C' ? '+' : '-' ]][[ formatCurrency(t.amount).replace('₹', '') ]]
+						
 
-																		</div>
+																										<span class="m-year">[[ t.date.split('/')[2].slice(-2) ]]</span>
 
-																		<div class="tran-subtitle">[[ t.date ]]</div>
+						
 
-																		<div class="tran-particular-text">[[ t.particular ]]</div>
+																									</div>
 
-																	</div>
+						
 
-																	<div class="tran-right">
+																									<div class="tran-details">
 
-																		<div v-if="t.type === 'C'" class="interest-value">
+						
 
-																			<span class="iv-label">INT @ [[ data.appliedRate ]]%</span>
+																										<div v-if="!t.isSkip" class="tran-title" :class="{ debit: t.type === 'D' }">
 
-																			<span class="iv-amount">[[ formatCurrency(t.accrued_interest || 0) ]]</span>
+						
 
-																		</div>
+																											[[ t.type === 'C' ? '+' : '-' ]][[ formatCurrency(t.amount).replace('₹', '') ]]
 
-																	</div>
+						
 
-																</div>
+																										</div>
 
-															</div>
+						
+
+																										<div v-else class="skip-label" style="display: inline-block; margin-bottom: 4px;">SKIP INSTALLMENT</div>
+
+						
+
+																										
+
+						
+
+																										<div class="tran-subtitle">[[ t.date ]]</div>
+
+						
+
+																										<div class="tran-particular-text">[[ t.particular ]]</div>
+
+						
+
+																									</div>
+
+						
+
+																									<div class="tran-right">
+
+						
+
+																										<div v-if="t.type === 'C'" class="interest-value">
+
+						
+
+																											<span class="iv-label">INT @ [[ data.appliedRate ]]%</span>
+
+						
+
+																											<span class="iv-amount">[[ formatCurrency(t.accrued_interest || 0) ]]</span>
+
+						
+
+																										</div>
+
+						
+
+																									</div>
+
+						
+
+																								</div>
+
+						
+
+																							</div>
 
 														</div>
 
@@ -2370,14 +2420,43 @@
 				},
 				toggleSort() { this.sortOrder = this.sortOrder === 'desc' ? 'asc' : 'desc'; },
 				get sortedTransactions() { 
-					if (!this.data || !this.data.transactions) return []; 
+					if (!this.data || !this.data.transactions || !this.data.ledger) return []; 
+					
 					const start = this.parseDate(this.data.acct_opn_date);
-					const list = this.data.transactions.filter(t => {
+					// Actual transactions within display limit
+					const txns = this.data.transactions.filter(t => {
 						const dVal = this.parseDate(t.date);
 						let m_off = (dVal.getFullYear() - start.getFullYear()) * 12 + (dVal.getMonth() - start.getMonth());
 						return m_off <= this.data.displayLimit;
 					});
-					return this.sortOrder === 'desc' ? list : list.reverse(); 
+
+					// Identify months that have at least one transaction
+					const monthsWithTxns = new Set();
+					txns.forEach(t => {
+						const dVal = this.parseDate(t.date);
+						let m_off = (dVal.getFullYear() - start.getFullYear()) * 12 + (dVal.getMonth() - start.getMonth());
+						monthsWithTxns.add(m_off);
+					});
+
+					// Add virtual 'SKIP' transactions for months in the ledger that have no real DB records
+					const virtualTxns = [...txns];
+					this.data.ledger.forEach(row => {
+						if (!row.isFromDb && !row.isPostSettlement) {
+							virtualTxns.push({
+								date: row.date,
+								amount: 0,
+								type: 'C',
+								particular: "SKIP INSTALLMENT",
+								accrued_interest: row.interestAmount,
+								isSkip: true
+							});
+						}
+					});
+
+					// Sort combined list by date
+					virtualTxns.sort((a, b) => this.parseDate(a.date) - this.parseDate(b.date));
+
+					return this.sortOrder === 'desc' ? virtualTxns : virtualTxns.reverse(); 
 				},
 				
 				get timelineMonths() {
