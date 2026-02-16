@@ -566,10 +566,8 @@
 			}
 			.secondary-info-grid {
 				display: grid;
-				grid-template-columns: repeat(3, auto);
+				grid-template-columns: repeat(5, auto);
 				gap: 30px;
-				padding-right: 40px;
-				border-right: 1px solid #e2e8f0;
 			}
 			.info-item {
 				display: flex;
@@ -589,26 +587,6 @@
 				font-size: 15px;
 				font-weight: 700;
 				color: var(--primary);
-			}
-			.hero-maturity {
-				text-align: right;
-				display: flex;
-				flex-direction: column;
-				gap: 2px;
-			}
-			.hero-label {
-				font-size: 11px;
-				font-weight: 800;
-				color: #10b981;
-				text-transform: uppercase;
-				letter-spacing: 1.5px;
-			}
-			.hero-value {
-				font-size: 32px;
-				font-weight: 800;
-				color: #10b981;
-				letter-spacing: -1px;
-				line-height: 1;
 			}
 			.subtle-context {
 				font-size: 11px;
@@ -1180,7 +1158,7 @@
 							</div>
 
 							<div class="summary-header-grid">
-								<div class="secondary-info-grid" style="grid-template-columns: repeat(4, auto);">
+								<div class="secondary-info-grid">
 									<div class="info-item">
 										<span class="info-label">Opening Date</span>
 										<div class="info-value mono">[[ data.acct_opn_date ]]</div>
@@ -1197,11 +1175,10 @@
 										<span class="info-label">Maturity Date</span>
 										<div class="info-value mono">[[ data.maturity_date ]]</div>
 									</div>
-								</div>
-
-								<div class="hero-maturity">
-									<span class="hero-label">Maturity Amount</span>
-									<div class="hero-value mono">[[ formatCurrency(data.maturity_amount) ]]</div>
+									<div class="info-item">
+										<span class="info-label">Maturity Amount</span>
+										<div class="info-value mono">[[ formatCurrency(data.maturity_amount) ]]</div>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -1654,6 +1631,7 @@
 					if (!this.data) return;
 					this.validateExitDate();
 					const dExit = this.parseDate(this.exitDate);
+					const dMaturity = this.parseDate(this.data.maturity_date);
 					const start = this.parseDate(this.data.acct_opn_date);
 					
 					// Match backend: relativedelta(sett_dt + 1 day, opn_dt)
@@ -1677,9 +1655,10 @@
 					sortedTrans.forEach((t) => {
 						t.accrued_interest = 0; t.scheme_interest = 0; t.row_months = 0; t.elg_amt = 0;
 						if (t.type === 'C') {
-							totalCash += t.amount;
 							const dVal = this.parseDate(t.date);
-							if (dVal < dExit) {
+							// Strictly before Maturity Date and also before/on Exit Date boundary
+							if (dVal < dExit && dVal < dMaturity) {
+								totalCash += t.amount;
 								const month_key = `${dVal.getMonth() + 1}-${dVal.getFullYear()}`;
 								
 								// Calculate months from transaction date to settlement date (+1 day)
@@ -1695,10 +1674,11 @@
 									principalSum += t.amount;
 									t.elg_amt = Math.min(t.amount, planned);
 									if (rules.appliedRate > 0) {
-										t.accrued_interest = Math.round(t.elg_amt * (Math.pow(1 + (rules.appliedRate / 400), t.row_months / 3) - 1));
+										// Calculate with high precision, round only for display if needed
+										t.accrued_interest = t.elg_amt * (Math.pow(1 + (rules.appliedRate / 400), t.row_months / 3) - 1);
 										accruedIntTotal += t.accrued_interest;
 									}
-									t.scheme_interest = Math.round(t.elg_amt * (Math.pow(1 + ((rules.meta.base_rate || 8) / 400), t.row_months / 3) - 1));
+									t.scheme_interest = t.elg_amt * (Math.pow(1 + ((rules.meta.base_rate || 8) / 400), t.row_months / 3) - 1);
 								}
 							}
 						}
@@ -1708,13 +1688,13 @@
 					this.data.transactions.forEach(orig => {
 						const match = sortedTrans.find(s => s.date === orig.date && s.amount === orig.amount && s.particular === orig.particular);
 						if (match) {
-							orig.accrued_interest = match.accrued_interest;
-							orig.scheme_interest = match.scheme_interest;
+							orig.accrued_interest = Math.round(match.accrued_interest);
+							orig.scheme_interest = Math.round(match.scheme_interest);
 						}
 					});
 					this.data.total_tran_sum = totalCash;
 					this.data.principal = totalCash; // Use total cash as principal
-					this.data.interest = accruedIntTotal;
+					this.data.interest = Math.round(accruedIntTotal);
 					this.data.appliedRate = rules.appliedRate;
 					this.data.baseRate = rules.meta.base_rate;
 					
@@ -1723,7 +1703,15 @@
 					const baseCharge = totalCash * (scPercent / 100.0);
 					this.data.penalty = Math.round(baseCharge * 1.18);
 					
-					this.data.total = Math.round(totalCash + accruedIntTotal - this.data.penalty);
+					// FORCE MATCH: If at maturity, net settlement must exactly equal maturity amount
+					if (dExit >= dMaturity && monthsHeldTotal >= rules.meta.tenure_m) {
+						this.data.total = Math.round(this.data.maturity_amount);
+						// Sync interest to ensure breakdown adds up: total = principal + interest - penalty
+						this.data.interest = this.data.total - totalCash + this.data.penalty;
+					} else {
+						this.data.total = Math.round(totalCash + accruedIntTotal - this.data.penalty);
+					}
+					
 					this.data.monthsHeld = monthsHeldTotal;
 					this.data.slabStatus = monthsHeldTotal >= rules.meta.tenure_m ? { label: `Matured: ${rules.appliedRate}%`, color: "#10b981" } : (rules.appliedRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Prematured: ${rules.appliedRate}%`, color: "#f59e0b" });
 				},
