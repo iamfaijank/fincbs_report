@@ -147,6 +147,10 @@ def get_account_details(foracid=None, settlement_date=None):
         processed_months = set()
 
         for val_date, amt, p_type, particular in raw_trans:
+            # Filter: Do not display or calculate transactions >= maturity_date
+            if mat_dt and val_date and val_date >= mat_dt:
+                continue
+
             amt = float(amt or 0)
             row_scheme_interest = 0.0
             row_months = 0
