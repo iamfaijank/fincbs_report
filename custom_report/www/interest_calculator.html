@@ -2123,30 +2123,40 @@
 					const tenureMonths = parseInt(this.data.deposit_period_mths) || 0;
 					const totalCalendarMonths = (dExit.getFullYear() - start.getFullYear()) * 12 + (dExit.getMonth() - start.getMonth());
 					
-					// The ledger should show up to the furthest point between settlement and last transaction
-					// This ensures that reducing months doesn't hide existing DB records
-					const displayLimit = Math.min(Math.max(totalCalendarMonths, maxTxnMonth), tenureMonths);
+					// The ledger should strictly stop at the last actual transaction month
+					// Even if the settlement date is ahead, we don't project empty rows
+					const displayLimit = maxTxnMonth;
 
 					let totalInstallments = 0;
 					let totalInterestAccrued = 0;
 
 					for (let m = 0; m <= displayLimit; m++) {
 						const installment = (creditsByMonth[m] || 0);
-						principalSum += installment;
-						totalInstallments += installment;
+						
+						// Only count installments and principal if they occur on or before the simulated settlement date
+						if (m <= totalCalendarMonths) {
+							principalSum += installment;
+							totalInstallments += installment;
+						} else {
+							// For post-settlement rows (actuals that exist after simulation date), we still track principal
+							// but we don't include them in the settlement "Total"
+							principalSum += installment;
+						}
 						
 						let m_int = 0;
 						let m_base_int = 0;
 
-						// Interest calculation stops at displayLimit
-						m_int = (principalSum + compoundedInt) * (appRate / 1200.0);
-						m_base_int = (principalSum + compoundedIntBase) * (baseRate / 1200.0);
-						
-						totalInterest += m_int;
-						totalInterestAccrued += m_int;
-						runningTotalInterest += m_int;
-						accruedCurrQtr += m_int;
-						accruedCurrQtrBase += m_base_int;
+						// Interest calculation only for months within the simulated settlement period
+						if (m <= totalCalendarMonths && m < tenureMonths) {
+							m_int = (principalSum + compoundedInt) * (appRate / 1200.0);
+							m_base_int = (principalSum + compoundedIntBase) * (baseRate / 1200.0);
+							
+							totalInterest += m_int;
+							totalInterestAccrued += m_int;
+							runningTotalInterest += m_int;
+							accruedCurrQtr += m_int;
+							accruedCurrQtrBase += m_base_int;
+						}
 
 						const currentMonthDate = new Date(start.getFullYear(), start.getMonth() + m, 1);
 						const y_l = currentMonthDate.getFullYear();
@@ -2165,7 +2175,7 @@
 							date: actualTxnDates[m] || projectedDate,
 							installment: installment.toFixed(2),
 							balanceBefore: balBefore.toFixed(2),
-							rate: appRate,
+							rate: (m <= totalCalendarMonths && m < tenureMonths) ? appRate : 0,
 							interestAmount: m_int.toFixed(2),
 							closingBalance: (balBefore + m_int).toFixed(2),
 							isFromDb: monthsWithTransactions.has(m),
