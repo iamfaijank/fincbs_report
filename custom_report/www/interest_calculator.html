@@ -1674,10 +1674,11 @@
 									principalSum += t.amount;
 									t.elg_amt = Math.min(t.amount, planned);
 									if (rules.appliedRate > 0) {
-										t.accrued_interest = Math.round(t.elg_amt * (Math.pow(1 + (rules.appliedRate / 400), t.row_months / 3) - 1));
+										// Calculate with high precision, round only for display if needed
+										t.accrued_interest = t.elg_amt * (Math.pow(1 + (rules.appliedRate / 400), t.row_months / 3) - 1);
 										accruedIntTotal += t.accrued_interest;
 									}
-									t.scheme_interest = Math.round(t.elg_amt * (Math.pow(1 + ((rules.meta.base_rate || 8) / 400), t.row_months / 3) - 1));
+									t.scheme_interest = t.elg_amt * (Math.pow(1 + ((rules.meta.base_rate || 8) / 400), t.row_months / 3) - 1);
 								}
 							}
 						}
@@ -1687,13 +1688,13 @@
 					this.data.transactions.forEach(orig => {
 						const match = sortedTrans.find(s => s.date === orig.date && s.amount === orig.amount && s.particular === orig.particular);
 						if (match) {
-							orig.accrued_interest = match.accrued_interest;
-							orig.scheme_interest = match.scheme_interest;
+							orig.accrued_interest = Math.round(match.accrued_interest);
+							orig.scheme_interest = Math.round(match.scheme_interest);
 						}
 					});
 					this.data.total_tran_sum = totalCash;
 					this.data.principal = totalCash; // Use total cash as principal
-					this.data.interest = accruedIntTotal;
+					this.data.interest = Math.round(accruedIntTotal);
 					this.data.appliedRate = rules.appliedRate;
 					this.data.baseRate = rules.meta.base_rate;
 					
@@ -1702,7 +1703,15 @@
 					const baseCharge = totalCash * (scPercent / 100.0);
 					this.data.penalty = Math.round(baseCharge * 1.18);
 					
-					this.data.total = Math.round(totalCash + accruedIntTotal - this.data.penalty);
+					// FORCE MATCH: If at maturity, net settlement must exactly equal maturity amount
+					if (dExit >= dMaturity && monthsHeldTotal >= rules.meta.tenure_m) {
+						this.data.total = Math.round(this.data.maturity_amount);
+						// Sync interest to ensure breakdown adds up: total = principal + interest - penalty
+						this.data.interest = this.data.total - totalCash + this.data.penalty;
+					} else {
+						this.data.total = Math.round(totalCash + accruedIntTotal - this.data.penalty);
+					}
+					
 					this.data.monthsHeld = monthsHeldTotal;
 					this.data.slabStatus = monthsHeldTotal >= rules.meta.tenure_m ? { label: `Matured: ${rules.appliedRate}%`, color: "#10b981" } : (rules.appliedRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Prematured: ${rules.appliedRate}%`, color: "#f59e0b" });
 				},
