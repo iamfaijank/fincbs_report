@@ -1716,13 +1716,28 @@
 													<div class="div4">
 								<div class="ledger-container">
 									<div style="display: flex; justify-content: space-between; align-items: center;">
-										<div style="display: flex; align-items: center; gap: 15px;">
+										<div style="display: flex; align-items: center; gap: 20px;">
 											<span class="card-heading" style="margin-bottom: 0;">Cumulative Interest Ledger</span>
 											<button @click="copyTable" class="btn-adjust" :style="{ borderColor: lastCopied === 'ledger_table' ? 'var(--accent)' : '#e2e8f0', color: lastCopied === 'ledger_table' ? 'var(--accent)' : '#64748b' }" style="width: auto; padding: 4px 10px; display: flex; align-items: center; gap: 6px; text-transform: none; font-size: 10px;">
 												<svg v-if="lastCopied !== 'ledger_table'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
 												<svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
 												[[ lastCopied === 'ledger_table' ? 'Copied!' : 'Copy Table' ]]
 											</button>
+											
+											<div style="display: flex; align-items: center; gap: 15px; border-left: 2px solid #f1f5f9; padding-left: 15px;">
+												<div class="info-item" style="text-align: left; align-items: flex-start; gap: 2px;">
+													<span class="info-label" style="font-size: 8px;">Opening</span>
+													<span class="info-value mono" style="font-size: 11px;">[[ data.acct_opn_date ]]</span>
+												</div>
+												<div class="info-item" style="text-align: left; align-items: flex-start; gap: 2px;">
+													<span class="info-label" style="font-size: 8px;">Settlement</span>
+													<span class="info-value mono" style="font-size: 11px; color: var(--accent);">[[ formatDate(exitDate) ]]</span>
+												</div>
+												<div class="info-item" style="text-align: left; align-items: flex-start; gap: 2px;">
+													<span class="info-label" style="font-size: 8px;">Tenure</span>
+													<span class="info-value" style="font-size: 11px; color: #9333ea;">[[ data.monthsHeld ]] Months</span>
+												</div>
+											</div>
 										</div>
 										<div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">
 											[[ data.ledger.length ]] Months Projected
@@ -1745,20 +1760,39 @@
 											<tbody>
 												<tr v-for="row in data.ledger" :key="row.monthNo" 
 													:class="{ 'row-skip': parseFloat(row.installment) === 0 }"
-													:style="{ color: !row.isFromDb ? '#ef4444' : 'inherit' }">
-													<td style="font-weight: 800; background: #f8fafc; color: var(--accent); border-right: 1px solid #f1f5f9;">[[ row.monthYear ]]</td>
-													<td :style="{ color: !row.isFromDb ? '#fca5a5' : '#cbd5e1' }" style="font-size: 11px;">[[ row.monthNo ]]</td>
+													:style="{ 
+														color: row.isPostSettlement ? '#94a3b8' : (!row.isFromDb ? '#ef4444' : 'inherit'),
+														opacity: row.isPostSettlement ? '0.7' : '1',
+														background: row.isPostSettlement ? '#fcfcfc' : 'inherit'
+													}">
+													<td :style="{ 
+														fontWeight: '800', 
+														background: '#f8fafc', 
+														color: row.isPostSettlement ? '#cbd5e1' : 'var(--accent)', 
+														borderRight: '1px solid #f1f5f9' 
+													}">[[ row.monthYear ]]</td>
+													<td :style="{ color: row.isPostSettlement ? '#e2e8f0' : (!row.isFromDb ? '#fca5a5' : '#cbd5e1') }" style="font-size: 11px;">[[ row.monthNo ]]</td>
 													<td class="col-date mono" style="font-size: 12px;">[[ row.date ]]</td>
 													<td class="col-amt">
 														<span v-if="parseFloat(row.installment) > 0">[[ formatCurrency(row.installment) ]]</span>
-														<span v-else class="skip-label">SKIP INSTALLMENT</span>
+														<span v-else class="skip-label" :style="{ opacity: row.isPostSettlement ? '0.5' : '1' }">SKIP INSTALLMENT</span>
 													</td>
 													<td class="col-amt">[[ formatCurrency(row.balanceBefore) ]]</td>
-													<td class="col-month mono" :style="{ color: !row.isFromDb ? '#ef4444' : '#9333ea' }">[[ row.rate ]]%</td>
-													<td class="col-amt" :class="{ 'col-highlight': row.isFromDb }">[[ formatCurrency(row.interestAmount) ]]</td>
-													<td class="col-amt" :style="{ color: !row.isFromDb ? '#ef4444' : '#10b981' }">[[ formatCurrency(row.closingBalance) ]]</td>
+													<td class="col-month mono" :style="{ color: row.isPostSettlement ? '#e2e8f0' : (!row.isFromDb ? '#ef4444' : '#9333ea') }">[[ row.rate ]]%</td>
+													<td class="col-amt" :class="{ 'col-highlight': row.isFromDb && !row.isPostSettlement }">[[ formatCurrency(row.interestAmount) ]]</td>
+													<td class="col-amt" :style="{ color: row.isPostSettlement ? '#e2e8f0' : (!row.isFromDb ? '#ef4444' : '#10b981') }">[[ formatCurrency(row.closingBalance) ]]</td>
 												</tr>
 											</tbody>
+											<tfoot v-if="data && data.ledgerTotals" style="position: sticky; bottom: 0; background: #f8fafc; z-index: 10;">
+												<tr style="border-top: 2px solid #e2e8f0; font-weight: 800; color: var(--primary);">
+													<td colspan="3" style="text-align: right; padding-right: 20px;">TOTAL</td>
+													<td class="col-amt">[[ formatCurrency(data.ledgerTotals.installment) ]]</td>
+													<td></td>
+													<td></td>
+													<td class="col-amt" style="color: var(--accent);">[[ formatCurrency(data.ledgerTotals.interestAmount) ]]</td>
+													<td></td>
+												</tr>
+											</tfoot>
 										</table>
 									</div>
 								</div>
@@ -2006,15 +2040,18 @@
 					const creditsByMonth = {};
 					const monthsWithTransactions = new Set();
 					const actualTxnDates = {};
+					let maxTxnMonth = 0;
+
 					this.data.transactions.forEach(t => {
 						if (t.type === 'C') {
 							const dVal = this.parseDate(t.date);
-							if (dVal < dExit && dVal < dMaturity) {
-								// Calendar-based month offset
+							if (dVal < dMaturity) {
 								let m_off = (dVal.getFullYear() - start.getFullYear()) * 12 + (dVal.getMonth() - start.getMonth());
 								creditsByMonth[m_off] = (creditsByMonth[m_off] || 0) + t.amount;
 								monthsWithTransactions.add(m_off);
 								if (!actualTxnDates[m_off]) actualTxnDates[m_off] = t.date;
+								// Only track the last month that has a non-zero installment
+								if (t.amount > 0 && m_off > maxTxnMonth) maxTxnMonth = m_off;
 							}
 						}
 						t.accrued_interest = 0;
@@ -2026,15 +2063,30 @@
 					let runningTotalInterest = 0;
 					
 					// Number of calendar months to display
+					const tenureMonths = parseInt(this.data.deposit_period_mths) || 0;
 					const totalCalendarMonths = (dExit.getFullYear() - start.getFullYear()) * 12 + (dExit.getMonth() - start.getMonth());
+					
+					// The ledger should strictly stop at the last actual transaction month
+					// We take the minimum of (settlement date, tenure, and last transaction)
+					const displayLimit = Math.min(totalCalendarMonths, tenureMonths, maxTxnMonth);
 
-					for (let m = 0; m <= totalCalendarMonths; m++) {
-						principalSum += (creditsByMonth[m] || 0);
+					let totalInstallments = 0;
+					let totalInterestAccrued = 0;
+
+					for (let m = 0; m <= displayLimit; m++) {
+						const installment = (creditsByMonth[m] || 0);
+						principalSum += installment;
+						totalInstallments += installment;
 						
-						let m_int = (principalSum + compoundedInt) * (appRate / 1200.0);
-						let m_base_int = (principalSum + compoundedIntBase) * (baseRate / 1200.0);
+						let m_int = 0;
+						let m_base_int = 0;
+
+						// Interest calculation stops at displayLimit
+						m_int = (principalSum + compoundedInt) * (appRate / 1200.0);
+						m_base_int = (principalSum + compoundedIntBase) * (baseRate / 1200.0);
 						
 						totalInterest += m_int;
+						totalInterestAccrued += m_int;
 						runningTotalInterest += m_int;
 						accruedCurrQtr += m_int;
 						accruedCurrQtrBase += m_base_int;
@@ -2044,7 +2096,6 @@
 						const mmmm = currentMonthDate.toLocaleString('en-US', { month: 'short' }).toUpperCase();
 						const yy = y_l.toString().slice(-2);
 						
-						// For projected date, use the opening day if possible
 						const projDay = String(start.getDate()).padStart(2, '0');
 						const projMonth = String(currentMonthDate.getMonth() + 1).padStart(2, '0');
 						const projectedDate = `${projDay}/${projMonth}/${y_l}`;
@@ -2055,12 +2106,13 @@
 							monthNo: m + 1,
 							monthYear: `${mmmm}/${yy}`,
 							date: actualTxnDates[m] || projectedDate,
-							installment: (creditsByMonth[m] || 0).toFixed(2),
+							installment: installment.toFixed(2),
 							balanceBefore: balBefore.toFixed(2),
 							rate: appRate,
 							interestAmount: m_int.toFixed(2),
 							closingBalance: (balBefore + m_int).toFixed(2),
-							isFromDb: monthsWithTransactions.has(m)
+							isFromDb: monthsWithTransactions.has(m),
+							isPostSettlement: m > totalCalendarMonths
 						});
 						
 						if ((m + 1) % 3 === 0) {
@@ -2073,41 +2125,40 @@
 						monthlyInterests[m] = { app: m_int, base: m_base_int };
 					}
 					this.data.ledger = ledger;
+					this.data.ledgerTotals = {
+						installment: totalInstallments.toFixed(2),
+						interestAmount: totalInterestAccrued.toFixed(2)
+					};
+					this.data.displayLimit = displayLimit;
 
 					// Map back to transactions (first credit of the month)
 					const processedMonths = new Set();
-					let totalCash = 0;
 					this.data.transactions.forEach(t => {
 						if (t.type === 'C') {
-							totalCash += t.amount;
 							const dVal = this.parseDate(t.date);
-							if (dVal < dExit && dVal < dMaturity) {
-								let m_off = (dVal.getFullYear() - start.getFullYear()) * 12 + (dVal.getMonth() - start.getMonth());
-								
-								if (!processedMonths.has(m_off) && monthlyInterests[m_off]) {
-									t.accrued_interest = Math.round(monthlyInterests[m_off].app);
-									t.scheme_interest = Math.round(monthlyInterests[m_off].base);
-									processedMonths.add(m_off);
-								}
+							let m_off = (dVal.getFullYear() - start.getFullYear()) * 12 + (dVal.getMonth() - start.getMonth());
+							
+							if (!processedMonths.has(m_off) && monthlyInterests[m_off]) {
+								t.accrued_interest = monthlyInterests[m_off].app.toFixed(2);
+								t.scheme_interest = monthlyInterests[m_off].base.toFixed(2);
+								processedMonths.add(m_off);
+							} else {
+								t.accrued_interest = "0.00";
 							}
 						}
 					});
 
-					this.data.total_tran_sum = totalCash;
-					this.data.principal = totalCash;
-					this.data.interest = Math.round(totalInterest);
+					this.data.total_tran_sum = totalInstallments.toFixed(2);
+					this.data.principal = totalInstallments.toFixed(2);
+					this.data.interest = totalInterestAccrued.toFixed(2);
 					this.data.appliedRate = appRate;
 					this.data.baseRate = baseRate;
 					
 					const scPercent = this.getServiceChargePercent(this.data.schm_code, monthsHeldTotal);
-					this.data.penalty = Math.round((totalCash * scPercent / 100.0) * 1.18);
+					this.data.penalty = Math.round((totalInstallments * scPercent / 100.0) * 1.18);
 					
-					if (dExit >= dMaturity && monthsHeldTotal >= rules.meta.tenure_m) {
-						this.data.total = Math.round(this.data.maturity_amount);
-						this.data.interest = this.data.total - totalCash + this.data.penalty;
-					} else {
-						this.data.total = Math.round(totalCash + totalInterest - this.data.penalty);
-					}
+					// Always use internal calculation for total settlement
+					this.data.total = Math.round(totalInstallments + totalInterestAccrued - this.data.penalty);
 					
 					this.data.monthsHeld = monthsHeldTotal;
 					this.data.slabStatus = monthsHeldTotal >= rules.meta.tenure_m ? { label: `Matured: ${appRate}%`, color: "#10b981" } : (appRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Prematured: ${appRate}%`, color: "#f59e0b" });
@@ -2318,7 +2369,16 @@
 					this.copyToClipboard(content, 'ledger_table');
 				},
 				toggleSort() { this.sortOrder = this.sortOrder === 'desc' ? 'asc' : 'desc'; },
-				get sortedTransactions() { if (!this.data || !this.data.transactions) return []; const list = [...this.data.transactions]; return this.sortOrder === 'desc' ? list : list.reverse(); },
+				get sortedTransactions() { 
+					if (!this.data || !this.data.transactions) return []; 
+					const start = this.parseDate(this.data.acct_opn_date);
+					const list = this.data.transactions.filter(t => {
+						const dVal = this.parseDate(t.date);
+						let m_off = (dVal.getFullYear() - start.getFullYear()) * 12 + (dVal.getMonth() - start.getMonth());
+						return m_off <= this.data.displayLimit;
+					});
+					return this.sortOrder === 'desc' ? list : list.reverse(); 
+				},
 				
 				get timelineMonths() {
 					if (!this.data || !this.data.acct_opn_date || !this.data.deposit_period_mths) return [];
