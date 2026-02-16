@@ -141,52 +141,93 @@ def get_account_details(foracid=None, settlement_date=None):
         """, (acid,))
         raw_trans = cursor.fetchall()
         
+        # Cumulative Running Balance Logic with Quarterly Compounding
         principal_sum = 0.0
         total_interest = 0.0
+        
+        # State for quarterly compounding
+        compounded_interest = 0.0
+        accrued_current_quarter = 0.0
+        
+        compounded_interest_base = 0.0
+        accrued_current_quarter_base = 0.0
+
+        # Sort transactions by date ASC
+        raw_trans.sort(key=lambda x: x[0])
+        
+        # Map credits to month offsets from opening date
+        credits_by_month = {}
+        for val_date, amt, p_type, particular in raw_trans:
+            if mat_dt and val_date and val_date >= mat_dt: continue
+            if val_date >= sett_dt: continue
+            if p_type == 'C':
+                diff = relativedelta(val_date, opn_dt)
+                m_offset = (diff.years * 12) + diff.months
+                credits_by_month[m_offset] = credits_by_month.get(m_offset, 0) + float(amt or 0)
+
+        # Iterate month by month for the duration of the account
+        monthly_data = {}
+        for m in range(months_held_total):
+            # 1. Add installments for this month
+            principal_sum += credits_by_month.get(m, 0)
+            
+            # 2. Calculate Monthly Interest
+            # Monthly Interest = (Principal + Interest from completed quarters) * (Rate / 1200)
+            m_int = (principal_sum + compounded_interest) * (app_rate / 1200.0)
+            m_base_int = (principal_sum + compounded_interest_base) * (base_rate / 1200.0)
+            
+            total_interest += m_int
+            accrued_current_quarter += m_int
+            accrued_current_quarter_base += m_base_int
+            
+            # 3. Handle Quarter End (Compounding)
+            if (m + 1) % 3 == 0:
+                compounded_interest += accrued_current_quarter
+                accrued_current_quarter = 0
+                compounded_interest_base += accrued_current_quarter_base
+                accrued_current_quarter_base = 0
+            
+            # Store interest to associate with transactions
+            monthly_data[m] = {"app_int": m_int, "base_int": m_base_int}
+
+        # Build transaction list with associated monthly interest
         transactions = []
         processed_months = set()
+        total_principal_for_sc = 0.0
 
         for val_date, amt, p_type, particular in raw_trans:
-            # Filter: Do not display or calculate transactions >= maturity_date
-            if mat_dt and val_date and val_date >= mat_dt:
-                continue
-
+            if mat_dt and val_date and val_date >= mat_dt: continue
+            
             amt = float(amt or 0)
-            row_scheme_interest = 0.0
-            row_months = 0
-            eligible_amt = 0.0
+            row_int = 0.0
+            row_scheme_int = 0.0
             
             if p_type == 'C':
-                if val_date < sett_dt:
-                    month_key = f"{val_date.month}-{val_date.year}"
-                    r_diff = relativedelta(sett_dt + relativedelta(days=1), val_date)
-                    row_months = (r_diff.years * 12) + r_diff.months
-                    
-                    # Rule: Sum Principal only if it's the first interest-bearing payment of the month
-                    if row_months > 0 and month_key not in processed_months:
-                        processed_months.add(month_key)
-                        principal_sum += amt # Sum the full transaction amount
-                        eligible_amt = min(amt, float(planned_installment or 0))
-                        
-                        if app_rate > 0:
-                            total_interest += eligible_amt * ((1 + app_rate/400)**(row_months/3) - 1)
-                        row_scheme_interest = eligible_amt * ((1 + base_rate/400)**(row_months/3) - 1)
+                total_principal_for_sc += amt
+                diff = relativedelta(val_date, opn_dt)
+                m_offset = (diff.years * 12) + diff.months
+                
+                # Assign monthly interest to the first transaction of the month
+                if m_offset in monthly_data and m_offset not in processed_months:
+                    row_int = monthly_data[m_offset]["app_int"]
+                    row_scheme_int = monthly_data[m_offset]["base_int"]
+                    processed_months.add(m_offset)
 
             transactions.append({
                 "date": val_date.strftime("%d/%m/%Y") if val_date else "N/A",
                 "amount": amt,
                 "type": p_type,
                 "particular": particular or "",
-                "row_interest": int(row_scheme_interest + 0.5),
-                "row_months": row_months,
-                "elg_amt": eligible_amt
+                "accrued_interest": int(row_int + 0.5),
+                "scheme_interest": int(row_scheme_int + 0.5),
+                "elg_amt": amt
             })
 
         transactions.reverse()
 
         # Calculate Service Charge with 18% GST
         sc_percent = get_service_charge_percent(schm_code, months_held_total)
-        base_charge = principal_sum * (sc_percent / 100.0)
+        base_charge = total_principal_for_sc * (sc_percent / 100.0)
         penalty_amt = base_charge * 1.18 # Add 18% GST
 
         return {
@@ -195,9 +236,9 @@ def get_account_details(foracid=None, settlement_date=None):
             "maturity_date": mat_dt.strftime("%d/%m/%Y"), "maturity_amount": float(mat_amt or 0),
             "deposit_period_mths": int(period or 0), "deposit_amount": float(planned_installment or 0),
             "planned_installment": float(planned_installment or 0),
-            "transactions": transactions, "principal": int(principal_sum + 0.5),
+            "transactions": transactions, "principal": int(total_principal_for_sc + 0.5),
             "interest": int(total_interest + 0.5), "penalty": int(penalty_amt + 0.5),
-            "net_payable": int(principal_sum + total_interest - penalty_amt + 0.5),
+            "net_payable": int(total_principal_for_sc + total_interest - penalty_amt + 0.5),
             "applied_rate": app_rate, "months_held": months_held_total
         }
     except Exception as e:
