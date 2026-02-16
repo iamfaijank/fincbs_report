@@ -566,10 +566,8 @@
 			}
 			.secondary-info-grid {
 				display: grid;
-				grid-template-columns: repeat(3, auto);
+				grid-template-columns: repeat(5, auto);
 				gap: 30px;
-				padding-right: 40px;
-				border-right: 1px solid #e2e8f0;
 			}
 			.info-item {
 				display: flex;
@@ -589,26 +587,6 @@
 				font-size: 15px;
 				font-weight: 700;
 				color: var(--primary);
-			}
-			.hero-maturity {
-				text-align: right;
-				display: flex;
-				flex-direction: column;
-				gap: 2px;
-			}
-			.hero-label {
-				font-size: 11px;
-				font-weight: 800;
-				color: #10b981;
-				text-transform: uppercase;
-				letter-spacing: 1.5px;
-			}
-			.hero-value {
-				font-size: 32px;
-				font-weight: 800;
-				color: #10b981;
-				letter-spacing: -1px;
-				line-height: 1;
 			}
 			.subtle-context {
 				font-size: 11px;
@@ -1180,7 +1158,7 @@
 							</div>
 
 							<div class="summary-header-grid">
-								<div class="secondary-info-grid" style="grid-template-columns: repeat(4, auto);">
+								<div class="secondary-info-grid">
 									<div class="info-item">
 										<span class="info-label">Opening Date</span>
 										<div class="info-value mono">[[ data.acct_opn_date ]]</div>
@@ -1197,11 +1175,10 @@
 										<span class="info-label">Maturity Date</span>
 										<div class="info-value mono">[[ data.maturity_date ]]</div>
 									</div>
-								</div>
-
-								<div class="hero-maturity">
-									<span class="hero-label">Maturity Amount</span>
-									<div class="hero-value mono">[[ formatCurrency(data.maturity_amount) ]]</div>
+									<div class="info-item">
+										<span class="info-label">Maturity Amount</span>
+										<div class="info-value mono">[[ formatCurrency(data.maturity_amount) ]]</div>
+									</div>
 								</div>
 							</div>
 						</div>
