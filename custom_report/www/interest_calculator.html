@@ -1091,6 +1091,24 @@
 			.col-amt { font-family: 'JetBrains Mono', monospace; min-width: 120px; }
 			.col-highlight { color: var(--accent) !important; font-weight: 700 !important; }
 			
+			/* Highlight for skipped installments */
+			.row-skip td {
+				background: #fffbeb !important;
+			}
+			.row-skip td:first-child {
+				border-left: 3px solid #f59e0b !important;
+			}
+			.skip-label {
+				font-size: 9px;
+				font-weight: 800;
+				color: #d97706;
+				background: #fef3c7;
+				padding: 2px 6px;
+				border-radius: 6px;
+				border: 1px solid #fde68a;
+				letter-spacing: 0.5px;
+			}
+			
 			@media (max-width: 1200px) {
 				.timeline-track { padding: 0 10px; gap: 6px; }
 				.timeline-card { width: 28px; height: 28px; border-radius: 6px; }
@@ -1725,11 +1743,16 @@
 												</tr>
 											</thead>
 											<tbody>
-												<tr v-for="row in data.ledger" :key="row.monthNo" :style="{ color: !row.isFromDb ? '#ef4444' : 'inherit' }">
+												<tr v-for="row in data.ledger" :key="row.monthNo" 
+													:class="{ 'row-skip': parseFloat(row.installment) === 0 }"
+													:style="{ color: !row.isFromDb ? '#ef4444' : 'inherit' }">
 													<td style="font-weight: 800; background: #f8fafc; color: var(--accent); border-right: 1px solid #f1f5f9;">[[ row.monthYear ]]</td>
 													<td :style="{ color: !row.isFromDb ? '#fca5a5' : '#cbd5e1' }" style="font-size: 11px;">[[ row.monthNo ]]</td>
 													<td class="col-date mono" style="font-size: 12px;">[[ row.date ]]</td>
-													<td class="col-amt">[[ formatCurrency(row.installment) ]]</td>
+													<td class="col-amt">
+														<span v-if="parseFloat(row.installment) > 0">[[ formatCurrency(row.installment) ]]</span>
+														<span v-else class="skip-label">SKIP INSTALLMENT</span>
+													</td>
 													<td class="col-amt">[[ formatCurrency(row.balanceBefore) ]]</td>
 													<td class="col-month mono" :style="{ color: !row.isFromDb ? '#ef4444' : '#9333ea' }">[[ row.rate ]]%</td>
 													<td class="col-amt" :class="{ 'col-highlight': row.isFromDb }">[[ formatCurrency(row.interestAmount) ]]</td>
