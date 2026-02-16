@@ -1780,8 +1780,15 @@
 													<span class="info-value mono" style="font-size: 11px;">[[ data.acct_opn_date ]]</span>
 												</div>
 												<div class="info-item" style="text-align: left; align-items: flex-start; gap: 2px;">
+													<span class="info-label" style="font-size: 8px;">Maturity</span>
+													<span class="info-value mono" style="font-size: 11px;">[[ data.maturity_date ]]</span>
+												</div>
+												<div class="info-item" style="text-align: left; align-items: flex-start; gap: 2px;">
 													<span class="info-label" style="font-size: 8px;">Settlement</span>
-													<span class="info-value mono" style="font-size: 11px; color: var(--accent);">[[ formatDate(exitDate) ]]</span>
+													<div style="display: flex; align-items: center; gap: 6px;">
+														<span class="info-value mono" style="font-size: 11px; color: var(--accent);">[[ formatDate(exitDate) ]]</span>
+														<input type="date" v-model="exitDate" :max="maxExitDate" @change="updateCalculations()" style="width: 18px; height: 18px; border: none; background: transparent; cursor: pointer; padding: 0; outline: none;"/>
+													</div>
 												</div>
 												<div class="info-item" style="text-align: left; align-items: flex-start; gap: 2px;">
 													<span class="info-label" style="font-size: 8px;">Tenure</span>
