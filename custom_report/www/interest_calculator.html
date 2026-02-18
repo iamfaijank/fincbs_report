@@ -1697,51 +1697,29 @@
 
 																
 
-																	<h3 style="margin-top: 0px; font-size: 15px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">Settlement Breakdown</h3>
-
-																	
-
-																	<div class="summary-item">
-
-																		<span class="item-label">Principal Amount</span>
-
-																		<span class="item-value">[[ formatCurrency(data.principal) ]]</span>
-
-																	</div>
-
-																	
-
-																	<div class="summary-item highlight">
-
-																		<span class="item-label">Calculated Interest ([[ data.appliedRate ]]%)</span>
-
-																		<span class="item-value">+ [[ formatCurrency(data.interest) ]]</span>
-
-																	</div>
-
-																	
-
-																	<div class="summary-item" :class="{ 'penalty-active': data.penalty > 0 }">
-
-																		<span class="item-label">Service Charges + GST(18%)</span>
-
-																		<span class="item-value">- [[ formatCurrency(data.penalty) ]]</span>
-
-																	</div>
-
-																	
-
-																	<div class="summary-item" :class="{ 'penalty-active': data.passbook_charges > 0 }">
-
-																		<span class="item-label">Passbook Charges</span>
-
-																		<span class="item-value">- [[ formatCurrency(data.passbook_charges || 0) ]]</span>
-
-																	</div>
-
-																
-
-																	<div class="receipt-divider"></div>
+																																		<h3 style="margin-top: 0px; font-size: 15px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">Settlement Breakdown</h3>
+																																		
+																																		<div class="summary-item">
+																																			<span class="item-label">Principal Amount</span>
+																																			<span class="item-value">[[ formatCurrency(data.principal, 0) ]]</span>
+																																		</div>
+																																		
+																																		<div class="summary-item highlight">
+																																			<span class="item-label">Calculated Interest ([[ data.appliedRate ]]%)</span>
+																																			<span class="item-value">+ [[ formatCurrency(data.interest, 0) ]]</span>
+																																		</div>
+																																		
+																																		<div class="summary-item" :class="{ 'penalty-active': data.penalty > 0 }">
+																																			<span class="item-label">Service Charges + GST(18%)</span>
+																																			<span class="item-value">- [[ formatCurrency(data.penalty, 0) ]]</span>
+																																		</div>
+																																		
+																																		<div class="summary-item" :class="{ 'penalty-active': data.passbook_charges > 0 }">
+																																			<span class="item-label">Passbook Charges</span>
+																																			<span class="item-value">- [[ formatCurrency(data.passbook_charges || 0, 0) ]]</span>
+																																		</div>
+																																	
+																																		<div class="receipt-divider"></div>
 
 																
 
@@ -1759,7 +1737,7 @@
 
 																		</div>
 
-																		<div style="font-size: 32px; font-weight: 800; margin-top: 5px" class="mono">[[ formatCurrency(data.total) ]]</div>
+																		<div style="font-size: 32px; font-weight: 800; margin-top: 5px" class="mono">[[ formatCurrency(data.total, 0) ]]</div>
 
 																	</div>
 
@@ -2133,9 +2111,8 @@
 					const tenureMonths = parseInt(this.data.deposit_period_mths) || 0;
 					const totalCalendarMonths = (dExit.getFullYear() - start.getFullYear()) * 12 + (dExit.getMonth() - start.getMonth());
 					
-					// The ledger should strictly stop at the last actual transaction month
-					// Even if the settlement date is ahead, we don't project empty rows
-					const displayLimit = maxTxnMonth;
+					// Fix: Include skipped months up to the month before maturity month
+					const displayLimit = Math.max(maxTxnMonth, tenureMonths - 1);
 
 					let totalInstallments = 0;
 					let totalInterestAccrued = 0;
@@ -2226,8 +2203,8 @@
 					});
 
 					this.data.total_tran_sum = totalInstallments.toFixed(2);
-					this.data.principal = totalInstallments.toFixed(2);
-					this.data.interest = totalInterestAccrued.toFixed(2);
+					this.data.principal = Math.round(totalInstallments);
+					this.data.interest = Math.round(totalInterestAccrued);
 					this.data.appliedRate = appRate;
 					this.data.baseRate = baseRate;
 					
@@ -2240,8 +2217,8 @@
 						this.data.passbook_charges = 60;
 					}
 
-					// Always use internal calculation for total settlement
-					this.data.total = Math.round(totalInstallments + totalInterestAccrued - this.data.penalty - this.data.passbook_charges);
+					// Always use internal calculation for total settlement based on rounded components
+					this.data.total = this.data.principal + this.data.interest - this.data.penalty - this.data.passbook_charges;
 					
 					this.data.monthsHeld = monthsHeldTotal;
 					this.data.slabStatus = monthsHeldTotal >= rules.meta.tenure_m ? { label: `Matured: ${appRate}%`, color: "#10b981" } : (appRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Prematured: ${appRate}%`, color: "#f59e0b" });
@@ -2358,10 +2335,10 @@
 				},
 
 				selectProduct(p) { this.selectedProduct = p; if (this.data) this.updateCalculations(); },
-				formatCurrency(v) { 
-					if (v === undefined || v === null) return "₹0.00";
+				formatCurrency(v, decimals = 2) { 
+					if (v === undefined || v === null) return "₹0" + (decimals > 0 ? "." + "0".repeat(decimals) : "");
 					const num = typeof v === 'string' ? parseFloat(v) : v;
-					return "₹" + num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); 
+					return "₹" + num.toLocaleString("en-IN", { minimumFractionDigits: decimals, maximumFractionDigits: decimals }); 
 				},
 				formatDate(ds) { if (!ds) return ""; const [y, m, d] = ds.split('-'); return `${d}/${m}/${y}`; },
 				getMonthAbbr(dateStr) {
