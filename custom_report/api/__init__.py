@@ -541,21 +541,25 @@ def _apply_branch_report_filter(sql_query, sol_id, is_branch_user):
         )
     
     # Check if query contains CTEs (WITH clause)
-    has_cte = bool(re.search(r'^\s*WITH\s+', sql_query, flags=re.IGNORECASE))
+    # Ensure WITH is at depth 0
+    has_cte = bool(_find_top_level_matches(r'^\s*WITH\s+', sql_query))
     
     if has_cte:
         # For CTE queries, find the main SELECT (after all CTEs)
-        # Pattern: closing bracket followed by SELECT
-        cte_end_pattern = r'\)\s*\n\s*SELECT'
-        matches = list(re.finditer(cte_end_pattern, sql_query, flags=re.IGNORECASE))
+        # Pattern: closing bracket followed by SELECT at depth 0
+        cte_end_pattern = r'\)\s*\n?\s*SELECT'
+        matches = _find_top_level_matches(cte_end_pattern, sql_query)
         
         if matches:
             # Get the last match - this is where main SELECT starts
             last_match = matches[-1]
+            match_text = last_match.group(0)
+            select_offset = match_text.upper().find("SELECT")
+            split_pos = last_match.start() + select_offset
             
             # Split: CTE part + Main SELECT part
-            cte_part = sql_query[:last_match.end()]
-            main_part = sql_query[last_match.end():]
+            cte_part = sql_query[:split_pos]
+            main_part = sql_query[split_pos:]
             
             # Apply filter to main SELECT part only
             modified_main = _inject_sol_id_filter(main_part, sol_id)
@@ -568,9 +572,43 @@ def _apply_branch_report_filter(sql_query, sol_id, is_branch_user):
     modified_sql = _inject_sol_id_filter(sql_query, sol_id)
     return modified_sql, True
 
+def _get_nesting_level(text, position):
+    """Calculate the parenthesis nesting level at a given position."""
+    depth = 0
+    for i in range(position):
+        if text[i] == '(':
+            depth += 1
+        elif text[i] == ')':
+            depth -= 1
+    return depth
+
+def _find_top_level_matches(pattern, text, flags=re.IGNORECASE):
+    """Find all regex matches that are at nesting level 0."""
+    matches = list(re.finditer(pattern, text, flags=flags))
+    return [m for m in matches if _get_nesting_level(text, m.start()) == 0]
+
 def _inject_sol_id_filter(sql_segment, sol_id):
     """
-    Inject sol_id filter into the WHERE clause of a SQL segment.
+    Inject sol_id filter into a SQL segment, handling UNIONs.
+    """
+    # Handle UNIONs at top level
+    union_matches = _find_top_level_matches(r"\bUNION(\s+ALL)?\b", sql_segment)
+    
+    if union_matches:
+        new_sql = ""
+        last_pos = 0
+        for m in union_matches:
+            part = sql_segment[last_pos:m.start()]
+            new_sql += _inject_sol_id_filter_single(part, sol_id) + " " + m.group(0) + " "
+            last_pos = m.end()
+        new_sql += _inject_sol_id_filter_single(sql_segment[last_pos:], sol_id)
+        return new_sql
+    else:
+        return _inject_sol_id_filter_single(sql_segment, sol_id)
+
+def _inject_sol_id_filter_single(sql_segment, sol_id):
+    """
+    Inject sol_id filter into the WHERE clause of a SINGLE SQL SELECT segment.
     """
     # Detect which table alias has sol_id column
     table_alias = _detect_sol_id_table_alias(sql_segment)
@@ -586,45 +624,26 @@ def _inject_sol_id_filter(sql_segment, sol_id):
     else:
         sol_id_condition = f"{condition_col} = %(branch_sol_id)s"
     
-    # Check if WHERE clause exists
-    where_match = re.search(r"\bWHERE\b", sql_segment, flags=re.IGNORECASE)
-    if where_match:
-        # Add condition after WHERE keyword
-        # We use a more precise regex to insert right after WHERE
-        modified_sql = re.sub(
-            r"(\bWHERE\b)",
-            rf"\1 ({sol_id_condition}) AND ",
-            sql_segment,
-            count=1,
-            flags=re.IGNORECASE
-        )
+    # Find WHERE clause at top level
+    top_wheres = _find_top_level_matches(r"\bWHERE\b", sql_segment)
+    
+    if top_wheres:
+        # Multiple top-level WHEREs in a single segment shouldn't happen,
+        # but if it does (e.g. malformed SQL), we inject into the first one.
+        m = top_wheres[0]
+        modified_sql = sql_segment[:m.end()] + f" ({sol_id_condition}) AND " + sql_segment[m.end():]
     else:
-        # No WHERE clause exists - add one before GROUP BY, ORDER BY, LIMIT, or at end
-        if re.search(r"\bGROUP\s+BY\b", sql_segment, flags=re.IGNORECASE):
-            modified_sql = re.sub(
-                r"(\bGROUP\s+BY\b)",
-                rf"WHERE {sol_id_condition} \1",
-                sql_segment,
-                count=1,
-                flags=re.IGNORECASE
-            )
-        elif re.search(r"\bORDER\s+BY\b", sql_segment, flags=re.IGNORECASE):
-            modified_sql = re.sub(
-                r"(\bORDER\s+BY\b)",
-                rf"WHERE {sol_id_condition} \1",
-                sql_segment,
-                count=1,
-                flags=re.IGNORECASE
-            )
-        elif re.search(r"\bLIMIT\b", sql_segment, flags=re.IGNORECASE):
-            modified_sql = re.sub(
-                r"(\bLIMIT\b)",
-                rf"WHERE {sol_id_condition} \1",
-                sql_segment,
-                count=1,
-                flags=re.IGNORECASE
-            )
-        else:
+        # No top-level WHERE clause exists - add one before GROUP BY, ORDER BY, LIMIT, or at end
+        inserted = False
+        for keyword in [r"\bGROUP\s+BY\b", r"\bORDER\s+BY\b", r"\bLIMIT\b"]:
+            top_keywords = _find_top_level_matches(keyword, sql_segment)
+            if top_keywords:
+                m = top_keywords[0]
+                modified_sql = sql_segment[:m.start()] + f"WHERE {sol_id_condition} " + sql_segment[m.start():]
+                inserted = True
+                break
+        
+        if not inserted:
             # Add WHERE at the end, but before any trailing semicolon
             base_sql = sql_segment.strip()
             if base_sql.endswith(';'):
@@ -636,46 +655,28 @@ def _inject_sol_id_filter(sql_segment, sol_id):
 
 def _detect_sol_id_table_alias(sql_segment):
     """
-    Detect which table alias to use for sol_id filtering.
-    
-    Searches the segment to identify the table that likely has sol_id.
-    1. Prefers explicit usage already in query (e.g. g.sol_id)
-    2. Prefers known tables like gam, smt, etc.
-    3. Falls back to first alias found in FROM clause.
-    
-    Args:
-        sql_segment (str): SQL query segment
-    
-    Returns:
-        str: Table alias to use (e.g., 'g', 'b', 't')
+    Detect which table alias to use for sol_id filtering, looking only at top level.
     """
-    # 1. Look for explicit sol_id usage in the original query to steal its alias
-    # This is the most reliable way if the user already specified an alias
-    sol_id_usage = r'(\w+)\.sol_id'
-    match = re.search(sol_id_usage, sql_segment, flags=re.IGNORECASE)
-    if match:
-        return match.group(1)
+    # 1. Look for explicit sol_id usage at top level
+    # (Matches g.sol_id where it's not in a subquery SELECT)
+    matches = _find_top_level_matches(r'(\w+)\.sol_id', sql_segment)
+    if matches:
+        return matches[0].group(1)
 
-    # 2. Look for known Finacle tables that typically have sol_id
-    # gam (General Account Masters), smt (System Master Tables), etc.
-    known_tables_pattern = r'\b(?:FROM|JOIN)\s+(?:tbaadm\.)?(gam|smt|lad|acd)\s+(\w+)'
-    match = re.search(known_tables_pattern, sql_segment, flags=re.IGNORECASE)
-    if match:
-        return match.group(2)
+    # 2. Look for known Finacle tables at top level
+    matches = _find_top_level_matches(r'\b(?:FROM|JOIN)\s+(?:tbaadm\.)?(gam|smt|lad|acd)\s+(\w+)', sql_segment)
+    if matches:
+        return matches[0].group(2)
     
-    # 3. Look for any table alias in FROM clause
-    # Pattern matches: FROM table_name alias OR FROM cte_name alias
-    from_pattern = r'\bFROM\s+(?:\w+\.\w+|\w+|\([^)]+\))\s+(\w+)'
-    match = re.search(from_pattern, sql_segment, flags=re.IGNORECASE)
-    
-    if match:
-        alias = match.group(1)
-        # Avoid keywords that might be misidentified as aliases
+    # 3. Look for any table alias in top-level FROM clause
+    matches = _find_top_level_matches(r'\bFROM\s+(?:\w+\.\w+|\w+|\([^)]+\))\s+(\w+)', sql_segment)
+    if matches:
+        alias = matches[0].group(1)
         if alias.upper() not in ('WHERE', 'GROUP', 'ORDER', 'LIMIT', 'JOIN', 'LEFT', 'INNER'):
             return alias
 
-    # Default fallback to 'g' if no match found
-    return 'g'
+    # Default fallback to None if no match found
+    return None
 
 
 def _build_query_parameters(sql_query, start_date, end_date, sol_id):
