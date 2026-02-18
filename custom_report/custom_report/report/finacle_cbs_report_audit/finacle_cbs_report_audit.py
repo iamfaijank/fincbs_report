@@ -36,11 +36,17 @@ def get_columns():
             "width": 150
         },
         {
-            "label": _("Report Name"),
+            "label": _("Report Title"),
+            "fieldname": "report_title",
+            "fieldtype": "Data",
+            "width": 200
+        },
+        {
+            "label": _("Report ID"),
             "fieldname": "report_name",
             "fieldtype": "Link",
             "options": "Finacle Report",
-            "width": 180
+            "width": 100
         },
         {
             "label": _("Primary SOL"),
@@ -78,27 +84,30 @@ def get_columns():
 def get_data(filters):
     conditions = []
     if filters.get("from_date"):
-        conditions.append("DATE(date_time) >= %(from_date)s")
+        conditions.append("DATE(rl.date_time) >= %(from_date)s")
     if filters.get("to_date"):
-        conditions.append("DATE(date_time) <= %(to_date)s")
+        conditions.append("DATE(rl.date_time) <= %(to_date)s")
     if filters.get("employee"):
-        conditions.append("employee = %(employee)s")
+        conditions.append("rl.employee = %(employee)s")
     if filters.get("report_name"):
-        conditions.append("report_name = %(report_name)s")
+        conditions.append("rl.report_name = %(report_name)s")
     if filters.get("status"):
-        conditions.append("status = %(status)s")
+        conditions.append("rl.status = %(status)s")
     if filters.get("sol_id"):
-        conditions.append("sol_id = %(sol_id)s")
+        conditions.append("rl.sol_id = %(sol_id)s")
 
     where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
     
     return frappe.db.sql(f"""
         SELECT 
-            date_time, status, employee_name, report_name, 
-            sol_id, start_date, end_date, selected_sol_ids, error_message
-        FROM `tabReport Log`
+            rl.date_time, rl.status, rl.employee_name, 
+            fr.report_name as report_title,
+            rl.report_name, rl.sol_id, rl.start_date, 
+            rl.end_date, rl.selected_sol_ids, rl.error_message
+        FROM `tabReport Log` rl
+        LEFT JOIN `tabFinacle Report` fr ON rl.report_name = fr.name
         {where_clause}
-        ORDER BY date_time DESC
+        ORDER BY rl.date_time DESC
     """, filters, as_dict=True)
 
 
