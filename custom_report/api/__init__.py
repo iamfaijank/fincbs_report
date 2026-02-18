@@ -5,6 +5,7 @@ import time
 import tempfile
 import re
 import csv
+import json
 from datetime import datetime
 from custom_report.db_utils import get_pg_connection
 
@@ -43,6 +44,83 @@ class Colors:
 
 
 @frappe.whitelist()
+def get_user_report_permissions():
+    """
+    Fetch user-specific report permissions.
+    - Branch Report role: Returns sol_ids from Report Preference.
+    - Department roles: Returns all sol_ids from 'Sahayog Branch' doctype.
+    """
+    user = frappe.session.user
+    user_roles = set(frappe.get_roles())
+    
+    # Define roles that should see all SOL IDs
+    DEPARTMENT_ROLES = {
+        "HR Department Report",
+        "JLL Department Report",
+        "MIS Department Report",
+        "Loan Department Report",
+        "Audit Department Report",
+        "Finance Department Report",
+        "Operation Department Report",
+        "Two Wheeler Department Report",
+        "Head Office Report",
+        "System Manager",
+        "Finacle Report Admin"
+    }
+    
+    is_branch_user = "Branch Report" in user_roles
+    is_dept_user = bool(user_roles.intersection(DEPARTMENT_ROLES))
+    
+    sol_data = [] # List of dicts: {"sol_id": "...", "branch_name": "..."}
+
+    if is_branch_user and not is_dept_user:
+        # Strict branch user - check preferences first
+        pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
+        sol_ids = []
+        if pref_name:
+            doc = frappe.get_doc("Report Preference", pref_name)
+            if hasattr(doc, "sol_id") and not isinstance(doc.sol_id, str):
+                sol_ids = [d.sol_id for d in doc.sol_id if getattr(d, "sol_id", None)]
+                sol_ids = list(set(sol_ids))
+            else:
+                sol_id_val = getattr(doc, "sol_id", None)
+                if isinstance(sol_id_val, str):
+                    sol_ids = [s.strip() for s in sol_id_val.split(",") if s.strip()]
+        
+        # USE CASE: If no Report Preference OR only one SOL ID is found, 
+        # fallback to Employee doctype (single branch).
+        if len(sol_ids) <= 1:
+            employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
+            if employee_sol:
+                sol_ids = [employee_sol]
+            elif not sol_ids:
+                sol_ids = [] # Still empty if nothing in Employee either
+
+        if sol_ids:
+            # Fetch branch names for these sol_ids
+            branches = frappe.get_all(
+                "Sahayog Branch",
+                filters={"name": ["in", sol_ids]},
+                fields=["name as sol_id", "branch as branch_name"]
+            )
+            sol_data = branches
+    
+    elif is_dept_user:
+        # Department user or Admin - show ALL sol_ids from Sahayog Branch doctype
+        sol_data = frappe.get_all(
+            "Sahayog Branch", 
+            fields=["name as sol_id", "branch as branch_name"],
+            order_by="name asc"
+        )
+
+    return {
+        "is_branch_user": is_branch_user,
+        "is_dept_user": is_dept_user,
+        "sol_data": sol_data # Sorted by sol_id
+    }
+
+
+@frappe.whitelist()
 def get_user_reports():
     """
     Fetch all reports accessible to the current user based on their roles.
@@ -72,7 +150,7 @@ def get_user_reports():
 
 
 @frappe.whitelist()
-def report_download(report_docname, start_date=None, end_date=None, file_type="csv"):
+def report_download(report_docname, start_date=None, end_date=None, file_type="csv", sol_id=None):
     """
     Download report data filtered by user's sol_id, date range, and SQL placeholders.
     
@@ -81,6 +159,7 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         start_date (str, optional): Start date for filtering (YYYY-MM-DD format)
         end_date (str, optional): End date for filtering (YYYY-MM-DD format)
         file_type (str, optional): Output file type (default: 'csv')
+        sol_id (str/list, optional): Manually selected sol_id(s) from frontend
     
     Returns:
         dict: Status response with filename on success
@@ -98,11 +177,34 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         _print_info(f"Session User: {user}")
         _print_info(f"User Roles: {', '.join(sorted(user_roles))}")
         
+        # Parse manual sol_id if provided from frontend
+        manual_sol_id = None
+        if sol_id:
+            if isinstance(sol_id, str):
+                try:
+                    # Attempt to parse as JSON list: '["1025", "1026"]'
+                    manual_sol_id = json.loads(sol_id)
+                except:
+                    # Fallback to comma separated or single value: '1025,1026'
+                    manual_sol_id = [s.strip() for s in sol_id.split(",") if s.strip()]
+            elif isinstance(sol_id, list):
+                manual_sol_id = sol_id
+            
+            # Final cleanup: Ensure all items are strings and not nested JSON strings
+            if isinstance(manual_sol_id, list):
+                cleaned_ids = []
+                for s in manual_sol_id:
+                    if isinstance(s, str):
+                        # Fix for cases where a string might be doubly quoted or look like '["1025"]'
+                        s = s.strip('[]"\' ')
+                        if s: cleaned_ids.append(s)
+                manual_sol_id = cleaned_ids
+
         # Step 1.1: Check if user has "Branch Report" role and get sol_id
-        sol_id, is_branch_user = _get_user_sol_id_with_branch_check(user, user_roles)
+        final_sol_id, is_branch_user = _get_user_sol_id_with_branch_check(user, user_roles, manual_sol_id)
         
         if is_branch_user:
-            _print_success(f"Final Sol ID to use: {sol_id or 'None'}")
+            _print_success(f"Final Sol ID to use: {final_sol_id or 'None'}")
             _print_info(f"Branch Report User: YES ✓")
             _print_warning("⚠️  Sol ID filter will be applied to query")
         else:
@@ -120,7 +222,7 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         # Step 4: Apply Branch Report filter ONLY if user has "Branch Report" role
         if is_branch_user:
             filtered_sql, branch_filter_applied = _apply_branch_report_filter(
-                raw_sql, sol_id, is_branch_user
+                raw_sql, final_sol_id, is_branch_user
             )
         else:
             # No modification - use original query
@@ -128,7 +230,7 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
             branch_filter_applied = False
         
         # Step 5: Prepare query parameters for date range and sol_id
-        query_params = _build_query_parameters(filtered_sql, start_date, end_date, sol_id)
+        query_params = _build_query_parameters(filtered_sql, start_date, end_date, final_sol_id)
         
         # Step 6: Display final SQL and parameters
         _print_sql_debug(filtered_sql, query_params, branch_filter_applied, is_branch_user)
@@ -173,6 +275,16 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         # Step 11: Serve file for download
         _prepare_file_download(temp_path, filename)
         
+        # Step 12: Log the success
+        _log_report_download(
+            report_docname=report_docname,
+            user=user,
+            start_date=start_date,
+            end_date=end_date,
+            manual_sol_id=manual_sol_id,
+            status="Success"
+        )
+
         print()
         _print_success(f"File ready for download: {filename}")
         _print_footer("REPORT DOWNLOAD COMPLETED")
@@ -184,11 +296,46 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         _print_error(f"ERROR in report_download: {str(e)}")
         _print_footer("REPORT DOWNLOAD FAILED", success=False)
         
+        # Log the failure
+        try:
+            _log_report_download(
+                report_docname=report_docname,
+                user=frappe.session.user,
+                start_date=start_date,
+                end_date=end_date,
+                manual_sol_id=manual_sol_id,
+                status="Failed",
+                error_message=str(e)
+            )
+        except:
+            pass
+
         frappe.log_error(
             message=f"Error in report_download: {str(e)}\n\n{frappe.get_traceback()}", 
             title="Report Download Error"
         )
         raise e
+
+
+def _log_report_download(report_docname, user, start_date, end_date, manual_sol_id, status, error_message=None):
+    """Create a entry in the Report Log doctype."""
+    try:
+        employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+        log = frappe.get_doc({
+            "doctype": "Report Log",
+            "report_name": report_docname,
+            "employee": employee,
+            "start_date": start_date,
+            "end_date": end_date,
+            "selected_sol_ids": json.dumps(manual_sol_id) if manual_sol_id else None,
+            "date_time": frappe.utils.now_datetime(),
+            "status": status,
+            "error_message": error_message
+        })
+        log.insert(ignore_permissions=True)
+        frappe.db.commit()
+    except Exception as log_err:
+        frappe.log_error(message=f"Failed to create Report Log: {str(log_err)}", title="Report Log Error")
 
 
 # ============================================================================
@@ -236,60 +383,106 @@ def _get_report_metadata(report):
     }
 
 
-def _get_user_sol_id_with_branch_check(user, user_roles):
+def _get_user_sol_id_with_branch_check(user, user_roles, manual_sol_id=None):
     """
     Retrieve sol_id for the user with branch-specific logic.
-    
-    If user has "Branch Report" role, fetch sahayog_branch from Employee doctype.
-    Otherwise, return None (no filtering needed).
-    
-    Args:
-        user (str): Username/email of the user
-        user_roles (set): Set of roles assigned to current user
-    
-    Returns:
-        tuple: (sol_id, is_branch_user)
-            - sol_id (str or None): sol_id value to use for filtering
-            - is_branch_user (bool): True if user has Branch Report role
+    - Branch Report role: Returns sol_ids from Report Preference (or manual selection from preferences).
+    - Department roles: Returns manual selection (or None if all branches wanted).
     """
     sol_id = None
-    is_branch_user = False
+    is_branch_user = "Branch Report" in user_roles
     
+    # Define roles that should see all SOL IDs
+    DEPARTMENT_ROLES = {
+        "HR Department Report",
+        "JLL Department Report",
+        "MIS Department Report",
+        "Loan Department Report",
+        "Audit Department Report",
+        "Finance Department Report",
+        "Operation Department Report",
+        "Two Wheeler Department Report",
+        "Head Office Report",
+        "System Manager",
+        "Finacle Report Admin"
+    }
+    is_dept_user = bool(user_roles.intersection(DEPARTMENT_ROLES))
+
     try:
         _print_section_header("CHECKING USER ROLE & SOL_ID")
         
-        # Check if user has "Branch Report" role
-        if "Branch Report" in user_roles:
-            is_branch_user = True
-            _print_success("User has 'Branch Report' role")
-            _print_info("Fetching 'sahayog_branch' from Employee doctype...")
-            
-            # Fetch sahayog_branch from Employee doctype linked to this user
-            sol_id = frappe.db.get_value(
-                "Employee", 
-                {"user_id": user}, 
-                "sahayog_branch"
-            )
-            
-            if sol_id:
-                _print_success(f"Found sahayog_branch: {sol_id}")
+        # Scenario A: User is a Department User (sees all branches)
+        if is_dept_user:
+            _print_success("User is a Department/Admin user")
+            # For department users, only apply filter if they manually select branches in sidebar
+            if manual_sol_id:
+                if isinstance(manual_sol_id, str):
+                    manual_sol_id = [manual_sol_id]
+                sol_id = manual_sol_id
+                _print_info(f"Using manual sol_id selection: {', '.join(sol_id)}")
             else:
-                _print_warning("sahayog_branch NOT FOUND in Employee doctype")
+                sol_id = None # Do not apply any SOL ID filter (original query)
+                _print_info("No manual filter selected - showing all branches")
+            
+            # For departments, is_branch_user logic for SQL filter should only trigger if sol_id is set
+            is_branch_user = bool(sol_id) 
+
+        # Scenario B: User is strictly a Branch User (Report Preference applies)
+        elif is_branch_user:
+            _print_success("User has 'Branch Report' role")
+            
+            # Fetch Report Preference for the user
+            allowed_sol_ids = []
+            pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
+            if pref_name:
+                doc = frappe.get_doc("Report Preference", pref_name)
+                if hasattr(doc, "sol_id") and not isinstance(doc.sol_id, str):
+                    allowed_sol_ids = [d.sol_id for d in doc.sol_id if getattr(d, "sol_id", None)]
+                    allowed_sol_ids = list(set(allowed_sol_ids))
+                else:
+                    sol_id_val = getattr(doc, "sol_id", None)
+                    if isinstance(sol_id_val, str):
+                        allowed_sol_ids = [s.strip() for s in sol_id_val.split(",") if s.strip()]
+
+            # FALLBACK USE CASE: If no Report Preference OR only one SOL ID is found,
+            # use the single branch from Employee doctype.
+            if len(allowed_sol_ids) <= 1:
+                _print_info("Report Preference has <= 1 SOL ID. Falling back to Employee doctype...")
+                employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
+                if employee_sol:
+                    allowed_sol_ids = [employee_sol]
+                    _print_success(f"Using branch from Employee record: {employee_sol}")
+
+            # Use manual selection if provided, but validate against allowed list
+            if manual_sol_id:
+                if isinstance(manual_sol_id, str):
+                    manual_sol_id = [manual_sol_id]
+                sol_id = [s for s in manual_sol_id if s in allowed_sol_ids]
+                _print_info(f"Using manual sol_id selection (validated): {', '.join(sol_id)}")
+            else:
+                sol_id = allowed_sol_ids
+                if sol_id:
+                    _print_success(f"Final sol_ids applied: {', '.join(sol_id)}")
+                else:
+                    _print_warning("No sol_id found in Report Preference or Employee")
+            
+            if not pref_name and len(allowed_sol_ids) == 0:
+                _print_warning("Neither Report Preference nor Employee branch found for user")
             
             print()
             _print_highlight("BRANCH REPORT USER INFO:")
             _print_data("User", user)
-            _print_data("Sol ID (Employee.sahayog_branch)", sol_id or 'NOT FOUND')
+            _print_data("Sol IDs to apply", ", ".join(sol_id) if sol_id else 'NOT FOUND')
             _print_data("Filter Applied", 'YES ✓' if sol_id else 'NO ✗')
             _print_data("Roles Count", len(user_roles))
             
             frappe.log_error(
-                message=f"Branch Report User Check\nUser: {user}\nSol ID: {sol_id}\nRoles: {', '.join(user_roles)}", 
-                title="Branch User Sol ID"
+                message=f"Branch Report User Check\nUser: {user}\nSol IDs: {sol_id}\nRoles: {', '.join(user_roles)}", 
+                title="Branch User Sol IDs"
             )
             
         else:
-            _print_info("User does NOT have 'Branch Report' role")
+            _print_info("User does NOT have 'Branch Report' or Department roles")
             _print_success("No sol_id filtering required - using original query")
             
             print()
@@ -328,7 +521,7 @@ def _apply_branch_report_filter(sql_query, sol_id, is_branch_user):
     
     Args:
         sql_query (str): Original SQL query
-        sol_id (str): User's sol_id value from Employee.sahayog_branch
+        sol_id (str or list): User's sol_id value(s) from Report Preference
         is_branch_user (bool): Whether user has Branch Report role
     
     Returns:
@@ -343,7 +536,7 @@ def _apply_branch_report_filter(sql_query, sol_id, is_branch_user):
     # If branch user but no sol_id found, throw error
     if not sol_id:
         frappe.throw(
-            "❌ You have 'Branch Report' role but no sahayog_branch assigned in Employee record. "
+            "❌ You have 'Branch Report' role but no SOL IDs assigned in Report Preference. "
             "Please contact administrator."
         )
     
@@ -378,35 +571,44 @@ def _apply_branch_report_filter(sql_query, sol_id, is_branch_user):
 def _inject_sol_id_filter(sql_segment, sol_id):
     """
     Inject sol_id filter into the WHERE clause of a SQL segment.
-    
-    Automatically detects the correct table alias to use for sol_id filtering.
-    
-    Args:
-        sql_segment (str): SQL query or query segment
-        sol_id (str): User's sol_id value
-    
-    Returns:
-        str: Modified SQL with sol_id filter added
     """
     # Detect which table alias has sol_id column
     table_alias = _detect_sol_id_table_alias(sql_segment)
     
-    # Build the filter condition with detected alias
-    sol_id_condition = f"{table_alias}.sol_id = %(branch_sol_id)s"
+    # Build the filter condition
+    if table_alias:
+        condition_col = f"{table_alias}.sol_id"
+    else:
+        condition_col = "sol_id"
+
+    if isinstance(sol_id, list):
+        sol_id_condition = f"{condition_col} IN %(branch_sol_id)s"
+    else:
+        sol_id_condition = f"{condition_col} = %(branch_sol_id)s"
     
     # Check if WHERE clause exists
-    if re.search(r"\bWHERE\b", sql_segment, flags=re.IGNORECASE):
+    where_match = re.search(r"\bWHERE\b", sql_segment, flags=re.IGNORECASE)
+    if where_match:
         # Add condition after WHERE keyword
+        # We use a more precise regex to insert right after WHERE
         modified_sql = re.sub(
-            r"(\bWHERE\b)\s+",
-            rf"\1 {sol_id_condition} AND ",
+            r"(\bWHERE\b)",
+            rf"\1 ({sol_id_condition}) AND ",
             sql_segment,
             count=1,
             flags=re.IGNORECASE
         )
     else:
-        # No WHERE clause exists - add one before ORDER BY, LIMIT, or at end
-        if re.search(r"\bORDER\s+BY\b", sql_segment, flags=re.IGNORECASE):
+        # No WHERE clause exists - add one before GROUP BY, ORDER BY, LIMIT, or at end
+        if re.search(r"\bGROUP\s+BY\b", sql_segment, flags=re.IGNORECASE):
+            modified_sql = re.sub(
+                r"(\bGROUP\s+BY\b)",
+                rf"WHERE {sol_id_condition} \1",
+                sql_segment,
+                count=1,
+                flags=re.IGNORECASE
+            )
+        elif re.search(r"\bORDER\s+BY\b", sql_segment, flags=re.IGNORECASE):
             modified_sql = re.sub(
                 r"(\bORDER\s+BY\b)",
                 rf"WHERE {sol_id_condition} \1",
@@ -423,8 +625,12 @@ def _inject_sol_id_filter(sql_segment, sol_id):
                 flags=re.IGNORECASE
             )
         else:
-            # Add WHERE at the end
-            modified_sql = f"{sql_segment.rstrip(';')} WHERE {sol_id_condition}"
+            # Add WHERE at the end, but before any trailing semicolon
+            base_sql = sql_segment.strip()
+            if base_sql.endswith(';'):
+                modified_sql = f"{base_sql[:-1]} WHERE {sol_id_condition};"
+            else:
+                modified_sql = f"{base_sql} WHERE {sol_id_condition}"
     
     return modified_sql
 
@@ -432,7 +638,8 @@ def _detect_sol_id_table_alias(sql_segment):
     """
     Detect which table alias to use for sol_id filtering.
     
-    Searches the FROM clause to identify the primary table/CTE alias.
+    Searches the FROM/JOIN clauses to identify the table that likely has sol_id.
+    Prefers known tables like gam, smt, etc.
     
     Args:
         sql_segment (str): SQL query segment
@@ -440,19 +647,30 @@ def _detect_sol_id_table_alias(sql_segment):
     Returns:
         str: Table alias to use (e.g., 'g', 'b', 't')
     """
-    # Pattern matches: FROM table_name alias OR FROM cte_name alias
-    # Examples:
-    #   FROM tbaadm.gam g          -> captures 'g'
-    #   FROM base_data b           -> captures 'b'
-    #   FROM (SELECT ...) t        -> captures 't'
+    # 1. Look for known Finacle tables that typically have sol_id
+    # gam (General Account Masters), smt (System Master Tables), etc.
+    known_tables_pattern = r'\bFROM\s+(?:tbaadm\.)?(gam|smt|lad|acd)\s+(\w+)'
+    match = re.search(known_tables_pattern, sql_segment, flags=re.IGNORECASE)
+    if match:
+        return match.group(2)
     
+    # 2. Look for any table alias in FROM clause
+    # Pattern matches: FROM table_name alias OR FROM cte_name alias
     from_pattern = r'\bFROM\s+(?:\w+\.\w+|\w+|\([^)]+\))\s+(\w+)'
     match = re.search(from_pattern, sql_segment, flags=re.IGNORECASE)
     
     if match:
         alias = match.group(1)
-        return alias
+        # Avoid keywords that might be misidentified as aliases
+        if alias.upper() not in ('WHERE', 'GROUP', 'ORDER', 'LIMIT', 'JOIN', 'LEFT', 'INNER'):
+            return alias
     
+    # 3. Look for explicit sol_id usage in the original query to steal its alias
+    sol_id_usage = r'(\w+)\.sol_id'
+    match = re.search(sol_id_usage, sql_segment, flags=re.IGNORECASE)
+    if match:
+        return match.group(1)
+
     # Default fallback to 'g' if no match found
     return 'g'
 
@@ -465,7 +683,7 @@ def _build_query_parameters(sql_query, start_date, end_date, sol_id):
         sql_query (str): SQL query to check for placeholders
         start_date (str): Start date value
         end_date (str): End date value
-        sol_id (str): User's sol_id value
+        sol_id (str or list): User's sol_id value(s)
     
     Returns:
         dict: Dictionary of query parameters (never returns None)
@@ -486,7 +704,10 @@ def _build_query_parameters(sql_query, start_date, end_date, sol_id):
     
     # Add branch sol_id parameter ONLY if placeholder exists
     if "%(branch_sol_id)s" in sql_query and sol_id:
-        params["branch_sol_id"] = sol_id
+        if isinstance(sol_id, list):
+            params["branch_sol_id"] = tuple(sol_id)
+        else:
+            params["branch_sol_id"] = sol_id
     
     # Always return dictionary (empty if no params)
     return params

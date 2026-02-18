@@ -49,7 +49,7 @@ frappe.pages['finacle-report-portal'].on_page_load = function(wrapper) {
         $(page.body).html(`
             <div style="display:flex;justify-content:center;align-items:center;min-height:60vh;font-family:sans-serif;">
                 <div style="max-width:600px;text-align:center;padding:40px;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
-                    <div style="font-size:70px;color:#b71c1c;margin-bottom:20px;">📵</div>
+                    <div style="font-size:70px;color:#b71c1c;margin-bottom:20px;">\uD83D\uDCF4</div>
                     <h2 style="color:#b71c1c;margin-bottom:15px;font-size:26px;">This App Is Not Supported on Mobile</h2>
                     <p style="color:#555;font-size:15px;line-height:1.6;margin-bottom:20px;">
                         The <strong>Finacle Report Portal</strong> can only be accessed from a Desktop or Laptop browser.
@@ -120,7 +120,7 @@ function showAccessDeniedPage(wrapper) {
     $(page.body).html(`
         <div style="display:flex;justify-content:center;align-items:center;min-height:60vh;font-family:sans-serif;">
             <div style="max-width:600px;text-align:center;padding:40px;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
-                <div style="font-size:80px;color:#b71c1c;margin-bottom:20px;">🚫</div>
+                <div style="font-size:80px;color:#b71c1c;margin-bottom:20px;">\uD83D\uDEAB</div>
                 <h2 style="color:#b71c1c;margin-bottom:15px;font-size:28px;">Access Denied</h2>
                 <p style="color:#555;font-size:16px;line-height:1.6;margin-bottom:25px;">
                     You do not have permission to access the <strong>Finacle Report Portal</strong>.
@@ -171,53 +171,85 @@ function initializeReportPortal(wrapper) {
         document.head.appendChild(script);
     }
 
-    // Page HTML with search input
+    // Page HTML with Form
     $(page.body).html(`
-        <div style="max-width:480px;margin:40px auto;font-family:sans-serif;">
-            <div style="padding:20px;background:#fff;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,0.1);">
-                <h3 style="text-align:center;color:#196767;margin-bottom:25px;">Finacle CBS Report</h3>
-                <form id="finacle-report-form" style="display:flex;flex-direction:column;gap:15px;">
+        <div style="max-width:480px; margin: 40px auto; font-family: sans-serif;">
+            <div style="padding:20px; background:#fff; border-radius:10px; box-shadow:0 3px 10px rgba(0,0,0,0.1);">
+                <h3 style="text-align:center; color:#196767; margin-bottom:10px;">Finacle CBS Report</h3>
+                
+                <div id="user_permissions_info" style="text-align:center; margin-bottom:20px; display:none;">
+                    <!-- Permissions info will be populated here -->
+                </div>
+
+                <form id="finacle-report-form" style="display:flex; flex-direction:column; gap:15px;">
                     <div>
-                        <label style="font-weight:600;color:#196767;margin-bottom:5px;">Select Report</label>
+                        <label style="font-weight:600; color:#196767; margin-bottom:5px;">Select Report</label>
                         <div style="position:relative;">
-                            <input type="text" id="report_search" class="form-control" placeholder="🔍 Search or select report..." autocomplete="off" style="padding-right:35px;">
+                            <input type="text" id="report_search" class="form-control" placeholder="\uD83D\uDD0D Search or select report..." autocomplete="off" style="padding-right:35px;">
                             <span id="search_clear" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:#999;display:none;font-size:18px;" title="Clear search">✕</span>
                             <select id="report_name" class="form-control" required style="display:none;">
                                 <option value="" disabled selected>Loading reports...</option>
                             </select>
-                            <div id="report_dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #ddd;border-radius:5px;max-height:250px;overflow-y:auto;z-index:1000;box-shadow:0 4px 8px rgba(0,0,0,0.1);margin-top:2px;">
+                            <div id="report_dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-radius:5px; max-height:250px; overflow-y:auto; z-index:1000; box-shadow:0 4px 8px rgba(0,0,0,0.1); margin-top:2px;">
                                 <!-- Dropdown items will be populated here -->
                             </div>
                         </div>
                         <input type="hidden" id="selected_report_value" value="">
-                        <div id="report_error" style="color:red;font-size:12px;display:none;margin-top:3px;"></div>
+                        <div id="report_error" style="color:red; font-size:12px; display:none; margin-top:3px;"></div>
                     </div>
-                    <div style="display:flex;gap:10px;">
+
+                    <!-- Branch Selection Dropdown -->
+                    <div id="branch_filter_container" style="display: none; flex-direction: column;">
+                        <label style="font-weight:600; color:#196767; margin-bottom:5px;">Select Branches</label>
+                        <div style="position: relative;">
+                            <div id="branch_selector_display" class="form-control" style="cursor: pointer; min-height: 38px; display: flex; align-items: center; justify-content: space-between; padding-right: 10px; background: #fff;">
+                                <span id="selected_branches_text" style="font-size: 13px; color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading branches...</span>
+                                <span style="color: #999;">▼</span>
+                            </div>
+                            
+                            <div id="branch_picker_dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-radius:5px; max-height:350px; overflow-y:auto; z-index:1001; box-shadow:0 4px 8px rgba(0,0,0,0.1); margin-top:2px; padding: 10px;">
+                                <div style="margin-bottom: 10px;">
+                                    <input type="text" id="sol_id_search" class="form-control" placeholder="Search branches..." style="font-size: 13px; height: 32px;">
+                                </div>
+                                <div id="sol_id_list" style="max-height: 200px; overflow-y: auto; border: 1px solid #ebedef; border-radius: 4px; padding: 5px; margin-bottom: 10px;">
+                                    <!-- Checkboxes will be populated here -->
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button type="button" id="select_all_sol" style="flex: 1; font-size: 11px; padding: 4px; cursor: pointer; background: #f0f4f4; border: 1px solid #d1d8d8; border-radius: 4px;">Select All</button>
+                                    <button type="button" id="clear_all_sol" style="flex: 1; font-size: 11px; padding: 4px; cursor: pointer; background: #f0f4f4; border: 1px solid #d1d8d8; border-radius: 4px;">Clear</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:10px;">
                         <div style="flex:1;">
-                            <label style="font-weight:600;color:#196767;margin-bottom:5px;">Start Date</label>
+                            <label style="font-weight:600; color:#196767; margin-bottom:5px;">Start Date</label>
                             <input type="text" id="start_date" class="form-control" required placeholder="DD/MM/YYYY">
-                            <div id="start_date_error" style="color:red;font-size:11px;display:none;margin-top:3px;"></div>
+                            <div id="start_date_error" style="color:red; font-size:11px; display:none; margin-top:3px;"></div>
                         </div>
                         <div style="flex:1;">
-                            <label style="font-weight:600;color:#196767;margin-bottom:5px;">End Date</label>
+                            <label style="font-weight:600; color:#196767; margin-bottom:5px;">End Date</label>
                             <input type="text" id="end_date" class="form-control" required placeholder="DD/MM/YYYY">
-                            <div id="end_date_error" style="color:red;font-size:11px;display:none;margin-top:3px;"></div>
+                            <div id="end_date_error" style="color:red; font-size:11px; display:none; margin-top:3px;"></div>
                         </div>
                     </div>
-                    <div style="display:flex;gap:10px;">
-                        <button type="button" id="download_csv" style="flex:1;background:#196767;color:white;border:none;padding:12px;font-weight:600;border-radius:5px;cursor:pointer;">
+
+                    <div style="display:flex; gap:10px;">
+                        <button type="button" id="download_csv" style="flex:1; background:#196767; color:white; border:none; padding:12px; font-weight:600; border-radius:5px; cursor:pointer;">
                              Download
                         </button>
-                        <button type="button" id="cancel_download" style="flex:1;background:#b71c1c;color:white;border:none;padding:12px;font-weight:600;border-radius:5px;cursor:pointer;display:none;">
+                        <button type="button" id="cancel_download" style="flex:1; background:#b71c1c; color:white; border:none; padding:12px; font-weight:600; border-radius:5px; cursor:pointer; display:none;">
                              Cancel
                         </button>
                     </div>
-                    <div id="progress_container" style="display:none;width:100%;height:12px;background:#eee;border-radius:6px;overflow:hidden;margin-top:10px;position:relative;">
-                        <div id="progress_bar" style="width:0%;height:100%;background:linear-gradient(90deg,#196767,#00bfa5);transition:width 0.3s ease;"></div>
-                        <div id="progress_percent" style="position:absolute;right:10px;top:-18px;font-size:12px;color:#196767;font-weight:600;"></div>
+
+                    <div id="progress_container" style="display:none; width:100%; height:12px; background:#eee; border-radius:6px; overflow:hidden; margin-top:10px; position:relative;">
+                        <div id="progress_bar" style="width:0%; height:100%; background:linear-gradient(90deg,#196767,#00bfa5); transition:width 0.3s ease;"></div>
+                        <div id="progress_percent" style="position:absolute; right:10px; top:-18px; font-size:12px; color:#196767; font-weight:600;"></div>
                     </div>
-                    <div id="progress_text" style="display:none;font-size:13px;color:#555;text-align:right;margin-top:3px;"></div>
-                    <div id="robot_msg" style="display:none;font-size:13px;color:#196767;text-align:left;margin-top:3px;font-style:italic;"></div>
+                    <div id="progress_text" style="display:none; font-size:13px; color:#555; text-align:right; margin-top:3px;"></div>
+                    <div id="robot_msg" style="display:none; font-size:13px; color:#196767; text-align:left; margin-top:3px; font-style:italic;"></div>
                 </form>
             </div>
         </div>
@@ -229,6 +261,175 @@ function initializeReportPortal(wrapper) {
     const $selectedReportValue = $('#selected_report_value');
     const $searchClear = $('#search_clear');
     
+    // Branch Filter Elements
+    const $branchFilterContainer = $('#branch_filter_container');
+    const $branchSelectorDisplay = $('#branch_selector_display');
+    const $branchPickerDropdown = $('#branch_picker_dropdown');
+    const $selectedBranchesText = $('#selected_branches_text');
+    const $solIdList = $('#sol_id_list');
+    const $solIdSearch = $('#sol_id_search');
+    
+    let currentSolData = [];
+    let isDeptUser = false;
+
+    // Fetch and show user permissions/branches
+    function loadUserPermissions() {
+        frappe.call({
+            method: 'custom_report.api.get_user_report_permissions',
+            callback: function(res) {
+                if (res.message && (res.message.is_branch_user || res.message.is_dept_user)) {
+                    currentSolData = res.message.sol_data || [];
+                    isDeptUser = res.message.is_dept_user;
+                    const $info = $('#user_permissions_info');
+                    
+                    $branchFilterContainer.css('display', 'flex');
+                    
+                    if (currentSolData.length > 0 || isDeptUser) {
+                        let statusText = '';
+                        if (isDeptUser) {
+                            statusText = 'Full Access (All Branches)';
+                        } else {
+                            statusText = `${currentSolData.length} Branches Selected`;
+                            // Pre-select all for branch users
+                            currentSolData.forEach(d => d.selected = true);
+                        }
+
+                        $selectedBranchesText.text(statusText);
+                        renderSolIdList();
+                    } else if (!isDeptUser) {
+                        $info.show().html(`
+                            <div style="background:#ffebee;border:1px solid #ffcdd2;border-radius:6px;padding:10px 15px;">
+                                <p style="color:#c62828;font-size:13px;font-weight:600;margin:0;">⚠️ No branches assigned in Report Preference.</p>
+                                <p style="color:#555;font-size:11px;margin:5px 0 0 0;">Please contact your administrator to set up your branch list.</p>
+                            </div>
+                        `);
+                        $selectedBranchesText.text('No branches assigned');
+                        $('#download_csv').prop('disabled', true).css('opacity', '0.6').attr('title', 'No branches assigned');
+                    }
+                }
+            }
+        });
+    }
+
+    function renderSolIdList() {
+        const searchTerm = $solIdSearch.val().toLowerCase();
+        
+        // Sort: Selected items first, then by sol_id
+        const sortedData = [...currentSolData].sort((a, b) => {
+            if (!!a.selected !== !!b.selected) {
+                return a.selected ? -1 : 1;
+            }
+            return a.sol_id.localeCompare(b.sol_id);
+        });
+
+        let html = '';
+        sortedData.forEach(d => {
+            const display_name = `${d.sol_id} (${d.branch_name})`;
+            if (display_name.toLowerCase().includes(searchTerm)) {
+                const checked = d.selected ? 'checked' : '';
+                html += `
+                    <div class="sol-item" style="display: flex; align-items: center; gap: 8px; padding: 4px; border-bottom: 1px solid #f8f9fa; ${d.selected ? 'background: #f0fafa;' : ''}">
+                        <input type="checkbox" id="chk_${d.sol_id}" value="${d.sol_id}" ${checked} style="cursor: pointer;">
+                        <label for="chk_${d.sol_id}" style="font-size: 13px; margin: 0; cursor: pointer; color: ${d.selected ? '#196767' : '#444'}; font-weight: ${d.selected ? '600' : '400'};">${display_name}</label>
+                    </div>
+                `;
+            }
+        });
+        
+        $solIdList.html(html || '<div style="text-align:center; padding:10px; color:#999; font-size:12px;">No branches found</div>');
+
+        // Bind events to new checkboxes
+        $solIdList.find('input[type="checkbox"]').on('change', function() {
+            const sol_id = $(this).val();
+            const is_checked = $(this).is(':checked');
+            
+            // Update data model
+            const item = currentSolData.find(d => d.sol_id === sol_id);
+            if (item) item.selected = is_checked;
+            
+            updateActiveBadges(isDeptUser);
+            // Re-render to update grouping
+            renderSolIdList();
+        });
+    }
+
+    function updateActiveBadges(is_dept) {
+        const selectedCount = currentSolData.filter(d => d.selected).length;
+        
+        if (is_dept) {
+            if (selectedCount === 0) {
+                $selectedBranchesText.text('Full Access (All Branches)');
+            } else {
+                $selectedBranchesText.text(`${selectedCount} Branches Selected`);
+            }
+            $('#download_csv').prop('disabled', false).css('opacity', '1');
+        } else {
+            if (selectedCount === 0) {
+                $selectedBranchesText.text('No branches selected');
+                $('#download_csv').prop('disabled', true).css('opacity', '0.6');
+            } else {
+                $selectedBranchesText.text(`${selectedCount} Branches Selected`);
+                $('#download_csv').prop('disabled', false).css('opacity', '1');
+            }
+        }
+    }
+
+    // Toggle Dropdown
+    $branchSelectorDisplay.on('click', function(e) {
+        e.stopPropagation();
+        $branchPickerDropdown.toggle();
+        if ($branchPickerDropdown.is(':visible')) {
+            $solIdSearch.focus();
+            renderSolIdList(); // Refresh list on open
+        }
+    });
+
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('#branch_filter_container').length) {
+            $branchPickerDropdown.hide();
+        }
+    });
+
+    // Branch Search
+    $solIdSearch.on('input', function() {
+        renderSolIdList();
+    });
+
+    // Select/Clear All
+    $('#select_all_sol').on('click', () => {
+        const searchTerm = $solIdSearch.val().toLowerCase();
+        currentSolData.forEach(d => {
+            const display_name = `${d.sol_id} (${d.branch_name})`.toLowerCase();
+            if (display_name.includes(searchTerm)) {
+                d.selected = true;
+            }
+        });
+        updateActiveBadges(isDeptUser);
+        renderSolIdList();
+    });
+
+    $('#clear_all_sol').on('click', () => {
+        const searchTerm = $solIdSearch.val().toLowerCase();
+        currentSolData.forEach(d => {
+            const display_name = `${d.sol_id} (${d.branch_name})`.toLowerCase();
+            if (display_name.includes(searchTerm)) {
+                d.selected = false;
+            }
+        });
+        updateActiveBadges(isDeptUser);
+        renderSolIdList();
+    });
+
+    function getSelectedSols() {
+        return currentSolData.filter(d => d.selected).map(d => ({ id: d.sol_id, branch: d.branch_name }));
+    }
+
+    function getSelectedSolIds() {
+        return currentSolData.filter(d => d.selected).map(d => d.sol_id);
+    }
+
+    loadUserPermissions();
+
     let expectedDuration = 2;
     let currentXhr = null;
     let startDatePicker = null;
@@ -451,7 +652,15 @@ function initializeReportPortal(wrapper) {
         }
 
         const start_date=formatForAPI(start_date_val), end_date=formatForAPI(end_date_val);
-        const url=`/api/method/custom_report.api.report_download?report_docname=${encodeURIComponent(reportDocName)}&start_date=${encodeURIComponent(start_date)}&end_date=${encodeURIComponent(end_date)}&file_type=${file_type}`;
+        
+        // Build URL with optional sol_id filter
+        let url=`/api/method/custom_report.api.report_download?report_docname=${encodeURIComponent(reportDocName)}&start_date=${encodeURIComponent(start_date)}&end_date=${encodeURIComponent(end_date)}&file_type=${file_type}`;
+        
+        // Get selected sol_ids from dropdown
+        const selectedSols = getSelectedSolIds();
+        if (selectedSols.length > 0) {
+            url += `&sol_id=${encodeURIComponent(JSON.stringify(selectedSols))}`;
+        }
 
         const xhr=new XMLHttpRequest();
         currentXhr = xhr;
