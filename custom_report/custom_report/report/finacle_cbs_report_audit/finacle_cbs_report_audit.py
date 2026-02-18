@@ -18,6 +18,13 @@ def execute(filters=None):
 def get_columns():
     return [
         {
+            "label": _("Log ID"),
+            "fieldname": "log_id",
+            "fieldtype": "Link",
+            "options": "Report Log",
+            "width": 120
+        },
+        {
             "label": _("Date & Time"),
             "fieldname": "date_time",
             "fieldtype": "Datetime",
@@ -100,6 +107,7 @@ def get_data(filters):
     
     return frappe.db.sql(f"""
         SELECT 
+            rl.name as log_id,
             rl.date_time, rl.status, rl.employee_name, 
             fr.report_name as report_title,
             rl.report_name, rl.sol_id, rl.start_date, 
