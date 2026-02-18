@@ -266,22 +266,15 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         # Step 11: Serve file for download
         _prepare_file_download(temp_path, filename)
         
-        # Step 12: Log the report download
-        try:
-            employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
-            log = frappe.get_doc({
-                "doctype": "Report Log",
-                "report_name": report_docname,
-                "employee": employee,
-                "start_date": start_date,
-                "end_date": end_date,
-                "selected_sol_ids": json.dumps(manual_sol_id) if manual_sol_id else None,
-                "date_time": frappe.utils.now_datetime()
-            })
-            log.insert(ignore_permissions=True)
-            frappe.db.commit()
-        except Exception as log_err:
-            frappe.log_error(message=f"Failed to create Report Log: {str(log_err)}", title="Report Log Error")
+        # Step 12: Log the success
+        _log_report_download(
+            report_docname=report_docname,
+            user=user,
+            start_date=start_date,
+            end_date=end_date,
+            manual_sol_id=manual_sol_id,
+            status="Success"
+        )
 
         print()
         _print_success(f"File ready for download: {filename}")
@@ -294,11 +287,46 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         _print_error(f"ERROR in report_download: {str(e)}")
         _print_footer("REPORT DOWNLOAD FAILED", success=False)
         
+        # Log the failure
+        try:
+            _log_report_download(
+                report_docname=report_docname,
+                user=frappe.session.user,
+                start_date=start_date,
+                end_date=end_date,
+                manual_sol_id=manual_sol_id,
+                status="Failed",
+                error_message=str(e)
+            )
+        except:
+            pass
+
         frappe.log_error(
             message=f"Error in report_download: {str(e)}\n\n{frappe.get_traceback()}", 
             title="Report Download Error"
         )
         raise e
+
+
+def _log_report_download(report_docname, user, start_date, end_date, manual_sol_id, status, error_message=None):
+    """Create a entry in the Report Log doctype."""
+    try:
+        employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+        log = frappe.get_doc({
+            "doctype": "Report Log",
+            "report_name": report_docname,
+            "employee": employee,
+            "start_date": start_date,
+            "end_date": end_date,
+            "selected_sol_ids": json.dumps(manual_sol_id) if manual_sol_id else None,
+            "date_time": frappe.utils.now_datetime(),
+            "status": status,
+            "error_message": error_message
+        })
+        log.insert(ignore_permissions=True)
+        frappe.db.commit()
+    except Exception as log_err:
+        frappe.log_error(message=f"Failed to create Report Log: {str(log_err)}", title="Report Log Error")
 
 
 # ============================================================================
