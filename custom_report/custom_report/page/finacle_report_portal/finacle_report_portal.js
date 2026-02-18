@@ -269,29 +269,34 @@ function initializeReportPortal(wrapper) {
     const $solIdList = $('#sol_id_list');
     const $solIdSearch = $('#sol_id_search');
     
+    let currentSolData = [];
+    let isDeptUser = false;
+
     // Fetch and show user permissions/branches
     function loadUserPermissions() {
         frappe.call({
             method: 'custom_report.api.get_user_report_permissions',
             callback: function(res) {
                 if (res.message && (res.message.is_branch_user || res.message.is_dept_user)) {
-                    const sol_data = res.message.sol_data || [];
-                    const is_dept = res.message.is_dept_user;
+                    currentSolData = res.message.sol_data || [];
+                    isDeptUser = res.message.is_dept_user;
                     const $info = $('#user_permissions_info');
                     
                     $branchFilterContainer.css('display', 'flex');
                     
-                    if (sol_data.length > 0 || is_dept) {
+                    if (currentSolData.length > 0 || isDeptUser) {
                         let statusText = '';
-                        if (is_dept) {
+                        if (isDeptUser) {
                             statusText = 'Full Access (All Branches)';
                         } else {
-                            statusText = `${sol_data.length} Branches Selected`;
+                            statusText = `${currentSolData.length} Branches Selected`;
+                            // Pre-select all for branch users
+                            currentSolData.forEach(d => d.selected = true);
                         }
 
                         $selectedBranchesText.text(statusText);
-                        populateSolIdList(sol_data, is_dept);
-                    } else if (!is_dept) {
+                        renderSolIdList();
+                    } else if (!isDeptUser) {
                         $info.show().html(`
                             <div style="background:#ffebee;border:1px solid #ffcdd2;border-radius:6px;padding:10px 15px;">
                                 <p style="color:#c62828;font-size:13px;font-weight:600;margin:0;">⚠️ No branches assigned in Report Preference.</p>
@@ -306,41 +311,64 @@ function initializeReportPortal(wrapper) {
         });
     }
 
-    function populateSolIdList(sol_data, is_dept) {
-        let html = '';
-        sol_data.forEach(d => {
-            const checked = is_dept ? '' : 'checked';
-            const display_name = `${d.sol_id} (${d.branch_name})`;
-            html += `
-                <div class="sol-item" data-search="${display_name.toLowerCase()}" style="display: flex; align-items: center; gap: 8px; padding: 4px; border-bottom: 1px solid #f8f9fa;">
-                    <input type="checkbox" id="chk_${d.sol_id}" value="${d.sol_id}" data-branch="${d.branch_name}" ${checked} style="cursor: pointer;">
-                    <label for="chk_${d.sol_id}" style="font-size: 13px; margin: 0; cursor: pointer; color: #444;">${display_name}</label>
-                </div>
-            `;
+    function renderSolIdList() {
+        const searchTerm = $solIdSearch.val().toLowerCase();
+        
+        // Sort: Selected items first, then by sol_id
+        const sortedData = [...currentSolData].sort((a, b) => {
+            if (!!a.selected !== !!b.selected) {
+                return a.selected ? -1 : 1;
+            }
+            return a.sol_id.localeCompare(b.sol_id);
         });
-        $solIdList.html(html);
 
-        $solIdList.on('change', 'input[type="checkbox"]', function() {
-            updateActiveBadges(is_dept);
+        let html = '';
+        sortedData.forEach(d => {
+            const display_name = `${d.sol_id} (${d.branch_name})`;
+            if (display_name.toLowerCase().includes(searchTerm)) {
+                const checked = d.selected ? 'checked' : '';
+                html += `
+                    <div class="sol-item" style="display: flex; align-items: center; gap: 8px; padding: 4px; border-bottom: 1px solid #f8f9fa; ${d.selected ? 'background: #f0fafa;' : ''}">
+                        <input type="checkbox" id="chk_${d.sol_id}" value="${d.sol_id}" ${checked} style="cursor: pointer;">
+                        <label for="chk_${d.sol_id}" style="font-size: 13px; margin: 0; cursor: pointer; color: ${d.selected ? '#196767' : '#444'}; font-weight: ${d.selected ? '600' : '400'};">${display_name}</label>
+                    </div>
+                `;
+            }
+        });
+        
+        $solIdList.html(html || '<div style="text-align:center; padding:10px; color:#999; font-size:12px;">No branches found</div>');
+
+        // Bind events to new checkboxes
+        $solIdList.find('input[type="checkbox"]').on('change', function() {
+            const sol_id = $(this).val();
+            const is_checked = $(this).is(':checked');
+            
+            // Update data model
+            const item = currentSolData.find(d => d.sol_id === sol_id);
+            if (item) item.selected = is_checked;
+            
+            updateActiveBadges(isDeptUser);
+            // Re-render to update grouping
+            renderSolIdList();
         });
     }
 
     function updateActiveBadges(is_dept) {
-        const selected = getSelectedSols();
+        const selectedCount = currentSolData.filter(d => d.selected).length;
         
         if (is_dept) {
-            if (selected.length === 0) {
+            if (selectedCount === 0) {
                 $selectedBranchesText.text('Full Access (All Branches)');
             } else {
-                $selectedBranchesText.text(`${selected.length} Branches Selected`);
+                $selectedBranchesText.text(`${selectedCount} Branches Selected`);
             }
             $('#download_csv').prop('disabled', false).css('opacity', '1');
         } else {
-            if (selected.length === 0) {
+            if (selectedCount === 0) {
                 $selectedBranchesText.text('No branches selected');
                 $('#download_csv').prop('disabled', true).css('opacity', '0.6');
             } else {
-                $selectedBranchesText.text(`${selected.length} Branches Selected`);
+                $selectedBranchesText.text(`${selectedCount} Branches Selected`);
                 $('#download_csv').prop('disabled', false).css('opacity', '1');
             }
         }
@@ -350,6 +378,10 @@ function initializeReportPortal(wrapper) {
     $branchSelectorDisplay.on('click', function(e) {
         e.stopPropagation();
         $branchPickerDropdown.toggle();
+        if ($branchPickerDropdown.is(':visible')) {
+            $solIdSearch.focus();
+            renderSolIdList(); // Refresh list on open
+        }
     });
 
     $(document).on('click', function(e) {
@@ -360,36 +392,40 @@ function initializeReportPortal(wrapper) {
 
     // Branch Search
     $solIdSearch.on('input', function() {
-        const term = $(this).val().toLowerCase();
-        $solIdList.find('.sol-item').each(function() {
-            const searchText = $(this).data('search');
-            $(this).toggle(searchText.includes(term));
-        });
+        renderSolIdList();
     });
 
     // Select/Clear All
     $('#select_all_sol').on('click', () => {
-        const is_dept = $('#dept_status_badge').length > 0;
-        $solIdList.find('input[type="checkbox"]:visible').prop('checked', true);
-        updateActiveBadges(is_dept);
+        const searchTerm = $solIdSearch.val().toLowerCase();
+        currentSolData.forEach(d => {
+            const display_name = `${d.sol_id} (${d.branch_name})`.toLowerCase();
+            if (display_name.includes(searchTerm)) {
+                d.selected = true;
+            }
+        });
+        updateActiveBadges(isDeptUser);
+        renderSolIdList();
     });
 
     $('#clear_all_sol').on('click', () => {
-        const is_dept = $('#dept_status_badge').length > 0;
-        $solIdList.find('input[type="checkbox"]:visible').prop('checked', false);
-        updateActiveBadges(is_dept);
+        const searchTerm = $solIdSearch.val().toLowerCase();
+        currentSolData.forEach(d => {
+            const display_name = `${d.sol_id} (${d.branch_name})`.toLowerCase();
+            if (display_name.includes(searchTerm)) {
+                d.selected = false;
+            }
+        });
+        updateActiveBadges(isDeptUser);
+        renderSolIdList();
     });
 
     function getSelectedSols() {
-        return $solIdList.find('input[type="checkbox"]:checked').map(function() {
-            return { id: $(this).val(), branch: $(this).data('branch') };
-        }).get();
+        return currentSolData.filter(d => d.selected).map(d => ({ id: d.sol_id, branch: d.branch_name }));
     }
 
     function getSelectedSolIds() {
-        return $solIdList.find('input[type="checkbox"]:checked').map(function() {
-            return $(this).val();
-        }).get();
+        return currentSolData.filter(d => d.selected).map(d => d.sol_id);
     }
 
     loadUserPermissions();
