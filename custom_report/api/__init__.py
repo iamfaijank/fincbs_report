@@ -266,6 +266,23 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         # Step 11: Serve file for download
         _prepare_file_download(temp_path, filename)
         
+        # Step 12: Log the report download
+        try:
+            employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+            log = frappe.get_doc({
+                "doctype": "Report Log",
+                "report_name": report_docname,
+                "employee": employee,
+                "start_date": start_date,
+                "end_date": end_date,
+                "selected_sol_ids": json.dumps(manual_sol_id) if manual_sol_id else None,
+                "date_time": frappe.utils.now_datetime()
+            })
+            log.insert(ignore_permissions=True)
+            frappe.db.commit()
+        except Exception as log_err:
+            frappe.log_error(message=f"Failed to create Report Log: {str(log_err)}", title="Report Log Error")
+
         print()
         _print_success(f"File ready for download: {filename}")
         _print_footer("REPORT DOWNLOAD COMPLETED")

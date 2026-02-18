@@ -1,0 +1,133 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2026-02-18 13:49:01.271236",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "report_details_section",
+  "report_name",
+  "date_time",
+  "column_break_user",
+  "employee",
+  "employee_name",
+  "sol_id",
+  "filters_section",
+  "start_date",
+  "end_date",
+  "selected_sol_ids"
+ ],
+ "fields": [
+  {
+   "fieldname": "report_details_section",
+   "fieldtype": "Section Break",
+   "label": "Report Details"
+  },
+  {
+   "description": "The specific report that was downloaded.",
+   "fieldname": "report_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Report Name",
+   "options": "Finacle Report",
+   "reqd": 1
+  },
+  {
+   "default": "Now",
+   "description": "Exact timestamp of the download action.",
+   "fieldname": "date_time",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Date & Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_user",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "User who initiated the download.",
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "description": "Auto-fetched name of the employee.",
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1
+  },
+  {
+   "description": "Primary branch assigned to the user.",
+   "fetch_from": "employee.sahayog_branch",
+   "fieldname": "sol_id",
+   "fieldtype": "Data",
+   "label": "Primary SOL ID",
+   "read_only": 1
+  },
+  {
+   "description": "Parameters used to filter the report data.",
+   "fieldname": "filters_section",
+   "fieldtype": "Section Break",
+   "label": "Filters Applied"
+  },
+  {
+   "description": "Start of the date range filtered in the report.",
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date",
+   "read_only": 1
+  },
+  {
+   "description": "End of the date range filtered in the report.",
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date",
+   "read_only": 1
+  },
+  {
+   "description": "JSON representation of multiple SOL IDs if specific branches were selected.",
+   "fieldname": "selected_sol_ids",
+   "fieldtype": "Small Text",
+   "label": "Selected SOL IDs",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-02-18 14:05:00.000000",
+ "modified_by": "Administrator",
+ "module": "custom_report",
+ "name": "Report Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Finacle Report Admin"
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "date_time",
+ "sort_order": "DESC",
+ "states": []
+}
