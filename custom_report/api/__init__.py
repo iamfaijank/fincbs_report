@@ -70,13 +70,14 @@ def get_user_report_permissions():
     is_branch_user = "Branch Report" in user_roles
     is_dept_user = bool(user_roles.intersection(DEPARTMENT_ROLES))
     
-    sol_ids = []
+    sol_data = [] # List of dicts: {"sol_id": "...", "branch_name": "..."}
 
     if is_branch_user and not is_dept_user:
         # Strict branch user - only show their preferences
         pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
         if pref_name:
             doc = frappe.get_doc("Report Preference", pref_name)
+            sol_ids = []
             if hasattr(doc, "sol_id") and not isinstance(doc.sol_id, str):
                 sol_ids = [d.sol_id for d in doc.sol_id if getattr(d, "sol_id", None)]
                 sol_ids = list(set(sol_ids))
@@ -84,16 +85,28 @@ def get_user_report_permissions():
                 sol_id_val = getattr(doc, "sol_id", None)
                 if isinstance(sol_id_val, str):
                     sol_ids = [s.strip() for s in sol_id_val.split(",") if s.strip()]
+            
+            if sol_ids:
+                # Fetch branch names for these sol_ids
+                branches = frappe.get_all(
+                    "Sahayog Branch",
+                    filters={"name": ["in", sol_ids]},
+                    fields=["name as sol_id", "branch as branch_name"]
+                )
+                sol_data = branches
     
     elif is_dept_user:
         # Department user or Admin - show ALL sol_ids from Sahayog Branch doctype
-        # Sahayog Branch name field is the sol_id
-        sol_ids = frappe.get_all("Sahayog Branch", pluck="name")
+        sol_data = frappe.get_all(
+            "Sahayog Branch", 
+            fields=["name as sol_id", "branch as branch_name"],
+            order_by="name asc"
+        )
 
     return {
         "is_branch_user": is_branch_user,
         "is_dept_user": is_dept_user,
-        "sol_ids": sorted(list(set(sol_ids))) if sol_ids else []
+        "sol_data": sol_data # Sorted by sol_id
     }
 
 

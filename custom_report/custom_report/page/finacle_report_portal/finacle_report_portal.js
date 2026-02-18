@@ -262,8 +262,7 @@ function initializeReportPortal(wrapper) {
             method: 'custom_report.api.get_user_report_permissions',
             callback: function(res) {
                 if (res.message && (res.message.is_branch_user || res.message.is_dept_user)) {
-                    const sol_ids = res.message.sol_ids || [];
-                    userSolIds = sol_ids;
+                    const sol_data = res.message.sol_data || [];
                     const is_dept = res.message.is_dept_user;
                     const $info = $('#user_permissions_info');
                     const $sidebar = $('#sidebar_filter');
@@ -271,7 +270,7 @@ function initializeReportPortal(wrapper) {
                     $info.show();
                     $sidebar.show();
                     
-                    if (sol_ids.length > 0 || is_dept) {
+                    if (sol_data.length > 0 || is_dept) {
                         let badgeHtml = '';
                         if (is_dept) {
                             badgeHtml = '<span id="dept_status_badge" style="background:#00796b;color:white;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;">Full Access (All Branches)</span>';
@@ -279,7 +278,7 @@ function initializeReportPortal(wrapper) {
                             badgeHtml = `
                                 <span style="font-size:12px;color:#00796b;font-weight:600;">📍 Filtered for Branches:</span>
                                 <div id="active_sol_badges" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:4px;">
-                                    ${sol_ids.map(id => `<span class="sol-badge" data-sol="${id}" style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${id}</span>`).join('')}
+                                    ${sol_data.map(d => `<span class="sol-badge" data-sol="${d.sol_id}" title="${d.branch_name}" style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${d.sol_id} (${d.branch_name})</span>`).join('')}
                                 </div>
                             `;
                         }
@@ -292,7 +291,7 @@ function initializeReportPortal(wrapper) {
                         `);
 
                         // Populate sidebar list
-                        populateSolIdList(sol_ids, is_dept);
+                        populateSolIdList(sol_data, is_dept);
                     } else if (!is_dept) {
                         $info.html(`
                             <div style="background:#ffebee;border:1px solid #ffcdd2;border-radius:6px;padding:10px 15px;">
@@ -308,15 +307,16 @@ function initializeReportPortal(wrapper) {
         });
     }
 
-    function populateSolIdList(sol_ids, is_dept) {
+    function populateSolIdList(sol_data, is_dept) {
         let html = '';
-        sol_ids.forEach(id => {
+        sol_data.forEach(d => {
             // For dept users, don't check by default so they see "All Branches"
             const checked = is_dept ? '' : 'checked';
+            const display_name = `${d.sol_id} (${d.branch_name})`;
             html += `
-                <div class="sol-item" style="display: flex; align-items: center; gap: 8px; padding: 4px; border-bottom: 1px solid #f8f9fa;">
-                    <input type="checkbox" id="chk_${id}" value="${id}" ${checked} style="cursor: pointer;">
-                    <label for="chk_${id}" style="font-size: 13px; margin: 0; cursor: pointer; color: #444;">${id}</label>
+                <div class="sol-item" data-search="${display_name.toLowerCase()}" style="display: flex; align-items: center; gap: 8px; padding: 4px; border-bottom: 1px solid #f8f9fa;">
+                    <input type="checkbox" id="chk_${d.sol_id}" value="${d.sol_id}" data-branch="${d.branch_name}" ${checked} style="cursor: pointer;">
+                    <label for="chk_${d.sol_id}" style="font-size: 13px; margin: 0; cursor: pointer; color: #444;">${display_name}</label>
                 </div>
             `;
         });
@@ -329,7 +329,7 @@ function initializeReportPortal(wrapper) {
     }
 
     function updateActiveBadges(is_dept) {
-        const selected = getSelectedSolIds();
+        const selected = getSelectedSols();
         
         if (is_dept) {
             const $statusBadge = $('#dept_status_badge');
@@ -340,11 +340,11 @@ function initializeReportPortal(wrapper) {
                 $manualBadges.empty();
             } else {
                 $statusBadge.text(`Filtered (${selected.length} Selected)`).css('background', '#196767');
-                $manualBadges.html(selected.map(id => `<span class="sol-badge" data-sol="${id}" style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${id}</span>`).join(''));
+                $manualBadges.html(selected.map(d => `<span class="sol-badge" data-sol="${d.id}" style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${d.id} (${d.branch})</span>`).join(''));
             }
             $('#download_csv').prop('disabled', false).css('opacity', '1');
         } else {
-            let html = selected.map(id => `<span class="sol-badge" data-sol="${id}" style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${id}</span>`).join('');
+            let html = selected.map(d => `<span class="sol-badge" data-sol="${d.id}" style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${d.id} (${d.branch})</span>`).join('');
             
             if (selected.length === 0) {
                 html = '<span style="color: #c62828; font-size: 11px;">No branches selected</span>';
@@ -354,6 +354,15 @@ function initializeReportPortal(wrapper) {
             }
             $('#active_sol_badges').html(html);
         }
+    }
+
+    function getSelectedSols() {
+        return $solIdList.find('input[type="checkbox"]:checked').map(function() {
+            return {
+                id: $(this).val(),
+                branch: $(this).data('branch')
+            };
+        }).get();
     }
 
     function getSelectedSolIds() {
@@ -366,8 +375,8 @@ function initializeReportPortal(wrapper) {
     $solIdSearch.on('input', function() {
         const term = $(this).val().toLowerCase();
         $solIdList.find('.sol-item').each(function() {
-            const id = $(this).find('input').val().toLowerCase();
-            $(this).toggle(id.includes(term));
+            const searchText = $(this).data('search');
+            $(this).toggle(searchText.includes(term));
         });
     });
 
