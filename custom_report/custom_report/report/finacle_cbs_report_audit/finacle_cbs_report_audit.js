@@ -50,6 +50,40 @@ frappe.query_reports["Finacle CBS Report Audit"] = {
             }
         }
 
+        if (column.fieldname === "action" && data.status === "Failed" && !data.resolved) {
+            value = `<button class="btn btn-xs btn-primary btn-resolve" data-log-id="${data.log_id}" style="padding: 2px 8px;">
+                ${__("Resolve")}
+            </button>`;
+        }
+
         return value;
+    },
+    "onload": function(report) {
+        // Use global delegation to ensure clicks are caught even after table refreshes
+        $(document).on("click", ".btn-resolve", function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            let log_id = $(this).data("log-id");
+            
+            frappe.confirm(
+                __("Are you sure you want to mark this log as Resolved? This will update the status to 'Success'."),
+                function() {
+                    frappe.call({
+                        method: "custom_report.api.resolve_report_log",
+                        args: { log_id: log_id },
+                        callback: function(r) {
+                            if (r.message && r.message.status === "success") {
+                                frappe.show_alert({
+                                    message: r.message.message,
+                                    indicator: 'green'
+                                });
+                                report.refresh();
+                            }
+                        }
+                    });
+                }
+            );
+        });
     }
 };

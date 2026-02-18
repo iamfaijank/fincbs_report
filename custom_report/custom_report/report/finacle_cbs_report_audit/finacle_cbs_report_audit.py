@@ -36,6 +36,18 @@ def get_columns():
             "width": 100
         },
         {
+            "label": _("Resolved"),
+            "fieldname": "resolved",
+            "fieldtype": "Check",
+            "width": 80
+        },
+        {
+            "label": _("Action"),
+            "fieldname": "action",
+            "fieldtype": "Data",
+            "width": 100
+        },
+        {
             "label": _("Employee"),
             "fieldname": "employee_name",
             "fieldtype": "Data",
@@ -107,7 +119,7 @@ def get_data(filters):
     return frappe.db.sql(f"""
         SELECT 
             rl.name as log_id,
-            rl.date_time, rl.status, rl.employee_name, 
+            rl.date_time, rl.status, rl.resolved, rl.employee_name, 
             fr.report_name as report_title,
             rl.report_name, rl.sol_id, rl.start_date, 
             rl.end_date, rl.selected_sol_ids, rl.error_message

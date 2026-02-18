@@ -8,6 +8,7 @@
   "report_details_section",
   "report_name",
   "status",
+  "resolved",
   "date_time",
   "column_break_user",
   "employee",
@@ -111,6 +112,7 @@
    "read_only": 1
   },
   {
+   "depends_on": "eval:doc.status == 'Failed'",
    "description": "Captured error message if the download failed.",
    "fieldname": "error_message",
    "fieldtype": "Small Text",
@@ -118,7 +120,6 @@
    "read_only": 1
   },
   {
-   "depends_on": "eval:doc.status == 'Failed'",
    "fieldname": "log_section",
    "fieldtype": "Section Break",
    "label": "Log Details"
@@ -127,12 +128,18 @@
    "fieldname": "log_message",
    "fieldtype": "Text",
    "label": "Log Message"
+  },
+  {
+   "default": "0",
+   "fieldname": "resolved",
+   "fieldtype": "Check",
+   "label": "Resolved"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-18 16:38:27.644941",
+ "modified": "2026-02-18 16:48:57.084437",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Report Log",

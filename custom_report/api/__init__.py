@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 import io
 import os
 import time
@@ -41,6 +42,34 @@ class Colors:
 # ============================================================================
 # PUBLIC API METHODS
 # ============================================================================
+
+
+@frappe.whitelist()
+def resolve_report_log(log_id):
+    """
+    Mark a failed Report Log as resolved and update status to Success.
+    """
+    if not log_id:
+        frappe.throw(_("Log ID is required"))
+    
+    # Check permissions (only Admins should typically do this)
+    user_roles = set(frappe.get_roles())
+    ADMIN_ROLES = {"System Manager", "Finacle Report Admin", "Administrator"}
+    
+    if not user_roles.intersection(ADMIN_ROLES):
+        frappe.throw(_("You are not authorized to resolve report logs."))
+
+    doc = frappe.get_doc("Report Log", log_id)
+    if doc.status == "Success":
+        frappe.msgprint(_("Log is already marked as Success."))
+        return
+
+    doc.status = "Success"
+    doc.resolved = 1
+    doc.save(ignore_permissions=True)
+    frappe.db.commit()
+    
+    return {"status": "success", "message": _("Log {0} has been resolved.").format(log_id)}
 
 
 @frappe.whitelist()
@@ -168,6 +197,9 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         frappe.ValidationError: If user doesn't have valid sol_id when required
     """
     try:
+        # Initialize log buffer for this request
+        frappe.local.report_log_buffer = []
+        
         _print_header("REPORT DOWNLOAD STARTED")
         
         # Step 1: Get user context and fetch sol_id
@@ -254,7 +286,6 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         # Calculate performance metrics
         rows_per_sec = len(rows) / execution_time if execution_time > 0 else 0
         
-        print()
         _print_success("Query executed successfully!")
         _print_metric("Execution Time", f"{execution_time:.2f} seconds")
         _print_metric("Rows Fetched", f"{len(rows):,}")
@@ -282,17 +313,16 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
             start_date=start_date,
             end_date=end_date,
             manual_sol_id=manual_sol_id,
-            status="Success"
+            status="Success",
+            log_message="\n".join(getattr(frappe.local, "report_log_buffer", []))
         )
 
-        print()
         _print_success(f"File ready for download: {filename}")
         _print_footer("REPORT DOWNLOAD COMPLETED")
         
         return {"status": "success", "filename": filename}
 
     except Exception as e:
-        print()
         _print_error(f"ERROR in report_download: {str(e)}")
         _print_footer("REPORT DOWNLOAD FAILED", success=False)
         
@@ -305,7 +335,8 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
                 end_date=end_date,
                 manual_sol_id=manual_sol_id,
                 status="Failed",
-                error_message=str(e)
+                error_message=str(e),
+                log_message="\n".join(getattr(frappe.local, "report_log_buffer", []))
             )
         except:
             pass
@@ -317,7 +348,7 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         raise e
 
 
-def _log_report_download(report_docname, user, start_date, end_date, manual_sol_id, status, error_message=None):
+def _log_report_download(report_docname, user, start_date, end_date, manual_sol_id, status, error_message=None, log_message=None):
     """Create a entry in the Report Log doctype."""
     try:
         employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
@@ -330,7 +361,8 @@ def _log_report_download(report_docname, user, start_date, end_date, manual_sol_
             "selected_sol_ids": json.dumps(manual_sol_id) if manual_sol_id else None,
             "date_time": frappe.utils.now_datetime(),
             "status": status,
-            "error_message": error_message
+            "error_message": error_message,
+            "log_message": log_message
         })
         log.insert(ignore_permissions=True)
         frappe.db.commit()
@@ -807,71 +839,94 @@ def _prepare_file_download(temp_path, filename):
 
 
 # ============================================================================
-# UTILITY METHODS - COLORED CONSOLE PRINTING
+# UTILITY METHODS - COLORED CONSOLE PRINTING & LOGGING
 # ============================================================================
 
+def _log_process(message):
+    """Internal log buffer for capturing process details."""
+    if not hasattr(frappe.local, "report_log_buffer"):
+        frappe.local.report_log_buffer = []
+    
+    # Strip ANSI colors for the database log
+    clean_message = re.sub(r'\033\[[0-9;]*m', '', message)
+    frappe.local.report_log_buffer.append(clean_message)
 
 def _print_header(title):
     """Print formatted header for console output."""
-    print(f"\n{Colors.BOLD}{Colors.BRIGHT_CYAN}{'=' * 80}{Colors.RESET}")
+    border = "=" * 80
+    print(f"\n{Colors.BOLD}{Colors.BRIGHT_CYAN}{border}{Colors.RESET}")
     print(f"{Colors.BOLD}{Colors.BRIGHT_CYAN}🚀 {title}{Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.BRIGHT_CYAN}{'=' * 80}{Colors.RESET}\n")
+    print(f"{Colors.BOLD}{Colors.BRIGHT_CYAN}{border}{Colors.RESET}\n")
+    _log_process(f"\n{border}\n🚀 {title}\n{border}\n")
 
 
 def _print_footer(title, success=True):
     """Print formatted footer for console output."""
     color = Colors.BRIGHT_GREEN if success else Colors.BRIGHT_RED
     icon = "✅" if success else "❌"
-    print(f"{Colors.BOLD}{color}{'=' * 80}{Colors.RESET}")
+    border = "=" * 80
+    print(f"{Colors.BOLD}{color}{border}{Colors.RESET}")
     print(f"{Colors.BOLD}{color}{icon} {title}{Colors.RESET}")
-    print(f"{Colors.BOLD}{color}{'=' * 80}{Colors.RESET}\n")
+    print(f"{Colors.BOLD}{color}{border}{Colors.RESET}\n")
+    _log_process(f"{border}\n{icon} {title}\n{border}\n")
 
 
 def _print_section_header(title):
     """Print section header."""
-    print(f"{Colors.BRIGHT_BLUE}{'─' * 80}{Colors.RESET}")
+    border = "─" * 80
+    print(f"{Colors.BRIGHT_BLUE}{border}{Colors.RESET}")
     print(f"{Colors.BOLD}{Colors.BRIGHT_BLUE}🔐 {title}{Colors.RESET}")
-    print(f"{Colors.BRIGHT_BLUE}{'─' * 80}{Colors.RESET}")
+    print(f"{Colors.BRIGHT_BLUE}{border}{Colors.RESET}")
+    _log_process(f"{border}\n🔐 {title}\n{border}")
 
 
 def _print_section_footer():
     """Print section footer."""
-    print(f"{Colors.BRIGHT_BLUE}{'─' * 80}{Colors.RESET}\n")
+    border = "─" * 80
+    print(f"{Colors.BRIGHT_BLUE}{border}{Colors.RESET}\n")
+    _log_process(f"{border}\n")
 
 
 def _print_success(message):
     """Print success message."""
     print(f"{Colors.BRIGHT_GREEN}✅ {message}{Colors.RESET}")
+    _log_process(f"✅ {message}")
 
 
 def _print_error(message):
     """Print error message."""
     print(f"{Colors.BRIGHT_RED}❌ {message}{Colors.RESET}")
+    _log_process(f"❌ {message}")
 
 
 def _print_warning(message):
     """Print warning message."""
     print(f"{Colors.BRIGHT_YELLOW}⚠️  {message}{Colors.RESET}")
+    _log_process(f"⚠️  {message}")
 
 
 def _print_info(message):
     """Print info message."""
     print(f"{Colors.BRIGHT_CYAN}ℹ️  {message}{Colors.RESET}")
+    _log_process(f"ℹ️  {message}")
 
 
 def _print_highlight(message):
     """Print highlighted message."""
     print(f"{Colors.BOLD}{Colors.BRIGHT_MAGENTA}📊 {message}{Colors.RESET}")
+    _log_process(f"📊 {message}")
 
 
 def _print_data(label, value):
     """Print data in key-value format."""
     print(f"{Colors.CYAN}   • {label}:{Colors.RESET} {Colors.WHITE}{value}{Colors.RESET}")
+    _log_process(f"   • {label}: {value}")
 
 
 def _print_metric(label, value):
     """Print performance metric."""
     print(f"{Colors.YELLOW}⏱️  {label}:{Colors.RESET} {Colors.BOLD}{Colors.WHITE}{value}{Colors.RESET}")
+    _log_process(f"⏱️  {label}: {value}")
 
 
 def _print_sql_debug(sql_query, params, filter_applied, is_branch_user):
@@ -884,25 +939,35 @@ def _print_sql_debug(sql_query, params, filter_applied, is_branch_user):
         filter_applied (bool): Whether Branch Report filter was applied
         is_branch_user (bool): Whether user has Branch Report role
     """
-    print(f"{Colors.BRIGHT_MAGENTA}{'─' * 80}{Colors.RESET}")
+    border = "─" * 80
+    print(f"{Colors.BRIGHT_MAGENTA}{border}{Colors.RESET}")
     print(f"{Colors.BOLD}{Colors.BRIGHT_MAGENTA}📝 FINAL SQL QUERY{Colors.RESET}")
-    print(f"{Colors.BRIGHT_MAGENTA}{'─' * 80}{Colors.RESET}")
+    print(f"{Colors.BRIGHT_MAGENTA}{border}{Colors.RESET}")
     
+    _log_process(f"{border}\n📝 FINAL SQL QUERY\n{border}")
+
     if is_branch_user and filter_applied:
         print(f"{Colors.BRIGHT_GREEN}🔒 BRANCH REPORT FILTER APPLIED{Colors.RESET}")
         print(f"{Colors.GREEN}   → sol_id filter added to WHERE clause{Colors.RESET}")
+        _log_process("🔒 BRANCH REPORT FILTER APPLIED\n   → sol_id filter added to WHERE clause")
     elif not is_branch_user:
         print(f"{Colors.BRIGHT_BLUE}ℹ️  NO FILTER APPLIED{Colors.RESET}")
         print(f"{Colors.BLUE}   → Using original query (user doesn't have Branch Report role){Colors.RESET}")
+        _log_process("ℹ️  NO FILTER APPLIED\n   → Using original query (user doesn't have Branch Report role)")
     
     print(f"\n{Colors.BOLD}{Colors.CYAN}📄 Query:{Colors.RESET}")
     print(f"{Colors.WHITE}{sql_query}{Colors.RESET}")
+    _log_process(f"\n📄 Query:\n{sql_query}")
     
     print(f"\n{Colors.BOLD}{Colors.CYAN}📊 Parameters:{Colors.RESET}")
+    _log_process("\n📊 Parameters:")
     if params:
         for key, value in params.items():
             print(f"{Colors.YELLOW}   • {key}:{Colors.RESET} {Colors.WHITE}{value}{Colors.RESET}")
+            _log_process(f"   • {key}: {value}")
     else:
         print(f"{Colors.YELLOW}   (No parameters){Colors.RESET}")
+        _log_process("   (No parameters)")
     
-    print(f"{Colors.BRIGHT_MAGENTA}{'─' * 80}{Colors.RESET}\n")
+    print(f"{Colors.BRIGHT_MAGENTA}{border}{Colors.RESET}\n")
+    _log_process(f"{border}\n")
