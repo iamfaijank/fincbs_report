@@ -45,16 +45,35 @@ class Colors:
 @frappe.whitelist()
 def get_user_report_permissions():
     """
-    Fetch user-specific report permissions, particularly for Branch Report users.
-    Returns:
-        dict: User permission info including is_branch_user and allowed sol_ids.
+    Fetch user-specific report permissions.
+    - Branch Report role: Returns sol_ids from Report Preference.
+    - Department roles: Returns all sol_ids from 'Sahayog Branch' doctype.
     """
     user = frappe.session.user
     user_roles = set(frappe.get_roles())
+    
+    # Define roles that should see all SOL IDs
+    DEPARTMENT_ROLES = {
+        "HR Department Report",
+        "JLL Department Report",
+        "MIS Department Report",
+        "Loan Department Report",
+        "Audit Department Report",
+        "Finance Department Report",
+        "Operation Department Report",
+        "Two Wheeler Department Report",
+        "Head Office Report",
+        "System Manager",
+        "Finacle Report Admin"
+    }
+    
     is_branch_user = "Branch Report" in user_roles
+    is_dept_user = bool(user_roles.intersection(DEPARTMENT_ROLES))
+    
     sol_ids = []
 
-    if is_branch_user:
+    if is_branch_user and not is_dept_user:
+        # Strict branch user - only show their preferences
         pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
         if pref_name:
             doc = frappe.get_doc("Report Preference", pref_name)
@@ -65,10 +84,16 @@ def get_user_report_permissions():
                 sol_id_val = getattr(doc, "sol_id", None)
                 if isinstance(sol_id_val, str):
                     sol_ids = [s.strip() for s in sol_id_val.split(",") if s.strip()]
+    
+    elif is_dept_user:
+        # Department user or Admin - show ALL sol_ids from Sahayog Branch doctype
+        # Sahayog Branch name field is the sol_id
+        sol_ids = frappe.get_all("Sahayog Branch", pluck="name")
 
     return {
         "is_branch_user": is_branch_user,
-        "sol_ids": sorted(sol_ids) if sol_ids else []
+        "is_dept_user": is_dept_user,
+        "sol_ids": sorted(list(set(sol_ids))) if sol_ids else []
     }
 
 
@@ -278,29 +303,49 @@ def _get_report_metadata(report):
 def _get_user_sol_id_with_branch_check(user, user_roles, manual_sol_id=None):
     """
     Retrieve sol_id for the user with branch-specific logic.
-    
-    If user has "Branch Report" role, fetch sol_id from Report Preference doctype.
-    Otherwise, return None (no filtering needed).
-    
-    Args:
-        user (str): Username/email of the user
-        user_roles (set): Set of roles assigned to current user
-        manual_sol_id (str, list or None): Manually selected sol_id(s) from frontend
-    
-    Returns:
-        tuple: (sol_id, is_branch_user)
-            - sol_id (str, list or None): sol_id value(s) to use for filtering
-            - is_branch_user (bool): True if user has Branch Report role
+    - Branch Report role: Returns sol_ids from Report Preference (or manual selection from preferences).
+    - Department roles: Returns manual selection (or None if all branches wanted).
     """
     sol_id = None
-    is_branch_user = False
+    is_branch_user = "Branch Report" in user_roles
     
+    # Define roles that should see all SOL IDs
+    DEPARTMENT_ROLES = {
+        "HR Department Report",
+        "JLL Department Report",
+        "MIS Department Report",
+        "Loan Department Report",
+        "Audit Department Report",
+        "Finance Department Report",
+        "Operation Department Report",
+        "Two Wheeler Department Report",
+        "Head Office Report",
+        "System Manager",
+        "Finacle Report Admin"
+    }
+    is_dept_user = bool(user_roles.intersection(DEPARTMENT_ROLES))
+
     try:
         _print_section_header("CHECKING USER ROLE & SOL_ID")
         
-        # Check if user has "Branch Report" role
-        if "Branch Report" in user_roles:
-            is_branch_user = True
+        # Scenario A: User is a Department User (sees all branches)
+        if is_dept_user:
+            _print_success("User is a Department/Admin user")
+            # For department users, only apply filter if they manually select branches in sidebar
+            if manual_sol_id:
+                if isinstance(manual_sol_id, str):
+                    manual_sol_id = [manual_sol_id]
+                sol_id = manual_sol_id
+                _print_info(f"Using manual sol_id selection: {', '.join(sol_id)}")
+            else:
+                sol_id = None # Do not apply any SOL ID filter (original query)
+                _print_info("No manual filter selected - showing all branches")
+            
+            # For departments, is_branch_user logic for SQL filter should only trigger if sol_id is set
+            is_branch_user = bool(sol_id) 
+
+        # Scenario B: User is strictly a Branch User (Report Preference applies)
+        elif is_branch_user:
             _print_success("User has 'Branch Report' role")
             _print_info("Fetching 'sol_id' from 'Report Preference' doctype...")
             
@@ -351,7 +396,7 @@ def _get_user_sol_id_with_branch_check(user, user_roles, manual_sol_id=None):
             )
             
         else:
-            _print_info("User does NOT have 'Branch Report' role")
+            _print_info("User does NOT have 'Branch Report' or Department roles")
             _print_success("No sol_id filtering required - using original query")
             
             print()

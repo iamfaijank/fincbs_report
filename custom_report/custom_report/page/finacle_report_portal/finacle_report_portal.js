@@ -261,27 +261,39 @@ function initializeReportPortal(wrapper) {
         frappe.call({
             method: 'custom_report.api.get_user_report_permissions',
             callback: function(res) {
-                if (res.message && res.message.is_branch_user) {
+                if (res.message && (res.message.is_branch_user || res.message.is_dept_user)) {
                     const sol_ids = res.message.sol_ids || [];
+                    userSolIds = sol_ids;
+                    const is_dept = res.message.is_dept_user;
                     const $info = $('#user_permissions_info');
                     const $sidebar = $('#sidebar_filter');
                     
                     $info.show();
                     $sidebar.show();
                     
-                    if (sol_ids.length > 0) {
-                        $info.html(`
-                            <div style="background:#e0f2f1;border:1px solid #b2dfdb;border-radius:6px;padding:8px 12px;display:inline-block;">
+                    if (sol_ids.length > 0 || is_dept) {
+                        let badgeHtml = '';
+                        if (is_dept) {
+                            badgeHtml = '<span id="dept_status_badge" style="background:#00796b;color:white;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;">Full Access (All Branches)</span>';
+                        } else {
+                            badgeHtml = `
                                 <span style="font-size:12px;color:#00796b;font-weight:600;">📍 Filtered for Branches:</span>
                                 <div id="active_sol_badges" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:4px;">
                                     ${sol_ids.map(id => `<span class="sol-badge" data-sol="${id}" style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${id}</span>`).join('')}
                                 </div>
+                            `;
+                        }
+
+                        $info.html(`
+                            <div style="background:#e0f2f1;border:1px solid #b2dfdb;border-radius:6px;padding:8px 12px;display:inline-block;">
+                                ${badgeHtml}
+                                <div id="dept_manual_badges" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:4px;"></div>
                             </div>
                         `);
 
                         // Populate sidebar list
-                        populateSolIdList(sol_ids);
-                    } else {
+                        populateSolIdList(sol_ids, is_dept);
+                    } else if (!is_dept) {
                         $info.html(`
                             <div style="background:#ffebee;border:1px solid #ffcdd2;border-radius:6px;padding:10px 15px;">
                                 <p style="color:#c62828;font-size:13px;font-weight:600;margin:0;">⚠️ No branches assigned in Report Preference.</p>
@@ -296,12 +308,14 @@ function initializeReportPortal(wrapper) {
         });
     }
 
-    function populateSolIdList(sol_ids) {
+    function populateSolIdList(sol_ids, is_dept) {
         let html = '';
         sol_ids.forEach(id => {
+            // For dept users, don't check by default so they see "All Branches"
+            const checked = is_dept ? '' : 'checked';
             html += `
                 <div class="sol-item" style="display: flex; align-items: center; gap: 8px; padding: 4px; border-bottom: 1px solid #f8f9fa;">
-                    <input type="checkbox" id="chk_${id}" value="${id}" checked style="cursor: pointer;">
+                    <input type="checkbox" id="chk_${id}" value="${id}" ${checked} style="cursor: pointer;">
                     <label for="chk_${id}" style="font-size: 13px; margin: 0; cursor: pointer; color: #444;">${id}</label>
                 </div>
             `;
@@ -310,22 +324,36 @@ function initializeReportPortal(wrapper) {
 
         // Sidebar checkbox changes
         $solIdList.on('change', 'input[type="checkbox"]', function() {
-            updateActiveBadges();
+            updateActiveBadges(is_dept);
         });
     }
 
-    function updateActiveBadges() {
+    function updateActiveBadges(is_dept) {
         const selected = getSelectedSolIds();
-        let html = selected.map(id => `<span class="sol-badge" data-sol="${id}" style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${id}</span>`).join('');
         
-        if (selected.length === 0) {
-            html = '<span style="color: #c62828; font-size: 11px;">No branches selected</span>';
-            $('#download_csv').prop('disabled', true).css('opacity', '0.6');
-        } else {
+        if (is_dept) {
+            const $statusBadge = $('#dept_status_badge');
+            const $manualBadges = $('#dept_manual_badges');
+            
+            if (selected.length === 0) {
+                $statusBadge.text('Full Access (All Branches)').css('background', '#00796b');
+                $manualBadges.empty();
+            } else {
+                $statusBadge.text(`Filtered (${selected.length} Selected)`).css('background', '#196767');
+                $manualBadges.html(selected.map(id => `<span class="sol-badge" data-sol="${id}" style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${id}</span>`).join(''));
+            }
             $('#download_csv').prop('disabled', false).css('opacity', '1');
+        } else {
+            let html = selected.map(id => `<span class="sol-badge" data-sol="${id}" style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${id}</span>`).join('');
+            
+            if (selected.length === 0) {
+                html = '<span style="color: #c62828; font-size: 11px;">No branches selected</span>';
+                $('#download_csv').prop('disabled', true).css('opacity', '0.6');
+            } else {
+                $('#download_csv').prop('disabled', false).css('opacity', '1');
+            }
+            $('#active_sol_badges').html(html);
         }
-        
-        $('#active_sol_badges').html(html);
     }
 
     function getSelectedSolIds() {
