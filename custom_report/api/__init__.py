@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 import io
 import os
 import time
@@ -41,6 +42,34 @@ class Colors:
 # ============================================================================
 # PUBLIC API METHODS
 # ============================================================================
+
+
+@frappe.whitelist()
+def resolve_report_log(log_id):
+    """
+    Mark a failed Report Log as resolved and update status to Success.
+    """
+    if not log_id:
+        frappe.throw(_("Log ID is required"))
+    
+    # Check permissions (only Admins should typically do this)
+    user_roles = set(frappe.get_roles())
+    ADMIN_ROLES = {"System Manager", "Finacle Report Admin", "Administrator"}
+    
+    if not user_roles.intersection(ADMIN_ROLES):
+        frappe.throw(_("You are not authorized to resolve report logs."))
+
+    doc = frappe.get_doc("Report Log", log_id)
+    if doc.status == "Success":
+        frappe.msgprint(_("Log is already marked as Success."))
+        return
+
+    doc.status = "Success"
+    doc.resolved = 1
+    doc.save(ignore_permissions=True)
+    frappe.db.commit()
+    
+    return {"status": "success", "message": _("Log {0} has been resolved.").format(log_id)}
 
 
 @frappe.whitelist()
@@ -168,6 +197,9 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         frappe.ValidationError: If user doesn't have valid sol_id when required
     """
     try:
+        # Initialize log buffer for this request
+        frappe.local.report_log_buffer = []
+        
         _print_header("REPORT DOWNLOAD STARTED")
         
         # Step 1: Get user context and fetch sol_id
@@ -254,7 +286,6 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         # Calculate performance metrics
         rows_per_sec = len(rows) / execution_time if execution_time > 0 else 0
         
-        print()
         _print_success("Query executed successfully!")
         _print_metric("Execution Time", f"{execution_time:.2f} seconds")
         _print_metric("Rows Fetched", f"{len(rows):,}")
@@ -282,17 +313,16 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
             start_date=start_date,
             end_date=end_date,
             manual_sol_id=manual_sol_id,
-            status="Success"
+            status="Success",
+            log_message="\n".join(getattr(frappe.local, "report_log_buffer", []))
         )
 
-        print()
         _print_success(f"File ready for download: {filename}")
         _print_footer("REPORT DOWNLOAD COMPLETED")
         
         return {"status": "success", "filename": filename}
 
     except Exception as e:
-        print()
         _print_error(f"ERROR in report_download: {str(e)}")
         _print_footer("REPORT DOWNLOAD FAILED", success=False)
         
@@ -305,7 +335,8 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
                 end_date=end_date,
                 manual_sol_id=manual_sol_id,
                 status="Failed",
-                error_message=str(e)
+                error_message=str(e),
+                log_message="\n".join(getattr(frappe.local, "report_log_buffer", []))
             )
         except:
             pass
@@ -317,7 +348,7 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         raise e
 
 
-def _log_report_download(report_docname, user, start_date, end_date, manual_sol_id, status, error_message=None):
+def _log_report_download(report_docname, user, start_date, end_date, manual_sol_id, status, error_message=None, log_message=None):
     """Create a entry in the Report Log doctype."""
     try:
         employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
@@ -330,7 +361,8 @@ def _log_report_download(report_docname, user, start_date, end_date, manual_sol_
             "selected_sol_ids": json.dumps(manual_sol_id) if manual_sol_id else None,
             "date_time": frappe.utils.now_datetime(),
             "status": status,
-            "error_message": error_message
+            "error_message": error_message,
+            "log_message": log_message
         })
         log.insert(ignore_permissions=True)
         frappe.db.commit()
@@ -541,21 +573,25 @@ def _apply_branch_report_filter(sql_query, sol_id, is_branch_user):
         )
     
     # Check if query contains CTEs (WITH clause)
-    has_cte = bool(re.search(r'^\s*WITH\s+', sql_query, flags=re.IGNORECASE))
+    # Ensure WITH is at depth 0
+    has_cte = bool(_find_top_level_matches(r'^\s*WITH\s+', sql_query))
     
     if has_cte:
         # For CTE queries, find the main SELECT (after all CTEs)
-        # Pattern: closing bracket followed by SELECT
-        cte_end_pattern = r'\)\s*\n\s*SELECT'
-        matches = list(re.finditer(cte_end_pattern, sql_query, flags=re.IGNORECASE))
+        # Pattern: closing bracket followed by SELECT at depth 0
+        cte_end_pattern = r'\)\s*\n?\s*SELECT'
+        matches = _find_top_level_matches(cte_end_pattern, sql_query)
         
         if matches:
             # Get the last match - this is where main SELECT starts
             last_match = matches[-1]
+            match_text = last_match.group(0)
+            select_offset = match_text.upper().find("SELECT")
+            split_pos = last_match.start() + select_offset
             
             # Split: CTE part + Main SELECT part
-            cte_part = sql_query[:last_match.end()]
-            main_part = sql_query[last_match.end():]
+            cte_part = sql_query[:split_pos]
+            main_part = sql_query[split_pos:]
             
             # Apply filter to main SELECT part only
             modified_main = _inject_sol_id_filter(main_part, sol_id)
@@ -568,9 +604,43 @@ def _apply_branch_report_filter(sql_query, sol_id, is_branch_user):
     modified_sql = _inject_sol_id_filter(sql_query, sol_id)
     return modified_sql, True
 
+def _get_nesting_level(text, position):
+    """Calculate the parenthesis nesting level at a given position."""
+    depth = 0
+    for i in range(position):
+        if text[i] == '(':
+            depth += 1
+        elif text[i] == ')':
+            depth -= 1
+    return depth
+
+def _find_top_level_matches(pattern, text, flags=re.IGNORECASE):
+    """Find all regex matches that are at nesting level 0."""
+    matches = list(re.finditer(pattern, text, flags=flags))
+    return [m for m in matches if _get_nesting_level(text, m.start()) == 0]
+
 def _inject_sol_id_filter(sql_segment, sol_id):
     """
-    Inject sol_id filter into the WHERE clause of a SQL segment.
+    Inject sol_id filter into a SQL segment, handling UNIONs.
+    """
+    # Handle UNIONs at top level
+    union_matches = _find_top_level_matches(r"\bUNION(\s+ALL)?\b", sql_segment)
+    
+    if union_matches:
+        new_sql = ""
+        last_pos = 0
+        for m in union_matches:
+            part = sql_segment[last_pos:m.start()]
+            new_sql += _inject_sol_id_filter_single(part, sol_id) + " " + m.group(0) + " "
+            last_pos = m.end()
+        new_sql += _inject_sol_id_filter_single(sql_segment[last_pos:], sol_id)
+        return new_sql
+    else:
+        return _inject_sol_id_filter_single(sql_segment, sol_id)
+
+def _inject_sol_id_filter_single(sql_segment, sol_id):
+    """
+    Inject sol_id filter into the WHERE clause of a SINGLE SQL SELECT segment.
     """
     # Detect which table alias has sol_id column
     table_alias = _detect_sol_id_table_alias(sql_segment)
@@ -586,45 +656,26 @@ def _inject_sol_id_filter(sql_segment, sol_id):
     else:
         sol_id_condition = f"{condition_col} = %(branch_sol_id)s"
     
-    # Check if WHERE clause exists
-    where_match = re.search(r"\bWHERE\b", sql_segment, flags=re.IGNORECASE)
-    if where_match:
-        # Add condition after WHERE keyword
-        # We use a more precise regex to insert right after WHERE
-        modified_sql = re.sub(
-            r"(\bWHERE\b)",
-            rf"\1 ({sol_id_condition}) AND ",
-            sql_segment,
-            count=1,
-            flags=re.IGNORECASE
-        )
+    # Find WHERE clause at top level
+    top_wheres = _find_top_level_matches(r"\bWHERE\b", sql_segment)
+    
+    if top_wheres:
+        # Multiple top-level WHEREs in a single segment shouldn't happen,
+        # but if it does (e.g. malformed SQL), we inject into the first one.
+        m = top_wheres[0]
+        modified_sql = sql_segment[:m.end()] + f" ({sol_id_condition}) AND " + sql_segment[m.end():]
     else:
-        # No WHERE clause exists - add one before GROUP BY, ORDER BY, LIMIT, or at end
-        if re.search(r"\bGROUP\s+BY\b", sql_segment, flags=re.IGNORECASE):
-            modified_sql = re.sub(
-                r"(\bGROUP\s+BY\b)",
-                rf"WHERE {sol_id_condition} \1",
-                sql_segment,
-                count=1,
-                flags=re.IGNORECASE
-            )
-        elif re.search(r"\bORDER\s+BY\b", sql_segment, flags=re.IGNORECASE):
-            modified_sql = re.sub(
-                r"(\bORDER\s+BY\b)",
-                rf"WHERE {sol_id_condition} \1",
-                sql_segment,
-                count=1,
-                flags=re.IGNORECASE
-            )
-        elif re.search(r"\bLIMIT\b", sql_segment, flags=re.IGNORECASE):
-            modified_sql = re.sub(
-                r"(\bLIMIT\b)",
-                rf"WHERE {sol_id_condition} \1",
-                sql_segment,
-                count=1,
-                flags=re.IGNORECASE
-            )
-        else:
+        # No top-level WHERE clause exists - add one before GROUP BY, ORDER BY, LIMIT, or at end
+        inserted = False
+        for keyword in [r"\bGROUP\s+BY\b", r"\bORDER\s+BY\b", r"\bLIMIT\b"]:
+            top_keywords = _find_top_level_matches(keyword, sql_segment)
+            if top_keywords:
+                m = top_keywords[0]
+                modified_sql = sql_segment[:m.start()] + f"WHERE {sol_id_condition} " + sql_segment[m.start():]
+                inserted = True
+                break
+        
+        if not inserted:
             # Add WHERE at the end, but before any trailing semicolon
             base_sql = sql_segment.strip()
             if base_sql.endswith(';'):
@@ -636,46 +687,28 @@ def _inject_sol_id_filter(sql_segment, sol_id):
 
 def _detect_sol_id_table_alias(sql_segment):
     """
-    Detect which table alias to use for sol_id filtering.
-    
-    Searches the segment to identify the table that likely has sol_id.
-    1. Prefers explicit usage already in query (e.g. g.sol_id)
-    2. Prefers known tables like gam, smt, etc.
-    3. Falls back to first alias found in FROM clause.
-    
-    Args:
-        sql_segment (str): SQL query segment
-    
-    Returns:
-        str: Table alias to use (e.g., 'g', 'b', 't')
+    Detect which table alias to use for sol_id filtering, looking only at top level.
     """
-    # 1. Look for explicit sol_id usage in the original query to steal its alias
-    # This is the most reliable way if the user already specified an alias
-    sol_id_usage = r'(\w+)\.sol_id'
-    match = re.search(sol_id_usage, sql_segment, flags=re.IGNORECASE)
-    if match:
-        return match.group(1)
+    # 1. Look for explicit sol_id usage at top level
+    # (Matches g.sol_id where it's not in a subquery SELECT)
+    matches = _find_top_level_matches(r'(\w+)\.sol_id', sql_segment)
+    if matches:
+        return matches[0].group(1)
 
-    # 2. Look for known Finacle tables that typically have sol_id
-    # gam (General Account Masters), smt (System Master Tables), etc.
-    known_tables_pattern = r'\b(?:FROM|JOIN)\s+(?:tbaadm\.)?(gam|smt|lad|acd)\s+(\w+)'
-    match = re.search(known_tables_pattern, sql_segment, flags=re.IGNORECASE)
-    if match:
-        return match.group(2)
+    # 2. Look for known Finacle tables at top level
+    matches = _find_top_level_matches(r'\b(?:FROM|JOIN)\s+(?:tbaadm\.)?(gam|smt|lad|acd)\s+(\w+)', sql_segment)
+    if matches:
+        return matches[0].group(2)
     
-    # 3. Look for any table alias in FROM clause
-    # Pattern matches: FROM table_name alias OR FROM cte_name alias
-    from_pattern = r'\bFROM\s+(?:\w+\.\w+|\w+|\([^)]+\))\s+(\w+)'
-    match = re.search(from_pattern, sql_segment, flags=re.IGNORECASE)
-    
-    if match:
-        alias = match.group(1)
-        # Avoid keywords that might be misidentified as aliases
+    # 3. Look for any table alias in top-level FROM clause
+    matches = _find_top_level_matches(r'\bFROM\s+(?:\w+\.\w+|\w+|\([^)]+\))\s+(\w+)', sql_segment)
+    if matches:
+        alias = matches[0].group(1)
         if alias.upper() not in ('WHERE', 'GROUP', 'ORDER', 'LIMIT', 'JOIN', 'LEFT', 'INNER'):
             return alias
 
-    # Default fallback to 'g' if no match found
-    return 'g'
+    # Default fallback to None if no match found
+    return None
 
 
 def _build_query_parameters(sql_query, start_date, end_date, sol_id):
@@ -806,71 +839,94 @@ def _prepare_file_download(temp_path, filename):
 
 
 # ============================================================================
-# UTILITY METHODS - COLORED CONSOLE PRINTING
+# UTILITY METHODS - COLORED CONSOLE PRINTING & LOGGING
 # ============================================================================
 
+def _log_process(message):
+    """Internal log buffer for capturing process details."""
+    if not hasattr(frappe.local, "report_log_buffer"):
+        frappe.local.report_log_buffer = []
+    
+    # Strip ANSI colors for the database log
+    clean_message = re.sub(r'\033\[[0-9;]*m', '', message)
+    frappe.local.report_log_buffer.append(clean_message)
 
 def _print_header(title):
     """Print formatted header for console output."""
-    print(f"\n{Colors.BOLD}{Colors.BRIGHT_CYAN}{'=' * 80}{Colors.RESET}")
+    border = "=" * 80
+    print(f"\n{Colors.BOLD}{Colors.BRIGHT_CYAN}{border}{Colors.RESET}")
     print(f"{Colors.BOLD}{Colors.BRIGHT_CYAN}🚀 {title}{Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.BRIGHT_CYAN}{'=' * 80}{Colors.RESET}\n")
+    print(f"{Colors.BOLD}{Colors.BRIGHT_CYAN}{border}{Colors.RESET}\n")
+    _log_process(f"\n{border}\n🚀 {title}\n{border}\n")
 
 
 def _print_footer(title, success=True):
     """Print formatted footer for console output."""
     color = Colors.BRIGHT_GREEN if success else Colors.BRIGHT_RED
     icon = "✅" if success else "❌"
-    print(f"{Colors.BOLD}{color}{'=' * 80}{Colors.RESET}")
+    border = "=" * 80
+    print(f"{Colors.BOLD}{color}{border}{Colors.RESET}")
     print(f"{Colors.BOLD}{color}{icon} {title}{Colors.RESET}")
-    print(f"{Colors.BOLD}{color}{'=' * 80}{Colors.RESET}\n")
+    print(f"{Colors.BOLD}{color}{border}{Colors.RESET}\n")
+    _log_process(f"{border}\n{icon} {title}\n{border}\n")
 
 
 def _print_section_header(title):
     """Print section header."""
-    print(f"{Colors.BRIGHT_BLUE}{'─' * 80}{Colors.RESET}")
+    border = "─" * 80
+    print(f"{Colors.BRIGHT_BLUE}{border}{Colors.RESET}")
     print(f"{Colors.BOLD}{Colors.BRIGHT_BLUE}🔐 {title}{Colors.RESET}")
-    print(f"{Colors.BRIGHT_BLUE}{'─' * 80}{Colors.RESET}")
+    print(f"{Colors.BRIGHT_BLUE}{border}{Colors.RESET}")
+    _log_process(f"{border}\n🔐 {title}\n{border}")
 
 
 def _print_section_footer():
     """Print section footer."""
-    print(f"{Colors.BRIGHT_BLUE}{'─' * 80}{Colors.RESET}\n")
+    border = "─" * 80
+    print(f"{Colors.BRIGHT_BLUE}{border}{Colors.RESET}\n")
+    _log_process(f"{border}\n")
 
 
 def _print_success(message):
     """Print success message."""
     print(f"{Colors.BRIGHT_GREEN}✅ {message}{Colors.RESET}")
+    _log_process(f"✅ {message}")
 
 
 def _print_error(message):
     """Print error message."""
     print(f"{Colors.BRIGHT_RED}❌ {message}{Colors.RESET}")
+    _log_process(f"❌ {message}")
 
 
 def _print_warning(message):
     """Print warning message."""
     print(f"{Colors.BRIGHT_YELLOW}⚠️  {message}{Colors.RESET}")
+    _log_process(f"⚠️  {message}")
 
 
 def _print_info(message):
     """Print info message."""
     print(f"{Colors.BRIGHT_CYAN}ℹ️  {message}{Colors.RESET}")
+    _log_process(f"ℹ️  {message}")
 
 
 def _print_highlight(message):
     """Print highlighted message."""
     print(f"{Colors.BOLD}{Colors.BRIGHT_MAGENTA}📊 {message}{Colors.RESET}")
+    _log_process(f"📊 {message}")
 
 
 def _print_data(label, value):
     """Print data in key-value format."""
     print(f"{Colors.CYAN}   • {label}:{Colors.RESET} {Colors.WHITE}{value}{Colors.RESET}")
+    _log_process(f"   • {label}: {value}")
 
 
 def _print_metric(label, value):
     """Print performance metric."""
     print(f"{Colors.YELLOW}⏱️  {label}:{Colors.RESET} {Colors.BOLD}{Colors.WHITE}{value}{Colors.RESET}")
+    _log_process(f"⏱️  {label}: {value}")
 
 
 def _print_sql_debug(sql_query, params, filter_applied, is_branch_user):
@@ -883,25 +939,35 @@ def _print_sql_debug(sql_query, params, filter_applied, is_branch_user):
         filter_applied (bool): Whether Branch Report filter was applied
         is_branch_user (bool): Whether user has Branch Report role
     """
-    print(f"{Colors.BRIGHT_MAGENTA}{'─' * 80}{Colors.RESET}")
+    border = "─" * 80
+    print(f"{Colors.BRIGHT_MAGENTA}{border}{Colors.RESET}")
     print(f"{Colors.BOLD}{Colors.BRIGHT_MAGENTA}📝 FINAL SQL QUERY{Colors.RESET}")
-    print(f"{Colors.BRIGHT_MAGENTA}{'─' * 80}{Colors.RESET}")
+    print(f"{Colors.BRIGHT_MAGENTA}{border}{Colors.RESET}")
     
+    _log_process(f"{border}\n📝 FINAL SQL QUERY\n{border}")
+
     if is_branch_user and filter_applied:
         print(f"{Colors.BRIGHT_GREEN}🔒 BRANCH REPORT FILTER APPLIED{Colors.RESET}")
         print(f"{Colors.GREEN}   → sol_id filter added to WHERE clause{Colors.RESET}")
+        _log_process("🔒 BRANCH REPORT FILTER APPLIED\n   → sol_id filter added to WHERE clause")
     elif not is_branch_user:
         print(f"{Colors.BRIGHT_BLUE}ℹ️  NO FILTER APPLIED{Colors.RESET}")
         print(f"{Colors.BLUE}   → Using original query (user doesn't have Branch Report role){Colors.RESET}")
+        _log_process("ℹ️  NO FILTER APPLIED\n   → Using original query (user doesn't have Branch Report role)")
     
     print(f"\n{Colors.BOLD}{Colors.CYAN}📄 Query:{Colors.RESET}")
     print(f"{Colors.WHITE}{sql_query}{Colors.RESET}")
+    _log_process(f"\n📄 Query:\n{sql_query}")
     
     print(f"\n{Colors.BOLD}{Colors.CYAN}📊 Parameters:{Colors.RESET}")
+    _log_process("\n📊 Parameters:")
     if params:
         for key, value in params.items():
             print(f"{Colors.YELLOW}   • {key}:{Colors.RESET} {Colors.WHITE}{value}{Colors.RESET}")
+            _log_process(f"   • {key}: {value}")
     else:
         print(f"{Colors.YELLOW}   (No parameters){Colors.RESET}")
+        _log_process("   (No parameters)")
     
-    print(f"{Colors.BRIGHT_MAGENTA}{'─' * 80}{Colors.RESET}\n")
+    print(f"{Colors.BRIGHT_MAGENTA}{border}{Colors.RESET}\n")
+    _log_process(f"{border}\n")
