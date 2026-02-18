@@ -638,8 +638,10 @@ def _detect_sol_id_table_alias(sql_segment):
     """
     Detect which table alias to use for sol_id filtering.
     
-    Searches the FROM/JOIN clauses to identify the table that likely has sol_id.
-    Prefers known tables like gam, smt, etc.
+    Searches the segment to identify the table that likely has sol_id.
+    1. Prefers explicit usage already in query (e.g. g.sol_id)
+    2. Prefers known tables like gam, smt, etc.
+    3. Falls back to first alias found in FROM clause.
     
     Args:
         sql_segment (str): SQL query segment
@@ -647,14 +649,21 @@ def _detect_sol_id_table_alias(sql_segment):
     Returns:
         str: Table alias to use (e.g., 'g', 'b', 't')
     """
-    # 1. Look for known Finacle tables that typically have sol_id
+    # 1. Look for explicit sol_id usage in the original query to steal its alias
+    # This is the most reliable way if the user already specified an alias
+    sol_id_usage = r'(\w+)\.sol_id'
+    match = re.search(sol_id_usage, sql_segment, flags=re.IGNORECASE)
+    if match:
+        return match.group(1)
+
+    # 2. Look for known Finacle tables that typically have sol_id
     # gam (General Account Masters), smt (System Master Tables), etc.
-    known_tables_pattern = r'\bFROM\s+(?:tbaadm\.)?(gam|smt|lad|acd)\s+(\w+)'
+    known_tables_pattern = r'\b(?:FROM|JOIN)\s+(?:tbaadm\.)?(gam|smt|lad|acd)\s+(\w+)'
     match = re.search(known_tables_pattern, sql_segment, flags=re.IGNORECASE)
     if match:
         return match.group(2)
     
-    # 2. Look for any table alias in FROM clause
+    # 3. Look for any table alias in FROM clause
     # Pattern matches: FROM table_name alias OR FROM cte_name alias
     from_pattern = r'\bFROM\s+(?:\w+\.\w+|\w+|\([^)]+\))\s+(\w+)'
     match = re.search(from_pattern, sql_segment, flags=re.IGNORECASE)
@@ -664,12 +673,6 @@ def _detect_sol_id_table_alias(sql_segment):
         # Avoid keywords that might be misidentified as aliases
         if alias.upper() not in ('WHERE', 'GROUP', 'ORDER', 'LIMIT', 'JOIN', 'LEFT', 'INNER'):
             return alias
-    
-    # 3. Look for explicit sol_id usage in the original query to steal its alias
-    sol_id_usage = r'(\w+)\.sol_id'
-    match = re.search(sol_id_usage, sql_segment, flags=re.IGNORECASE)
-    if match:
-        return match.group(1)
 
     # Default fallback to 'g' if no match found
     return 'g'
