@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"VlI9Y53xII\",\"type\":\"paragraph\",\"data\":{\"text\":\"<span class=\\\"h1\\\"><b>Finacle Report Admin</b></span>\",\"col\":12}},{\"id\":\"ZBuEkG06rv\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Portal\",\"col\":3}},{\"id\":\"i-_8X57Yad\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Branch Report\",\"col\":3}},{\"id\":\"dO3uUvcL3U\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Finacle CBS Report\",\"col\":3}},{\"id\":\"aZr0RTzNnF\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Finacle DR Credentials\",\"col\":3}}]",
+ "content": "[{\"id\":\"VlI9Y53xII\",\"type\":\"paragraph\",\"data\":{\"text\":\"<span class=\\\"h1\\\"><b>Finacle Report Admin</b></span>\",\"col\":12}},{\"id\":\"ZBuEkG06rv\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Portal\",\"col\":3}},{\"id\":\"i-_8X57Yad\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Branch Report\",\"col\":3}},{\"id\":\"dO3uUvcL3U\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Finacle CBS Report\",\"col\":3}},{\"id\":\"aZr0RTzNnF\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Finacle DR Credentials\",\"col\":3}},{\"id\":\"emEjDfeTq5\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Finacle CBS Report Audit\",\"col\":3}}]",
  "creation": "2025-11-03 14:00:34.765148",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "Finacle Report Admin",
  "links": [],
- "modified": "2025-11-06 12:36:40.673367",
+ "modified": "2026-02-18 14:28:48.510284",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Finacle Report Admin",
@@ -35,6 +35,14 @@
    "label": "Portal",
    "link_to": "finacle-report-portal",
    "type": "Page"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Finacle CBS Report Audit",
+   "link_to": "Finacle CBS Report Audit",
+   "report_ref_doctype": "Report Log",
+   "type": "Report"
   },
   {
    "color": "Green",
