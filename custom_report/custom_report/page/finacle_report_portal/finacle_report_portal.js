@@ -279,35 +279,20 @@ function initializeReportPortal(wrapper) {
                     const is_dept = res.message.is_dept_user;
                     const $info = $('#user_permissions_info');
                     
-                    $info.show();
                     $branchFilterContainer.css('display', 'flex');
                     
                     if (sol_data.length > 0 || is_dept) {
                         let statusText = '';
                         if (is_dept) {
                             statusText = 'Full Access (All Branches)';
-                            $info.html(`
-                                <div style="background:#e0f2f1;border:1px solid #b2dfdb;border-radius:6px;padding:8px 12px;display:inline-block;">
-                                    <span id="dept_status_badge" style="background:#00796b;color:white;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;">Full Access (All Branches)</span>
-                                    <div id="dept_manual_badges" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:4px;"></div>
-                                </div>
-                            `);
                         } else {
                             statusText = `${sol_data.length} Branches Selected`;
-                            $info.html(`
-                                <div style="background:#e0f2f1;border:1px solid #b2dfdb;border-radius:6px;padding:8px 12px;display:inline-block;">
-                                    <span style="font-size:12px;color:#00796b;font-weight:600;">📍 Filtered for Branches:</span>
-                                    <div id="active_sol_badges" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:4px;">
-                                        ${sol_data.map(d => `<span class="sol-badge" data-sol="${d.sol_id}" title="${d.branch_name}" style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${d.sol_id}</span>`).join('')}
-                                    </div>
-                                </div>
-                            `);
                         }
 
                         $selectedBranchesText.text(statusText);
                         populateSolIdList(sol_data, is_dept);
                     } else if (!is_dept) {
-                        $info.html(`
+                        $info.show().html(`
                             <div style="background:#ffebee;border:1px solid #ffcdd2;border-radius:6px;padding:10px 15px;">
                                 <p style="color:#c62828;font-size:13px;font-weight:600;margin:0;">⚠️ No branches assigned in Report Preference.</p>
                                 <p style="color:#555;font-size:11px;margin:5px 0 0 0;">Please contact your administrator to set up your branch list.</p>
@@ -344,31 +329,20 @@ function initializeReportPortal(wrapper) {
         const selected = getSelectedSols();
         
         if (is_dept) {
-            const $statusBadge = $('#dept_status_badge');
-            const $manualBadges = $('#dept_manual_badges');
-            
             if (selected.length === 0) {
-                $statusBadge.text('Full Access (All Branches)').css('background', '#00796b');
                 $selectedBranchesText.text('Full Access (All Branches)');
-                $manualBadges.empty();
             } else {
-                $statusBadge.text(`Filtered (${selected.length} Selected)`).css('background', '#196767');
                 $selectedBranchesText.text(`${selected.length} Branches Selected`);
-                $manualBadges.html(selected.map(d => `<span class="sol-badge" data-sol="${d.id}" style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${d.id}</span>`).join(''));
             }
             $('#download_csv').prop('disabled', false).css('opacity', '1');
         } else {
-            let badgeHtml = selected.map(d => `<span class="sol-badge" data-sol="${d.id}" style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${d.id}</span>`).join('');
-            
             if (selected.length === 0) {
                 $selectedBranchesText.text('No branches selected');
-                badgeHtml = '<span style="color: #c62828; font-size: 11px;">No branches selected</span>';
                 $('#download_csv').prop('disabled', true).css('opacity', '0.6');
             } else {
                 $selectedBranchesText.text(`${selected.length} Branches Selected`);
                 $('#download_csv').prop('disabled', false).css('opacity', '1');
             }
-            $('#active_sol_badges').html(badgeHtml);
         }
     }
 
