@@ -1729,6 +1729,16 @@
 
 																	</div>
 
+																	
+
+																	<div v-if="data.passbook_charges > 0" class="summary-item penalty-active">
+
+																		<span class="item-label">Passbook Charges</span>
+
+																		<span class="item-value">- [[ formatCurrency(data.passbook_charges) ]]</span>
+
+																	</div>
+
 																
 
 																	<div class="receipt-divider"></div>
@@ -2224,8 +2234,14 @@
 					const scPercent = this.getServiceChargePercent(this.data.schm_code, monthsHeldTotal);
 					this.data.penalty = Math.round((totalInstallments * scPercent / 100.0) * 1.18);
 					
+					// Passbook Charges: Rs. 60 if premature before 3 years for 2005 scheme
+					this.data.passbook_charges = 0;
+					if (String(this.data.schm_code) === "2005" && monthsHeldTotal < 36) {
+						this.data.passbook_charges = 60;
+					}
+
 					// Always use internal calculation for total settlement
-					this.data.total = Math.round(totalInstallments + totalInterestAccrued - this.data.penalty);
+					this.data.total = Math.round(totalInstallments + totalInterestAccrued - this.data.penalty - this.data.passbook_charges);
 					
 					this.data.monthsHeld = monthsHeldTotal;
 					this.data.slabStatus = monthsHeldTotal >= rules.meta.tenure_m ? { label: `Matured: ${appRate}%`, color: "#10b981" } : (appRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Prematured: ${appRate}%`, color: "#f59e0b" });
