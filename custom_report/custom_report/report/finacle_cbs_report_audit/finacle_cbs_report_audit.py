@@ -175,14 +175,16 @@ def get_chart(data):
             "datasets": [
                 {
                     "name": _("Success"),
+                    "chartType": "bar",
                     "values": [dates[date]["success"] for date in sorted_dates]
                 },
                 {
                     "name": _("Failed"),
+                    "chartType": "bar",
                     "values": [dates[date]["failed"] for date in sorted_dates]
                 }
             ]
         },
-        "type": "line", # or 'bar'
-        "colors": ["green", "red"]
+        "type": "bar",
+        "colors": ["#28a745", "#dc3545"] # Explicit Hex colors for Green/Red
     }
