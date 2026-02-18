@@ -175,7 +175,10 @@ function initializeReportPortal(wrapper) {
     $(page.body).html(`
         <div style="max-width:480px;margin:40px auto;font-family:sans-serif;">
             <div style="padding:20px;background:#fff;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,0.1);">
-                <h3 style="text-align:center;color:#196767;margin-bottom:25px;">Finacle CBS Report</h3>
+                <h3 style="text-align:center;color:#196767;margin-bottom:10px;">Finacle CBS Report</h3>
+                <div id="user_permissions_info" style="text-align:center;margin-bottom:20px;display:none;">
+                    <!-- Permissions info will be populated here -->
+                </div>
                 <form id="finacle-report-form" style="display:flex;flex-direction:column;gap:15px;">
                     <div>
                         <label style="font-weight:600;color:#196767;margin-bottom:5px;">Select Report</label>
@@ -229,6 +232,41 @@ function initializeReportPortal(wrapper) {
     const $selectedReportValue = $('#selected_report_value');
     const $searchClear = $('#search_clear');
     
+    // Fetch and show user permissions/branches
+    function loadUserPermissions() {
+        frappe.call({
+            method: 'custom_report.api.get_user_report_permissions',
+            callback: function(res) {
+                if (res.message && res.message.is_branch_user) {
+                    const sol_ids = res.message.sol_ids || [];
+                    const $info = $('#user_permissions_info');
+                    $info.show();
+                    
+                    if (sol_ids.length > 0) {
+                        $info.html(`
+                            <div style="background:#e0f2f1;border:1px solid #b2dfdb;border-radius:6px;padding:8px 12px;display:inline-block;">
+                                <span style="font-size:12px;color:#00796b;font-weight:600;">📍 Filtered for Branches:</span>
+                                <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:4px;">
+                                    ${sol_ids.map(id => `<span style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${id}</span>`).join('')}
+                                </div>
+                            </div>
+                        `);
+                    } else {
+                        $info.html(`
+                            <div style="background:#ffebee;border:1px solid #ffcdd2;border-radius:6px;padding:10px 15px;">
+                                <p style="color:#c62828;font-size:13px;font-weight:600;margin:0;">⚠️ No branches assigned in Report Preference.</p>
+                                <p style="color:#555;font-size:11px;margin:5px 0 0 0;">Please contact your administrator to set up your branch list.</p>
+                            </div>
+                        `);
+                        // Disable download if no branches assigned for branch report user
+                        $('#download_csv').prop('disabled', true).css('opacity', '0.6').attr('title', 'No branches assigned');
+                    }
+                }
+            }
+        });
+    }
+    loadUserPermissions();
+
     let expectedDuration = 2;
     let currentXhr = null;
     let startDatePicker = null;
