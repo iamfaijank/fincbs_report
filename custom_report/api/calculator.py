@@ -9,7 +9,7 @@ RD_SLABS = {
     "2010": {"tenure": 12, "base_rate": 8.0, "slabs": [(6, 9, 4.0), (9, 12, 6.0)]},
     "2011": {"tenure": 24, "base_rate": 8.0, "slabs": [(12, 18, 4.0), (18, 24, 6.0)]},
     "2012": {"tenure": 36, "base_rate": 8.0, "slabs": [(18, 27, 4.0), (27, 36, 6.0)]},
-    "2013": {"tenure": 48, "base_rate": 8.0, "slabs": [(12, 36, 4.0), (36, 48, 6.0)]},
+    "2013": {"tenure": 48, "base_rate": 8.0, "slabs": [(24, 36, 4.0), (36, 48, 6.0)]},
     "2014": {"tenure": 60, "base_rate": 8.0, "slabs": [(30, 45, 4.0), (45, 60, 6.0)]},
     "2015": {"tenure": 60, "base_rate": 8.0, "slabs": [(30, 45, 4.0), (45, 60, 6.0)]},
     "2005": {"tenure": 66, "base_rate": 8.0, "slabs": [(36, 66, 6.0)]},
@@ -230,6 +230,11 @@ def get_account_details(foracid=None, settlement_date=None):
         base_charge = total_principal_for_sc * (sc_percent / 100.0)
         penalty_amt = base_charge * 1.18 # Add 18% GST
 
+        # Passbook Charges: Rs. 60 if premature before 3 years for 2005 scheme
+        passbook_charges = 0
+        if str(schm_code) == "2005" and months_held_total < 36:
+            passbook_charges = 60
+
         return {
             "success": True, "cif_id": cif, "acct_name": name, "sol_id": sol_id, "sol_desc": sol_desc,
             "acct_opn_date": opn_dt.strftime("%d/%m/%Y"), "schm_code": schm_code, "schm_desc": schm_desc,
@@ -238,7 +243,8 @@ def get_account_details(foracid=None, settlement_date=None):
             "planned_installment": float(planned_installment or 0),
             "transactions": transactions, "principal": int(total_principal_for_sc + 0.5),
             "interest": int(total_interest + 0.5), "penalty": int(penalty_amt + 0.5),
-            "net_payable": int(total_principal_for_sc + total_interest - penalty_amt + 0.5),
+            "passbook_charges": passbook_charges,
+            "net_payable": int(total_principal_for_sc + total_interest - penalty_amt - passbook_charges + 0.5),
             "applied_rate": app_rate, "months_held": months_held_total
         }
     except Exception as e:
