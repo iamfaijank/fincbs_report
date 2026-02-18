@@ -10,9 +10,8 @@ def execute(filters=None):
     data = get_data(filters)
     
     summary = get_summary(data)
-    chart = get_chart(data)
     
-    return columns, data, None, chart, summary
+    return columns, data, None, None, summary
 
 
 def get_columns():
@@ -156,43 +155,3 @@ def get_summary(data):
     ]
 
 
-def get_chart(data):
-    if not data:
-        return None
-
-    # Group by date for chart
-    dates = {}
-    for d in data:
-        # Safely convert to date object and then string
-        date_obj = frappe.utils.getdate(d.date_time)
-        date_str = date_obj.strftime("%Y-%m-%d")
-        
-        if date_str not in dates:
-            dates[date_str] = {"success": 0, "failed": 0}
-        
-        if d.status == "Success":
-            dates[date_str]["success"] += 1
-        else:
-            dates[date_str]["failed"] += 1
-
-    sorted_dates = sorted(dates.keys())
-    
-    return {
-        "data": {
-            "labels": sorted_dates,
-            "datasets": [
-                {
-                    "name": _("Success"),
-                    "chartType": "bar",
-                    "values": [dates[date]["success"] for date in sorted_dates]
-                },
-                {
-                    "name": _("Failed"),
-                    "chartType": "bar",
-                    "values": [dates[date]["failed"] for date in sorted_dates]
-                }
-            ]
-        },
-        "type": "bar",
-        "colors": ["#28a745", "#dc3545"] # Explicit Hex colors for Green/Red
-    }
