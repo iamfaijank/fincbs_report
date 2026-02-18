@@ -74,11 +74,11 @@ def get_user_report_permissions():
     sol_data = [] # List of dicts: {"sol_id": "...", "branch_name": "..."}
 
     if is_branch_user and not is_dept_user:
-        # Strict branch user - only show their preferences
+        # Strict branch user - check preferences first
         pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
+        sol_ids = []
         if pref_name:
             doc = frappe.get_doc("Report Preference", pref_name)
-            sol_ids = []
             if hasattr(doc, "sol_id") and not isinstance(doc.sol_id, str):
                 sol_ids = [d.sol_id for d in doc.sol_id if getattr(d, "sol_id", None)]
                 sol_ids = list(set(sol_ids))
@@ -86,15 +86,24 @@ def get_user_report_permissions():
                 sol_id_val = getattr(doc, "sol_id", None)
                 if isinstance(sol_id_val, str):
                     sol_ids = [s.strip() for s in sol_id_val.split(",") if s.strip()]
-            
-            if sol_ids:
-                # Fetch branch names for these sol_ids
-                branches = frappe.get_all(
-                    "Sahayog Branch",
-                    filters={"name": ["in", sol_ids]},
-                    fields=["name as sol_id", "branch as branch_name"]
-                )
-                sol_data = branches
+        
+        # USE CASE: If no Report Preference OR only one SOL ID is found, 
+        # fallback to Employee doctype (single branch).
+        if len(sol_ids) <= 1:
+            employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
+            if employee_sol:
+                sol_ids = [employee_sol]
+            elif not sol_ids:
+                sol_ids = [] # Still empty if nothing in Employee either
+
+        if sol_ids:
+            # Fetch branch names for these sol_ids
+            branches = frappe.get_all(
+                "Sahayog Branch",
+                filters={"name": ["in", sol_ids]},
+                fields=["name as sol_id", "branch as branch_name"]
+            )
+            sol_data = branches
     
     elif is_dept_user:
         # Department user or Admin - show ALL sol_ids from Sahayog Branch doctype
@@ -421,41 +430,44 @@ def _get_user_sol_id_with_branch_check(user, user_roles, manual_sol_id=None):
         # Scenario B: User is strictly a Branch User (Report Preference applies)
         elif is_branch_user:
             _print_success("User has 'Branch Report' role")
-            _print_info("Fetching 'sol_id' from 'Report Preference' doctype...")
             
             # Fetch Report Preference for the user
             allowed_sol_ids = []
             pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
             if pref_name:
                 doc = frappe.get_doc("Report Preference", pref_name)
-                # Check if sol_id is a child table field (as seen in other modules)
                 if hasattr(doc, "sol_id") and not isinstance(doc.sol_id, str):
                     allowed_sol_ids = [d.sol_id for d in doc.sol_id if getattr(d, "sol_id", None)]
-                    allowed_sol_ids = list(set(allowed_sol_ids)) # De-duplicate
+                    allowed_sol_ids = list(set(allowed_sol_ids))
                 else:
-                    # Fallback if it's a regular MultiSelect field (string)
                     sol_id_val = getattr(doc, "sol_id", None)
                     if isinstance(sol_id_val, str):
                         allowed_sol_ids = [s.strip() for s in sol_id_val.split(",") if s.strip()]
-                    else:
-                        allowed_sol_ids = []
-            
+
+            # FALLBACK USE CASE: If no Report Preference OR only one SOL ID is found,
+            # use the single branch from Employee doctype.
+            if len(allowed_sol_ids) <= 1:
+                _print_info("Report Preference has <= 1 SOL ID. Falling back to Employee doctype...")
+                employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
+                if employee_sol:
+                    allowed_sol_ids = [employee_sol]
+                    _print_success(f"Using branch from Employee record: {employee_sol}")
+
             # Use manual selection if provided, but validate against allowed list
             if manual_sol_id:
                 if isinstance(manual_sol_id, str):
                     manual_sol_id = [manual_sol_id]
-                # Intersection to ensure user can only select what they're allowed
                 sol_id = [s for s in manual_sol_id if s in allowed_sol_ids]
                 _print_info(f"Using manual sol_id selection (validated): {', '.join(sol_id)}")
             else:
                 sol_id = allowed_sol_ids
                 if sol_id:
-                    _print_success(f"Found sol_ids in Report Preference: {', '.join(sol_id)}")
+                    _print_success(f"Final sol_ids applied: {', '.join(sol_id)}")
                 else:
-                    _print_warning("No sol_id found in Report Preference")
+                    _print_warning("No sol_id found in Report Preference or Employee")
             
-            if not pref_name:
-                _print_warning("Report Preference NOT FOUND for user")
+            if not pref_name and len(allowed_sol_ids) == 0:
+                _print_warning("Neither Report Preference nor Employee branch found for user")
             
             print()
             _print_highlight("BRANCH REPORT USER INFO:")
