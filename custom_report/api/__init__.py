@@ -498,38 +498,44 @@ def _apply_branch_report_filter(sql_query, sol_id, is_branch_user):
 def _inject_sol_id_filter(sql_segment, sol_id):
     """
     Inject sol_id filter into the WHERE clause of a SQL segment.
-    
-    Automatically detects the correct table alias to use for sol_id filtering.
-    
-    Args:
-        sql_segment (str): SQL query or query segment
-        sol_id (str or list): User's sol_id value(s)
-    
-    Returns:
-        str: Modified SQL with sol_id filter added
     """
     # Detect which table alias has sol_id column
     table_alias = _detect_sol_id_table_alias(sql_segment)
     
-    # Build the filter condition with detected alias
-    if isinstance(sol_id, list):
-        sol_id_condition = f"{table_alias}.sol_id IN %(branch_sol_id)s"
+    # Build the filter condition
+    if table_alias:
+        condition_col = f"{table_alias}.sol_id"
     else:
-        sol_id_condition = f"{table_alias}.sol_id = %(branch_sol_id)s"
+        condition_col = "sol_id"
+
+    if isinstance(sol_id, list):
+        sol_id_condition = f"{condition_col} IN %(branch_sol_id)s"
+    else:
+        sol_id_condition = f"{condition_col} = %(branch_sol_id)s"
     
     # Check if WHERE clause exists
-    if re.search(r"\bWHERE\b", sql_segment, flags=re.IGNORECASE):
+    where_match = re.search(r"\bWHERE\b", sql_segment, flags=re.IGNORECASE)
+    if where_match:
         # Add condition after WHERE keyword
+        # We use a more precise regex to insert right after WHERE
         modified_sql = re.sub(
-            r"(\bWHERE\b)\s+",
-            rf"\1 {sol_id_condition} AND ",
+            r"(\bWHERE\b)",
+            rf"\1 ({sol_id_condition}) AND ",
             sql_segment,
             count=1,
             flags=re.IGNORECASE
         )
     else:
-        # No WHERE clause exists - add one before ORDER BY, LIMIT, or at end
-        if re.search(r"\bORDER\s+BY\b", sql_segment, flags=re.IGNORECASE):
+        # No WHERE clause exists - add one before GROUP BY, ORDER BY, LIMIT, or at end
+        if re.search(r"\bGROUP\s+BY\b", sql_segment, flags=re.IGNORECASE):
+            modified_sql = re.sub(
+                r"(\bGROUP\s+BY\b)",
+                rf"WHERE {sol_id_condition} \1",
+                sql_segment,
+                count=1,
+                flags=re.IGNORECASE
+            )
+        elif re.search(r"\bORDER\s+BY\b", sql_segment, flags=re.IGNORECASE):
             modified_sql = re.sub(
                 r"(\bORDER\s+BY\b)",
                 rf"WHERE {sol_id_condition} \1",
@@ -546,8 +552,12 @@ def _inject_sol_id_filter(sql_segment, sol_id):
                 flags=re.IGNORECASE
             )
         else:
-            # Add WHERE at the end
-            modified_sql = f"{sql_segment.rstrip(';')} WHERE {sol_id_condition}"
+            # Add WHERE at the end, but before any trailing semicolon
+            base_sql = sql_segment.strip()
+            if base_sql.endswith(';'):
+                modified_sql = f"{base_sql[:-1]} WHERE {sol_id_condition};"
+            else:
+                modified_sql = f"{base_sql} WHERE {sol_id_condition}"
     
     return modified_sql
 
@@ -555,7 +565,8 @@ def _detect_sol_id_table_alias(sql_segment):
     """
     Detect which table alias to use for sol_id filtering.
     
-    Searches the FROM clause to identify the primary table/CTE alias.
+    Searches the FROM/JOIN clauses to identify the table that likely has sol_id.
+    Prefers known tables like gam, smt, etc.
     
     Args:
         sql_segment (str): SQL query segment
@@ -563,19 +574,30 @@ def _detect_sol_id_table_alias(sql_segment):
     Returns:
         str: Table alias to use (e.g., 'g', 'b', 't')
     """
-    # Pattern matches: FROM table_name alias OR FROM cte_name alias
-    # Examples:
-    #   FROM tbaadm.gam g          -> captures 'g'
-    #   FROM base_data b           -> captures 'b'
-    #   FROM (SELECT ...) t        -> captures 't'
+    # 1. Look for known Finacle tables that typically have sol_id
+    # gam (General Account Masters), smt (System Master Tables), etc.
+    known_tables_pattern = r'\bFROM\s+(?:tbaadm\.)?(gam|smt|lad|acd)\s+(\w+)'
+    match = re.search(known_tables_pattern, sql_segment, flags=re.IGNORECASE)
+    if match:
+        return match.group(2)
     
+    # 2. Look for any table alias in FROM clause
+    # Pattern matches: FROM table_name alias OR FROM cte_name alias
     from_pattern = r'\bFROM\s+(?:\w+\.\w+|\w+|\([^)]+\))\s+(\w+)'
     match = re.search(from_pattern, sql_segment, flags=re.IGNORECASE)
     
     if match:
         alias = match.group(1)
-        return alias
+        # Avoid keywords that might be misidentified as aliases
+        if alias.upper() not in ('WHERE', 'GROUP', 'ORDER', 'LIMIT', 'JOIN', 'LEFT', 'INNER'):
+            return alias
     
+    # 3. Look for explicit sol_id usage in the original query to steal its alias
+    sol_id_usage = r'(\w+)\.sol_id'
+    match = re.search(sol_id_usage, sql_segment, flags=re.IGNORECASE)
+    if match:
+        return match.group(1)
+
     # Default fallback to 'g' if no match found
     return 'g'
 
