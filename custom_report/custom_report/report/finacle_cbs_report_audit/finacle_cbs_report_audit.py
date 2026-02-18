@@ -150,7 +150,7 @@ def get_summary(data):
             "value": f"{success_rate}%",
             "indicator": "Green" if success_rate > 80 else "Orange",
             "label": _("Success Rate"),
-            "datatype": "Percent",
+            "datatype": "Data",
         }
     ]
 
