@@ -125,7 +125,7 @@ def get_summary(data):
     total = len(data)
     success = len([d for d in data if d.status == "Success"])
     failed = total - success
-    success_rate = (success / total * 100) if total > 0 else 0
+    success_rate = int(success / total * 100) if total > 0 else 0
 
     return [
         {
@@ -147,7 +147,7 @@ def get_summary(data):
             "datatype": "Int",
         },
         {
-            "value": f"{success_rate:.1f}%",
+            "value": f"{success_rate}%",
             "indicator": "Green" if success_rate > 80 else "Orange",
             "label": _("Success Rate"),
             "datatype": "Percent",
