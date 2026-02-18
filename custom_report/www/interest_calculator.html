@@ -1731,11 +1731,11 @@
 
 																	
 
-																	<div v-if="data.passbook_charges > 0" class="summary-item penalty-active">
+																	<div class="summary-item" :class="{ 'penalty-active': data.passbook_charges > 0 }">
 
 																		<span class="item-label">Passbook Charges</span>
 
-																		<span class="item-value">- [[ formatCurrency(data.passbook_charges) ]]</span>
+																		<span class="item-value">- [[ formatCurrency(data.passbook_charges || 0) ]]</span>
 
 																	</div>
 
