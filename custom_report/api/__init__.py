@@ -5,6 +5,7 @@ import time
 import tempfile
 import re
 import csv
+import json
 from datetime import datetime
 from custom_report.db_utils import get_pg_connection
 
@@ -170,10 +171,25 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         # Parse manual sol_id if provided from frontend
         manual_sol_id = None
         if sol_id:
-            try:
-                manual_sol_id = json.loads(sol_id)
-            except:
+            if isinstance(sol_id, str):
+                try:
+                    # Attempt to parse as JSON list: '["1025", "1026"]'
+                    manual_sol_id = json.loads(sol_id)
+                except:
+                    # Fallback to comma separated or single value: '1025,1026'
+                    manual_sol_id = [s.strip() for s in sol_id.split(",") if s.strip()]
+            elif isinstance(sol_id, list):
                 manual_sol_id = sol_id
+            
+            # Final cleanup: Ensure all items are strings and not nested JSON strings
+            if isinstance(manual_sol_id, list):
+                cleaned_ids = []
+                for s in manual_sol_id:
+                    if isinstance(s, str):
+                        # Fix for cases where a string might be doubly quoted or look like '["1025"]'
+                        s = s.strip('[]"\' ')
+                        if s: cleaned_ids.append(s)
+                manual_sol_id = cleaned_ids
 
         # Step 1.1: Check if user has "Branch Report" role and get sol_id
         final_sol_id, is_branch_user = _get_user_sol_id_with_branch_check(user, user_roles, manual_sol_id)
