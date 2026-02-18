@@ -171,57 +171,79 @@ function initializeReportPortal(wrapper) {
         document.head.appendChild(script);
     }
 
-    // Page HTML with search input
+    // Page HTML with Sidebar and Main Content
     $(page.body).html(`
-        <div style="max-width:480px;margin:40px auto;font-family:sans-serif;">
-            <div style="padding:20px;background:#fff;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,0.1);">
-                <h3 style="text-align:center;color:#196767;margin-bottom:10px;">Finacle CBS Report</h3>
-                <div id="user_permissions_info" style="text-align:center;margin-bottom:20px;display:none;">
-                    <!-- Permissions info will be populated here -->
+        <div style="display: flex; gap: 20px; max-width: 1200px; margin: 20px auto; font-family: sans-serif; align-items: flex-start;">
+            <!-- Sidebar Filter -->
+            <div id="sidebar_filter" style="width: 280px; background: #fff; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); padding: 20px; display: none; position: sticky; top: 20px;">
+                <h4 style="color: #196767; margin-top: 0; margin-bottom: 20px; border-bottom: 2px solid #e0f2f1; padding-bottom: 10px;">Filters</h4>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #196767; display: block; margin-bottom: 10px; font-size: 14px;">Select Branches (SOL ID)</label>
+                    <div style="position: relative; margin-bottom: 10px;">
+                        <input type="text" id="sol_id_search" class="form-control" placeholder="Search branches..." style="font-size: 13px; height: 32px;">
+                    </div>
+                    <div id="sol_id_list" style="max-height: 300px; overflow-y: auto; border: 1px solid #ebedef; border-radius: 4px; padding: 5px;">
+                        <!-- Checkboxes will be populated here -->
+                    </div>
+                    <div style="margin-top: 10px; display: flex; gap: 8px;">
+                        <button type="button" id="select_all_sol" style="flex: 1; font-size: 11px; padding: 4px; cursor: pointer; background: #f0f4f4; border: 1px solid #d1d8d8; border-radius: 4px;">Select All</button>
+                        <button type="button" id="clear_all_sol" style="flex: 1; font-size: 11px; padding: 4px; cursor: pointer; background: #f0f4f4; border: 1px solid #d1d8d8; border-radius: 4px;">Clear</button>
+                    </div>
                 </div>
-                <form id="finacle-report-form" style="display:flex;flex-direction:column;gap:15px;">
-                    <div>
-                        <label style="font-weight:600;color:#196767;margin-bottom:5px;">Select Report</label>
-                        <div style="position:relative;">
-                            <input type="text" id="report_search" class="form-control" placeholder="🔍 Search or select report..." autocomplete="off" style="padding-right:35px;">
-                            <span id="search_clear" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:#999;display:none;font-size:18px;" title="Clear search">✕</span>
-                            <select id="report_name" class="form-control" required style="display:none;">
-                                <option value="" disabled selected>Loading reports...</option>
-                            </select>
-                            <div id="report_dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #ddd;border-radius:5px;max-height:250px;overflow-y:auto;z-index:1000;box-shadow:0 4px 8px rgba(0,0,0,0.1);margin-top:2px;">
-                                <!-- Dropdown items will be populated here -->
+            </div>
+
+            <!-- Main Content Area -->
+            <div style="flex: 1;">
+                <div style="max-width:480px; margin: 0 auto; background:#fff; border-radius:10px; box-shadow:0 3px 10px rgba(0,0,0,0.1); padding:20px;">
+                    <h3 style="text-align:center; color:#196767; margin-bottom:10px;">Finacle CBS Report</h3>
+                    <div id="user_permissions_info" style="text-align:center; margin-bottom:20px; display:none;">
+                        <!-- Permissions info will be populated here -->
+                    </div>
+                    <form id="finacle-report-form" style="display:flex; flex-direction:column; gap:15px;">
+                        <div>
+                            <label style="font-weight:600; color:#196767; margin-bottom:5px;">Select Report</label>
+                            <div style="position:relative;">
+                                <input type="text" id="report_search" class="form-control" placeholder="🔍 Search or select report..." autocomplete="off" style="padding-right:35px;">
+                                <span id="search_clear" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer; color:#999; display:none; font-size:18px;" title="Clear search">✕</span>
+                                <select id="report_name" class="form-control" required style="display:none;">
+                                    <option value="" disabled selected>Loading reports...</option>
+                                </select>
+                                <div id="report_dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-radius:5px; max-height:250px; overflow-y:auto; z-index:1000; box-shadow:0 4px 8px rgba(0,0,0,0.1); margin-top:2px;">
+                                    <!-- Dropdown items will be populated here -->
+                                </div>
+                            </div>
+                            <input type="hidden" id="selected_report_value" value="">
+                            <div id="report_error" style="color:red; font-size:12px; display:none; margin-top:3px;"></div>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;">
+                                <label style="font-weight:600; color:#196767; margin-bottom:5px;">Start Date</label>
+                                <input type="text" id="start_date" class="form-control" required placeholder="DD/MM/YYYY">
+                                <div id="start_date_error" style="color:red; font-size:11px; display:none; margin-top:3px;"></div>
+                            </div>
+                            <div style="flex:1;">
+                                <label style="font-weight:600; color:#196767; margin-bottom:5px;">End Date</label>
+                                <input type="text" id="end_date" class="form-control" required placeholder="DD/MM/YYYY">
+                                <div id="end_date_error" style="color:red; font-size:11px; display:none; margin-top:3px;"></div>
                             </div>
                         </div>
-                        <input type="hidden" id="selected_report_value" value="">
-                        <div id="report_error" style="color:red;font-size:12px;display:none;margin-top:3px;"></div>
-                    </div>
-                    <div style="display:flex;gap:10px;">
-                        <div style="flex:1;">
-                            <label style="font-weight:600;color:#196767;margin-bottom:5px;">Start Date</label>
-                            <input type="text" id="start_date" class="form-control" required placeholder="DD/MM/YYYY">
-                            <div id="start_date_error" style="color:red;font-size:11px;display:none;margin-top:3px;"></div>
+                        <div style="display:flex; gap:10px;">
+                            <button type="button" id="download_csv" style="flex:1; background:#196767; color:white; border:none; padding:12px; font-weight:600; border-radius:5px; cursor:pointer;">
+                                 Download
+                            </button>
+                            <button type="button" id="cancel_download" style="flex:1; background:#b71c1c; color:white; border:none; padding:12px; font-weight:600; border-radius:5px; cursor:pointer; display:none;">
+                                 Cancel
+                            </button>
                         </div>
-                        <div style="flex:1;">
-                            <label style="font-weight:600;color:#196767;margin-bottom:5px;">End Date</label>
-                            <input type="text" id="end_date" class="form-control" required placeholder="DD/MM/YYYY">
-                            <div id="end_date_error" style="color:red;font-size:11px;display:none;margin-top:3px;"></div>
+                        <div id="progress_container" style="display:none; width:100%; height:12px; background:#eee; border-radius:6px; overflow:hidden; margin-top:10px; position:relative;">
+                            <div id="progress_bar" style="width:0%; height:100%; background:linear-gradient(90deg,#196767,#00bfa5); transition:width 0.3s ease;"></div>
+                            <div id="progress_percent" style="position:absolute; right:10px; top:-18px; font-size:12px; color:#196767; font-weight:600;"></div>
                         </div>
-                    </div>
-                    <div style="display:flex;gap:10px;">
-                        <button type="button" id="download_csv" style="flex:1;background:#196767;color:white;border:none;padding:12px;font-weight:600;border-radius:5px;cursor:pointer;">
-                             Download
-                        </button>
-                        <button type="button" id="cancel_download" style="flex:1;background:#b71c1c;color:white;border:none;padding:12px;font-weight:600;border-radius:5px;cursor:pointer;display:none;">
-                             Cancel
-                        </button>
-                    </div>
-                    <div id="progress_container" style="display:none;width:100%;height:12px;background:#eee;border-radius:6px;overflow:hidden;margin-top:10px;position:relative;">
-                        <div id="progress_bar" style="width:0%;height:100%;background:linear-gradient(90deg,#196767,#00bfa5);transition:width 0.3s ease;"></div>
-                        <div id="progress_percent" style="position:absolute;right:10px;top:-18px;font-size:12px;color:#196767;font-weight:600;"></div>
-                    </div>
-                    <div id="progress_text" style="display:none;font-size:13px;color:#555;text-align:right;margin-top:3px;"></div>
-                    <div id="robot_msg" style="display:none;font-size:13px;color:#196767;text-align:left;margin-top:3px;font-style:italic;"></div>
-                </form>
+                        <div id="progress_text" style="display:none; font-size:13px; color:#555; text-align:right; margin-top:3px;"></div>
+                        <div id="robot_msg" style="display:none; font-size:13px; color:#196767; text-align:left; margin-top:3px; font-style:italic;"></div>
+                    </form>
+                </div>
             </div>
         </div>
     `);
@@ -231,6 +253,8 @@ function initializeReportPortal(wrapper) {
     const $reportDropdown = $('#report_dropdown');
     const $selectedReportValue = $('#selected_report_value');
     const $searchClear = $('#search_clear');
+    const $solIdList = $('#sol_id_list');
+    const $solIdSearch = $('#sol_id_search');
     
     // Fetch and show user permissions/branches
     function loadUserPermissions() {
@@ -240,17 +264,23 @@ function initializeReportPortal(wrapper) {
                 if (res.message && res.message.is_branch_user) {
                     const sol_ids = res.message.sol_ids || [];
                     const $info = $('#user_permissions_info');
+                    const $sidebar = $('#sidebar_filter');
+                    
                     $info.show();
+                    $sidebar.show();
                     
                     if (sol_ids.length > 0) {
                         $info.html(`
                             <div style="background:#e0f2f1;border:1px solid #b2dfdb;border-radius:6px;padding:8px 12px;display:inline-block;">
                                 <span style="font-size:12px;color:#00796b;font-weight:600;">📍 Filtered for Branches:</span>
-                                <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:4px;">
-                                    ${sol_ids.map(id => `<span style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${id}</span>`).join('')}
+                                <div id="active_sol_badges" style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:4px;">
+                                    ${sol_ids.map(id => `<span class="sol-badge" data-sol="${id}" style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${id}</span>`).join('')}
                                 </div>
                             </div>
                         `);
+
+                        // Populate sidebar list
+                        populateSolIdList(sol_ids);
                     } else {
                         $info.html(`
                             <div style="background:#ffebee;border:1px solid #ffcdd2;border-radius:6px;padding:10px 15px;">
@@ -265,6 +295,65 @@ function initializeReportPortal(wrapper) {
             }
         });
     }
+
+    function populateSolIdList(sol_ids) {
+        let html = '';
+        sol_ids.forEach(id => {
+            html += `
+                <div class="sol-item" style="display: flex; align-items: center; gap: 8px; padding: 4px; border-bottom: 1px solid #f8f9fa;">
+                    <input type="checkbox" id="chk_${id}" value="${id}" checked style="cursor: pointer;">
+                    <label for="chk_${id}" style="font-size: 13px; margin: 0; cursor: pointer; color: #444;">${id}</label>
+                </div>
+            `;
+        });
+        $solIdList.html(html);
+
+        // Sidebar checkbox changes
+        $solIdList.on('change', 'input[type="checkbox"]', function() {
+            updateActiveBadges();
+        });
+    }
+
+    function updateActiveBadges() {
+        const selected = getSelectedSolIds();
+        let html = selected.map(id => `<span class="sol-badge" data-sol="${id}" style="background:#196767;color:white;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">${id}</span>`).join('');
+        
+        if (selected.length === 0) {
+            html = '<span style="color: #c62828; font-size: 11px;">No branches selected</span>';
+            $('#download_csv').prop('disabled', true).css('opacity', '0.6');
+        } else {
+            $('#download_csv').prop('disabled', false).css('opacity', '1');
+        }
+        
+        $('#active_sol_badges').html(html);
+    }
+
+    function getSelectedSolIds() {
+        return $solIdList.find('input[type="checkbox"]:checked').map(function() {
+            return $(this).val();
+        }).get();
+    }
+
+    // Sidebar search
+    $solIdSearch.on('input', function() {
+        const term = $(this).val().toLowerCase();
+        $solIdList.find('.sol-item').each(function() {
+            const id = $(this).find('input').val().toLowerCase();
+            $(this).toggle(id.includes(term));
+        });
+    });
+
+    // Select/Clear All
+    $('#select_all_sol').on('click', () => {
+        $solIdList.find('input[type="checkbox"]:visible').prop('checked', true);
+        updateActiveBadges();
+    });
+
+    $('#clear_all_sol').on('click', () => {
+        $solIdList.find('input[type="checkbox"]:visible').prop('checked', false);
+        updateActiveBadges();
+    });
+
     loadUserPermissions();
 
     let expectedDuration = 2;
@@ -489,7 +578,18 @@ function initializeReportPortal(wrapper) {
         }
 
         const start_date=formatForAPI(start_date_val), end_date=formatForAPI(end_date_val);
-        const url=`/api/method/custom_report.api.report_download?report_docname=${encodeURIComponent(reportDocName)}&start_date=${encodeURIComponent(start_date)}&end_date=${encodeURIComponent(end_date)}&file_type=${file_type}`;
+        
+        // Build URL with optional sol_id filter for Branch Report role
+        let url=`/api/method/custom_report.api.report_download?report_docname=${encodeURIComponent(reportDocName)}&start_date=${encodeURIComponent(start_date)}&end_date=${encodeURIComponent(end_date)}&file_type=${file_type}`;
+        
+        // If sidebar is visible, get selected sol_ids
+        if ($('#sidebar_filter').is(':visible')) {
+            const selectedSols = getSelectedSolIds();
+            if (selectedSols.length > 0) {
+                // Pass as stringified array or comma separated
+                url += `&sol_id=${encodeURIComponent(JSON.stringify(selectedSols))}`;
+            }
+        }
 
         const xhr=new XMLHttpRequest();
         currentXhr = xhr;

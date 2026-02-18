@@ -102,7 +102,7 @@ def get_user_reports():
 
 
 @frappe.whitelist()
-def report_download(report_docname, start_date=None, end_date=None, file_type="csv"):
+def report_download(report_docname, start_date=None, end_date=None, file_type="csv", sol_id=None):
     """
     Download report data filtered by user's sol_id, date range, and SQL placeholders.
     
@@ -111,6 +111,7 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         start_date (str, optional): Start date for filtering (YYYY-MM-DD format)
         end_date (str, optional): End date for filtering (YYYY-MM-DD format)
         file_type (str, optional): Output file type (default: 'csv')
+        sol_id (str/list, optional): Manually selected sol_id(s) from frontend
     
     Returns:
         dict: Status response with filename on success
@@ -128,11 +129,19 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         _print_info(f"Session User: {user}")
         _print_info(f"User Roles: {', '.join(sorted(user_roles))}")
         
+        # Parse manual sol_id if provided from frontend
+        manual_sol_id = None
+        if sol_id:
+            try:
+                manual_sol_id = json.loads(sol_id)
+            except:
+                manual_sol_id = sol_id
+
         # Step 1.1: Check if user has "Branch Report" role and get sol_id
-        sol_id, is_branch_user = _get_user_sol_id_with_branch_check(user, user_roles)
+        final_sol_id, is_branch_user = _get_user_sol_id_with_branch_check(user, user_roles, manual_sol_id)
         
         if is_branch_user:
-            _print_success(f"Final Sol ID to use: {sol_id or 'None'}")
+            _print_success(f"Final Sol ID to use: {final_sol_id or 'None'}")
             _print_info(f"Branch Report User: YES ✓")
             _print_warning("⚠️  Sol ID filter will be applied to query")
         else:
@@ -150,7 +159,7 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         # Step 4: Apply Branch Report filter ONLY if user has "Branch Report" role
         if is_branch_user:
             filtered_sql, branch_filter_applied = _apply_branch_report_filter(
-                raw_sql, sol_id, is_branch_user
+                raw_sql, final_sol_id, is_branch_user
             )
         else:
             # No modification - use original query
@@ -158,7 +167,7 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
             branch_filter_applied = False
         
         # Step 5: Prepare query parameters for date range and sol_id
-        query_params = _build_query_parameters(filtered_sql, start_date, end_date, sol_id)
+        query_params = _build_query_parameters(filtered_sql, start_date, end_date, final_sol_id)
         
         # Step 6: Display final SQL and parameters
         _print_sql_debug(filtered_sql, query_params, branch_filter_applied, is_branch_user)
@@ -266,7 +275,7 @@ def _get_report_metadata(report):
     }
 
 
-def _get_user_sol_id_with_branch_check(user, user_roles):
+def _get_user_sol_id_with_branch_check(user, user_roles, manual_sol_id=None):
     """
     Retrieve sol_id for the user with branch-specific logic.
     
@@ -276,6 +285,7 @@ def _get_user_sol_id_with_branch_check(user, user_roles):
     Args:
         user (str): Username/email of the user
         user_roles (set): Set of roles assigned to current user
+        manual_sol_id (str, list or None): Manually selected sol_id(s) from frontend
     
     Returns:
         tuple: (sol_id, is_branch_user)
@@ -295,33 +305,43 @@ def _get_user_sol_id_with_branch_check(user, user_roles):
             _print_info("Fetching 'sol_id' from 'Report Preference' doctype...")
             
             # Fetch Report Preference for the user
+            allowed_sol_ids = []
             pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
             if pref_name:
                 doc = frappe.get_doc("Report Preference", pref_name)
                 # Check if sol_id is a child table field (as seen in other modules)
                 if hasattr(doc, "sol_id") and not isinstance(doc.sol_id, str):
-                    sol_ids = [d.sol_id for d in doc.sol_id if getattr(d, "sol_id", None)]
-                    sol_id = list(set(sol_ids)) # De-duplicate
+                    allowed_sol_ids = [d.sol_id for d in doc.sol_id if getattr(d, "sol_id", None)]
+                    allowed_sol_ids = list(set(allowed_sol_ids)) # De-duplicate
                 else:
                     # Fallback if it's a regular MultiSelect field (string)
                     sol_id_val = getattr(doc, "sol_id", None)
                     if isinstance(sol_id_val, str):
-                        sol_id = [s.strip() for s in sol_id_val.split(",") if s.strip()]
+                        allowed_sol_ids = [s.strip() for s in sol_id_val.split(",") if s.strip()]
                     else:
-                        sol_id = []
-                
+                        allowed_sol_ids = []
+            
+            # Use manual selection if provided, but validate against allowed list
+            if manual_sol_id:
+                if isinstance(manual_sol_id, str):
+                    manual_sol_id = [manual_sol_id]
+                # Intersection to ensure user can only select what they're allowed
+                sol_id = [s for s in manual_sol_id if s in allowed_sol_ids]
+                _print_info(f"Using manual sol_id selection (validated): {', '.join(sol_id)}")
+            else:
+                sol_id = allowed_sol_ids
                 if sol_id:
                     _print_success(f"Found sol_ids in Report Preference: {', '.join(sol_id)}")
                 else:
                     _print_warning("No sol_id found in Report Preference")
-            else:
+            
+            if not pref_name:
                 _print_warning("Report Preference NOT FOUND for user")
-                sol_id = []
             
             print()
             _print_highlight("BRANCH REPORT USER INFO:")
             _print_data("User", user)
-            _print_data("Sol IDs (Report Preference)", ", ".join(sol_id) if sol_id else 'NOT FOUND')
+            _print_data("Sol IDs to apply", ", ".join(sol_id) if sol_id else 'NOT FOUND')
             _print_data("Filter Applied", 'YES ✓' if sol_id else 'NO ✗')
             _print_data("Roles Count", len(user_roles))
             
