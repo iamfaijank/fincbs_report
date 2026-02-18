@@ -78,9 +78,9 @@ def get_columns():
 def get_data(filters):
     conditions = []
     if filters.get("from_date"):
-        conditions.append("date_time >= %(from_date)s")
+        conditions.append("DATE(date_time) >= %(from_date)s")
     if filters.get("to_date"):
-        conditions.append("date_time <= %(to_date)s")
+        conditions.append("DATE(date_time) <= %(to_date)s")
     if filters.get("employee"):
         conditions.append("employee = %(employee)s")
     if filters.get("report_name"):
@@ -146,7 +146,10 @@ def get_chart(data):
     # Group by date for chart
     dates = {}
     for d in data:
-        date_str = d.date_time.strftime("%Y-%m-%d")
+        # Safely convert to date object and then string
+        date_obj = frappe.utils.getdate(d.date_time)
+        date_str = date_obj.strftime("%Y-%m-%d")
+        
         if date_str not in dates:
             dates[date_str] = {"success": 0, "failed": 0}
         
