@@ -128,11 +128,6 @@ def get_account_details(foracid=None, settlement_date=None):
 
         acid, cif, name, sol_id, sol_desc, opn_dt, schm_code, schm_desc, mat_dt, mat_amt, period, planned_installment = res
         
-        diff_total = relativedelta(sett_dt + relativedelta(days=1), opn_dt)
-        months_held_total = (diff_total.years * 12) + diff_total.months
-        app_rate = get_excel_interest_rate(schm_code, months_held_total)
-        base_rate = RD_SLABS.get(str(schm_code), {}).get('base_rate', 8.0)
-
         cursor.execute("""
             SELECT value_date, tran_amt, part_tran_type, tran_particular 
             FROM tbaadm.htd 
@@ -140,7 +135,37 @@ def get_account_details(foracid=None, settlement_date=None):
             ORDER BY value_date ASC
         """, (acid,))
         raw_trans = cursor.fetchall()
-        
+        raw_trans.sort(key=lambda x: x[0])
+
+        is_premature = mat_dt and sett_dt < mat_dt
+        diff_sett = relativedelta(sett_dt, opn_dt)
+        sett_m_offset = (diff_sett.years * 12) + diff_sett.months
+
+        # Map credits to month offsets from opening date
+        credits_by_month = {}
+        for val_date, amt, p_type, particular in raw_trans:
+            if mat_dt and val_date and val_date >= mat_dt: continue
+            
+            diff_v = relativedelta(val_date, opn_dt)
+            m_v = (diff_v.years * 12) + diff_v.months
+            
+            if m_v > sett_m_offset: continue
+            if val_date > sett_dt: continue
+            
+            if p_type == 'C':
+                credits_by_month[m_v] = credits_by_month.get(m_v, 0) + float(amt or 0)
+
+        # Update months_held_total based on premature logic
+        if is_premature:
+            installment_exists = credits_by_month.get(sett_m_offset, 0) > 0
+            months_held_total = sett_m_offset + 1 if installment_exists else sett_m_offset
+        else:
+            diff_total = relativedelta(sett_dt + relativedelta(days=1), opn_dt)
+            months_held_total = (diff_total.years * 12) + diff_total.months
+
+        app_rate = get_excel_interest_rate(schm_code, months_held_total)
+        base_rate = RD_SLABS.get(str(schm_code), {}).get('base_rate', 8.0)
+
         # Cumulative Running Balance Logic with Quarterly Compounding
         principal_sum = 0.0
         total_interest = 0.0
@@ -151,19 +176,6 @@ def get_account_details(foracid=None, settlement_date=None):
         
         compounded_interest_base = 0.0
         accrued_current_quarter_base = 0.0
-
-        # Sort transactions by date ASC
-        raw_trans.sort(key=lambda x: x[0])
-        
-        # Map credits to month offsets from opening date
-        credits_by_month = {}
-        for val_date, amt, p_type, particular in raw_trans:
-            if mat_dt and val_date and val_date >= mat_dt: continue
-            if val_date >= sett_dt: continue
-            if p_type == 'C':
-                diff = relativedelta(val_date, opn_dt)
-                m_offset = (diff.years * 12) + diff.months
-                credits_by_month[m_offset] = credits_by_month.get(m_offset, 0) + float(amt or 0)
 
         # Iterate month by month for the duration of the account
         monthly_data = {}
