@@ -141,29 +141,42 @@ def get_account_details(foracid=None, settlement_date=None):
         diff_sett = relativedelta(sett_dt, opn_dt)
         sett_m_offset = (diff_sett.years * 12) + diff_sett.months
 
-        # Map credits to month offsets from opening date
+        # Map credits to calendar month offsets from opening date
         credits_by_month = {}
+        last_inst_dt = opn_dt
         for val_date, amt, p_type, particular in raw_trans:
             if mat_dt and val_date and val_date >= mat_dt: continue
-            
-            diff_v = relativedelta(val_date, opn_dt)
-            m_v = (diff_v.years * 12) + diff_v.months
-            
-            if m_v > sett_m_offset: continue
             if val_date > sett_dt: continue
+            
+            # Use calendar month offset for consistency with ledger display
+            m_v = (val_date.year - opn_dt.year) * 12 + (val_date.month - opn_dt.month)
             
             if p_type == 'C':
                 credits_by_month[m_v] = credits_by_month.get(m_v, 0) + float(amt or 0)
+                if val_date > last_inst_dt:
+                    last_inst_dt = val_date
+
+        # Settlement calendar month offset
+        sett_m_offset = (sett_dt.year - opn_dt.year) * 12 + (sett_dt.month - opn_dt.month)
+        last_inst_m_offset = (last_inst_dt.year - opn_dt.year) * 12 + (last_inst_dt.month - opn_dt.month)
 
         # Update months_held_total based on premature logic
         if is_premature:
-            installment_exists = credits_by_month.get(sett_m_offset, 0) > 0
-            months_held_total = sett_m_offset + 1 if installment_exists else sett_m_offset
+            # For interest rate slab, use relativedelta months
+            diff_rel = relativedelta(sett_dt, opn_dt)
+            m_rel = (diff_rel.years * 12) + diff_rel.months
+            # If installment exists in the current relative month, it counts towards rate slab
+            installment_exists_rel = credits_by_month.get(m_rel, 0) > 0
+            months_held_for_rate = m_rel + 1 if installment_exists_rel else m_rel
+            
+            # For loop and ledger, use calendar months to ensure settlement month appears
+            months_held_total = sett_m_offset + 1
         else:
             diff_total = relativedelta(sett_dt + relativedelta(days=1), opn_dt)
             months_held_total = (diff_total.years * 12) + diff_total.months
+            months_held_for_rate = months_held_total
 
-        app_rate = get_excel_interest_rate(schm_code, months_held_total)
+        app_rate = get_excel_interest_rate(schm_code, months_held_for_rate)
         base_rate = RD_SLABS.get(str(schm_code), {}).get('base_rate', 8.0)
 
         # Cumulative Running Balance Logic with Quarterly Compounding
@@ -184,9 +197,25 @@ def get_account_details(foracid=None, settlement_date=None):
             principal_sum += credits_by_month.get(m, 0)
             
             # 2. Calculate Monthly Interest
-            # Monthly Interest = (Principal + Interest from completed quarters) * (Rate / 1200)
-            m_int = (principal_sum + compounded_interest) * (app_rate / 1200.0)
-            m_base_int = (principal_sum + compounded_interest_base) * (base_rate / 1200.0)
+            m_int = 0.0
+            m_base_int = 0.0
+
+            if m < sett_m_offset:
+                # If this is after the month of last installment, skip interest here;
+                # it will be covered by pro-rata in the settlement month.
+                if m > last_inst_m_offset:
+                    m_int = 0.0
+                    m_base_int = 0.0
+                else:
+                    # Full month interest
+                    m_int = (principal_sum + compounded_interest) * (app_rate / 1200.0)
+                    m_base_int = (principal_sum + compounded_interest_base) * (base_rate / 1200.0)
+            elif m == sett_m_offset:
+                # Settlement month: pro-rata interest from last_inst_dt to sett_dt - 1
+                days = (sett_dt - last_inst_dt).days
+                if days > 0:
+                    m_int = (principal_sum + compounded_interest) * (app_rate / 100.0) * (days / 365.0)
+                    m_base_int = (principal_sum + compounded_interest_base) * (base_rate / 100.0) * (days / 365.0)
             
             total_interest += m_int
             accrued_current_quarter += m_int

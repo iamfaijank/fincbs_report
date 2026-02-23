@@ -2099,38 +2099,44 @@
 					const monthsWithTransactions = new Set();
 					const actualTxnDates = {};
 					let maxTxnMonth = 0;
+					let lastInstDt = start;
 
 					this.data.transactions.forEach(t => {
 						if (t.type === 'C') {
 							const dVal = this.parseDate(t.date);
-							if (dVal < dMaturity) {
+							if (dVal < dMaturity && dVal <= dExit) {
 								let m_off = (dVal.getFullYear() - start.getFullYear()) * 12 + (dVal.getMonth() - start.getMonth());
-								const totalCalendarMonths = (dExit.getFullYear() - start.getFullYear()) * 12 + (dExit.getMonth() - start.getMonth());
-								
-								if (m_off <= totalCalendarMonths && dVal <= dExit) {
-									creditsByMonth[m_off] = (creditsByMonth[m_off] || 0) + t.amount;
-									monthsWithTransactions.add(m_off);
-									if (!actualTxnDates[m_off]) actualTxnDates[m_off] = t.date;
-									if (t.amount > 0 && m_off > maxTxnMonth) maxTxnMonth = m_off;
-								}
+								creditsByMonth[m_off] = (creditsByMonth[m_off] || 0) + t.amount;
+								monthsWithTransactions.add(m_off);
+								if (!actualTxnDates[m_off]) actualTxnDates[m_off] = t.date;
+								if (t.amount > 0 && m_off > maxTxnMonth) maxTxnMonth = m_off;
+								if (dVal > lastInstDt) lastInstDt = dVal;
 							}
 						}
 						t.accrued_interest = 0;
 						t.scheme_interest = 0;
 					});
 
-					const totalCalendarMonths = (dExit.getFullYear() - start.getFullYear()) * 12 + (dExit.getMonth() - start.getMonth());
+					const settMOffset = (dExit.getFullYear() - start.getFullYear()) * 12 + (dExit.getMonth() - start.getMonth());
+					const lastInstMOffset = (lastInstDt.getFullYear() - start.getFullYear()) * 12 + (lastInstDt.getMonth() - start.getMonth());
 					let effectiveInterestMonths;
 					let monthsHeldTotal;
 
 					if (isPremature) {
-						const installmentExists = (creditsByMonth[totalCalendarMonths] || 0) > 0;
-						effectiveInterestMonths = installmentExists ? totalCalendarMonths + 1 : totalCalendarMonths;
-						monthsHeldTotal = effectiveInterestMonths;
+						// For rate calculation, find completed months (relativedelta style)
+						let mRel = (dExit.getFullYear() - start.getFullYear()) * 12 + (dExit.getMonth() - start.getMonth());
+						if (dExit.getDate() < start.getDate()) mRel--;
+						
+						// If installment exists in the last relative month, increment
+						const instExistsRel = (creditsByMonth[mRel] || 0) > 0;
+						monthsHeldTotal = instExistsRel ? mRel + 1 : mRel;
+						
+						// For ledger and loop, use calendar months to ensure settlement month appears
+						effectiveInterestMonths = settMOffset + 1;
 					} else {
 						monthsHeldTotal = (dExit.getFullYear() - start.getFullYear()) * 12 + (dExit.getMonth() - start.getMonth());
 						if (dExit.getDate() < start.getDate()) monthsHeldTotal--;
-						effectiveInterestMonths = totalCalendarMonths + 1;
+						effectiveInterestMonths = settMOffset + 1;
 					}
 					
 					const rules = this.getApplicableRules(this.data.schm_code, monthsHeldTotal);
@@ -2168,8 +2174,21 @@
 						let m_base_int = 0;
 
 						if (m < effectiveInterestMonths && m < tenureMonths) {
-							m_int = (principalSum + compoundedInt) * (appRate / 1200.0);
-							m_base_int = (principalSum + compoundedIntBase) * (baseRate / 1200.0);
+							if (m < settMOffset) {
+								if (m > lastInstMOffset) {
+									m_int = 0;
+									m_base_int = 0;
+								} else {
+									m_int = (principalSum + compoundedInt) * (appRate / 1200.0);
+									m_base_int = (principalSum + compoundedIntBase) * (baseRate / 1200.0);
+								}
+							} else if (m === settMOffset) {
+								const days = Math.floor((dExit - lastInstDt) / (1000 * 60 * 60 * 24));
+								if (days > 0) {
+									m_int = (principalSum + compoundedInt) * (appRate / 100.0) * (days / 365.0);
+									m_base_int = (principalSum + compoundedIntBase) * (baseRate / 100.0) * (days / 365.0);
+								}
+							}
 							
 							totalInterest += m_int;
 							totalInterestAccrued += m_int;
@@ -2190,10 +2209,17 @@
 
 						const balBefore = principalSum + compoundedInt;
 						
+						let rowDate = actualTxnDates[m] || projectedDate;
+						if (m === settMOffset) {
+							const dDisplay = new Date(dExit);
+							dDisplay.setDate(dDisplay.getDate() - 1);
+							rowDate = `${String(dDisplay.getDate()).padStart(2, '0')}/${String(dDisplay.getMonth() + 1).padStart(2, '0')}/${dDisplay.getFullYear()}`;
+						}
+
 						ledger.push({
 							monthNo: m + 1,
 							monthYear: `${mmmm}/${yy}`,
-							date: actualTxnDates[m] || projectedDate,
+							date: rowDate,
 							installment: installment.toFixed(2),
 							balanceBefore: balBefore.toFixed(2),
 							rate: (m < effectiveInterestMonths && m < tenureMonths) ? appRate : 0,
