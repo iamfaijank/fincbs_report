@@ -34,12 +34,11 @@ def get_user_report_permissions(user):
         "has_access": True
     }
 
-    # System Manager usually sees everything
-    if "System Manager" in frappe.get_roles(user):
-        return permissions
-
     pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
     if not pref_name:
+        # System Manager usually sees everything if no specific preference
+        if "System Manager" in frappe.get_roles(user):
+            return permissions
         permissions["has_access"] = False
         return permissions
 
@@ -48,17 +47,25 @@ def get_user_report_permissions(user):
     permissions["is_restricted"] = True
     permissions["all_regions"] = doc.all_regions
     
-    if hasattr(doc, "zone"):
-        permissions["zones"] = [d.zone for d in doc.zone if d.zone]
-        # Extract numbers: "ZONE-1" or "Zone - 1" -> "1"
-        permissions["zone_ids"] = [re.sub(r"\D", "", d.zone) for d in doc.zone if d.zone and re.sub(r"\D", "", d.zone)]
-    
-    if hasattr(doc, "region"):
-        permissions["regions"] = [d.region for d in doc.region if d.region]
-        permissions["region_ids"] = [re.sub(r"\D", "", d.region) for d in doc.region if d.region and re.sub(r"\D", "", d.region)]
-        
-    if hasattr(doc, "sol_id"):
-        permissions["sol_ids"] = [d.sol_id for d in doc.sol_id if d.sol_id]
+    # Helper to handle both Child Table and MultiSelect string fields
+    def get_list_values(field_name, sub_field):
+        val = getattr(doc, field_name, None)
+        if not val:
+            return []
+        if isinstance(val, list):
+            return [getattr(d, sub_field, None) for d in val if getattr(d, sub_field, None)]
+        if isinstance(val, str):
+            # Handle comma or newline separated values from MultiSelect fields
+            return [v.strip() for v in re.split(r"[, \n]+", val) if v.strip()]
+        return []
+
+    permissions["zones"] = get_list_values("zone", "zone")
+    permissions["zone_ids"] = [re.sub(r"\D", "", z) for z in permissions["zones"] if re.sub(r"\D", "", z)]
+
+    permissions["regions"] = get_list_values("region", "region")
+    permissions["region_ids"] = [re.sub(r"\D", "", r) for r in permissions["regions"] if re.sub(r"\D", "", r)]
+
+    permissions["sol_ids"] = get_list_values("sol_id", "sol_id")
         
     return permissions
 
