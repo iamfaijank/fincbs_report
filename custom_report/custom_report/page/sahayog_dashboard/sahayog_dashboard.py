@@ -326,13 +326,6 @@ def get_sahayog_dashboard(
         else:
             # 🛡️ Numeric Matching Logic for Zones
             if perms["zone_ids"]:
-                # Match "ZONE-1", "Zone 1", etc. using numeric suffix
-                zone_conditions = []
-                for zid in perms["zone_ids"]:
-                    zone_conditions.append(f"%{zid}")
-                combined_filters["zone"] = ["like", zone_conditions] if len(zone_conditions) == 1 else ["in", perms["zones"]]
-                
-                # If multiple zone IDs, we fetch actual names from DB to use IN
                 if len(perms["zone_ids"]) > 1:
                     regex_pattern = f"({'|'.join(perms['zone_ids'])})"
                     matched_zones = frappe.db.sql("""
@@ -340,6 +333,8 @@ def get_sahayog_dashboard(
                         WHERE zone REGEXP %s
                     """, (regex_pattern), pluck=True)
                     combined_filters["zone"] = ["in", matched_zones] if matched_zones else ["in", ["_NONE_"]]
+                else:
+                    combined_filters["zone"] = ["like", f"%{perms['zone_ids'][0]}"]
             
             # 🛡️ Numeric Matching Logic for Regions
             if not perms["all_regions"] and perms["region_ids"]:
