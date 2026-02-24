@@ -1237,7 +1237,7 @@
 					<svg
 						width="16"
 						height="16"
-						viewBox="0 0 24 24"
+						viewBox="0 0 24"
 						fill="none"
 						stroke="currentColor"
 						stroke-width="2"
@@ -1953,14 +1953,6 @@
 					MAX_RECENT_BRANCHES: 5,
 					recentBranches: [],
 					formatMode: "words",
-					permissions: {
-						is_restricted: {{ 'true' if user_permissions.is_restricted else 'false' }},
-						allowed_zones: {{ allowed_zones | tojson }},
-						allowed_regions: {{ allowed_regions | tojson }},
-						allowed_sol_ids: {{ allowed_sol_ids | tojson }},
-						all_regions_allowed: {{ 'true' if all_regions_allowed else 'false' }},
-						has_access: {{ 'true' if user_permissions.has_access else 'false' }}
-					}
 				},
 
 				el: {
@@ -1988,12 +1980,6 @@
 				value(v) { // Corrected: removed duplicate definition
 					if (!v || v === "#N/A") return "--";
 					return v;
-				},
-
-				extractNumber(s) {
-					if (!s) return null;
-					const match = String(s).match(/\d+/);
-					return match ? match[0] : null;
 				},
 
 				loadRecentBranches() {
@@ -2100,7 +2086,12 @@
 					this.state.currentSolId = solId;
 					this.hideSuggestions();
 					this.el.searchInput.value = "";
-					console.log("🛡️ Branch Profile Permissions State:", this.state.permissions);
+
+					if (pushState) {
+						const url = new URL(window.location);
+						url.searchParams.set("sol_id", solId);
+						window.history.pushState({}, "", url);
+					}
 
 					try {
 						const cacheKey = "branch_" + solId;
@@ -2114,58 +2105,7 @@
 							if (data) this.setCache(cacheKey, data);
 						}
 
-						if (!data || Object.keys(data).length === 0) throw "Not found";
-
-						// --- 🛡️ Permission Check (Priority Logic) ---
-						if (this.state.permissions.is_restricted) {
-							const p = this.state.permissions;
-							let allowed = true;
-
-							// Priority 1: Specific SOL IDs
-							if (p.allowed_sol_ids && p.allowed_sol_ids.length > 0) {
-								// Ensure string comparison for Sol ID
-								if (!p.allowed_sol_ids.map(String).includes(String(data.sol_id))) {
-									allowed = false;
-								}
-							}
-							// Priority 2: Zone & Region (if no specific SOL IDs)
-							else {
-								// Check Zone
-								if (p.allowed_zones.length) {
-									const branchZoneNum = this.extractNumber(data.zone);
-									if (!p.allowed_zones.some(z => this.extractNumber(z) === branchZoneNum)) {
-										allowed = false;
-									}
-								}
-								// Check Region
-								if (allowed && !p.all_regions_allowed && p.allowed_regions.length) {
-									const branchRegionNum = this.extractNumber(data.region);
-									if (!p.allowed_regions.some(r => this.extractNumber(r) === branchRegionNum)) {
-										allowed = false;
-									}
-								}
-							}
-
-							if (!allowed) {
-								console.error("🚫 Access Denied for SOL:", solId, "Permissions:", p);
-								this.el.branchName.textContent = "Access Denied";
-								this.el.branchZone.textContent =
-									this.el.branchRegion.textContent =
-									this.el.branchState.textContent =
-										"--";
-								this.toggleBranchDataVisibility(false);
-								const msgBox = this.el.noBranchSelectedMessage;
-								msgBox.innerHTML = `<p style="color: #dc2626; font-weight: bold;">Unauthorized Access</p><p>You do not have permission to view details for this branch (${solId}).</p>`;
-								msgBox.style.display = "block";
-								return;
-							}
-						}
-
-						if (pushState) {
-							const url = new URL(window.location);
-							url.searchParams.set("sol_id", solId);
-							window.history.pushState({}, "", url);
-						}
+						if (!data) throw "Not found";
 
 						this.el.branchName.textContent = `${data.branch} (${data.sol_id})`;
 						this.el.branchZone.textContent = data.zone || "--";
@@ -2312,22 +2252,6 @@
 
 				/* ---------------- Init ---------------- */
 				init() {
-					// --- 🛡️ Global Access Check ---
-					if (this.state.permissions && this.state.permissions.has_access === false) {
-						document.body.innerHTML = `
-							<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; font-family: sans-serif; background: #f8fafc;">
-								<div style="font-size: 80px; margin-bottom: 20px;">🚫</div>
-								<h1 style="color: #d32f2f; margin-bottom: 10px;">Access Denied</h1>
-								<p style="font-size: 18px; color: #64748b; max-width: 400px; line-height: 1.6;">
-									You do not have a <b>Report Preference</b> set up. <br>
-									Please contact your administrator to grant access to this dashboard.
-								</p>
-								<button onclick="window.history.back()" style="margin-top: 30px; padding: 12px 24px; background: #097c80; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">Go Back</button>
-							</div>
-						`;
-						return;
-					}
-
 					this.loadRecentBranches(); // Load recent branches on init
 					const debouncedSearch = this.debounce(this.fetchSuggestions, 250);
 
@@ -2654,13 +2578,13 @@ const BranchManagerProfile = {
                     // Header Info
                     this.el.name.textContent = this.value(d.bm_name);
                     this.el.mobile.textContent = this.value(d.bm_mob_no);
+                    this.el.vintage.textContent = this.value(d.bm_vintage);
                     this.el.doj.textContent = this.formatDate(d.bm_doj);
-                    this.el.vintage.textContent = this.calculateExperience(d.bm_doj);
                     this.el.branchOpeningDate.textContent = this.formatDate(d.branch_opening_date);
                     this.el.chName.textContent = this.value(d.ch_name);
                     this.el.branchName.textContent = this.value(d.branch_name);
                     this.el.branchDistrict.textContent = this.value(d.district);
-                    this.el.branchVintage.textContent = this.calculateExperience(d.branch_opening_date);
+                    this.el.branchVintage.textContent = this.value(d.branch_vintage);
                     this.el.branchEmail.textContent = this.value(branchEmailValue);
                     this.el.chMobile.textContent = this.value(d.ch_mob_no);
 
