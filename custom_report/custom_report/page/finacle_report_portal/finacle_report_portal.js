@@ -174,83 +174,135 @@ function initializeReportPortal(wrapper) {
     // Page HTML with Form
     $(page.body).html(`
         <div style="max-width:480px; margin: 40px auto; font-family: sans-serif;">
-            <div style="padding:20px; background:#fff; border-radius:10px; box-shadow:0 3px 10px rgba(0,0,0,0.1);">
-                <h3 style="text-align:center; color:#196767; margin-bottom:10px;">Finacle CBS Report</h3>
-                
-                <div id="user_permissions_info" style="text-align:center; margin-bottom:20px; display:none;">
-                    <!-- Permissions info will be populated here -->
-                </div>
+            <style>
+                @keyframes finacleTitleFlow {
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
+                }
+                @keyframes newBtnPulse {
+                    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.45); }
+                    70% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+                }
+                .finacle-title-gradient {
+                    text-align: center;
+                    font-weight: 900;
+                    font-size: 24px;
+                    line-height: 1.2;
+                    margin: 0 0 12px 0;
+                    background: linear-gradient(90deg, #196767, #00bfa5, #196767);
+                    background-size: 220% 220%;
+                    -webkit-background-clip: text;
+                    background-clip: text;
+                    color: transparent;
+                    animation: finacleTitleFlow 4s ease-in-out infinite;
+                }
+                .date-chip {
+                    background: #f3f4f6;
+                    border: 1px solid #d0d7de;
+                    color: #5f6b7a;
+                    padding: 3px 8px;
+                    border-radius: 999px;
+                    font-size: 10px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                }
+                .date-chip:hover {
+                    background: #eceff3;
+                    border-color: #c6cdd7;
+                }
+                .date-chip-active {
+                    background: #e6f6f4 !important;
+                    border-color: #89cfc4 !important;
+                    color: #196767 !important;
+                    box-shadow: inset 0 0 0 1px #6ec2b5;
+                }
+                .download-focus {
+                    box-shadow: 0 8px 22px rgba(25, 103, 103, 0.14);
+                    transform: scale(1.01);
+                }
+                .new-btn-attn {
+                    animation: newBtnPulse 1.4s ease-in-out infinite;
+                }
+            </style>
+            <h3 class="finacle-title-gradient">Finacle CBS Report</h3>
+            
+            <div id="user_permissions_info" style="text-align:center; margin-bottom:20px; display:none;">
+                <!-- Permissions info will be populated here -->
+            </div>
 
-                <form id="finacle-report-form" style="display:flex; flex-direction:column; gap:15px;">
-                    <div>
-                        <label style="font-weight:600; color:#196767; margin-bottom:5px;">Select Report</label>
-                        <div style="position:relative;">
-                            <input type="text" id="report_search" class="form-control" placeholder="\uD83D\uDD0D Search or select report..." autocomplete="off" style="padding-right:35px;">
-                            <span id="search_clear" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:#999;display:none;font-size:18px;" title="Clear search">✕</span>
-                            <select id="report_name" class="form-control" required style="display:none;">
-                                <option value="" disabled selected>Loading reports...</option>
-                            </select>
-                            <div id="report_dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-radius:5px; max-height:250px; overflow-y:auto; z-index:1000; box-shadow:0 4px 8px rgba(0,0,0,0.1); margin-top:2px;">
-                                <!-- Dropdown items will be populated here -->
+            <form id="finacle-report-form" style="display:flex; flex-direction:column; gap:8px;">
+                    <div id="selection_sections" style="display:flex; flex-direction:column; gap:8px;">
+                    <div style="border:1px solid #d0d7de; border-radius:8px; background:#fff; padding:10px;">
+                        <div>
+                            <label style="font-weight:600; color:#196767; margin-bottom:5px;">Select Report</label>
+                            <div style="position:relative;">
+                                <input type="text" id="report_search" class="form-control" placeholder="\uD83D\uDD0D Search or select report..." autocomplete="off" style="padding-right:35px;">
+                                <span id="search_clear" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:#999;display:none;font-size:18px;" title="Clear search">✕</span>
+                                <select id="report_name" class="form-control" required style="display:none;">
+                                    <option value="" disabled selected>Loading reports...</option>
+                                </select>
+                                <div id="report_dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-radius:5px; max-height:250px; overflow-y:auto; z-index:1000; box-shadow:0 4px 8px rgba(0,0,0,0.1); margin-top:2px;">
+                                    <!-- Dropdown items will be populated here -->
+                                </div>
+                            </div>
+                            <input type="hidden" id="selected_report_value" value="">
+                            <div id="report_error" style="color:red; font-size:12px; display:none; margin-top:3px;"></div>
+                        </div>
+                    </div>
+                    <div style="border:1px solid #d0d7de; border-radius:8px; background:#fff; padding:10px; display:flex; flex-direction:column; gap:8px;">
+                        <!-- Branch Selection Dropdown -->
+                        <div id="branch_filter_container" style="display: none; flex-direction: column;">
+                            <label style="font-weight:600; color:#196767; margin-bottom:5px;">Select Branches</label>
+                            <div style="position: relative;">
+                                <div id="branch_selector_display" class="form-control" style="cursor: pointer; min-height: 34px; display: flex; align-items: center; justify-content: space-between; padding-right: 10px; background: #fff;">
+                                    <span id="selected_branches_text" style="font-size: 13px; color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading branches...</span>
+                                    <span style="color: #999;">▼</span>
+                                </div>
+
+                                <div id="branch_picker_dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-radius:5px; max-height:260px; overflow-y:auto; z-index:1001; box-shadow:0 4px 8px rgba(0,0,0,0.1); margin-top:2px; padding: 8px;">
+                                    <div style="margin-bottom: 10px;">
+                                        <input type="text" id="sol_id_search" class="form-control" placeholder="Search branches..." style="font-size: 13px; height: 32px;">
+                                    </div>
+                                    <div id="sol_id_list" style="max-height: 140px; overflow-y: auto; border: 1px solid #ebedef; border-radius: 4px; padding: 5px; margin-bottom: 8px;">
+                                        <!-- Checkboxes will be populated here -->
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button type="button" id="select_all_sol" style="flex: 1; font-size: 11px; padding: 4px; cursor: pointer; background: #f0f4f4; border: 1px solid #d1d8d8; border-radius: 4px;">Select All</button>
+                                        <button type="button" id="clear_all_sol" style="flex: 1; font-size: 11px; padding: 4px; cursor: pointer; background: #f0f4f4; border: 1px solid #d1d8d8; border-radius: 4px;">Clear</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <input type="hidden" id="selected_report_value" value="">
-                        <div id="report_error" style="color:red; font-size:12px; display:none; margin-top:3px;"></div>
                     </div>
-
-                    <!-- Branch Selection Dropdown -->
-                    <div id="branch_filter_container" style="display: none; flex-direction: column;">
-                        <label style="font-weight:600; color:#196767; margin-bottom:5px;">Select Branches</label>
-                        <div style="position: relative;">
-                            <div id="branch_selector_display" class="form-control" style="cursor: pointer; min-height: 38px; display: flex; align-items: center; justify-content: space-between; padding-right: 10px; background: #fff;">
-                                <span id="selected_branches_text" style="font-size: 13px; color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading branches...</span>
-                                <span style="color: #999;">▼</span>
+                    <div style="border:1px solid #d0d7de; border-radius:8px; background:#fff; padding:10px; display:flex; flex-direction:column; gap:8px;">
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;">
+                                <label style="font-weight:600; color:#196767; margin-bottom:5px;">Start Date</label>
+                                <input type="text" id="start_date" class="form-control" required placeholder="DD/MM/YYYY">
+                                <div id="start_date_error" style="color:red; font-size:11px; display:none; margin-top:3px;"></div>
                             </div>
-                            
-                            <div id="branch_picker_dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-radius:5px; max-height:350px; overflow-y:auto; z-index:1001; box-shadow:0 4px 8px rgba(0,0,0,0.1); margin-top:2px; padding: 10px;">
-                                <div style="margin-bottom: 10px;">
-                                    <input type="text" id="sol_id_search" class="form-control" placeholder="Search branches..." style="font-size: 13px; height: 32px;">
-                                </div>
-                                <div id="sol_id_list" style="max-height: 200px; overflow-y: auto; border: 1px solid #ebedef; border-radius: 4px; padding: 5px; margin-bottom: 10px;">
-                                    <!-- Checkboxes will be populated here -->
-                                </div>
-                                <div style="display: flex; gap: 8px;">
-                                    <button type="button" id="select_all_sol" style="flex: 1; font-size: 11px; padding: 4px; cursor: pointer; background: #f0f4f4; border: 1px solid #d1d8d8; border-radius: 4px;">Select All</button>
-                                    <button type="button" id="clear_all_sol" style="flex: 1; font-size: 11px; padding: 4px; cursor: pointer; background: #f0f4f4; border: 1px solid #d1d8d8; border-radius: 4px;">Clear</button>
-                                </div>
+                            <div style="flex:1;">
+                                <label style="font-weight:600; color:#196767; margin-bottom:5px;">End Date</label>
+                                <input type="text" id="end_date" class="form-control" required placeholder="DD/MM/YYYY">
+                                <div id="end_date_error" style="color:red; font-size:11px; display:none; margin-top:3px;"></div>
                             </div>
                         </div>
-                    </div>
-
-                    <div style="display:flex; gap:10px;">
-                        <div style="flex:1;">
-                            <label style="font-weight:600; color:#196767; margin-bottom:5px;">Start Date</label>
-                            <input type="text" id="start_date" class="form-control" required placeholder="DD/MM/YYYY">
-                            <div id="start_date_error" style="color:red; font-size:11px; display:none; margin-top:3px;"></div>
-                        </div>
-                        <div style="flex:1;">
-                            <label style="font-weight:600; color:#196767; margin-bottom:5px;">End Date</label>
-                            <input type="text" id="end_date" class="form-control" required placeholder="DD/MM/YYYY">
-                            <div id="end_date_error" style="color:red; font-size:11px; display:none; margin-top:3px;"></div>
+                        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                            <button type="button" class="date-chip" data-range="today">Today</button>
+                            <button type="button" class="date-chip" data-range="yesterday">Yesterday</button>
+                            <button type="button" class="date-chip" data-range="last_7_days">Last 7 Days</button>
+                            <button type="button" class="date-chip" data-range="this_month">This Month</button>
+                            <button type="button" class="date-chip" data-range="last_month">Last Month</button>
                         </div>
                     </div>
-                    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:-6px;">
-                        <button type="button" class="date-chip" data-range="today" style="background:#eef6f6;border:1px solid #d2e7e7;color:#196767;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;">Today</button>
-                        <button type="button" class="date-chip" data-range="yesterday" style="background:#eef6f6;border:1px solid #d2e7e7;color:#196767;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;">Yesterday</button>
-                        <button type="button" class="date-chip" data-range="last_7_days" style="background:#eef6f6;border:1px solid #d2e7e7;color:#196767;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;">Last 7 Days</button>
-                        <button type="button" class="date-chip" data-range="this_month" style="background:#eef6f6;border:1px solid #d2e7e7;color:#196767;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;">This Month</button>
-                        <button type="button" class="date-chip" data-range="last_month" style="background:#eef6f6;border:1px solid #d2e7e7;color:#196767;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;">Last Month</button>
                     </div>
-
-                    <div id="download_summary" style="background:#f6fbfb;border:1px solid #d9ecec;border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;">
-                        <div id="summary_report" style="font-size:12px;color:#2f4f4f;">Report: Not selected</div>
-                        <div id="summary_dates" style="font-size:12px;color:#2f4f4f;">Date Range: Not set</div>
-                        <div id="summary_branches" style="font-size:12px;color:#2f4f4f;">Branches: Loading...</div>
-                    </div>
-
-                    <div style="display:flex; gap:10px;">
+                    <div id="download_section" style="border:1px solid #d0d7de; border-radius:8px; background:#fff; padding:10px; display:flex; flex-direction:column; gap:8px; transition:all .25s ease;">
+                        <div style="display:flex; gap:10px;">
                         <div id="download_dropdown_wrap" style="flex:1; position:relative;">
-                            <button type="button" id="download_csv" style="width:100%; background:#196767; color:white; border:none; padding:12px; font-weight:600; border-radius:5px; cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
+                            <button type="button" id="download_csv" style="width:100%; background:#196767; color:white; border:none; padding:10px; font-weight:600; border-radius:5px; cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
                                  <span>Download</span>
                                  <span id="download_arrow" style="font-size:12px; opacity:0.9;">▾</span>
                             </button>
@@ -263,38 +315,43 @@ function initializeReportPortal(wrapper) {
                                 </button>
                             </div>
                         </div>
-                        <button type="button" id="cancel_download" style="flex:1; background:#b71c1c; color:white; border:none; padding:12px; font-weight:600; border-radius:5px; cursor:pointer; display:none;">
+                        <button type="button" id="cancel_download" style="flex:0 0 auto; min-width:auto; background:transparent; color:#b71c1c; border:none; padding:2px 0; font-weight:700; border-radius:0; cursor:pointer; display:none; text-decoration:underline; text-underline-offset:2px;">
                              Cancel
                         </button>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:-6px;">
-                        <button type="button" id="reset_filters" style="background:transparent;border:none;color:#196767;font-size:12px;font-weight:700;cursor:pointer;padding:0;">↺ Reset Filters</button>
-                        <span id="download_hint" style="font-size:11px;color:#8a8a8a;">Select report and date range to enable download</span>
-                    </div>
-
-                    <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+                        <button type="button" id="new_download_btn" style="display:none; flex:0 0 auto; background:#f5b301; color:#3b2a00; border:1px solid #d49700; border-radius:5px; padding:7px 12px; font-size:12px; font-weight:800; cursor:pointer;">+ New</button>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
                         <span id="download_status_badge" style="display:none; font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; background:#e0f2f1; color:#196767; white-space:nowrap;">Queued</span>
                         <div id="progress_container" style="display:none; flex:1; height:12px; background:#eee; border-radius:6px; overflow:hidden; position:relative;">
                             <div id="progress_bar" style="width:0%; height:100%; background:linear-gradient(90deg,#196767,#00bfa5); transition:width 0.3s ease;"></div>
                         </div>
-                        <div id="progress_percent" style="display:none; min-width:62px; text-align:right; font-size:18px; font-weight:800; color:#e53935; line-height:1;">0%</div>
+                        <div id="progress_percent" style="display:none; min-width:56px; text-align:right; font-size:16px; font-weight:800; color:#e53935; line-height:1;">0%</div>
                         <button type="button" id="retry_download" style="display:none; background:#196767; color:white; border:none; padding:5px 10px; font-size:11px; font-weight:600; border-radius:4px; cursor:pointer; white-space:nowrap;">
                             Retry
                         </button>
-                    </div>
-                    <div style="margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                        <span id="progress_text" style="display:none; font-size:13px; color:#555; vertical-align:middle;"></span>
-                        <span id="robot_msg" style="display:none; font-size:13px; color:#196767; margin-left:10px; vertical-align:middle; font-style:italic;"></span>
-                    </div>
-                    <div id="download_metrics" style="display:none; margin-top:8px; background:#f8fbfb; border:1px solid #dfeeee; border-radius:8px; padding:8px 10px; font-size:12px; color:#2f4f4f;">
-                        <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-                            <div><span style="font-weight:700;">Rows Fetched</span><div id="metric_rows_fetched" style="font-size:15px; font-weight:800; color:#196767;">0</div></div>
-                            <div style="text-align:right;"><span style="font-weight:700;">File Size (MB)</span><div id="metric_file_size_mb" style="font-size:15px; font-weight:800; color:#196767;">0.00</div></div>
-                            <div style="text-align:right;"><span style="font-weight:700;">Time Taken</span><div id="metric_time_taken" style="font-size:15px; font-weight:800; color:#196767;">0 Seconds</div></div>
+                        </div>
+                        <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        <span id="progress_text" style="display:none; font-size:12px; color:#555; vertical-align:middle;"></span>
+                        <span id="robot_msg" style="display:none; font-size:12px; color:#196767; margin-left:8px; vertical-align:middle; font-style:italic;"></span>
+                        </div>
+                        <div id="download_metrics" style="display:none; margin-top:2px;">
+                            <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;">
+                                <div style="background:#f8fbfb; border:1px solid #dfeeee; border-radius:8px; padding:8px;">
+                                    <div style="font-size:10px; font-weight:700; color:#4b5f5f; text-transform:uppercase; letter-spacing:.2px;">Rows Fetched</div>
+                                    <div id="metric_rows_fetched" style="margin-top:2px; font-size:15px; font-weight:800; color:#196767;">0</div>
+                                </div>
+                                <div style="background:#f8fbfb; border:1px solid #dfeeee; border-radius:8px; padding:8px;">
+                                    <div style="font-size:10px; font-weight:700; color:#4b5f5f; text-transform:uppercase; letter-spacing:.2px;">File Size (MB)</div>
+                                    <div id="metric_file_size_mb" style="margin-top:2px; font-size:15px; font-weight:800; color:#196767;">0.00</div>
+                                </div>
+                                <div style="background:#f8fbfb; border:1px solid #dfeeee; border-radius:8px; padding:8px;">
+                                    <div style="font-size:10px; font-weight:700; color:#4b5f5f; text-transform:uppercase; letter-spacing:.2px;">Time Taken</div>
+                                    <div id="metric_time_taken" style="margin-top:2px; font-size:15px; font-weight:800; color:#196767;">0 Seconds</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </form>
-            </div>
+            </form>
         </div>
     `);
 
@@ -488,6 +545,8 @@ function initializeReportPortal(wrapper) {
     let startDatePicker = null;
     let endDatePicker = null;
     let allReports = []; // Store all reports for searching
+    let activeDatePreset = null;
+    let isDownloadFocusMode = false;
 
     function toDDMMYYYY(dateObj) {
         const d = String(dateObj.getDate()).padStart(2, '0');
@@ -496,14 +555,25 @@ function initializeReportPortal(wrapper) {
         return `${d}/${m}/${y}`;
     }
 
-    function setDateRange(startDate, endDate) {
+    function setActiveDateChip(preset) {
+        activeDatePreset = preset || null;
+        $('.date-chip').each(function() {
+            const isActive = $(this).data('range') === activeDatePreset;
+            $(this).toggleClass('date-chip-active', isActive);
+        });
+    }
+
+    function setDateRange(startDate, endDate, preservePreset) {
         if (startDatePicker && endDatePicker) {
-            startDatePicker.setDate(startDate, true);
-            endDatePicker.setDate(endDate, true);
+            startDatePicker.setDate(startDate, false);
+            endDatePicker.setDate(endDate, false);
             endDatePicker.set('minDate', startDate);
         } else {
             $('#start_date').val(toDDMMYYYY(startDate));
             $('#end_date').val(toDDMMYYYY(endDate));
+        }
+        if (!preservePreset) {
+            setActiveDateChip(null);
         }
         validateDateRange();
         updateSummaryBar();
@@ -528,21 +598,12 @@ function initializeReportPortal(wrapper) {
             end = new Date(today.getFullYear(), today.getMonth(), 0);
         }
 
-        setDateRange(start, end);
+        setDateRange(start, end, true);
+        setActiveDateChip(preset);
     }
 
     function updateSummaryBar() {
-        const reportLabel = $reportSearch.val() || 'Not selected';
-        const start = $('#start_date').val();
-        const end = $('#end_date').val();
-        const selectedBranches = currentSolData.filter(d => d.selected).length;
-        const branchLabel = isDeptUser
-            ? (selectedBranches > 0 ? `${selectedBranches} selected` : 'All branches')
-            : (selectedBranches > 0 ? `${selectedBranches} selected` : 'None');
-
-        $('#summary_report').text(`Report: ${reportLabel}`);
-        $('#summary_dates').text(`Date Range: ${start && end ? `${start} to ${end}` : 'Not set'}`);
-        $('#summary_branches').text(`Branches: ${branchLabel}`);
+        return;
     }
 
     function refreshDownloadActionState() {
@@ -597,6 +658,7 @@ function initializeReportPortal(wrapper) {
                 // Clear previous errors
                 $('#start_date_error').hide();
                 $('#end_date_error').hide();
+                setActiveDateChip(null);
                 
                 // Update end date minimum to selected start date
                 if (endDatePicker && selectedDates.length > 0) {
@@ -618,6 +680,7 @@ function initializeReportPortal(wrapper) {
             onChange: function(selectedDates, dateStr, instance) {
                 // Clear previous errors
                 $('#end_date_error').hide();
+                setActiveDateChip(null);
                 
                 // Validate date range
                 validateDateRange();
@@ -850,11 +913,34 @@ function initializeReportPortal(wrapper) {
         $badge.css({ background: c.bg, color: c.color }).text(label || status).show();
     }
 
+    function setDownloadFocusMode(enabled) {
+        if (enabled && isDownloadFocusMode) return;
+        if (!enabled && !isDownloadFocusMode) return;
+
+        isDownloadFocusMode = enabled;
+        if (enabled) {
+            $('#selection_sections').stop(true, true).slideUp(220);
+            $('#download_section').addClass('download-focus');
+            const top = Math.max(0, ($('#download_section').offset().top || 0) - (window.innerHeight * 0.28));
+            $('html, body').stop(true).animate({ scrollTop: top }, 260);
+        } else {
+            $('#selection_sections').stop(true, true).slideDown(180);
+            $('#download_section').removeClass('download-focus');
+            $('#new_download_btn').hide().removeClass('new-btn-attn');
+        }
+    }
+
     function resetDownloadUI() {
-        $('#cancel_download').hide().prop('disabled', false).text('❌ Cancel');
-        $('#download_csv').text('Download');
+        $('#cancel_download').hide().prop('disabled', false).text('Cancel');
+        if (!$('#download_csv #download_arrow').length) {
+            $('#download_csv').html('<span>Download</span><span id="download_arrow" style="font-size:12px; opacity:0.9;">▾</span>');
+        } else {
+            $('#download_csv span').first().text('Download');
+        }
+        $('#download_csv').prop('disabled', false).css('display', 'flex').show();
         $('#download_mode_options').hide();
         $('#download_arrow').text('▾');
+        $('#new_download_btn').hide().removeClass('new-btn-attn');
         refreshDownloadActionState();
     }
 
@@ -922,6 +1008,7 @@ function initializeReportPortal(wrapper) {
                             `✅ Completed | Rows Fetched: ${(st.rows_processed || 0).toLocaleString()} | Size: ${humanReadableBytes(st.bytes_written || 0)}`
                         );
                         $('#robot_msg').text('🤖 Done!');
+                        $('#progress_text,#robot_msg').hide();
                         setDownloadStatus('success', 'Success');
                         $('#retry_download').hide();
                         resetDownloadUI();
@@ -934,6 +1021,8 @@ function initializeReportPortal(wrapper) {
                         document.body.removeChild(link);
 
                         loadReports();
+                        setDownloadFocusMode(true);
+                        $('#new_download_btn').css('display', 'inline-block').show().addClass('new-btn-attn');
                         setTimeout(()=>$('#progress_container,#progress_percent,#progress_text,#robot_msg').fadeOut(),3000);
                     } else if (st.status === 'failed') {
                         stopStatusPolling();
@@ -943,6 +1032,7 @@ function initializeReportPortal(wrapper) {
                         $('#robot_msg').text(st.error ? `❌ ${st.error}` : '❌ Failed to download.');
                         setDownloadStatus('failed', 'Failed');
                         $('#retry_download').show();
+                        setDownloadFocusMode(false);
                     } else if (st.status === 'cancelled') {
                         stopStatusPolling();
                         currentRequestId = null;
@@ -951,6 +1041,7 @@ function initializeReportPortal(wrapper) {
                         $('#robot_msg').text('⚠️ Download cancelled by user');
                         setDownloadStatus('cancelled', 'Cancelled');
                         $('#retry_download').show();
+                        setDownloadFocusMode(false);
                     } else if (st.status === 'cancel_requested') {
                         $('#robot_msg').text('⚠️ Cancellation requested. Stopping job...');
                         setDownloadStatus('queued', 'Cancelling');
@@ -965,6 +1056,7 @@ function initializeReportPortal(wrapper) {
                     $('#robot_msg').text('❌ Error while checking download status');
                     setDownloadStatus('failed', 'Failed');
                     $('#retry_download').show();
+                    setDownloadFocusMode(false);
                 }
             });
         };
@@ -1008,11 +1100,19 @@ function initializeReportPortal(wrapper) {
         setDownloadStatus('cancelled', 'Cancelled');
         $('#retry_download').show();
         hideDownloadMetrics();
+        setDownloadFocusMode(false);
     });
 
     $('#retry_download').on('click', function() {
         $(this).hide();
         downloadReport('csv');
+    });
+
+    $('#new_download_btn').on('click', function() {
+        setDownloadFocusMode(false);
+        hideDownloadMetrics();
+        $('#download_status_badge,#progress_container,#progress_percent,#progress_text,#robot_msg,#retry_download').hide();
+        resetDownloadUI();
     });
 
     function downloadReport(file_type){
@@ -1043,12 +1143,12 @@ function initializeReportPortal(wrapper) {
 
         // Show progress UI
         setDownloadMenuOpen(false);
+        setDownloadFocusMode(true);
         $('#progress_container,#progress_percent,#progress_text,#robot_msg').show();
         $('#progress_bar').width("0%"); 
         updateProgressPercent(0);
-        const isFastDownload = file_type === 'csv.gz';
-        $('#download_csv').prop('disabled',true).text(isFastDownload ? 'Please wait...' : 'Downloading...');
-        $('#cancel_download').show().prop('disabled',false).text('❌ Cancel');
+        $('#download_csv').prop('disabled', true).hide();
+        $('#cancel_download').show().prop('disabled', false).text('Cancel');
         $('#retry_download').hide();
         setDownloadStatus('queued', 'Queued');
         hideDownloadMetrics();
@@ -1126,6 +1226,7 @@ function initializeReportPortal(wrapper) {
                         updateProgressPercent(100);
                         $('#progress_text').text('✅ Completed');
                         $('#robot_msg').text('🤖 Done!');
+                        $('#progress_text,#robot_msg').hide();
                         setDownloadStatus('success', 'Success');
                         resetDownloadUI();
                         loadReports();
@@ -1147,6 +1248,8 @@ function initializeReportPortal(wrapper) {
                         } else {
                             showDownloadMetrics(0, blob.size / (1024 * 1024), totalTimeSec);
                         }
+                        setDownloadFocusMode(true);
+                        $('#new_download_btn').css('display', 'inline-block').show().addClass('new-btn-attn');
                     } else {
                         if (currentLogId) {
                             frappe.call({
@@ -1161,6 +1264,7 @@ function initializeReportPortal(wrapper) {
                         setDownloadStatus('failed', 'Failed');
                         $('#retry_download').show();
                         hideDownloadMetrics();
+                        setDownloadFocusMode(false);
                     }
                 };
 
@@ -1180,6 +1284,7 @@ function initializeReportPortal(wrapper) {
                     setDownloadStatus('failed', 'Failed');
                     $('#retry_download').show();
                     hideDownloadMetrics();
+                    setDownloadFocusMode(false);
                 };
 
                 xhr.onabort = function() {
@@ -1198,6 +1303,7 @@ function initializeReportPortal(wrapper) {
                     setDownloadStatus('cancelled', 'Cancelled');
                     $('#retry_download').show();
                     hideDownloadMetrics();
+                    setDownloadFocusMode(false);
                 };
 
                 xhr.send();
@@ -1208,6 +1314,7 @@ function initializeReportPortal(wrapper) {
                 $('#robot_msg').text('❌ Unable to create report log');
                 setDownloadStatus('failed', 'Failed');
                 hideDownloadMetrics();
+                setDownloadFocusMode(false);
             }
         });
     }
