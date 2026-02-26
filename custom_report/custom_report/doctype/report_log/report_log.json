@@ -8,6 +8,9 @@
   "report_details_section",
   "report_name",
   "status",
+  "queue_position",
+  "rows_fetched",
+  "file_size_mb",
   "resolved",
   "date_time",
   "column_break_user",
@@ -38,13 +41,35 @@
    "reqd": 1
   },
   {
-   "default": "Success",
+   "default": "Queued",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Success\nFailed",
+   "options": "Queued\nRunning\nSuccess\nFailed\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "queue_position",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Queue Position",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rows_fetched",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Rows Fetched",
+   "read_only": 1
+  },
+  {
+   "fieldname": "file_size_mb",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "File Size (MB)",
+   "precision": "2",
    "read_only": 1
   },
   {
@@ -170,12 +195,24 @@
  "sort_order": "DESC",
  "states": [
   {
+   "color": "Orange",
+   "title": "Queued"
+  },
+  {
+   "color": "Blue",
+   "title": "Running"
+  },
+  {
    "color": "Green",
    "title": "Success"
   },
   {
    "color": "Red",
    "title": "Failed"
+  },
+  {
+   "color": "Gray",
+   "title": "Cancelled"
   }
  ],
  "title_field": "employee_name"

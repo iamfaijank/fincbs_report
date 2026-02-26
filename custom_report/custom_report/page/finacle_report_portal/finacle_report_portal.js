@@ -234,22 +234,65 @@ function initializeReportPortal(wrapper) {
                             <div id="end_date_error" style="color:red; font-size:11px; display:none; margin-top:3px;"></div>
                         </div>
                     </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:-6px;">
+                        <button type="button" class="date-chip" data-range="today" style="background:#eef6f6;border:1px solid #d2e7e7;color:#196767;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;">Today</button>
+                        <button type="button" class="date-chip" data-range="yesterday" style="background:#eef6f6;border:1px solid #d2e7e7;color:#196767;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;">Yesterday</button>
+                        <button type="button" class="date-chip" data-range="last_7_days" style="background:#eef6f6;border:1px solid #d2e7e7;color:#196767;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;">Last 7 Days</button>
+                        <button type="button" class="date-chip" data-range="this_month" style="background:#eef6f6;border:1px solid #d2e7e7;color:#196767;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;">This Month</button>
+                        <button type="button" class="date-chip" data-range="last_month" style="background:#eef6f6;border:1px solid #d2e7e7;color:#196767;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;">Last Month</button>
+                    </div>
+
+                    <div id="download_summary" style="background:#f6fbfb;border:1px solid #d9ecec;border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;">
+                        <div id="summary_report" style="font-size:12px;color:#2f4f4f;">Report: Not selected</div>
+                        <div id="summary_dates" style="font-size:12px;color:#2f4f4f;">Date Range: Not set</div>
+                        <div id="summary_branches" style="font-size:12px;color:#2f4f4f;">Branches: Loading...</div>
+                    </div>
 
                     <div style="display:flex; gap:10px;">
-                        <button type="button" id="download_csv" style="flex:1; background:#196767; color:white; border:none; padding:12px; font-weight:600; border-radius:5px; cursor:pointer;">
-                             Download
-                        </button>
+                        <div id="download_dropdown_wrap" style="flex:1; position:relative;">
+                            <button type="button" id="download_csv" style="width:100%; background:#196767; color:white; border:none; padding:12px; font-weight:600; border-radius:5px; cursor:pointer; display:flex; align-items:center; justify-content:space-between;">
+                                 <span>Download</span>
+                                 <span id="download_arrow" style="font-size:12px; opacity:0.9;">▾</span>
+                            </button>
+                            <div id="download_mode_options" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; background:#fff; border:1px solid #d6e5e5; border-radius:8px; box-shadow:0 8px 18px rgba(0,0,0,0.12); z-index:1200; padding:6px;">
+                                <button type="button" id="download_mode_normal" style="width:100%; text-align:left; background:transparent; color:#224; border:none; padding:9px 10px; font-weight:600; border-radius:6px; cursor:pointer;">
+                                     CSV File (Normal Speed)
+                                </button>
+                                <button type="button" id="download_mode_zipped" style="width:100%; text-align:left; background:transparent; color:#224; border:none; padding:9px 10px; font-weight:600; border-radius:6px; cursor:pointer;">
+                                     Zip File (Small Size + Fast)
+                                </button>
+                            </div>
+                        </div>
                         <button type="button" id="cancel_download" style="flex:1; background:#b71c1c; color:white; border:none; padding:12px; font-weight:600; border-radius:5px; cursor:pointer; display:none;">
                              Cancel
                         </button>
                     </div>
-
-                    <div id="progress_container" style="display:none; width:100%; height:12px; background:#eee; border-radius:6px; overflow:hidden; margin-top:10px; position:relative;">
-                        <div id="progress_bar" style="width:0%; height:100%; background:linear-gradient(90deg,#196767,#00bfa5); transition:width 0.3s ease;"></div>
-                        <div id="progress_percent" style="position:absolute; right:10px; top:-18px; font-size:12px; color:#196767; font-weight:600;"></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:-6px;">
+                        <button type="button" id="reset_filters" style="background:transparent;border:none;color:#196767;font-size:12px;font-weight:700;cursor:pointer;padding:0;">↺ Reset Filters</button>
+                        <span id="download_hint" style="font-size:11px;color:#8a8a8a;">Select report and date range to enable download</span>
                     </div>
-                    <div id="progress_text" style="display:none; font-size:13px; color:#555; text-align:right; margin-top:3px;"></div>
-                    <div id="robot_msg" style="display:none; font-size:13px; color:#196767; text-align:left; margin-top:3px; font-style:italic;"></div>
+
+                    <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+                        <span id="download_status_badge" style="display:none; font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; background:#e0f2f1; color:#196767; white-space:nowrap;">Queued</span>
+                        <div id="progress_container" style="display:none; flex:1; height:12px; background:#eee; border-radius:6px; overflow:hidden; position:relative;">
+                            <div id="progress_bar" style="width:0%; height:100%; background:linear-gradient(90deg,#196767,#00bfa5); transition:width 0.3s ease;"></div>
+                        </div>
+                        <div id="progress_percent" style="display:none; min-width:62px; text-align:right; font-size:18px; font-weight:800; color:#e53935; line-height:1;">0%</div>
+                        <button type="button" id="retry_download" style="display:none; background:#196767; color:white; border:none; padding:5px 10px; font-size:11px; font-weight:600; border-radius:4px; cursor:pointer; white-space:nowrap;">
+                            Retry
+                        </button>
+                    </div>
+                    <div style="margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        <span id="progress_text" style="display:none; font-size:13px; color:#555; vertical-align:middle;"></span>
+                        <span id="robot_msg" style="display:none; font-size:13px; color:#196767; margin-left:10px; vertical-align:middle; font-style:italic;"></span>
+                    </div>
+                    <div id="download_metrics" style="display:none; margin-top:8px; background:#f8fbfb; border:1px solid #dfeeee; border-radius:8px; padding:8px 10px; font-size:12px; color:#2f4f4f;">
+                        <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                            <div><span style="font-weight:700;">Rows Fetched</span><div id="metric_rows_fetched" style="font-size:15px; font-weight:800; color:#196767;">0</div></div>
+                            <div style="text-align:right;"><span style="font-weight:700;">File Size (MB)</span><div id="metric_file_size_mb" style="font-size:15px; font-weight:800; color:#196767;">0.00</div></div>
+                            <div style="text-align:right;"><span style="font-weight:700;">Time Taken</span><div id="metric_time_taken" style="font-size:15px; font-weight:800; color:#196767;">0 Seconds</div></div>
+                        </div>
+                    </div>
                 </form>
             </div>
         </div>
@@ -268,9 +311,11 @@ function initializeReportPortal(wrapper) {
     const $selectedBranchesText = $('#selected_branches_text');
     const $solIdList = $('#sol_id_list');
     const $solIdSearch = $('#sol_id_search');
+    const $downloadHint = $('#download_hint');
     
     let currentSolData = [];
     let isDeptUser = false;
+    let hasBranchAccessIssue = false;
 
     // Fetch and show user permissions/branches
     function loadUserPermissions() {
@@ -285,6 +330,7 @@ function initializeReportPortal(wrapper) {
                     $branchFilterContainer.css('display', 'flex');
                     
                     if (currentSolData.length > 0 || isDeptUser) {
+                        hasBranchAccessIssue = false;
                         let statusText = '';
                         if (isDeptUser) {
                             statusText = 'Full Access (All Branches)';
@@ -297,6 +343,7 @@ function initializeReportPortal(wrapper) {
                         $selectedBranchesText.text(statusText);
                         renderSolIdList();
                     } else if (!isDeptUser) {
+                        hasBranchAccessIssue = true;
                         $info.show().html(`
                             <div style="background:#ffebee;border:1px solid #ffcdd2;border-radius:6px;padding:10px 15px;">
                                 <p style="color:#c62828;font-size:13px;font-weight:600;margin:0;">⚠️ No branches assigned in Report Preference.</p>
@@ -304,8 +351,9 @@ function initializeReportPortal(wrapper) {
                             </div>
                         `);
                         $selectedBranchesText.text('No branches assigned');
-                        $('#download_csv').prop('disabled', true).css('opacity', '0.6').attr('title', 'No branches assigned');
                     }
+                    updateSummaryBar();
+                    refreshDownloadActionState();
                 }
             }
         });
@@ -362,16 +410,15 @@ function initializeReportPortal(wrapper) {
             } else {
                 $selectedBranchesText.text(`${selectedCount} Branches Selected`);
             }
-            $('#download_csv').prop('disabled', false).css('opacity', '1');
         } else {
             if (selectedCount === 0) {
                 $selectedBranchesText.text('No branches selected');
-                $('#download_csv').prop('disabled', true).css('opacity', '0.6');
             } else {
                 $selectedBranchesText.text(`${selectedCount} Branches Selected`);
-                $('#download_csv').prop('disabled', false).css('opacity', '1');
             }
         }
+        updateSummaryBar();
+        refreshDownloadActionState();
     }
 
     // Toggle Dropdown
@@ -431,10 +478,107 @@ function initializeReportPortal(wrapper) {
     loadUserPermissions();
 
     let expectedDuration = 2;
+    let currentRequestId = null;
     let currentXhr = null;
+    let currentLogId = null;
+    let statusPollTimer = null;
+    let statusPollInFlight = false;
+    let lastStatusUpdatedAt = 0;
+    let userCancelledCurrentRequest = false;
     let startDatePicker = null;
     let endDatePicker = null;
     let allReports = []; // Store all reports for searching
+
+    function toDDMMYYYY(dateObj) {
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const y = String(dateObj.getFullYear());
+        return `${d}/${m}/${y}`;
+    }
+
+    function setDateRange(startDate, endDate) {
+        if (startDatePicker && endDatePicker) {
+            startDatePicker.setDate(startDate, true);
+            endDatePicker.setDate(endDate, true);
+            endDatePicker.set('minDate', startDate);
+        } else {
+            $('#start_date').val(toDDMMYYYY(startDate));
+            $('#end_date').val(toDDMMYYYY(endDate));
+        }
+        validateDateRange();
+        updateSummaryBar();
+        refreshDownloadActionState();
+    }
+
+    function applyDatePreset(preset) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        let start = new Date(today);
+        let end = new Date(today);
+
+        if (preset === 'yesterday') {
+            start.setDate(today.getDate() - 1);
+            end = new Date(start);
+        } else if (preset === 'last_7_days') {
+            start.setDate(today.getDate() - 6);
+        } else if (preset === 'this_month') {
+            start = new Date(today.getFullYear(), today.getMonth(), 1);
+        } else if (preset === 'last_month') {
+            start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            end = new Date(today.getFullYear(), today.getMonth(), 0);
+        }
+
+        setDateRange(start, end);
+    }
+
+    function updateSummaryBar() {
+        const reportLabel = $reportSearch.val() || 'Not selected';
+        const start = $('#start_date').val();
+        const end = $('#end_date').val();
+        const selectedBranches = currentSolData.filter(d => d.selected).length;
+        const branchLabel = isDeptUser
+            ? (selectedBranches > 0 ? `${selectedBranches} selected` : 'All branches')
+            : (selectedBranches > 0 ? `${selectedBranches} selected` : 'None');
+
+        $('#summary_report').text(`Report: ${reportLabel}`);
+        $('#summary_dates').text(`Date Range: ${start && end ? `${start} to ${end}` : 'Not set'}`);
+        $('#summary_branches').text(`Branches: ${branchLabel}`);
+    }
+
+    function refreshDownloadActionState() {
+        if (currentRequestId) {
+            return;
+        }
+
+        const reportDocName = $selectedReportValue.val();
+        const start = $('#start_date').val();
+        const end = $('#end_date').val();
+        const selectedCount = currentSolData.filter(d => d.selected).length;
+        const dateValid = validateDateRange();
+        const hasDates = Boolean(start && end);
+        const branchOk = hasBranchAccessIssue ? false : (isDeptUser ? true : selectedCount > 0);
+        const valid = Boolean(reportDocName && hasDates && dateValid && branchOk);
+
+        $('#download_csv')
+            .prop('disabled', !valid)
+            .css('opacity', valid ? '1' : '0.6');
+
+        if (valid) {
+            $downloadHint.text('Ready to download');
+        } else if (hasBranchAccessIssue) {
+            $downloadHint.text('No branches assigned to this user');
+        } else if (!reportDocName) {
+            $downloadHint.text('Select report to enable download');
+        } else if (!hasDates) {
+            $downloadHint.text('Select start and end date');
+        } else if (!dateValid) {
+            $downloadHint.text('Fix date range first');
+        } else if (!branchOk) {
+            $downloadHint.text('Select at least one branch');
+        } else {
+            $downloadHint.text('Complete required fields');
+        }
+    }
 
     // Initialize datepickers with validation
     function initDatepickers() {
@@ -461,6 +605,8 @@ function initializeReportPortal(wrapper) {
                 
                 // Validate if end date is already selected
                 validateDateRange();
+                updateSummaryBar();
+                refreshDownloadActionState();
             }
         });
 
@@ -475,6 +621,8 @@ function initializeReportPortal(wrapper) {
                 
                 // Validate date range
                 validateDateRange();
+                updateSummaryBar();
+                refreshDownloadActionState();
             }
         });
     }
@@ -531,6 +679,8 @@ function initializeReportPortal(wrapper) {
                 
                 // Enable search
                 $reportSearch.prop('disabled', false);
+                updateSummaryBar();
+                refreshDownloadActionState();
             }
         });
     }
@@ -590,6 +740,8 @@ function initializeReportPortal(wrapper) {
                     $('#progress_text').hide();
                     $('#robot_msg').hide();
                 }
+                updateSummaryBar();
+                refreshDownloadActionState();
             });
         } else {
             $reportDropdown.html('<div style="padding:10px;color:#999;text-align:center;">No reports found</div>').show();
@@ -600,6 +752,9 @@ function initializeReportPortal(wrapper) {
     $(document).on('click', function(e) {
         if (!$(e.target).closest('#report_search, #report_dropdown').length) {
             $reportDropdown.hide();
+        }
+        if (!$(e.target).closest('#download_csv, #download_mode_options').length) {
+            setDownloadMenuOpen(false);
         }
     });
 
@@ -612,6 +767,39 @@ function initializeReportPortal(wrapper) {
         $reportDropdown.hide();
         $('#progress_text').hide();
         $('#robot_msg').hide();
+        updateSummaryBar();
+        refreshDownloadActionState();
+    });
+
+    $('.date-chip').on('click', function() {
+        applyDatePreset($(this).data('range'));
+    });
+
+    $('#reset_filters').on('click', function() {
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+
+        $reportSearch.val('');
+        $selectedReportValue.val('');
+        $reportSelect.val('');
+        $searchClear.hide();
+        $reportDropdown.hide();
+
+        setDateRange(firstDay, yesterday);
+
+        if (currentSolData.length) {
+            currentSolData.forEach(d => { d.selected = !isDeptUser; });
+            updateActiveBadges(isDeptUser);
+            renderSolIdList();
+        } else {
+            updateSummaryBar();
+            refreshDownloadActionState();
+        }
+
+        $('#report_error,#start_date_error,#end_date_error').hide();
+        $('#progress_text,#robot_msg').hide();
     });
 
     function formatForAPI(val){ 
@@ -624,10 +812,207 @@ function initializeReportPortal(wrapper) {
         return m>0?`${m} Minutes ${s} Seconds`:`${s} Seconds`; 
     }
 
-    $('#download_csv').on('click',()=>downloadReport('csv'));
+    function humanReadableBytes(bytes) {
+        if (!bytes || bytes <= 0) return "0 B";
+        const units = ["B", "KB", "MB", "GB", "TB"];
+        const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+        const value = bytes / Math.pow(1024, i);
+        return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+    }
+
+    function updateProgressPercent(percent) {
+        const p = Math.max(0, Math.min(100, Number(percent) || 0));
+        const hue = Math.round((p * 120) / 100); // 0=red,120=green
+        const hue2 = Math.min(120, hue + 18);
+        $('#progress_percent')
+            .text(`${p}%`)
+            .css('color', `hsl(${hue}, 85%, 42%)`);
+        $('#progress_bar').css('background', `linear-gradient(90deg, hsl(${hue}, 78%, 40%), hsl(${hue2}, 82%, 46%))`);
+    }
+
+    function stopStatusPolling() {
+        if (statusPollTimer) {
+            clearInterval(statusPollTimer);
+            statusPollTimer = null;
+        }
+    }
+
+    function setDownloadStatus(status, label) {
+        const $badge = $('#download_status_badge');
+        const palette = {
+            queued: { bg: '#fff8e1', color: '#8d6e00' },
+            running: { bg: '#e3f2fd', color: '#0d47a1' },
+            success: { bg: '#e8f5e9', color: '#1b5e20' },
+            failed: { bg: '#ffebee', color: '#b71c1c' },
+            cancelled: { bg: '#fafafa', color: '#616161' },
+        };
+        const c = palette[status] || palette.queued;
+        $badge.css({ background: c.bg, color: c.color }).text(label || status).show();
+    }
+
+    function resetDownloadUI() {
+        $('#cancel_download').hide().prop('disabled', false).text('❌ Cancel');
+        $('#download_csv').text('Download');
+        $('#download_mode_options').hide();
+        $('#download_arrow').text('▾');
+        refreshDownloadActionState();
+    }
+
+    function setDownloadMenuOpen(open) {
+        $('#download_mode_options').toggle(!!open);
+        $('#download_arrow').text(open ? '▴' : '▾');
+    }
+
+    function showDownloadMetrics(rowsFetched, fileSizeMb, timeTakenSec) {
+        $('#metric_rows_fetched').text((Number(rowsFetched) || 0).toLocaleString());
+        const size = Number(fileSizeMb) || 0;
+        $('#metric_file_size_mb').text(size.toFixed(2));
+        $('#metric_time_taken').text(humanReadableTime(Number(timeTakenSec) || 0));
+        $('#download_metrics').show();
+    }
+
+    function hideDownloadMetrics() {
+        $('#download_metrics').hide();
+    }
+
+    function startStatusPolling(requestId, startedAt) {
+        stopStatusPolling();
+        currentRequestId = requestId;
+        statusPollInFlight = false;
+        lastStatusUpdatedAt = 0;
+        userCancelledCurrentRequest = false;
+
+        const pollStatus = () => {
+            if (statusPollInFlight) return;
+            statusPollInFlight = true;
+            frappe.call({
+                method: 'custom_report.api.get_report_download_status',
+                args: { request_id: requestId },
+                callback: function(res) {
+                    statusPollInFlight = false;
+                    const st = res.message || {};
+                    const updatedAt = Number(st.updated_at || 0);
+                    if (updatedAt && updatedAt < lastStatusUpdatedAt) {
+                        return;
+                    }
+                    if (updatedAt) {
+                        lastStatusUpdatedAt = updatedAt;
+                    }
+                    const elapsed = (Date.now() - startedAt) / 1000;
+                    const percent = Math.min(95, Math.floor((elapsed / expectedDuration) * 100));
+                    const rowsFetched = Number(st.rows_processed || 0);
+
+                    $('#progress_bar').width(percent + "%");
+                    updateProgressPercent(percent);
+                    $('#progress_text').text(
+                        `⏱ ${humanReadableTime(elapsed)} | Rows Fetched: ${rowsFetched.toLocaleString()} | Size: ${humanReadableBytes(st.bytes_written || 0)}`
+                    );
+                    $('#robot_msg').text(st.message || `🤖 Processing... Rows ${rowsFetched.toLocaleString()}`);
+                    setDownloadStatus(
+                        st.status === 'queued' || st.status === 'cancel_requested' ? 'queued' : (st.status || 'running'),
+                        st.status === 'queued' ? 'Queued' : (st.status === 'running' ? 'Running' : (st.status === 'cancel_requested' ? 'Cancelling' : st.status))
+                    );
+
+                    if (st.status === 'success' && st.file_url && !userCancelledCurrentRequest) {
+                        stopStatusPolling();
+                        currentRequestId = null;
+                        $('#progress_bar').width("100%");
+                        updateProgressPercent(100);
+                        $('#progress_text').text(
+                            `✅ Completed | Rows Fetched: ${(st.rows_processed || 0).toLocaleString()} | Size: ${humanReadableBytes(st.bytes_written || 0)}`
+                        );
+                        $('#robot_msg').text('🤖 Done!');
+                        setDownloadStatus('success', 'Success');
+                        $('#retry_download').hide();
+                        resetDownloadUI();
+
+                        const link = document.createElement("a");
+                        link.href = st.download_url || st.file_url;
+                        link.download = st.filename || "finacle_report.csv";
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+
+                        loadReports();
+                        setTimeout(()=>$('#progress_container,#progress_percent,#progress_text,#robot_msg').fadeOut(),3000);
+                    } else if (st.status === 'failed') {
+                        stopStatusPolling();
+                        currentRequestId = null;
+                        resetDownloadUI();
+                        $('#progress_container,#progress_percent,#progress_text').hide();
+                        $('#robot_msg').text(st.error ? `❌ ${st.error}` : '❌ Failed to download.');
+                        setDownloadStatus('failed', 'Failed');
+                        $('#retry_download').show();
+                    } else if (st.status === 'cancelled') {
+                        stopStatusPolling();
+                        currentRequestId = null;
+                        resetDownloadUI();
+                        $('#progress_container,#progress_percent,#progress_text').hide();
+                        $('#robot_msg').text('⚠️ Download cancelled by user');
+                        setDownloadStatus('cancelled', 'Cancelled');
+                        $('#retry_download').show();
+                    } else if (st.status === 'cancel_requested') {
+                        $('#robot_msg').text('⚠️ Cancellation requested. Stopping job...');
+                        setDownloadStatus('queued', 'Cancelling');
+                    }
+                },
+                error: function() {
+                    statusPollInFlight = false;
+                    stopStatusPolling();
+                    currentRequestId = null;
+                    resetDownloadUI();
+                    $('#progress_container,#progress_percent,#progress_text').hide();
+                    $('#robot_msg').text('❌ Error while checking download status');
+                    setDownloadStatus('failed', 'Failed');
+                    $('#retry_download').show();
+                }
+            });
+        };
+
+        pollStatus();
+        statusPollTimer = setInterval(pollStatus, 1000);
+    }
+
+    $('#download_csv').on('click', function() {
+        if ($(this).prop('disabled')) return;
+        setDownloadMenuOpen(!$('#download_mode_options').is(':visible'));
+    });
+    $('#download_mode_normal').on('click', () => {
+        setDownloadMenuOpen(false);
+        downloadReport('csv');
+    });
+    $('#download_mode_zipped').on('click', () => {
+        setDownloadMenuOpen(false);
+        downloadReport('csv.gz');
+    });
+    $('#download_mode_options button').hover(
+        function() { $(this).css('background', '#eef6f6'); },
+        function() { $(this).css('background', 'transparent'); }
+    );
     $('#cancel_download').on('click',function(){
-        if(currentXhr){ currentXhr.abort(); }
-        $(this).prop('disabled',true).text('Cancelling...');
+        if(currentXhr){
+            currentXhr.abort();
+        }
+        if (currentLogId) {
+            frappe.call({
+                method: 'custom_report.api.update_report_log_status',
+                args: { log_id: currentLogId, status: 'Cancelled' }
+            });
+            currentLogId = null;
+        }
+        stopStatusPolling();
+        currentRequestId = null;
+        resetDownloadUI();
+        $('#progress_container,#progress_percent,#progress_text').hide();
+        $('#robot_msg').text('⚠️ Download cancelled by user').show();
+        setDownloadStatus('cancelled', 'Cancelled');
+        $('#retry_download').show();
+        hideDownloadMetrics();
+    });
+
+    $('#retry_download').on('click', function() {
+        $(this).hide();
+        downloadReport('csv');
     });
 
     function downloadReport(file_type){
@@ -653,104 +1038,180 @@ function initializeReportPortal(wrapper) {
 
         const start_date=formatForAPI(start_date_val), end_date=formatForAPI(end_date_val);
         
-        // Build URL with optional sol_id filter
-        let url=`/api/method/custom_report.api.report_download?report_docname=${encodeURIComponent(reportDocName)}&start_date=${encodeURIComponent(start_date)}&end_date=${encodeURIComponent(end_date)}&file_type=${file_type}`;
-        
         // Get selected sol_ids from dropdown
         const selectedSols = getSelectedSolIds();
-        if (selectedSols.length > 0) {
-            url += `&sol_id=${encodeURIComponent(JSON.stringify(selectedSols))}`;
-        }
-
-        const xhr=new XMLHttpRequest();
-        currentXhr = xhr;
-        xhr.open("GET",url,true);
-        xhr.responseType="blob";
 
         // Show progress UI
-        $('#progress_container,#progress_text,#robot_msg').show();
+        setDownloadMenuOpen(false);
+        $('#progress_container,#progress_percent,#progress_text,#robot_msg').show();
         $('#progress_bar').width("0%"); 
-        $('#progress_percent').text("0%");
-        $('#download_csv').prop('disabled',true).text('Downloading...');
+        updateProgressPercent(0);
+        const isFastDownload = file_type === 'csv.gz';
+        $('#download_csv').prop('disabled',true).text(isFastDownload ? 'Please wait...' : 'Downloading...');
         $('#cancel_download').show().prop('disabled',false).text('❌ Cancel');
+        $('#retry_download').hide();
+        setDownloadStatus('queued', 'Queued');
+        hideDownloadMetrics();
 
-        const startTime=Date.now();
-        const interval=setInterval(()=>{
-            const elapsed=(Date.now()-startTime)/1000;
-            const percent=Math.min(99,Math.floor((elapsed/expectedDuration)*100));
-            $('#progress_bar').width(percent+"%");
-            $('#progress_percent').text(percent+"%");
-            $('#progress_text').text(`⏱ ${humanReadableTime(elapsed)} | ${percent}%`);
-            $('#robot_msg').text(elapsed>expectedDuration?'🤖 Large data, please wait…':`⏳ About ${humanReadableTime(expectedDuration-elapsed)} remaining`);
-        },200);
-
-        xhr.onload=function(){
-            clearInterval(interval);
-            $('#cancel_download').hide();
-            $('#download_csv').prop('disabled',false).text('Download');
-
-            if(xhr.status===200){
-                // Extract filename from Content-Disposition header
-                let filename = "finacle_report.csv"; // Default fallback
-                
-                const contentDisposition = xhr.getResponseHeader('Content-Disposition');
-                if (contentDisposition) {
-                    // Parse filename from header: attachment; filename="Report_31-10-2025 12-30 PM.csv"
-                    const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-                    if (filenameMatch && filenameMatch[1]) {
-                        filename = filenameMatch[1].replace(/['"]/g, '');
-                    }
+        frappe.call({
+            method: 'custom_report.api.create_report_log_entry',
+            args: {
+                report_docname: reportDocName,
+                start_date: start_date,
+                end_date: end_date,
+                sol_id: selectedSols.length ? JSON.stringify(selectedSols) : null
+            },
+            callback: function(res) {
+                const payload = res.message || {};
+                if (!payload.log_id) {
+                    resetDownloadUI();
+                    $('#progress_container,#progress_percent,#progress_text').hide();
+                    $('#robot_msg').text('❌ Unable to create report log');
+                    setDownloadStatus('failed', 'Failed');
+                    return;
                 }
 
-                const blob=new Blob([xhr.response],{type:"text/csv"});
-                const link=document.createElement("a"); 
-                link.href=URL.createObjectURL(blob); 
-                link.download=filename; // Use dynamic filename from backend
-                link.click();
-                
-                $('#progress_bar').width("100%"); 
-                $('#progress_percent').text("100%");
-                $('#progress_text').text('✅ Download complete');
-                $('#robot_msg').text('🤖 Done!');
-                loadReports();
-                setTimeout(()=>$('#progress_container,#progress_text,#robot_msg').fadeOut(),3000);
+                currentLogId = payload.log_id;
+                if (payload.queue_position) {
+                    $('#robot_msg').text(`🤖 Queued at position ${payload.queue_position}, starting...`);
+                }
 
-            } else {
-                // DB connection failure message
-                let errorMsg = '❌ Failed to download.';
-                try {
-                    const reader = new FileReader();
-                    reader.onload = function() {
-                        const msg = reader.result;
-                        if(msg && msg.includes("Database connection failed")) {
-                            errorMsg = "❌ Database connection is down. Please try later.";
+                let url=`/api/method/custom_report.api.report_download?report_docname=${encodeURIComponent(reportDocName)}&start_date=${encodeURIComponent(start_date)}&end_date=${encodeURIComponent(end_date)}&file_type=${file_type}&log_id=${encodeURIComponent(currentLogId)}`;
+                if (selectedSols.length > 0) {
+                    url += `&sol_id=${encodeURIComponent(JSON.stringify(selectedSols))}`;
+                }
+
+                const xhr = new XMLHttpRequest();
+                currentXhr = xhr;
+                xhr.open("GET", url, true);
+                xhr.responseType = "blob";
+                xhr.timeout = 0;
+
+                setDownloadStatus('running', 'Running');
+                $('#robot_msg').text('🤖 Download in progress...');
+
+                const startedAt = Date.now();
+                const timer = setInterval(() => {
+                    const elapsed = (Date.now() - startedAt) / 1000;
+                    const percent = Math.min(95, Math.floor((elapsed / expectedDuration) * 100));
+                    $('#progress_bar').width(percent + "%");
+                    updateProgressPercent(percent);
+                    $('#progress_text').text(`⏱ ${humanReadableTime(elapsed)} | Download in progress...`);
+                }, 500);
+
+                xhr.onload = function() {
+                    clearInterval(timer);
+                    currentXhr = null;
+
+                    if (xhr.status === 200) {
+                        let filename = "finacle_report.csv";
+                        const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+                        if (contentDisposition) {
+                            const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                            if (filenameMatch && filenameMatch[1]) {
+                                filename = filenameMatch[1].replace(/['"]/g, '');
+                            }
                         }
-                        $('#robot_msg').text(errorMsg);
-                    };
-                    reader.readAsText(xhr.response);
-                } catch(e){
-                    $('#robot_msg').text(errorMsg);
-                }
-                $('#progress_container,#progress_text').hide();
+
+                        const blob = new Blob([xhr.response], {type: "text/csv"});
+                        const link = document.createElement("a");
+                        link.href = URL.createObjectURL(blob);
+                        link.download = filename;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(link.href);
+
+                        $('#progress_bar').width("100%");
+                        updateProgressPercent(100);
+                        $('#progress_text').text('✅ Completed');
+                        $('#robot_msg').text('🤖 Done!');
+                        setDownloadStatus('success', 'Success');
+                        resetDownloadUI();
+                        loadReports();
+                        const totalTimeSec = (Date.now() - startedAt) / 1000;
+                        const finalLogId = currentLogId;
+                        currentLogId = null;
+                        if (finalLogId) {
+                            frappe.call({
+                                method: 'custom_report.api.get_report_log_metrics',
+                                args: { log_id: finalLogId },
+                                callback: function(metricRes) {
+                                    const m = metricRes.message || {};
+                                    showDownloadMetrics(m.rows_fetched, m.file_size_mb, totalTimeSec);
+                                },
+                                error: function() {
+                                    showDownloadMetrics(0, blob.size / (1024 * 1024), totalTimeSec);
+                                }
+                            });
+                        } else {
+                            showDownloadMetrics(0, blob.size / (1024 * 1024), totalTimeSec);
+                        }
+                    } else {
+                        if (currentLogId) {
+                            frappe.call({
+                                method: 'custom_report.api.update_report_log_status',
+                                args: { log_id: currentLogId, status: 'Failed', error_message: `HTTP ${xhr.status}` }
+                            });
+                            currentLogId = null;
+                        }
+                        resetDownloadUI();
+                        $('#progress_container,#progress_percent,#progress_text').hide();
+                        $('#robot_msg').text('❌ Failed to download');
+                        setDownloadStatus('failed', 'Failed');
+                        $('#retry_download').show();
+                        hideDownloadMetrics();
+                    }
+                };
+
+                xhr.onerror = function() {
+                    clearInterval(timer);
+                    currentXhr = null;
+                    if (currentLogId) {
+                        frappe.call({
+                            method: 'custom_report.api.update_report_log_status',
+                            args: { log_id: currentLogId, status: 'Failed', error_message: 'Network error during download' }
+                        });
+                        currentLogId = null;
+                    }
+                    resetDownloadUI();
+                    $('#progress_container,#progress_percent,#progress_text').hide();
+                    $('#robot_msg').text('❌ Error during download');
+                    setDownloadStatus('failed', 'Failed');
+                    $('#retry_download').show();
+                    hideDownloadMetrics();
+                };
+
+                xhr.onabort = function() {
+                    clearInterval(timer);
+                    currentXhr = null;
+                    if (currentLogId) {
+                        frappe.call({
+                            method: 'custom_report.api.update_report_log_status',
+                            args: { log_id: currentLogId, status: 'Cancelled' }
+                        });
+                        currentLogId = null;
+                    }
+                    resetDownloadUI();
+                    $('#progress_container,#progress_percent,#progress_text').hide();
+                    $('#robot_msg').text('⚠️ Download cancelled by user');
+                    setDownloadStatus('cancelled', 'Cancelled');
+                    $('#retry_download').show();
+                    hideDownloadMetrics();
+                };
+
+                xhr.send();
+            },
+            error: function() {
+                resetDownloadUI();
+                $('#progress_container,#progress_percent,#progress_text').hide();
+                $('#robot_msg').text('❌ Unable to create report log');
+                setDownloadStatus('failed', 'Failed');
+                hideDownloadMetrics();
             }
-        };
-
-        xhr.onabort=function(){
-            clearInterval(interval);
-            $('#cancel_download').hide();
-            $('#progress_container,#progress_text').hide();
-            $('#robot_msg').text('⚠️ Download cancelled by user');
-            $('#download_csv').prop('disabled',false).text('Download');
-        };
-
-        xhr.onerror=function(){
-            clearInterval(interval);
-            $('#cancel_download').hide();
-            $('#progress_container,#progress_text').hide();
-            $('#robot_msg').text('❌ Error during download'); 
-            $('#download_csv').prop('disabled',false).text('Download'); 
-        };
-
-        xhr.send();
+        });
     }
+
+    updateSummaryBar();
+    refreshDownloadActionState();
 }
