@@ -2578,13 +2578,13 @@ const BranchManagerProfile = {
                     // Header Info
                     this.el.name.textContent = this.value(d.bm_name);
                     this.el.mobile.textContent = this.value(d.bm_mob_no);
-                    this.el.vintage.textContent = this.value(d.bm_vintage);
+                    this.el.vintage.textContent = this.calculateExperience(d.bm_doj);
                     this.el.doj.textContent = this.formatDate(d.bm_doj);
                     this.el.branchOpeningDate.textContent = this.formatDate(d.branch_opening_date);
                     this.el.chName.textContent = this.value(d.ch_name);
                     this.el.branchName.textContent = this.value(d.branch_name);
                     this.el.branchDistrict.textContent = this.value(d.district);
-                    this.el.branchVintage.textContent = this.value(d.branch_vintage);
+                    this.el.branchVintage.textContent = this.calculateExperience(d.branch_opening_date);
                     this.el.branchEmail.textContent = this.value(branchEmailValue);
                     this.el.chMobile.textContent = this.value(d.ch_mob_no);
 
@@ -2734,19 +2734,24 @@ const BranchManagerProfile = {
 
                 calculateExperience(doj) {
                     if (!doj) return "--";
-                    const start = new Date(doj);
+                    const datePart = doj.split(' ')[0];
+                    const start = new Date(datePart);
                     const now = new Date();
                     if (isNaN(start.getTime())) return "--";
                     
                     let years = now.getFullYear() - start.getFullYear();
                     let months = now.getMonth() - start.getMonth();
                     
+                    if (now.getDate() < start.getDate()) {
+                        months--;
+                    }
+                    
                     if (months < 0) {
                         years--;
                         months += 12;
                     }
                     
-                    if (years === 0 && months === 0) return "New Joinee";
+                    if (years <= 0 && months <= 0) return "New Joinee";
                     
                     let parts = [];
                     if (years > 0) {
@@ -2756,7 +2761,7 @@ const BranchManagerProfile = {
                         parts.push(months === 1 ? "1 mo" : `${months} mos`);
                     }
                     
-                    return parts.join(" ");
+                    return parts.join(" ") || "New Joinee";
                 },
 
                 async loadEmployeeDetails(solId) {
