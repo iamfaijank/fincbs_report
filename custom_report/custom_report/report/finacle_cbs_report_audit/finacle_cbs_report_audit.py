@@ -85,6 +85,24 @@ def get_columns():
             "width": 110
         },
         {
+            "label": _("Rows Fetched"),
+            "fieldname": "rows_fetched",
+            "fieldtype": "Int",
+            "width": 120
+        },
+        {
+            "label": _("File Size"),
+            "fieldname": "file_size_display",
+            "fieldtype": "Data",
+            "width": 120
+        },
+        {
+            "label": _("Time Taken"),
+            "fieldname": "time_taken_sec",
+            "fieldtype": "Duration",
+            "width": 110
+        },
+        {
             "label": _("Selected SOL IDs"),
             "fieldname": "selected_sol_ids",
             "fieldtype": "Small Text",
@@ -116,18 +134,38 @@ def get_data(filters):
 
     where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
     
-    return frappe.db.sql(f"""
+    rows = frappe.db.sql(f"""
         SELECT 
             rl.name as log_id,
             rl.date_time, rl.status, rl.resolved, rl.employee_name, 
             fr.report_name as report_title,
             rl.report_name, rl.sol_id, rl.start_date, 
-            rl.end_date, rl.selected_sol_ids, rl.error_message
+            rl.end_date, rl.rows_fetched, rl.file_size_mb,
+            GREATEST(TIMESTAMPDIFF(SECOND, rl.creation, rl.modified), 0) as time_taken_sec,
+            rl.selected_sol_ids, rl.error_message
         FROM `tabReport Log` rl
         LEFT JOIN `tabFinacle Report` fr ON rl.report_name = fr.name
         {where_clause}
         ORDER BY rl.date_time DESC
     """, filters, as_dict=True)
+    for row in rows:
+        row.file_size_display = format_file_size_from_mb(row.get("file_size_mb"))
+    return rows
+
+
+def format_file_size_from_mb(size_mb):
+    size_mb = float(size_mb or 0)
+    if size_mb <= 0:
+        return "0 B"
+
+    size_bytes = size_mb * 1024 * 1024
+    if size_bytes < 1024:
+        return f"{int(size_bytes)} B"
+    if size_bytes < 1024 * 1024:
+        return f"{size_bytes / 1024:.2f} KB"
+    if size_bytes < 1024 * 1024 * 1024:
+        return f"{size_bytes / (1024 * 1024):.2f} MB"
+    return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
 
 
 def get_summary(data):
@@ -165,5 +203,3 @@ def get_summary(data):
             "datatype": "Data",
         }
     ]
-
-

@@ -4,10 +4,13 @@ import io
 import os
 import time
 import tempfile
+import shutil
 import re
 import csv
 import json
+import gzip
 from datetime import datetime
+from urllib.parse import quote
 from custom_report.db_utils import get_pg_connection
 
 
@@ -37,6 +40,16 @@ class Colors:
     BRIGHT_BLUE = '\033[94m'
     BRIGHT_MAGENTA = '\033[95m'
     BRIGHT_CYAN = '\033[96m'
+
+
+EXPORT_CACHE_PREFIX = "finacle_export"
+EXPORT_CACHE_TTL_SECONDS = 60 * 60 * 12
+EXPORT_FETCH_BATCH_SIZE = 500
+
+
+class ReportExportCancelled(Exception):
+    """Raised when user cancels a queued/running report export."""
+    pass
 
 
 # ============================================================================
@@ -179,7 +192,196 @@ def get_user_reports():
 
 
 @frappe.whitelist()
-def report_download(report_docname, start_date=None, end_date=None, file_type="csv", sol_id=None):
+def create_report_log_entry(report_docname, start_date=None, end_date=None, sol_id=None):
+    """Create initial report log entry with queued status."""
+    user = frappe.session.user
+    manual_sol_id = _parse_manual_sol_id(sol_id)
+    queue_position = _get_pending_report_count() + 1
+
+    log_id = _log_report_download(
+        report_docname=report_docname,
+        user=user,
+        start_date=start_date,
+        end_date=end_date,
+        manual_sol_id=manual_sol_id,
+        status="Queued",
+        queue_position=queue_position,
+        log_message="Download requested by user."
+    )
+
+    return {"log_id": log_id, "queue_position": queue_position}
+
+
+@frappe.whitelist()
+def update_report_log_status(log_id, status, error_message=None, rows_fetched=None, file_size_mb=None):
+    """Update status and metrics for a report log row."""
+    if not log_id:
+        frappe.throw(_("Log ID is required"))
+
+    doc = frappe.get_doc("Report Log", log_id)
+    user = frappe.session.user
+    user_roles = set(frappe.get_roles())
+    admin_roles = {"System Manager", "Finacle Report Admin", "Administrator"}
+    employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+
+    if doc.employee != employee and not user_roles.intersection(admin_roles):
+        frappe.throw(_("You are not authorized to update this report log."))
+
+    doc.status = status
+    if error_message:
+        doc.error_message = error_message
+    if rows_fetched is not None:
+        doc.rows_fetched = rows_fetched
+    if file_size_mb is not None:
+        doc.file_size_mb = file_size_mb
+    if status in {"Success", "Failed", "Cancelled"}:
+        doc.queue_position = 0
+    doc.save(ignore_permissions=True)
+    frappe.db.commit()
+    return {"status": "success"}
+
+
+@frappe.whitelist()
+def get_report_log_metrics(log_id):
+    """Return queue/status metrics for a specific report log row."""
+    if not log_id:
+        frappe.throw(_("Log ID is required"))
+
+    doc = frappe.get_doc("Report Log", log_id)
+    user = frappe.session.user
+    user_roles = set(frappe.get_roles())
+    admin_roles = {"System Manager", "Finacle Report Admin", "Administrator"}
+    employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+
+    if doc.employee != employee and not user_roles.intersection(admin_roles):
+        frappe.throw(_("You are not authorized to access this report log."))
+
+    return {
+        "status": doc.status,
+        "queue_position": doc.queue_position,
+        "rows_fetched": doc.rows_fetched or 0,
+        "file_size_mb": doc.file_size_mb or 0,
+    }
+
+
+@frappe.whitelist()
+def start_report_download(report_docname, start_date=None, end_date=None, file_type="csv", sol_id=None):
+    """Queue an async report export and return request_id for polling."""
+    user = frappe.session.user
+    user_roles = set(frappe.get_roles())
+
+    if not _user_has_report_access(report_docname, user_roles):
+        frappe.throw(_("You are not authorized to access this report."))
+
+    manual_sol_id = _parse_manual_sol_id(sol_id)
+    request_id = frappe.generate_hash(length=16)
+    queue_name = "short"
+
+    _set_export_state(request_id, {
+        "request_id": request_id,
+        "user": user,
+        "status": "queued",
+        "message": f"Queued for processing ({queue_name})",
+        "rows_processed": 0,
+        "bytes_written": 0,
+        "file_url": None,
+        "download_url": None,
+        "filename": None,
+        "error": None,
+        "cancel_requested": False,
+    })
+
+    frappe.enqueue(
+        method=_run_report_export_job,
+        queue=queue_name,
+        timeout=60 * 60 * 4,
+        job_name=f"finacle_export:{request_id}",
+        request_id=request_id,
+        user=user,
+        report_docname=report_docname,
+        start_date=start_date,
+        end_date=end_date,
+        file_type=file_type,
+        manual_sol_id=manual_sol_id,
+    )
+
+    return {
+        "status": "queued",
+        "request_id": request_id,
+    }
+
+
+@frappe.whitelist()
+def get_report_download_status(request_id):
+    """Fetch current status for a queued/running/completed export."""
+    state = _get_export_state(request_id)
+    if not state:
+        return {"status": "missing", "message": "Request not found or expired."}
+
+    _ensure_export_access(state)
+
+    return {
+        "status": state.get("status"),
+        "message": state.get("message"),
+        "rows_processed": state.get("rows_processed", 0),
+        "bytes_written": state.get("bytes_written", 0),
+        "file_url": state.get("file_url"),
+        "download_url": state.get("download_url"),
+        "filename": state.get("filename"),
+        "error": state.get("error"),
+        "cancel_requested": bool(state.get("cancel_requested")),
+        "updated_at": state.get("updated_at"),
+    }
+
+
+@frappe.whitelist()
+def cancel_report_download(request_id):
+    """Request cancellation for a queued/running export."""
+    state = _get_export_state(request_id)
+    if not state:
+        return {"status": "missing", "message": "Request not found or expired."}
+
+    _ensure_export_access(state)
+
+    if state.get("status") in {"success", "failed", "cancelled"}:
+        return {"status": state.get("status"), "message": state.get("message")}
+
+    state["cancel_requested"] = True
+    state["status"] = "cancel_requested"
+    state["message"] = "Cancellation requested"
+    _set_export_state(request_id, state)
+
+    return {"status": "cancel_requested", "message": "Cancellation requested."}
+
+
+@frappe.whitelist()
+def download_report_file(request_id):
+    """Download generated report file for the same user/admin using request_id."""
+    from frappe.utils.response import send_private_file
+
+    state = _get_export_state(request_id)
+    if not state:
+        frappe.throw(_("Download request not found or expired."))
+
+    _ensure_export_access(state)
+
+    if state.get("status") != "success" or not state.get("file_url"):
+        frappe.throw(_("File is not ready for download."))
+
+    file_url = state.get("file_url")
+    if "/private" not in file_url:
+        frappe.throw(_("Invalid file path."))
+
+    relative_private_path = file_url.split("/private", 1)[1]
+    absolute_path = frappe.get_site_path("private", relative_private_path.strip("/"))
+    if not os.path.exists(absolute_path):
+        frappe.throw(_("File wasn't available on site. Please regenerate the report."))
+
+    return send_private_file(relative_private_path)
+
+
+@frappe.whitelist()
+def report_download(report_docname, start_date=None, end_date=None, file_type="csv", sol_id=None, log_id=None):
     """
     Download report data filtered by user's sol_id, date range, and SQL placeholders.
     
@@ -246,6 +448,18 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         # Step 2: Fetch report configuration
         report_doc = frappe.get_doc("Finacle Report", report_docname)
         raw_sql = report_doc.sql_query.strip()
+
+        if log_id:
+            _log_report_download(
+                report_docname=report_docname,
+                user=user,
+                start_date=start_date,
+                end_date=end_date,
+                manual_sol_id=manual_sol_id,
+                status="Running",
+                log_id=log_id,
+                log_message="\n".join(getattr(frappe.local, "report_log_buffer", []))
+            )
         
         # Step 3: Establish database connection
         conn = get_pg_connection()
@@ -267,37 +481,45 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         # Step 6: Display final SQL and parameters
         _print_sql_debug(filtered_sql, query_params, branch_filter_applied, is_branch_user)
         
-        # Step 7: Execute SQL query and fetch results
+        # Step 7: Execute query and stream CSV directly to file (faster, lower memory)
         frappe.log_error(message=filtered_sql, title="SQL Query Executed")
-        
-        _print_info("Executing query...")
+        _print_info("Executing query and generating CSV...")
         start_time = time.time()
-        
-        # FIXED: Always pass query_params (empty dict if None)
+
         if query_params is None:
             query_params = {}
-        
-        cursor.execute(filtered_sql, query_params)
-        rows = cursor.fetchall()
+
+        normalized_file_type = _normalize_file_type(file_type)
+        filename = _generate_filename(report_doc.report_name, normalized_file_type)
+        temp_path = os.path.join(tempfile.gettempdir(), filename)
+
+        if normalized_file_type == "csv.gz":
+            rows_written = _write_csv_gzip_to_file(
+                conn=conn,
+                cursor=cursor,
+                sql_query=filtered_sql,
+                query_params=query_params,
+                temp_path=temp_path,
+            )
+        else:
+            rows_written = _write_csv_to_file(
+                conn=conn,
+                cursor=cursor,
+                sql_query=filtered_sql,
+                query_params=query_params,
+                temp_path=temp_path,
+            )
         execution_time = time.time() - start_time
-        
-        columns = [desc[0] for desc in cursor.description]
-        
-        # Calculate performance metrics
-        rows_per_sec = len(rows) / execution_time if execution_time > 0 else 0
-        
-        _print_success("Query executed successfully!")
+
+        _print_success("CSV generated successfully!")
         _print_metric("Execution Time", f"{execution_time:.2f} seconds")
-        _print_metric("Rows Fetched", f"{len(rows):,}")
-        _print_metric("Columns", f"{len(columns)}")
-        _print_metric("Performance", f"{rows_per_sec:.2f} rows/sec")
-        
-        # Step 8: Generate CSV file content
-        csv_data = _generate_csv_content(columns, rows)
-        
-        # Step 9: Save file temporarily and prepare download
-        filename = _generate_filename(report_doc.report_name, file_type)
-        temp_path = _save_temp_file(filename, csv_data)
+        if rows_written is not None:
+            rows_per_sec = rows_written / execution_time if execution_time > 0 else 0
+            _print_metric("Rows Written", f"{rows_written:,}")
+            _print_metric("Performance", f"{rows_per_sec:.2f} rows/sec")
+        else:
+            _print_metric("Rows Written", "N/A (COPY fast path)")
+            _print_metric("Performance", "N/A")
         
         # Step 10: Cleanup database connection
         cursor.close()
@@ -314,6 +536,9 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
             end_date=end_date,
             manual_sol_id=manual_sol_id,
             status="Success",
+            log_id=log_id,
+            rows_fetched=rows_written if rows_written is not None else _count_csv_data_rows(temp_path),
+            file_size_mb=round((os.path.getsize(temp_path) / (1024 * 1024)), 2),
             log_message="\n".join(getattr(frappe.local, "report_log_buffer", []))
         )
 
@@ -335,6 +560,7 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
                 end_date=end_date,
                 manual_sol_id=manual_sol_id,
                 status="Failed",
+                log_id=log_id,
                 error_message=str(e),
                 log_message="\n".join(getattr(frappe.local, "report_log_buffer", []))
             )
@@ -348,26 +574,418 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
         raise e
 
 
-def _log_report_download(report_docname, user, start_date, end_date, manual_sol_id, status, error_message=None, log_message=None):
-    """Create a entry in the Report Log doctype."""
+def _write_csv_to_file(conn, cursor, sql_query, query_params, temp_path):
+    """
+    Synchronous fast CSV writer.
+    1) Try PostgreSQL COPY fast path (fastest)
+    2) Fallback to fetchmany writer if COPY is not possible
+
+    Returns:
+        int | None: row count for fallback path, None for COPY fast path
+    """
+    try:
+        rendered_sql = cursor.mogrify(sql_query, query_params or {}).decode()
+        rendered_sql = rendered_sql.strip().rstrip(";")
+        copy_sql = f"COPY ({rendered_sql}) TO STDOUT WITH CSV HEADER"
+        with open(temp_path, "w", encoding="utf-8", newline="") as out_file:
+            cursor.copy_expert(copy_sql, out_file)
+        return None
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+
+    cursor.execute(sql_query, query_params or {})
+    columns = [desc[0] for desc in cursor.description]
+    rows_written = 0
+
+    with open(temp_path, "w", encoding="utf-8", newline="") as out_file:
+        writer = csv.writer(out_file)
+        writer.writerow(columns)
+        while True:
+            rows = cursor.fetchmany(EXPORT_FETCH_BATCH_SIZE)
+            if not rows:
+                break
+            writer.writerows(rows)
+            rows_written += len(rows)
+
+    return rows_written
+
+
+def _write_csv_gzip_to_file(conn, cursor, sql_query, query_params, temp_path):
+    """
+    Fast gzip CSV writer for synchronous download.
+    Returns:
+        int | None: row count for fallback path, None for COPY fast path
+    """
+    try:
+        rendered_sql = cursor.mogrify(sql_query, query_params or {}).decode()
+        rendered_sql = rendered_sql.strip().rstrip(";")
+        copy_sql = f"COPY ({rendered_sql}) TO STDOUT WITH CSV HEADER"
+        with gzip.open(temp_path, "wt", encoding="utf-8", newline="") as out_file:
+            cursor.copy_expert(copy_sql, out_file)
+        return None
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+
+    cursor.execute(sql_query, query_params or {})
+    columns = [desc[0] for desc in cursor.description]
+    rows_written = 0
+
+    with gzip.open(temp_path, "wt", encoding="utf-8", newline="") as out_file:
+        writer = csv.writer(out_file)
+        writer.writerow(columns)
+        while True:
+            rows = cursor.fetchmany(EXPORT_FETCH_BATCH_SIZE)
+            if not rows:
+                break
+            writer.writerows(rows)
+            rows_written += len(rows)
+
+    return rows_written
+
+
+def _run_report_export_job(request_id, user, report_docname, start_date=None, end_date=None, file_type="csv", manual_sol_id=None):
+    """Background export job: stream DB rows in batches into a CSV file on disk."""
+    cursor = None
+    conn = None
+    temp_path = None
+
+    try:
+        frappe.local.report_log_buffer = []
+        _set_export_state(request_id, {
+            **(_get_export_state(request_id) or {}),
+            "status": "running",
+            "message": "Preparing query...",
+        })
+
+        user_roles = set(frappe.get_roles(user))
+        final_sol_id, is_branch_user = _get_user_sol_id_with_branch_check(user, user_roles, manual_sol_id)
+
+        report_doc = frappe.get_doc("Finacle Report", report_docname)
+        raw_sql = report_doc.sql_query.strip()
+
+        conn = get_pg_connection()
+        cursor = conn.cursor()
+
+        if is_branch_user:
+            filtered_sql, _ = _apply_branch_report_filter(raw_sql, final_sol_id, is_branch_user)
+        else:
+            filtered_sql = raw_sql
+
+        query_params = _build_query_parameters(filtered_sql, start_date, end_date, final_sol_id) or {}
+
+        start_time = time.time()
+        _set_export_state(request_id, {
+            **(_get_export_state(request_id) or {}),
+            "status": "running",
+            "message": "Executing query...",
+        })
+        cursor.execute(filtered_sql, query_params)
+
+        # Some queries/cursor modes may not expose description on first pass.
+        # Fallback to a regular cursor once before failing hard.
+        if not cursor.description:
+            cursor.close()
+            cursor = conn.cursor()
+            cursor.execute(filtered_sql, query_params)
+
+        if not cursor.description:
+            raise frappe.ValidationError(
+                _("Report query did not return tabular rows. Please use a single SELECT query.")
+            )
+
+        columns = [desc[0] for desc in cursor.description]
+
+        filename = _generate_filename(report_doc.report_name, file_type)
+        temp_path = os.path.join(tempfile.gettempdir(), f"{request_id}_{filename}")
+
+        rows_processed = 0
+
+        with open(temp_path, "w", encoding="utf-8", newline="") as out_file:
+            writer = csv.writer(out_file)
+            writer.writerow(columns)
+            _update_export_progress(request_id, rows_processed, temp_path)
+
+            while True:
+                if _is_export_cancel_requested(request_id):
+                    raise ReportExportCancelled("Download cancelled by user.")
+
+                rows = cursor.fetchmany(EXPORT_FETCH_BATCH_SIZE)
+                if not rows:
+                    break
+
+                writer.writerows(rows)
+                out_file.flush()
+                rows_processed += len(rows)
+                _update_export_progress(request_id, rows_processed, temp_path)
+
+        _update_export_progress(request_id, rows_processed, temp_path)
+
+        if _is_export_cancel_requested(request_id):
+            raise ReportExportCancelled("Download cancelled by user.")
+
+        execution_time = time.time() - start_time
+        report_doc.db_set("last_download_duration", round(execution_time, 2), update_modified=False)
+
+        stored_filename, file_url, download_url = _store_export_file(temp_path, request_id)
+        temp_path = None
+
+        _set_export_state(request_id, {
+            **(_get_export_state(request_id) or {}),
+            "status": "success",
+            "message": "Download ready",
+            "file_url": file_url,
+            "download_url": download_url,
+            "filename": stored_filename,
+            "error": None,
+        })
+
+        _log_report_download(
+            report_docname=report_docname,
+            user=user,
+            start_date=start_date,
+            end_date=end_date,
+            manual_sol_id=manual_sol_id,
+            status="Success",
+            log_message="\n".join(getattr(frappe.local, "report_log_buffer", []))
+        )
+
+    except ReportExportCancelled as e:
+        _set_export_state(request_id, {
+            **(_get_export_state(request_id) or {}),
+            "status": "cancelled",
+            "message": "Download cancelled",
+            "error": str(e),
+        })
+
+    except Exception as e:
+        frappe.log_error(
+            message=frappe.get_traceback(),
+            title=f"Async Export Traceback ({report_docname})"
+        )
+        _set_export_state(request_id, {
+            **(_get_export_state(request_id) or {}),
+            "status": "failed",
+            "message": "Download failed",
+            "error": str(e),
+        })
+
+        try:
+            _log_report_download(
+                report_docname=report_docname,
+                user=user,
+                start_date=start_date,
+                end_date=end_date,
+                manual_sol_id=manual_sol_id,
+                status="Failed",
+                error_message=str(e),
+                log_message="\n".join(getattr(frappe.local, "report_log_buffer", []))
+            )
+        except Exception:
+            pass
+
+        frappe.log_error(
+            message=f"Error in async report export: {str(e)}\n\n{frappe.get_traceback()}",
+            title="Async Report Export Error"
+        )
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+
+def _log_report_download(
+    report_docname,
+    user,
+    start_date,
+    end_date,
+    manual_sol_id,
+    status,
+    error_message=None,
+    log_message=None,
+    log_id=None,
+    queue_position=None,
+    rows_fetched=None,
+    file_size_mb=None,
+):
+    """Create or update a Report Log row and return log id."""
     try:
         employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
-        log = frappe.get_doc({
-            "doctype": "Report Log",
-            "report_name": report_docname,
-            "employee": employee,
-            "start_date": start_date,
-            "end_date": end_date,
-            "selected_sol_ids": json.dumps(manual_sol_id) if manual_sol_id else None,
-            "date_time": frappe.utils.now_datetime(),
-            "status": status,
-            "error_message": error_message,
-            "log_message": log_message
-        })
-        log.insert(ignore_permissions=True)
+
+        if log_id and frappe.db.exists("Report Log", log_id):
+            log = frappe.get_doc("Report Log", log_id)
+            log.status = status
+            log.error_message = error_message
+            log.log_message = log_message
+            if rows_fetched is not None:
+                log.rows_fetched = rows_fetched
+            if file_size_mb is not None:
+                log.file_size_mb = file_size_mb
+            if queue_position is not None:
+                log.queue_position = queue_position
+            if status in {"Success", "Failed", "Cancelled"}:
+                log.queue_position = 0
+            log.save(ignore_permissions=True)
+        else:
+            log = frappe.get_doc({
+                "doctype": "Report Log",
+                "report_name": report_docname,
+                "employee": employee,
+                "start_date": start_date,
+                "end_date": end_date,
+                "selected_sol_ids": json.dumps(manual_sol_id) if manual_sol_id else None,
+                "date_time": frappe.utils.now_datetime(),
+                "status": status,
+                "queue_position": queue_position,
+                "rows_fetched": rows_fetched,
+                "file_size_mb": file_size_mb,
+                "error_message": error_message,
+                "log_message": log_message
+            })
+            log.insert(ignore_permissions=True)
+        _refresh_report_log_queue_positions()
         frappe.db.commit()
+        return log.name
     except Exception as log_err:
         frappe.log_error(message=f"Failed to create Report Log: {str(log_err)}", title="Report Log Error")
+        return log_id
+
+
+def _get_pending_report_count():
+    return frappe.db.count("Report Log", {"status": ["in", ["Queued", "Running"]]})
+
+
+def _refresh_report_log_queue_positions():
+    pending_logs = frappe.get_all(
+        "Report Log",
+        filters={"status": ["in", ["Queued", "Running"]]},
+        fields=["name"],
+        order_by="date_time asc, name asc"
+    )
+    for idx, row in enumerate(pending_logs, start=1):
+        frappe.db.set_value("Report Log", row.name, "queue_position", idx, update_modified=False)
+
+
+def _count_csv_data_rows(file_path):
+    """Count data rows (excluding header) for generated CSV file."""
+    count = 0
+    opener = gzip.open if file_path.lower().endswith(".gz") else open
+    with opener(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            count += chunk.count(b"\n")
+    return max(count - 1, 0)
+
+
+def _normalize_file_type(file_type):
+    ft = (file_type or "csv").strip().lower()
+    if ft in {"csv.gz", "csv_gz", "gz"}:
+        return "csv.gz"
+    return "csv"
+
+
+# ============================================================================
+# PRIVATE HELPER METHODS - ASYNC EXPORT STATE
+# ============================================================================
+
+
+def _export_cache_key(request_id):
+    return f"{EXPORT_CACHE_PREFIX}:{request_id}"
+
+
+def _set_export_state(request_id, data):
+    cache = frappe.cache()
+    key = _export_cache_key(request_id)
+    payload = dict(data or {})
+    payload["updated_at"] = time.time()
+    try:
+        cache.set_value(key, payload, expires_in_sec=EXPORT_CACHE_TTL_SECONDS)
+    except TypeError:
+        cache.set_value(key, payload)
+
+
+def _get_export_state(request_id):
+    return frappe.cache().get_value(_export_cache_key(request_id))
+
+
+def _ensure_export_access(state):
+    user = frappe.session.user
+    user_roles = set(frappe.get_roles())
+    admin_roles = {"System Manager", "Finacle Report Admin", "Administrator"}
+
+    if state.get("user") != user and not user_roles.intersection(admin_roles):
+        frappe.throw(_("You are not authorized to access this export status."))
+
+
+def _is_export_cancel_requested(request_id):
+    state = _get_export_state(request_id) or {}
+    return bool(state.get("cancel_requested"))
+
+
+def _update_export_progress(request_id, rows_processed, temp_path):
+    state = _get_export_state(request_id) or {}
+    bytes_written = os.path.getsize(temp_path) if os.path.exists(temp_path) else 0
+    if state.get("cancel_requested"):
+        state.update({
+            "status": "cancel_requested",
+            "message": "Cancellation requested",
+            "rows_processed": rows_processed,
+            "bytes_written": bytes_written,
+        })
+        _set_export_state(request_id, state)
+        return
+
+    state.update({
+        "status": "running",
+        "message": f"Generating file... rows={rows_processed:,}, size={bytes_written:,} bytes",
+        "rows_processed": rows_processed,
+        "bytes_written": bytes_written,
+    })
+    _set_export_state(request_id, state)
+
+
+def _parse_manual_sol_id(sol_id):
+    manual_sol_id = None
+    if not sol_id:
+        return manual_sol_id
+
+    if isinstance(sol_id, str):
+        try:
+            manual_sol_id = json.loads(sol_id)
+        except Exception:
+            manual_sol_id = [s.strip() for s in sol_id.split(",") if s.strip()]
+    elif isinstance(sol_id, list):
+        manual_sol_id = sol_id
+
+    if isinstance(manual_sol_id, list):
+        cleaned_ids = []
+        for s in manual_sol_id:
+            if isinstance(s, str):
+                s = s.strip('[]"\' ')
+                if s:
+                    cleaned_ids.append(s)
+        manual_sol_id = cleaned_ids
+
+    return manual_sol_id
+
+
+def _store_export_file(temp_path, request_id):
+    original_filename = os.path.basename(temp_path).split("_", 1)[-1]
+    stored_filename = f"{frappe.generate_hash(length=8)}_{original_filename}"
+    file_url = f"/private/files/{stored_filename}"
+    destination_path = frappe.get_site_path("private", "files", stored_filename)
+    shutil.move(temp_path, destination_path)
+
+    download_url = f"/api/method/custom_report.api.download_report_file?request_id={quote(request_id)}"
+    return stored_filename, file_url, download_url
 
 
 # ============================================================================
