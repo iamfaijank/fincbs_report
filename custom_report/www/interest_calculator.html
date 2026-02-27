@@ -1660,34 +1660,19 @@
 
 																	<div style="margin-top: 10px; display: flex; gap: 12px; align-items: stretch;">
 
-																		<!-- Tenure Card -->
-
-																		<div style="flex: 1; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: center;">
-
-																			<div style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px;">Calculated Tenure</div>
-
-																			<div style="display: flex; align-items: baseline; gap: 6px;">
-
-																				<span style="font-size: 20px; font-weight: 800; color: var(--primary);">[[ data.monthsHeld ]]</span>
-
-																				<span style="font-size: 13px; font-weight: 700; color: #64748b;">Months</span>
-
-																			</div>
-
-																			<div v-if="data.monthsHeld >= 12" style="font-size: 11px; color: #94a3b8; font-weight: 600; margin-top: 2px;">
-
-																				(~ [[ (data.monthsHeld / 12).toFixed(1) ]] Years)
-
-																			</div>
-
-																			<div style="font-size: 9px; color: #94a3b8; margin-top: 6px; font-weight: 500; line-height: 1.2;">
-
-																				From [[ data.acct_opn_date ]]<br/>to [[ formatDate(exitDate) ]]
-
-																			</div>
-
-																		</div>
-
+																																																						<!-- Tenure Card -->
+																																																						<div style="flex: 1; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: center;">
+																																																							<div style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px;">Calculated Tenure</div>
+																																																							<div style="display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap;">
+																																																								<span style="font-size: 20px; font-weight: 800; color: var(--primary);">[[ data.calcTenureMonths ]]</span>
+																																																								<span style="font-size: 11px; font-weight: 700; color: #64748b;">Months,</span>
+																																																								<span style="font-size: 20px; font-weight: 800; color: var(--primary);">[[ data.calcTenureDays ]]</span>
+																																																								<span style="font-size: 11px; font-weight: 700; color: #64748b;">Days</span>
+																																																							</div>
+																																																							<div v-if="data.calcTenureMonths >= 12" style="font-size: 10px; color: #94a3b8; font-weight: 600; margin-top: 2px;">
+																																																								(~ [[ (data.calcTenureMonths / 12).toFixed(1) ]] Years)
+																																																							</div>
+																																																						</div>
 						
 
 																		<!-- Rules Section -->
@@ -2094,6 +2079,17 @@
 					const start = this.parseDate(this.data.acct_opn_date);
 					const isPremature = dExit < dMaturity;
 
+					// Tenure calculation for display
+					const displayStart = new Date(start.getFullYear(), start.getMonth(), 1);
+					const displayEndAdjusted = new Date(dExit);
+					displayEndAdjusted.setDate(displayEndAdjusted.getDate() - 1);
+					
+					const calcTenureMonths = (displayEndAdjusted.getFullYear() - displayStart.getFullYear()) * 12 + (displayEndAdjusted.getMonth() - displayStart.getMonth());
+					const calcTenureDays = displayEndAdjusted.getDate();
+					
+					this.data.calcTenureMonths = calcTenureMonths;
+					this.data.calcTenureDays = calcTenureDays;
+
 					// Map credits by calendar month offset
 					const creditsByMonth = {};
 					const monthsWithTransactions = new Set();
@@ -2175,19 +2171,14 @@
 
 						if (m < effectiveInterestMonths && m < tenureMonths) {
 							if (m < settMOffset) {
-								if (m > lastInstMOffset) {
-									m_int = 0;
-									m_base_int = 0;
-								} else {
-									m_int = (principalSum + compoundedInt) * (appRate / 1200.0);
-									m_base_int = (principalSum + compoundedIntBase) * (baseRate / 1200.0);
-								}
-							} else if (m === settMOffset) {
-								const days = Math.floor((dExit - lastInstDt) / (1000 * 60 * 60 * 24));
-								if (days > 0) {
-									m_int = (principalSum + compoundedInt) * (appRate / 100.0) * (days / 365.0);
-									m_base_int = (principalSum + compoundedIntBase) * (baseRate / 100.0) * (days / 365.0);
-								}
+								// Full month interest for all months prior to settlement
+								m_int = (principalSum + compoundedInt) * (appRate / 1200.0);
+								m_base_int = (principalSum + compoundedIntBase) * (baseRate / 1200.0);
+							} else {
+								// Broken period interest for the settlement month (up to exitDate - 1)
+								const days = Math.max(0, dExit.getDate() - 1);
+								m_int = (principalSum + compoundedInt) * (appRate / 100.0) * (days / 365.0);
+								m_base_int = (principalSum + compoundedIntBase) * (baseRate / 100.0) * (days / 365.0);
 							}
 							
 							totalInterest += m_int;
