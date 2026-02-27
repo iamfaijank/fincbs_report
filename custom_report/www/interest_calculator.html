@@ -2171,19 +2171,14 @@
 
 						if (m < effectiveInterestMonths && m < tenureMonths) {
 							if (m < settMOffset) {
-								if (m > lastInstMOffset) {
-									m_int = 0;
-									m_base_int = 0;
-								} else {
-									m_int = (principalSum + compoundedInt) * (appRate / 1200.0);
-									m_base_int = (principalSum + compoundedIntBase) * (baseRate / 1200.0);
-								}
-							} else if (m === settMOffset) {
-								const days = Math.floor((dExit - lastInstDt) / (1000 * 60 * 60 * 24));
-								if (days > 0) {
-									m_int = (principalSum + compoundedInt) * (appRate / 100.0) * (days / 365.0);
-									m_base_int = (principalSum + compoundedIntBase) * (baseRate / 100.0) * (days / 365.0);
-								}
+								// Full month interest for all months prior to settlement
+								m_int = (principalSum + compoundedInt) * (appRate / 1200.0);
+								m_base_int = (principalSum + compoundedIntBase) * (baseRate / 1200.0);
+							} else {
+								// Broken period interest for the settlement month (up to exitDate - 1)
+								const days = Math.max(0, dExit.getDate() - 1);
+								m_int = (principalSum + compoundedInt) * (appRate / 100.0) * (days / 365.0);
+								m_base_int = (principalSum + compoundedIntBase) * (baseRate / 100.0) * (days / 365.0);
 							}
 							
 							totalInterest += m_int;
