@@ -2115,27 +2115,15 @@
 
 					const settMOffset = (dExit.getFullYear() - start.getFullYear()) * 12 + (dExit.getMonth() - start.getMonth());
 					const lastInstMOffset = (lastInstDt.getFullYear() - start.getFullYear()) * 12 + (lastInstDt.getMonth() - start.getMonth());
-					let effectiveInterestMonths;
-					let monthsHeldTotal;
-
-					if (isPremature) {
-						// For rate calculation, find completed months (relativedelta style)
-						let mRel = (dExit.getFullYear() - start.getFullYear()) * 12 + (dExit.getMonth() - start.getMonth());
-						if (dExit.getDate() < start.getDate()) mRel--;
-						
-						// If installment exists in the last relative month, increment
-						const instExistsRel = (creditsByMonth[mRel] || 0) > 0;
-						monthsHeldTotal = instExistsRel ? mRel + 1 : mRel;
-						
-						// For ledger and loop, use calendar months to ensure settlement month appears
-						effectiveInterestMonths = settMOffset + 1;
-					} else {
-						monthsHeldTotal = (dExit.getFullYear() - start.getFullYear()) * 12 + (dExit.getMonth() - start.getMonth());
-						if (dExit.getDate() < start.getDate()) monthsHeldTotal--;
-						effectiveInterestMonths = settMOffset + 1;
-					}
 					
-					const rules = this.getApplicableRules(this.data.schm_code, monthsHeldTotal);
+					// Simple tenure logic: completed months (relativedelta style)
+					let mRel = (dExit.getFullYear() - start.getFullYear()) * 12 + (dExit.getMonth() - start.getMonth());
+					if (dExit.getDate() < start.getDate()) mRel--;
+					
+					const monthsHeldTotal = mRel;
+					const effectiveInterestMonths = settMOffset + 1;
+					
+					const rules = this.getApplicableRules(this.data.schm_code, monthsHeldTotal, isPremature);
 					const appRate = rules.appliedRate;
 					const baseRate = rules.meta.base_rate || 8;
 					
@@ -2272,31 +2260,29 @@
 					this.data.total = this.data.principal + this.data.interest - this.data.penalty - this.data.passbook_charges;
 					
 					this.data.monthsHeld = monthsHeldTotal;
-					this.data.slabStatus = monthsHeldTotal >= rules.meta.tenure_m ? { label: `Matured: ${appRate}%`, color: "#10b981" } : (appRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Prematured: ${appRate}%`, color: "#f59e0b" });
+					this.data.slabStatus = !isPremature ? { label: `Matured: ${appRate}%`, color: "#10b981" } : (appRate === 0 ? { label: "No Interest", color: "#ef4444" } : { label: `Prematured: ${appRate}%`, color: "#f59e0b" });
 				},
 
-				getApplicableRules(sc, m) {
-					const slabs = {
-						"2010": { tenure_m: 12, base_rate: 8.0, interest_slabs: [[6, 12, 4.0], [9, 12, 6.0]] }, // Note: overlapping slabs usually means highest matching applies or last matching. Backend uses first match.
-						"2011": { tenure_m: 24, base_rate: 8.0, interest_slabs: [[12, 24, 4.0], [18, 24, 6.0]] },
-						"2012": { tenure_m: 36, base_rate: 8.0, interest_slabs: [[18, 36, 4.0], [27, 36, 6.0]] },
-						"2013": { tenure_m: 48, base_rate: 8.0, interest_slabs: [[24, 48, 4.0], [36, 48, 6.0]] },
-						"2014": { tenure_m: 60, base_rate: 8.0, interest_slabs: [[30, 60, 4.0], [45, 60, 6.0]] },
-						"2015": { tenure_m: 60, base_rate: 8.0, interest_slabs: [[30, 60, 4.0], [45, 60, 6.0]] },
-						"2005": { tenure_m: 66, base_rate: 8.0, interest_slabs: [[36, 66, 6.0]] },
-						"2016": { tenure_m: 120, base_rate: 8.0, interest_slabs: [[0, 120, 8.0]] }
-					};
-					// Re-mapping to match backend precisely (using the schemeRules we updated)
+				getApplicableRules(sc, m, isPremature) {
 					const r = this.schemeRules[sc];
 					if (!r) return { meta: { tenure_m: 0, base_rate: 0, interest_slabs: [] }, appliedRate: 0 };
-					if (m >= r.tenure_m) return { meta: r, appliedRate: r.base_rate };
+					
+					// Strictly matured only if isPremature is false (settlement_date >= maturity_date)
+					if (!isPremature) return { meta: r, appliedRate: r.base_rate };
+					
 					let ar = 0.0;
 					for (const s of r.interest_slabs) {
 						if (m >= s[0] && m < s[1]) {
 							ar = s[2];
-							break; // Return the first matching slab as per backend logic
+							break; 
 						}
 					}
+					
+					// Fallback for premature RD that has completed tenure months but hasn't reached maturity date
+					if (ar === 0 && m >= r.tenure_m && r.interest_slabs.length > 0) {
+						ar = r.interest_slabs[r.interest_slabs.length - 1][2];
+					}
+
 					return { meta: r, appliedRate: ar };
 				},
 
