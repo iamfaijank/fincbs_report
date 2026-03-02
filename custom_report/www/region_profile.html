@@ -293,6 +293,81 @@
 				font-size: 13px;
 			}
 
+			/* ========== PRODUCT WISE PROGRESS BAR ========== */
+			.pw-progress-wrapper {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+
+			.pw-percent {
+				font-weight: 600;
+				min-width: 60px;
+				font-size: 13px;
+			}
+
+			.pw-progress {
+				width: 100px;
+				height: 10px;
+				background: #e5e7eb;
+				border-radius: 10px;
+				overflow: hidden;
+			}
+
+			.pw-progress-bar {
+				height: 100%;
+				border-radius: 10px;
+				width: 0;
+				animation: pw-load-progress 1s ease-out forwards;
+				position: relative;
+				overflow: hidden;
+			}
+
+			.pw-progress-bar::after {
+				content: "";
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				background: repeating-linear-gradient(
+					45deg,
+					transparent,
+					transparent 10px,
+					rgba(255, 255, 255, 0.2) 10px,
+					rgba(255, 255, 255, 0.2) 20px
+				);
+				animation: pw-loading-stripes 1s linear infinite;
+				border-radius: 10px;
+			}
+
+			@keyframes pw-load-progress {
+				to {
+					width: var(--pw-target-width, 0%);
+				}
+			}
+
+			@keyframes pw-loading-stripes {
+				from {
+					background-position: 0 0;
+				}
+				to {
+					background-position: 40px 0;
+				}
+			}
+
+			.pw-green {
+				background: linear-gradient(90deg, #10b981, #14b8a6);
+			}
+
+			.pw-orange {
+				background: linear-gradient(90deg, #f59e0b, #f97316);
+			}
+
+			.pw-red {
+				background: linear-gradient(90deg, #ef4444, #dc2626);
+			}
+
 			/* ========== RESPONSIVE ========== */
 			@media (max-width: 992px) {
 				.top-nav-bar {
@@ -391,13 +466,29 @@
 						<thead>
 							<tr>
 								<th class="product-col">Product Name</th>
+								<th style="width:180px;">%</th>
 								<th class="amount-col">Product Achievement</th>
 							</tr>
 						</thead>
 						<tbody>
 							{% for item in products %}
+							{% set percent = ((item.ach / total_ach) * 100) | round(2) if total_ach > 0 else 0 %}
 							<tr>
 								<td>{{ item.product }}</td>
+								<td>
+									<div class="pw-progress-wrapper">
+										<span class="pw-percent">{{ percent }}%</span>
+										<div class="pw-progress">
+											<div class="pw-progress-bar
+												{% if percent >= 75 %}pw-green
+												{% elif percent >= 40 %}pw-orange
+												{% else %}pw-red
+												{% endif %}"
+												style="--pw-target-width: {{ percent }}%;">
+											</div>
+										</div>
+									</div>
+								</td>
 								<td class="amount-col" data-raw="{{ item.ach }}">
 									{{ "{:,.2f}".format(item.ach) }}
 								</td>
@@ -407,6 +498,7 @@
 						<tfoot>
 							<tr>
 								<td>TOTAL</td>
+								<td></td>
 								<td class="amount-col total-amount" data-raw="{{ total_ach }}">
 									{{ "{:,.2f}".format(total_ach) }}
 								</td>
