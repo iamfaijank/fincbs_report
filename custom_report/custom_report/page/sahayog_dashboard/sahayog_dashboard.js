@@ -40,6 +40,7 @@ class DrishtiDashboard {
 		};
 		this.categoryCounts = {};
 		this.zoneCounts = {};
+		this.productData = [];
 
 		this.init();
 	}
@@ -163,6 +164,7 @@ class DrishtiDashboard {
 
 		// Direct mapping
 		this.zoneData = data.zone_wise;
+		this.productData = data.product_wise || [];
 		this.categoryData = data.category_wise;
 		this.branchData = data.branch_wise;
 
@@ -656,6 +658,12 @@ class DrishtiDashboard {
                     <button class="tab-btn" data-tab="category">
                         Category Wise
                     </button>
+                    <button class="tab-btn" data-tab="product">
+                        Product Wise
+                    </button>	
+                    <button class="tab-btn" data-tab="agent">
+                        Agent Wise
+                    </button>									
                     <button class="tab-btn" data-tab="branch">
                         Branch Wise
                     </button>
@@ -1079,6 +1087,8 @@ class DrishtiDashboard {
 				htmlContent = this.renderZoneTable(reaggregatedZoneData);
 			} else if (this.state.activeTab === "category") {
 				htmlContent = this.renderCategoryTable(reaggregatedCategoryData);
+			} else if (this.state.activeTab === "product") {
+				htmlContent = this.renderProductTable(this.productData);
 			} else if (this.state.activeTab === "branch") {
 				htmlContent = this.buildBranchTable(filteredBranches, this.months);
 			}
@@ -1090,6 +1100,9 @@ class DrishtiDashboard {
 			if (this.state.activeTab === "zone") {
 				this.attachZoneExpandHandlers();
 				this.attachZoneDrilldownHandlers();
+			} else if (this.state.activeTab === "product") {
+				this.attachProductExpandHandlers();
+				this.attachProductDrilldownHandlers();
 			} else if (this.state.activeTab === "category") {
 				this.attachMovementPopupHandlers();
 				this.attachCategoryExpandHandlers();
@@ -1376,6 +1389,83 @@ class DrishtiDashboard {
 				self.render();
 			});
 	}
+
+	// ========================================================================
+	// PRODUCT WISE VIEW - Zone/Region Summary
+	// ========================================================================
+
+	renderProductTable(productData) {
+		let html = `
+            <table class="table table-bordered product-wise-table">
+                <thead>
+                    <tr>
+                        <th>Sr</th>
+                        <th>Zone/Region</th>
+                        <th>Product Group/Product</th>
+                        <th>Ach</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+		let sr = 1;
+		productData.forEach(item => {
+			if (item.is_group) {
+				const isExpanded = this.state.expandedZones[item.name] || false;
+				html += `
+                    <tr class="product-total-row" data-zone="${item.name}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">
+                        <td>${sr++}</td>
+                        <td>
+                            <span class="product-toggle">${isExpanded ? "▼" : "▶"}</span>
+                            ${item.name}
+                        </td>
+                        <td>${item.count}</td>
+                        <td>${this.formatNumber(item.amount)}</td>
+                    </tr>
+                `;
+			} else {
+				const isExpanded = this.state.expandedZones[item.parent] || false;
+				html += `
+                    <tr class="product-detail-row" data-zone="${item.parent}" data-region="${item.name}" style="display: ${isExpanded ? "table-row" : "none"}; cursor: pointer;">
+                        <td></td>
+                        <td style="padding-left: 30px; color: #097c80; font-weight: 500;">${item.name}</td>
+                        <td>${item.count}</td>
+                        <td>${this.formatNumber(item.amount)}</td>
+                    </tr>
+                `;
+			}
+		});
+
+		html += `</tbody></table>`;
+		return html;
+	}
+
+	attachProductExpandHandlers() {
+		const self = this;
+		
+		// Handle Zone Expand/Collapse
+		this.page.main.find(".product-total-row").off("click").on("click", function () {
+			const zoneName = $(this).data("zone");
+			self.state.expandedZones[zoneName] = !self.state.expandedZones[zoneName];
+			self.render();
+		});
+
+		// Handle Region Row Click -> Redirect to Region Profile Page
+		this.page.main.find(".product-detail-row").off("click").on("click", function (e) {
+			const zone = $(this).data("zone");
+			const region = $(this).data("region");
+			
+			if (zone && region) {
+				// Navigate to the new Region Profile web page
+				window.location.href = `/region_profile?zone=${encodeURIComponent(zone)}&region=${encodeURIComponent(region)}`;
+			}
+		});
+	}
+
+	attachProductDrilldownHandlers() {
+		// No drilldown required for this view as per the new requirements.
+	}
+
 
 	// ========================================================================
 

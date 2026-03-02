@@ -396,6 +396,7 @@ def get_sahayog_dashboard(
         all_branch_data.extend(month_data)
     
     zone_wise = build_zone_wise(all_branch_data, targets_map, target_type)
+    product_wise = build_product_wise(all_branch_data, targets_map, target_type)
     category_wise = build_category_wise(all_branch_data, targets_map, months, target_type)
     branch_wise = build_branch_wise(all_branch_data, targets_map, months, target_type)
     
@@ -406,6 +407,7 @@ def get_sahayog_dashboard(
         "selected_date": str(selected_date) if selected_date else None,
         "months": [{"key": m[0], "display": f"{m[0]}-{str(m[2])[-2:]}", "date": m[3]} for m in months],
         "zone_wise": zone_wise,
+        "product_wise": product_wise,
         "category_wise": category_wise,
         "branch_wise": branch_wise,
         "permissions": perms
@@ -516,6 +518,56 @@ def build_zone_wise(branch_data, targets_map, target_type):
             zone_wise.append(zone_hierarchy[zone][region])
     
     return zone_wise
+
+
+def build_product_wise(branch_data, targets_map, target_type):
+    # This function now provides Zone/Region counts and summed amounts from the Product Wise Report doctype.
+    # The function arguments are kept for structural consistency but are not used.
+    
+    # 1. Server-side query with GROUP BY for performance
+    data = frappe.db.sql("""
+        SELECT
+            zone,
+            region,
+            COUNT(*) as record_count,
+            SUM(amount) as total_amount
+        FROM `tabProduct Wise Report`
+        WHERE zone IS NOT NULL AND region IS NOT NULL AND zone != '' AND region != ''
+        GROUP BY zone, region
+        ORDER BY zone, region
+    """, as_dict=True)
+
+    if not data:
+        return []
+
+    # 2. Process into a hierarchical structure for the frontend
+    zone_summary = defaultdict(lambda: {'count': 0, 'amount': 0.0})
+    for row in data:
+        zone_summary[row.zone]['count'] += row.record_count
+        zone_summary[row.zone]['amount'] += (row.total_amount or 0)
+
+    # 3. Build the final flat list with parent (Zone) and child (Region) rows
+    result = []
+    for zone, summary in sorted(zone_summary.items()):
+        # Add Zone Group Row
+        result.append({
+            "name": zone,
+            "parent": None,
+            "count": summary['count'],
+            "amount": summary['amount'],
+            "is_group": True
+        })
+        # Add corresponding Region Rows
+        for row in data:
+            if row.zone == zone:
+                result.append({
+                    "name": row.region,
+                    "parent": zone,
+                    "count": row.record_count,
+                    "amount": row.total_amount or 0,
+                    "is_group": False
+                })
+    return result
 
 
 # 🚀 NEW FUNCTION: Zone breakdown for each category
