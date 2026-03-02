@@ -82,63 +82,43 @@
 			.nav-search-container {
 				display: flex;
 				align-items: center;
-				gap: 10px;
-				flex: 1;
-				max-width: 500px;
-				justify-content: center;
+				gap: 0;
 			}
-			.nav-search-label {
-				font-weight: 500;
-				color: var(--linkedin-text-secondary);
-				font-size: 14px;
-				white-space: nowrap;
-			}
+
 			.nav-search-wrapper {
-				position: relative;
-				flex: 1;
-				max-width: 350px;
+				display: flex;
+				align-items: center;
+				background: #f1f5f9;
+				border: 1px solid #d1d5db;
+				border-right: none;
+				border-radius: 6px 0 0 6px;
+				padding: 0 12px;
+				height: 40px;
+				min-width: 420px;
 			}
-			.nav-search-input {
-				width: 100%;
-				padding: 8px 12px 8px 36px;
-				border: 1px solid var(--linkedin-border);
-				border-radius: var(--radius-sm);
-				font-size: 14px;
-				color: var(--linkedin-text);
-				background: var(--linkedin-white);
-				transition: var(--transition-base);
-			}
-			.nav-search-input:focus {
-				outline: none;
-				border-color: var(--linkedin-blue);
-				box-shadow: 0 0 0 2px rgba(10, 102, 194, 0.1);
-			}
-			.nav-search-input::placeholder {
-				color: var(--linkedin-text-muted);
-			}
+
 			.nav-search-icon {
-				position: absolute;
-				left: 10px;
-				top: 50%;
-				transform: translateY(-50%);
-				color: var(--linkedin-text-muted);
 				font-size: 14px;
-				pointer-events: none;
+				color: #64748b;
+				margin-right: 8px;
 			}
+
+			.nav-search-input {
+				border: none;
+				outline: none;
+				background: transparent;
+				font-size: 14px;
+				width: 100%;
+			}
+
 			.nav-search-btn {
-				padding: 8px 16px;
-				background: #ffc107;
-				border: 1px solid #e0a800;
-				border-radius: var(--radius-sm);
-				color: #000;
+				height: 40px;
+				padding: 0 18px;
+				background: #facc15;
+				border: 1px solid #facc15;
+				border-radius: 0 6px 6px 0;
 				font-weight: 600;
-				font-size: 14px;
 				cursor: pointer;
-				transition: var(--transition-fast);
-			}
-			.nav-search-btn:hover {
-				background: #ffca2c;
-				border-color: #ffc107;
 			}
 
 			/* Right: Toggle + Back Button */
@@ -346,18 +326,17 @@
 
 			<!-- Center: Search Bar -->
 			<div class="nav-search-container">
-				<label class="nav-search-label">Search:</label>
 				<div class="nav-search-wrapper">
 					<span class="nav-search-icon">🔍</span>
-					<input
+					<input 
 						type="text"
 						id="branch-search"
 						class="nav-search-input"
 						placeholder="Search by SOL ID or Branch Name..."
 					/>
-					<div id="search-suggestions"></div>
 				</div>
 				<button class="nav-search-btn" onclick="handleSearch()">Search</button>
+				<div id="search-suggestions" style="position: absolute; top: 100%; left: 0; right: 120px; background: #fff; border: 1px solid #d1d5db; border-radius: 0 0 6px 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.12); z-index: 1000; max-height: 300px; overflow-y: auto; display: none;"></div>
 			</div>
 
 			<!-- Right: Format Toggle + Back Button -->
