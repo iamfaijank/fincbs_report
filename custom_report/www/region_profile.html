@@ -245,7 +245,7 @@
 			}
 			.amount-col {
 				text-align: right;
-				font-family: 'Consolas', 'Monaco', monospace;
+				font-family: "Consolas", "Monaco", monospace;
 				font-size: 14px;
 				font-weight: 600;
 				color: var(--linkedin-text);
@@ -328,7 +328,7 @@
 			<div class="nav-search-container">
 				<div class="nav-search-wrapper">
 					<span class="nav-search-icon">🔍</span>
-					<input 
+					<input
 						type="text"
 						id="branch-search"
 						class="nav-search-input"
@@ -336,14 +336,42 @@
 					/>
 				</div>
 				<button class="nav-search-btn" onclick="handleSearch()">Search</button>
-				<div id="search-suggestions" style="position: absolute; top: 100%; left: 0; right: 120px; background: #fff; border: 1px solid #d1d5db; border-radius: 0 0 6px 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.12); z-index: 1000; max-height: 300px; overflow-y: auto; display: none;"></div>
+				<div
+					id="search-suggestions"
+					style="
+						position: absolute;
+						top: 100%;
+						left: 0;
+						right: 120px;
+						background: #fff;
+						border: 1px solid #d1d5db;
+						border-radius: 0 0 6px 6px;
+						box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+						z-index: 1000;
+						max-height: 300px;
+						overflow-y: auto;
+						display: none;
+					"
+				></div>
 			</div>
 
 			<!-- Right: Format Toggle + Back Button -->
 			<div class="nav-right-section">
 				<div class="format-toggle-group">
-					<button class="format-toggle-btn active" data-format="words" onclick="setFormat('words')">WORDS</button>
-					<button class="format-toggle-btn" data-format="numbers" onclick="setFormat('numbers')">NUMBERS</button>
+					<button
+						class="format-toggle-btn active"
+						data-format="words"
+						onclick="setFormat('words')"
+					>
+						WORDS
+					</button>
+					<button
+						class="format-toggle-btn"
+						data-format="numbers"
+						onclick="setFormat('numbers')"
+					>
+						NUMBERS
+					</button>
 				</div>
 				<button class="back-btn" onclick="window.history.back()">
 					<span class="back-btn-icon">←</span>
@@ -364,22 +392,26 @@
 					<table id="product-performance-table">
 						<thead>
 							<tr>
-								<th class="product-col">Product</th>
-								<th class="amount-col">Ach</th>
+								<th class="product-col">Product Name</th>
+								<th class="amount-col">Product Achievement</th>
 							</tr>
 						</thead>
 						<tbody>
 							{% for item in products %}
 							<tr>
 								<td>{{ item.product }}</td>
-								<td class="amount-col" data-raw="{{ item.ach }}">{{ "{:,.2f}".format(item.ach) }}</td>
+								<td class="amount-col" data-raw="{{ item.ach }}">
+									{{ "{:,.2f}".format(item.ach) }}
+								</td>
 							</tr>
 							{% endfor %}
 						</tbody>
 						<tfoot>
 							<tr>
 								<td>TOTAL</td>
-								<td class="amount-col total-amount" data-raw="{{ total_ach }}">{{ "{:,.2f}".format(total_ach) }}</td>
+								<td class="amount-col total-amount" data-raw="{{ total_ach }}">
+									{{ "{:,.2f}".format(total_ach) }}
+								</td>
 							</tr>
 						</tfoot>
 					</table>
@@ -389,28 +421,28 @@
 
 		<script>
 			// Format state
-			let currentFormat = 'words';
+			let currentFormat = "words";
 
 			// Format toggle function
 			function setFormat(format) {
 				currentFormat = format;
-				
+
 				// Update button states
-				document.querySelectorAll('.format-toggle-btn').forEach(btn => {
-					btn.classList.toggle('active', btn.dataset.format === format);
+				document.querySelectorAll(".format-toggle-btn").forEach((btn) => {
+					btn.classList.toggle("active", btn.dataset.format === format);
 				});
 
 				// Update all amount cells
-				document.querySelectorAll('.amount-col').forEach(cell => {
+				document.querySelectorAll(".amount-col").forEach((cell) => {
 					const rawValue = parseFloat(cell.dataset.raw);
 					if (isNaN(rawValue)) return;
 
-					if (format === 'words') {
+					if (format === "words") {
 						cell.textContent = formatToWords(rawValue);
 					} else {
-						cell.textContent = rawValue.toLocaleString('en-IN', {
+						cell.textContent = rawValue.toLocaleString("en-IN", {
 							minimumFractionDigits: 2,
-							maximumFractionDigits: 2
+							maximumFractionDigits: 2,
 						});
 					}
 				});
@@ -419,61 +451,61 @@
 			// Format number to words (Cr/L/K)
 			function formatToWords(num) {
 				if (num >= 10000000) {
-					return (num / 10000000).toFixed(2) + ' Cr';
+					return (num / 10000000).toFixed(2) + " Cr";
 				} else if (num >= 100000) {
-					return (num / 100000).toFixed(2) + ' L';
+					return (num / 100000).toFixed(2) + " L";
 				} else if (num >= 1000) {
-					return (num / 1000).toFixed(2) + ' K';
+					return (num / 1000).toFixed(2) + " K";
 				}
 				return num.toFixed(2);
 			}
 
 			// Search functionality
 			let searchTimeout;
-			const searchInput = document.getElementById('branch-search');
-			const suggestionsBox = document.getElementById('search-suggestions');
+			const searchInput = document.getElementById("branch-search");
+			const suggestionsBox = document.getElementById("search-suggestions");
 
-			searchInput.addEventListener('input', function() {
+			searchInput.addEventListener("input", function () {
 				const txt = this.value.trim();
 				clearTimeout(searchTimeout);
 
 				if (!txt) {
-					suggestionsBox.classList.remove('show');
-					suggestionsBox.innerHTML = '';
+					suggestionsBox.classList.remove("show");
+					suggestionsBox.innerHTML = "";
 					return;
 				}
 
 				searchTimeout = setTimeout(() => {
 					frappe.call({
-						method: 'custom_report.custom_report.page.branch_profile.branch_profile.search_branches',
+						method: "custom_report.custom_report.page.branch_profile.branch_profile.search_branches",
 						args: { txt },
-						callback: (r) => showSuggestions(r.message || [])
+						callback: (r) => showSuggestions(r.message || []),
 					});
 				}, 300);
 			});
 
 			function showSuggestions(list) {
-				suggestionsBox.innerHTML = '';
-				
+				suggestionsBox.innerHTML = "";
+
 				if (!list.length) {
-					suggestionsBox.classList.remove('show');
+					suggestionsBox.classList.remove("show");
 					return;
 				}
 
-				list.forEach(branch => {
-					const item = document.createElement('div');
-					item.className = 'suggestion-item';
+				list.forEach((branch) => {
+					const item = document.createElement("div");
+					item.className = "suggestion-item";
 					item.innerHTML = `
 						<div class="suggestion-sol">${branch.sol_id}</div>
 						<div class="suggestion-branch">${branch.branch}</div>
 					`;
-					item.addEventListener('click', () => {
+					item.addEventListener("click", () => {
 						window.location.href = `/branch_profile?sol_id=${encodeURIComponent(branch.sol_id)}`;
 					});
 					suggestionsBox.appendChild(item);
 				});
 
-				suggestionsBox.classList.add('show');
+				suggestionsBox.classList.add("show");
 			}
 
 			// Handle search button click
@@ -481,7 +513,7 @@
 				const txt = searchInput.value.trim();
 				if (txt) {
 					frappe.call({
-						method: 'custom_report.custom_report.page.branch_profile.branch_profile.search_branches',
+						method: "custom_report.custom_report.page.branch_profile.branch_profile.search_branches",
 						args: { txt },
 						callback: (r) => {
 							if (r.message && r.message.length > 0) {
@@ -489,47 +521,47 @@
 							} else {
 								frappe.msgprint('No branch found matching "' + txt + '"');
 							}
-						}
+						},
 					});
 				}
 			}
 
 			// Close suggestions when clicking outside
-			document.addEventListener('click', function(e) {
-				if (!e.target.closest('.nav-search-wrapper')) {
-					suggestionsBox.classList.remove('show');
+			document.addEventListener("click", function (e) {
+				if (!e.target.closest(".nav-search-wrapper")) {
+					suggestionsBox.classList.remove("show");
 				}
 			});
 
 			// Initialize with words format
-			setFormat('words');
+			setFormat("words");
 
 			// Product table filtering
-			const productSearchInput = document.getElementById('branch-search');
-			const productTable = document.getElementById('product-performance-table');
+			const productSearchInput = document.getElementById("branch-search");
+			const productTable = document.getElementById("product-performance-table");
 
 			if (productSearchInput && productTable) {
-				const productRows = productTable.querySelectorAll('tbody tr');
+				const productRows = productTable.querySelectorAll("tbody tr");
 
-				productSearchInput.addEventListener('input', function() {
+				productSearchInput.addEventListener("input", function () {
 					const query = this.value.toLowerCase().trim();
 
-					productRows.forEach(row => {
-						const firstCell = row.querySelector('td');
+					productRows.forEach((row) => {
+						const firstCell = row.querySelector("td");
 						if (!firstCell) return;
 
 						const productName = firstCell.textContent.toLowerCase();
 
 						// Always keep TOTAL row visible
-						if (productName === 'total') {
-							row.style.display = '';
+						if (productName === "total") {
+							row.style.display = "";
 							return;
 						}
 
 						if (productName.includes(query)) {
-							row.style.display = '';
+							row.style.display = "";
 						} else {
-							row.style.display = 'none';
+							row.style.display = "none";
 						}
 					});
 				});
