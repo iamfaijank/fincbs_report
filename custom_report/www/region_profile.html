@@ -90,8 +90,7 @@
 				align-items: center;
 				background: #f1f5f9;
 				border: 1px solid #d1d5db;
-				border-right: none;
-				border-radius: 6px 0 0 6px;
+				border-radius: 6px;
 				padding: 0 12px;
 				height: 40px;
 				min-width: 420px;
@@ -332,17 +331,16 @@
 						type="text"
 						id="branch-search"
 						class="nav-search-input"
-						placeholder="Search by SOL ID or Branch Name..."
+						placeholder="Search by Product Name..."
 					/>
 				</div>
-				<button class="nav-search-btn" onclick="handleSearch()">Search</button>
 				<div
 					id="search-suggestions"
 					style="
 						position: absolute;
 						top: 100%;
 						left: 0;
-						right: 120px;
+						right: 0;
 						background: #fff;
 						border: 1px solid #d1d5db;
 						border-radius: 0 0 6px 6px;
