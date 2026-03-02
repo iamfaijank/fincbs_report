@@ -1,0 +1,76 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-03-02 16:45:47.182922",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "zone",
+  "region",
+  "target",
+  "achievement",
+  "ss_target",
+  "ss_achievement"
+ ],
+ "fields": [
+  {
+   "fieldname": "target",
+   "fieldtype": "Data",
+   "label": "Target"
+  },
+  {
+   "fieldname": "achievement",
+   "fieldtype": "Data",
+   "label": "Achievement"
+  },
+  {
+   "fieldname": "zone",
+   "fieldtype": "Link",
+   "label": "Zone",
+   "options": "Zone"
+  },
+  {
+   "fieldname": "region",
+   "fieldtype": "Link",
+   "label": "Region",
+   "options": "Region"
+  },
+  {
+   "fieldname": "ss_target",
+   "fieldtype": "Data",
+   "label": "SS Target "
+  },
+  {
+   "fieldname": "ss_achievement",
+   "fieldtype": "Data",
+   "label": "SS Achievement"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-02 17:28:45.148854",
+ "modified_by": "Administrator",
+ "module": "custom_report",
+ "name": "Agent  Wise Report",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

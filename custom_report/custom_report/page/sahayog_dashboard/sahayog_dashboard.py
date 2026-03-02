@@ -399,7 +399,8 @@ def get_sahayog_dashboard(
     product_wise = build_product_wise(all_branch_data, targets_map, target_type)
     category_wise = build_category_wise(all_branch_data, targets_map, months, target_type)
     branch_wise = build_branch_wise(all_branch_data, targets_map, months, target_type)
-    
+    agent_wise = build_agent_wise(None, None, None)  # Agent Wise uses separate doctype
+
     return {
         "financial_year": financial_year,
         "view": view,
@@ -410,6 +411,7 @@ def get_sahayog_dashboard(
         "product_wise": product_wise,
         "category_wise": category_wise,
         "branch_wise": branch_wise,
+        "agent_wise": agent_wise,
         "permissions": perms
     }
 
@@ -700,5 +702,66 @@ def build_branch_wise(branch_data, targets_map, months, target_type):
             "region": data["region"],
             "months": data["months"]
         })
-    
+
     return out
+
+
+def build_agent_wise(branch_data, targets_map, target_type):
+    """
+    Build Agent Wise report from 'Agent  Wise Report' doctype.
+    Groups by Zone and Region, aggregates target and achievement.
+    """
+    # Fetch data from Agent  Wise Report doctype
+    agent_data = frappe.get_all(
+        "Agent  Wise Report",
+        fields=["zone", "region", "target", "achievement", "ss_target", "ss_achievement"],
+        filters={"zone": ["!=", ""], "region": ["!=", ""]},
+        limit_page_length=1000
+    )
+    
+    # Group by zone and region
+    agent_map = defaultdict(lambda: {"zone": "", "region": "", "target": 0.0, "achievement": 0.0, "ss_target": 0.0, "ss_achievement": 0.0})
+    
+    for row in agent_data:
+        zone = row.get("zone") or "Unknown"
+        region = row.get("region") or "Unknown"
+        
+        # Convert to float (handle string values)
+        try:
+            tgt = float(row.get("target") or 0)
+            ach = float(row.get("achievement") or 0)
+            ss_tgt = float(row.get("ss_target") or 0)
+            ss_ach = float(row.get("ss_achievement") or 0)
+        except (ValueError, TypeError):
+            tgt = 0
+            ach = 0
+            ss_tgt = 0
+            ss_ach = 0
+        
+        key = f"{zone}||{region}"
+        agent_map[key]["zone"] = zone
+        agent_map[key]["region"] = region
+        agent_map[key]["target"] += tgt
+        agent_map[key]["achievement"] += ach
+        agent_map[key]["ss_target"] += ss_tgt
+        agent_map[key]["ss_achievement"] += ss_ach
+    
+    # Convert to list format
+    result = []
+    for key, data in agent_map.items():
+        # Calculate shortfalls (target - achievement)
+        ss_shortfall = data["ss_target"] - data["ss_achievement"]
+        agent_shortfall = data["target"] - data["achievement"]
+        
+        result.append({
+            "zone": data["zone"],
+            "region": data["region"],
+            "ss_target": round(data["ss_target"], 2),
+            "ss_achievement": round(data["ss_achievement"], 2),
+            "ss_shortfall": round(ss_shortfall, 2),
+            "target": round(data["target"], 2),
+            "achievement": round(data["achievement"], 2),
+            "agent_shortfall": round(agent_shortfall, 2)
+        })
+    
+    return result

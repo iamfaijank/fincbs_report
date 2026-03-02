@@ -167,6 +167,7 @@ class DrishtiDashboard {
 		this.productData = data.product_wise || [];
 		this.categoryData = data.category_wise;
 		this.branchData = data.branch_wise;
+		this.agentData = data.agent_wise || [];
 
 		// Extract zones from zone_wise data
 		const zonesSet = new Set();
@@ -1089,6 +1090,8 @@ class DrishtiDashboard {
 				htmlContent = this.renderCategoryTable(reaggregatedCategoryData);
 			} else if (this.state.activeTab === "product") {
 				htmlContent = this.renderProductTable(this.productData);
+			} else if (this.state.activeTab === "agent") {
+				htmlContent = this.renderAgentWiseTable(this.agentData);
 			} else if (this.state.activeTab === "branch") {
 				htmlContent = this.buildBranchTable(filteredBranches, this.months);
 			}
@@ -1109,6 +1112,8 @@ class DrishtiDashboard {
 				this.attachDrillHandlers();
 				this.attachZoneDrillHandlers();
 				this.attachTotalMovementPopupHandler();
+			} else if (this.state.activeTab === "agent") {
+				this.attachAgentExpandHandlers();
 			}
 
 			dataContainer.css("opacity", 1);
@@ -1464,6 +1469,167 @@ class DrishtiDashboard {
 
 	attachProductDrilldownHandlers() {
 		// No drilldown required for this view as per the new requirements.
+	}
+
+
+	// ========================================================================
+
+	// AGENT WISE VIEW - Zone/Region Collapsible
+
+	// ========================================================================
+
+	renderAgentWiseTable(agentData) {
+		if (!agentData || agentData.length === 0) {
+			return `
+				<div style="text-align: center; padding: 50px; color: #778da9; font-size: 16px;">
+					<div style="font-size: 48px; margin-bottom: 15px;">📭</div>
+					<div style="font-weight: 600; margin-bottom: 8px;">No agent data available</div>
+				</div>
+			`;
+		}
+
+		// Group by zone
+		const grouped = {};
+		agentData.forEach(row => {
+			if (!grouped[row.zone]) {
+				grouped[row.zone] = [];
+			}
+			grouped[row.zone].push(row);
+		});
+
+		let sr = 1;
+		let html = `
+			<table class="table table-bordered agent-wise-table">
+				<thead>
+					<tr>
+						<th style="width:60px;">SR</th>
+						<th>ZONE / REGION</th>
+						<th style="width:140px;">SS TARGET</th>
+						<th style="width:140px;">SS ACHIEVEMENT</th>
+						<th style="width:140px;">SS SHORTFALL</th>
+						<th style="width:140px;">TARGET</th>
+						<th style="width:140px;">ACHIEVEMENT</th>
+						<th style="width:140px;">AGENT SHORTFALL</th>
+						<th style="width:220px;">%</th>
+					</tr>
+				</thead>
+				<tbody>
+		`;
+
+		// Sort zones
+		const sortedZones = Object.keys(grouped).sort((a, b) => {
+			const aNum = a.match(/ZONE-(\d+)/)?.[1];
+			const bNum = b.match(/ZONE-(\d+)/)?.[1];
+			return aNum && bNum ? parseInt(aNum) - parseInt(bNum) : a.localeCompare(b);
+		});
+
+		sortedZones.forEach(zone => {
+			const zoneRows = grouped[zone];
+			
+			// Calculate zone totals
+			let zoneTarget = 0;
+			let zoneAch = 0;
+			let zoneSsTarget = 0;
+			let zoneSsAch = 0;
+			zoneRows.forEach(r => {
+				zoneTarget += parseFloat(r.target || 0);
+				zoneAch += parseFloat(r.achievement || 0);
+				zoneSsTarget += parseFloat(r.ss_target || 0);
+				zoneSsAch += parseFloat(r.ss_achievement || 0);
+			});
+			
+			const zoneSsShortfall = zoneSsTarget - zoneSsAch;
+			const zoneAgentShortfall = zoneTarget - zoneAch;
+			const zonePercent = zoneTarget > 0 ? ((zoneAch / zoneTarget) * 100).toFixed(2) : 0;
+			const isExpanded = this.state.expandedZones[`agent_${zone}`] || false;
+
+			// Zone row
+			html += `
+				<tr class="agent-zone-row" data-zone="${zone}" style="background: #f8fafc; cursor: pointer;">
+					<td>${sr++}</td>
+					<td>
+						<span class="agent-toggle" style="display: inline-block; width: 20px; margin-right: 8px;">
+							${isExpanded ? "▼" : "▶"}
+						</span>
+						<strong>${zone}</strong>
+					</td>
+					<td>${this.formatCurrency(zoneSsTarget)}</td>
+					<td>${this.formatCurrency(zoneSsAch)}</td>
+					<td style="color: ${zoneSsShortfall > 0 ? '#ef4444' : '#10b981'}; font-weight: 600;">${this.formatCurrency(zoneSsShortfall)}</td>
+					<td>${this.formatCurrency(zoneTarget)}</td>
+					<td>${this.formatCurrency(zoneAch)}</td>
+					<td style="color: ${zoneAgentShortfall > 0 ? '#ef4444' : '#10b981'}; font-weight: 600;">${this.formatCurrency(zoneAgentShortfall)}</td>
+					<td>${this.renderAgentProgressBar(zonePercent)}</td>
+				</tr>
+			`;
+
+			// Region rows (hidden by default)
+			zoneRows.forEach(r => {
+				const rSsTarget = parseFloat(r.ss_target || 0);
+				const rSsAch = parseFloat(r.ss_achievement || 0);
+				const rTarget = parseFloat(r.target || 0);
+				const rAch = parseFloat(r.achievement || 0);
+				const rSsShortfall = rSsTarget - rSsAch;
+				const rAgentShortfall = rTarget - rAch;
+				const rPercent = rTarget > 0 ? ((rAch / rTarget) * 100).toFixed(2) : 0;
+				
+				html += `
+					<tr class="agent-region-row region-of-${zone}" style="display: ${isExpanded ? "table-row" : "none"}; background: #ffffff;">
+						<td></td>
+						<td style="padding-left: 40px;">${r.region}</td>
+						<td>${this.formatCurrency(rSsTarget)}</td>
+						<td>${this.formatCurrency(rSsAch)}</td>
+						<td style="color: ${rSsShortfall > 0 ? '#ef4444' : '#10b981'}; font-weight: 600;">${this.formatCurrency(rSsShortfall)}</td>
+						<td>${this.formatCurrency(rTarget)}</td>
+						<td>${this.formatCurrency(rAch)}</td>
+						<td style="color: ${rAgentShortfall > 0 ? '#ef4444' : '#10b981'}; font-weight: 600;">${this.formatCurrency(rAgentShortfall)}</td>
+						<td>${this.renderAgentProgressBar(rPercent)}</td>
+					</tr>
+				`;
+			});
+		});
+
+		html += `</tbody></table>`;
+		return html;
+	}
+
+	renderAgentProgressBar(percent) {
+		const pct = parseFloat(percent) || 0;
+		const color = this.getPctColor(pct);
+
+		return `
+			<div class="percent-wrapper" style="display: flex; align-items: center; gap: 10px;">
+				<span class="percent-text" style="min-width: 60px; font-weight: 600; color: ${color};">${pct.toFixed(2)}%</span>
+				<div class="progress-container" style="width: 120px; height: 10px; background: #e5e7eb; border-radius: 10px; overflow: hidden;">
+					<div class="progress-fill" style="width: ${pct}%; height: 100%; background: ${color}; border-radius: 10px; position: relative; overflow: hidden;">
+						<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.2) 10px, rgba(255,255,255,0.2) 20px); animation: agent-progress-stripes 1s linear infinite; border-radius: 10px;"></div>
+					</div>
+				</div>
+			</div>
+			<style>
+				@keyframes agent-progress-stripes {
+					from { background-position: 0 0; }
+					to { background-position: 40px 0; }
+				}
+			</style>
+		`;
+	}
+
+	attachAgentExpandHandlers() {
+		const self = this;
+
+		this.page.main
+			.find(".agent-zone-row")
+			.off("click")
+			.on("click", function () {
+				const zone = $(this).data("zone");
+				
+				// Toggle expanded state
+				self.state.expandedZones[`agent_${zone}`] = !self.state.expandedZones[`agent_${zone}`];
+				
+				// Re-render to reflect changes
+				self.render();
+			});
 	}
 
 
