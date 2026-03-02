@@ -361,7 +361,7 @@
 
 			<section>
 				<div class="product-table-container">
-					<table>
+					<table id="product-performance-table">
 						<thead>
 							<tr>
 								<th class="product-col">Product</th>
@@ -503,6 +503,37 @@
 
 			// Initialize with words format
 			setFormat('words');
+
+			// Product table filtering
+			const productSearchInput = document.getElementById('branch-search');
+			const productTable = document.getElementById('product-performance-table');
+
+			if (productSearchInput && productTable) {
+				const productRows = productTable.querySelectorAll('tbody tr');
+
+				productSearchInput.addEventListener('input', function() {
+					const query = this.value.toLowerCase().trim();
+
+					productRows.forEach(row => {
+						const firstCell = row.querySelector('td');
+						if (!firstCell) return;
+
+						const productName = firstCell.textContent.toLowerCase();
+
+						// Always keep TOTAL row visible
+						if (productName === 'total') {
+							row.style.display = '';
+							return;
+						}
+
+						if (productName.includes(query)) {
+							row.style.display = '';
+						} else {
+							row.style.display = 'none';
+						}
+					});
+				});
+			}
 		</script>
 	</body>
 </html>
