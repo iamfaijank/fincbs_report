@@ -88,7 +88,9 @@ frappe.pages['finacle-report-portal'].on_page_load = function(wrapper) {
         "Head Office Report",
         "Branch Report",
         "System Manager",
-        "Finacle Report Admin"
+        "Finacle Report Admin",
+        "Vigilance Department Report",
+        "IT Department Report"
     ];
     
     // Check if user has any of the allowed roles
