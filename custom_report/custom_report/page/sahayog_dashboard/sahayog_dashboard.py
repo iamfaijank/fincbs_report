@@ -396,7 +396,7 @@ def get_sahayog_dashboard(
         all_branch_data.extend(month_data)
     
     zone_wise = build_zone_wise(all_branch_data, targets_map, target_type)
-    product_wise = build_product_wise(all_branch_data, targets_map, target_type)
+    product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type)
     category_wise = build_category_wise(all_branch_data, targets_map, months, target_type)
     branch_wise = build_branch_wise(all_branch_data, targets_map, months, target_type)
     agent_wise = build_agent_wise(None, None, None)  # Agent Wise uses separate doctype
@@ -408,7 +408,8 @@ def get_sahayog_dashboard(
         "selected_date": str(selected_date) if selected_date else None,
         "months": [{"key": m[0], "display": f"{m[0]}-{str(m[2])[-2:]}", "date": m[3]} for m in months],
         "zone_wise": zone_wise,
-        "product_wise": product_wise,
+        "product_wise": product_wise_result,
+        "all_products": all_products,
         "category_wise": category_wise,
         "branch_wise": branch_wise,
         "agent_wise": agent_wise,
@@ -525,7 +526,7 @@ def build_zone_wise(branch_data, targets_map, target_type):
 def build_product_wise(branch_data, targets_map, target_type):
     # This function now provides Zone/Region counts and summed amounts from the Product Wise Report doctype.
     # The function arguments are kept for structural consistency but are not used.
-    
+
     # 1. Server-side query with GROUP BY for performance
     data = frappe.db.sql("""
         SELECT
@@ -539,8 +540,35 @@ def build_product_wise(branch_data, targets_map, target_type):
         ORDER BY zone, region
     """, as_dict=True)
 
+    # Fetch individual product details for each zone/region
+    product_details = frappe.db.sql("""
+        SELECT
+            zone,
+            region,
+            product,
+            SUM(amount) as amount
+        FROM `tabProduct Wise Report`
+        WHERE zone IS NOT NULL AND region IS NOT NULL AND zone != '' AND region != ''
+        GROUP BY zone, region, product
+        ORDER BY zone, region, amount DESC
+    """, as_dict=True)
+
     if not data:
         return []
+
+    # Get all unique products for dynamic column generation
+    all_products = sorted(set(row.product for row in product_details))
+
+    # Build a lookup for product details: {(zone, region): {product: amount, ...}}
+    product_lookup = defaultdict(dict)
+    for row in product_details:
+        key = (row.zone, row.region)
+        product_lookup[key][row.product] = row.amount
+
+    # Calculate zone-wise product totals
+    zone_product_totals = defaultdict(lambda: defaultdict(float))
+    for row in product_details:
+        zone_product_totals[row.zone][row.product] += row.amount
 
     # 2. Process into a hierarchical structure for the frontend
     zone_summary = defaultdict(lambda: {'count': 0, 'amount': 0.0})
@@ -551,13 +579,14 @@ def build_product_wise(branch_data, targets_map, target_type):
     # 3. Build the final flat list with parent (Zone) and child (Region) rows
     result = []
     for zone, summary in sorted(zone_summary.items()):
-        # Add Zone Group Row
+        # Add Zone Group Row with product totals
         result.append({
             "name": zone,
             "parent": None,
             "count": summary['count'],
             "amount": summary['amount'],
-            "is_group": True
+            "is_group": True,
+            "products": dict(zone_product_totals.get(zone, {}))  # Product-wise totals for zone
         })
         # Add corresponding Region Rows
         for row in data:
@@ -567,9 +596,11 @@ def build_product_wise(branch_data, targets_map, target_type):
                     "parent": zone,
                     "count": row.record_count,
                     "amount": row.total_amount or 0,
-                    "is_group": False
+                    "is_group": False,
+                    "products": product_lookup.get((zone, row.region), {})
                 })
-    return result
+    
+    return result, all_products
 
 
 # 🚀 NEW FUNCTION: Zone breakdown for each category

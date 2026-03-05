@@ -148,6 +148,20 @@ class DrishtiDashboard {
 				max-height: 400px; /* Default max-height */
 				overflow-y: auto;
 			}
+
+			/* Product Wise Table - Column Layout */
+			.product-wise-table th {
+				text-align: center;
+				vertical-align: middle;
+				background: #f8f9fa;
+			}
+			.product-wise-table td {
+				text-align: right;
+				vertical-align: middle;
+			}
+			.product-wise-table td:nth-child(2) {
+				text-align: left !important;
+			}
 		`;
 		$(`<style>${style}</style>`).appendTo("head");
 	}
@@ -165,6 +179,7 @@ class DrishtiDashboard {
 		// Direct mapping
 		this.zoneData = data.zone_wise;
 		this.productData = data.product_wise || [];
+		this.allProducts = data.all_products || [];
 		this.categoryData = data.category_wise;
 		this.branchData = data.branch_wise;
 		this.agentData = data.agent_wise || [];
@@ -1400,77 +1415,154 @@ class DrishtiDashboard {
 	// ========================================================================
 
 	renderProductTable(productData) {
-		let html = `
-            <table class="table table-bordered product-wise-table">
-                <thead>
-                    <tr>
-                        <th>Sr</th>
-                        <th>Zone/Region</th>
-                        <th>Product Group/Product</th>
-                        <th>Ach</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
+		if (!productData || productData.length === 0) {
+			return `
+				<div style="text-align: center; padding: 50px; color: #778da9; font-size: 16px;">
+					<div style="font-size: 48px; margin-bottom: 15px;">📭</div>
+					<div style="font-weight: 600; margin-bottom: 8px;">No product data available</div>
+				</div>
+			`;
+		}
+
+		const allProducts = this.allProducts;
+
+		// Build dynamic header with product columns
+		let headerHtml = `
+			<table class="table table-bordered product-wise-table">
+				<thead>
+					<tr class="zone-table-header">
+						<th rowspan="2" style="width:60px;">SR</th>
+						<th rowspan="2">ZONE/REGION</th>
+		`;
+
+		allProducts.forEach((product) => {
+			headerHtml += `<th>${product}</th>`;
+		});
+
+		headerHtml += `
+						<th rowspan="2" style="width:140px;">ACHIEVEMENT</th>
+					</tr>
+				</thead>
+				<tbody>
+		`;
+
+		let html = headerHtml;
 
 		let sr = 1;
-		productData.forEach(item => {
+		let zoneTotalAmount = 0;
+		let zoneTotalCount = 0;
+		let productTotals = {};
+
+		// Initialize product totals
+		allProducts.forEach((product) => {
+			productTotals[product] = 0;
+		});
+
+		productData.forEach((item) => {
 			if (item.is_group) {
 				const isExpanded = this.state.expandedZones[item.name] || false;
+				const products = item.products || {};
+
 				html += `
-                    <tr class="product-total-row" data-zone="${item.name}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">
-                        <td>${sr++}</td>
-                        <td>
-                            <span class="product-toggle">${isExpanded ? "▼" : "▶"}</span>
-                            ${item.name}
-                        </td>
-                        <td>${item.count}</td>
-                        <td>${this.formatNumber(item.amount)}</td>
-                    </tr>
-                `;
+					<tr class="zone-total-row product-total-row" data-zone="${item.name}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">
+						<td>${sr++}</td>
+						<td>
+							<span class="product-toggle">${isExpanded ? "▼" : "▶"}</span>
+							<strong>${item.name}</strong>
+						</td>
+				`;
+
+				// Add a column for each product (zone totals) and accumulate totals
+				allProducts.forEach((product) => {
+					const amount = products[product] || 0;
+					productTotals[product] += amount;
+					html += `<td>${this.formatCurrency(amount)}</td>`;
+				});
+
+				html += `
+						<td>${this.formatCurrency(item.amount)}</td>
+					</tr>
+				`;
+
+				zoneTotalAmount += item.amount;
+				zoneTotalCount += item.count;
 			} else {
 				const isExpanded = this.state.expandedZones[item.parent] || false;
+				const products = item.products || {};
+
 				html += `
-                    <tr class="product-detail-row" data-zone="${item.parent}" data-region="${item.name}" style="display: ${isExpanded ? "table-row" : "none"}; cursor: pointer;">
-                        <td></td>
-                        <td style="padding-left: 30px; color: #097c80; font-weight: 500;">${item.name}</td>
-                        <td>${item.count}</td>
-                        <td>${this.formatNumber(item.amount)}</td>
-                    </tr>
-                `;
+					<tr class="region-detail-row product-detail-row" data-parent-zone="${item.parent}" data-region="${item.name}" style="display: ${isExpanded ? "table-row" : "none"}; cursor: pointer; background: #ffffff; border-left: 4px solid #417d81;">
+						<td></td>
+						<td style="padding-left: 40px; color: #097c80; font-weight: 500;">${item.name}</td>
+				`;
+
+				// Add a column for each product
+				allProducts.forEach((product) => {
+					const amount = products[product] || 0;
+					html += `<td>${this.formatCurrency(amount)}</td>`;
+				});
+
+				html += `
+						<td>${this.formatCurrency(item.amount)}</td>
+					</tr>
+				`;
 			}
 		});
 
-		html += `</tbody></table>`;
+		// Grand Total Row
+		html += `
+			</tbody>
+			<tfoot style="background-color: #264a4d; color: #ffffff; font-weight: bold; border-top: 2px solid #3d7579;">
+				<tr style="height: 40px;">
+					<td colspan="2" style="text-align: left; padding-left: 12px; text-transform: uppercase; letter-spacing: 1px;">TOTAL</td>
+		`;
+
+		// Add product-wise totals for each product column
+		allProducts.forEach((product) => {
+			html += `<td>${this.formatCurrency(productTotals[product])}</td>`;
+		});
+
+		html += `
+					<td>${this.formatCurrency(zoneTotalAmount)}</td>
+				</tr>
+			</tfoot>
+		</table>`;
+
 		return html;
 	}
 
 	attachProductExpandHandlers() {
 		const self = this;
-		
+
 		// Handle Zone Expand/Collapse
-		this.page.main.find(".product-total-row").off("click").on("click", function () {
-			const zoneName = $(this).data("zone");
-			self.state.expandedZones[zoneName] = !self.state.expandedZones[zoneName];
-			self.render();
-		});
+		this.page.main
+			.find(".product-total-row")
+			.off("click")
+			.on("click", function () {
+				const zoneName = $(this).data("zone");
+				self.state.expandedZones[zoneName] = !self.state.expandedZones[zoneName];
+				self.render();
+			});
 
 		// Handle Region Row Click -> Redirect to Region Profile Page
-		this.page.main.find(".product-detail-row").off("click").on("click", function (e) {
-			const zone = $(this).data("zone");
-			const region = $(this).data("region");
-			
-			if (zone && region) {
-				// Navigate to the new Region Profile web page
-				window.location.href = `/region_profile?zone=${encodeURIComponent(zone)}&region=${encodeURIComponent(region)}`;
-			}
-		});
+		this.page.main
+			.find(".product-detail-row")
+			.off("click")
+			.on("click", function (e) {
+				e.stopPropagation(); // Prevent zone expand trigger
+				const zone = $(this).data("parent-zone");
+				const region = $(this).data("region");
+
+				if (zone && region) {
+					// Navigate to the new Region Profile web page
+					window.location.href = `/region_profile?zone=${encodeURIComponent(zone)}&region=${encodeURIComponent(region)}`;
+				}
+			});
 	}
 
 	attachProductDrilldownHandlers() {
 		// No drilldown required for this view as per the new requirements.
 	}
-
 
 	// ========================================================================
 
@@ -1490,7 +1582,7 @@ class DrishtiDashboard {
 
 		// Group by zone
 		const grouped = {};
-		agentData.forEach(row => {
+		agentData.forEach((row) => {
 			if (!grouped[row.zone]) {
 				grouped[row.zone] = [];
 			}
@@ -1499,18 +1591,20 @@ class DrishtiDashboard {
 
 		let sr = 1;
 		let html = `
-			<table class="table table-bordered agent-wise-table">
+			<table class="agent-wise-table">
 				<thead>
-					<tr>
-						<th style="width:60px;">SR</th>
-						<th>ZONE / REGION</th>
-						<th style="width:140px;">SS TARGET</th>
-						<th style="width:140px;">SS ACHIEVEMENT</th>
-						<th style="width:140px;">SS SHORTFALL</th>
-						<th style="width:140px;">TARGET</th>
-						<th style="width:140px;">ACHIEVEMENT</th>
-						<th style="width:140px;">AGENT SHORTFALL</th>
-						<th style="width:220px;">%</th>
+					<tr class="branch-table-header">
+						<th rowspan="2" class="sr-col">SR</th>
+						<th rowspan="2">ZONE / REGION</th>
+						<th rowspan="2">SS TARGET</th>
+						<th rowspan="2">SS ACHIEVEMENT</th>
+						<th rowspan="2">SS SHORTFALL</th>
+						<th rowspan="2">DD TARGET</th>
+						<th rowspan="2">DD ACHIEVEMENT</th>
+						<th rowspan="2">DD SHORTFALL</th>
+						<th rowspan="2">%</th>
+					</tr>
+					<tr class="branch-table-subheader">
 					</tr>
 				</thead>
 				<tbody>
@@ -1523,21 +1617,21 @@ class DrishtiDashboard {
 			return aNum && bNum ? parseInt(aNum) - parseInt(bNum) : a.localeCompare(b);
 		});
 
-		sortedZones.forEach(zone => {
+		sortedZones.forEach((zone) => {
 			const zoneRows = grouped[zone];
-			
+
 			// Calculate zone totals
 			let zoneTarget = 0;
 			let zoneAch = 0;
 			let zoneSsTarget = 0;
 			let zoneSsAch = 0;
-			zoneRows.forEach(r => {
+			zoneRows.forEach((r) => {
 				zoneTarget += parseFloat(r.target || 0);
 				zoneAch += parseFloat(r.achievement || 0);
 				zoneSsTarget += parseFloat(r.ss_target || 0);
 				zoneSsAch += parseFloat(r.ss_achievement || 0);
 			});
-			
+
 			const zoneSsShortfall = zoneSsTarget - zoneSsAch;
 			const zoneAgentShortfall = zoneTarget - zoneAch;
 			const zonePercent = zoneTarget > 0 ? ((zoneAch / zoneTarget) * 100).toFixed(2) : 0;
@@ -1545,26 +1639,28 @@ class DrishtiDashboard {
 
 			// Zone row
 			html += `
-				<tr class="agent-zone-row" data-zone="${zone}" style="background: #f8fafc; cursor: pointer;">
-					<td>${sr++}</td>
+				<tr class="agent-zone-row branch-table-row" data-zone="${zone}" style="background: #f8fafc; cursor: pointer;">
+					<td class="sr-col">${sr++}</td>
 					<td>
-						<span class="agent-toggle" style="display: inline-block; width: 20px; margin-right: 8px;">
-							${isExpanded ? "▼" : "▶"}
-						</span>
-						<strong>${zone}</strong>
+						<div class="branch-info">
+							<div class="branch-code-name">
+								<span class="agent-toggle" style="display: inline-block; width: 20px; margin-right: 8px; cursor: pointer;">${isExpanded ? "▼" : "▶"}</span>
+								<strong style="vertical-align: middle;">${zone}</strong>
+							</div>
+						</div>
 					</td>
-					<td>${this.formatCurrency(zoneSsTarget)}</td>
-					<td>${this.formatCurrency(zoneSsAch)}</td>
-					<td style="color: ${zoneSsShortfall > 0 ? '#ef4444' : '#10b981'}; font-weight: 600;">${this.formatCurrency(zoneSsShortfall)}</td>
-					<td>${this.formatCurrency(zoneTarget)}</td>
-					<td>${this.formatCurrency(zoneAch)}</td>
-					<td style="color: ${zoneAgentShortfall > 0 ? '#ef4444' : '#10b981'}; font-weight: 600;">${this.formatCurrency(zoneAgentShortfall)}</td>
-					<td>${this.renderAgentProgressBar(zonePercent)}</td>
+					<td class="metric-cell amount-cell">${this.formatCurrency(zoneSsTarget)}</td>
+					<td class="metric-cell amount-cell">${this.formatCurrency(zoneSsAch)}</td>
+					<td class="metric-cell amount-cell" style="color: ${zoneSsShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneSsShortfall)}</td>
+					<td class="metric-cell amount-cell">${this.formatCurrency(zoneTarget)}</td>
+					<td class="metric-cell amount-cell">${this.formatCurrency(zoneAch)}</td>
+					<td class="metric-cell amount-cell" style="color: ${zoneAgentShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneAgentShortfall)}</td>
+					<td>${this.renderProgressBar(zonePercent)}</td>
 				</tr>
 			`;
 
 			// Region rows (hidden by default)
-			zoneRows.forEach(r => {
+			zoneRows.forEach((r) => {
 				const rSsTarget = parseFloat(r.ss_target || 0);
 				const rSsAch = parseFloat(r.ss_achievement || 0);
 				const rTarget = parseFloat(r.target || 0);
@@ -1572,18 +1668,25 @@ class DrishtiDashboard {
 				const rSsShortfall = rSsTarget - rSsAch;
 				const rAgentShortfall = rTarget - rAch;
 				const rPercent = rTarget > 0 ? ((rAch / rTarget) * 100).toFixed(2) : 0;
-				
+
 				html += `
-					<tr class="agent-region-row region-of-${zone}" style="display: ${isExpanded ? "table-row" : "none"}; background: #ffffff;">
-						<td></td>
-						<td style="padding-left: 40px;">${r.region}</td>
-						<td>${this.formatCurrency(rSsTarget)}</td>
-						<td>${this.formatCurrency(rSsAch)}</td>
-						<td style="color: ${rSsShortfall > 0 ? '#ef4444' : '#10b981'}; font-weight: 600;">${this.formatCurrency(rSsShortfall)}</td>
-						<td>${this.formatCurrency(rTarget)}</td>
-						<td>${this.formatCurrency(rAch)}</td>
-						<td style="color: ${rAgentShortfall > 0 ? '#ef4444' : '#10b981'}; font-weight: 600;">${this.formatCurrency(rAgentShortfall)}</td>
-						<td>${this.renderAgentProgressBar(rPercent)}</td>
+					<tr class="agent-region-row region-of-${zone} branch-table-row" style="display: ${isExpanded ? "table-row" : "none"}; background: #ffffff;">
+						<td class="sr-col"></td>
+						<td>
+							<div class="branch-info">
+								<div class="branch-code-name">
+									<span style="display: inline-block; width: 20px; margin-right: 8px;"></span>
+									<span style="padding-left: 40px; color: #097c80; font-weight: 500;">${r.region}</span>
+								</div>
+							</div>
+						</td>
+						<td class="metric-cell amount-cell">${this.formatCurrency(rSsTarget)}</td>
+						<td class="metric-cell amount-cell">${this.formatCurrency(rSsAch)}</td>
+						<td class="metric-cell amount-cell" style="color: ${rSsShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rSsShortfall)}</td>
+						<td class="metric-cell amount-cell">${this.formatCurrency(rTarget)}</td>
+						<td class="metric-cell amount-cell">${this.formatCurrency(rAch)}</td>
+						<td class="metric-cell amount-cell" style="color: ${rAgentShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rAgentShortfall)}</td>
+						<td>${this.renderProgressBar(rPercent)}</td>
 					</tr>
 				`;
 			});
@@ -1591,28 +1694,6 @@ class DrishtiDashboard {
 
 		html += `</tbody></table>`;
 		return html;
-	}
-
-	renderAgentProgressBar(percent) {
-		const pct = parseFloat(percent) || 0;
-		const color = this.getPctColor(pct);
-
-		return `
-			<div class="percent-wrapper" style="display: flex; align-items: center; gap: 10px;">
-				<span class="percent-text" style="min-width: 60px; font-weight: 600; color: ${color};">${pct.toFixed(2)}%</span>
-				<div class="progress-container" style="width: 120px; height: 10px; background: #e5e7eb; border-radius: 10px; overflow: hidden;">
-					<div class="progress-fill" style="width: ${pct}%; height: 100%; background: ${color}; border-radius: 10px; position: relative; overflow: hidden;">
-						<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.2) 10px, rgba(255,255,255,0.2) 20px); animation: agent-progress-stripes 1s linear infinite; border-radius: 10px;"></div>
-					</div>
-				</div>
-			</div>
-			<style>
-				@keyframes agent-progress-stripes {
-					from { background-position: 0 0; }
-					to { background-position: 40px 0; }
-				}
-			</style>
-		`;
 	}
 
 	attachAgentExpandHandlers() {
@@ -1623,15 +1704,15 @@ class DrishtiDashboard {
 			.off("click")
 			.on("click", function () {
 				const zone = $(this).data("zone");
-				
+
 				// Toggle expanded state
-				self.state.expandedZones[`agent_${zone}`] = !self.state.expandedZones[`agent_${zone}`];
-				
+				self.state.expandedZones[`agent_${zone}`] =
+					!self.state.expandedZones[`agent_${zone}`];
+
 				// Re-render to reflect changes
 				self.render();
 			});
 	}
-
 
 	// ========================================================================
 
@@ -2859,6 +2940,45 @@ class DrishtiDashboard {
                     border: 1px solid #778da9;
                 }
 
+                /* Agent Wise Table - Match Branch Table Styling */
+                .agent-wise-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 12px;
+                }
+                .agent-wise-table th {
+                    background: linear-gradient(180deg, #3d7579 0%, #346569 100%);
+                    color: #ffffff;
+                    padding: 12px 8px;
+                    text-align: center;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.03em;
+                    border: 1px solid #2d5659;
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                }
+                .agent-wise-table .branch-table-subheader th {
+                    background: #4a8a8f;
+                    color: #ffffff;
+                    padding: 8px;
+                    font-size: 11px;
+                    font-weight: 500;
+                    text-transform: uppercase;
+                    letter-spacing: 0.02em;
+                    border: 1px solid #366b6f;
+                }
+                .agent-wise-table .agent-zone-row,
+                .agent-wise-table .agent-region-row {
+                    border-bottom: 1px solid #e0e1dd;
+                }
+                .agent-wise-table .agent-region-row:hover {
+                    background: #f8f9fa;
+                }
+                .agent-wise-table td {
+                    padding: 10px 8px;
+                    border: 1px solid #778da9;
+                }
+
                 .sr-col {
                     width: 60px;
                     text-align: center;
@@ -2878,6 +2998,13 @@ class DrishtiDashboard {
                     display: flex;
                     flex-direction: column;
                     gap: 4px;
+                }
+
+                /* Agent toggle - keep arrow and zone name in same row */
+                .agent-zone-row .branch-code-name {
+                    flex-direction: row;
+                    align-items: center;
+                    gap: 8px;
                 }
 
                 .branch-code-link {
