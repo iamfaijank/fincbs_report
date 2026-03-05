@@ -2082,21 +2082,23 @@
 					const isPremature = dExit < dMaturity;
 					this.data.isPremature = isPremature;
 
-					// Tenure calculation for display
-					const displayStart = new Date(start.getFullYear(), start.getMonth(), 1);
-					const displayEndAdjusted = new Date(dExit);
-					displayEndAdjusted.setDate(displayEndAdjusted.getDate() - 1);
-					
-					let calcTenureMonths = (displayEndAdjusted.getFullYear() - displayStart.getFullYear()) * 12 + (displayEndAdjusted.getMonth() - displayStart.getMonth());
-					let calcTenureDays = displayEndAdjusted.getDate();
+					// Tenure calculation for display (strictly Opening Date -> Settlement Date)
+					let diffMonths = (dExit.getFullYear() - start.getFullYear()) * 12 + (dExit.getMonth() - start.getMonth());
+					let diffDays = dExit.getDate() - start.getDate();
+
+					if (diffDays < 0) {
+						diffMonths--;
+						const prevMonthLastDate = new Date(dExit.getFullYear(), dExit.getMonth(), 0).getDate();
+						diffDays += prevMonthLastDate;
+					}
 
 					if (!isPremature) {
-						calcTenureMonths = parseInt(this.data.deposit_period_mths);
-						calcTenureDays = 0;
+						this.data.calcTenureMonths = diffMonths;
+						this.data.calcTenureDays = 0;
+					} else {
+						this.data.calcTenureMonths = diffMonths;
+						this.data.calcTenureDays = diffDays;
 					}
-					
-					this.data.calcTenureMonths = calcTenureMonths;
-					this.data.calcTenureDays = calcTenureDays;
 
 					// Map credits by calendar month offset
 					const creditsByMonth = {};
