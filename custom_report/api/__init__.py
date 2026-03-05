@@ -46,6 +46,23 @@ EXPORT_CACHE_PREFIX = "finacle_export"
 EXPORT_CACHE_TTL_SECONDS = 60 * 60 * 12
 EXPORT_FETCH_BATCH_SIZE = 500
 
+# Global Admin Roles for consistent permission checks
+ADMIN_ROLES = {"System Manager", "Finacle Report Admin", "Administrator"}
+
+def get_department_roles():
+    """Fetch department roles dynamically from Report Settings."""
+    try:
+        roles = frappe.get_all("Finacle Report User", 
+            filters={"parent": "Report Settings", "parenttype": "Report Settings"}, 
+            pluck="role")
+        if roles:
+            return set(roles)
+    except Exception:
+        pass
+    
+    # Minimal fallback to Admin roles if settings are not found
+    return ADMIN_ROLES
+
 
 class ReportExportCancelled(Exception):
     """Raised when user cancels a queued/running report export."""
@@ -65,10 +82,7 @@ def resolve_report_log(log_id):
     if not log_id:
         frappe.throw(_("Log ID is required"))
     
-    # Check permissions (only Admins should typically do this)
     user_roles = set(frappe.get_roles())
-    ADMIN_ROLES = {"System Manager", "Finacle Report Admin", "Administrator"}
-    
     if not user_roles.intersection(ADMIN_ROLES):
         frappe.throw(_("You are not authorized to resolve report logs."))
 
@@ -95,23 +109,8 @@ def get_user_report_permissions():
     user = frappe.session.user
     user_roles = set(frappe.get_roles())
     
-    # Define roles that should see all SOL IDs
-    DEPARTMENT_ROLES = {
-        "HR Department Report",
-        "JLL Department Report",
-        "MIS Department Report",
-        "Loan Department Report",
-        "Audit Department Report",
-        "Finance Department Report",
-        "Operation Department Report",
-        "Two Wheeler Department Report",
-        "Head Office Report",
-        "System Manager",
-        "Finacle Report Admin"
-    }
-    
     is_branch_user = "Branch Report" in user_roles
-    is_dept_user = bool(user_roles.intersection(DEPARTMENT_ROLES))
+    is_dept_user = bool(user_roles.intersection(get_department_roles()))
     
     sol_data = [] # List of dicts: {"sol_id": "...", "branch_name": "..."}
 
@@ -221,10 +220,9 @@ def update_report_log_status(log_id, status, error_message=None, rows_fetched=No
     doc = frappe.get_doc("Report Log", log_id)
     user = frappe.session.user
     user_roles = set(frappe.get_roles())
-    admin_roles = {"System Manager", "Finacle Report Admin", "Administrator"}
     employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
-
-    if doc.employee != employee and not user_roles.intersection(admin_roles):
+    
+    if doc.employee != employee and not user_roles.intersection(ADMIN_ROLES):
         frappe.throw(_("You are not authorized to update this report log."))
 
     doc.status = status
@@ -250,10 +248,9 @@ def get_report_log_metrics(log_id):
     doc = frappe.get_doc("Report Log", log_id)
     user = frappe.session.user
     user_roles = set(frappe.get_roles())
-    admin_roles = {"System Manager", "Finacle Report Admin", "Administrator"}
     employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
-
-    if doc.employee != employee and not user_roles.intersection(admin_roles):
+    
+    if doc.employee != employee and not user_roles.intersection(ADMIN_ROLES):
         frappe.throw(_("You are not authorized to access this report log."))
 
     return {
@@ -919,9 +916,8 @@ def _get_export_state(request_id):
 def _ensure_export_access(state):
     user = frappe.session.user
     user_roles = set(frappe.get_roles())
-    admin_roles = {"System Manager", "Finacle Report Admin", "Administrator"}
 
-    if state.get("user") != user and not user_roles.intersection(admin_roles):
+    if state.get("user") != user and not user_roles.intersection(ADMIN_ROLES):
         frappe.throw(_("You are not authorized to access this export status."))
 
 
@@ -1041,22 +1037,7 @@ def _get_user_sol_id_with_branch_check(user, user_roles, manual_sol_id=None):
     """
     sol_id = None
     is_branch_user = "Branch Report" in user_roles
-    
-    # Define roles that should see all SOL IDs
-    DEPARTMENT_ROLES = {
-        "HR Department Report",
-        "JLL Department Report",
-        "MIS Department Report",
-        "Loan Department Report",
-        "Audit Department Report",
-        "Finance Department Report",
-        "Operation Department Report",
-        "Two Wheeler Department Report",
-        "Head Office Report",
-        "System Manager",
-        "Finacle Report Admin"
-    }
-    is_dept_user = bool(user_roles.intersection(DEPARTMENT_ROLES))
+    is_dept_user = bool(user_roles.intersection(get_department_roles()))
 
     try:
         _print_section_header("CHECKING USER ROLE & SOL_ID")

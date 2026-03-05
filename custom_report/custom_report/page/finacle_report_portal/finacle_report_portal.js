@@ -73,38 +73,31 @@ frappe.pages['finacle-report-portal'].on_page_load = function(wrapper) {
     }
 
     // ============================================================================
-    // ROLE-BASED ACCESS CONTROL
+    // ROLE-BASED ACCESS CONTROL (DYNAMIC)
     // ============================================================================
     
-    const ALLOWED_ROLES = [
-        "HR Department Report",
-        "JLL Department Report",
-        "MIS Department Report",
-        "Loan Department Report",
-        "Audit Department Report",
-        "Finance Department Report",
-        "Operation Department Report",
-        "Two Wheeler Department Report",
-        "Head Office Report",
-        "Branch Report",
-        "System Manager",
-        "Finacle Report Admin",
-        "Vigilance Department Report",
-        "IT Department Report"
-    ];
-    
-    // Check if user has any of the allowed roles
-    const userRoles = frappe.user_roles || [];
-    const hasAccess = ALLOWED_ROLES.some(role => userRoles.includes(role));
-    
-    // If user doesn't have access, show denial message
-    if (!hasAccess) {
-        showAccessDeniedPage(wrapper);
-        return; // Stop page initialization
-    }
-    
-    // If access granted, initialize the page normally
-    initializeReportPortal(wrapper);
+    // Check access by calling the server-side API
+    frappe.call({
+        method: "custom_report.api.get_user_report_permissions",
+        callback: function(r) {
+            if (r.message) {
+                const is_branch_user = r.message.is_branch_user;
+                const is_dept_user = r.message.is_dept_user;
+                
+                // User has access if they are either a branch user or a department user
+                if (is_branch_user || is_dept_user) {
+                    // Access granted, initialize the page normally
+                    initializeReportPortal(wrapper);
+                } else {
+                    // If user doesn't have access, show denial message
+                    showAccessDeniedPage(wrapper);
+                }
+            } else {
+                // In case of error or no message, default to access denied
+                showAccessDeniedPage(wrapper);
+            }
+        }
+    });
 };
 
 
