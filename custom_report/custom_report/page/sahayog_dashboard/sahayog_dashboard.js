@@ -1543,21 +1543,6 @@ class DrishtiDashboard {
 				self.state.expandedZones[zoneName] = !self.state.expandedZones[zoneName];
 				self.render();
 			});
-
-		// Handle Region Row Click -> Redirect to Region Profile Page
-		this.page.main
-			.find(".product-detail-row")
-			.off("click")
-			.on("click", function (e) {
-				e.stopPropagation(); // Prevent zone expand trigger
-				const zone = $(this).data("parent-zone");
-				const region = $(this).data("region");
-
-				if (zone && region) {
-					// Navigate to the new Region Profile web page
-					window.location.href = `/region_profile?zone=${encodeURIComponent(zone)}&region=${encodeURIComponent(region)}`;
-				}
-			});
 	}
 
 	attachProductDrilldownHandlers() {

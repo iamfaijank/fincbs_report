@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "creation": "2026-03-02 12:12:45.473390",
  "doctype": "DocType",
@@ -37,7 +38,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-02 12:23:38.352036",
+ "modified": "2026-03-05 16:40:00.803220",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Product Wise Report",
