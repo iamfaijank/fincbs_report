@@ -396,9 +396,11 @@ def get_sahayog_dashboard(
         all_branch_data.extend(month_data)
     
     zone_wise = build_zone_wise(all_branch_data, targets_map, target_type)
+    product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type)
     category_wise = build_category_wise(all_branch_data, targets_map, months, target_type)
     branch_wise = build_branch_wise(all_branch_data, targets_map, months, target_type)
-    
+    agent_wise = build_agent_wise(None, None, None)  # Agent Wise uses separate doctype
+
     return {
         "financial_year": financial_year,
         "view": view,
@@ -406,8 +408,11 @@ def get_sahayog_dashboard(
         "selected_date": str(selected_date) if selected_date else None,
         "months": [{"key": m[0], "display": f"{m[0]}-{str(m[2])[-2:]}", "date": m[3]} for m in months],
         "zone_wise": zone_wise,
+        "product_wise": product_wise_result,
+        "all_products": all_products,
         "category_wise": category_wise,
         "branch_wise": branch_wise,
+        "agent_wise": agent_wise,
         "permissions": perms
     }
 
@@ -516,6 +521,86 @@ def build_zone_wise(branch_data, targets_map, target_type):
             zone_wise.append(zone_hierarchy[zone][region])
     
     return zone_wise
+
+
+def build_product_wise(branch_data, targets_map, target_type):
+    # This function now provides Zone/Region counts and summed amounts from the Product Wise Report doctype.
+    # The function arguments are kept for structural consistency but are not used.
+
+    # 1. Server-side query with GROUP BY for performance
+    data = frappe.db.sql("""
+        SELECT
+            zone,
+            region,
+            COUNT(*) as record_count,
+            SUM(amount) as total_amount
+        FROM `tabProduct Wise Report`
+        WHERE zone IS NOT NULL AND region IS NOT NULL AND zone != '' AND region != ''
+        GROUP BY zone, region
+        ORDER BY zone, region
+    """, as_dict=True)
+
+    # Fetch individual product details for each zone/region
+    product_details = frappe.db.sql("""
+        SELECT
+            zone,
+            region,
+            product,
+            SUM(amount) as amount
+        FROM `tabProduct Wise Report`
+        WHERE zone IS NOT NULL AND region IS NOT NULL AND zone != '' AND region != ''
+        GROUP BY zone, region, product
+        ORDER BY zone, region, amount DESC
+    """, as_dict=True)
+
+    if not data:
+        return []
+
+    # Get all unique products for dynamic column generation
+    all_products = sorted(set(row.product for row in product_details))
+
+    # Build a lookup for product details: {(zone, region): {product: amount, ...}}
+    product_lookup = defaultdict(dict)
+    for row in product_details:
+        key = (row.zone, row.region)
+        product_lookup[key][row.product] = row.amount
+
+    # Calculate zone-wise product totals
+    zone_product_totals = defaultdict(lambda: defaultdict(float))
+    for row in product_details:
+        zone_product_totals[row.zone][row.product] += row.amount
+
+    # 2. Process into a hierarchical structure for the frontend
+    zone_summary = defaultdict(lambda: {'count': 0, 'amount': 0.0})
+    for row in data:
+        zone_summary[row.zone]['count'] += row.record_count
+        zone_summary[row.zone]['amount'] += (row.total_amount or 0)
+
+    # 3. Build the final flat list with parent (Zone) and child (Region) rows
+    result = []
+    for zone, summary in sorted(zone_summary.items()):
+        # Add Zone Group Row with product totals
+        result.append({
+            "name": zone,
+            "parent": None,
+            "count": summary['count'],
+            "amount": summary['amount'],
+            "is_group": True,
+            "products": dict(zone_product_totals.get(zone, {}))  # Product-wise totals for zone
+        })
+        # Add corresponding Region Rows
+        for row in data:
+            if row.zone == zone:
+                result.append({
+                    "name": row.region,
+                    "parent": zone,
+                    "count": row.record_count,
+                    "amount": row.total_amount or 0,
+                    "is_group": False,
+                    "products": product_lookup.get((zone, row.region), {})
+                })
+    
+    return result, all_products
 
 
 # 🚀 NEW FUNCTION: Zone breakdown for each category
@@ -648,5 +733,66 @@ def build_branch_wise(branch_data, targets_map, months, target_type):
             "region": data["region"],
             "months": data["months"]
         })
-    
+
     return out
+
+
+def build_agent_wise(branch_data, targets_map, target_type):
+    """
+    Build Agent Wise report from 'Agent  Wise Report' doctype.
+    Groups by Zone and Region, aggregates target and achievement.
+    """
+    # Fetch data from Agent  Wise Report doctype
+    agent_data = frappe.get_all(
+        "Agent  Wise Report",
+        fields=["zone", "region", "target", "achievement", "ss_target", "ss_achievement"],
+        filters={"zone": ["!=", ""], "region": ["!=", ""]},
+        limit_page_length=1000
+    )
+    
+    # Group by zone and region
+    agent_map = defaultdict(lambda: {"zone": "", "region": "", "target": 0.0, "achievement": 0.0, "ss_target": 0.0, "ss_achievement": 0.0})
+    
+    for row in agent_data:
+        zone = row.get("zone") or "Unknown"
+        region = row.get("region") or "Unknown"
+        
+        # Convert to float (handle string values)
+        try:
+            tgt = float(row.get("target") or 0)
+            ach = float(row.get("achievement") or 0)
+            ss_tgt = float(row.get("ss_target") or 0)
+            ss_ach = float(row.get("ss_achievement") or 0)
+        except (ValueError, TypeError):
+            tgt = 0
+            ach = 0
+            ss_tgt = 0
+            ss_ach = 0
+        
+        key = f"{zone}||{region}"
+        agent_map[key]["zone"] = zone
+        agent_map[key]["region"] = region
+        agent_map[key]["target"] += tgt
+        agent_map[key]["achievement"] += ach
+        agent_map[key]["ss_target"] += ss_tgt
+        agent_map[key]["ss_achievement"] += ss_ach
+    
+    # Convert to list format
+    result = []
+    for key, data in agent_map.items():
+        # Calculate shortfalls (target - achievement)
+        ss_shortfall = data["ss_target"] - data["ss_achievement"]
+        agent_shortfall = data["target"] - data["achievement"]
+        
+        result.append({
+            "zone": data["zone"],
+            "region": data["region"],
+            "ss_target": round(data["ss_target"], 2),
+            "ss_achievement": round(data["ss_achievement"], 2),
+            "ss_shortfall": round(ss_shortfall, 2),
+            "target": round(data["target"], 2),
+            "achievement": round(data["achievement"], 2),
+            "agent_shortfall": round(agent_shortfall, 2)
+        })
+    
+    return result
