@@ -9,106 +9,60 @@ from frappe.utils import flt, getdate
 
 from custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard import get_user_report_permissions
 
-# @frappe.whitelist()
-# def search_branches(txt: str):
-#     """
-#     Search branches by SOL ID or Branch Name
-#     Used for header search autosuggest
-#     Returns max 5 records
-#     """
-#     if not txt:
-#         return []
-
-#     user = frappe.session.user
-#     perms = get_user_report_permissions(user)
-
-#     conditions = ["(sol_id LIKE %(txt)s OR branch LIKE %(txt)s)"]
-#     params = {"txt": f"%{txt}%"}
-
-#     if perms.get("is_restricted"):
-#         # Priority 1: Specific SOL IDs
-#         if perms.get("sol_ids"):
-#             conditions.append("sol_id IN %(sol_ids)s")
-#             params["sol_ids"] = perms["sol_ids"]
-        
-#         # Priority 2: Zone & Region
-#         else:
-#             if perms.get("zone_ids"):
-#                 zone_regex = "|".join(perms["zone_ids"])
-#                 conditions.append(f"zone REGEXP '({zone_regex})'")
-            
-#             if not perms.get("all_regions") and perms.get("region_ids"):
-#                 region_regex = "|".join(perms["region_ids"])
-#                 conditions.append(f"region REGEXP '({region_regex})'")
-            
-#             if not perms.get("zone_ids") and not perms.get("region_ids") and not perms.get("all_regions"):
-#                 conditions.append("1=0")
-
-#     where_clause = " AND ".join(conditions)
-
-#     return frappe.db.sql(
-#         f"""
-#         SELECT
-#             name,
-#             sol_id,
-#             branch,
-#             zone,
-#             region,
-#             state
-#         FROM `tabSahayog Branch`
-#         WHERE {where_clause}
-#         ORDER BY sol_id ASC
-#         LIMIT 10
-#         """,
-#         params,
-#         as_dict=True,
-#     )
-
-
 @frappe.whitelist()
 def search_branches(txt: str):
+    """
+    Search branches by SOL ID or Branch Name
+    Used for header search autosuggest
+    Returns max 5 records
+    """
     if not txt:
         return []
 
     user = frappe.session.user
     perms = get_user_report_permissions(user)
 
-    # Base condition for the text search
-    conditions = ["(solid LIKE %(txt)s OR branch LIKE %(txt)s)"]
+    conditions = ["(sol_id LIKE %(txt)s OR branch LIKE %(txt)s)"]
     params = {"txt": f"%{txt}%"}
 
-    if perms.get('is_restricted'):
-        restricted_conditions = []
+    if perms.get("is_restricted"):
+        # Priority 1: Specific SOL IDs
+        if perms.get("sol_ids"):
+            conditions.append("sol_id IN %(sol_ids)s")
+            params["sol_ids"] = perms["sol_ids"]
         
-        if perms.get('sol_ids'):
-            restricted_conditions.append("solid IN %(sol_ids)s")
-            params['sol_ids'] = perms['sol_ids']
+        # Priority 2: Zone & Region
         else:
-            if perms.get('zone_ids'):
-                zone_regex = '|'.join(perms['zone_ids'])
-                restricted_conditions.append(f"zone REGEXP '{zone_regex}'")
-                
-            if not perms.get('all_regions') and perms.get('region_ids'):
-                region_regex = '|'.join(perms['region_ids'])
-                restricted_conditions.append(f"region REGEXP '{region_regex}'")
-                
-            if not perms.get('zone_ids') and not perms.get('region_ids') and not perms.get('all_regions'):
-                restricted_conditions.append("1=0")
-
-        # FIX: Combine restrictions but ALWAYS allow if the region is HO or Head Office
-        if restricted_conditions:
-            joined_restricted = " AND ".join(restricted_conditions)
-            conditions.append(f"({joined_restricted} OR region IN ('HO', 'Head Office'))")
+            if perms.get("zone_ids"):
+                zone_regex = "|".join(perms["zone_ids"])
+                conditions.append(f"zone REGEXP '({zone_regex})'")
+            
+            if not perms.get("all_regions") and perms.get("region_ids"):
+                region_regex = "|".join(perms["region_ids"])
+                conditions.append(f"region REGEXP '({region_regex})'")
+            
+            if not perms.get("zone_ids") and not perms.get("region_ids") and not perms.get("all_regions"):
+                conditions.append("1=0")
 
     where_clause = " AND ".join(conditions)
 
-    return frappe.db.sql(f"""
-        SELECT name, solid, branch, zone, region, state
+    return frappe.db.sql(
+        f"""
+        SELECT
+            name,
+            sol_id,
+            branch,
+            zone,
+            region,
+            state
         FROM `tabSahayog Branch`
         WHERE {where_clause}
-        ORDER BY solid ASC
+        ORDER BY sol_id ASC
         LIMIT 10
-    """, params, as_dict=True)
+        """,
+        params,
+        as_dict=True,
+    )
 
 
 
