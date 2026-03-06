@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "creation": "2026-03-02 16:45:47.182922",
  "doctype": "DocType",
@@ -49,7 +50,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-02 17:28:45.148854",
+ "modified": "2026-03-05 17:50:41.234993",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Agent  Wise Report",
