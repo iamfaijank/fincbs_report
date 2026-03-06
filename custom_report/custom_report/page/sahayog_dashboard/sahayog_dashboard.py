@@ -554,7 +554,7 @@ def build_product_wise(branch_data, targets_map, target_type):
     """, as_dict=True)
 
     if not data:
-        return []
+        return [], []
 
     # Get all unique products for dynamic column generation
     all_products = sorted(set(row.product for row in product_details))
