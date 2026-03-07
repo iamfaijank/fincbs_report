@@ -127,6 +127,7 @@ def get_account_details(foracid=None, settlement_date=None):
         if not res: return {"success": False, "error": "Account not found"}
 
         acid, cif, name, sol_id, sol_desc, opn_dt, schm_code, schm_desc, mat_dt, mat_amt, period, planned_installment = res
+        planned_installment = float(planned_installment or 0)
         
         cursor.execute("""
             SELECT value_date, tran_amt, part_tran_type, tran_particular 
@@ -196,6 +197,9 @@ def get_account_details(foracid=None, settlement_date=None):
             # 1. Add installments for this month
             principal_sum += credits_by_month.get(m, 0)
             
+            # Limit principal for interest calculation to exclude future advances
+            limited_principal = min(principal_sum, (m + 1) * planned_installment)
+
             # 2. Calculate Monthly Interest
             m_int = 0.0
             m_base_int = 0.0
@@ -208,14 +212,14 @@ def get_account_details(foracid=None, settlement_date=None):
                     m_base_int = 0.0
                 else:
                     # Full month interest
-                    m_int = (principal_sum + compounded_interest) * (app_rate / 1200.0)
-                    m_base_int = (principal_sum + compounded_interest_base) * (base_rate / 1200.0)
+                    m_int = (limited_principal + compounded_interest) * (app_rate / 1200.0)
+                    m_base_int = (limited_principal + compounded_interest_base) * (base_rate / 1200.0)
             elif m == sett_m_offset:
                 # Settlement month: pro-rata interest from last_inst_dt to sett_dt - 1
                 days = (sett_dt - last_inst_dt).days
                 if days > 0:
-                    m_int = (principal_sum + compounded_interest) * (app_rate / 100.0) * (days / 365.0)
-                    m_base_int = (principal_sum + compounded_interest_base) * (base_rate / 100.0) * (days / 365.0)
+                    m_int = (limited_principal + compounded_interest) * (app_rate / 100.0) * (days / 365.0)
+                    m_base_int = (limited_principal + compounded_interest_base) * (base_rate / 100.0) * (days / 365.0)
             
             total_interest += m_int
             accrued_current_quarter += m_int
