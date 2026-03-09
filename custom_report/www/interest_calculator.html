@@ -2132,6 +2132,7 @@
 					
 					const monthsHeldTotal = mRel;
 					const effectiveInterestMonths = settMOffset + 1;
+					const settlementMonthHasEmi = monthsWithTransactions.has(settMOffset);
 					
 					const rules = this.getApplicableRules(this.data.schm_code, monthsHeldTotal, isPremature);
 					const appRate = rules.appliedRate;
@@ -2170,13 +2171,16 @@
 						let m_int = 0;
 						let m_base_int = 0;
 
-						if (m < effectiveInterestMonths && m < tenureMonths) {
-							if (m < settMOffset) {
+						const isPrematureSettlementMonth = isPremature && m === settMOffset;
+						const shouldAccrueInterest = m < effectiveInterestMonths && (m < tenureMonths || isPrematureSettlementMonth);
+
+						if (shouldAccrueInterest) {
+							if (m < settMOffset || (m === settMOffset && settlementMonthHasEmi)) {
 								// Full month interest for all months prior to settlement
 								m_int = (limitedPrincipal + compoundedInt) * (appRate / 1200.0);
 								m_base_int = (limitedPrincipal + compoundedIntBase) * (baseRate / 1200.0);
 							} else {
-								// Broken period interest for the settlement month (up to exitDate - 1)
+								// Broken period interest for the settlement month when EMI has not arrived (up to exitDate - 1)
 								const days = Math.max(0, dExit.getDate() - 1);
 								m_int = (limitedPrincipal + compoundedInt) * (appRate / 100.0) * (days / 365.0);
 								m_base_int = (limitedPrincipal + compoundedIntBase) * (baseRate / 100.0) * (days / 365.0);
@@ -2214,7 +2218,7 @@
 							date: rowDate,
 							installment: installment.toFixed(2),
 							balanceBefore: balBefore.toFixed(2),
-							rate: (m < effectiveInterestMonths && m < tenureMonths) ? appRate : 0,
+							rate: shouldAccrueInterest ? appRate : 0,
 							interestAmount: m_int.toFixed(2),
 							closingBalance: (balBefore + m_int).toFixed(2),
 							isFromDb: monthsWithTransactions.has(m),
