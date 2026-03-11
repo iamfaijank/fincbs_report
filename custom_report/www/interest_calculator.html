@@ -1824,7 +1824,7 @@
 														opacity: row.isPostSettlement ? '0.7' : '1',
 														background: row.isPostSettlement ? '#fcfcfc' : 'inherit'
 													}">
-													<td :style="{ color: row.isPostSettlement ? '#e2e8f0' : 'var(--primary)', fontWeight: '800' }">[[ row.monthNo ]]</td>
+													<td :style="{ color: row.isPostSettlement ? '#e2e8f0' : 'var(--primary)', fontWeight: '800' }">[[ row.monthNo > (parseInt(data.deposit_period_mths) || 0) ? 'Settlement' : row.monthNo ]]</td>
 													<td :style="{ 
 														fontWeight: '800', 
 														background: '#f8fafc', 
@@ -2175,12 +2175,18 @@
 						const shouldAccrueInterest = m < effectiveInterestMonths && (m < tenureMonths || isPrematureSettlementMonth);
 
 						if (shouldAccrueInterest) {
-							if (m < settMOffset || (m === settMOffset && settlementMonthHasEmi)) {
-								// Full month interest for all months prior to settlement
-								m_int = (limitedPrincipal + compoundedInt) * (appRate / 1200.0);
-								m_base_int = (limitedPrincipal + compoundedIntBase) * (baseRate / 1200.0);
+							if (m < settMOffset || (m === settMOffset && settlementMonthHasEmi && !isPrematureSettlementMonth)) {
+								if (m === 0 && start.getDate() > 1) {
+									const firstMonthDays = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate() - start.getDate() + 1;
+									m_int = (limitedPrincipal + compoundedInt) * (appRate / 100.0) * (firstMonthDays / 365.0);
+									m_base_int = (limitedPrincipal + compoundedIntBase) * (baseRate / 100.0) * (firstMonthDays / 365.0);
+								} else {
+									// Full month interest for all months prior to settlement
+									m_int = (limitedPrincipal + compoundedInt) * (appRate / 1200.0);
+									m_base_int = (limitedPrincipal + compoundedIntBase) * (baseRate / 1200.0);
+								}
 							} else {
-								// Broken period interest for the settlement month when EMI has not arrived (up to exitDate - 1)
+								// Broken period interest for the settlement month (up to exitDate - 1)
 								const days = Math.max(0, dExit.getDate() - 1);
 								m_int = (limitedPrincipal + compoundedInt) * (appRate / 100.0) * (days / 365.0);
 								m_base_int = (limitedPrincipal + compoundedIntBase) * (baseRate / 100.0) * (days / 365.0);
