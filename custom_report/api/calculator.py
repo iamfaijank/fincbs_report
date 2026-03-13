@@ -138,6 +138,23 @@ def get_account_details(foracid=None, settlement_date=None):
         raw_trans = cursor.fetchall()
         raw_trans.sort(key=lambda x: x[0])
 
+        # Account closure handling:
+        # first debit/negative amount indicates closure, so exclude that row and
+        # all rows on/after that calendar date from further calculation/display.
+        closure_date = None
+        for val_date, amt, p_type, particular in raw_trans:
+            txn_amt = float(amt or 0)
+            txn_type = (p_type or "").strip().upper()
+            if txn_amt < 0 or txn_type == "D":
+                closure_date = val_date
+                break
+        if closure_date:
+            closure_day = closure_date.date() if hasattr(closure_date, "date") else closure_date
+            raw_trans = [
+                row for row in raw_trans
+                if row[0] and (row[0].date() if hasattr(row[0], "date") else row[0]) < closure_day
+            ]
+
         is_premature = mat_dt and sett_dt < mat_dt
         diff_sett = relativedelta(sett_dt, opn_dt)
         sett_m_offset = (diff_sett.years * 12) + diff_sett.months

@@ -3213,6 +3213,18 @@
 					const d = new Date(str);
 					return isNaN(d.getTime()) ? null : d;
 				},
+				parseTxnAmount(value) {
+					if (typeof value === "number") return value;
+					if (value === null || value === undefined) return 0;
+					const cleaned = String(value).replace(/,/g, "").replace(/[^\d.-]/g, "");
+					const parsed = parseFloat(cleaned);
+					return Number.isFinite(parsed) ? parsed : 0;
+				},
+				isClosureTransaction(t) {
+					if (!t) return false;
+					const txnType = String(t.type || "").trim().toUpperCase();
+					return this.parseTxnAmount(t.amount) < 0 || txnType === "D";
+				},
 				toISODate(dateObj) {
 					const y = dateObj.getFullYear();
 					const m = String(dateObj.getMonth() + 1).padStart(2, "0");
@@ -3465,8 +3477,15 @@
 					const actualTxnDates = {};
 					let maxTxnMonth = 0;
 					let lastInstDt = start;
+					const closureCutoffIndex = this.data.transactions.findIndex(
+						(t) => this.isClosureTransaction(t),
+					);
+					const effectiveTransactions =
+						closureCutoffIndex === -1
+							? this.data.transactions
+							: this.data.transactions.slice(0, closureCutoffIndex);
 
-					this.data.transactions.forEach((t) => {
+					effectiveTransactions.forEach((t) => {
 						if (t.type === "C") {
 							const dVal = this.parseDate(t.date);
 							if (dVal < dMaturity && dVal <= dExit) {
@@ -3660,7 +3679,7 @@
 
 					// Map back to transactions (first credit of the month)
 					const processedMonths = new Set();
-					this.data.transactions.forEach((t) => {
+					effectiveTransactions.forEach((t) => {
 						if (t.type === "C") {
 							const dVal = this.parseDate(t.date);
 							let m_off =
@@ -3950,8 +3969,16 @@
 					if (!this.data || !this.data.transactions || !this.data.ledger) return [];
 
 					const start = this.parseDate(this.data.acct_opn_date);
+					const closureCutoffIndex = this.data.transactions.findIndex(
+						(t) => this.isClosureTransaction(t),
+					);
+					const effectiveTransactions =
+						closureCutoffIndex === -1
+							? this.data.transactions
+							: this.data.transactions.slice(0, closureCutoffIndex);
+
 					// Actual transactions within display limit
-					const txns = this.data.transactions.filter((t) => {
+					const txns = effectiveTransactions.filter((t) => {
 						const dVal = this.parseDate(t.date);
 						let m_off =
 							(dVal.getFullYear() - start.getFullYear()) * 12 +
