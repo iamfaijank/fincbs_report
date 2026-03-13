@@ -84,6 +84,42 @@
 				top: 0;
 				z-index: 100;
 			}
+			.note-header {
+				padding: 12px 40px;
+				background: #fff;
+				border-bottom: 1px solid var(--border);
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 16px;
+				position: sticky;
+				top: 65px;
+				z-index: 99;
+			}
+			.note-header-text {
+				font-size: 13px;
+				font-weight: 600;
+				color: #334155;
+				letter-spacing: 0.2px;
+			}
+			.note-header-close {
+				border: 1px solid #cbd5e1;
+				background: #f8fafc;
+				color: #334155;
+				border-radius: 999px;
+				width: 28px;
+				height: 28px;
+				line-height: 1;
+				cursor: pointer;
+				font-size: 18px;
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				transition: 0.2s;
+			}
+			.note-header-close:hover {
+				background: #e2e8f0;
+			}
 
 			.brand-text {
 				font-weight: 800;
@@ -404,6 +440,13 @@
 				.branding-header {
 					padding: 12px 20px;
 					flex-shrink: 0;
+				}
+				.note-header {
+					padding: 10px 20px;
+					top: 57px;
+				}
+				.note-header-text {
+					font-size: 12px;
 				}
 				.brand-text {
 					font-size: 18px;
@@ -1272,6 +1315,19 @@
 							<span>Interest Result</span>
 						</div>
 					</div>
+				</div>
+				<div v-if="showNoteHeader && step === 2" class="note-header">
+					<div class="note-header-text">
+						<strong>Note :</strong> [[ noteMessage ]]
+					</div>
+					<button
+						type="button"
+						class="note-header-close"
+						@click="closeNoteHeader"
+						aria-label="Close note"
+					>
+						&times;
+					</button>
 				</div>
 
 				<!-- Loading State -->
@@ -3006,6 +3062,9 @@
 			PetiteVue.createApp({
 				$delimiters: ["[[", "]]"],
 				step: 1,
+				showNoteHeader: false,
+				noteMessage:
+					"Maturity Date is calculated from Opening Date & Tenure (not fetched from Finacle).",
 				accountNumber: "",
 				isLoading: false,
 				errorMessage: "",
@@ -3131,6 +3190,9 @@
 						}
 					}
 				},
+				closeNoteHeader() {
+					this.showNoteHeader = false;
+				},
 
 				parseDate(str) {
 					if (!str) return null;
@@ -3150,6 +3212,26 @@
 					}
 					const d = new Date(str);
 					return isNaN(d.getTime()) ? null : d;
+				},
+				toISODate(dateObj) {
+					const y = dateObj.getFullYear();
+					const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+					const d = String(dateObj.getDate()).padStart(2, "0");
+					return `${y}-${m}-${d}`;
+				},
+				calculateMaturityDate(openingDate, tenureMonths) {
+					const start = this.parseDate(openingDate);
+					const tenure = parseInt(tenureMonths) || 0;
+					if (!start) return "";
+					let maturity = new Date(
+						start.getFullYear(),
+						start.getMonth() + tenure,
+						start.getDate(),
+					);
+					if (maturity.getDate() !== start.getDate()) {
+						maturity = new Date(start.getFullYear(), start.getMonth() + tenure + 1, 0);
+					}
+					return this.formatDate(this.toISODate(maturity));
 				},
 
 				getMonthsDiff(startVal, endVal) {
@@ -3300,17 +3382,23 @@
 
 							await new Promise((r) => setTimeout(r, 300));
 
-							if (result.maturity_date) {
-								const [d, m, y] = result.maturity_date.split("/");
-								this.maxExitDate = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
-								this.maxDateDisplay = result.maturity_date;
-
-								const today = new Date().toISOString().split("T")[0];
-								this.exitDate =
-									today > this.maxExitDate ? this.maxExitDate : today;
+							const maturityDate = this.calculateMaturityDate(
+								result.acct_opn_date,
+								result.deposit_period_mths,
+							);
+							const maturityObj = this.parseDate(maturityDate);
+							if (!maturityObj) {
+								this.errorMessage = "Unable to calculate maturity date";
+								return;
 							}
+							this.maxExitDate = this.toISODate(maturityObj);
+							this.maxDateDisplay = maturityDate;
+
+							const today = new Date().toISOString().split("T")[0];
+							this.exitDate = today > this.maxExitDate ? this.maxExitDate : today;
 							this.data = {
 								...result,
+								maturity_date: maturityDate,
 								acct_no: foracid,
 								branch_name: result.sol_desc,
 								cust_name: result.acct_name,
@@ -3320,6 +3408,7 @@
 							this.selectedProduct =
 								result.schm_code === "2005" ? this.products[0] : this.products[1];
 							this.updateCalculations();
+							this.showNoteHeader = true;
 							this.step = 2;
 							window.location.hash = "#/interest_result";
 						} else {
@@ -3335,9 +3424,14 @@
 				updateCalculations() {
 					if (!this.data) return;
 					this.validateExitDate();
-					const dExit = this.parseDate(this.exitDate);
+					let dExit = this.parseDate(this.exitDate);
 					const dMaturity = this.parseDate(this.data.maturity_date);
 					const start = this.parseDate(this.data.acct_opn_date);
+					if (!dExit || !dMaturity || !start) return;
+					if (dExit > dMaturity) {
+						dExit = dMaturity;
+						this.exitDate = this.toISODate(dMaturity);
+					}
 					const isPremature = dExit < dMaturity;
 					this.data.isPremature = isPremature;
 
@@ -3963,6 +4057,7 @@
 				reset() {
 					this.step = 1;
 					window.location.hash = "#/account_number";
+					this.showNoteHeader = false;
 					this.accountNumber = "";
 					this.data = null;
 					this.schemeDesc = "";
