@@ -3151,6 +3151,26 @@
 					const d = new Date(str);
 					return isNaN(d.getTime()) ? null : d;
 				},
+				toISODate(dateObj) {
+					const y = dateObj.getFullYear();
+					const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+					const d = String(dateObj.getDate()).padStart(2, "0");
+					return `${y}-${m}-${d}`;
+				},
+				calculateMaturityDate(openingDate, tenureMonths) {
+					const start = this.parseDate(openingDate);
+					const tenure = parseInt(tenureMonths) || 0;
+					if (!start) return "";
+					let maturity = new Date(
+						start.getFullYear(),
+						start.getMonth() + tenure,
+						start.getDate(),
+					);
+					if (maturity.getDate() !== start.getDate()) {
+						maturity = new Date(start.getFullYear(), start.getMonth() + tenure + 1, 0);
+					}
+					return this.formatDate(this.toISODate(maturity));
+				},
 
 				getMonthsDiff(startVal, endVal) {
 					const start = this.parseDate(startVal);
@@ -3300,17 +3320,23 @@
 
 							await new Promise((r) => setTimeout(r, 300));
 
-							if (result.maturity_date) {
-								const [d, m, y] = result.maturity_date.split("/");
-								this.maxExitDate = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
-								this.maxDateDisplay = result.maturity_date;
-
-								const today = new Date().toISOString().split("T")[0];
-								this.exitDate =
-									today > this.maxExitDate ? this.maxExitDate : today;
+							const maturityDate = this.calculateMaturityDate(
+								result.acct_opn_date,
+								result.deposit_period_mths,
+							);
+							const maturityObj = this.parseDate(maturityDate);
+							if (!maturityObj) {
+								this.errorMessage = "Unable to calculate maturity date";
+								return;
 							}
+							this.maxExitDate = this.toISODate(maturityObj);
+							this.maxDateDisplay = maturityDate;
+
+							const today = new Date().toISOString().split("T")[0];
+							this.exitDate = today > this.maxExitDate ? this.maxExitDate : today;
 							this.data = {
 								...result,
+								maturity_date: maturityDate,
 								acct_no: foracid,
 								branch_name: result.sol_desc,
 								cust_name: result.acct_name,
@@ -3335,9 +3361,14 @@
 				updateCalculations() {
 					if (!this.data) return;
 					this.validateExitDate();
-					const dExit = this.parseDate(this.exitDate);
+					let dExit = this.parseDate(this.exitDate);
 					const dMaturity = this.parseDate(this.data.maturity_date);
 					const start = this.parseDate(this.data.acct_opn_date);
+					if (!dExit || !dMaturity || !start) return;
+					if (dExit > dMaturity) {
+						dExit = dMaturity;
+						this.exitDate = this.toISODate(dMaturity);
+					}
 					const isPremature = dExit < dMaturity;
 					this.data.isPremature = isPremature;
 
