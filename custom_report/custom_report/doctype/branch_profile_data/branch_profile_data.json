@@ -25,6 +25,8 @@
   "bm_mob_no",
   "ch_name",
   "ch_mob_no",
+  "column_break_usfr",
+  "role",
   "staff_details_section",
   "bdo",
   "bde",
@@ -47,14 +49,18 @@
   "rd_book",
   "dds_book",
   "smbg_book",
+  "dam_book",
   "column_break_glhr",
   "tasc_value",
   "casa_value",
+  "share_book",
   "customers_details_section",
   "total_customers_id",
   "total_ca_no_of_customers",
   "total_sa_no_of_customers",
   "total_fd_no_of_customers",
+  "total_dam_no_of_customers",
+  "total_share_no_of_customers",
   "column_break_fqur",
   "total_dds_no_of_customers",
   "total_rd_no_of_customers",
@@ -66,11 +72,13 @@
   "smbg_demand",
   "dds_demand",
   "dds_demand_vs_collection",
+  "total_demand",
   "column_break_pyso",
   "rd_collection",
   "smbg_collection",
   "dds_collection",
   "smbg_demand_vs_collection",
+  "total_collection",
   "productivity_details_section",
   "total_productivity",
   "bdo_and_productivity",
@@ -90,13 +98,21 @@
   "nav",
   "crm",
   "headless",
+  "nmab",
   "column_break_dkfe",
   "erv",
   "activity_dashboard",
   "audit_rating",
+  "dds_ats",
+  "fd_ats",
+  "casa_ats",
   "column_break_zeaz",
   "staff_nos",
-  "actionable"
+  "actionable",
+  "rd_ats",
+  "dam_ats",
+  "smbg_ats",
+  "share_ats"
  ],
  "fields": [
   {
@@ -552,13 +568,92 @@
   {
    "fieldname": "column_break_oycy",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_usfr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "role",
+   "fieldtype": "Data",
+   "label": "Role"
+  },
+  {
+   "fieldname": "total_demand",
+   "fieldtype": "Data",
+   "label": "Total Demand"
+  },
+  {
+   "fieldname": "total_collection",
+   "fieldtype": "Data",
+   "label": "Total Collection"
+  },
+  {
+   "fieldname": "total_dam_no_of_customers",
+   "fieldtype": "Data",
+   "label": "Total DAM No of Customers"
+  },
+  {
+   "fieldname": "total_share_no_of_customers",
+   "fieldtype": "Data",
+   "label": "Total Share No of Customers"
+  },
+  {
+   "fieldname": "dds_ats",
+   "fieldtype": "Data",
+   "label": "DDS ATS"
+  },
+  {
+   "fieldname": "fd_ats",
+   "fieldtype": "Data",
+   "label": "FD ATS"
+  },
+  {
+   "fieldname": "casa_ats",
+   "fieldtype": "Data",
+   "label": "CASA ATS"
+  },
+  {
+   "fieldname": "rd_ats",
+   "fieldtype": "Data",
+   "label": "RD ATS"
+  },
+  {
+   "fieldname": "dam_ats",
+   "fieldtype": "Data",
+   "label": "DAM ATS"
+  },
+  {
+   "fieldname": "smbg_ats",
+   "fieldtype": "Data",
+   "label": "SMBG ATS"
+  },
+  {
+   "fieldname": "share_ats",
+   "fieldtype": "Data",
+   "label": "SHARE ATS"
+  },
+  {
+   "fieldname": "nmab",
+   "fieldtype": "Data",
+   "label": "NMAB%"
+  },
+  {
+   "fieldname": "dam_book",
+   "fieldtype": "Data",
+   "label": "DAM Book"
+  },
+  {
+   "fieldname": "share_book",
+   "fieldtype": "Data",
+   "label": "Share Book"
   }
  ],
  "grid_page_length": 50,
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-29 15:03:22.910537",
+ "modified": "2026-03-17 16:45:33.503619",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Branch Profile Data",
