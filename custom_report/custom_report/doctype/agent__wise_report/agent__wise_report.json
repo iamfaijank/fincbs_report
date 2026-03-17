@@ -10,8 +10,12 @@
   "region",
   "target",
   "achievement",
+  "active",
+  "inactive",
   "ss_target",
-  "ss_achievement"
+  "ss_achievement",
+  "ss_active",
+  "ss_inactive"
  ],
  "fields": [
   {
@@ -45,12 +49,32 @@
    "fieldname": "ss_achievement",
    "fieldtype": "Data",
    "label": "SS Achievement"
+  },
+  {
+   "fieldname": "ss_active",
+   "fieldtype": "Data",
+   "label": "SS Active"
+  },
+  {
+   "fieldname": "ss_inactive",
+   "fieldtype": "Data",
+   "label": "SS Inactive"
+  },
+  {
+   "fieldname": "active",
+   "fieldtype": "Data",
+   "label": "Active"
+  },
+  {
+   "fieldname": "inactive",
+   "fieldtype": "Data",
+   "label": "Inactive"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-05 17:50:41.234993",
+ "modified": "2026-03-17 13:57:54.778996",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Agent  Wise Report",
