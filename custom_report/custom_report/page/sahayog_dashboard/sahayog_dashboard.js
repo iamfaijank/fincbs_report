@@ -22,7 +22,7 @@ class DrishtiDashboard {
 			viewType: "Monthly",
 			targetType: "Monthly",
 			formatMode: "words",
-			selectedDate: null,
+			selectedDate: new Date().toISOString().split("T")[0],
 			selectedCategories: [],
 			selectedZones: [],
 			selectedRegion: "",
