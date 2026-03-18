@@ -1584,9 +1584,13 @@ class DrishtiDashboard {
 						<th rowspan="2">SS TARGET</th>
 						<th rowspan="2">SS ACHIEVEMENT</th>
 						<th rowspan="2">SS SHORTFALL</th>
+						<th rowspan="2">SS ACTIVE</th>
+						<th rowspan="2">SS INACTIVE</th>
 						<th rowspan="2">DD TARGET</th>
 						<th rowspan="2">DD ACHIEVEMENT</th>
 						<th rowspan="2">DD SHORTFALL</th>
+						<th rowspan="2">DD ACTIVE</th>
+						<th rowspan="2">DD INACTIVE</th>
 						<th rowspan="2">%</th>
 					</tr>
 					<tr class="branch-table-subheader">
@@ -1610,11 +1614,20 @@ class DrishtiDashboard {
 			let zoneAch = 0;
 			let zoneSsTarget = 0;
 			let zoneSsAch = 0;
+			let zoneSsActive = 0;
+			let zoneSsInactive = 0;
+			let zoneActive = 0;
+			let zoneInactive = 0;
+
 			zoneRows.forEach((r) => {
 				zoneTarget += parseFloat(r.target || 0);
 				zoneAch += parseFloat(r.achievement || 0);
 				zoneSsTarget += parseFloat(r.ss_target || 0);
 				zoneSsAch += parseFloat(r.ss_achievement || 0);
+				zoneSsActive += parseFloat(r.ss_active || 0);
+				zoneSsInactive += parseFloat(r.ss_inactive || 0);
+				zoneActive += parseFloat(r.active || 0);
+				zoneInactive += parseFloat(r.inactive || 0);
 			});
 
 			const zoneSsShortfall = zoneSsTarget - zoneSsAch;
@@ -1637,9 +1650,13 @@ class DrishtiDashboard {
 					<td class="metric-cell amount-cell">${this.formatCurrency(zoneSsTarget)}</td>
 					<td class="metric-cell amount-cell">${this.formatCurrency(zoneSsAch)}</td>
 					<td class="metric-cell amount-cell" style="color: ${zoneSsShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneSsShortfall)}</td>
+					<td class="metric-cell amount-cell">${this.formatNumber(zoneSsActive)}</td>
+					<td class="metric-cell amount-cell">${this.formatNumber(zoneSsInactive)}</td>
 					<td class="metric-cell amount-cell">${this.formatCurrency(zoneTarget)}</td>
 					<td class="metric-cell amount-cell">${this.formatCurrency(zoneAch)}</td>
 					<td class="metric-cell amount-cell" style="color: ${zoneAgentShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneAgentShortfall)}</td>
+					<td class="metric-cell amount-cell">${this.formatNumber(zoneActive)}</td>
+					<td class="metric-cell amount-cell">${this.formatNumber(zoneInactive)}</td>
 					<td>${this.renderProgressBar(zonePercent)}</td>
 				</tr>
 			`;
@@ -1650,6 +1667,11 @@ class DrishtiDashboard {
 				const rSsAch = parseFloat(r.ss_achievement || 0);
 				const rTarget = parseFloat(r.target || 0);
 				const rAch = parseFloat(r.achievement || 0);
+				const rSsActive = parseFloat(r.ss_active || 0);
+				const rSsInactive = parseFloat(r.ss_inactive || 0);
+				const rActive = parseFloat(r.active || 0);
+				const rInactive = parseFloat(r.inactive || 0);
+
 				const rSsShortfall = rSsTarget - rSsAch;
 				const rAgentShortfall = rTarget - rAch;
 				const rPercent = rTarget > 0 ? ((rAch / rTarget) * 100).toFixed(2) : 0;
@@ -1668,9 +1690,13 @@ class DrishtiDashboard {
 						<td class="metric-cell amount-cell">${this.formatCurrency(rSsTarget)}</td>
 						<td class="metric-cell amount-cell">${this.formatCurrency(rSsAch)}</td>
 						<td class="metric-cell amount-cell" style="color: ${rSsShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rSsShortfall)}</td>
+						<td class="metric-cell amount-cell">${this.formatNumber(rSsActive)}</td>
+						<td class="metric-cell amount-cell">${this.formatNumber(rSsInactive)}</td>
 						<td class="metric-cell amount-cell">${this.formatCurrency(rTarget)}</td>
 						<td class="metric-cell amount-cell">${this.formatCurrency(rAch)}</td>
 						<td class="metric-cell amount-cell" style="color: ${rAgentShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rAgentShortfall)}</td>
+						<td class="metric-cell amount-cell">${this.formatNumber(rActive)}</td>
+						<td class="metric-cell amount-cell">${this.formatNumber(rInactive)}</td>
 						<td>${this.renderProgressBar(rPercent)}</td>
 					</tr>
 				`;

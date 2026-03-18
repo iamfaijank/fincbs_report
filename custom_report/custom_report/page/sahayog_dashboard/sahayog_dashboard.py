@@ -745,13 +745,24 @@ def build_agent_wise(branch_data, targets_map, target_type):
     # Fetch data from Agent  Wise Report doctype
     agent_data = frappe.get_all(
         "Agent  Wise Report",
-        fields=["zone", "region", "target", "achievement", "ss_target", "ss_achievement"],
+        fields=["zone", "region", "target", "achievement", "ss_target", "ss_achievement", "ss_active", "ss_inactive", "active", "inactive"],
         filters={"zone": ["!=", ""], "region": ["!=", ""]},
         limit_page_length=1000
     )
     
     # Group by zone and region
-    agent_map = defaultdict(lambda: {"zone": "", "region": "", "target": 0.0, "achievement": 0.0, "ss_target": 0.0, "ss_achievement": 0.0})
+    agent_map = defaultdict(lambda: {
+        "zone": "", 
+        "region": "", 
+        "target": 0.0, 
+        "achievement": 0.0, 
+        "ss_target": 0.0, 
+        "ss_achievement": 0.0,
+        "ss_active": 0.0,
+        "ss_inactive": 0.0,
+        "active": 0.0,
+        "inactive": 0.0
+    })
     
     for row in agent_data:
         zone = row.get("zone") or "Unknown"
@@ -763,11 +774,19 @@ def build_agent_wise(branch_data, targets_map, target_type):
             ach = float(row.get("achievement") or 0)
             ss_tgt = float(row.get("ss_target") or 0)
             ss_ach = float(row.get("ss_achievement") or 0)
+            ss_act = float(row.get("ss_active") or 0)
+            ss_inact = float(row.get("ss_inactive") or 0)
+            act = float(row.get("active") or 0)
+            inact = float(row.get("inactive") or 0)
         except (ValueError, TypeError):
             tgt = 0
             ach = 0
             ss_tgt = 0
             ss_ach = 0
+            ss_act = 0
+            ss_inact = 0
+            act = 0
+            inact = 0
         
         key = f"{zone}||{region}"
         agent_map[key]["zone"] = zone
@@ -776,6 +795,10 @@ def build_agent_wise(branch_data, targets_map, target_type):
         agent_map[key]["achievement"] += ach
         agent_map[key]["ss_target"] += ss_tgt
         agent_map[key]["ss_achievement"] += ss_ach
+        agent_map[key]["ss_active"] += ss_act
+        agent_map[key]["ss_inactive"] += ss_inact
+        agent_map[key]["active"] += act
+        agent_map[key]["inactive"] += inact
     
     # Convert to list format
     result = []
@@ -790,9 +813,13 @@ def build_agent_wise(branch_data, targets_map, target_type):
             "ss_target": round(data["ss_target"], 2),
             "ss_achievement": round(data["ss_achievement"], 2),
             "ss_shortfall": round(ss_shortfall, 2),
+            "ss_active": round(data["ss_active"], 2),
+            "ss_inactive": round(data["ss_inactive"], 2),
             "target": round(data["target"], 2),
             "achievement": round(data["achievement"], 2),
-            "agent_shortfall": round(agent_shortfall, 2)
+            "agent_shortfall": round(agent_shortfall, 2),
+            "active": round(data["active"], 2),
+            "inactive": round(data["inactive"], 2)
         })
     
     return result
