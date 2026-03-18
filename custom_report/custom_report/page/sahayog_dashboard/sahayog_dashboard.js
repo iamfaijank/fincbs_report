@@ -803,11 +803,16 @@ class DrishtiDashboard {
 	switchTab(tabId) {
 		this.state.activeTab = tabId;
 
+		// Update tab button UI immediately to show the tab as active
+		this.page.main.find(".tab-btn").removeClass("active");
+		this.page.main.find(`.tab-btn[data-tab="${tabId}"]`).addClass("active");
+
 		// SPECIAL CASE: For Agent Wise tab, always default to YESTERDAY (Today - 1)
 		if (tabId === "agent") {
-			const yesterday = new Date();
-			yesterday.setDate(yesterday.getDate() - 1);
-			const dateStr = yesterday.toISOString().split("T")[0];
+			const d = new Date();
+			d.setDate(d.getDate() - 1);
+			// Local date formatting (YYYY-MM-DD) to avoid UTC offsets
+			const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 			
 			this.state.selectedDate = dateStr;
 			this.page.main.find("#date-selector").val(dateStr);
@@ -817,10 +822,6 @@ class DrishtiDashboard {
 		}
 
 		this.updateUrlFromState();
-
-		this.page.main.find(".tab-btn").removeClass("active");
-		this.page.main.find(`.tab-btn[data-tab="${tabId}"]`).addClass("active");
-
 		this.render();
 	}
 
