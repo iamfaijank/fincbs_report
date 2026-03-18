@@ -741,7 +741,7 @@ def build_agent_wise(selected_date=None):
     """
     Build Agent Wise report from 'Agent  Wise Report' doctype.
     Groups by Zone and Region, aggregates target and achievement.
-    Uses 'creation' field as the date filter.
+    Uses 'date' field as the date filter.
     """
     if not selected_date:
         selected_date = frappe.utils.today()
@@ -753,7 +753,7 @@ def build_agent_wise(selected_date=None):
         filters={
             "zone": ["!=", ""], 
             "region": ["!=", ""],
-            "creation": ["between", [f"{selected_date} 00:00:00", f"{selected_date} 23:59:59"]]
+            "date": ["between", [f"{selected_date} 00:00:00", f"{selected_date} 23:59:59"]]
         },
         limit_page_length=1000
     )

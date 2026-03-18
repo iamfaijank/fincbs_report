@@ -1640,7 +1640,7 @@ class DrishtiDashboard {
 				<tr class="agent-zone-row branch-table-row" data-zone="${zone}" style="background: #f8fafc; cursor: pointer;">
 					<td class="sr-col">${sr++}</td>
 					<td>
-						<div class="branch-info">
+						<div class="branch-info" style="white-space: nowrap;">
 							<div class="branch-code-name">
 								<span class="agent-toggle" style="display: inline-block; width: 20px; margin-right: 8px; cursor: pointer;">${isExpanded ? "▼" : "▶"}</span>
 								<strong style="vertical-align: middle;">${zone}</strong>
@@ -1680,7 +1680,7 @@ class DrishtiDashboard {
 					<tr class="agent-region-row region-of-${zone} branch-table-row" style="display: ${isExpanded ? "table-row" : "none"}; background: #ffffff;">
 						<td class="sr-col"></td>
 						<td>
-							<div class="branch-info">
+							<div class="branch-info" style="white-space: nowrap;">
 								<div class="branch-code-name">
 									<span style="display: inline-block; width: 20px; margin-right: 8px;"></span>
 									<span style="padding-left: 40px; color: #097c80; font-weight: 500;">${r.region}</span>
