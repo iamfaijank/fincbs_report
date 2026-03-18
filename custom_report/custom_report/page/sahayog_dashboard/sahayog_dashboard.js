@@ -1661,8 +1661,15 @@ class DrishtiDashboard {
 				</tr>
 			`;
 
+			// Sort regions within the zone
+			const sortedRegionRows = zoneRows.sort((a, b) => {
+				const aNum = a.region.match(/REGION-(\d+)/)?.[1];
+				const bNum = b.region.match(/REGION-(\d+)/)?.[1];
+				return aNum && bNum ? parseInt(aNum) - parseInt(bNum) : a.region.localeCompare(b.region);
+			});
+
 			// Region rows (hidden by default)
-			zoneRows.forEach((r) => {
+			sortedRegionRows.forEach((r) => {
 				const rSsTarget = parseFloat(r.ss_target || 0);
 				const rSsAch = parseFloat(r.ss_achievement || 0);
 				const rTarget = parseFloat(r.target || 0);
