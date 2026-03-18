@@ -15,7 +15,8 @@
   "ss_target",
   "ss_achievement",
   "ss_active",
-  "ss_inactive"
+  "ss_inactive",
+  "date"
  ],
  "fields": [
   {
@@ -69,12 +70,17 @@
    "fieldname": "inactive",
    "fieldtype": "Data",
    "label": "Inactive"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Datetime",
+   "label": "Date"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-17 13:57:54.778996",
+ "modified": "2026-03-18 13:43:48.795473",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Agent  Wise Report",

@@ -399,7 +399,7 @@ def get_sahayog_dashboard(
     product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type)
     category_wise = build_category_wise(all_branch_data, targets_map, months, target_type)
     branch_wise = build_branch_wise(all_branch_data, targets_map, months, target_type)
-    agent_wise = build_agent_wise(None, None, None)  # Agent Wise uses separate doctype
+    agent_wise = build_agent_wise(selected_date)
 
     return {
         "financial_year": financial_year,
@@ -737,16 +737,24 @@ def build_branch_wise(branch_data, targets_map, months, target_type):
     return out
 
 
-def build_agent_wise(branch_data, targets_map, target_type):
+def build_agent_wise(selected_date=None):
     """
     Build Agent Wise report from 'Agent  Wise Report' doctype.
     Groups by Zone and Region, aggregates target and achievement.
+    Uses 'date' field as the date filter.
     """
+    if not selected_date:
+        selected_date = frappe.utils.today()
+        
     # Fetch data from Agent  Wise Report doctype
     agent_data = frappe.get_all(
         "Agent  Wise Report",
         fields=["zone", "region", "target", "achievement", "ss_target", "ss_achievement", "ss_active", "ss_inactive", "active", "inactive"],
-        filters={"zone": ["!=", ""], "region": ["!=", ""]},
+        filters={
+            "zone": ["!=", ""], 
+            "region": ["!=", ""],
+            "date": ["between", [f"{selected_date} 00:00:00", f"{selected_date} 23:59:59"]]
+        },
         limit_page_length=1000
     )
     
