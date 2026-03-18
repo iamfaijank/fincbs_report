@@ -22,7 +22,7 @@ class DrishtiDashboard {
 			viewType: "Monthly",
 			targetType: "Monthly",
 			formatMode: "words",
-			selectedDate: new Date().toISOString().split("T")[0],
+			selectedDate: null,
 			selectedCategories: [],
 			selectedZones: [],
 			selectedRegion: "",
@@ -802,6 +802,20 @@ class DrishtiDashboard {
 
 	switchTab(tabId) {
 		this.state.activeTab = tabId;
+
+		// SPECIAL CASE: For Agent Wise tab, always default to YESTERDAY (Today - 1)
+		if (tabId === "agent") {
+			const yesterday = new Date();
+			yesterday.setDate(yesterday.getDate() - 1);
+			const dateStr = yesterday.toISOString().split("T")[0];
+			
+			this.state.selectedDate = dateStr;
+			this.page.main.find("#date-selector").val(dateStr);
+			this.updateUrlFromState();
+			this.loadData();
+			return;
+		}
+
 		this.updateUrlFromState();
 
 		this.page.main.find(".tab-btn").removeClass("active");
@@ -1661,8 +1675,15 @@ class DrishtiDashboard {
 				</tr>
 			`;
 
+			// Sort regions within the zone
+			const sortedRegionRows = zoneRows.sort((a, b) => {
+				const aNum = a.region.match(/REGION-(\d+)/)?.[1];
+				const bNum = b.region.match(/REGION-(\d+)/)?.[1];
+				return aNum && bNum ? parseInt(aNum) - parseInt(bNum) : a.region.localeCompare(b.region);
+			});
+
 			// Region rows (hidden by default)
-			zoneRows.forEach((r) => {
+			sortedRegionRows.forEach((r) => {
 				const rSsTarget = parseFloat(r.ss_target || 0);
 				const rSsAch = parseFloat(r.ss_achievement || 0);
 				const rTarget = parseFloat(r.target || 0);
