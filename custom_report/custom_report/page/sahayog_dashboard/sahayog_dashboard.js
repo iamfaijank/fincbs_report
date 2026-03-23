@@ -860,7 +860,7 @@ class DrishtiDashboard {
 			return;
 		}
 
-		// For other tabs, restore saved date or clear if none
+		// For other tabs, restore saved date or use today's date for data loading
 		if (savedDate) {
 			this.state.selectedDate = savedDate;
 			if (this.dateControl) {
@@ -868,19 +868,114 @@ class DrishtiDashboard {
 				this.dateControl.set_value(savedDate);
 				this.isRefreshingDate = false;
 			}
+			// Load data with restored date
+			this.loadData();
 		} else {
-			// Clear date selector (show blank DD/MM/YY)
+			// Clear date selector (show blank DD/MM/YY) but use today's date for API
 			this.state.selectedDate = null;
 			if (this.dateControl) {
 				this.isRefreshingDate = true;
 				this.dateControl.set_value(null);
 				this.isRefreshingDate = false;
 			}
+			// Load data with today's date (default) - but don't show it in selector
+			this.loadDataWithDate(frappe.datetime.get_today());
 		}
 
 		this.updateUiFromState();
 		this.updateUrlFromState();
-		this.render();
+		// Don't call render() here - loadData() callback will call it
+	}
+
+	// Helper to load data with a specific date (for internal use)
+	loadDataWithDate(dateStr) {
+		const self = this;
+		const apiDate = dateStr || frappe.datetime.get_today();
+
+		frappe.call({
+			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_sahayog_dashboard",
+			args: {
+				financial_year: this.state.financialYear,
+				view: this.state.viewType,
+				target_type: this.state.targetType,
+				filters: JSON.stringify({
+					zones: this.state.selectedZones,
+				}),
+				selected_date: apiDate,
+			},
+			callback: (r) => {
+				if (r.message) {
+					self.data = r.message;
+					self.permissions = r.message.permissions;
+
+					// Check if data is empty (all zeros) - if so, try to get latest available date
+					if (self.branchData && self.branchData.length > 0) {
+						const firstBranch = self.branchData[0];
+						const firstMonthKey = self.months?.[0]?.key;
+						const monthData = firstBranch.months?.[firstMonthKey];
+						
+						if (monthData && monthData.target === 0 && monthData.achievement === 0) {
+							self.loadLatestAvailableDate();
+							return;
+						}
+					}
+
+					if (self.permissions && self.permissions.has_access === false) {
+						self.page.main.html(`
+							<div style="text-align: center; padding: 100px 20px;">
+								<div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
+								<h2 style="color: #d32f2f;">Access Denied</h2>
+								<p style="font-size: 16px; color: #666;">
+									You do not have a <b>Report Preference</b> set up. <br>
+									Please contact your administrator to grant access.
+								</p>
+							</div>
+						`);
+						return;
+					}
+
+					self.processNewApiResponse();
+					self.updateFilterCounts();
+					self.render();
+				}
+			},
+			error: (err) => {
+				self.isLoadingData = false;
+				console.error("Error loading dashboard data:", err);
+				self.showError("Failed to load data. Please refresh the page.");
+			}
+		});
+	}
+
+	// Load latest available date from backend
+	loadLatestAvailableDate() {
+		const self = this;
+		
+		frappe.call({
+			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_agent_report_date",
+			callback: (r) => {
+				let dateStr = r.message;
+				if (!dateStr) {
+					// Fallback to yesterday if no data exists
+					const d = new Date();
+					d.setDate(d.getDate() - 1);
+					dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+				}
+				
+				// Update state and UI
+				self.state.selectedDate = dateStr;
+				self.tabDates[self.state.activeTab] = dateStr;
+				
+				if (self.dateControl) {
+					self.isRefreshingDate = true;
+					self.dateControl.set_value(dateStr);
+					self.isRefreshingDate = false;
+				}
+				
+				// Reload data with latest date
+				self.loadData();
+			}
+		});
 	}
 
 	// ========================================================================
@@ -889,7 +984,8 @@ class DrishtiDashboard {
 	loadData() {
 		const self = this;
 
-		// Use today's date as default for API if no date selected (but keep UI blank)
+		// Use state.selectedDate for API call (this is what the date selector shows)
+		// Fallback to today's date if no date selected
 		const apiDate = this.state.selectedDate || frappe.datetime.get_today();
 
 		frappe.call({
@@ -908,6 +1004,7 @@ class DrishtiDashboard {
 					self.data = r.message;
 					self.permissions = r.message.permissions;
 					console.log("🛡️ Sahayog Dashboard Permissions:", self.permissions);
+					console.log(`[loadData callback] Data received. branchData length: ${self.branchData?.length || 0}`);
 
 					if (self.permissions && self.permissions.has_access === false) {
 						self.page.main.html(`
@@ -1047,6 +1144,7 @@ class DrishtiDashboard {
 				),
 				isZoneTotal: true,
 			};
+			
 			zoneGroup.totalBranches.forEach((branch) => {
 				this.months.forEach((m) => {
 					const monthData = branch.months[m.key];
