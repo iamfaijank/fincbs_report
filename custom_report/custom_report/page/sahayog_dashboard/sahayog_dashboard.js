@@ -32,6 +32,14 @@ class DrishtiDashboard {
 			expandedZones: {}, // Track expanded/collapsed zones
 			selectedSegment: "all",
 		};
+		// Store selected date per tab
+		this.tabDates = {
+			zone: null,
+			category: null,
+			product: null,
+			agent: null,
+			branch: null,
+		};
 		this.data = null;
 		this.availableFilters = {
 			categories: ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Zero Level"],
@@ -765,7 +773,12 @@ class DrishtiDashboard {
 
 		// Date Selector
 		this.page.main.find("#date-selector").on("change", function () {
-			self.state.selectedDate = $(this).val();
+			const newDate = $(this).val();
+			self.state.selectedDate = newDate;
+			// Save date for current tab
+			if (self.state.activeTab && self.tabDates.hasOwnProperty(self.state.activeTab)) {
+				self.tabDates[self.state.activeTab] = newDate;
+			}
 			self.updateUrlFromState();
 			self.loadData();
 		});
@@ -801,11 +814,19 @@ class DrishtiDashboard {
 	}
 
 	switchTab(tabId) {
+		// Save current tab's date before switching
+		if (this.state.activeTab && this.tabDates.hasOwnProperty(this.state.activeTab)) {
+			this.tabDates[this.state.activeTab] = this.state.selectedDate;
+		}
+
 		this.state.activeTab = tabId;
 
 		// Update tab button UI immediately to show the tab as active
 		this.page.main.find(".tab-btn").removeClass("active");
 		this.page.main.find(`.tab-btn[data-tab="${tabId}"]`).addClass("active");
+
+		// Restore the target tab's previously selected date
+		const savedDate = this.tabDates[tabId] || null;
 
 		// SPECIAL CASE: For Agent Wise tab, default to LATEST AVAILABLE DATE
 		if (tabId === "agent") {
@@ -821,12 +842,13 @@ class DrishtiDashboard {
 						dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 					}
 
-					self.state.selectedDate = dateStr;
+					// Use saved date if available, otherwise use latest date from server
+					self.state.selectedDate = savedDate || dateStr;
 
 					// Update date control properly
 					if (self.dateControl) {
 						self.isRefreshingDate = true;
-						self.dateControl.set_value(dateStr);
+						self.dateControl.set_value(self.state.selectedDate);
 						self.isRefreshingDate = false;
 					}
 
@@ -836,6 +858,24 @@ class DrishtiDashboard {
 				},
 			});
 			return;
+		}
+
+		// For other tabs, restore saved date or clear if none
+		if (savedDate) {
+			this.state.selectedDate = savedDate;
+			if (this.dateControl) {
+				this.isRefreshingDate = true;
+				this.dateControl.set_value(savedDate);
+				this.isRefreshingDate = false;
+			}
+		} else {
+			// Clear date selector (show blank DD/MM/YY)
+			this.state.selectedDate = null;
+			if (this.dateControl) {
+				this.isRefreshingDate = true;
+				this.dateControl.set_value(null);
+				this.isRefreshingDate = false;
+			}
 		}
 
 		this.updateUiFromState();
@@ -849,6 +889,9 @@ class DrishtiDashboard {
 	loadData() {
 		const self = this;
 
+		// Use today's date as default for API if no date selected (but keep UI blank)
+		const apiDate = this.state.selectedDate || frappe.datetime.get_today();
+
 		frappe.call({
 			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_sahayog_dashboard",
 			args: {
@@ -858,7 +901,7 @@ class DrishtiDashboard {
 				filters: JSON.stringify({
 					zones: this.state.selectedZones,
 				}),
-				selected_date: this.state.selectedDate,
+				selected_date: apiDate,
 			},
 			callback: (r) => {
 				if (r.message) {
@@ -1774,8 +1817,9 @@ class DrishtiDashboard {
 			this.isRefreshingDate = false;
 		}
 
-		// Update state
+		// Update state and tab-specific date storage
 		this.state.selectedDate = formatted_for_input;
+		this.tabDates["agent"] = formatted_for_input;
 
 		// Reload data with new date
 		this.loadData();
