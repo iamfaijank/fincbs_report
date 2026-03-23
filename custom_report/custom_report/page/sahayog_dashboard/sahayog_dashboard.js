@@ -644,7 +644,7 @@ class DrishtiDashboard {
                     </div>
 
                     <!-- Date Selector -->
-                    <div>
+                    <div id="date-selector-container">
                         <label style="font-weight: bold; color: #0d1b2a;">Date:</label>
                         <input type="date" id="date-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;" />
                     </div>
@@ -807,20 +807,31 @@ class DrishtiDashboard {
 		this.page.main.find(".tab-btn").removeClass("active");
 		this.page.main.find(`.tab-btn[data-tab="${tabId}"]`).addClass("active");
 
-		// SPECIAL CASE: For Agent Wise tab, always default to YESTERDAY (Today - 1)
+		// SPECIAL CASE: For Agent Wise tab, default to LATEST AVAILABLE DATE
 		if (tabId === "agent") {
-			const d = new Date();
-			d.setDate(d.getDate() - 1);
-			// Local date formatting (YYYY-MM-DD) to avoid UTC offsets
-			const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-			
-			this.state.selectedDate = dateStr;
-			this.page.main.find("#date-selector").val(dateStr);
-			this.updateUrlFromState();
-			this.loadData();
+			const self = this;
+			frappe.call({
+				method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_agent_report_date",
+				callback: (r) => {
+					let dateStr = r.message;
+					if (!dateStr) {
+						// Fallback to yesterday if no data exists
+						const d = new Date();
+						d.setDate(d.getDate() - 1);
+						dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+					}
+
+					self.state.selectedDate = dateStr;
+					self.page.main.find("#date-selector").val(dateStr);
+					self.updateUiFromState();
+					self.updateUrlFromState();
+					self.loadData();
+				}
+			});
 			return;
 		}
 
+		this.updateUiFromState();
 		this.updateUrlFromState();
 		this.render();
 	}

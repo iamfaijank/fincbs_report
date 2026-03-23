@@ -296,6 +296,13 @@ def calculate_category_changes(current_date_data, previous_date_data):
 
 
 @frappe.whitelist(allow_guest=True)
+def get_latest_agent_report_date():
+    """Returns the latest available date from 'Agent  Wise Report' doctype."""
+    latest_date = frappe.db.get_value("Agent  Wise Report", {}, "date", order_by="date desc")
+    return str(latest_date) if latest_date else None
+
+
+@frappe.whitelist(allow_guest=True)
 def get_sahayog_dashboard(
     financial_year="2025-2026",
     view="Monthly",
