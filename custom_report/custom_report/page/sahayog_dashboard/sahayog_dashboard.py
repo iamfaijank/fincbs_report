@@ -299,7 +299,10 @@ def calculate_category_changes(current_date_data, previous_date_data):
 def get_latest_agent_report_date():
     """Returns the latest available date from 'Agent  Wise Report' doctype."""
     latest_date = frappe.db.get_value("Agent  Wise Report", {}, "date", order_by="date desc")
-    return str(latest_date) if latest_date else None
+    if latest_date:
+        # Return only date portion (yyyy-mm-dd), strip time
+        return str(latest_date)[:10]
+    return None
 
 
 @frappe.whitelist(allow_guest=True)
@@ -821,10 +824,14 @@ def build_agent_wise(selected_date=None):
         # Calculate shortfalls (target - achievement)
         ss_shortfall = data["ss_target"] - data["ss_achievement"]
         agent_shortfall = data["target"] - data["achievement"]
-        
+
+        # Format date as yyyy-mm-dd (strip time portion)
+        date_str = str(data["date"])[:10] if data.get("date") else selected_date
+
         result.append({
             "zone": data["zone"],
             "region": data["region"],
+            "date": date_str,
             "ss_target": round(data["ss_target"], 2),
             "ss_achievement": round(data["ss_achievement"], 2),
             "ss_shortfall": round(ss_shortfall, 2),
@@ -836,5 +843,5 @@ def build_agent_wise(selected_date=None):
             "active": round(data["active"], 2),
             "inactive": round(data["inactive"], 2)
         })
-    
+
     return result
