@@ -644,7 +644,7 @@ class DrishtiDashboard {
                     </div>
 
                     <!-- Date Selector -->
-                    <div>
+                    <div id="date-selector-container">
                         <label style="font-weight: bold; color: #0d1b2a;">Date:</label>
                         <input type="date" id="date-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;" />
                     </div>
@@ -807,20 +807,38 @@ class DrishtiDashboard {
 		this.page.main.find(".tab-btn").removeClass("active");
 		this.page.main.find(`.tab-btn[data-tab="${tabId}"]`).addClass("active");
 
-		// SPECIAL CASE: For Agent Wise tab, always default to YESTERDAY (Today - 1)
+		// SPECIAL CASE: For Agent Wise tab, default to LATEST AVAILABLE DATE
 		if (tabId === "agent") {
-			const d = new Date();
-			d.setDate(d.getDate() - 1);
-			// Local date formatting (YYYY-MM-DD) to avoid UTC offsets
-			const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-			
-			this.state.selectedDate = dateStr;
-			this.page.main.find("#date-selector").val(dateStr);
-			this.updateUrlFromState();
-			this.loadData();
+			const self = this;
+			frappe.call({
+				method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_agent_report_date",
+				callback: (r) => {
+					let dateStr = r.message;
+					if (!dateStr) {
+						// Fallback to yesterday if no data exists
+						const d = new Date();
+						d.setDate(d.getDate() - 1);
+						dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+					}
+
+					self.state.selectedDate = dateStr;
+
+					// Update date control properly
+					if (self.dateControl) {
+						self.isRefreshingDate = true;
+						self.dateControl.set_value(dateStr);
+						self.isRefreshingDate = false;
+					}
+
+					self.updateUiFromState();
+					self.updateUrlFromState();
+					self.loadData();
+				},
+			});
 			return;
 		}
 
+		this.updateUiFromState();
 		this.updateUrlFromState();
 		this.render();
 	}
@@ -1649,10 +1667,12 @@ class DrishtiDashboard {
 			const zoneAgentShortfall = zoneTarget - zoneAch;
 			const zonePercent = zoneTarget > 0 ? ((zoneAch / zoneTarget) * 100).toFixed(2) : 0;
 			const isExpanded = this.state.expandedZones[`agent_${zone}`] || false;
+			const zoneDate =
+				zoneRows[0]?.date || this.state.selectedDate || frappe.datetime.get_today();
 
 			// Zone row
 			html += `
-				<tr class="agent-zone-row branch-table-row" data-zone="${zone}" style="background: #f8fafc; cursor: pointer;">
+				<tr class="agent-zone-row branch-table-row" data-zone="${zone}" data-date="${zoneDate}" style="background: #f8fafc; cursor: pointer;">
 					<td class="sr-col">${sr++}</td>
 					<td>
 						<div class="branch-info" style="white-space: nowrap;">
@@ -1680,7 +1700,9 @@ class DrishtiDashboard {
 			const sortedRegionRows = zoneRows.sort((a, b) => {
 				const aNum = a.region.match(/REGION-(\d+)/)?.[1];
 				const bNum = b.region.match(/REGION-(\d+)/)?.[1];
-				return aNum && bNum ? parseInt(aNum) - parseInt(bNum) : a.region.localeCompare(b.region);
+				return aNum && bNum
+					? parseInt(aNum) - parseInt(bNum)
+					: a.region.localeCompare(b.region);
 			});
 
 			// Region rows (hidden by default)
@@ -1693,13 +1715,14 @@ class DrishtiDashboard {
 				const rSsInactive = parseFloat(r.ss_inactive || 0);
 				const rActive = parseFloat(r.active || 0);
 				const rInactive = parseFloat(r.inactive || 0);
+				const rDate = r.date || zoneDate;
 
 				const rSsShortfall = rSsTarget - rSsAch;
 				const rAgentShortfall = rTarget - rAch;
 				const rPercent = rTarget > 0 ? ((rAch / rTarget) * 100).toFixed(2) : 0;
 
 				html += `
-					<tr class="agent-region-row region-of-${zone} branch-table-row" style="display: ${isExpanded ? "table-row" : "none"}; background: #ffffff;">
+					<tr class="agent-region-row region-of-${zone} branch-table-row" data-region="${r.region}" data-date="${rDate}" style="display: ${isExpanded ? "table-row" : "none"}; background: #ffffff; cursor: pointer;">
 						<td class="sr-col"></td>
 						<td>
 							<div class="branch-info" style="white-space: nowrap;">
@@ -1729,14 +1752,50 @@ class DrishtiDashboard {
 		return html;
 	}
 
+	/**
+	 * Set date in the Date selector field when clicking Agent Wise rows
+	 * Converts date to yyyy-mm-dd format for the date input field
+	 * Only works in Agent Wise tab
+	 */
+	setAgentWiseDate(date_value) {
+		if (!date_value) return;
+
+		// Strip time portion if present (handle "2026-03-18 00:00:00" format)
+		let clean_date = String(date_value).split(" ")[0];
+
+		// Convert to date object and back to ensure valid format
+		let d = frappe.datetime.str_to_obj(clean_date);
+		let formatted_for_input = frappe.datetime.obj_to_str(d); // gives yyyy-mm-dd
+
+		// Update the date control
+		if (this.dateControl) {
+			this.isRefreshingDate = true;
+			this.dateControl.set_value(formatted_for_input);
+			this.isRefreshingDate = false;
+		}
+
+		// Update state
+		this.state.selectedDate = formatted_for_input;
+
+		// Reload data with new date
+		this.loadData();
+	}
+
 	attachAgentExpandHandlers() {
 		const self = this;
 
+		// Handle Zone Expand/Collapse and Date Sync
 		this.page.main
 			.find(".agent-zone-row")
 			.off("click")
 			.on("click", function () {
 				const zone = $(this).data("zone");
+				const rowDate = $(this).data("date");
+
+				// Sync date to date selector (Agent Wise tab only)
+				if (rowDate && self.state.activeTab === "agent") {
+					self.setAgentWiseDate(rowDate);
+				}
 
 				// Toggle expanded state
 				self.state.expandedZones[`agent_${zone}`] =
@@ -1744,6 +1803,19 @@ class DrishtiDashboard {
 
 				// Re-render to reflect changes
 				self.render();
+			});
+
+		// Handle Region Row Click - Date Sync Only
+		this.page.main
+			.find(".agent-region-row")
+			.off("click")
+			.on("click", function () {
+				const rowDate = $(this).data("date");
+
+				// Sync date to date selector (Agent Wise tab only)
+				if (rowDate && self.state.activeTab === "agent") {
+					self.setAgentWiseDate(rowDate);
+				}
 			});
 	}
 
