@@ -9,7 +9,8 @@
   "zone",
   "region",
   "product",
-  "amount"
+  "amount",
+  "date"
  ],
  "fields": [
   {
@@ -33,12 +34,17 @@
    "fieldname": "amount",
    "fieldtype": "Currency",
    "label": "Amount"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-05 16:40:00.803220",
+ "modified": "2026-03-25 13:10:38.230372",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Product Wise Report",
