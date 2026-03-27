@@ -296,6 +296,15 @@ def calculate_category_changes(current_date_data, previous_date_data):
 
 
 @frappe.whitelist(allow_guest=True)
+def get_latest_product_report_date():
+    """Returns the latest available date from 'Product Wise Report' doctype."""
+    latest_date = frappe.db.get_value("Product Wise Report", {}, "date", order_by="date desc")
+    if latest_date:
+        return str(latest_date)[:10]
+    return None
+
+
+@frappe.whitelist(allow_guest=True)
 def get_latest_agent_report_date():
     """Returns the latest available date from 'Agent  Wise Report' doctype."""
     latest_date = frappe.db.get_value("Agent  Wise Report", {}, "date", order_by="date desc")
@@ -406,7 +415,7 @@ def get_sahayog_dashboard(
         all_branch_data.extend(month_data)
     
     zone_wise = build_zone_wise(all_branch_data, targets_map, target_type)
-    product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type)
+    product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type, selected_date)
     category_wise = build_category_wise(all_branch_data, targets_map, months, target_type)
     branch_wise = build_branch_wise(all_branch_data, targets_map, months, target_type)
     agent_wise = build_agent_wise(selected_date)
@@ -533,11 +542,15 @@ def build_zone_wise(branch_data, targets_map, target_type):
     return zone_wise
 
 
-def build_product_wise(branch_data, targets_map, target_type):
-    # This function now provides Zone/Region counts and summed amounts from the Product Wise Report doctype.
-    # The function arguments are kept for structural consistency but are not used.
+def build_product_wise(branch_data, targets_map, target_type, selected_date=None):
+    # Determine the effective date: use selected_date or default to the last available date
+    if not selected_date:
+        selected_date = frappe.db.get_value("Product Wise Report", {}, "date", order_by="date desc")
 
-    # 1. Server-side query with GROUP BY for performance
+    if not selected_date:
+        return [], []
+
+    # 1. Server-side query with GROUP BY for performance - Filtered by date
     data = frappe.db.sql("""
         SELECT
             zone,
@@ -546,11 +559,12 @@ def build_product_wise(branch_data, targets_map, target_type):
             SUM(amount) as total_amount
         FROM `tabProduct Wise Report`
         WHERE zone IS NOT NULL AND region IS NOT NULL AND zone != '' AND region != ''
+        AND date = %s
         GROUP BY zone, region
         ORDER BY zone, region
-    """, as_dict=True)
+    """, (selected_date,), as_dict=True)
 
-    # Fetch individual product details for each zone/region
+    # Fetch individual product details for each zone/region - Filtered by date
     product_details = frappe.db.sql("""
         SELECT
             zone,
@@ -559,9 +573,10 @@ def build_product_wise(branch_data, targets_map, target_type):
             SUM(amount) as amount
         FROM `tabProduct Wise Report`
         WHERE zone IS NOT NULL AND region IS NOT NULL AND zone != '' AND region != ''
+        AND date = %s
         GROUP BY zone, region, product
         ORDER BY zone, region, amount DESC
-    """, as_dict=True)
+    """, (selected_date,), as_dict=True)
 
     if not data:
         return [], []

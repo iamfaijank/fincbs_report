@@ -828,11 +828,15 @@ class DrishtiDashboard {
 		// Restore the target tab's previously selected date
 		const savedDate = this.tabDates[tabId] || null;
 
-		// SPECIAL CASE: For Agent Wise tab, default to LATEST AVAILABLE DATE
-		if (tabId === "agent") {
+		// SPECIAL CASE: For Agent and Product Wise tabs, default to LATEST AVAILABLE DATE
+		if (tabId === "agent" || tabId === "product") {
 			const self = this;
+			const method = tabId === "agent" 
+				? "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_agent_report_date"
+				: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_product_report_date";
+
 			frappe.call({
-				method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_agent_report_date",
+				method: method,
 				callback: (r) => {
 					let dateStr = r.message;
 					if (!dateStr) {
