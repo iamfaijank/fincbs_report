@@ -471,6 +471,9 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
             # No modification - use original query
             filtered_sql = raw_sql
             branch_filter_applied = False
+
+        filtered_sql = _escape_literal_percents_in_sql(filtered_sql)
+        filtered_sql = _normalize_query_parameter_style(filtered_sql, start_date, end_date)
         
         # Step 5: Prepare query parameters for date range and sol_id
         query_params = _build_query_parameters(filtered_sql, start_date, end_date, final_sol_id)
@@ -580,8 +583,9 @@ def _write_csv_to_file(conn, cursor, sql_query, query_params, temp_path):
     Returns:
         int | None: row count for fallback path, None for COPY fast path
     """
+    execute_params = query_params or None
     try:
-        rendered_sql = cursor.mogrify(sql_query, query_params or {}).decode()
+        rendered_sql = cursor.mogrify(sql_query, execute_params).decode() if execute_params is not None else sql_query
         rendered_sql = rendered_sql.strip().rstrip(";")
         copy_sql = f"COPY ({rendered_sql}) TO STDOUT WITH CSV HEADER"
         with open(temp_path, "w", encoding="utf-8", newline="") as out_file:
@@ -593,7 +597,7 @@ def _write_csv_to_file(conn, cursor, sql_query, query_params, temp_path):
         except Exception:
             pass
 
-    cursor.execute(sql_query, query_params or {})
+    cursor.execute(sql_query, execute_params)
     columns = [desc[0] for desc in cursor.description]
     rows_written = 0
 
@@ -616,8 +620,9 @@ def _write_csv_gzip_to_file(conn, cursor, sql_query, query_params, temp_path):
     Returns:
         int | None: row count for fallback path, None for COPY fast path
     """
+    execute_params = query_params or None
     try:
-        rendered_sql = cursor.mogrify(sql_query, query_params or {}).decode()
+        rendered_sql = cursor.mogrify(sql_query, execute_params).decode() if execute_params is not None else sql_query
         rendered_sql = rendered_sql.strip().rstrip(";")
         copy_sql = f"COPY ({rendered_sql}) TO STDOUT WITH CSV HEADER"
         with gzip.open(temp_path, "wt", encoding="utf-8", newline="") as out_file:
@@ -629,7 +634,7 @@ def _write_csv_gzip_to_file(conn, cursor, sql_query, query_params, temp_path):
         except Exception:
             pass
 
-    cursor.execute(sql_query, query_params or {})
+    cursor.execute(sql_query, execute_params)
     columns = [desc[0] for desc in cursor.description]
     rows_written = 0
 
@@ -673,6 +678,9 @@ def _run_report_export_job(request_id, user, report_docname, start_date=None, en
             filtered_sql, _ = _apply_branch_report_filter(raw_sql, final_sol_id, is_branch_user)
         else:
             filtered_sql = raw_sql
+
+        filtered_sql = _escape_literal_percents_in_sql(filtered_sql)
+        filtered_sql = _normalize_query_parameter_style(filtered_sql, start_date, end_date)
 
         query_params = _build_query_parameters(filtered_sql, start_date, end_date, final_sol_id) or {}
 
@@ -1346,6 +1354,41 @@ def _build_query_parameters(sql_query, start_date, end_date, sol_id):
     
     # Always return dictionary (empty if no params)
     return params
+
+
+def _normalize_query_parameter_style(sql_query, start_date=None, end_date=None):
+    """
+    Normalize legacy positional placeholders to named placeholders for report exports.
+    """
+    named_pattern = r"%\([^)]+\)s"
+    positional_pattern = r"(?<!%)%s"
+
+    if not re.search(positional_pattern, sql_query) or not re.search(named_pattern, sql_query):
+        return sql_query
+
+    replacement_names = []
+    if start_date is not None:
+        replacement_names.append("start_date")
+    if end_date is not None:
+        replacement_names.append("end_date")
+
+    positional_count = len(re.findall(positional_pattern, sql_query))
+    if positional_count != len(replacement_names):
+        frappe.throw(
+            _("Report SQL mixes positional (%s) and named (%(key)s) parameters. Use named placeholders only.")
+        )
+
+    def replace_placeholder(_match):
+        return f"%({replacement_names.pop(0)})s"
+
+    return re.sub(positional_pattern, replace_placeholder, sql_query, count=positional_count)
+
+
+def _escape_literal_percents_in_sql(sql_query):
+    """
+    Escape literal % characters for psycopg2 while preserving placeholders.
+    """
+    return re.sub(r"(?<!%)%(?!%|\([^)]+\)s|s)", "%%", sql_query)
 
 
 # ============================================================================
