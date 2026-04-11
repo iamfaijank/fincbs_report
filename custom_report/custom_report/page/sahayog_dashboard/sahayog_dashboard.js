@@ -17,7 +17,7 @@ class DrishtiDashboard {
 	constructor(page) {
 		this.page = page;
 		this.state = {
-			financialYear: "2025-2026",
+			financialYear: "2026-2027",
 			activeTab: "zone",
 			viewType: "Monthly",
 			targetType: "Monthly",
@@ -628,6 +628,7 @@ class DrishtiDashboard {
                         <select id="fy-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;">
                             <option value="2025-2026">2025-2026</option>
                             <option value="2026-2027">2026-2027</option>
+                            <option value="2027-2028">2027-2028</option>
                         </select>
                     </div>
 
