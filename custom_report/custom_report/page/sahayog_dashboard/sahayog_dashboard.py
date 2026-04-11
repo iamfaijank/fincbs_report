@@ -315,6 +315,18 @@ def get_latest_agent_report_date():
 
 
 @frappe.whitelist(allow_guest=True)
+def get_available_financial_years():
+    """Returns distinct financial years from Target Vs Achivement doctype, sorted descending."""
+    fy_list = frappe.db.sql(
+        """SELECT DISTINCT financial_year FROM `tabTarget Vs Achivement`
+           WHERE financial_year IS NOT NULL AND financial_year != ''
+           ORDER BY financial_year DESC""",
+        as_dict=True
+    )
+    return [fy.financial_year for fy in fy_list]
+
+
+@frappe.whitelist(allow_guest=True)
 def get_sahayog_dashboard(
     financial_year="2025-2026",
     view="Monthly",

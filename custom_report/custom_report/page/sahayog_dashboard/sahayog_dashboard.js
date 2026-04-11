@@ -17,7 +17,7 @@ class DrishtiDashboard {
 	constructor(page) {
 		this.page = page;
 		this.state = {
-			financialYear: "2025-2026",
+			financialYear: null,
 			activeTab: "zone",
 			viewType: "Monthly",
 			targetType: "Monthly",
@@ -60,7 +60,34 @@ class DrishtiDashboard {
 		this.createTabsAndContainer();
 		this.updateStateFromUrl(); // Read from URL and update state
 		this.updateUiFromState(); // Update UI from state
-		this.loadData();
+		this.loadFinancialYears();
+	}
+
+	loadFinancialYears() {
+		const self = this;
+		frappe.call({
+			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_available_financial_years",
+			callback: function (r) {
+				if (r.message && r.message.length > 0) {
+					self.populateFinancialYears(r.message);
+					// Select the latest (first) available year if not already set
+					if (!self.state.financialYear || !r.message.includes(self.state.financialYear)) {
+						self.state.financialYear = r.message[0];
+						self.page.main.find("#fy-selector").val(self.state.financialYear);
+					}
+					self.loadData();
+				}
+			},
+		});
+	}
+
+	populateFinancialYears(fyList) {
+		const selector = this.page.main.find("#fy-selector");
+		selector.empty();
+		fyList.forEach(function (fy) {
+			selector.append(`<option value="${fy}">${fy}</option>`);
+		});
+		selector.val(this.state.financialYear);
 	}
 
 	setupStyles() {
@@ -626,8 +653,6 @@ class DrishtiDashboard {
                     <div>
                         <label style="font-weight: bold; color: #0d1b2a;">FY:</label>
                         <select id="fy-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;">
-                            <option value="2025-2026">2025-2026</option>
-                            <option value="2026-2027">2026-2027</option>
                         </select>
                     </div>
 
