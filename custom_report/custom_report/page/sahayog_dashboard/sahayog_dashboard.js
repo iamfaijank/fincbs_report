@@ -412,6 +412,48 @@ class DrishtiDashboard {
 	// ========================================================================
 	createFilterTags() {
 		const html = `
+            <div id="summary-cards-container" class="summary-cards-container">
+                <div class="summary-card">
+                    <div class="summary-info">
+                        <span class="summary-label">Total Branches</span>
+                        <span class="summary-value" id="summary-total-branches">229</span>
+                        <span class="summary-subtext success" id="summary-branches-trend">+12% from last month</span>
+                    </div>
+                    <div class="summary-icon-box">
+                        <i class="fa fa-building"></i>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-info">
+                        <span class="summary-label">Target Amount</span>
+                        <span class="summary-value" id="summary-target-amount">₹163.04 Cr</span>
+                        <span class="summary-subtext muted">Monthly target</span>
+                    </div>
+                    <div class="summary-icon-box">
+                        <i class="fa fa-bullseye"></i>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-info">
+                        <span class="summary-label">Achievement</span>
+                        <span class="summary-value" id="summary-achievement-amount">₹91.45 Cr</span>
+                        <span class="summary-subtext danger" id="summary-achievement-pct">57.9% achieved</span>
+                    </div>
+                    <div class="summary-icon-box">
+                        <i class="fa fa-line-chart"></i>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-info">
+                        <span class="summary-label">Active Zones</span>
+                        <span class="summary-value" id="summary-active-zones">6 Zones</span>
+                        <span class="summary-subtext success">All zones operational</span>
+                    </div>
+                    <div class="summary-icon-box">
+                        <i class="fa fa-users"></i>
+                    </div>
+                </div>
+            </div>
             <div class="filter-tags-container">
                 <!-- Zone Selection -->
                 <div class="filter-section">
@@ -1293,6 +1335,8 @@ class DrishtiDashboard {
 
 		const reaggregatedZoneData = this.reaggregateZoneData(filteredBranches);
 		const reaggregatedCategoryData = this.reaggregateCategoryData(filteredBranches);
+
+		this.updateSummaryCards(filteredBranches, reaggregatedZoneData);
 
 		setTimeout(() => {
 			let htmlContent = "";
@@ -2882,6 +2926,23 @@ class DrishtiDashboard {
 		return `<span class="category-badge" style="background:${color};color:white;padding:4px 8px;border-radius:4px;font-size:${fontSize};font-weight:600;display:inline-block;">${category}</span>`;
 	}
 
+	updateSummaryCards(filteredBranches, reaggregatedZoneData) {
+		// Setting dummy data as requested
+		this.page.main.find("#summary-total-branches").text("229");
+		this.page.main.find("#summary-branches-trend")
+			.text("+12% from last month")
+			.removeClass("danger").addClass("success");
+
+		this.page.main.find("#summary-target-amount").text("₹163.04 Cr");
+		this.page.main.find("#summary-achievement-amount").text("₹91.45 Cr");
+		
+		this.page.main.find("#summary-achievement-pct")
+			.text("57.9% achieved")
+			.removeClass("success").addClass("danger");
+
+		this.page.main.find("#summary-active-zones").text("6 Zones");
+	}
+
 	// ========================================================================
 	// STYLES
 	// ========================================================================
@@ -3630,6 +3691,68 @@ class DrishtiDashboard {
                     background-size: 40px 40px;
                     animation: progress-bar-stripes 2s linear infinite;
                     background-image: linear-gradient(45deg, rgba(255,255,255,.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.15) 50%, rgba(255,255,255,.15) 75%, transparent 75%, transparent);
+                }
+
+                /* Summary Cards Styles */
+                .summary-cards-container {
+                    display: flex;
+                    gap: 20px;
+                    margin-bottom: 25px;
+                    padding: 5px 0;
+                    flex-wrap: wrap;
+                }
+                .summary-card {
+                    background: #fff;
+                    border-radius: 16px;
+                    padding: 24px;
+                    flex: 1;
+                    min-width: 240px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+                    border: 1px solid rgba(0, 0, 0, 0.05);
+                    transition: transform 0.3s ease;
+                }
+                .summary-card:hover {
+                    transform: translateY(-5px);
+                }
+                .summary-info {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                }
+                .summary-label {
+                    font-size: 14px;
+                    color: #64748b;
+                    font-weight: 500;
+                }
+                .summary-value {
+                    font-size: 28px;
+                    font-weight: 800;
+                    color: #1e293b;
+                    letter-spacing: -0.5px;
+                }
+                .summary-subtext {
+                    font-size: 13px;
+                    font-weight: 600;
+                    margin-top: 4px;
+                }
+                .summary-subtext.success { color: #10b981; }
+                .summary-subtext.danger { color: #ef4444; }
+                .summary-subtext.muted { color: #94a3b8; }
+                
+                .summary-icon-box {
+                    width: 56px;
+                    height: 56px;
+                    background: linear-gradient(135deg, #417d81 0%, #346569 100%);
+                    border-radius: 14px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #fff;
+                    font-size: 24px;
+                    box-shadow: 0 8px 20px rgba(65, 125, 129, 0.25);
                 }
             </style>
         `;
