@@ -2927,20 +2927,56 @@ class DrishtiDashboard {
 	}
 
 	updateSummaryCards(filteredBranches, reaggregatedZoneData) {
-		// Setting dummy data as requested
-		this.page.main.find("#summary-total-branches").text("229");
-		this.page.main.find("#summary-branches-trend")
-			.text("+12% from last month")
-			.removeClass("danger").addClass("success");
-
-		this.page.main.find("#summary-target-amount").text("₹163.04 Cr");
-		this.page.main.find("#summary-achievement-amount").text("₹91.45 Cr");
+		if (!this.months || this.months.length === 0) return;
 		
-		this.page.main.find("#summary-achievement-pct")
-			.text("57.9% achieved")
-			.removeClass("success").addClass("danger");
-
-		this.page.main.find("#summary-active-zones").text("6 Zones");
+		const currentMonthKey = this.months[0].key;
+		
+		// 1. Total Branches - Count from filtered branches
+		const totalBranches = filteredBranches.length;
+		this.page.main.find("#summary-total-branches").text(totalBranches);
+		
+		// Trend calculation (vs previous month if available)
+		const prevMonthKey = this.months.length > 1 ? this.months[1].key : null;
+		const trendEl = this.page.main.find("#summary-branches-trend");
+		if (prevMonthKey) {
+			const currentCount = filteredBranches.filter(b => b.months[currentMonthKey]).length;
+			const prevCount = filteredBranches.filter(b => b.months[prevMonthKey]).length;
+			if (prevCount > 0) {
+				const diff = ((currentCount - prevCount) / prevCount) * 100;
+				trendEl.text(`${diff >= 0 ? "+" : ""}${diff.toFixed(1)}% from last month`);
+				trendEl.removeClass("success danger muted").addClass(diff >= 0 ? "success" : "danger");
+			} else {
+				trendEl.text("New data this month").removeClass("success danger").addClass("muted");
+			}
+		} else {
+			trendEl.text("Reporting Period").removeClass("success danger").addClass("muted");
+		}
+		
+		// 2. Target Amount & Achievement - Sum from Zone Wise reaggregated data
+		let totalTarget = 0;
+		let totalAch = 0;
+		reaggregatedZoneData.forEach(item => {
+			if (item.isZoneTotal) {
+				const mdata = item.months[currentMonthKey];
+				if (mdata) {
+					totalTarget += mdata.target || 0;
+					totalAch += mdata.achievement || 0;
+				}
+			}
+		});
+		
+		this.page.main.find("#summary-target-amount").text("₹" + this.formatCurrency(totalTarget));
+		this.page.main.find("#summary-achievement-amount").text("₹" + this.formatCurrency(totalAch));
+		
+		// Achievement Percentage
+		const pct = totalTarget > 0 ? (totalAch / totalTarget) * 100 : 0;
+		const pctEl = this.page.main.find("#summary-achievement-pct");
+		pctEl.text(pct.toFixed(1) + "% achieved");
+		pctEl.removeClass("success danger").addClass(pct >= 100 ? "success" : "danger");
+		
+		// 3. Active Zones - Unique zones in reaggregated data
+		const activeZonesCount = reaggregatedZoneData.filter(item => item.isZoneTotal).length;
+		this.page.main.find("#summary-active-zones").text(activeZonesCount + " Zones");
 	}
 
 	// ========================================================================
