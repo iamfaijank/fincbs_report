@@ -2971,7 +2971,7 @@ class DrishtiDashboard {
 		// Achievement Percentage
 		const pct = totalTarget > 0 ? (totalAch / totalTarget) * 100 : 0;
 		const pctEl = this.page.main.find("#summary-achievement-pct");
-		pctEl.text(pct.toFixed(1) + "% achieved");
+		pctEl.text(pct.toFixed(2) + "% achieved");
 		pctEl.removeClass("success danger").addClass(pct >= 100 ? "success" : "danger");
 		
 		// 3. Active Zones - Unique zones in reaggregated data
