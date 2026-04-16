@@ -16,6 +16,17 @@ RD_SLABS = {
     "2016": {"tenure": 120, "base_rate": 8.0, "slabs": [(0, 120, 8.0)]}
 }
 
+def get_cycle_offset(start_date, value_date):
+    start = start_date.date() if hasattr(start_date, "date") else start_date
+    value = value_date.date() if hasattr(value_date, "date") else value_date
+    offset = (value.year - start.year) * 12 + (value.month - start.month)
+    if offset > 0 and value.day <= start.day:
+        offset -= 1
+    return max(offset, 0)
+
+def get_cycle_start(start_date, cycle_offset):
+    return start_date + relativedelta(months=cycle_offset)
+
 def get_excel_interest_rate(schm_code, months_held):
     rule = RD_SLABS.get(str(schm_code))
     if not rule: return 0.0
@@ -159,35 +170,30 @@ def get_account_details(foracid=None, settlement_date=None):
         diff_sett = relativedelta(sett_dt, opn_dt)
         sett_m_offset = (diff_sett.years * 12) + diff_sett.months
 
-        # Map credits to calendar month offsets from opening date
+        # Map credits to cycle offsets from opening date, keeping cycle end inclusive.
         credits_by_month = {}
-        last_inst_dt = opn_dt
         for val_date, amt, p_type, particular in raw_trans:
             if mat_dt and val_date and val_date >= mat_dt: continue
             if val_date > sett_dt: continue
             
-            # Use calendar month offset for consistency with ledger display
-            m_v = (val_date.year - opn_dt.year) * 12 + (val_date.month - opn_dt.month)
+            m_v = get_cycle_offset(opn_dt, val_date)
             
             if p_type == 'C':
                 credits_by_month[m_v] = credits_by_month.get(m_v, 0) + float(amt or 0)
-                if val_date > last_inst_dt:
-                    last_inst_dt = val_date
 
-        # Settlement calendar month offset
-        sett_m_offset = (sett_dt.year - opn_dt.year) * 12 + (sett_dt.month - opn_dt.month)
-        last_inst_m_offset = (last_inst_dt.year - opn_dt.year) * 12 + (last_inst_dt.month - opn_dt.month)
+        # Settlement cycle offset
+        sett_m_offset = get_cycle_offset(opn_dt, sett_dt)
 
         # Update months_held_total based on premature logic
         if is_premature:
             # For interest rate slab, use relativedelta months
             diff_rel = relativedelta(sett_dt, opn_dt)
             m_rel = (diff_rel.years * 12) + diff_rel.months
-            # If installment exists in the current relative month, it counts towards rate slab
-            installment_exists_rel = credits_by_month.get(m_rel, 0) > 0
+            # If installment exists in the current cycle, it counts towards rate slab
+            installment_exists_rel = credits_by_month.get(sett_m_offset, 0) > 0
             months_held_for_rate = m_rel + 1 if installment_exists_rel else m_rel
             
-            # For loop and ledger, use calendar months to ensure settlement month appears
+            # For loop and ledger, use cycle count to ensure settlement cycle appears
             months_held_total = sett_m_offset + 1
         else:
             diff_total = relativedelta(sett_dt + relativedelta(days=1), opn_dt)
@@ -197,7 +203,7 @@ def get_account_details(foracid=None, settlement_date=None):
         app_rate = get_excel_interest_rate(schm_code, months_held_for_rate)
         base_rate = RD_SLABS.get(str(schm_code), {}).get('base_rate', 8.0)
 
-        # Cumulative Running Balance Logic with Quarterly Compounding
+        # Maturity uses quarterly compounding; premature uses simple interest.
         principal_sum = 0.0
         total_interest = 0.0
         
@@ -211,39 +217,36 @@ def get_account_details(foracid=None, settlement_date=None):
         # Iterate month by month for the duration of the account
         monthly_data = {}
         for m in range(months_held_total):
-            # 1. Add installments for this month
-            principal_sum += credits_by_month.get(m, 0)
-            
-            # Limit principal for interest calculation to exclude future advances
-            limited_principal = min(principal_sum, (m + 1) * planned_installment)
+            cycle_installment = credits_by_month.get(m, 0)
+            principal_sum += cycle_installment
 
             # 2. Calculate Monthly Interest
             m_int = 0.0
             m_base_int = 0.0
+            cycle_has_payment = cycle_installment > 0
 
-            if m < sett_m_offset:
-                # If this is after the month of last installment, skip interest here;
-                # it will be covered by pro-rata in the settlement month.
-                if m > last_inst_m_offset:
-                    m_int = 0.0
-                    m_base_int = 0.0
-                else:
-                    # Full month interest
-                    m_int = (limited_principal + compounded_interest) * (app_rate / 1200.0)
-                    m_base_int = (limited_principal + compounded_interest_base) * (base_rate / 1200.0)
-            elif m == sett_m_offset:
-                # Settlement month: pro-rata interest from last_inst_dt to sett_dt - 1
-                days = (sett_dt - last_inst_dt).days
+            if cycle_has_payment and m < sett_m_offset:
+                # Full cycle interest is allowed only when a payment exists in that cycle.
+                interest_base = principal_sum if is_premature else (principal_sum + compounded_interest)
+                base_interest_base = principal_sum if is_premature else (principal_sum + compounded_interest_base)
+                m_int = interest_base * (app_rate / 1200.0)
+                m_base_int = base_interest_base * (base_rate / 1200.0)
+            elif cycle_has_payment and m == sett_m_offset:
+                # Settlement cycle: keep pro-rata handling, but only when the cycle has a payment.
+                cycle_start = get_cycle_start(opn_dt, m)
+                days = (sett_dt - cycle_start).days
                 if days > 0:
-                    m_int = (limited_principal + compounded_interest) * (app_rate / 100.0) * (days / 365.0)
-                    m_base_int = (limited_principal + compounded_interest_base) * (base_rate / 100.0) * (days / 365.0)
+                    interest_base = principal_sum if is_premature else (principal_sum + compounded_interest)
+                    base_interest_base = principal_sum if is_premature else (principal_sum + compounded_interest_base)
+                    m_int = interest_base * (app_rate / 100.0) * (days / 365.0)
+                    m_base_int = base_interest_base * (base_rate / 100.0) * (days / 365.0)
             
             total_interest += m_int
             accrued_current_quarter += m_int
             accrued_current_quarter_base += m_base_int
             
             # 3. Handle Quarter End (Compounding)
-            if (m + 1) % 3 == 0:
+            if not is_premature and (m + 1) % 3 == 0:
                 compounded_interest += accrued_current_quarter
                 accrued_current_quarter = 0
                 compounded_interest_base += accrued_current_quarter_base
@@ -266,8 +269,7 @@ def get_account_details(foracid=None, settlement_date=None):
             
             if p_type == 'C':
                 total_principal_for_sc += amt
-                diff = relativedelta(val_date, opn_dt)
-                m_offset = (diff.years * 12) + diff.months
+                m_offset = get_cycle_offset(opn_dt, val_date)
                 
                 # Assign monthly interest to the first transaction of the month
                 if m_offset in monthly_data and m_offset not in processed_months:

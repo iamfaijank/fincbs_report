@@ -2906,9 +2906,26 @@
 												font-weight: 700;
 												color: #94a3b8;
 												text-transform: uppercase;
+												display: flex;
+												align-items: center;
+												gap: 8px;
 											"
 										>
-											[[ data.ledger.length ]] Months Projected
+											<span>[[ data.ledger.length ]] Months Projected</span>
+											<span
+												:style="{
+													padding: '4px 8px',
+													borderRadius: '999px',
+													fontSize: '10px',
+													letterSpacing: '0.04em',
+													background: data.isPremature ? '#fef3c7' : '#dcfce7',
+													color: data.isPremature ? '#92400e' : '#166534',
+													border: '1px solid',
+													borderColor: data.isPremature ? '#fcd34d' : '#86efac'
+												}"
+											>
+												[[ data.interestModeLabel ]]
+											</span>
 										</div>
 									</div>
 									<div class="ledger-table-wrapper">
@@ -3446,6 +3463,9 @@
 					}
 					const isPremature = dExit < dMaturity;
 					this.data.isPremature = isPremature;
+					this.data.interestModeLabel = isPremature
+						? "Simple Interest Applied"
+						: "Quarterly Compounding Applied";
 
 					// Tenure calculation for display (strictly Opening Date -> Settlement Date)
 					let diffMonths =
@@ -3471,12 +3491,21 @@
 						this.data.calcTenureDays = diffDays;
 					}
 
-					// Map credits by calendar month offset
+					const getCycleOffset = (date) => {
+						let offset =
+							(date.getFullYear() - start.getFullYear()) * 12 +
+							(date.getMonth() - start.getMonth());
+						if (offset > 0 && date.getDate() <= start.getDate()) {
+							offset -= 1;
+						}
+						return Math.max(offset, 0);
+					};
+
+					// Map credits by cycle offset from opening date, keeping cycle end inclusive
 					const creditsByMonth = {};
 					const monthsWithTransactions = new Set();
 					const actualTxnDates = {};
 					let maxTxnMonth = 0;
-					let lastInstDt = start;
 					const closureCutoffIndex = this.data.transactions.findIndex(
 						(t) => this.isClosureTransaction(t),
 					);
@@ -3489,26 +3518,18 @@
 						if (t.type === "C") {
 							const dVal = this.parseDate(t.date);
 							if (dVal < dMaturity && dVal <= dExit) {
-								let m_off =
-									(dVal.getFullYear() - start.getFullYear()) * 12 +
-									(dVal.getMonth() - start.getMonth());
+								let m_off = getCycleOffset(dVal);
 								creditsByMonth[m_off] = (creditsByMonth[m_off] || 0) + t.amount;
 								monthsWithTransactions.add(m_off);
 								if (!actualTxnDates[m_off]) actualTxnDates[m_off] = t.date;
 								if (t.amount > 0 && m_off > maxTxnMonth) maxTxnMonth = m_off;
-								if (dVal > lastInstDt) lastInstDt = dVal;
 							}
 						}
 						t.accrued_interest = 0;
 						t.scheme_interest = 0;
 					});
 
-					const settMOffset =
-						(dExit.getFullYear() - start.getFullYear()) * 12 +
-						(dExit.getMonth() - start.getMonth());
-					const lastInstMOffset =
-						(lastInstDt.getFullYear() - start.getFullYear()) * 12 +
-						(lastInstDt.getMonth() - start.getMonth());
+					const settMOffset = getCycleOffset(dExit);
 
 					// Simple tenure logic: completed months (relativedelta style)
 					let mRel =
@@ -3528,7 +3549,7 @@
 					const appRate = rules.appliedRate;
 					const baseRate = rules.meta.base_rate || 8;
 
-					// Logic for Cumulative Running Balance (Quarterly Compounding)
+					// Maturity uses quarterly compounding; premature uses simple interest.
 					let principalSum = 0;
 					let totalInterest = 0;
 					let compoundedInt = 0;
@@ -3551,17 +3572,12 @@
 
 					for (let m = 0; m <= displayLimit; m++) {
 						const installment = creditsByMonth[m] || 0;
+						const cycleHasPayment = installment > 0;
 
 						if (m < effectiveInterestMonths) {
 							principalSum += installment;
 							totalInstallments += installment;
 						}
-
-						// Limit principal for interest calculation to exclude future advances
-						const limitedPrincipal = Math.min(
-							principalSum,
-							(m + 1) * this.data.deposit_amount,
-						);
 
 						let m_int = 0;
 						let m_base_int = 0;
@@ -3571,7 +3587,7 @@
 							m < effectiveInterestMonths &&
 							(m < tenureMonths || isPrematureSettlementMonth);
 
-						if (shouldAccrueInterest) {
+						if (shouldAccrueInterest && cycleHasPayment) {
 							if (
 								m < settMOffset ||
 								(m === settMOffset &&
@@ -3580,33 +3596,47 @@
 							) {
 								if (m === 0 && start.getDate() > 1) {
 									const firstMonthDays = 30 - start.getDate();
+									const interestBase = isPremature
+										? principalSum
+										: principalSum + compoundedInt;
+									const baseInterestBase = isPremature
+										? principalSum
+										: principalSum + compoundedIntBase;
 									m_int =
-										(limitedPrincipal + compoundedInt) *
-										(appRate / 100.0) *
-										(firstMonthDays / 360.0);
+										interestBase * (appRate / 100.0) * (firstMonthDays / 360.0);
 									m_base_int =
-										(limitedPrincipal + compoundedIntBase) *
+										baseInterestBase *
 										(baseRate / 100.0) *
 										(firstMonthDays / 360.0);
 								} else {
 									// Full month interest for all months prior to settlement
+									const interestBase = isPremature
+										? principalSum
+										: principalSum + compoundedInt;
+									const baseInterestBase = isPremature
+										? principalSum
+										: principalSum + compoundedIntBase;
 									m_int =
-										(limitedPrincipal + compoundedInt) * (appRate / 1200.0);
-									m_base_int =
-										(limitedPrincipal + compoundedIntBase) *
-										(baseRate / 1200.0);
+										interestBase * (appRate / 1200.0);
+									m_base_int = baseInterestBase * (baseRate / 1200.0);
 								}
 							} else {
 								// Broken period interest for the settlement month (up to exitDate - 1)
-								const days = Math.max(0, dExit.getDate() - 1);
+								const cycleStartDate = new Date(start);
+								cycleStartDate.setMonth(cycleStartDate.getMonth() + m);
+								const days = Math.max(
+									0,
+									Math.floor((dExit - cycleStartDate) / (1000 * 60 * 60 * 24)),
+								);
+								const interestBase = isPremature
+									? principalSum
+									: principalSum + compoundedInt;
+								const baseInterestBase = isPremature
+									? principalSum
+									: principalSum + compoundedIntBase;
 								m_int =
-									(limitedPrincipal + compoundedInt) *
-									(appRate / 100.0) *
-									(days / 360.0);
-								m_base_int =
-									(limitedPrincipal + compoundedIntBase) *
-									(baseRate / 100.0) *
-									(days / 360.0);
+									interestBase * (appRate / 100.0) * (days / 360.0);
+								m_base_int = baseInterestBase * (baseRate / 100.0) * (days / 360.0);
 							}
 
 							totalInterest += m_int;
@@ -3639,7 +3669,7 @@
 						const projMonth = String(currentMonthDate.getMonth() + 1).padStart(2, "0");
 						const projectedDate = `${projDay}/${projMonth}/${y_l}`;
 
-						const balBefore = principalSum + compoundedInt;
+						const balBefore = principalSum + (isPremature ? 0 : compoundedInt);
 
 						let rowDate = actualTxnDates[m] || projectedDate;
 						if (m === settMOffset) {
@@ -3661,7 +3691,7 @@
 							isPostSettlement: m >= effectiveInterestMonths,
 						});
 
-						if ((m + 1) % 3 === 0) {
+						if (!isPremature && (m + 1) % 3 === 0) {
 							compoundedInt += accruedCurrQtr;
 							accruedCurrQtr = 0;
 							compoundedIntBase += accruedCurrQtrBase;
@@ -3682,9 +3712,7 @@
 					effectiveTransactions.forEach((t) => {
 						if (t.type === "C") {
 							const dVal = this.parseDate(t.date);
-							let m_off =
-								(dVal.getFullYear() - start.getFullYear()) * 12 +
-								(dVal.getMonth() - start.getMonth());
+							let m_off = getCycleOffset(dVal);
 
 							if (!processedMonths.has(m_off) && monthlyInterests[m_off]) {
 								t.accrued_interest = monthlyInterests[m_off].app.toFixed(2);
