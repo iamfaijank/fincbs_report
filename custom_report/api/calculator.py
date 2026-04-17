@@ -223,16 +223,18 @@ def get_account_details(foracid=None, settlement_date=None):
             # 2. Calculate Monthly Interest
             m_int = 0.0
             m_base_int = 0.0
-            cycle_has_payment = cycle_installment > 0
+            has_interest_bearing_balance = (
+                principal_sum if is_premature else (principal_sum + compounded_interest)
+            ) > 0
 
-            if cycle_has_payment and m < sett_m_offset:
-                # Full cycle interest is allowed only when a payment exists in that cycle.
+            if has_interest_bearing_balance and m < sett_m_offset:
+                # Existing balance continues to earn interest even if an installment is missed.
                 interest_base = principal_sum if is_premature else (principal_sum + compounded_interest)
                 base_interest_base = principal_sum if is_premature else (principal_sum + compounded_interest_base)
                 m_int = interest_base * (app_rate / 1200.0)
                 m_base_int = base_interest_base * (base_rate / 1200.0)
-            elif cycle_has_payment and m == sett_m_offset:
-                # Settlement cycle: keep pro-rata handling, but only when the cycle has a payment.
+            elif has_interest_bearing_balance and m == sett_m_offset:
+                # Settlement cycle keeps pro-rata handling for the current outstanding balance.
                 cycle_start = get_cycle_start(opn_dt, m)
                 days = (sett_dt - cycle_start).days
                 if days > 0:
