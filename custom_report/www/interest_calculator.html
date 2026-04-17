@@ -3717,7 +3717,6 @@
 
 					// Maturity uses quarterly compounding; premature uses simple interest.
 					let principalSum = 0;
-					let actualPrincipalSum = 0;
 					let totalInterest = 0;
 					let compoundedInt = 0;
 					let accruedCurrQtr = 0;
@@ -3738,10 +3737,8 @@
 
 					for (let m = 0; m <= displayLimit; m++) {
 						const installment = creditsByMonth[m] || 0;
-						const actualCycleCredit = rawCreditsByMonth[m] || 0;
 						if (m < effectiveInterestMonths) {
 							principalSum += installment;
-							actualPrincipalSum += actualCycleCredit;
 							totalInstallments += installment;
 						}
 
@@ -3799,9 +3796,7 @@
 						const projMonth = String(currentMonthDate.getMonth() + 1).padStart(2, "0");
 						const projectedDate = `${projDay}/${projMonth}/${y_l}`;
 
-						const balBeforeForInterest = principalSum + (isPremature ? 0 : compoundedInt);
-						const balBeforeForLedger =
-							actualPrincipalSum + (isPremature ? 0 : compoundedInt);
+						const balBefore = principalSum + (isPremature ? 0 : compoundedInt);
 						const hasDbTransaction = monthsWithTransactions.has(m);
 						const isAdjustedInstallment = installment > 0 && !hasDbTransaction;
 
@@ -3836,11 +3831,10 @@
 										txn.amount !== undefined && txn.amount !== null
 											? Number(txn.amount).toFixed(2)
 											: installment.toFixed(2),
-									balanceBefore: idx === 0 ? balBeforeForLedger.toFixed(2) : "",
+									balanceBefore: idx === 0 ? balBefore.toFixed(2) : "",
 									rate: idx === 0 && shouldAccrueInterest ? appRate : "",
 									interestAmount: idx === 0 ? m_int.toFixed(2) : "",
-									closingBalance:
-										idx === 0 ? (balBeforeForLedger + m_int).toFixed(2) : "",
+									closingBalance: idx === 0 ? (balBefore + m_int).toFixed(2) : "",
 									isFromDb: true,
 									isAdjustedInstallment: false,
 									isSupplementary: idx > 0,
@@ -3860,10 +3854,10 @@
 								date: rowDate,
 								particular,
 								installment: installment.toFixed(2),
-								balanceBefore: balBeforeForLedger.toFixed(2),
+								balanceBefore: balBefore.toFixed(2),
 								rate: shouldAccrueInterest ? appRate : 0,
 								interestAmount: m_int.toFixed(2),
-								closingBalance: (balBeforeForLedger + m_int).toFixed(2),
+								closingBalance: (balBefore + m_int).toFixed(2),
 								isFromDb: false,
 								isAdjustedInstallment,
 								isSupplementary: false,
