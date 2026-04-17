@@ -2943,6 +2943,7 @@
 													</th>
 													<th class="col-month">Month</th>
 													<th class="col-date">Date</th>
+													<th>Transaction Particular</th>
 													<th class="col-amt">Installment</th>
 													<th class="col-amt">
 														Balance Before Interest
@@ -2985,6 +2986,18 @@
 														style="font-size: 13px"
 													>
 														[[ row.date ]]
+													</td>
+													<td
+														style="
+															min-width: 220px;
+															max-width: 320px;
+															font-size: 12px;
+															line-height: 1.4;
+															white-space: normal;
+															word-break: break-word;
+														"
+													>
+														[[ row.particular ]]
 													</td>
 													<td class="col-amt">
 														<span
@@ -3039,7 +3052,7 @@
 													"
 												>
 													<td
-														colspan="3"
+														colspan="4"
 														style="
 															text-align: right;
 															padding-right: 20px;
@@ -3505,6 +3518,7 @@
 					const creditsByMonth = {};
 					const monthsWithTransactions = new Set();
 					const actualTxnDates = {};
+					const actualTxnParticulars = {};
 					let maxTxnMonth = 0;
 					const closureCutoffIndex = this.data.transactions.findIndex(
 						(t) => this.isClosureTransaction(t),
@@ -3515,16 +3529,22 @@
 							: this.data.transactions.slice(0, closureCutoffIndex);
 
 					effectiveTransactions.forEach((t) => {
-						if (t.type === "C") {
-							const dVal = this.parseDate(t.date);
-							if (dVal < dMaturity && dVal <= dExit) {
-								let m_off = getCycleOffset(dVal);
-								creditsByMonth[m_off] = (creditsByMonth[m_off] || 0) + t.amount;
-								monthsWithTransactions.add(m_off);
-								if (!actualTxnDates[m_off]) actualTxnDates[m_off] = t.date;
-								if (t.amount > 0 && m_off > maxTxnMonth) maxTxnMonth = m_off;
+							if (t.type === "C") {
+								const dVal = this.parseDate(t.date);
+								if (dVal < dMaturity && dVal <= dExit) {
+									let m_off = getCycleOffset(dVal);
+									creditsByMonth[m_off] = (creditsByMonth[m_off] || 0) + t.amount;
+									monthsWithTransactions.add(m_off);
+									if (!actualTxnDates[m_off]) actualTxnDates[m_off] = t.date;
+									if (!actualTxnParticulars[m_off]) {
+										actualTxnParticulars[m_off] = [];
+									}
+									if (t.particular) {
+										actualTxnParticulars[m_off].push(t.particular);
+									}
+									if (t.amount > 0 && m_off > maxTxnMonth) maxTxnMonth = m_off;
+								}
 							}
-						}
 						t.accrued_interest = 0;
 						t.scheme_interest = 0;
 					});
@@ -3539,7 +3559,6 @@
 
 					const monthsHeldTotal = mRel;
 					const effectiveInterestMonths = settMOffset + 1;
-					const settlementMonthHasEmi = monthsWithTransactions.has(settMOffset);
 
 					const rules = this.getApplicableRules(
 						this.data.schm_code,
@@ -3572,8 +3591,6 @@
 
 					for (let m = 0; m <= displayLimit; m++) {
 						const installment = creditsByMonth[m] || 0;
-						const cycleHasPayment = installment > 0;
-
 						if (m < effectiveInterestMonths) {
 							principalSum += installment;
 							totalInstallments += installment;
@@ -3586,40 +3603,24 @@
 						const shouldAccrueInterest =
 							m < effectiveInterestMonths &&
 							(m < tenureMonths || isPrematureSettlementMonth);
+						const hasInterestBearingBalance =
+							(isPremature ? principalSum : principalSum + compoundedInt) > 0;
 
-						if (shouldAccrueInterest && cycleHasPayment) {
+						if (shouldAccrueInterest && hasInterestBearingBalance) {
 							if (
 								m < settMOffset ||
-								(m === settMOffset &&
-									settlementMonthHasEmi &&
-									!isPrematureSettlementMonth)
+								(m === settMOffset && !isPrematureSettlementMonth)
 							) {
-								if (m === 0 && start.getDate() > 1) {
-									const firstMonthDays = 30 - start.getDate();
-									const interestBase = isPremature
-										? principalSum
-										: principalSum + compoundedInt;
-									const baseInterestBase = isPremature
-										? principalSum
-										: principalSum + compoundedIntBase;
-									m_int =
-										interestBase * (appRate / 100.0) * (firstMonthDays / 360.0);
-									m_base_int =
-										baseInterestBase *
-										(baseRate / 100.0) *
-										(firstMonthDays / 360.0);
-								} else {
-									// Full month interest for all months prior to settlement
-									const interestBase = isPremature
-										? principalSum
-										: principalSum + compoundedInt;
-									const baseInterestBase = isPremature
-										? principalSum
-										: principalSum + compoundedIntBase;
-									m_int =
-										interestBase * (appRate / 1200.0);
-									m_base_int = baseInterestBase * (baseRate / 1200.0);
-								}
+								// Full month interest for all completed cycles, including the opening cycle.
+								const interestBase = isPremature
+									? principalSum
+									: principalSum + compoundedInt;
+								const baseInterestBase = isPremature
+									? principalSum
+									: principalSum + compoundedIntBase;
+								m_int =
+									interestBase * (appRate / 1200.0);
+								m_base_int = baseInterestBase * (baseRate / 1200.0);
 							} else {
 								// Broken period interest for the settlement month (up to exitDate - 1)
 								const cycleStartDate = new Date(start);
@@ -3670,8 +3671,10 @@
 						const projectedDate = `${projDay}/${projMonth}/${y_l}`;
 
 						const balBefore = principalSum + (isPremature ? 0 : compoundedInt);
+						const hasDbTransaction = monthsWithTransactions.has(m);
 
 						let rowDate = actualTxnDates[m] || projectedDate;
+						const monthParticulars = [...new Set(actualTxnParticulars[m] || [])];
 						if (m === settMOffset) {
 							const dDisplay = new Date(dExit);
 							dDisplay.setDate(dDisplay.getDate() - 1);
@@ -3682,12 +3685,17 @@
 							monthNo: m + 1,
 							monthYear: `${mmmm}/${yy}`,
 							date: rowDate,
+							particular: monthParticulars.length
+								? monthParticulars.join(" | ")
+								: hasDbTransaction
+									? "Transaction posted"
+									: "SKIP INSTALLMENT",
 							installment: installment.toFixed(2),
 							balanceBefore: balBefore.toFixed(2),
 							rate: shouldAccrueInterest ? appRate : 0,
 							interestAmount: m_int.toFixed(2),
 							closingBalance: (balBefore + m_int).toFixed(2),
-							isFromDb: monthsWithTransactions.has(m),
+							isFromDb: hasDbTransaction,
 							isPostSettlement: m >= effectiveInterestMonths,
 						});
 
@@ -3971,6 +3979,7 @@
 						"Month",
 						"Sr No",
 						"Date",
+						"Transaction Particular",
 						"Installment",
 						"Balance Before Interest",
 						"Rate (%)",
@@ -3981,6 +3990,7 @@
 						row.monthYear,
 						row.monthNo,
 						row.date,
+						row.particular,
 						row.installment,
 						row.balanceBefore,
 						row.rate,
