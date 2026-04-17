@@ -2237,11 +2237,11 @@
 											padding-right: 8px;
 										"
 									>
-										<div
+											<div
 											v-for="(t, i) in sortedTransactions"
-											:key="t.date + t.amount + t.type + i"
+											:key="t.rowKey || (t.date + t.amount + t.type + i)"
 											class="tran-row"
-											:class="{ 'row-skip': t.isSkip }"
+											:class="{ 'row-skip': t.isSkip, 'row-advance': t.isSupplementary }"
 											style="
 												align-items: flex-start;
 												padding: 16px;
@@ -2265,16 +2265,7 @@
 
 											<div class="tran-details">
 												<div
-													v-if="!t.isSkip"
-													class="tran-title"
-													:class="{ debit: t.type === 'D' }"
-												>
-													[[ t.type === 'C' ? '+' : '-' ]][[
-													formatCurrency(t.amount).replace('₹', '') ]]
-												</div>
-
-												<div
-													v-else-if="t.isSkip"
+													v-if="t.isSkip"
 													class="skip-label"
 													style="
 														display: inline-block;
@@ -2295,7 +2286,36 @@
 													ADVANCE ADJUSTED
 												</div>
 
+												<div
+													v-else
+													class="tran-title"
+													:class="{ debit: t.type === 'D' }"
+												>
+													[[ t.type === 'C' ? '+' : '-' ]][[
+													formatCurrency(t.amount).replace('₹', '') ]]
+												</div>
+
+												<div
+													v-if="t.isSkip || t.isAdvanceAdjusted"
+													class="tran-subtitle"
+													style="
+														margin-bottom: 4px;
+														font-weight: 700;
+														color: #475569;
+													"
+												>
+													[[ formatCurrency(t.amount || 0) ]]
+												</div>
+
 												<div class="tran-subtitle">[[ t.date ]]</div>
+
+												<div
+													v-if="t.tenureCycle"
+													class="tran-subtitle mono"
+													style="color: var(--accent); font-weight: 700"
+												>
+													[[ t.tenureCycle ]]
+												</div>
 
 												<div class="tran-particular-text">
 													[[ t.particular ]]
@@ -2305,13 +2325,22 @@
 											<div class="tran-right">
 												<div v-if="t.type === 'C'" class="interest-value">
 													<span class="iv-label"
-														>INT @ [[ data.appliedRate ]]%</span
+														>INT @ [[ t.rate !== '' && t.rate !== undefined
+														? t.rate : data.appliedRate ]]%</span
 													>
 
 													<span class="iv-amount"
 														>[[ formatCurrency(t.accrued_interest || 0)
 														]]</span
 													>
+												</div>
+
+												<div
+													v-if="t.closingBalance !== '' && t.closingBalance !== undefined"
+													class="tran-subtitle mono"
+													style="margin-top: 6px; text-align: right; font-weight: 700"
+												>
+													BAL [[ formatCurrency(t.closingBalance || 0) ]]
 												</div>
 											</div>
 										</div>
@@ -3221,6 +3250,10 @@
 						interest_slabs: [[0, 120, 8.0]],
 					},
 				},
+				serviceChargeRules: {
+					2005: { premature: 18.0, matured: 0.0 },
+					2006: { premature: 18.0, matured: 0.0 },
+				},
 				selectedProduct: null,
 				exitDate: new Date().toISOString().split("T")[0],
 
@@ -3349,6 +3382,18 @@
 						(end.getMonth() - start.getMonth());
 					if (end.getDate() < start.getDate()) months--;
 					return Math.max(0, months);
+				},
+				getTransactionCycleOffset(startDate, txnDate) {
+					const start = this.parseDate(startDate);
+					const date = this.parseDate(txnDate);
+					if (!start || !date) return 0;
+					let offset =
+						(date.getFullYear() - start.getFullYear()) * 12 +
+						(date.getMonth() - start.getMonth());
+					if (offset > 0 && date.getDate() <= start.getDate()) {
+						offset -= 1;
+					}
+					return Math.max(offset, 0);
 				},
 
 				handleGlobalKey(e) {
@@ -3864,6 +3909,7 @@
 					const scPercent = this.getServiceChargePercent(
 						this.data.schm_code,
 						monthsHeldTotal,
+						isPremature,
 					);
 					this.data.penalty = Math.round(
 						((totalInstallments * scPercent) / 100.0) * 1.18,
@@ -3917,8 +3963,12 @@
 					return { meta: r, appliedRate: ar };
 				},
 
-				getServiceChargePercent(schm_code, months_held) {
+				getServiceChargePercent(schm_code, months_held, isPremature = true) {
 					const sc = String(schm_code);
+					const configuredRule = this.serviceChargeRules[sc];
+					if (configuredRule) {
+						return isPremature ? configuredRule.premature : configuredRule.matured;
+					}
 					if (sc === "2010") {
 						if (months_held < 3) return 6.0;
 						if (months_held < 6) return 4.0;
@@ -3945,7 +3995,6 @@
 						return 0.0;
 					}
 
-					if (sc === "2005" || sc === "2006") return 18.0;
 					if (sc === "2002" || sc === "2003" || sc === "2203") return 11.0;
 					if (sc === "2101" || sc === "2104") return 3.0;
 					if (sc === "2018") return 2.5;
@@ -4142,7 +4191,6 @@
 				get sortedTransactions() {
 					if (!this.data || !this.data.transactions || !this.data.ledger) return [];
 
-					const start = this.parseDate(this.data.acct_opn_date);
 					const closureCutoffIndex = this.data.transactions.findIndex(
 						(t) => this.isClosureTransaction(t),
 					);
@@ -4150,48 +4198,57 @@
 						closureCutoffIndex === -1
 							? this.data.transactions
 							: this.data.transactions.slice(0, closureCutoffIndex);
+					const historyRows = this.data.ledger
+						.filter((row) => !row.isPostSettlement)
+						.map((row) => ({
+							rowKey: row.rowKey,
+							date: row.date,
+							amount: parseFloat(row.installment || 0),
+							type: "C",
+							particular: row.particular,
+							accrued_interest: row.interestAmount,
+							rate: row.rate,
+							tenureCycle: row.tenureCycle,
+							balanceBefore: row.balanceBefore,
+							closingBalance: row.closingBalance,
+							isSkip: row.isSkipRow,
+							isAdvanceAdjusted: row.isAdjustedInstallment,
+							isSupplementary: row.isSupplementary,
+							sortMonth: (row.monthNo || 1) - 1,
+							sortIndex: row.displaySrNo || 0,
+						}));
 
-					// Actual transactions within display limit
-					const txns = effectiveTransactions.filter((t) => {
-						const dVal = this.parseDate(t.date);
-						let m_off =
-							(dVal.getFullYear() - start.getFullYear()) * 12 +
-							(dVal.getMonth() - start.getMonth());
-						return m_off <= this.data.displayLimit;
+					effectiveTransactions.forEach((t, idx) => {
+						const txnType = String(t.type || "").trim().toUpperCase();
+						if (txnType === "C") return;
+						const monthOffset = this.getTransactionCycleOffset(
+							this.data.acct_opn_date,
+							t.date,
+						);
+						if (monthOffset > this.data.displayLimit) return;
+						historyRows.push({
+							...t,
+							amount: this.parseTxnAmount(t.amount),
+							tenureCycle: this.getCycleRangeLabel(
+								this.data.acct_opn_date,
+								monthOffset,
+								parseInt(this.data.deposit_period_mths) || 0,
+							),
+							sortMonth: monthOffset,
+							sortIndex: 10000 + idx,
+						});
 					});
 
-					// Identify months that have at least one transaction
-					const monthsWithTxns = new Set();
-					txns.forEach((t) => {
-						const dVal = this.parseDate(t.date);
-						let m_off =
-							(dVal.getFullYear() - start.getFullYear()) * 12 +
-							(dVal.getMonth() - start.getMonth());
-						monthsWithTxns.add(m_off);
-					});
-
-					// Add virtual rows for cycles that are not backed by a direct DB transaction.
-					const virtualTxns = [...txns];
-					this.data.ledger.forEach((row) => {
-						if (!row.isFromDb && !row.isPostSettlement) {
-							virtualTxns.push({
-								date: row.date,
-								amount: parseFloat(row.installment || 0),
-								type: "C",
-								particular: row.isAdjustedInstallment
-									? "ADVANCE ADJUSTED"
-									: "SKIP INSTALLMENT",
-								accrued_interest: row.interestAmount,
-								isSkip: !row.isAdjustedInstallment,
-								isAdvanceAdjusted: row.isAdjustedInstallment,
-							});
+					historyRows.sort((a, b) => {
+						const dateDiff = this.parseDate(a.date) - this.parseDate(b.date);
+						if (dateDiff !== 0) return dateDiff;
+						if ((a.sortMonth || 0) !== (b.sortMonth || 0)) {
+							return (a.sortMonth || 0) - (b.sortMonth || 0);
 						}
+						return (a.sortIndex || 0) - (b.sortIndex || 0);
 					});
 
-					// Sort combined list by date
-					virtualTxns.sort((a, b) => this.parseDate(a.date) - this.parseDate(b.date));
-
-					return this.sortOrder === "desc" ? virtualTxns : virtualTxns.reverse();
+					return this.sortOrder === "desc" ? [...historyRows].reverse() : historyRows;
 				},
 
 				get timelineMonths() {
