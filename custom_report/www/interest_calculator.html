@@ -3629,6 +3629,7 @@
 					const cycleTransactions = {};
 					const actualTxnDates = {};
 					const actualTxnParticulars = {};
+					let actualCreditsTotal = 0;
 					let maxTxnMonth = 0;
 					const closureCutoffIndex = this.data.transactions.findIndex(
 						(t) => this.isClosureTransaction(t),
@@ -3642,6 +3643,7 @@
 							if (t.type === "C") {
 								const dVal = this.parseDate(t.date);
 								if (dVal < dMaturity && dVal <= dExit) {
+									actualCreditsTotal += this.parseTxnAmount(t.amount);
 									let m_off = getCycleOffset(dVal);
 									rawCreditsByMonth[m_off] = (rawCreditsByMonth[m_off] || 0) + t.amount;
 									monthsWithTransactions.add(m_off);
@@ -3715,6 +3717,7 @@
 
 					// Maturity uses quarterly compounding; premature uses simple interest.
 					let principalSum = 0;
+					let actualPrincipalSum = 0;
 					let totalInterest = 0;
 					let compoundedInt = 0;
 					let accruedCurrQtr = 0;
@@ -3735,8 +3738,10 @@
 
 					for (let m = 0; m <= displayLimit; m++) {
 						const installment = creditsByMonth[m] || 0;
+						const actualCycleCredit = rawCreditsByMonth[m] || 0;
 						if (m < effectiveInterestMonths) {
 							principalSum += installment;
+							actualPrincipalSum += actualCycleCredit;
 							totalInstallments += installment;
 						}
 
@@ -3794,7 +3799,9 @@
 						const projMonth = String(currentMonthDate.getMonth() + 1).padStart(2, "0");
 						const projectedDate = `${projDay}/${projMonth}/${y_l}`;
 
-						const balBefore = principalSum + (isPremature ? 0 : compoundedInt);
+						const balBeforeForInterest = principalSum + (isPremature ? 0 : compoundedInt);
+						const balBeforeForLedger =
+							actualPrincipalSum + (isPremature ? 0 : compoundedInt);
 						const hasDbTransaction = monthsWithTransactions.has(m);
 						const isAdjustedInstallment = installment > 0 && !hasDbTransaction;
 
@@ -3829,10 +3836,11 @@
 										txn.amount !== undefined && txn.amount !== null
 											? Number(txn.amount).toFixed(2)
 											: installment.toFixed(2),
-									balanceBefore: idx === 0 ? balBefore.toFixed(2) : "",
+									balanceBefore: idx === 0 ? balBeforeForLedger.toFixed(2) : "",
 									rate: idx === 0 && shouldAccrueInterest ? appRate : "",
 									interestAmount: idx === 0 ? m_int.toFixed(2) : "",
-									closingBalance: idx === 0 ? (balBefore + m_int).toFixed(2) : "",
+									closingBalance:
+										idx === 0 ? (balBeforeForLedger + m_int).toFixed(2) : "",
 									isFromDb: true,
 									isAdjustedInstallment: false,
 									isSupplementary: idx > 0,
@@ -3852,10 +3860,10 @@
 								date: rowDate,
 								particular,
 								installment: installment.toFixed(2),
-								balanceBefore: balBefore.toFixed(2),
+								balanceBefore: balBeforeForLedger.toFixed(2),
 								rate: shouldAccrueInterest ? appRate : 0,
 								interestAmount: m_int.toFixed(2),
-								closingBalance: (balBefore + m_int).toFixed(2),
+								closingBalance: (balBeforeForLedger + m_int).toFixed(2),
 								isFromDb: false,
 								isAdjustedInstallment,
 								isSupplementary: false,
@@ -3878,7 +3886,7 @@
 					});
 					this.data.ledger = ledger;
 					this.data.ledgerTotals = {
-						installment: totalInstallments.toFixed(2),
+						installment: actualCreditsTotal.toFixed(2),
 						interestAmount: totalInterestAccrued.toFixed(2),
 					};
 					this.data.displayLimit = displayLimit;
@@ -3900,8 +3908,8 @@
 						}
 					});
 
-					this.data.total_tran_sum = totalInstallments.toFixed(2);
-					this.data.principal = Math.round(totalInstallments);
+					this.data.total_tran_sum = actualCreditsTotal.toFixed(2);
+					this.data.principal = Number(actualCreditsTotal.toFixed(2));
 					this.data.interest = Math.round(totalInterestAccrued);
 					this.data.appliedRate = appRate;
 					this.data.baseRate = baseRate;
@@ -3912,7 +3920,7 @@
 						isPremature,
 					);
 					this.data.penalty = Math.round(
-						((totalInstallments * scPercent) / 100.0) * 1.18,
+						((actualCreditsTotal * scPercent) / 100.0) * 1.18,
 					);
 
 					// Passbook Charges: Rs. 60 if premature before 3 years for 2005 scheme
