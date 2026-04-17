@@ -24,6 +24,28 @@ def get_cycle_offset(start_date, value_date):
         offset -= 1
     return max(offset, 0)
 
+def get_transaction_month_offset(start_date, value_date):
+    start = start_date.date() if hasattr(start_date, "date") else start_date
+    value = value_date.date() if hasattr(value_date, "date") else value_date
+    offset = (value.year - start.year) * 12 + (value.month - start.month)
+    return max(offset, 0)
+
+def allocate_installments_by_cycle(raw_credits_by_month, planned_installment, cycle_count):
+    if planned_installment <= 0:
+        return {m: float(raw_credits_by_month.get(m, 0.0)) for m in range(cycle_count)}
+
+    carry_forward = 0.0
+    allocated = {}
+    for m in range(cycle_count):
+        carry_forward += float(raw_credits_by_month.get(m, 0.0))
+        if carry_forward + 0.0001 >= planned_installment:
+            allocated[m] = float(planned_installment)
+            carry_forward -= planned_installment
+        else:
+            allocated[m] = float(carry_forward)
+            carry_forward = 0.0
+    return allocated
+
 def get_cycle_start(start_date, cycle_offset):
     return start_date + relativedelta(months=cycle_offset)
 
@@ -170,8 +192,9 @@ def get_account_details(foracid=None, settlement_date=None):
         diff_sett = relativedelta(sett_dt, opn_dt)
         sett_m_offset = (diff_sett.years * 12) + diff_sett.months
 
-        # Map credits to cycle offsets from opening date, keeping cycle end inclusive.
-        credits_by_month = {}
+        # Map credits by tenure cycle so installments follow the opening-date cycle boundaries.
+        raw_credits_by_month = {}
+        max_credit_month = 0
         for val_date, amt, p_type, particular in raw_trans:
             if mat_dt and val_date and val_date >= mat_dt: continue
             if val_date > sett_dt: continue
@@ -179,10 +202,18 @@ def get_account_details(foracid=None, settlement_date=None):
             m_v = get_cycle_offset(opn_dt, val_date)
             
             if p_type == 'C':
-                credits_by_month[m_v] = credits_by_month.get(m_v, 0) + float(amt or 0)
+                raw_credits_by_month[m_v] = raw_credits_by_month.get(m_v, 0) + float(amt or 0)
+                if m_v > max_credit_month:
+                    max_credit_month = m_v
 
         # Settlement cycle offset
         sett_m_offset = get_cycle_offset(opn_dt, sett_dt)
+        allocation_cycle_count = max(int(period or 0), sett_m_offset + 1, max_credit_month + 1, 1)
+        credits_by_month = allocate_installments_by_cycle(
+            raw_credits_by_month,
+            planned_installment,
+            allocation_cycle_count
+        )
 
         # Update months_held_total based on premature logic
         if is_premature:
@@ -233,13 +264,13 @@ def get_account_details(foracid=None, settlement_date=None):
                 base_interest_base = principal_sum if is_premature else (principal_sum + compounded_interest_base)
                 m_int = interest_base * (app_rate / 1200.0)
                 m_base_int = base_interest_base * (base_rate / 1200.0)
-            elif has_interest_bearing_balance and m == sett_m_offset:
-                # Settlement cycle keeps pro-rata handling for the current outstanding balance.
+            elif (not is_premature) and has_interest_bearing_balance and m == sett_m_offset:
+                # Preserve the existing non-premature settlement-cycle behavior.
                 cycle_start = get_cycle_start(opn_dt, m)
                 days = (sett_dt - cycle_start).days
                 if days > 0:
-                    interest_base = principal_sum if is_premature else (principal_sum + compounded_interest)
-                    base_interest_base = principal_sum if is_premature else (principal_sum + compounded_interest_base)
+                    interest_base = principal_sum + compounded_interest
+                    base_interest_base = principal_sum + compounded_interest_base
                     m_int = interest_base * (app_rate / 100.0) * (days / 365.0)
                     m_base_int = base_interest_base * (base_rate / 100.0) * (days / 365.0)
             
@@ -262,6 +293,7 @@ def get_account_details(foracid=None, settlement_date=None):
         processed_months = set()
         total_principal_for_sc = 0.0
 
+        monthly_interest_assigned = set()
         for val_date, amt, p_type, particular in raw_trans:
             if mat_dt and val_date and val_date >= mat_dt: continue
             
@@ -274,10 +306,16 @@ def get_account_details(foracid=None, settlement_date=None):
                 m_offset = get_cycle_offset(opn_dt, val_date)
                 
                 # Assign monthly interest to the first transaction of the month
-                if m_offset in monthly_data and m_offset not in processed_months:
+                if (
+                    m_offset in monthly_data
+                    and m_offset not in processed_months
+                    and m_offset not in monthly_interest_assigned
+                    and credits_by_month.get(m_offset, 0) > 0
+                ):
                     row_int = monthly_data[m_offset]["app_int"]
                     row_scheme_int = monthly_data[m_offset]["base_int"]
                     processed_months.add(m_offset)
+                    monthly_interest_assigned.add(m_offset)
 
             transactions.append({
                 "date": val_date.strftime("%d/%m/%Y") if val_date else "N/A",

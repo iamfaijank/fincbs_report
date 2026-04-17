@@ -1247,6 +1247,12 @@
 			.row-skip td:first-child {
 				border-left: 3px solid #f59e0b !important;
 			}
+			.row-advance td {
+				background: #ecfeff !important;
+			}
+			.row-advance td:first-child {
+				border-left: 3px solid #06b6d4 !important;
+			}
 			.skip-label {
 				font-size: 9px;
 				font-weight: 800;
@@ -1255,6 +1261,18 @@
 				padding: 2px 6px;
 				border-radius: 6px;
 				border: 1px solid #fde68a;
+				letter-spacing: 0.5px;
+			}
+			.advance-payment-label {
+				display: inline-block;
+				margin-top: 6px;
+				font-size: 9px;
+				font-weight: 800;
+				color: #0f766e;
+				background: #ccfbf1;
+				padding: 2px 6px;
+				border-radius: 6px;
+				border: 1px solid #99f6e4;
 				letter-spacing: 0.5px;
 			}
 
@@ -2256,7 +2274,7 @@
 												</div>
 
 												<div
-													v-else
+													v-else-if="t.isSkip"
 													class="skip-label"
 													style="
 														display: inline-block;
@@ -2264,6 +2282,17 @@
 													"
 												>
 													SKIP INSTALLMENT
+												</div>
+
+												<div
+													v-else-if="t.isAdvanceAdjusted"
+													class="skip-label"
+													style="
+														display: inline-block;
+														margin-bottom: 4px;
+													"
+												>
+													ADVANCE ADJUSTED
 												</div>
 
 												<div class="tran-subtitle">[[ t.date ]]</div>
@@ -2941,7 +2970,7 @@
 													>
 														Sr No
 													</th>
-													<th class="col-month">Month</th>
+													<th class="col-month">Tenure Cycle</th>
 													<th class="col-date">Date</th>
 													<th>Transaction Particular</th>
 													<th class="col-amt">Installment</th>
@@ -2956,20 +2985,18 @@
 											<tbody>
 												<tr
 													v-for="row in data.ledger"
-													:key="row.monthNo"
-													:class="{ 'row-skip': parseFloat(row.installment) === 0 }"
+													:key="row.rowKey || row.monthNo"
+													:class="{ 'row-skip': row.isSkipRow, 'row-advance': row.isSupplementary }"
 													:style="{ 
-														color: row.isPostSettlement ? '#94a3b8' : (!row.isFromDb ? '#ef4444' : 'inherit'),
+														color: row.isPostSettlement ? '#94a3b8' : (row.isAdjustedInstallment ? '#7e22ce' : (row.isSupplementary ? '#475569' : (!row.isFromDb ? '#ef4444' : 'inherit'))),
 														opacity: row.isPostSettlement ? '0.7' : '1',
-														background: row.isPostSettlement ? '#fcfcfc' : 'inherit'
+														background: row.isPostSettlement ? '#fcfcfc' : (row.isAdjustedInstallment ? '#faf5ff' : 'inherit')
 													}"
 												>
 													<td
 														:style="{ color: row.isPostSettlement ? '#e2e8f0' : 'var(--primary)', fontWeight: '800' }"
 													>
-														[[ row.monthNo >
-														(parseInt(data.deposit_period_mths) || 0) ?
-														'Settlement' : row.monthNo ]]
+														[[ row.displaySrNo ]]
 													</td>
 													<td
 														:style="{ 
@@ -2979,13 +3006,26 @@
 														borderRight: '1px solid #f1f5f9' 
 													}"
 													>
-														[[ row.monthYear ]]
+														[[ row.tenureCycle ]]
 													</td>
 													<td
 														class="col-date mono"
 														style="font-size: 13px"
 													>
 														[[ row.date ]]
+														<div
+															v-if="row.isSupplementary"
+															class="advance-payment-label"
+														>
+															ADVANCE PAYMENT
+														</div>
+														<div
+															v-if="row.isAdjustedInstallment"
+															class="advance-payment-label"
+															style="color: #6b21a8; background: #f3e8ff; border-color: #d8b4fe;"
+														>
+															ADVANCE ADJUSTED
+														</div>
 													</td>
 													<td
 														style="
@@ -3000,38 +3040,35 @@
 														[[ row.particular ]]
 													</td>
 													<td class="col-amt">
-														<span
-															v-if="parseFloat(row.installment) > 0"
-															>[[ formatCurrency(row.installment)
-															]]</span
+														<span v-if="row.installment !== ''"
+															>[[ formatCurrency(row.installment) ]]</span
 														>
 														<span
 															v-else
-															class="skip-label"
-															:style="{ opacity: row.isPostSettlement ? '0.5' : '1' }"
-															>SKIP INSTALLMENT</span
+															style="color: #94a3b8"
+															>--</span
 														>
 													</td>
 													<td class="col-amt">
-														[[ formatCurrency(row.balanceBefore) ]]
+														[[ row.balanceBefore !== '' ? formatCurrency(row.balanceBefore) : '--' ]]
 													</td>
 													<td
 														class="col-month mono"
-														:style="{ color: row.isPostSettlement ? '#e2e8f0' : (!row.isFromDb ? '#ef4444' : '#9333ea') }"
+														:style="{ color: row.isPostSettlement ? '#e2e8f0' : (row.isAdjustedInstallment ? '#7e22ce' : (row.isSupplementary ? '#94a3b8' : (!row.isFromDb ? '#ef4444' : '#9333ea'))) }"
 													>
-														[[ row.rate ]]%
+														[[ row.rate !== '' ? `${row.rate}%` : '--' ]]
 													</td>
 													<td
 														class="col-amt"
-														:class="{ 'col-highlight': row.isFromDb && !row.isPostSettlement }"
+														:class="{ 'col-highlight': row.isFromDb && !row.isPostSettlement && !row.isSupplementary }"
 													>
-														[[ formatCurrency(row.interestAmount) ]]
+														[[ row.interestAmount !== '' ? formatCurrency(row.interestAmount) : '--' ]]
 													</td>
 													<td
 														class="col-amt"
-														:style="{ color: row.isPostSettlement ? '#e2e8f0' : (!row.isFromDb ? '#ef4444' : '#10b981') }"
+														:style="{ color: row.isPostSettlement ? '#e2e8f0' : (row.isAdjustedInstallment ? '#7e22ce' : (row.isSupplementary ? '#94a3b8' : (!row.isFromDb ? '#ef4444' : '#10b981'))) }"
 													>
-														[[ formatCurrency(row.closingBalance) ]]
+														[[ row.closingBalance !== '' ? formatCurrency(row.closingBalance) : '--' ]]
 													</td>
 												</tr>
 											</tbody>
@@ -3261,18 +3298,45 @@
 					const d = String(dateObj.getDate()).padStart(2, "0");
 					return `${y}-${m}-${d}`;
 				},
-				calculateMaturityDate(openingDate, tenureMonths) {
-					const start = this.parseDate(openingDate);
-					const tenure = parseInt(tenureMonths) || 0;
-					if (!start) return "";
-					let maturity = new Date(
-						start.getFullYear(),
-						start.getMonth() + tenure,
-						start.getDate(),
+				addMonthsPreserveDay(baseDate, monthsToAdd) {
+					const base = this.parseDate(baseDate);
+					if (!base) return null;
+					let shifted = new Date(
+						base.getFullYear(),
+						base.getMonth() + monthsToAdd,
+						base.getDate(),
 					);
-					if (maturity.getDate() !== start.getDate()) {
-						maturity = new Date(start.getFullYear(), start.getMonth() + tenure + 1, 0);
+					if (shifted.getDate() !== base.getDate()) {
+						shifted = new Date(base.getFullYear(), base.getMonth() + monthsToAdd + 1, 0);
 					}
+					return shifted;
+				},
+				allocateInstallmentsByCycle(rawCreditsByMonth, plannedInstallment, cycleCount) {
+					const allocated = {};
+					if (!(plannedInstallment > 0)) {
+						for (let m = 0; m < cycleCount; m++) {
+							allocated[m] = rawCreditsByMonth[m] || 0;
+						}
+						return allocated;
+					}
+
+					let carryForward = 0;
+					for (let m = 0; m < cycleCount; m++) {
+						carryForward += rawCreditsByMonth[m] || 0;
+						if (carryForward + 0.0001 >= plannedInstallment) {
+							allocated[m] = plannedInstallment;
+							carryForward -= plannedInstallment;
+						} else {
+							allocated[m] = carryForward;
+							carryForward = 0;
+						}
+					}
+					return allocated;
+				},
+				calculateMaturityDate(openingDate, tenureMonths) {
+					const tenure = parseInt(tenureMonths) || 0;
+					let maturity = this.addMonthsPreserveDay(openingDate, tenure);
+					if (!maturity) return "";
 					return this.formatDate(this.toISODate(maturity));
 				},
 
@@ -3514,9 +3578,10 @@
 						return Math.max(offset, 0);
 					};
 
-					// Map credits by cycle offset from opening date, keeping cycle end inclusive
-					const creditsByMonth = {};
+					// Map credits by tenure cycle so payments follow the opening-date cycle boundaries.
+					const rawCreditsByMonth = {};
 					const monthsWithTransactions = new Set();
+					const cycleTransactions = {};
 					const actualTxnDates = {};
 					const actualTxnParticulars = {};
 					let maxTxnMonth = 0;
@@ -3533,8 +3598,16 @@
 								const dVal = this.parseDate(t.date);
 								if (dVal < dMaturity && dVal <= dExit) {
 									let m_off = getCycleOffset(dVal);
-									creditsByMonth[m_off] = (creditsByMonth[m_off] || 0) + t.amount;
+									rawCreditsByMonth[m_off] = (rawCreditsByMonth[m_off] || 0) + t.amount;
 									monthsWithTransactions.add(m_off);
+									if (!cycleTransactions[m_off]) {
+										cycleTransactions[m_off] = [];
+									}
+									cycleTransactions[m_off].push({
+										date: t.date,
+										particular: t.particular || "Transaction posted",
+										amount: t.amount,
+									});
 									if (!actualTxnDates[m_off]) actualTxnDates[m_off] = t.date;
 									if (!actualTxnParticulars[m_off]) {
 										actualTxnParticulars[m_off] = [];
@@ -3548,8 +3621,35 @@
 						t.accrued_interest = 0;
 						t.scheme_interest = 0;
 					});
+					Object.keys(cycleTransactions).forEach((key) => {
+						cycleTransactions[key].sort(
+							(a, b) => this.parseDate(a.date) - this.parseDate(b.date),
+						);
+					});
 
 					const settMOffset = getCycleOffset(dExit);
+					const tenureMonths = parseInt(this.data.deposit_period_mths) || 0;
+					const plannedInstallment = this.parseTxnAmount(
+						this.data.planned_installment || this.data.deposit_amount,
+					);
+					const allocationCycleCount = Math.max(
+						tenureMonths,
+						settMOffset + 1,
+						maxTxnMonth + 1,
+						1,
+					);
+					const creditsByMonth = this.allocateInstallmentsByCycle(
+						rawCreditsByMonth,
+						plannedInstallment,
+						allocationCycleCount,
+					);
+					let maxAllocatedMonth = 0;
+					Object.keys(creditsByMonth).forEach((key) => {
+						const idx = parseInt(key, 10);
+						if ((creditsByMonth[idx] || 0) > 0 && idx > maxAllocatedMonth) {
+							maxAllocatedMonth = idx;
+						}
+					});
 
 					// Simple tenure logic: completed months (relativedelta style)
 					let mRel =
@@ -3581,10 +3681,9 @@
 					const ledger = [];
 					let runningTotalInterest = 0;
 
-					const tenureMonths = parseInt(this.data.deposit_period_mths) || 0;
 					const displayLimit = isPremature
 						? effectiveInterestMonths - 1
-						: Math.max(maxTxnMonth, tenureMonths - 1);
+						: Math.max(maxAllocatedMonth, tenureMonths - 1);
 
 					let totalInstallments = 0;
 					let totalInterestAccrued = 0;
@@ -3599,46 +3698,26 @@
 						let m_int = 0;
 						let m_base_int = 0;
 
-						const isPrematureSettlementMonth = isPremature && m === settMOffset;
 						const shouldAccrueInterest =
-							m < effectiveInterestMonths &&
-							(m < tenureMonths || isPrematureSettlementMonth);
+							m < effectiveInterestMonths && m < tenureMonths;
 						const hasInterestBearingBalance =
 							(isPremature ? principalSum : principalSum + compoundedInt) > 0;
 
-						if (shouldAccrueInterest && hasInterestBearingBalance) {
-							if (
-								m < settMOffset ||
-								(m === settMOffset && !isPrematureSettlementMonth)
-							) {
-								// Full month interest for all completed cycles, including the opening cycle.
-								const interestBase = isPremature
-									? principalSum
-									: principalSum + compoundedInt;
-								const baseInterestBase = isPremature
-									? principalSum
-									: principalSum + compoundedIntBase;
-								m_int =
-									interestBase * (appRate / 1200.0);
-								m_base_int = baseInterestBase * (baseRate / 1200.0);
-							} else {
-								// Broken period interest for the settlement month (up to exitDate - 1)
-								const cycleStartDate = new Date(start);
-								cycleStartDate.setMonth(cycleStartDate.getMonth() + m);
-								const days = Math.max(
-									0,
-									Math.floor((dExit - cycleStartDate) / (1000 * 60 * 60 * 24)),
-								);
-								const interestBase = isPremature
-									? principalSum
-									: principalSum + compoundedInt;
-								const baseInterestBase = isPremature
-									? principalSum
-									: principalSum + compoundedIntBase;
-								m_int =
-									interestBase * (appRate / 100.0) * (days / 360.0);
-								m_base_int = baseInterestBase * (baseRate / 100.0) * (days / 360.0);
-							}
+						if (
+							shouldAccrueInterest &&
+							hasInterestBearingBalance &&
+							(!isPremature || m < settMOffset)
+						) {
+							// Only completed months accrue interest. Final broken days are ignored.
+							const interestBase = isPremature
+								? principalSum
+								: principalSum + compoundedInt;
+							const baseInterestBase = isPremature
+								? principalSum
+								: principalSum + compoundedIntBase;
+							m_int =
+								interestBase * (appRate / 1200.0);
+							m_base_int = baseInterestBase * (baseRate / 1200.0);
 
 							totalInterest += m_int;
 							totalInterestAccrued += m_int;
@@ -3672,6 +3751,7 @@
 
 						const balBefore = principalSum + (isPremature ? 0 : compoundedInt);
 						const hasDbTransaction = monthsWithTransactions.has(m);
+						const isAdjustedInstallment = installment > 0 && !hasDbTransaction;
 
 						let rowDate = actualTxnDates[m] || projectedDate;
 						const monthParticulars = [...new Set(actualTxnParticulars[m] || [])];
@@ -3681,23 +3761,63 @@
 							rowDate = `${String(dDisplay.getDate()).padStart(2, "0")}/${String(dDisplay.getMonth() + 1).padStart(2, "0")}/${dDisplay.getFullYear()}`;
 						}
 
-						ledger.push({
-							monthNo: m + 1,
-							monthYear: `${mmmm}/${yy}`,
-							date: rowDate,
-							particular: monthParticulars.length
-								? monthParticulars.join(" | ")
-								: hasDbTransaction
-									? "Transaction posted"
-									: "SKIP INSTALLMENT",
-							installment: installment.toFixed(2),
-							balanceBefore: balBefore.toFixed(2),
-							rate: shouldAccrueInterest ? appRate : 0,
-							interestAmount: m_int.toFixed(2),
-							closingBalance: (balBefore + m_int).toFixed(2),
-							isFromDb: hasDbTransaction,
-							isPostSettlement: m >= effectiveInterestMonths,
-						});
+						const cycleLabel = this.getCycleRangeLabel(
+							this.data.acct_opn_date,
+							m,
+							tenureMonths,
+						);
+						const cycleTxns = cycleTransactions[m] || [];
+
+						if (cycleTxns.length) {
+							cycleTxns.forEach((txn, idx) => {
+								ledger.push({
+									rowKey: `${m}-${idx}-${txn.date}-${txn.amount}`,
+									monthNo: m + 1,
+									monthYear: `${mmmm}/${yy}`,
+									tenureCycle: cycleLabel,
+									date: txn.date || rowDate,
+									particular:
+										cycleTxns.length > 1
+											? `${txn.particular} | REPRESENTS ${cycleLabel}`
+											: txn.particular || "Transaction posted",
+									installment:
+										txn.amount !== undefined && txn.amount !== null
+											? Number(txn.amount).toFixed(2)
+											: installment.toFixed(2),
+									balanceBefore: idx === 0 ? balBefore.toFixed(2) : "",
+									rate: idx === 0 && shouldAccrueInterest ? appRate : "",
+									interestAmount: idx === 0 ? m_int.toFixed(2) : "",
+									closingBalance: idx === 0 ? (balBefore + m_int).toFixed(2) : "",
+									isFromDb: true,
+									isAdjustedInstallment: false,
+									isSupplementary: idx > 0,
+									isSkipRow: false,
+									isPostSettlement: m >= effectiveInterestMonths,
+								});
+							});
+						} else {
+							const particular = isAdjustedInstallment
+								? "ADVANCE ADJUSTED"
+								: "SKIP INSTALLMENT";
+							ledger.push({
+								rowKey: `${m}-${particular}`,
+								monthNo: m + 1,
+								monthYear: `${mmmm}/${yy}`,
+								tenureCycle: cycleLabel,
+								date: rowDate,
+								particular,
+								installment: installment.toFixed(2),
+								balanceBefore: balBefore.toFixed(2),
+								rate: shouldAccrueInterest ? appRate : 0,
+								interestAmount: m_int.toFixed(2),
+								closingBalance: (balBefore + m_int).toFixed(2),
+								isFromDb: false,
+								isAdjustedInstallment,
+								isSupplementary: false,
+								isSkipRow: !isAdjustedInstallment && parseFloat(installment) === 0,
+								isPostSettlement: m >= effectiveInterestMonths,
+							});
+						}
 
 						if (!isPremature && (m + 1) % 3 === 0) {
 							compoundedInt += accruedCurrQtr;
@@ -3708,6 +3828,9 @@
 
 						monthlyInterests[m] = { app: m_int, base: m_base_int };
 					}
+					ledger.forEach((row, idx) => {
+						row.displaySrNo = idx + 1;
+					});
 					this.data.ledger = ledger;
 					this.data.ledgerTotals = {
 						installment: totalInstallments.toFixed(2),
@@ -3900,6 +4023,19 @@
 					const [y, m, d] = ds.split("-");
 					return `${d}/${m}/${y}`;
 				},
+				getCycleRangeLabel(openingDate, cycleIndex, tenureMonths) {
+					let cycleStart = this.addMonthsPreserveDay(openingDate, cycleIndex);
+					if (!cycleStart) return "";
+					const cycleEnd = this.addMonthsPreserveDay(openingDate, cycleIndex + 1);
+					if (!cycleEnd) return "";
+					if (cycleIndex > 0) {
+						cycleStart = new Date(cycleStart);
+						cycleStart.setDate(cycleStart.getDate() + 1);
+					}
+					const prefix =
+						cycleIndex + 1 > tenureMonths ? "Settlement Cycle" : `Cycle ${cycleIndex + 1}`;
+					return `${prefix} (${this.formatDate(this.toISODate(cycleStart))} - ${this.formatDate(this.toISODate(cycleEnd))})`;
+				},
 				getMonthAbbr(dateStr) {
 					if (!dateStr) return "";
 					const date = this.parseDate(dateStr);
@@ -3976,7 +4112,7 @@
 				copyTable() {
 					if (!this.data || !this.data.ledger) return;
 					const headers = [
-						"Month",
+						"Tenure Cycle",
 						"Sr No",
 						"Date",
 						"Transaction Particular",
@@ -3987,8 +4123,8 @@
 						"Closing Balance",
 					];
 					const rows = this.data.ledger.map((row) => [
-						row.monthYear,
-						row.monthNo,
+						row.tenureCycle,
+						row.displaySrNo,
 						row.date,
 						row.particular,
 						row.installment,
@@ -4034,17 +4170,20 @@
 						monthsWithTxns.add(m_off);
 					});
 
-					// Add virtual 'SKIP' transactions for months in the ledger that have no real DB records
+					// Add virtual rows for cycles that are not backed by a direct DB transaction.
 					const virtualTxns = [...txns];
 					this.data.ledger.forEach((row) => {
 						if (!row.isFromDb && !row.isPostSettlement) {
 							virtualTxns.push({
 								date: row.date,
-								amount: 0,
+								amount: parseFloat(row.installment || 0),
 								type: "C",
-								particular: "SKIP INSTALLMENT",
+								particular: row.isAdjustedInstallment
+									? "ADVANCE ADJUSTED"
+									: "SKIP INSTALLMENT",
 								accrued_interest: row.interestAmount,
-								isSkip: true,
+								isSkip: !row.isAdjustedInstallment,
+								isAdvanceAdjusted: row.isAdjustedInstallment,
 							});
 						}
 					});
