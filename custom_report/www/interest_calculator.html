@@ -1508,9 +1508,10 @@
 										margin-bottom: 8px;
 									"
 								>
-									Optional CSV Statement
+									[[ isCsvRequired() ? 'CSV Statement Required' : 'Optional CSV Statement' ]]
 								</div>
 								<input
+									id="csv-statement-input"
 									type="file"
 									accept=".csv,text/csv"
 									@change="handleCsvUpload"
@@ -1569,7 +1570,7 @@
 						>
 							<button
 								class="btn-main"
-								:disabled="accountNumber.replace(/\s/g, '').length < 15 || isLoading || !isSchemeValid || csvErrorMessage"
+								:disabled="accountNumber.replace(/\s/g, '').length < 15 || isLoading || !isSchemeValid || (isCsvRequired() && !importedTransactions.length) || csvErrorMessage"
 								@click="calculate"
 								style="
 									padding: 14px 40px;
@@ -3254,6 +3255,7 @@
 				isLoading: false,
 				errorMessage: "",
 				csvErrorMessage: "",
+				csvUploadErrorMessage: "",
 				csvFileName: "",
 				csvImportSummary: "",
 				csvParsedAccountNumber: "",
@@ -3445,6 +3447,46 @@
 				extractDigits(value) {
 					return String(value || "").replace(/\D/g, "");
 				},
+				getAccountDigits() {
+					return this.extractDigits(this.accountNumber).slice(0, 15);
+				},
+				getAccountSchemeCode() {
+					const digits = this.getAccountDigits();
+					return digits.length >= 8 ? digits.slice(4, 8) : "";
+				},
+				isCsvRequired() {
+					return ["0010", "1540"].includes(this.getAccountSchemeCode());
+				},
+				syncCsvErrorState() {
+					if (this.csvUploadErrorMessage) {
+						this.csvErrorMessage = this.csvUploadErrorMessage;
+						return false;
+					}
+					const mismatchMessage = this.getCsvAccountMismatchMessage(
+						this.accountNumber,
+						this.csvParsedAccountNumber,
+					);
+					if (mismatchMessage) {
+						this.csvErrorMessage = mismatchMessage;
+						return false;
+					}
+					if (this.isCsvRequired() && !this.importedTransactions.length) {
+						this.csvErrorMessage = "CSV statement is required for scheme 0010 and 1540";
+						return false;
+					}
+					this.csvErrorMessage = "";
+					return true;
+				},
+				clearCsvState() {
+					this.csvErrorMessage = "";
+					this.csvUploadErrorMessage = "";
+					this.csvFileName = "";
+					this.csvImportSummary = "";
+					this.csvParsedAccountNumber = "";
+					this.importedTransactions = [];
+					const csvInput = document.getElementById("csv-statement-input");
+					if (csvInput) csvInput.value = "";
+				},
 				findCsvAccountNumber(lines, headerIndex) {
 					for (let i = 0; i < headerIndex; i++) {
 						const columns = this.parseCsvLine(lines[i]);
@@ -3470,12 +3512,7 @@
 					return `CSV account number ${csvDigits} does not match this Finacle account`;
 				},
 				validateCsvAccountNumber() {
-					const mismatchMessage = this.getCsvAccountMismatchMessage(
-						this.accountNumber,
-						this.csvParsedAccountNumber,
-					);
-					this.csvErrorMessage = mismatchMessage;
-					return !mismatchMessage;
+					return this.syncCsvErrorState();
 				},
 				parseStatementCsv(csvText) {
 					const normalizedText = String(csvText || "").replace(/^\uFEFF/, "").trim();
@@ -3538,18 +3575,15 @@
 				},
 				async handleCsvUpload(e) {
 					const file = e?.target?.files?.[0];
-					this.csvErrorMessage = "";
-					this.csvImportSummary = "";
-					this.csvFileName = "";
-					this.csvParsedAccountNumber = "";
-					this.importedTransactions = [];
+					this.clearCsvState();
 
 					if (!file) return;
 					const isCsv =
 						file.name.toLowerCase().endsWith(".csv") ||
 						String(file.type || "").toLowerCase().includes("csv");
 					if (!isCsv) {
-						this.csvErrorMessage = "Only CSV files are supported";
+						this.csvUploadErrorMessage = "Only CSV files are supported";
+						this.syncCsvErrorState();
 						e.target.value = "";
 						return;
 					}
@@ -3562,9 +3596,12 @@
 						this.csvParsedAccountNumber = csvAccountNumber;
 						this.csvFileName = file.name;
 						this.csvImportSummary = `${importedTransactions.length} credit transaction(s) ready to import`;
-						this.validateCsvAccountNumber();
+						this.csvUploadErrorMessage = "";
+						this.syncCsvErrorState();
 					} catch (err) {
-						this.csvErrorMessage = err?.message || "Unable to read the uploaded CSV";
+						this.csvUploadErrorMessage =
+							err?.message || "Unable to read the uploaded CSV";
+						this.syncCsvErrorState();
 						e.target.value = "";
 					}
 				},
@@ -3702,9 +3739,7 @@
 						formatted = raw.slice(0, 4) + " " + raw.slice(4, 8) + " " + raw.slice(8);
 					}
 					this.accountNumber = formatted;
-					if (this.csvParsedAccountNumber) {
-						this.validateCsvAccountNumber();
-					}
+					this.syncCsvErrorState();
 
 					const digitsOnly = raw;
 					if (digitsOnly.length >= 8) {
@@ -3759,7 +3794,12 @@
 
 				async calculate() {
 					const digitsOnly = this.accountNumber.replace(/\s/g, "");
-					if (digitsOnly.length < 15 || !this.isSchemeValid || this.csvErrorMessage) return;
+					if (
+						digitsOnly.length < 15 ||
+						!this.isSchemeValid ||
+						!this.syncCsvErrorState()
+					)
+						return;
 					this.isLoading = true;
 					this.errorMessage = "";
 					this.calculationSteps.forEach((s) => (s.status = "pending"));
@@ -4611,11 +4651,7 @@
 					this.data = null;
 					this.schemeDesc = "";
 					this.isSchemeValid = true;
-					this.csvErrorMessage = "";
-					this.csvFileName = "";
-					this.csvImportSummary = "";
-					this.csvParsedAccountNumber = "";
-					this.importedTransactions = [];
+					this.clearCsvState();
 					this.focusInput();
 				},
 			}).mount("#app");
