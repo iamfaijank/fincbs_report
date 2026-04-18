@@ -3569,10 +3569,21 @@
 					}
 				},
 				getTransactionSourceTransactions(existingTransactions, importedTransactions) {
-					const transactions = (importedTransactions || []).length
-						? importedTransactions
-						: existingTransactions || [];
-					return [...transactions];
+					const dbTransactions = [...(existingTransactions || [])];
+					const csvTransactions = [...(importedTransactions || [])];
+					if (!csvTransactions.length) {
+						return dbTransactions;
+					}
+					const csvSplitDate = this.parseDate("06/12/2024");
+					return [...csvTransactions, ...dbTransactions]
+						.filter((transaction) => {
+							const txnDate = this.parseDate(transaction?.date);
+							if (!txnDate || !csvSplitDate) return false;
+							return transaction.imported_from_csv
+								? txnDate < csvSplitDate
+								: txnDate >= csvSplitDate;
+						})
+						.sort((a, b) => this.parseDate(a.date) - this.parseDate(b.date));
 				},
 				isClosureTransaction(t) {
 					if (!t) return false;
