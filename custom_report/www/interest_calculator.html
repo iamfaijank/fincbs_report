@@ -3256,6 +3256,7 @@
 				csvErrorMessage: "",
 				csvFileName: "",
 				csvImportSummary: "",
+				csvParsedAccountNumber: "",
 				importedTransactions: [],
 				lastCopied: "",
 				sortOrder: "desc",
@@ -3441,6 +3442,41 @@
 					values.push(current);
 					return values.map((value) => value.trim());
 				},
+				extractDigits(value) {
+					return String(value || "").replace(/\D/g, "");
+				},
+				findCsvAccountNumber(lines, headerIndex) {
+					for (let i = 0; i < headerIndex; i++) {
+						const columns = this.parseCsvLine(lines[i]);
+						if (columns.length < 2) continue;
+						const label = String(columns[0] || "")
+							.trim()
+							.toLowerCase()
+							.replace(/[:.]/g, "")
+							.replace(/\s+/g, " ");
+						if (!["account no", "account number", "a/c no", "ac no"].includes(label)) {
+							continue;
+						}
+						const digits = this.extractDigits(columns[1]);
+						if (digits) return digits;
+					}
+					return "";
+				},
+				getCsvAccountMismatchMessage(dbAccountNumber, csvAccountNumber) {
+					const dbDigits = this.extractDigits(dbAccountNumber);
+					const csvDigits = this.extractDigits(csvAccountNumber);
+					if (!csvDigits || dbDigits.length < 15) return "";
+					if (dbDigits.endsWith(csvDigits)) return "";
+					return `CSV account number ${csvDigits} does not match this Finacle account`;
+				},
+				validateCsvAccountNumber() {
+					const mismatchMessage = this.getCsvAccountMismatchMessage(
+						this.accountNumber,
+						this.csvParsedAccountNumber,
+					);
+					this.csvErrorMessage = mismatchMessage;
+					return !mismatchMessage;
+				},
 				parseStatementCsv(csvText) {
 					const normalizedText = String(csvText || "").replace(/^\uFEFF/, "").trim();
 					if (!normalizedText) {
@@ -3455,6 +3491,7 @@
 					if (headerIndex === -1) {
 						throw new Error("CSV header row not found");
 					}
+					const csvAccountNumber = this.findCsvAccountNumber(lines, headerIndex);
 
 					const headers = this.parseCsvLine(lines[headerIndex]).map((header) =>
 						header.trim().toLowerCase(),
@@ -3497,13 +3534,14 @@
 						throw new Error("No credit transactions found in the uploaded CSV");
 					}
 
-					return importedTransactions;
+					return { importedTransactions, csvAccountNumber };
 				},
 				async handleCsvUpload(e) {
 					const file = e?.target?.files?.[0];
 					this.csvErrorMessage = "";
 					this.csvImportSummary = "";
 					this.csvFileName = "";
+					this.csvParsedAccountNumber = "";
 					this.importedTransactions = [];
 
 					if (!file) return;
@@ -3517,23 +3555,24 @@
 					}
 
 					try {
-						const importedTransactions = this.parseStatementCsv(await file.text());
+						const { importedTransactions, csvAccountNumber } = this.parseStatementCsv(
+							await file.text(),
+						);
 						this.importedTransactions = importedTransactions;
+						this.csvParsedAccountNumber = csvAccountNumber;
 						this.csvFileName = file.name;
 						this.csvImportSummary = `${importedTransactions.length} credit transaction(s) ready to import`;
+						this.validateCsvAccountNumber();
 					} catch (err) {
 						this.csvErrorMessage = err?.message || "Unable to read the uploaded CSV";
 						e.target.value = "";
 					}
 				},
-				mergeImportedTransactions(existingTransactions, importedTransactions) {
-					const merged = [...(existingTransactions || []), ...(importedTransactions || [])];
-					merged.sort((a, b) => {
-						const dateDiff = this.parseDate(b.date) - this.parseDate(a.date);
-						if (dateDiff !== 0) return dateDiff;
-						return this.parseTxnAmount(b.amount) - this.parseTxnAmount(a.amount);
-					});
-					return merged;
+				getTransactionSourceTransactions(existingTransactions, importedTransactions) {
+					const transactions = (importedTransactions || []).length
+						? importedTransactions
+						: existingTransactions || [];
+					return [...transactions];
 				},
 				isClosureTransaction(t) {
 					if (!t) return false;
@@ -3652,6 +3691,9 @@
 						formatted = raw.slice(0, 4) + " " + raw.slice(4, 8) + " " + raw.slice(8);
 					}
 					this.accountNumber = formatted;
+					if (this.csvParsedAccountNumber) {
+						this.validateCsvAccountNumber();
+					}
 
 					const digitsOnly = raw;
 					if (digitsOnly.length >= 8) {
@@ -3766,7 +3808,7 @@
 							this.exitDate = today > this.maxExitDate ? this.maxExitDate : today;
 							this.data = {
 								...result,
-								transactions: this.mergeImportedTransactions(
+								transactions: this.getTransactionSourceTransactions(
 									result.transactions,
 									this.importedTransactions,
 								),
@@ -4561,6 +4603,7 @@
 					this.csvErrorMessage = "";
 					this.csvFileName = "";
 					this.csvImportSummary = "";
+					this.csvParsedAccountNumber = "";
 					this.importedTransactions = [];
 					this.focusInput();
 				},
