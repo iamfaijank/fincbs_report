@@ -1487,6 +1487,74 @@
 									</div>
 								</div>
 							</div>
+							<div
+								style="
+									width: 100%;
+									max-width: 360px;
+									background: #fff;
+									border: 1px dashed #cbd5e1;
+									border-radius: 16px;
+									padding: 14px 16px;
+									box-sizing: border-box;
+								"
+							>
+								<div
+									style="
+										font-size: 10px;
+										font-weight: 800;
+										color: #94a3b8;
+										text-transform: uppercase;
+										letter-spacing: 0.8px;
+										margin-bottom: 8px;
+									"
+								>
+									Optional CSV Statement
+								</div>
+								<input
+									type="file"
+									accept=".csv,text/csv"
+									@change="handleCsvUpload"
+									style="
+										width: 100%;
+										font-size: 13px;
+										color: #475569;
+									"
+								/>
+								<div
+									v-if="csvFileName"
+									style="
+										margin-top: 8px;
+										font-size: 12px;
+										font-weight: 700;
+										color: var(--primary);
+										word-break: break-word;
+									"
+								>
+									[[ csvFileName ]]
+								</div>
+								<div
+									v-if="csvImportSummary"
+									style="
+										margin-top: 6px;
+										font-size: 11px;
+										font-weight: 700;
+										color: var(--accent);
+									"
+								>
+									[[ csvImportSummary ]]
+								</div>
+								<div
+									v-if="csvErrorMessage"
+									style="
+										margin-top: 6px;
+										font-size: 11px;
+										font-weight: 700;
+										color: #ef4444;
+									"
+								>
+									[[ csvErrorMessage ]]
+								</div>
+							</div>
 						</div>
 
 						<div
@@ -1501,7 +1569,7 @@
 						>
 							<button
 								class="btn-main"
-								:disabled="accountNumber.replace(/\s/g, '').length < 15 || isLoading || !isSchemeValid"
+								:disabled="accountNumber.replace(/\s/g, '').length < 15 || isLoading || !isSchemeValid || csvErrorMessage"
 								@click="calculate"
 								style="
 									padding: 14px 40px;
@@ -2307,6 +2375,20 @@
 													[[ formatCurrency(t.amount || 0) ]]
 												</div>
 
+												<div
+													v-if="t.imported_from_csv"
+													class="tran-subtitle"
+													style="
+														margin-bottom: 2px;
+														font-weight: 800;
+														color: var(--accent);
+														text-transform: uppercase;
+														letter-spacing: 0.6px;
+													"
+												>
+													Netwin
+												</div>
+
 												<div class="tran-subtitle">[[ t.date ]]</div>
 
 												<div
@@ -3043,6 +3125,13 @@
 													>
 														[[ row.date ]]
 														<div
+															v-if="row.imported_from_csv"
+															class="advance-payment-label"
+															style="color: #0f766e; background: #ccfbf1; border-color: #99f6e4;"
+														>
+															Netwin
+														</div>
+														<div
 															v-if="row.isSupplementary"
 															class="advance-payment-label"
 														>
@@ -3164,6 +3253,10 @@
 				accountNumber: "",
 				isLoading: false,
 				errorMessage: "",
+				csvErrorMessage: "",
+				csvFileName: "",
+				csvImportSummary: "",
+				importedTransactions: [],
 				lastCopied: "",
 				sortOrder: "desc",
 				schemeDesc: "",
@@ -3319,6 +3412,123 @@
 					const cleaned = String(value).replace(/,/g, "").replace(/[^\d.-]/g, "");
 					const parsed = parseFloat(cleaned);
 					return Number.isFinite(parsed) ? parsed : 0;
+				},
+				parseCsvLine(line) {
+					const values = [];
+					let current = "";
+					let inQuotes = false;
+					for (let i = 0; i < line.length; i++) {
+						const char = line[i];
+						if (char === '"') {
+							if (inQuotes && line[i + 1] === '"') {
+								current += '"';
+								i++;
+							} else {
+								inQuotes = !inQuotes;
+							}
+						} else if (char === "," && !inQuotes) {
+							values.push(current);
+							current = "";
+						} else {
+							current += char;
+						}
+					}
+					values.push(current);
+					return values.map((value) => value.trim());
+				},
+				parseStatementCsv(csvText) {
+					const normalizedText = String(csvText || "").replace(/^\uFEFF/, "").trim();
+					if (!normalizedText) {
+						throw new Error("Uploaded file is empty");
+					}
+
+					const lines = normalizedText
+						.split(/\r?\n/)
+						.map((line) => line.trim())
+						.filter(Boolean);
+					const headerIndex = lines.findIndex((line) => /^date\s*,/i.test(line));
+					if (headerIndex === -1) {
+						throw new Error("CSV header row not found");
+					}
+
+					const headers = this.parseCsvLine(lines[headerIndex]).map((header) =>
+						header.trim().toLowerCase(),
+					);
+					const dateIndex = headers.indexOf("date");
+					const creditIndex = headers.indexOf("credit");
+					const descriptionIndex = headers.indexOf("description");
+					const typeIndex = headers.indexOf("type");
+					if (dateIndex === -1 || creditIndex === -1) {
+						throw new Error("Required columns Date and Credit are missing");
+					}
+
+					const importedTransactions = [];
+					for (let i = headerIndex + 1; i < lines.length; i++) {
+						const columns = this.parseCsvLine(lines[i]);
+						if (!columns.length) continue;
+
+						const parsedDate = this.parseDate(columns[dateIndex]);
+						if (!parsedDate) continue;
+
+						const creditAmount = this.parseTxnAmount(columns[creditIndex]);
+						if (!(creditAmount > 0)) continue;
+
+						importedTransactions.push({
+							date: this.formatDate(this.toISODate(parsedDate)),
+							amount: creditAmount,
+							type: "C",
+							particular:
+								(descriptionIndex !== -1 && columns[descriptionIndex]) ||
+								(typeIndex !== -1 && columns[typeIndex]) ||
+								"Imported CSV Credit",
+							accrued_interest: 0,
+							scheme_interest: 0,
+							elg_amt: creditAmount,
+							imported_from_csv: true,
+						});
+					}
+
+					if (!importedTransactions.length) {
+						throw new Error("No credit transactions found in the uploaded CSV");
+					}
+
+					return importedTransactions;
+				},
+				async handleCsvUpload(e) {
+					const file = e?.target?.files?.[0];
+					this.csvErrorMessage = "";
+					this.csvImportSummary = "";
+					this.csvFileName = "";
+					this.importedTransactions = [];
+
+					if (!file) return;
+					const isCsv =
+						file.name.toLowerCase().endsWith(".csv") ||
+						String(file.type || "").toLowerCase().includes("csv");
+					if (!isCsv) {
+						this.csvErrorMessage = "Only CSV files are supported";
+						e.target.value = "";
+						return;
+					}
+
+					try {
+						const importedTransactions = this.parseStatementCsv(await file.text());
+						this.importedTransactions = importedTransactions;
+						this.csvFileName = file.name;
+						this.csvImportSummary = `${importedTransactions.length} credit transaction(s) ready to import`;
+					} catch (err) {
+						this.csvErrorMessage = err?.message || "Unable to read the uploaded CSV";
+						e.target.value = "";
+					}
+				},
+				mergeImportedTransactions(existingTransactions, importedTransactions) {
+					const merged = [...(existingTransactions || []), ...(importedTransactions || [])];
+					merged.sort((a, b) => {
+						const dateDiff = this.parseDate(b.date) - this.parseDate(a.date);
+						if (dateDiff !== 0) return dateDiff;
+						return this.parseTxnAmount(b.amount) - this.parseTxnAmount(a.amount);
+					});
+					return merged;
 				},
 				isClosureTransaction(t) {
 					if (!t) return false;
@@ -3489,7 +3699,7 @@
 
 				async calculate() {
 					const digitsOnly = this.accountNumber.replace(/\s/g, "");
-					if (digitsOnly.length < 15 || !this.isSchemeValid) return;
+					if (digitsOnly.length < 15 || !this.isSchemeValid || this.csvErrorMessage) return;
 					this.isLoading = true;
 					this.errorMessage = "";
 					this.calculationSteps.forEach((s) => (s.status = "pending"));
@@ -3549,6 +3759,10 @@
 							this.exitDate = today > this.maxExitDate ? this.maxExitDate : today;
 							this.data = {
 								...result,
+								transactions: this.mergeImportedTransactions(
+									result.transactions,
+									this.importedTransactions,
+								),
 								maturity_date: maturityDate,
 								acct_no: foracid,
 								branch_name: result.sol_desc,
@@ -3654,6 +3868,7 @@
 										date: t.date,
 										particular: t.particular || "Transaction posted",
 										amount: t.amount,
+										imported_from_csv: !!t.imported_from_csv,
 									});
 									if (!actualTxnDates[m_off]) actualTxnDates[m_off] = t.date;
 									if (!actualTxnParticulars[m_off]) {
@@ -3836,6 +4051,7 @@
 									interestAmount: idx === 0 ? m_int.toFixed(2) : "",
 									closingBalance: idx === 0 ? (balBefore + m_int).toFixed(2) : "",
 									isFromDb: true,
+									imported_from_csv: !!txn.imported_from_csv,
 									isAdjustedInstallment: false,
 									isSupplementary: idx > 0,
 									isSkipRow: false,
@@ -4325,6 +4541,10 @@
 					this.data = null;
 					this.schemeDesc = "";
 					this.isSchemeValid = true;
+					this.csvErrorMessage = "";
+					this.csvFileName = "";
+					this.csvImportSummary = "";
+					this.importedTransactions = [];
 					this.focusInput();
 				},
 			}).mount("#app");
