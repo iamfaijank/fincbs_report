@@ -3275,6 +3275,11 @@
 					{ name: "SMBG", rate: 8 },
 					{ name: "RD", rate: 8 },
 				],
+				schemeAliases: {
+					1540: "2010",
+					"0010": "2005",
+					SMBG: "2005",
+				},
 				schemeRules: {
 					2010: {
 						name: "RD 12M",
@@ -3661,7 +3666,9 @@
 					const code = digitsOnly.slice(4, 8);
 					const allowed = [
 						"2005",
+						"0010",
 						"2010",
+						"1540",
 						"2011",
 						"2012",
 						"2013",
@@ -3771,7 +3778,9 @@
 							};
 							this.schemeDesc = result.schm_desc || this.schemeDesc;
 							this.selectedProduct =
-								result.schm_code === "2005" ? this.products[0] : this.products[1];
+								["2005", "0010", "SMBG"].includes(String(result.schm_code))
+									? this.products[0]
+									: this.products[1];
 							this.updateCalculations();
 							this.showNoteHeader = true;
 							this.step = 2;
@@ -4135,7 +4144,10 @@
 
 					// Passbook Charges: Rs. 60 if premature before 3 years for 2005 scheme
 					this.data.passbook_charges = 0;
-					if (String(this.data.schm_code) === "2005" && monthsHeldTotal < 36) {
+					if (
+						this.getCanonicalSchemeCode(this.data.schm_code) === "2005" &&
+						monthsHeldTotal < 36
+					) {
 						this.data.passbook_charges = 60;
 					}
 
@@ -4155,6 +4167,7 @@
 				},
 
 				getApplicableRules(sc, m, isPremature) {
+					sc = this.getCanonicalSchemeCode(sc);
 					const r = this.schemeRules[sc];
 					if (!r)
 						return {
@@ -4182,7 +4195,7 @@
 				},
 
 				getServiceChargePercent(schm_code, months_held, isPremature = true) {
-					const sc = String(schm_code);
+					const sc = this.getCanonicalSchemeCode(schm_code);
 					const configuredRule = this.serviceChargeRules[sc];
 					if (configuredRule) {
 						return isPremature ? configuredRule.premature : configuredRule.matured;
@@ -4267,6 +4280,10 @@
 					}
 
 					return 0.0;
+				},
+				getCanonicalSchemeCode(schm_code) {
+					const code = String(schm_code);
+					return this.schemeAliases[code] || code;
 				},
 
 				selectProduct(p) {

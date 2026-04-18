@@ -5,6 +5,12 @@ from dateutil.relativedelta import relativedelta
 from custom_report.db_connection import get_dr_connection
 
 # Excel Slab Mapping based on Audit Formula
+SCHEME_CODE_ALIASES = {
+    "1540": "2010",
+    "0010": "2005",
+    "SMBG": "2005",
+}
+
 RD_SLABS = {
     "2010": {"tenure": 12, "base_rate": 8.0, "slabs": [(6, 9, 4.0), (9, 12, 6.0)]},
     "2011": {"tenure": 24, "base_rate": 8.0, "slabs": [(12, 18, 4.0), (18, 24, 6.0)]},
@@ -15,6 +21,10 @@ RD_SLABS = {
     "2005": {"tenure": 66, "base_rate": 8.0, "slabs": [(36, 66, 6.0)]},
     "2016": {"tenure": 120, "base_rate": 8.0, "slabs": [(0, 120, 8.0)]}
 }
+
+
+def normalize_scheme_code(schm_code):
+    return SCHEME_CODE_ALIASES.get(str(schm_code), str(schm_code))
 
 def get_cycle_offset(start_date, value_date):
     start = start_date.date() if hasattr(start_date, "date") else start_date
@@ -50,7 +60,7 @@ def get_cycle_start(start_date, cycle_offset):
     return start_date + relativedelta(months=cycle_offset)
 
 def get_excel_interest_rate(schm_code, months_held):
-    rule = RD_SLABS.get(str(schm_code))
+    rule = RD_SLABS.get(normalize_scheme_code(schm_code))
     if not rule: return 0.0
     if months_held >= rule['tenure']: return rule['base_rate']
     for low, high, rate in rule['slabs']:
@@ -59,7 +69,7 @@ def get_excel_interest_rate(schm_code, months_held):
     return 0.0
 
 def get_service_charge_percent(schm_code, months_held):
-    sc = str(schm_code)
+    sc = normalize_scheme_code(schm_code)
     # RD Schemes
     if sc == "2010":
         if months_held < 3: return 6.0
@@ -232,7 +242,7 @@ def get_account_details(foracid=None, settlement_date=None):
             months_held_for_rate = months_held_total
 
         app_rate = get_excel_interest_rate(schm_code, months_held_for_rate)
-        base_rate = RD_SLABS.get(str(schm_code), {}).get('base_rate', 8.0)
+        base_rate = RD_SLABS.get(normalize_scheme_code(schm_code), {}).get('base_rate', 8.0)
 
         # Maturity uses quarterly compounding; premature uses simple interest.
         principal_sum = 0.0
@@ -336,7 +346,7 @@ def get_account_details(foracid=None, settlement_date=None):
 
         # Passbook Charges: Rs. 60 if premature before 3 years for 2005 scheme
         passbook_charges = 0
-        if str(schm_code) == "2005" and months_held_total < 36:
+        if normalize_scheme_code(schm_code) == "2005" and months_held_total < 36:
             passbook_charges = 60
 
         return {
