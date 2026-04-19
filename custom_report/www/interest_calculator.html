@@ -1488,6 +1488,7 @@
 								</div>
 							</div>
 							<div
+								v-if="isCsvRequired()"
 								style="
 									width: 100%;
 									max-width: 360px;
@@ -3471,7 +3472,7 @@
 						return false;
 					}
 					if (this.isCsvRequired() && !this.importedTransactions.length) {
-						this.csvErrorMessage = "CSV statement is required for scheme 0010 and 1540";
+						this.csvErrorMessage = "CSV statement is required for old schemes";
 						return false;
 					}
 					this.csvErrorMessage = "";
@@ -3668,6 +3669,52 @@
 					}
 					return allocated;
 				},
+				splitCycleTransactionsForDisplay(cycleTransactions, plannedInstallment) {
+					const txns = Array.isArray(cycleTransactions) ? cycleTransactions : [];
+					if (!txns.length) return [];
+
+					if (!(plannedInstallment > 0)) {
+						return txns.map((txn, idx) => ({
+							...txn,
+							displayAmount: this.parseTxnAmount(txn.amount),
+							isSupplementary: idx > 0,
+							splitIndex: 0,
+						}));
+					}
+
+					const splitRows = [];
+					let remainingInstallment = plannedInstallment;
+
+					txns.forEach((txn, txnIndex) => {
+						let txnAmount = this.parseTxnAmount(txn.amount);
+						if (!(txnAmount > 0)) return;
+
+						if (remainingInstallment > 0) {
+							const regularAmount = Math.min(txnAmount, remainingInstallment);
+							if (regularAmount > 0) {
+								splitRows.push({
+									...txn,
+									displayAmount: regularAmount,
+									isSupplementary: false,
+									splitIndex: 0,
+								});
+								txnAmount -= regularAmount;
+								remainingInstallment -= regularAmount;
+							}
+						}
+
+						if (txnAmount > 0.0001) {
+							splitRows.push({
+								...txn,
+								displayAmount: txnAmount,
+								isSupplementary: true,
+								splitIndex: txnIndex + 1,
+							});
+						}
+					});
+
+					return splitRows;
+				},
 				calculateMaturityDate(openingDate, tenureMonths) {
 					const tenure = parseInt(tenureMonths) || 0;
 					let maturity = this.addMonthsPreserveDay(openingDate, tenure);
@@ -3739,6 +3786,9 @@
 						formatted = raw.slice(0, 4) + " " + raw.slice(4, 8) + " " + raw.slice(8);
 					}
 					this.accountNumber = formatted;
+					if (!this.isCsvRequired() && (this.csvFileName || this.importedTransactions.length)) {
+						this.clearCsvState();
+					}
 					this.syncCsvErrorState();
 
 					const digitsOnly = raw;
@@ -4131,22 +4181,26 @@
 							tenureMonths,
 						);
 						const cycleTxns = cycleTransactions[m] || [];
+						const displayCycleTxns = this.splitCycleTransactionsForDisplay(
+							cycleTxns,
+							plannedInstallment,
+						);
 
-						if (cycleTxns.length) {
-							cycleTxns.forEach((txn, idx) => {
+						if (displayCycleTxns.length) {
+							displayCycleTxns.forEach((txn, idx) => {
 								ledger.push({
-									rowKey: `${m}-${idx}-${txn.date}-${txn.amount}`,
+									rowKey: `${m}-${idx}-${txn.date}-${txn.displayAmount}-${txn.splitIndex || 0}`,
 									monthNo: m + 1,
 									monthYear: `${mmmm}/${yy}`,
 									tenureCycle: cycleLabel,
 									date: txn.date || rowDate,
 									particular:
-										cycleTxns.length > 1
+										displayCycleTxns.length > 1
 											? `${txn.particular} | REPRESENTS ${cycleLabel}`
 											: txn.particular || "Transaction posted",
 									installment:
-										txn.amount !== undefined && txn.amount !== null
-											? Number(txn.amount).toFixed(2)
+										txn.displayAmount !== undefined && txn.displayAmount !== null
+											? Number(txn.displayAmount).toFixed(2)
 											: installment.toFixed(2),
 									balanceBefore: idx === 0 ? balBefore.toFixed(2) : "",
 									rate: idx === 0 && shouldAccrueInterest ? appRate : "",
@@ -4155,7 +4209,7 @@
 									isFromDb: true,
 									imported_from_csv: !!txn.imported_from_csv,
 									isAdjustedInstallment: false,
-									isSupplementary: idx > 0,
+									isSupplementary: !!txn.isSupplementary,
 									isSkipRow: false,
 									isPostSettlement: m >= effectiveInterestMonths,
 								});
