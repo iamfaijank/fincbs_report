@@ -27,7 +27,7 @@ def get_pan_details(pan_no=None):
                 s.division_name, s.circle_office_name, s.sol_desc
             FROM tbaadm.gam g, crmuser.cphone c, tbaadm.sol s, crmuser.entitydocument e, crmuser.accounts a
             WHERE c.preferredflag='Y' AND g.cif_id=c.phone_b2kid AND g.sol_id=s.sol_id 
-            AND g.cif_id = a.orgkey AND e.orgkey=g.cif_id AND e.docdescr='PAN CARD'
+            AND g.cif_id = a.orgkey AND e.orgkey=g.cif_id AND e.docdescr in ('PAN CARD', 'AADHAAR CARD')
             AND g.schm_code IN ('1001','1002','1003') AND g.entity_cre_flg='Y'
             AND e.referencenumber = %s
         """
@@ -52,6 +52,10 @@ def get_pan_details(pan_no=None):
 
 @frappe.whitelist(allow_guest=True)
 def get_pan_list_from_file():
+    """Extract PAN numbers from uploaded file (CSV/Excel)"""
+    # ADD SECURITY CHECK
+    if not check_user_access():
+        return {"success": False, "error": "Access Denied: Missing permissions."}
     """Extract PAN numbers from uploaded file (CSV/Excel)"""
     # Try multiple ways to get the file to avoid 400 Bad Request
     file_obj = None
@@ -109,8 +113,12 @@ def get_pan_list_from_file():
         return {"success": False, "error": f"File processing error: {str(e)}"}
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()  # REMOVE allow_guest=True
 def fetch_pan_batch(pan_json):
+    """Fetch 13 fields for a batch of 100 PANs"""
+    # ADD SECURITY CHECK
+    if not check_user_access():
+        return {"success": False, "error": "Access Denied: Missing permissions."}
     """Fetch 13 fields for a batch of 100 PANs"""
     try:
         pans = json.loads(pan_json)
@@ -134,7 +142,7 @@ def fetch_pan_batch(pan_json):
                 s.division_name, s.circle_office_name, s.sol_desc
             FROM tbaadm.gam g, crmuser.cphone c, tbaadm.sol s, crmuser.entitydocument e, crmuser.accounts a
             WHERE c.preferredflag='Y' AND g.cif_id=c.phone_b2kid AND g.sol_id=s.sol_id 
-            AND g.cif_id = a.orgkey AND e.orgkey=g.cif_id AND e.docdescr='PAN CARD'
+            AND g.cif_id = a.orgkey AND e.orgkey=g.cif_id AND e.docdescr in ('PAN CARD', 'AADHAAR CARD')
             AND g.schm_code IN ('1001','1002','1003') AND g.entity_cre_flg='Y'
             AND e.referencenumber IN ({placeholders})
         """
