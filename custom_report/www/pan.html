@@ -29,6 +29,10 @@
             --transition: all 0.2s ease-in-out;
         }
 
+        [v-cloak] {
+            display: none;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             background: var(--bg-color);
@@ -373,8 +377,11 @@
 
 <body>
     <div class="container">
-        <div id="app" class="box" v-cloak>
 
+        <!-- JINJA ACCESS CHECK -->
+        {% if has_access %}
+
+        <div id="app" class="box" v-cloak>
             <div class="header">
                 <h2>
                     <svg class="icon" style="width:24px; height:24px; color:var(--primary)" fill="none"
@@ -500,8 +507,29 @@
                 </div>
             </div>
         </div>
+
+        {% else %}
+        <!-- ACCESS DENIED VIEW -->
+        <div class="box" style="text-align: center; padding: 60px 20px;">
+            <svg class="icon" style="width:64px; height:64px; color:var(--danger); margin: 0 auto 20px;" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                </path>
+            </svg>
+            <h2 style="color: var(--text-main); font-size: 24px; font-weight: 700; margin-bottom: 10px;">Access Denied
+            </h2>
+            <p style="color: var(--text-muted); font-size: 16px;">You do not have permission to view the PAN Information
+                System.<br>Please contact the Administrator if you need access.</p>
+            <a href="/app" class="btn btn-primary" style="margin-top: 25px; text-decoration: none;">Return to
+                Dashboard</a>
+        </div>
+        {% endif %}
+
     </div>
 
+    <!-- WRAP VUE INITIALIZATION IN JINJA CHECK -->
+    {% if has_access %}
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             PetiteVue.createApp({
@@ -619,6 +647,7 @@
             }).mount('#app');
         });
     </script>
+    {% endif %}
 </body>
 
 </html>

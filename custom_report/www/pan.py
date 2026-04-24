@@ -7,6 +7,9 @@ from custom_report.db_connection import get_dr_connection
 
 @frappe.whitelist(allow_guest=True)
 def get_pan_details(pan_no=None):
+    if not check_user_access():
+        return {"success": False, "error": "Access Denied: Missing permissions."}
+
     pan_no = pan_no or frappe.form_dict.get('pan_no')
     if not pan_no:
         return {"success": False, "error": "PAN number missing"}
@@ -156,3 +159,21 @@ def fetch_pan_batch(pan_json):
     finally:
         if conn:
             conn.close()
+
+
+def check_user_access():
+    """Helper to check if user is Administrator or has specific role"""
+    if frappe.session.user == "Administrator":
+        return True
+
+    roles = frappe.get_roles(frappe.session.user)
+    if "PAN Utility Tool (HR)" in roles:
+        return True
+
+    return False
+
+# This injects a 'has_access' variable directly into your Jinja HTML
+
+
+def get_context(context):
+    context.has_access = check_user_access()
