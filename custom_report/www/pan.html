@@ -1,122 +1,617 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>PAN Lookup Dashboard</title>
-    <script src="/assets/custom_report/js/petite-vue.iife.js"></script>
-    <style>
-        body { font-family: 'Inter', sans-serif; background: #f0f2f5; padding: 20px; color: #1a202c; margin: 0; }
-        .container { max-width: 900px; margin: 30px auto; }
-        .box { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; position: relative; }
-        
-        h2 { text-align: center; color: #2d3748; margin-bottom: 25px; }
-        .search-area { display: flex; gap: 10px; background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 25px; }
-        input[type="text"] { flex: 1; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; outline: none; }
-        .btn-main { padding: 12px 30px; background: #3182ce; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; min-height: 45px; transition: 0.2s; }
-        .btn-main:hover { background: #2b6cb0; }
-        .btn-main:disabled { background: #cbd5e0; cursor: not-allowed; }
-        
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px; }
-        .field { background: #ffffff; padding: 12px; border-radius: 10px; border: 1px solid #edf2f7; }
-        .f-label { font-size: 10px; color: #718096; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; }
-        .f-val { font-size: 14px; color: #2d3748; font-weight: 600; }
+<html lang="en">
 
-        .bulk-section { margin-top: 40px; padding: 30px; border: 2px dashed #cbd5e0; border-radius: 16px; background: #f8fafc; text-align: center; }
-        .progress-bar { height: 12px; background: #edf2f7; border-radius: 6px; margin: 20px 0; overflow: hidden; border: 1px solid #e2e8f0; }
-        .progress-fill { height: 100%; background: #3182ce; transition: width 0.3s; }
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PAN Lookup Dashboard</title>
+    <!-- Include Inter font for a modern look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="/assets/custom_report/js/petite-vue.iife.js"></script>
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --success: #10b981;
+            --success-hover: #059669;
+            --bg-color: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --transition: all 0.2s ease-in-out;
+        }
+
+        [v-cloak] {
+            display: none;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-color);
+            padding: 20px;
+            color: var(--text-main);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 850px;
+            margin: 40px auto;
+        }
+
+        /* Main Card */
+        .box {
+            background: var(--surface);
+            padding: 40px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .header h2 {
+            color: var(--text-main);
+            margin: 0 0 8px 0;
+            font-weight: 700;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            margin: 0;
+            font-size: 14px;
+        }
+
+        /* Search Input */
+        .search-area {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            width: 20px;
+            height: 20px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px 14px 12px 42px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            font-family: inherit;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+            background: #fdfdfd;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+            background: var(--surface);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            font-weight: 600;
+            font-size: 14px;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-hover);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: var(--danger-hover);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: var(--success-hover);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Grid Results */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 10px;
+        }
+
+        .field {
+            background: var(--bg-color);
+            padding: 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .field:hover {
+            border-color: #cbd5e1;
+            background: var(--surface);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .f-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .f-val {
+            font-size: 15px;
+            color: var(--text-main);
+            font-weight: 500;
+            word-break: break-word;
+        }
+
+        .error-msg {
+            background: #fef2f2;
+            color: #b91c1c;
+            padding: 12px;
+            border-radius: var(--radius-md);
+            border: 1px solid #fecaca;
+            text-align: center;
+            margin-top: 15px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        /* Bulk Section */
+        .bulk-section {
+            margin-top: 45px;
+            padding: 35px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: #fbfbfc;
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .bulk-header {
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 6px;
+            font-size: 18px;
+        }
+
+        .bulk-sub {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        /* Dropzone */
+        .dropzone {
+            margin-top: 20px;
+            padding: 40px 20px;
+            border: 2px dashed #cbd5e1;
+            border-radius: var(--radius-md);
+            background: var(--surface);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .dropzone:hover {
+            border-color: var(--primary);
+            background: var(--bg-color);
+        }
+
+        .dropzone.drag-active {
+            border-color: var(--primary);
+            background: #eff6ff;
+            border-width: 2px;
+        }
+
+        .dropzone-icon {
+            color: var(--text-muted);
+            width: 45px;
+            height: 45px;
+            margin-bottom: 12px;
+            transition: var(--transition);
+        }
+
+        .dropzone:hover .dropzone-icon,
+        .dropzone.drag-active .dropzone-icon {
+            color: var(--primary);
+            transform: translateY(-3px);
+        }
+
+        .dropzone-text {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 4px;
+        }
+
+        .dropzone-sub-text {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .file-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #e0e7ff;
+            color: #3730a3;
+            padding: 10px 20px;
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 20px 0;
+            border: 1px solid #c7d2fe;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .file-remove {
+            background: none;
+            border: none;
+            color: #4338ca;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0 4px;
+            margin-left: 6px;
+            transition: 0.2s;
+        }
+
+        .file-remove:hover {
+            color: #ef4444;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            margin: 25px 0 10px;
+        }
+
+        .progress-bar {
+            height: 10px;
+            background: #e2e8f0;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .progress-text {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-top: 8px;
+            text-align: right;
+        }
+
+        .success-box {
+            margin-top: 25px;
+            padding: 30px;
+            background: #ecfdf5;
+            border-radius: var(--radius-md);
+            border: 1px solid #a7f3d0;
+        }
+
+        /* Utility */
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .icon {
+            width: 18px;
+            height: 18px;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <div id="app" class="box">
-            <h2>🔍 PAN Information System</h2>
-            
+
+        <!-- JINJA ACCESS CHECK -->
+        {% if has_access %}
+
+        <div id="app" class="box" v-cloak>
+            <div class="header">
+                <h2>
+                    <svg class="icon" style="width:24px; height:24px; color:var(--primary)" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z">
+                        </path>
+                    </svg>
+                    PAN Information System
+                </h2>
+                <p>Lookup individual account details or process bulk datasets</p>
+            </div>
+
             <!-- Single Fetch -->
             <div class="search-area">
-                <input type="text" v-model="pan" placeholder="Enter PAN Number..." @keyup.enter="fetch">
-                <button class="btn-main" @click="fetch" :disabled="loading">[[ loading ? '...' : 'Fetch Details' ]]</button>
+                <div class="input-wrapper">
+                    <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <input type="text" v-model="pan" placeholder="Enter PAN or Reference Number..."
+                        @keyup.enter="(data || err) ? clearData() : fetch()" @input="data = null; err = ''">
+                </div>
+
+                <button :class="['btn', (data || err) ? 'btn-danger' : 'btn-primary']"
+                    @click="(data || err) ? clearData() : fetch()" :disabled="loading && !bulkLoading">
+
+                    <svg v-if="loading && !bulkLoading" class="icon spin" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                        </path>
+                    </svg>
+
+                    <span v-else-if="data || err">Clear</span>
+                    <span v-else>Search</span>
+                </button>
             </div>
 
             <div v-if="data" class="grid">
-                <div class="field" v-for="(v, k) in labels"><div class="f-label">[[ v ]]</div><div class="f-val">[[ data[k] || '-' ]]</div></div>
+                <div class="field" v-for="(v, k) in labels">
+                    <div class="f-label">[[ v ]]</div>
+                    <div class="f-val">[[ data[k] || '-' ]]</div>
+                </div>
             </div>
 
-            <div v-if="err" style="color:#e53e3e; text-align:center; margin-top:15px; font-weight:600;">[[ err ]]</div>
+            <div v-if="err" class="error-msg">[[ err ]]</div>
 
             <!-- Bulk Process Section -->
             <div class="bulk-section">
-                <div style="font-weight: 700; color: #2d3748; margin-bottom: 15px;">📂 BULK DATA FETCH</div>
-                
-                <!-- 1. Select File Button -->
+                <div class="bulk-header">Bulk Data Extraction</div>
+                <div class="bulk-sub">Upload a CSV or Excel file to process multiple records simultaneously</div>
+
                 <input type="file" @change="handleFileChange" accept=".csv, .xlsx" id="bulkFile" style="display:none">
-                <button class="btn-main" onclick="document.getElementById('bulkFile').click()" style="background:#4a5568">
-                    [[ file ? '📄 Change Selected File' : '📁 Select CSV/Excel File' ]]
-                </button>
 
-                <div v-if="file" style="margin: 10px 0; font-size: 14px; font-weight: 600;">Selected: [[ file.name ]]</div>
+                <!-- Drag and Drop Zone -->
+                <div v-if="!file" class="dropzone" :class="{ 'drag-active': isDragging }"
+                    @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false"
+                    @drop.prevent="handleDrop" @click="triggerFileInput">
 
-                <!-- 2. Upload Button -->
-                <div v-if="file && bulkResults.length === 0" style="margin-top: 15px;">
-                    <button class="btn-main" @click="startBulk" :disabled="loading" style="width: 250px; background:#2d3748">
-                        [[ loading ? 'Processing Batches...' : '🚀 UPLOAD & FETCH DATA' ]]
+                    <svg class="icon dropzone-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                        </path>
+                    </svg>
+                    <div class="dropzone-text">Drag & Drop your file here</div>
+                    <div class="dropzone-sub-text">or click to browse (supports .csv, .xlsx)</div>
+                </div>
+
+                <!-- Selected File Badge -->
+                <div v-if="file" class="file-badge">
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                        </path>
+                    </svg>
+                    [[ file.name ]]
+                    <button class="file-remove" @click.stop="resetFile" title="Remove file">✕</button>
+                </div>
+
+                <!-- Upload Trigger Button -->
+                <div v-if="file && bulkResults.length === 0" style="margin-top: 10px;">
+                    <button class="btn btn-primary" @click="startBulk" :disabled="bulkLoading" style="width: 250px;">
+                        <svg v-if="bulkLoading" class="icon spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                            </path>
+                        </svg>
+                        <svg v-else class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                        </svg>
+                        [[ bulkLoading ? 'Processing Data...' : 'Upload & Start Fetch' ]]
                     </button>
                 </div>
-                
+
                 <!-- Progress Bar -->
-                <div v-if="loading && totalToFetch > 0" style="margin-top:20px;">
-                    <div class="progress-bar"><div class="progress-fill" :style="{ width: (bulkResults.length / totalToFetch * 100) + '%' }"></div></div>
-                    <p style="font-size:13px; font-weight: 600;">Progress: [[ bulkResults.length ]] / [[ totalToFetch ]] Records</p>
+                <div v-if="bulkLoading && totalToFetch > 0" class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" :style="{ width: (bulkResults.length / totalToFetch * 100) + '%' }">
+                        </div>
+                    </div>
+                    <div class="progress-text">[[ bulkResults.length ]] / [[ totalToFetch ]] Records Processed</div>
                 </div>
 
-                <!-- 3. Download Button -->
-                <div v-if="bulkResults.length > 0 && !loading" style="margin-top: 25px; padding: 25px; background: #e6fffa; border-radius: 12px; border: 1px solid #b2f5ea;">
-                    <div style="color: #2c7a7b; font-weight: 700; margin-bottom: 15px;">✨ Fetch Complete!</div>
-                    <button class="btn-main" @click="downloadResults" style="background: #38a169; width: 280px;">📥 DOWNLOAD FULL REPORT</button>
-                    <button @click="file = null; bulkResults = [];" style="display:block; margin: 10px auto 0; background:none; border:none; color:#718096; text-decoration:underline; cursor:pointer;">Clear All</button>
+                <!-- Download Success Area -->
+                <div v-if="bulkResults.length > 0 && !bulkLoading" class="success-box">
+                    <div style="color: #059669; font-weight: 700; margin-bottom: 15px; font-size: 16px;">
+                        ✓ Batch Processing Complete
+                    </div>
+                    <button class="btn btn-success" @click="downloadResults"
+                        style="width: 100%; max-width: 300px; margin-bottom: 15px;">
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Download CSV Report
+                    </button>
+                    <button @click="resetFile"
+                        style="display:block; margin: 0 auto; background:none; border:none; color:var(--text-muted); font-size: 13px; text-decoration:underline; cursor:pointer;">
+                        Clear Bulk Data
+                    </button>
                 </div>
             </div>
         </div>
+
+        {% else %}
+        <!-- ACCESS DENIED VIEW -->
+        <div class="box" style="text-align: center; padding: 60px 20px;">
+            <svg class="icon" style="width:64px; height:64px; color:var(--danger); margin: 0 auto 20px;" fill="none"
+                stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                </path>
+            </svg>
+            <h2 style="color: var(--text-main); font-size: 24px; font-weight: 700; margin-bottom: 10px;">Access Denied
+            </h2>
+            <p style="color: var(--text-muted); font-size: 16px;">You do not have permission to view the PAN Information
+                System.<br>Please contact the Administrator if you need access.</p>
+            <a href="/app" class="btn btn-primary" style="margin-top: 25px; text-decoration: none;">Return to
+                Dashboard</a>
+        </div>
+        {% endif %}
+
     </div>
 
+    <!-- WRAP VUE INITIALIZATION IN JINJA CHECK -->
+    {% if has_access %}
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             PetiteVue.createApp({
                 $delimiters: ["[[", "]]"],
-                pan: '', data: null, err: '', loading: false, file: null, bulkResults: [], totalToFetch: 0,
-                csrf_token: "{{ frappe.csrf_token }}",
-                labels: { pan:'Ref No', name:'Account Name', cif:'CIF ID', acc:'Account No', dob:'DOB', ph:'Phone', sc:'Scheme', st:'Type', od:'Opened', sol:'SOL ID', dist:'District', zone:'Zone', sd:'SOL Desc' },
-                
+                pan: '', data: null, err: '', loading: false, bulkLoading: false,
+                file: null, bulkResults: [], totalToFetch: 0, isDragging: false,
+                csrf_token: "{{ frappe.session.csrf_token }}",
+                labels: { pan: 'Ref No', name: 'Account Name', cif: 'CIF ID', acc: 'Account No', dob: 'DOB', ph: 'Phone', sc: 'Scheme', st: 'Type', od: 'Opened', sol: 'SOL ID', dist: 'District', zone: 'Zone', sd: 'SOL Desc' },
+
                 async fetch() {
-                    if(!this.pan) return; this.loading = true; this.data = null; this.err = '';
+                    if (!this.pan) return;
+                    this.loading = true; this.data = null; this.err = '';
                     try {
                         const r = await fetch(`/api/method/custom_report.www.pan.get_pan_details?pan_no=${encodeURIComponent(this.pan)}`);
                         const res = await r.json();
-                        if(res.message?.success) this.data = res.message.data;
-                        else this.err = res.message?.error || "Not found.";
-                    } catch (e) { this.err = "Error."; } finally { this.loading = false; }
+                        if (res.message?.success) this.data = res.message.data;
+                        else this.err = res.message?.error || "No record found for the provided details.";
+                    } catch (e) {
+                        this.err = "Network or server error occurred.";
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                clearData() {
+                    this.pan = '';
+                    this.data = null;
+                    this.err = '';
+                },
+
+                triggerFileInput() {
+                    document.getElementById('bulkFile').click();
+                },
+
+                handleDrop(e) {
+                    this.isDragging = false;
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                        this.processSelectedFile(e.dataTransfer.files[0]);
+                    }
                 },
 
                 handleFileChange(e) {
-                    this.file = e.target.files[0];
+                    if (e.target.files.length > 0) {
+                        this.processSelectedFile(e.target.files[0]);
+                    }
+                },
+
+                processSelectedFile(selectedFile) {
+                    const validExts = ['.csv', '.xlsx'];
+                    const ext = selectedFile.name.substring(selectedFile.name.lastIndexOf('.')).toLowerCase();
+                    if (!validExts.includes(ext)) {
+                        alert("Invalid file format. Please upload a .csv or .xlsx file.");
+                        return;
+                    }
+                    this.file = selectedFile;
                     this.bulkResults = [];
                     this.totalToFetch = 0;
                 },
 
+                resetFile() {
+                    this.file = null;
+                    this.bulkResults = [];
+                    this.totalToFetch = 0;
+                    document.getElementById('bulkFile').value = "";
+                },
+
                 async startBulk() {
-                    if(!this.file) return; this.loading = true; this.bulkResults = [];
-                    const fd = new FormData(); 
+                    if (!this.file) return;
+                    this.bulkLoading = true; this.bulkResults = [];
+                    const fd = new FormData();
                     fd.append('file', this.file);
                     fd.append('csrf_token', this.csrf_token);
 
                     try {
-                        const r1 = await fetch('/api/method/custom_report.www.pan.get_pan_list_from_file', { 
-                            method: 'POST', 
-                            body: fd, 
-                            headers: {'X-Frappe-CSRF-Token': this.csrf_token} 
+                        const r1 = await fetch('/api/method/custom_report.www.pan.get_pan_list_from_file', {
+                            method: 'POST',
+                            body: fd,
+                            headers: { 'X-Frappe-CSRF-Token': this.csrf_token }
                         });
                         const res1 = await r1.json();
-                        if(!res1.message?.success) throw new Error(res1.message?.error || "File error");
-                        
+                        if (!res1.message?.success) throw new Error(res1.message?.error || "File error");
+
                         const allPans = res1.message.pans;
                         this.totalToFetch = allPans.length;
 
@@ -128,16 +623,20 @@
                                 body: new URLSearchParams({ pan_json: JSON.stringify(chunk), csrf_token: this.csrf_token })
                             });
                             const res2 = await r2.json();
-                            if(res2.message?.success) {
+                            if (res2.message?.success) {
                                 this.bulkResults = [...this.bulkResults, ...res2.message.results];
                             }
                         }
-                    } catch (e) { alert("ERROR: " + e.message); } finally { this.loading = false; }
+                    } catch (e) {
+                        alert("ERROR: " + e.message);
+                    } finally {
+                        this.bulkLoading = false;
+                    }
                 },
 
                 downloadResults() {
                     const headers = ['PAN No', 'Account Name', 'CIF ID', 'Account No', 'DOB', 'Phone', 'Scheme Code', 'Scheme Type', 'Open Date', 'SOL ID', 'District', 'Zone', 'SOL Description', 'Status'];
-                    const rows = this.bulkResults.map(r => [ r.pan||'', r.name||'-', r.cif||'-', r.acc||'-', r.dob||'-', r.ph||'-', r.sc||'-', r.st||'-', r.od||'-', r.sol||'-', r.dist||'-', r.zone||'-', r.sd||'-', r.status ]);
+                    const rows = this.bulkResults.map(r => [r.pan || '', `"${r.name || '-'}"`, r.cif || '-', r.acc || '-', r.dob || '-', r.ph || '-', r.sc || '-', r.st || '-', r.od || '-', r.sol || '-', `"${r.dist || '-'}"`, `"${r.zone || '-'}"`, `"${r.sd || '-'}"`, r.status]);
                     let csv = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
                     const encodedUri = encodeURI(csv);
                     const link = document.createElement("a");
@@ -148,5 +647,7 @@
             }).mount('#app');
         });
     </script>
+    {% endif %}
 </body>
+
 </html>
