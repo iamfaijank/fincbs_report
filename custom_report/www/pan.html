@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PAN Lookup Dashboard</title>
+    <script src="/assets/custom_report/js/petite-vue.iife.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f0f2f5; padding: 20px; color: #1a202c; margin: 0; }
+        .container { max-width: 900px; margin: 30px auto; }
+        .box { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; position: relative; }
+        
+        h2 { text-align: center; color: #2d3748; margin-bottom: 25px; }
+        .search-area { display: flex; gap: 10px; background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 25px; }
+        input[type="text"] { flex: 1; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; outline: none; }
+        .btn-main { padding: 12px 30px; background: #3182ce; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; min-height: 45px; transition: 0.2s; }
+        .btn-main:hover { background: #2b6cb0; }
+        .btn-main:disabled { background: #cbd5e0; cursor: not-allowed; }
+        
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px; }
+        .field { background: #ffffff; padding: 12px; border-radius: 10px; border: 1px solid #edf2f7; }
+        .f-label { font-size: 10px; color: #718096; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; }
+        .f-val { font-size: 14px; color: #2d3748; font-weight: 600; }
+
+        .bulk-section { margin-top: 40px; padding: 30px; border: 2px dashed #cbd5e0; border-radius: 16px; background: #f8fafc; text-align: center; }
+        .progress-bar { height: 12px; background: #edf2f7; border-radius: 6px; margin: 20px 0; overflow: hidden; border: 1px solid #e2e8f0; }
+        .progress-fill { height: 100%; background: #3182ce; transition: width 0.3s; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="app" class="box">
+            <h2>🔍 PAN Information System</h2>
+            
+            <!-- Single Fetch -->
+            <div class="search-area">
+                <input type="text" v-model="pan" placeholder="Enter PAN Number..." @keyup.enter="fetch">
+                <button class="btn-main" @click="fetch" :disabled="loading">[[ loading ? '...' : 'Fetch Details' ]]</button>
+            </div>
+
+            <div v-if="data" class="grid">
+                <div class="field" v-for="(v, k) in labels"><div class="f-label">[[ v ]]</div><div class="f-val">[[ data[k] || '-' ]]</div></div>
+            </div>
+
+            <div v-if="err" style="color:#e53e3e; text-align:center; margin-top:15px; font-weight:600;">[[ err ]]</div>
+
+            <!-- Bulk Process Section -->
+            <div class="bulk-section">
+                <div style="font-weight: 700; color: #2d3748; margin-bottom: 15px;">📂 BULK DATA FETCH</div>
+                
+                <!-- 1. Select File Button -->
+                <input type="file" @change="handleFileChange" accept=".csv, .xlsx" id="bulkFile" style="display:none">
+                <button class="btn-main" onclick="document.getElementById('bulkFile').click()" style="background:#4a5568">
+                    [[ file ? '📄 Change Selected File' : '📁 Select CSV/Excel File' ]]
+                </button>
+
+                <div v-if="file" style="margin: 10px 0; font-size: 14px; font-weight: 600;">Selected: [[ file.name ]]</div>
+
+                <!-- 2. Upload Button -->
+                <div v-if="file && bulkResults.length === 0" style="margin-top: 15px;">
+                    <button class="btn-main" @click="startBulk" :disabled="loading" style="width: 250px; background:#2d3748">
+                        [[ loading ? 'Processing Batches...' : '🚀 UPLOAD & FETCH DATA' ]]
+                    </button>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div v-if="loading && totalToFetch > 0" style="margin-top:20px;">
+                    <div class="progress-bar"><div class="progress-fill" :style="{ width: (bulkResults.length / totalToFetch * 100) + '%' }"></div></div>
+                    <p style="font-size:13px; font-weight: 600;">Progress: [[ bulkResults.length ]] / [[ totalToFetch ]] Records</p>
+                </div>
+
+                <!-- 3. Download Button -->
+                <div v-if="bulkResults.length > 0 && !loading" style="margin-top: 25px; padding: 25px; background: #e6fffa; border-radius: 12px; border: 1px solid #b2f5ea;">
+                    <div style="color: #2c7a7b; font-weight: 700; margin-bottom: 15px;">✨ Fetch Complete!</div>
+                    <button class="btn-main" @click="downloadResults" style="background: #38a169; width: 280px;">📥 DOWNLOAD FULL REPORT</button>
+                    <button @click="file = null; bulkResults = [];" style="display:block; margin: 10px auto 0; background:none; border:none; color:#718096; text-decoration:underline; cursor:pointer;">Clear All</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            PetiteVue.createApp({
+                $delimiters: ["[[", "]]"],
+                pan: '', data: null, err: '', loading: false, file: null, bulkResults: [], totalToFetch: 0,
+                csrf_token: "{{ frappe.csrf_token }}",
+                labels: { pan:'Ref No', name:'Account Name', cif:'CIF ID', acc:'Account No', dob:'DOB', ph:'Phone', sc:'Scheme', st:'Type', od:'Opened', sol:'SOL ID', dist:'District', zone:'Zone', sd:'SOL Desc' },
+                
+                async fetch() {
+                    if(!this.pan) return; this.loading = true; this.data = null; this.err = '';
+                    try {
+                        const r = await fetch(`/api/method/custom_report.www.pan.get_pan_details?pan_no=${encodeURIComponent(this.pan)}`);
+                        const res = await r.json();
+                        if(res.message?.success) this.data = res.message.data;
+                        else this.err = res.message?.error || "Not found.";
+                    } catch (e) { this.err = "Error."; } finally { this.loading = false; }
+                },
+
+                handleFileChange(e) {
+                    this.file = e.target.files[0];
+                    this.bulkResults = [];
+                    this.totalToFetch = 0;
+                },
+
+                async startBulk() {
+                    if(!this.file) return; this.loading = true; this.bulkResults = [];
+                    const fd = new FormData(); 
+                    fd.append('file', this.file);
+                    fd.append('csrf_token', this.csrf_token);
+
+                    try {
+                        const r1 = await fetch('/api/method/custom_report.www.pan.get_pan_list_from_file', { 
+                            method: 'POST', 
+                            body: fd, 
+                            headers: {'X-Frappe-CSRF-Token': this.csrf_token} 
+                        });
+                        const res1 = await r1.json();
+                        if(!res1.message?.success) throw new Error(res1.message?.error || "File error");
+                        
+                        const allPans = res1.message.pans;
+                        this.totalToFetch = allPans.length;
+
+                        for (let i = 0; i < allPans.length; i += 100) {
+                            const chunk = allPans.slice(i, i + 100);
+                            const r2 = await fetch('/api/method/custom_report.www.pan.fetch_pan_batch', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Frappe-CSRF-Token': this.csrf_token },
+                                body: new URLSearchParams({ pan_json: JSON.stringify(chunk), csrf_token: this.csrf_token })
+                            });
+                            const res2 = await r2.json();
+                            if(res2.message?.success) {
+                                this.bulkResults = [...this.bulkResults, ...res2.message.results];
+                            }
+                        }
+                    } catch (e) { alert("ERROR: " + e.message); } finally { this.loading = false; }
+                },
+
+                downloadResults() {
+                    const headers = ['PAN No', 'Account Name', 'CIF ID', 'Account No', 'DOB', 'Phone', 'Scheme Code', 'Scheme Type', 'Open Date', 'SOL ID', 'District', 'Zone', 'SOL Description', 'Status'];
+                    const rows = this.bulkResults.map(r => [ r.pan||'', r.name||'-', r.cif||'-', r.acc||'-', r.dob||'-', r.ph||'-', r.sc||'-', r.st||'-', r.od||'-', r.sol||'-', r.dist||'-', r.zone||'-', r.sd||'-', r.status ]);
+                    let csv = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+                    const encodedUri = encodeURI(csv);
+                    const link = document.createElement("a");
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", "Batch_PAN_Report.csv");
+                    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                }
+            }).mount('#app');
+        });
+    </script>
+</body>
+</html>
