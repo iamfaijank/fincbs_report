@@ -545,7 +545,26 @@
                     try {
                         const r = await fetch(`/api/method/custom_report.www.pan.get_pan_details?pan_no=${encodeURIComponent(this.pan)}`);
                         const res = await r.json();
-                        if (res.message?.success) this.data = res.message.data;
+                        if (res.message?.success) {
+                            let responseData = res.message.data;
+
+                            // Helper function to format "YYYY-MM-DD HH:MM:SS" to "DD/MM/YYYY"
+                            const formatDate = (dateStr) => {
+                                if (!dateStr || dateStr === 'None') return '-';
+                                const datePart = dateStr.split(' ')[0]; // Get "YYYY-MM-DD"
+                                const parts = datePart.split('-'); // Split into [YYYY, MM, DD]
+                                if (parts.length === 3) {
+                                    return `${parts[2]}/${parts[1]}/${parts[0]}`; // Return "DD/MM/YYYY"
+                                }
+                                return datePart; // Fallback if format is unexpected
+                            };
+
+                            // Apply formatting
+                            responseData.dob = formatDate(responseData.dob);
+                            responseData.od = formatDate(responseData.od);
+
+                            this.data = responseData;
+                        }
                         else this.err = res.message?.error || "No record found for the provided details.";
                     } catch (e) {
                         this.err = "Network or server error occurred.";
