@@ -537,7 +537,8 @@
                 pan: '', data: null, err: '', loading: false, bulkLoading: false,
                 file: null, bulkResults: [], totalToFetch: 0, isDragging: false,
                 csrf_token: "{{ frappe.session.csrf_token }}",
-                labels: { pan: 'Ref No', name: 'Account Name', cif: 'CIF ID', acc: 'Account No', dob: 'DOB', ph: 'Phone', sc: 'Scheme', st: 'Type', od: 'Opened', sol: 'SOL ID', dist: 'District', zone: 'Zone', sd: 'SOL Desc' },
+                // Updated labels to show Document Type, PAN, and Aadhaar separately
+                labels: { doc_type: 'Document Type', pan_no: 'PAN No', aadhaar_no: 'Aadhaar No', name: 'Account Name', cif: 'CIF ID', acc: 'Account No', dob: 'DOB', ph: 'Phone', sc: 'Scheme', st: 'Type', od: 'Opened', sol: 'SOL ID', dist: 'District', zone: 'Zone', sd: 'SOL Desc' },
 
                 async fetch() {
                     if (!this.pan) return;
@@ -548,20 +549,27 @@
                         if (res.message?.success) {
                             let responseData = res.message.data;
 
-                            // Helper function to format "YYYY-MM-DD HH:MM:SS" to "DD/MM/YYYY"
                             const formatDate = (dateStr) => {
                                 if (!dateStr || dateStr === 'None') return '-';
-                                const datePart = dateStr.split(' ')[0]; // Get "YYYY-MM-DD"
-                                const parts = datePart.split('-'); // Split into [YYYY, MM, DD]
-                                if (parts.length === 3) {
-                                    return `${parts[2]}/${parts[1]}/${parts[0]}`; // Return "DD/MM/YYYY"
-                                }
-                                return datePart; // Fallback if format is unexpected
+                                const datePart = dateStr.split(' ')[0];
+                                const parts = datePart.split('-');
+                                if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                                return datePart;
                             };
 
-                            // Apply formatting
                             responseData.dob = formatDate(responseData.dob);
                             responseData.od = formatDate(responseData.od);
+
+                            // Dynamically determine PAN vs Aadhaar based on the first character
+                            const refVal = responseData.pan || '';
+                            const isAadhaar = /^\d/.test(refVal); // Checks if it starts with a number
+
+                            responseData.doc_type = isAadhaar ? 'AADHAAR' : 'PAN';
+                            responseData.pan_no = isAadhaar ? '-' : refVal;
+                            responseData.aadhaar_no = isAadhaar ? refVal : '-';
+
+                            // Delete the old generic key so it doesn't show up in the loop if you iterate strictly
+                            delete responseData.pan;
 
                             this.data = responseData;
                         }
@@ -579,21 +587,15 @@
                     this.err = '';
                 },
 
-                triggerFileInput() {
-                    document.getElementById('bulkFile').click();
-                },
+                triggerFileInput() { document.getElementById('bulkFile').click(); },
 
                 handleDrop(e) {
                     this.isDragging = false;
-                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                        this.processSelectedFile(e.dataTransfer.files[0]);
-                    }
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) this.processSelectedFile(e.dataTransfer.files[0]);
                 },
 
                 handleFileChange(e) {
-                    if (e.target.files.length > 0) {
-                        this.processSelectedFile(e.target.files[0]);
-                    }
+                    if (e.target.files.length > 0) this.processSelectedFile(e.target.files[0]);
                 },
 
                 processSelectedFile(selectedFile) {
@@ -624,9 +626,7 @@
 
                     try {
                         const r1 = await fetch('/api/method/custom_report.www.pan.get_pan_list_from_file', {
-                            method: 'POST',
-                            body: fd,
-                            headers: { 'X-Frappe-CSRF-Token': this.csrf_token }
+                            method: 'POST', body: fd, headers: { 'X-Frappe-CSRF-Token': this.csrf_token }
                         });
                         const res1 = await r1.json();
                         if (!res1.message?.success) throw new Error(res1.message?.error || "File error");
@@ -654,13 +654,53 @@
                 },
 
                 downloadResults() {
-                    const headers = ['PAN No', 'Account Name', 'CIF ID', 'Account No', 'DOB', 'Phone', 'Scheme Code', 'Scheme Type', 'Open Date', 'SOL ID', 'District', 'Zone', 'SOL Description', 'Status'];
-                    const rows = this.bulkResults.map(r => [r.pan || '', `"${r.name || '-'}"`, r.cif || '-', r.acc || '-', r.dob || '-', r.ph || '-', r.sc || '-', r.st || '-', r.od || '-', r.sol || '-', `"${r.dist || '-'}"`, `"${r.zone || '-'}"`, `"${r.sd || '-'}"`, r.status]);
+                    // Added Document Type, Aadhaar, and PAN columns
+                    const headers = ['Document Type', 'PAN No', 'Aadhaar No', 'Account Name', 'CIF ID', 'Account No', 'DOB', 'Phone', 'Scheme Code', 'Scheme Type', 'Open Date', 'SOL ID', 'District', 'Zone', 'SOL Description', 'Status'];
+
+                    const formatDate = (dateStr) => {
+                        if (!dateStr || dateStr === 'None') return '-';
+                        const datePart = dateStr.split(' ')[0];
+                        const parts = datePart.split('-');
+                        if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                        return datePart;
+                    };
+
+                    const rows = this.bulkResults.map(r => {
+                        const accNo = r.acc ? String(r.acc).split('.')[0] : '-';
+                        const refVal = r.pan || '';
+
+                        // Check if value starts with a number to determine if it is Aadhaar
+                        const isAadhaar = /^\d/.test(refVal);
+                        const docType = isAadhaar ? 'AADHAAR' : 'PAN';
+                        const panNo = isAadhaar ? '-' : refVal;
+                        const aadhaarNo = isAadhaar ? refVal : '-';
+
+                        return [
+                            docType,
+                            panNo,
+                            // Ensure the 12 digit Aadhaar number is forced to string so Excel doesn't truncate it
+                            `"${aadhaarNo}"`,
+                            `"${r.name || '-'}"`,
+                            r.cif || '-',
+                            accNo,
+                            formatDate(r.dob),
+                            r.ph || '-',
+                            r.sc || '-',
+                            r.st || '-',
+                            formatDate(r.od),
+                            r.sol || '-',
+                            `"${r.dist || '-'}"`,
+                            `"${r.zone || '-'}"`,
+                            `"${r.sd || '-'}"`,
+                            r.status
+                        ];
+                    });
+
                     let csv = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
                     const encodedUri = encodeURI(csv);
                     const link = document.createElement("a");
                     link.setAttribute("href", encodedUri);
-                    link.setAttribute("download", "Batch_PAN_Report.csv");
+                    link.setAttribute("download", "Batch_Document_Report.csv");
                     document.body.appendChild(link); link.click(); document.body.removeChild(link);
                 }
             }).mount('#app');
