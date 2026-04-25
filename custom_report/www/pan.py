@@ -5,7 +5,7 @@ import io
 from custom_report.db_connection import get_dr_connection
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_pan_details(pan_no=None):
     if not check_user_access():
         return {"success": False, "error": "Access Denied: Missing permissions."}
@@ -183,5 +183,15 @@ def check_user_access():
 # This injects a 'has_access' variable directly into your Jinja HTML
 
 
+# def get_context(context):
+#     context.has_access = check_user_access()
+
 def get_context(context):
+    # 1. PREVENT CACHING: Forces Frappe to re-evaluate roles for every single page load
+    context.no_cache = 1
+
+    # 2. REQUIRE LOGIN: Instantly redirects guest/logged-out users to the /login page
+    context.login_required = True
+
+    # 3. SET ACCESS: Passes the role check to your Jinja HTML template
     context.has_access = check_user_access()
