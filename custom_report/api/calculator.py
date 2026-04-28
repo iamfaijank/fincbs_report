@@ -176,11 +176,16 @@ def get_account_details(foracid=None, settlement_date=None):
             SELECT value_date, tran_amt, part_tran_type, tran_particular 
             FROM tbaadm.htd 
             WHERE acid = %s AND del_flg = 'N'
-              AND pstd_user_id NOT IN ('SYSTEM', 'BATCH')
             ORDER BY value_date ASC
         """, (acid,))
         raw_trans = cursor.fetchall()
         raw_trans.sort(key=lambda x: x[0])
+        raw_trans = [
+            row for row in raw_trans
+            if row[0]
+            and (not mat_dt or row[0] < mat_dt)
+            and row[0] <= sett_dt
+        ]
 
         # Account closure handling:
         # first debit/negative amount indicates closure, so exclude that row and
@@ -207,9 +212,6 @@ def get_account_details(foracid=None, settlement_date=None):
         raw_credits_by_month = {}
         max_credit_month = 0
         for val_date, amt, p_type, particular in raw_trans:
-            if mat_dt and val_date and val_date >= mat_dt: continue
-            if val_date > sett_dt: continue
-            
             m_v = get_cycle_offset(opn_dt, val_date)
             
             if p_type == 'C':
@@ -306,8 +308,6 @@ def get_account_details(foracid=None, settlement_date=None):
 
         monthly_interest_assigned = set()
         for val_date, amt, p_type, particular in raw_trans:
-            if mat_dt and val_date and val_date >= mat_dt: continue
-            
             amt = float(amt or 0)
             row_int = 0.0
             row_scheme_int = 0.0
