@@ -1488,6 +1488,144 @@
 								</div>
 							</div>
 							<div
+								style="
+									width: 100%;
+									max-width: 360px;
+									margin-bottom: 24px;
+									text-align: left;
+								"
+							>
+								<div
+									style="
+										font-size: 11px;
+										font-weight: 700;
+										color: #64748b;
+										text-transform: uppercase;
+										letter-spacing: 0.08em;
+										margin-bottom: 8px;
+									"
+								>
+									Branch Code
+								</div>
+								<div
+									style="
+										border: 1px solid #e2e8f0;
+										border-radius: 14px;
+										padding: 14px 16px;
+										background: #fff;
+										font-family: &quot;JetBrains Mono&quot;, monospace;
+										font-size: 18px;
+										font-weight: 700;
+										color: var(--primary);
+										min-height: 24px;
+									"
+								>
+									[[ branchCode || "--" ]]
+								</div>
+								<div
+									style="
+										font-size: 11px;
+										margin-top: 8px;
+										min-height: 16px;
+									"
+									:style="{ color: branchLookupError ? '#ef4444' : '#94a3b8' }"
+								>
+									[[ branchLookupError || "Fetched from Sahayog Branch.branch_code using first 4 digits" ]]
+								</div>
+							</div>
+							<div
+								style="
+									width: 100%;
+									max-width: 360px;
+									margin-bottom: 24px;
+									text-align: left;
+								"
+							>
+								<div
+									style="
+										font-size: 11px;
+										font-weight: 700;
+										color: #64748b;
+										text-transform: uppercase;
+										letter-spacing: 0.08em;
+										margin-bottom: 8px;
+									"
+								>
+									GL Code
+								</div>
+								<div
+									style="
+										border: 1px solid #e2e8f0;
+										border-radius: 14px;
+										padding: 14px 16px;
+										background: #fff;
+										font-family: &quot;JetBrains Mono&quot;, monospace;
+										font-size: 18px;
+										font-weight: 700;
+										color: var(--primary);
+										min-height: 24px;
+									"
+								>
+									[[ glCode || "--" ]]
+								</div>
+								<div
+									style="
+										font-size: 11px;
+										color: #94a3b8;
+										margin-top: 8px;
+										min-height: 16px;
+									"
+								>
+									[[ glCodeHint || "Second 4 digits se derived" ]]
+								</div>
+							</div>
+							<div
+								style="
+									width: 100%;
+									max-width: 360px;
+									margin-bottom: 24px;
+									text-align: left;
+								"
+							>
+								<div
+									style="
+										font-size: 11px;
+										font-weight: 700;
+										color: #64748b;
+										text-transform: uppercase;
+										letter-spacing: 0.08em;
+										margin-bottom: 8px;
+									"
+								>
+									Netwin Account Number
+								</div>
+								<div
+									style="
+										border: 1px solid #e2e8f0;
+										border-radius: 14px;
+										padding: 14px 16px;
+										background: #fff;
+										font-family: &quot;JetBrains Mono&quot;, monospace;
+										font-size: 18px;
+										font-weight: 700;
+										color: var(--primary);
+										min-height: 24px;
+									"
+								>
+									[[ netwinAccountNumber || "--" ]]
+								</div>
+								<div
+									style="
+										font-size: 11px;
+										color: #94a3b8;
+										margin-top: 8px;
+										min-height: 16px;
+									"
+								>
+									[[ netwinAccountNumber ? "Account number ke last digits" : "First 8 digits ke baad ke digits" ]]
+								</div>
+							</div>
+							<div
 								v-if="isCsvRequired()"
 								style="
 									width: 100%;
@@ -3264,6 +3402,12 @@
 				lastCopied: "",
 				sortOrder: "desc",
 				schemeDesc: "",
+				branchCode: "",
+				branchLookupError: "",
+				lastBranchLookupPrefix: "",
+				glCode: "",
+				glCodeHint: "",
+				netwinAccountNumber: "",
 				isSchemeValid: true,
 				calculationSteps: [
 					{ label: "Connecting", status: "pending" },
@@ -3792,10 +3936,67 @@
 					this.syncCsvErrorState();
 
 					const digitsOnly = raw;
+					this.updateDerivedAccountValues(digitsOnly);
+					this.lookupBranchCode(digitsOnly);
 					if (digitsOnly.length >= 8) {
 						this.checkScheme();
 					} else {
 						this.schemeDesc = "";
+					}
+				},
+
+				updateDerivedAccountValues(digitsOnly) {
+					const accountDigits = String(digitsOnly || "");
+					const schemeCode = accountDigits.slice(4, 8);
+					this.netwinAccountNumber = accountDigits.length > 8 ? accountDigits.slice(8) : "";
+
+					if (schemeCode === "0010") {
+						this.glCode = "B101";
+						this.glCodeHint = "Scheme 0010 -> GL Code B101";
+					} else if (schemeCode === "1540") {
+						this.glCode = "RD";
+						this.glCodeHint = "Scheme 1540 -> GL Code RD";
+					} else {
+						this.glCode = "";
+						this.glCodeHint = schemeCode.length === 4 ? "Unsupported scheme code" : "";
+					}
+				},
+
+				async lookupBranchCode(digitsOnly) {
+					const prefix = String(digitsOnly || "").slice(0, 4);
+					if (prefix.length < 4) {
+						this.branchCode = "";
+						this.branchLookupError = "";
+						this.lastBranchLookupPrefix = "";
+						return;
+					}
+					if (this.lastBranchLookupPrefix === prefix) return;
+
+					this.lastBranchLookupPrefix = prefix;
+					this.branchLookupError = "";
+
+					try {
+						const res = await (
+							await fetch("/api/method/custom_report.api.calculator.get_branch_code", {
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({ branch_prefix: prefix }),
+							})
+						).json();
+						const result = res.message || {};
+						if (this.getAccountDigits().slice(0, 4) !== prefix) return;
+
+						if (result.success) {
+							this.branchCode = result.branch_code || "";
+							this.branchLookupError = "";
+						} else {
+							this.branchCode = "";
+							this.branchLookupError = result.error || "Branch code not found";
+						}
+					} catch (err) {
+						if (this.getAccountDigits().slice(0, 4) !== prefix) return;
+						this.branchCode = "";
+						this.branchLookupError = "Unable to fetch branch code";
 					}
 				},
 
@@ -4704,6 +4905,12 @@
 					this.accountNumber = "";
 					this.data = null;
 					this.schemeDesc = "";
+					this.branchCode = "";
+					this.branchLookupError = "";
+					this.lastBranchLookupPrefix = "";
+					this.glCode = "";
+					this.glCodeHint = "";
+					this.netwinAccountNumber = "";
 					this.isSchemeValid = true;
 					this.clearCsvState();
 					this.focusInput();

@@ -380,3 +380,24 @@ def get_scheme_details(schm_code):
     except Exception as e: return {"error": str(e), "success": False}
     finally:
         if conn: conn.close()
+
+
+@frappe.whitelist()
+def get_branch_code(branch_prefix=None):
+    branch_prefix = str(branch_prefix or "").strip()[:4]
+    if len(branch_prefix) != 4:
+        return {"success": False, "error": "4 digit branch prefix is required"}
+
+    try:
+        branch = frappe.db.get_value(
+            "Sahayog Branch",
+            {"name": branch_prefix},
+            ["name", "branch_code"],
+            as_dict=True,
+        )
+        if not branch:
+            return {"success": False, "error": "Branch not found"}
+        return {"success": True, "branch_code": branch.get("branch_code", "")}
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Branch Code Lookup Failure")
+        return {"success": False, "error": str(e)}
