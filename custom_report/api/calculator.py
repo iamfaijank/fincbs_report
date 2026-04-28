@@ -164,6 +164,12 @@ def get_account_details(foracid=None, settlement_date=None):
             JOIN tbaadm.gsp p ON g.schm_code = p.schm_code
             JOIN tbaadm.tam t ON g.acid = t.acid
             WHERE g.foracid = %s AND g.del_flg = 'N'
+              AND EXISTS (
+                  SELECT 1
+                  FROM tbaadm.htd h
+                  WHERE h.acid = g.acid
+                    AND h.pstd_user_id NOT IN ('SYSTEM', 'BATCH')
+              )
         """, (foracid,))
         
         res = cursor.fetchone()
