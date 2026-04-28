@@ -164,12 +164,6 @@ def get_account_details(foracid=None, settlement_date=None):
             JOIN tbaadm.gsp p ON g.schm_code = p.schm_code
             JOIN tbaadm.tam t ON g.acid = t.acid
             WHERE g.foracid = %s AND g.del_flg = 'N'
-              AND EXISTS (
-                  SELECT 1
-                  FROM tbaadm.htd h
-                  WHERE h.acid = g.acid
-                    AND h.pstd_user_id NOT IN ('SYSTEM', 'BATCH')
-              )
         """, (foracid,))
         
         res = cursor.fetchone()
@@ -182,6 +176,7 @@ def get_account_details(foracid=None, settlement_date=None):
             SELECT value_date, tran_amt, part_tran_type, tran_particular 
             FROM tbaadm.htd 
             WHERE acid = %s AND del_flg = 'N'
+              AND pstd_user_id NOT IN ('SYSTEM', 'BATCH')
             ORDER BY value_date ASC
         """, (acid,))
         raw_trans = cursor.fetchall()
