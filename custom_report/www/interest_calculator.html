@@ -1487,214 +1487,6 @@
 									</div>
 								</div>
 							</div>
-							<div
-								style="
-									width: 100%;
-									max-width: 360px;
-									margin-bottom: 24px;
-									text-align: left;
-								"
-							>
-								<div
-									style="
-										font-size: 11px;
-										font-weight: 700;
-										color: #64748b;
-										text-transform: uppercase;
-										letter-spacing: 0.08em;
-										margin-bottom: 8px;
-									"
-								>
-									Branch Code
-								</div>
-								<div
-									style="
-										border: 1px solid #e2e8f0;
-										border-radius: 14px;
-										padding: 14px 16px;
-										background: #fff;
-										font-family: &quot;JetBrains Mono&quot;, monospace;
-										font-size: 18px;
-										font-weight: 700;
-										color: var(--primary);
-										min-height: 24px;
-									"
-								>
-									[[ branchCode || "--" ]]
-								</div>
-								<div
-									style="
-										font-size: 11px;
-										margin-top: 8px;
-										min-height: 16px;
-									"
-									:style="{ color: branchLookupError ? '#ef4444' : '#94a3b8' }"
-								>
-									[[ branchLookupError || "Fetched from Sahayog Branch.branch_code using first 4 digits" ]]
-								</div>
-							</div>
-							<div
-								style="
-									width: 100%;
-									max-width: 360px;
-									margin-bottom: 24px;
-									text-align: left;
-								"
-							>
-								<div
-									style="
-										font-size: 11px;
-										font-weight: 700;
-										color: #64748b;
-										text-transform: uppercase;
-										letter-spacing: 0.08em;
-										margin-bottom: 8px;
-									"
-								>
-									GL Code
-								</div>
-								<div
-									style="
-										border: 1px solid #e2e8f0;
-										border-radius: 14px;
-										padding: 14px 16px;
-										background: #fff;
-										font-family: &quot;JetBrains Mono&quot;, monospace;
-										font-size: 18px;
-										font-weight: 700;
-										color: var(--primary);
-										min-height: 24px;
-									"
-								>
-									[[ glCode || "--" ]]
-								</div>
-								<div
-									style="
-										font-size: 11px;
-										color: #94a3b8;
-										margin-top: 8px;
-										min-height: 16px;
-									"
-								>
-									[[ glCodeHint || "Second 4 digits se derived" ]]
-								</div>
-							</div>
-							<div
-								style="
-									width: 100%;
-									max-width: 360px;
-									margin-bottom: 24px;
-									text-align: left;
-								"
-							>
-								<div
-									style="
-										font-size: 11px;
-										font-weight: 700;
-										color: #64748b;
-										text-transform: uppercase;
-										letter-spacing: 0.08em;
-										margin-bottom: 8px;
-									"
-								>
-									Netwin Account Number
-								</div>
-								<div
-									style="
-										border: 1px solid #e2e8f0;
-										border-radius: 14px;
-										padding: 14px 16px;
-										background: #fff;
-										font-family: &quot;JetBrains Mono&quot;, monospace;
-										font-size: 18px;
-										font-weight: 700;
-										color: var(--primary);
-										min-height: 24px;
-									"
-								>
-									[[ netwinAccountNumber || "--" ]]
-								</div>
-								<div
-									style="
-										font-size: 11px;
-										color: #94a3b8;
-										margin-top: 8px;
-										min-height: 16px;
-									"
-								>
-									[[ netwinAccountNumber ? "Account number ke last digits" : "First 8 digits ke baad ke digits" ]]
-								</div>
-							</div>
-							<div
-								v-if="isCsvRequired()"
-								style="
-									width: 100%;
-									max-width: 360px;
-									background: #fff;
-									border: 1px dashed #cbd5e1;
-									border-radius: 16px;
-									padding: 14px 16px;
-									box-sizing: border-box;
-								"
-							>
-								<div
-									style="
-										font-size: 10px;
-										font-weight: 800;
-										color: #94a3b8;
-										text-transform: uppercase;
-										letter-spacing: 0.8px;
-										margin-bottom: 8px;
-									"
-								>
-									[[ isCsvRequired() ? 'CSV Statement Required' : 'Optional CSV Statement' ]]
-								</div>
-								<input
-									id="csv-statement-input"
-									type="file"
-									accept=".csv,text/csv"
-									@change="handleCsvUpload"
-									style="
-										width: 100%;
-										font-size: 13px;
-										color: #475569;
-									"
-								/>
-								<div
-									v-if="csvFileName"
-									style="
-										margin-top: 8px;
-										font-size: 12px;
-										font-weight: 700;
-										color: var(--primary);
-										word-break: break-word;
-									"
-								>
-									[[ csvFileName ]]
-								</div>
-								<div
-									v-if="csvImportSummary"
-									style="
-										margin-top: 6px;
-										font-size: 11px;
-										font-weight: 700;
-										color: var(--accent);
-									"
-								>
-									[[ csvImportSummary ]]
-								</div>
-								<div
-									v-if="csvErrorMessage"
-									style="
-										margin-top: 6px;
-										font-size: 11px;
-										font-weight: 700;
-										color: #ef4444;
-									"
-								>
-									[[ csvErrorMessage ]]
-								</div>
-							</div>
 						</div>
 
 						<div
@@ -1709,7 +1501,7 @@
 						>
 							<button
 								class="btn-main"
-								:disabled="accountNumber.replace(/\s/g, '').length < 15 || isLoading || !isSchemeValid || (isCsvRequired() && !importedTransactions.length) || csvErrorMessage"
+								:disabled="accountNumber.replace(/\s/g, '').length < 15 || isLoading || !isSchemeValid || isStatementLoading"
 								@click="calculate"
 								style="
 									padding: 14px 40px;
@@ -3393,11 +3185,10 @@
 				accountNumber: "",
 				isLoading: false,
 				errorMessage: "",
-				csvErrorMessage: "",
-				csvUploadErrorMessage: "",
-				csvFileName: "",
-				csvImportSummary: "",
-				csvParsedAccountNumber: "",
+				statementFetchError: "",
+				statementImportSummary: "",
+				statementParsedAccountNumber: "",
+				isStatementLoading: false,
 				importedTransactions: [],
 				lastCopied: "",
 				sortOrder: "desc",
@@ -3602,35 +3393,24 @@
 				isCsvRequired() {
 					return ["0010", "1540"].includes(this.getAccountSchemeCode());
 				},
-				syncCsvErrorState() {
-					if (this.csvUploadErrorMessage) {
-						this.csvErrorMessage = this.csvUploadErrorMessage;
-						return false;
-					}
+				syncStatementErrorState() {
 					const mismatchMessage = this.getCsvAccountMismatchMessage(
 						this.accountNumber,
-						this.csvParsedAccountNumber,
+						this.statementParsedAccountNumber,
 					);
 					if (mismatchMessage) {
-						this.csvErrorMessage = mismatchMessage;
+						this.statementFetchError = mismatchMessage;
 						return false;
 					}
-					if (this.isCsvRequired() && !this.importedTransactions.length) {
-						this.csvErrorMessage = "CSV statement is required for old schemes";
-						return false;
-					}
-					this.csvErrorMessage = "";
+					this.statementFetchError = "";
 					return true;
 				},
-				clearCsvState() {
-					this.csvErrorMessage = "";
-					this.csvUploadErrorMessage = "";
-					this.csvFileName = "";
-					this.csvImportSummary = "";
-					this.csvParsedAccountNumber = "";
+				clearStatementState() {
+					this.statementFetchError = "";
+					this.statementImportSummary = "";
+					this.statementParsedAccountNumber = "";
+					this.isStatementLoading = false;
 					this.importedTransactions = [];
-					const csvInput = document.getElementById("csv-statement-input");
-					if (csvInput) csvInput.value = "";
 				},
 				findCsvAccountNumber(lines, headerIndex) {
 					for (let i = 0; i < headerIndex; i++) {
@@ -3654,15 +3434,15 @@
 					const csvDigits = this.extractDigits(csvAccountNumber);
 					if (!csvDigits || dbDigits.length < 15) return "";
 					if (dbDigits.endsWith(csvDigits)) return "";
-					return `CSV account number ${csvDigits} does not match this Finacle account`;
+					return `Netwin account number ${csvDigits} does not match this Finacle account`;
 				},
 				validateCsvAccountNumber() {
-					return this.syncCsvErrorState();
+					return this.syncStatementErrorState();
 				},
 				parseStatementCsv(csvText) {
 					const normalizedText = String(csvText || "").replace(/^\uFEFF/, "").trim();
 					if (!normalizedText) {
-						throw new Error("Uploaded file is empty");
+						throw new Error("Statement response is empty");
 					}
 
 					const lines = normalizedText
@@ -3671,7 +3451,7 @@
 						.filter(Boolean);
 					const headerIndex = lines.findIndex((line) => /^date\s*,/i.test(line));
 					if (headerIndex === -1) {
-						throw new Error("CSV header row not found");
+						throw new Error("Statement header row not found");
 					}
 					const csvAccountNumber = this.findCsvAccountNumber(lines, headerIndex);
 
@@ -3683,7 +3463,7 @@
 					const descriptionIndex = headers.indexOf("description");
 					const typeIndex = headers.indexOf("type");
 					if (dateIndex === -1 || creditIndex === -1) {
-						throw new Error("Required columns Date and Credit are missing");
+						throw new Error("Required statement columns Date and Credit are missing");
 					}
 
 					const importedTransactions = [];
@@ -3704,7 +3484,7 @@
 							particular:
 								(descriptionIndex !== -1 && columns[descriptionIndex]) ||
 								(typeIndex !== -1 && columns[typeIndex]) ||
-								"Imported CSV Credit",
+								"Imported Netwin Credit",
 							accrued_interest: 0,
 							scheme_interest: 0,
 							elg_amt: creditAmount,
@@ -3713,42 +3493,10 @@
 					}
 
 					if (!importedTransactions.length) {
-						throw new Error("No credit transactions found in the uploaded CSV");
+						throw new Error("No credit transactions found in the Netwin statement");
 					}
 
 					return { importedTransactions, csvAccountNumber };
-				},
-				async handleCsvUpload(e) {
-					const file = e?.target?.files?.[0];
-					this.clearCsvState();
-
-					if (!file) return;
-					const isCsv =
-						file.name.toLowerCase().endsWith(".csv") ||
-						String(file.type || "").toLowerCase().includes("csv");
-					if (!isCsv) {
-						this.csvUploadErrorMessage = "Only CSV files are supported";
-						this.syncCsvErrorState();
-						e.target.value = "";
-						return;
-					}
-
-					try {
-						const { importedTransactions, csvAccountNumber } = this.parseStatementCsv(
-							await file.text(),
-						);
-						this.importedTransactions = importedTransactions;
-						this.csvParsedAccountNumber = csvAccountNumber;
-						this.csvFileName = file.name;
-						this.csvImportSummary = `${importedTransactions.length} credit transaction(s) ready to import`;
-						this.csvUploadErrorMessage = "";
-						this.syncCsvErrorState();
-					} catch (err) {
-						this.csvUploadErrorMessage =
-							err?.message || "Unable to read the uploaded CSV";
-						this.syncCsvErrorState();
-						e.target.value = "";
-					}
 				},
 				getTransactionSourceTransactions(existingTransactions, importedTransactions) {
 					const dbTransactions = [...(existingTransactions || [])];
@@ -3930,10 +3678,18 @@
 						formatted = raw.slice(0, 4) + " " + raw.slice(4, 8) + " " + raw.slice(8);
 					}
 					this.accountNumber = formatted;
-					if (!this.isCsvRequired() && (this.csvFileName || this.importedTransactions.length)) {
-						this.clearCsvState();
+					if (
+						!this.isCsvRequired() &&
+						(
+							this.importedTransactions.length ||
+							this.statementFetchError ||
+							this.statementImportSummary ||
+							this.statementParsedAccountNumber
+						)
+					) {
+						this.clearStatementState();
 					}
-					this.syncCsvErrorState();
+					this.syncStatementErrorState();
 
 					const digitsOnly = raw;
 					this.updateDerivedAccountValues(digitsOnly);
@@ -3959,6 +3715,78 @@
 					} else {
 						this.glCode = "";
 						this.glCodeHint = schemeCode.length === 4 ? "Unsupported scheme code" : "";
+					}
+				},
+				toApiDate(dateValue) {
+					const parsed = this.parseDate(dateValue);
+					if (!parsed) return "";
+					return this.toISODate(parsed);
+				},
+				async fetchNetwinStatementTransactions(startDate, endDate) {
+					if (!this.isCsvRequired()) {
+						this.clearStatementState();
+						return [];
+					}
+
+					if (!this.branchCode || !this.glCode || !this.netwinAccountNumber) {
+						this.statementFetchError = "Branch Code, GL Code and Netwin Account Number are required";
+						return [];
+					}
+
+					this.isStatementLoading = true;
+					this.statementFetchError = "";
+					this.statementImportSummary = "";
+
+					try {
+						const response = await fetch(
+							"/api/method/banking_api.api.download_netwin_statement",
+							{
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({
+									branch_code: String(this.branchCode || "").trim().toUpperCase(),
+									ac_code: String(this.glCode || "").trim().toUpperCase(),
+									ac_no: String(this.netwinAccountNumber || "").trim(),
+									start_date: startDate,
+									end_date: endDate,
+									export_format: "csv",
+								}),
+							},
+						);
+
+						if (!response.ok) {
+							let errorMessage = "Unable to fetch Netwin statement";
+							try {
+								const errorContent = await response.clone().json();
+								if (errorContent?.message) errorMessage = errorContent.message;
+							} catch (err) {
+								const errorText = await response.text();
+								if (errorText) errorMessage = errorText;
+							}
+							throw new Error(errorMessage);
+						}
+
+						const csvText = await response.text();
+						const { importedTransactions, csvAccountNumber } =
+							this.parseStatementCsv(csvText);
+						this.importedTransactions = importedTransactions;
+						this.statementParsedAccountNumber = csvAccountNumber;
+						this.statementImportSummary = `${importedTransactions.length} credit transaction(s) imported from Netwin API`;
+
+						if (!this.syncStatementErrorState()) {
+							return [];
+						}
+
+						return importedTransactions;
+					} catch (err) {
+						this.importedTransactions = [];
+						this.statementParsedAccountNumber = "";
+						this.statementImportSummary = "";
+						this.statementFetchError =
+							err?.message || "Unable to fetch Netwin statement";
+						return [];
+					} finally {
+						this.isStatementLoading = false;
 					}
 				},
 
@@ -4048,7 +3876,7 @@
 					if (
 						digitsOnly.length < 15 ||
 						!this.isSchemeValid ||
-						!this.syncCsvErrorState()
+						!this.syncStatementErrorState()
 					)
 						return;
 					this.isLoading = true;
@@ -4082,6 +3910,20 @@
 						if (result && result.success) {
 							this.calculationSteps[1].status = "success";
 
+							let importedTransactions = [];
+							if (this.isCsvRequired()) {
+								importedTransactions = await this.fetchNetwinStatementTransactions(
+									"2001-01-01",
+									"2024-12-06",
+								);
+								if (this.statementFetchError) {
+									this.errorMessage = this.statementFetchError;
+									return;
+								}
+							} else {
+								this.clearStatementState();
+							}
+
 							// Step 3: Fetching
 							this.calculationSteps[2].status = "loading";
 							await new Promise((r) => setTimeout(r, 500));
@@ -4112,7 +3954,7 @@
 								...result,
 								transactions: this.getTransactionSourceTransactions(
 									result.transactions,
-									this.importedTransactions,
+									importedTransactions,
 								),
 								maturity_date: maturityDate,
 								acct_no: foracid,
@@ -4912,7 +4754,7 @@
 					this.glCodeHint = "";
 					this.netwinAccountNumber = "";
 					this.isSchemeValid = true;
-					this.clearCsvState();
+					this.clearStatementState();
 					this.focusInput();
 				},
 			}).mount("#app");
