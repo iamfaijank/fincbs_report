@@ -537,9 +537,7 @@
                 pan: '', data: null, err: '', loading: false, bulkLoading: false,
                 file: null, bulkResults: [], totalToFetch: 0, isDragging: false,
                 csrf_token: "{{ frappe.session.csrf_token }}",
-                // Updated labels to show Document Type, PAN, and Aadhaar separately
-                // labels: { doc_type: 'Document Type', pan_no: 'PAN No', aadhaar_no: 'Aadhaar No', name: 'Account Name', cif: 'CIF ID', acc: 'Account No', dob: 'DOB', ph: 'Phone', sc: 'Scheme', st: 'Type', od: 'Opened', sol: 'SOL ID', dist: 'District', zone: 'Zone', sd: 'SOL Desc' },
-                labels: { doc_type: 'Document Type', pan_no: 'PAN No', aadhaar_no: 'Aadhaar No', name: 'Account Name', cif: 'CIF ID', acc: 'Account No', sc: 'Scheme', st: 'Type', od: 'Opened', sol: 'SOL ID', dist: 'District', zone: 'Zone', sd: 'SOL Desc' },
+                labels: { doc_type: 'Document Type', pan_no: 'PAN No', aadhaar_no: 'Aadhaar No', name: 'Account Name', cif: 'CIF ID', acc: 'Account No', sc: 'Scheme Code', st: 'Scheme Type', od: 'Open Date', sol: 'SOL ID', dist: 'District', zone: 'Zone', sd: 'SOL Desc' },
 
                 async fetch() {
                     if (!this.pan) return;
@@ -558,7 +556,6 @@
                                 return datePart;
                             };
 
-                            responseData.dob = formatDate(responseData.dob);
                             responseData.od = formatDate(responseData.od);
 
                             // Dynamically determine PAN vs Aadhaar based on the first character
@@ -569,9 +566,7 @@
                             responseData.pan_no = isAadhaar ? '-' : refVal;
                             responseData.aadhaar_no = isAadhaar ? refVal : '-';
 
-                            // Delete the old generic key so it doesn't show up in the loop if you iterate strictly
                             delete responseData.pan;
-
                             this.data = responseData;
                         }
                         else this.err = res.message?.error || "No record found for the provided details.";
@@ -655,8 +650,6 @@
                 },
 
                 downloadResults() {
-                    // Added Document Type, Aadhaar, and PAN columns
-                    // const headers = ['Document Type', 'PAN No', 'Aadhaar No', 'Account Name', 'CIF ID', 'Account No', 'DOB', 'Phone', 'Scheme Code', 'Scheme Type', 'Open Date', 'SOL ID', 'District', 'Zone', 'SOL Description', 'Status'];
                     const headers = ['Document Type', 'PAN No', 'Aadhaar No', 'Account Name', 'CIF ID', 'Account No', 'Scheme Code', 'Scheme Type', 'Open Date', 'SOL ID', 'District', 'Zone', 'SOL Description', 'Status'];
 
                     const formatDate = (dateStr) => {
@@ -671,7 +664,6 @@
                         const accNo = r.acc ? String(r.acc).split('.')[0] : '-';
                         const refVal = r.pan || '';
 
-                        // Check if value starts with a number to determine if it is Aadhaar
                         const isAadhaar = /^\d/.test(refVal);
                         const docType = isAadhaar ? 'AADHAAR' : 'PAN';
                         const panNo = isAadhaar ? '-' : refVal;
@@ -680,13 +672,10 @@
                         return [
                             docType,
                             panNo,
-                            // Ensure the 12 digit Aadhaar number is forced to string so Excel doesn't truncate it
-                            `"${aadhaarNo}"`,
+                            `"\t${aadhaarNo}"`,
                             `"${r.name || '-'}"`,
                             r.cif || '-',
                             accNo,
-                            formatDate(r.dob),
-                            r.ph || '-',
                             r.sc || '-',
                             r.st || '-',
                             formatDate(r.od),

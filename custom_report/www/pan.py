@@ -7,18 +7,21 @@ from custom_report.db_connection import get_dr_connection
 
 @frappe.whitelist()
 def get_pan_details(pan_no=None):
+    # SECURITY CHECK
     if not check_user_access():
         return {"success": False, "error": "Access Denied: Missing permissions."}
 
     pan_no = pan_no or frappe.form_dict.get('pan_no')
     if not pan_no:
         return {"success": False, "error": "PAN number missing"}
+
     conn = None
     try:
         try:
             conn = get_dr_connection()
         except Exception as e:
             return {"success": False, "error": f"DB Connection Failed: {str(e)}"}
+
         cursor = conn.cursor()
         query = """
             SELECT distinct 
@@ -37,8 +40,9 @@ def get_pan_details(pan_no=None):
             return {
                 "success": True,
                 "data": {
-                    "pan": r[0], "cif": r[1], "acc": r[2], "name": r[3], "dob": str(r[4]),
-                    "sc": r[5], "st": r[6], "od": str(r[7]), "sol": r[8], "ph": r[9],
+                    "pan": r[0], "cif": r[1], "acc": r[2], "name": r[3],
+                    # Removed DOB (r[4]) and Phone (r[9]) mapping
+                    "sc": r[5], "st": r[6], "od": str(r[7]), "sol": r[8],
                     "dist": r[10], "zone": r[11], "sd": r[12]
                 }
             }
@@ -50,13 +54,13 @@ def get_pan_details(pan_no=None):
             conn.close()
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_pan_list_from_file():
     """Extract PAN numbers from uploaded file (CSV/Excel)"""
-    # ADD SECURITY CHECK
+    # SECURITY CHECK
     if not check_user_access():
         return {"success": False, "error": "Access Denied: Missing permissions."}
-    """Extract PAN numbers from uploaded file (CSV/Excel)"""
+
     # Try multiple ways to get the file to avoid 400 Bad Request
     file_obj = None
     if frappe.request.files and 'file' in frappe.request.files:
@@ -67,19 +71,11 @@ def get_pan_list_from_file():
 
     if not file_obj:
         return {"success": False, "error": "No file received. Please ensure you are uploading a valid CSV or Excel file."}
+
     filename = file_obj.filename.lower()
     pan_list = []
 
     try:
-        # if filename.endswith('.xlsx'):
-        #     from openpyxl import load_workbook
-        #     content = file_obj.read()
-        #     wb = load_workbook(io.BytesIO(content), data_only=True)
-        #     ws = wb.active
-        #     for row in ws.iter_rows(min_row=1, max_col=1, values_only=True):
-        #         if row and row[0]:
-        #             pan_list.append(str(row[0]).strip())
-
         if filename.endswith('.xlsx'):
             from openpyxl import load_workbook
             content = file_obj.read()
@@ -113,13 +109,13 @@ def get_pan_list_from_file():
         return {"success": False, "error": f"File processing error: {str(e)}"}
 
 
-@frappe.whitelist()  # REMOVE allow_guest=True
+@frappe.whitelist()
 def fetch_pan_batch(pan_json):
-    """Fetch 13 fields for a batch of 100 PANs"""
-    # ADD SECURITY CHECK
+    """Fetch fields for a batch of 100 PANs"""
+    # SECURITY CHECK
     if not check_user_access():
         return {"success": False, "error": "Access Denied: Missing permissions."}
-    """Fetch 13 fields for a batch of 100 PANs"""
+
     try:
         pans = json.loads(pan_json)
     except:
@@ -154,8 +150,9 @@ def fetch_pan_batch(pan_json):
             if p in found_map:
                 r = found_map[p]
                 results.append({
-                    "pan": r[0], "name": r[3], "cif": r[1], "acc": r[2], "dob": str(r[4]),
-                    "ph": r[9], "sc": r[5], "st": r[6], "od": str(r[7]), "sol": r[8],
+                    "pan": r[0], "name": r[3], "cif": r[1], "acc": r[2],
+                    # Removed DOB (r[4]) and Phone (r[9]) mapping
+                    "sc": r[5], "st": r[6], "od": str(r[7]), "sol": r[8],
                     "dist": r[10], "zone": r[11], "sd": r[12], "status": "Found"
                 })
             else:
@@ -180,11 +177,6 @@ def check_user_access():
 
     return False
 
-# This injects a 'has_access' variable directly into your Jinja HTML
-
-
-# def get_context(context):
-#     context.has_access = check_user_access()
 
 def get_context(context):
     # 1. PREVENT CACHING: Forces Frappe to re-evaluate roles for every single page load
