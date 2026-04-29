@@ -538,7 +538,8 @@
                 file: null, bulkResults: [], totalToFetch: 0, isDragging: false,
                 csrf_token: "{{ frappe.session.csrf_token }}",
                 // Updated labels to show Document Type, PAN, and Aadhaar separately
-                labels: { doc_type: 'Document Type', pan_no: 'PAN No', aadhaar_no: 'Aadhaar No', name: 'Account Name', cif: 'CIF ID', acc: 'Account No', dob: 'DOB', ph: 'Phone', sc: 'Scheme', st: 'Type', od: 'Opened', sol: 'SOL ID', dist: 'District', zone: 'Zone', sd: 'SOL Desc' },
+                // labels: { doc_type: 'Document Type', pan_no: 'PAN No', aadhaar_no: 'Aadhaar No', name: 'Account Name', cif: 'CIF ID', acc: 'Account No', dob: 'DOB', ph: 'Phone', sc: 'Scheme', st: 'Type', od: 'Opened', sol: 'SOL ID', dist: 'District', zone: 'Zone', sd: 'SOL Desc' },
+                labels: { doc_type: 'Document Type', pan_no: 'PAN No', aadhaar_no: 'Aadhaar No', name: 'Account Name', cif: 'CIF ID', acc: 'Account No', sc: 'Scheme', st: 'Type', od: 'Opened', sol: 'SOL ID', dist: 'District', zone: 'Zone', sd: 'SOL Desc' },
 
                 async fetch() {
                     if (!this.pan) return;
@@ -655,7 +656,8 @@
 
                 downloadResults() {
                     // Added Document Type, Aadhaar, and PAN columns
-                    const headers = ['Document Type', 'PAN No', 'Aadhaar No', 'Account Name', 'CIF ID', 'Account No', 'DOB', 'Phone', 'Scheme Code', 'Scheme Type', 'Open Date', 'SOL ID', 'District', 'Zone', 'SOL Description', 'Status'];
+                    // const headers = ['Document Type', 'PAN No', 'Aadhaar No', 'Account Name', 'CIF ID', 'Account No', 'DOB', 'Phone', 'Scheme Code', 'Scheme Type', 'Open Date', 'SOL ID', 'District', 'Zone', 'SOL Description', 'Status'];
+                    const headers = ['Document Type', 'PAN No', 'Aadhaar No', 'Account Name', 'CIF ID', 'Account No', 'Scheme Code', 'Scheme Type', 'Open Date', 'SOL ID', 'District', 'Zone', 'SOL Description', 'Status'];
 
                     const formatDate = (dateStr) => {
                         if (!dateStr || dateStr === 'None') return '-';
