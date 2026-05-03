@@ -1203,7 +1203,7 @@ class DrishtiDashboard {
 				view: this.getDashboardViewForRequest(),
 				target_type: this.normalizeTargetType(this.state.targetType),
 				filters: JSON.stringify({
-					zones: this.state.selectedZones,
+					zones: [],
 				}),
 				selected_date: apiDate,
 			},
@@ -1303,7 +1303,7 @@ class DrishtiDashboard {
 				view: this.getDashboardViewForRequest(),
 				target_type: this.normalizeTargetType(this.state.targetType),
 				filters: JSON.stringify({
-					zones: this.state.selectedZones,
+					zones: [],
 				}),
 				selected_date: apiDate,
 			},
