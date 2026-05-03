@@ -144,6 +144,10 @@ class DrishtiDashboard {
 		return data;
 	}
 
+	normalizeTargetType(targetType) {
+		return ["Monthly", "YTD", "Yearly"].includes(targetType) ? targetType : "Monthly";
+	}
+
 	setupStyles() {
 		// --- Font and Style Injection ---
 		const fontLink = document.createElement("link");
@@ -238,6 +242,166 @@ class DrishtiDashboard {
 				overflow-y: auto;
 			}
 
+			@keyframes viewControlBlink {
+				0%, 100% {
+					box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+					background: transparent;
+				}
+				50% {
+					box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.35);
+					background: rgba(245, 158, 11, 0.12);
+				}
+			}
+
+			.view-change-highlight {
+				border-radius: 6px;
+				animation: viewControlBlink 1s ease-in-out 4;
+			}
+
+			@keyframes quarterlyLinkBlink {
+				0%, 100% {
+					color: #b45309;
+					background: rgba(245, 158, 11, 0.12);
+					box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+					transform: scale(1);
+				}
+				50% {
+					color: #92400e;
+					background: rgba(245, 158, 11, 0.28);
+					box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2);
+					transform: scale(1.04);
+				}
+			}
+
+			.quarterly-view-link {
+				color: #b45309;
+				font-weight: 700;
+				text-decoration: underline;
+				text-underline-offset: 2px;
+				padding: 2px 8px;
+				border-radius: 4px;
+				background: rgba(245, 158, 11, 0.12);
+				animation: quarterlyLinkBlink 1s ease-in-out infinite;
+			}
+
+			.view-change-panel {
+				position: relative;
+				margin-top: 12px;
+				padding: 14px;
+				border: 1px solid rgba(245, 158, 11, 0.45);
+				border-radius: 12px;
+				background: linear-gradient(135deg, #fffaf0 0%, #ffefc7 100%);
+				box-shadow:
+					0 10px 24px rgba(15, 23, 42, 0.12),
+					inset 0 1px 0 rgba(255, 255, 255, 0.7);
+				overflow: hidden;
+			}
+
+			.view-change-panel::before {
+				content: "";
+				position: absolute;
+				inset: 0;
+				background:
+					linear-gradient(90deg, rgba(255, 255, 255, 0.18) 0, rgba(255, 255, 255, 0) 35%),
+					repeating-linear-gradient(
+						135deg,
+						rgba(180, 83, 9, 0.06) 0,
+						rgba(180, 83, 9, 0.06) 10px,
+						transparent 10px,
+						transparent 20px
+					);
+				pointer-events: none;
+			}
+
+			.view-change-panel-title {
+				position: relative;
+				font-size: 11px;
+				font-weight: 700;
+				color: #92400e;
+				margin-bottom: 10px;
+				letter-spacing: 0.9px;
+				text-transform: uppercase;
+			}
+
+			.view-change-panel-body {
+				position: relative;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 14px;
+				flex-wrap: wrap;
+			}
+
+			.view-change-panel-copy {
+				min-width: 180px;
+				flex: 1 1 220px;
+			}
+
+			.view-change-panel-headline {
+				color: #7c2d12;
+				font-size: 18px;
+				font-weight: 800;
+				line-height: 1.1;
+				margin-bottom: 4px;
+				text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+			}
+
+			.view-change-panel-subtext {
+				color: #9a3412;
+				font-size: 12px;
+				font-weight: 600;
+			}
+
+			.view-change-options {
+				position: relative;
+				display: flex;
+				gap: 8px;
+				flex-wrap: wrap;
+			}
+
+			.view-change-option {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				padding: 9px 14px;
+				border-radius: 10px;
+				border: 1px solid #cbd5e1;
+				background: linear-gradient(180deg, #ffffff 0%, #edf2f7 100%);
+				color: #1b263b;
+				font-weight: 600;
+				text-decoration: none;
+				box-shadow:
+					inset 0 1px 0 rgba(255, 255, 255, 0.8),
+					0 4px 0 rgba(148, 163, 184, 0.45),
+					0 8px 18px rgba(15, 23, 42, 0.12);
+				transform: translateY(0);
+				transition:
+					transform 0.12s ease,
+					box-shadow 0.12s ease,
+					background 0.12s ease;
+			}
+
+			.view-change-option:hover {
+				text-decoration: none;
+				color: #0d1b2a;
+				transform: translateY(-1px);
+				box-shadow:
+					inset 0 1px 0 rgba(255, 255, 255, 0.85),
+					0 5px 0 rgba(148, 163, 184, 0.45),
+					0 10px 20px rgba(15, 23, 42, 0.16);
+			}
+
+			.view-change-option.is-recommended {
+				color: #7c2d12;
+				border-color: rgba(245, 158, 11, 0.45);
+				background: linear-gradient(180deg, #ffe6a7 0%, #fbbf24 100%);
+				box-shadow:
+					inset 0 1px 0 rgba(255, 255, 255, 0.65),
+					0 5px 0 rgba(180, 83, 9, 0.45),
+					0 10px 24px rgba(245, 158, 11, 0.24);
+				animation: quarterlyLinkBlink 1s ease-in-out infinite;
+			}
+
 			/* Product Wise Table - Column Layout */
 			.product-wise-table th {
 				text-align: center;
@@ -323,7 +487,9 @@ class DrishtiDashboard {
 			this.state.financialYear = queryParams.financialYear || this.state.financialYear;
 			this.state.activeTab = queryParams.activeTab || this.state.activeTab;
 			this.state.viewType = queryParams.viewType || this.state.viewType;
-			this.state.targetType = queryParams.targetType || this.state.targetType;
+			this.state.targetType = this.normalizeTargetType(
+				queryParams.targetType || this.state.targetType,
+			);
 			this.state.formatMode = queryParams.formatMode || this.state.formatMode;
 			this.state.selectedDate = queryParams.selectedDate || this.state.selectedDate;
 			this.state.selectedRegion = queryParams.selectedRegion || this.state.selectedRegion;
@@ -481,7 +647,7 @@ class DrishtiDashboard {
                     <div class="summary-info">
                         <span class="summary-label">Target Amount</span>
                         <span class="summary-value" id="summary-target-amount">₹163.04 Cr</span>
-                        <span class="summary-subtext muted">Monthly target</span>
+                        <span class="summary-subtext muted" id="summary-target-label">Monthly target</span>
                     </div>
                     <div class="summary-icon-box">
                         <i class="fa fa-bullseye"></i>
@@ -755,7 +921,7 @@ class DrishtiDashboard {
                     <!-- View Toggle Buttons -->
                     <div>
                         <label style="font-weight: bold; color: #0d1b2a;">View:</label>
-                        <div class="btn-group" role="group" style="margin-left: 8px;">
+                        <div class="btn-group" id="view-controls" role="group" style="margin-left: 8px;">
                             <button type="button" class="btn btn-sm view-toggle-btn" data-view="Monthly">Monthly</button>
                             <button type="button" class="btn btn-sm view-toggle-btn" data-view="Quarterly">Quarterly</button>
                             <button type="button" class="btn btn-sm view-toggle-btn" data-view="Yearly">Yearly</button>
@@ -879,17 +1045,24 @@ class DrishtiDashboard {
 		this.page.main.find(".view-toggle-btn").on("click", function () {
 			self.page.main.find(".view-toggle-btn").removeClass("active");
 			$(this).addClass("active");
+			self.clearViewControlsHighlight();
 			self.state.viewType = $(this).data("view");
 			self.applyPreviousFinancialYearDefaultDate();
 			self.updateUrlFromState();
 			self.loadData();
 		});
 
+		this.page.main.find("#error-message").on("click", ".view-change-option-link", function (e) {
+			e.preventDefault();
+			const view = $(this).data("view");
+			self.page.main.find(`.view-toggle-btn[data-view="${view}"]`).trigger("click");
+		});
+
 		// Target Toggle Buttons
 		this.page.main.find(".target-toggle-btn").on("click", function () {
 			self.page.main.find(".target-toggle-btn").removeClass("active");
 			$(this).addClass("active");
-			self.state.targetType = $(this).data("target");
+			self.state.targetType = self.normalizeTargetType($(this).data("target"));
 			self.updateUrlFromState();
 			self.loadData();
 		});
@@ -1028,7 +1201,7 @@ class DrishtiDashboard {
 			args: {
 				financial_year: this.state.financialYear,
 				view: this.getDashboardViewForRequest(),
-				target_type: this.state.targetType,
+				target_type: this.normalizeTargetType(this.state.targetType),
 				filters: JSON.stringify({
 					zones: this.state.selectedZones,
 				}),
@@ -1128,7 +1301,7 @@ class DrishtiDashboard {
 			args: {
 				financial_year: this.state.financialYear,
 				view: this.getDashboardViewForRequest(),
-				target_type: this.state.targetType,
+				target_type: this.normalizeTargetType(this.state.targetType),
 				filters: JSON.stringify({
 					zones: this.state.selectedZones,
 				}),
@@ -1186,6 +1359,75 @@ class DrishtiDashboard {
 	showError(message) {
 		this.page.main.find("#error-message").text(message).show();
 		this.page.main.find("#data-container").css("opacity", 0);
+	}
+
+	showQuarterlyViewSuggestion() {
+		this.stopQuarterlyPromptBlink();
+		this.page.main
+			.find("#error-message")
+			.html(
+				`<div style="position: relative; overflow: hidden; margin-top: 8px; padding: 16px; border: 1px solid rgba(245, 158, 11, 0.45); border-radius: 14px; background: linear-gradient(135deg, #fffaf0 0%, #ffefc7 100%); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255,255,255,0.75);">
+					<div style="position: absolute; inset: 0; background: linear-gradient(90deg, rgba(255,255,255,0.18) 0, rgba(255,255,255,0) 35%), repeating-linear-gradient(135deg, rgba(180, 83, 9, 0.06) 0, rgba(180, 83, 9, 0.06) 10px, transparent 10px, transparent 20px); pointer-events: none;"></div>
+					<div style="position: relative; display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
+						<div style="width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%); color: #7c2d12; font-size: 20px; font-weight: 700; box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 6px 14px rgba(245, 158, 11, 0.25);">!</div>
+						<div style="flex: 1 1 320px; min-width: 240px;">
+							<div style="font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #92400e; margin-bottom: 6px;">Suggested Action</div>
+							<div style="font-size: 22px; line-height: 1.1; font-weight: 800; color: #7c2d12; margin-bottom: 6px;">Switch View Mode</div>
+							<div style="font-size: 13px; line-height: 1.5; color: #9a3412; margin-bottom: 12px;">
+								No data is currently available for this month in the system. Change the View to continue, for example
+								<a href="#" class="quarterly-view-link view-change-option-link" data-view="Quarterly" style="display: inline-block; margin-left: 4px; color: #7c2d12; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; padding: 3px 10px; border-radius: 999px; background: rgba(245, 158, 11, 0.18); border: 1px solid rgba(245, 158, 11, 0.35); box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.10);">Quarterly</a>.
+							</div>
+							<div style="display: flex; gap: 10px; flex-wrap: wrap;">
+								<a href="#" class="view-change-option view-change-option-link" data-view="Monthly" style="display: inline-flex; align-items: center; justify-content: center; min-width: 104px; padding: 10px 14px; border-radius: 10px; border: 1px solid #cbd5e1; background: linear-gradient(180deg, #ffffff 0%, #edf2f7 100%); color: #1b263b; font-weight: 700; text-decoration: none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.85), 0 4px 0 rgba(148,163,184,0.45), 0 8px 18px rgba(15,23,42,0.12);">Monthly</a>
+								<a href="#" class="view-change-option view-change-option-link is-recommended" data-view="Quarterly" style="display: inline-flex; align-items: center; justify-content: center; min-width: 104px; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(245, 158, 11, 0.45); background: linear-gradient(180deg, #ffe6a7 0%, #fbbf24 100%); color: #7c2d12; font-weight: 800; text-decoration: none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 5px 0 rgba(180,83,9,0.45), 0 10px 24px rgba(245,158,11,0.24); animation: quarterlyLinkBlink 1s ease-in-out infinite;">Quarterly</a>
+								<a href="#" class="view-change-option view-change-option-link" data-view="Yearly" style="display: inline-flex; align-items: center; justify-content: center; min-width: 104px; padding: 10px 14px; border-radius: 10px; border: 1px solid #cbd5e1; background: linear-gradient(180deg, #ffffff 0%, #edf2f7 100%); color: #1b263b; font-weight: 700; text-decoration: none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.85), 0 4px 0 rgba(148,163,184,0.45), 0 8px 18px rgba(15,23,42,0.12);">Yearly</a>
+							</div>
+						</div>
+					</div>
+				</div>`
+			)
+			.show();
+		this.page.main.find("#data-container").css("opacity", 0);
+		this.startQuarterlyPromptBlink();
+	}
+
+	startQuarterlyPromptBlink() {
+		this.stopQuarterlyPromptBlink();
+		const button = this.page.main.find(
+			'#error-message .view-change-option-link.is-recommended[data-view="Quarterly"]',
+		);
+		if (!button.length) return;
+
+		let isDimmed = false;
+		this.quarterlyPromptBlinkInterval = setInterval(() => {
+			isDimmed = !isDimmed;
+			button.css({
+				opacity: isDimmed ? "0.65" : "1",
+				transform: isDimmed ? "scale(0.98)" : "scale(1.05)",
+				boxShadow: isDimmed
+					? "inset 0 1px 0 rgba(255,255,255,0.7), 0 3px 0 rgba(180,83,9,0.35), 0 6px 14px rgba(245,158,11,0.18)"
+					: "inset 0 1px 0 rgba(255,255,255,0.7), 0 6px 0 rgba(180,83,9,0.5), 0 12px 28px rgba(245,158,11,0.3)",
+			});
+		}, 450);
+	}
+
+	stopQuarterlyPromptBlink() {
+		if (this.quarterlyPromptBlinkInterval) {
+			clearInterval(this.quarterlyPromptBlinkInterval);
+			this.quarterlyPromptBlinkInterval = null;
+		}
+	}
+
+	highlightViewControls() {
+		const viewControls = this.page.main.find("#view-controls");
+		viewControls.removeClass("view-change-highlight");
+		void viewControls[0]?.offsetWidth;
+		viewControls.addClass("view-change-highlight");
+	}
+
+	clearViewControlsHighlight() {
+		this.page.main.find("#view-controls").removeClass("view-change-highlight");
+		this.stopQuarterlyPromptBlink();
 	}
 
 	// ========================================================================
@@ -1387,10 +1629,12 @@ class DrishtiDashboard {
 	// ========================================================================
 	render() {
 		if (!this.data) {
+			this.clearViewControlsHighlight();
 			this.showError("No data available");
 			return;
 		}
 
+		this.clearViewControlsHighlight();
 		this.page.main.find("#error-message").hide();
 		const dataContainer = this.page.main.find("#data-container");
 
@@ -1401,15 +1645,18 @@ class DrishtiDashboard {
 		const reaggregatedZoneData = this.reaggregateZoneData(filteredBranches);
 		const reaggregatedCategoryData = this.reaggregateCategoryData(filteredBranches);
 
+		if (!this.months || this.months.length === 0) {
+			this.page.main.find("#summary-cards-container").hide();
+			this.highlightViewControls();
+			this.showQuarterlyViewSuggestion();
+			return;
+		}
+
+		this.page.main.find("#summary-cards-container").show();
 		this.updateSummaryCards(filteredBranches, reaggregatedZoneData);
 
 		setTimeout(() => {
 			let htmlContent = "";
-
-			if (!this.months || this.months.length === 0) {
-				this.showError("No months found");
-				return;
-			}
 
 			if (this.state.activeTab === "zone") {
 				htmlContent = this.renderZoneTable(reaggregatedZoneData);
@@ -3031,6 +3278,9 @@ class DrishtiDashboard {
 		});
 		
 		this.page.main.find("#summary-target-amount").text("₹" + this.formatCurrency(totalTarget));
+		this.page.main
+			.find("#summary-target-label")
+			.text(`${this.normalizeTargetType(this.state.targetType)} target`);
 		this.page.main.find("#summary-achievement-amount").text("₹" + this.formatCurrency(totalAch));
 		
 		// Achievement Percentage

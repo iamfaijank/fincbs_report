@@ -111,6 +111,12 @@ def get_previous_available_date(current_date):
     return None
 
 
+def normalize_target_type(target_type):
+    if target_type in ("Monthly", "YTD", "Yearly"):
+        return target_type
+    return "Monthly"
+
+
 def get_fy_months_with_dates(financial_year, view="Monthly", selected_date=None, target_type="Monthly"):
     start_year = int(financial_year.split("-")[0])
     
@@ -125,27 +131,6 @@ def get_fy_months_with_dates(financial_year, view="Monthly", selected_date=None,
     current_year = datetime.now().year
     result_months = []
     selected_date_obj = getdate(selected_date) if selected_date else None
-
-    if target_type in ["Yearly", "YTD"]:
-        current_m_idx = None
-        for idx, m in enumerate(all_months):
-            if m[1] == current_month and m[2] == current_year:
-                current_m_idx = idx
-                break
-        
-        if current_m_idx is not None:
-            current_month_date = get_last_available_date_for_month(current_month, current_year)
-            if current_month_date:
-                result_months.append((all_months[current_m_idx][0], current_month, current_year, current_month_date))
-            
-            prev_m_idx = current_m_idx - 1
-            if prev_m_idx >= 0:
-                prev_m = all_months[prev_m_idx]
-                prev_month_date = get_last_available_date_for_month(prev_m[1], prev_m[2])
-                if prev_month_date:
-                    result_months.append((prev_m[0], prev_m[1], prev_m[2], prev_month_date))
-        
-        return result_months
 
     if view == "Monthly":
         for m in all_months:
@@ -336,6 +321,7 @@ def get_sahayog_dashboard(
 ):
     user = frappe.session.user
     perms = get_user_report_permissions(user)
+    target_type = normalize_target_type(target_type)
     
     months = get_fy_months_with_dates(financial_year, view, selected_date, target_type)
     if not months:
