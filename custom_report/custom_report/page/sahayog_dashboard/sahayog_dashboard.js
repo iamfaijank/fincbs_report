@@ -90,6 +90,60 @@ class DrishtiDashboard {
 		selector.val(this.state.financialYear);
 	}
 
+	isPreviousFinancialYear() {
+		if (!this.state.financialYear) return false;
+
+		const fyStartYear = parseInt(this.state.financialYear.split("-")[0], 10);
+		const today = frappe.datetime.str_to_obj(frappe.datetime.get_today());
+		const currentFyStartYear =
+			today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
+
+		return fyStartYear < currentFyStartYear;
+	}
+
+	getPreviousFinancialYearDefaultDate() {
+		if (!this.isPreviousFinancialYear()) return null;
+
+		const fyParts = this.state.financialYear.split("-");
+		return `${fyParts[1]}-03-31`;
+	}
+
+	applyPreviousFinancialYearDefaultDate() {
+		const defaultDate = this.getPreviousFinancialYearDefaultDate();
+		if (!defaultDate) return;
+
+		this.state.selectedDate = defaultDate;
+		this.page.main.find("#date-selector").val(defaultDate);
+		if (this.state.activeTab && this.tabDates.hasOwnProperty(this.state.activeTab)) {
+			this.tabDates[this.state.activeTab] = defaultDate;
+		}
+	}
+
+	getDashboardViewForRequest() {
+		if (
+			this.isPreviousFinancialYear() &&
+			(this.state.viewType === "Monthly" || this.state.viewType === "Quarterly")
+		) {
+			return "Yearly";
+		}
+
+		return this.state.viewType;
+	}
+
+	normalizeDashboardResponse(data) {
+		if (!this.isPreviousFinancialYear()) return data;
+
+		if (this.state.viewType === "Monthly") {
+			data.months = (data.months || []).filter((month) => month.key === "MAR");
+		} else if (this.state.viewType === "Quarterly") {
+			data.months = (data.months || []).filter((month) =>
+				["JAN", "FEB", "MAR"].includes(month.key),
+			);
+		}
+
+		return data;
+	}
+
 	setupStyles() {
 		// --- Font and Style Injection ---
 		const fontLink = document.createElement("link");
@@ -816,6 +870,7 @@ class DrishtiDashboard {
 		// Financial Year
 		this.page.main.find("#fy-selector").on("change", function () {
 			self.state.financialYear = $(this).val();
+			self.applyPreviousFinancialYearDefaultDate();
 			self.updateUrlFromState();
 			self.loadData();
 		});
@@ -825,6 +880,7 @@ class DrishtiDashboard {
 			self.page.main.find(".view-toggle-btn").removeClass("active");
 			$(this).addClass("active");
 			self.state.viewType = $(this).data("view");
+			self.applyPreviousFinancialYearDefaultDate();
 			self.updateUrlFromState();
 			self.loadData();
 		});
@@ -961,13 +1017,17 @@ class DrishtiDashboard {
 	// Helper to load data with a specific date (for internal use)
 	loadDataWithDate(dateStr) {
 		const self = this;
-		const apiDate = dateStr || frappe.datetime.get_today();
+		const apiDate =
+			dateStr ||
+			this.state.selectedDate ||
+			this.getPreviousFinancialYearDefaultDate() ||
+			frappe.datetime.get_today();
 
 		frappe.call({
 			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_sahayog_dashboard",
 			args: {
 				financial_year: this.state.financialYear,
-				view: this.state.viewType,
+				view: this.getDashboardViewForRequest(),
 				target_type: this.state.targetType,
 				filters: JSON.stringify({
 					zones: this.state.selectedZones,
@@ -976,6 +1036,7 @@ class DrishtiDashboard {
 			},
 			callback: (r) => {
 				if (r.message) {
+					self.normalizeDashboardResponse(r.message);
 					self.data = r.message;
 					self.permissions = r.message.permissions;
 
@@ -1057,13 +1118,16 @@ class DrishtiDashboard {
 
 		// Use state.selectedDate for API call (this is what the date selector shows)
 		// Fallback to today's date if no date selected
-		const apiDate = this.state.selectedDate || frappe.datetime.get_today();
+		const apiDate =
+			this.state.selectedDate ||
+			this.getPreviousFinancialYearDefaultDate() ||
+			frappe.datetime.get_today();
 
 		frappe.call({
 			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_sahayog_dashboard",
 			args: {
 				financial_year: this.state.financialYear,
-				view: this.state.viewType,
+				view: this.getDashboardViewForRequest(),
 				target_type: this.state.targetType,
 				filters: JSON.stringify({
 					zones: this.state.selectedZones,
@@ -1072,6 +1136,7 @@ class DrishtiDashboard {
 			},
 			callback: (r) => {
 				if (r.message) {
+					self.normalizeDashboardResponse(r.message);
 					self.data = r.message;
 					self.permissions = r.message.permissions;
 					console.log("🛡️ Sahayog Dashboard Permissions:", self.permissions);
