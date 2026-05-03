@@ -1430,6 +1430,12 @@ class DrishtiDashboard {
 		this.stopQuarterlyPromptBlink();
 	}
 
+	getLocationIdentifier(value) {
+		const text = cstr(value || "").trim();
+		const numericMatch = text.match(/\d+/);
+		return numericMatch ? numericMatch[0] : text.toLowerCase();
+	}
+
 	// ========================================================================
 	// DATA FILTERING AND AGGREGATION UTILITIES
 	// ========================================================================
@@ -1451,12 +1457,20 @@ class DrishtiDashboard {
 
 		// 2. Zone filter
 		if (this.state.selectedZones.length > 0) {
-			filtered = filtered.filter((branch) => this.state.selectedZones.includes(branch.zone));
+			filtered = filtered.filter((branch) =>
+				this.state.selectedZones.some(
+					(zone) => this.getLocationIdentifier(zone) === this.getLocationIdentifier(branch.zone),
+				),
+			);
 		}
 
 		// 3. Region filter
 		if (this.state.selectedRegion) {
-			filtered = filtered.filter((branch) => branch.region === this.state.selectedRegion);
+			filtered = filtered.filter(
+				(branch) =>
+					this.getLocationIdentifier(branch.region) ===
+					this.getLocationIdentifier(this.state.selectedRegion),
+			);
 		}
 
 		// 4. Branch search term filter
