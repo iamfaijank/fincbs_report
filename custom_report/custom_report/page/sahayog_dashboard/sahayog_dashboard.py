@@ -117,6 +117,27 @@ def normalize_target_type(target_type):
     return "Monthly"
 
 
+def get_matching_location_values(doctype, fieldname, values):
+    allowed_fields = {"zone", "region"}
+    if fieldname not in allowed_fields or not values:
+        return values
+
+    numeric_ids = [re.sub(r"\D", "", str(value)) for value in values if re.sub(r"\D", "", str(value))]
+    if not numeric_ids:
+        return values
+
+    regex_pattern = f"({'|'.join(re.escape(num) for num in numeric_ids)})"
+    return frappe.db.sql(
+        f"""
+        SELECT DISTINCT `{fieldname}`
+        FROM `tab{doctype}`
+        WHERE `{fieldname}` REGEXP %s
+        """,
+        (regex_pattern,),
+        pluck=True,
+    )
+
+
 def get_fy_months_with_dates(financial_year, view="Monthly", selected_date=None, target_type="Monthly"):
     start_year = int(financial_year.split("-")[0])
     
@@ -381,12 +402,17 @@ def get_sahayog_dashboard(
             f_dict = json.loads(filters)
             ui_zones = f_dict.get("zones", [])
             if ui_zones and "all" not in ui_zones:
+                matched_ui_zones = get_matching_location_values(
+                    "Branch Category Report", "zone", ui_zones
+                )
                 # Intersect UI filter with permissions if restricted
                 if perms["is_restricted"] and perms["zones"]:
-                    allowed_ui_zones = [z for z in ui_zones if z in perms["zones"]]
+                    allowed_ui_zones = [
+                        z for z in matched_ui_zones if re.sub(r"\D", "", z or "") in perms["zone_ids"]
+                    ]
                     combined_filters["zone"] = ["in", allowed_ui_zones] if allowed_ui_zones else ["in", ["_NONE_"]]
                 else:
-                    combined_filters["zone"] = ["in", ui_zones]
+                    combined_filters["zone"] = ["in", matched_ui_zones] if matched_ui_zones else ["in", ["_NONE_"]]
         except:
             pass
     
