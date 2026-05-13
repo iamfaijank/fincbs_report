@@ -4,7 +4,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from custom_report.db_connection import get_dr_connection
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_staff_details(staff_id=None):
     """
     Fetches staff details (ID and Name) from the external Finacle database.
@@ -51,7 +51,7 @@ def get_staff_details(staff_id=None):
         if conn:
             conn.close()
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_agent_details(agent_id=None):
     """
     Fetches agent details (ID and Name) from the external Finacle database.
