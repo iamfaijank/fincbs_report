@@ -3668,6 +3668,7 @@
 				},
 
 				handleAccountNumberInput(e) {
+					console.log("Account Input:", e.target.value);
 					this.errorMessage = "";
 					let raw = e.target.value.replace(/\D/g, "").slice(0, 15);
 					let formatted = raw;
@@ -3716,6 +3717,7 @@
 						this.glCode = "";
 						this.glCodeHint = schemeCode.length === 4 ? "Unsupported scheme code" : "";
 					}
+					console.log("Derived Values:", { schemeCode, glCode: this.glCode, netwinAC: this.netwinAccountNumber });
 				},
 				toApiDate(dateValue) {
 					const parsed = this.parseDate(dateValue);
@@ -3723,6 +3725,7 @@
 					return this.toISODate(parsed);
 				},
 				async fetchNetwinStatementTransactions(startDate, endDate) {
+					console.log("Fetching Netwin Data...", { branch: this.branchCode, gl: this.glCode, ac: this.netwinAccountNumber });
 					if (!this.isCsvRequired()) {
 						this.clearStatementState();
 						return [];
@@ -3739,7 +3742,7 @@
 
 					try {
 						const response = await fetch(
-							"/api/method/banking_api.api.download_netwin_statement",
+							"/api/method/custom_report.api.netwin_statement.download_netwin_statement",
 							{
 								method: "POST",
 								headers: { "Content-Type": "application/json" },
@@ -3767,6 +3770,7 @@
 						}
 
 						const csvText = await response.text();
+						console.log("Netwin CSV received, length:", csvText.length);
 						const { importedTransactions, csvAccountNumber } =
 							this.parseStatementCsv(csvText);
 						this.importedTransactions = importedTransactions;
@@ -3779,6 +3783,7 @@
 
 						return importedTransactions;
 					} catch (err) {
+						console.error("Netwin Fetch Error:", err);
 						this.importedTransactions = [];
 						this.statementParsedAccountNumber = "";
 						this.statementImportSummary = "";
@@ -3817,6 +3822,7 @@
 						if (result.success) {
 							this.branchCode = result.branch_code || "";
 							this.branchLookupError = "";
+							console.log("Branch Code Found:", this.branchCode);
 						} else {
 							this.branchCode = "";
 							this.branchLookupError = result.error || "Branch code not found";
@@ -3873,6 +3879,7 @@
 
 				async calculate() {
 					const digitsOnly = this.accountNumber.replace(/\s/g, "");
+					console.log("Starting Calculation for:", digitsOnly);
 					if (
 						digitsOnly.length < 15 ||
 						!this.isSchemeValid ||
@@ -3909,6 +3916,7 @@
 
 						if (result && result.success) {
 							this.calculationSteps[1].status = "success";
+							console.log("Finacle Data Received:", result.acct_name);
 
 							let importedTransactions = [];
 							if (this.isCsvRequired()) {
