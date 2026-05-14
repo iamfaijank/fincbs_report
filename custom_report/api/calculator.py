@@ -158,7 +158,7 @@ def get_account_details(foracid=None, settlement_date=None):
         cursor = conn.cursor()
         cursor.execute("""
             SELECT g.acid, g.cif_id, g.acct_name, s.sol_id, s.sol_desc, g.acct_opn_date, g.schm_code, 
-                   p.schm_desc, t.maturity_date, t.maturity_amount, t.deposit_period_mths, t.deposit_amount
+                   p.schm_desc, t.maturity_date, t.maturity_amount, t.deposit_period_mths, t.deposit_period_days, t.deposit_amount
             FROM tbaadm.gam g
             JOIN tbaadm.sol s ON g.sol_id = s.sol_id
             JOIN tbaadm.gsp p ON g.schm_code = p.schm_code
@@ -169,7 +169,13 @@ def get_account_details(foracid=None, settlement_date=None):
         res = cursor.fetchone()
         if not res: return {"success": False, "error": "Account not found"}
 
-        acid, cif, name, sol_id, sol_desc, opn_dt, schm_code, schm_desc, mat_dt, mat_amt, period, planned_installment = res
+        acid, cif, name, sol_id, sol_desc, opn_dt, schm_code, schm_desc, mat_dt, mat_amt, period_mths, period_days, planned_installment = res
+        
+        # Tenure Fallback Logic
+        effective_period = int(period_mths or 0)
+        if effective_period == 0 and period_days:
+            effective_period = int(float(period_days) / 30)
+            
         planned_installment = float(planned_installment or 0)
         
         cursor.execute("""
@@ -221,7 +227,7 @@ def get_account_details(foracid=None, settlement_date=None):
 
         # Settlement cycle offset
         sett_m_offset = get_cycle_offset(opn_dt, sett_dt)
-        allocation_cycle_count = max(int(period or 0), sett_m_offset + 1, max_credit_month + 1, 1)
+        allocation_cycle_count = max(effective_period, sett_m_offset + 1, max_credit_month + 1, 1)
         credits_by_month = allocate_installments_by_cycle(
             raw_credits_by_month,
             planned_installment,
@@ -354,7 +360,7 @@ def get_account_details(foracid=None, settlement_date=None):
             "success": True, "cif_id": cif, "acct_name": name, "sol_id": sol_id, "sol_desc": sol_desc,
             "acct_opn_date": opn_dt.strftime("%d/%m/%Y"), "schm_code": schm_code, "schm_desc": schm_desc,
             "maturity_date": mat_dt.strftime("%d/%m/%Y"), "maturity_amount": float(mat_amt or 0),
-            "deposit_period_mths": int(period or 0), "deposit_amount": float(planned_installment or 0),
+            "deposit_period_mths": effective_period, "deposit_amount": float(planned_installment or 0),
             "planned_installment": float(planned_installment or 0),
             "transactions": transactions, "principal": int(total_principal_for_sc + 0.5),
             "interest": int(total_interest + 0.5), "penalty": int(penalty_amt + 0.5),
