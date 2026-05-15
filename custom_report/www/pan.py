@@ -43,7 +43,7 @@ def get_pan_details(pan_no=None):
                     "pan": r[0], "cif": r[1], "acc": r[2], "name": r[3],
                     # Removed DOB (r[4]) and Phone (r[9]) mapping
                     "sc": r[5], "st": r[6], "od": str(r[7]), "sol": r[8],
-                    "dist": r[10], "zone": r[11], "sd": r[12]
+                    "dist": r[10], "zone": r[11], "sd": r[12], "dob": r[4]
                 }
             }
         return {"success": False, "error": "No records found."}
@@ -153,7 +153,7 @@ def fetch_pan_batch(pan_json):
                     "pan": r[0], "name": r[3], "cif": r[1], "acc": r[2],
                     # Removed DOB (r[4]) and Phone (r[9]) mapping
                     "sc": r[5], "st": r[6], "od": str(r[7]), "sol": r[8],
-                    "dist": r[10], "zone": r[11], "sd": r[12], "status": "Found"
+                    "dist": r[10], "zone": r[11], "sd": r[12], "dob": str(r[4]), "status": "Found"
                 })
             else:
                 results.append({"pan": p, "status": "Not Found"})
