@@ -490,7 +490,7 @@ def report_download(report_docname, start_date=None, end_date=None, file_type="c
             query_params = {}
 
         normalized_file_type = _normalize_file_type(file_type)
-        filename = _generate_filename(report_doc.report_name, normalized_file_type)
+        filename = _generate_filename(report_doc.report_name, normalized_file_type, start_date, end_date)
         temp_path = os.path.join(tempfile.gettempdir(), filename)
 
         if normalized_file_type == "csv.gz":
@@ -706,7 +706,7 @@ def _run_report_export_job(request_id, user, report_docname, start_date=None, en
 
         columns = [desc[0] for desc in cursor.description]
 
-        filename = _generate_filename(report_doc.report_name, file_type)
+        filename = _generate_filename(report_doc.report_name, file_type, start_date, end_date)
         temp_path = os.path.join(tempfile.gettempdir(), f"{request_id}_{filename}")
 
         rows_processed = 0
@@ -1417,34 +1417,47 @@ def _generate_csv_content(columns, rows):
     return csv_data
 
 
-def _generate_filename(report_name, file_type):
+def _generate_filename(report_name, file_type, start_date=None, end_date=None):
     """
-    Generate filename with report name and current timestamp.
-    Format: report_name_DD-MM-YYYY HH-MM AM-PM.ext
-    
+    Generate filename with report name, date filters (if any), and current timestamp.
+    Format: report_name_START-DATE_to_END-DATE_DD-MM-YYYY HH-MM AM-PM.ext
+
     Args:
         report_name (str): Name of the report
         file_type (str): File extension (e.g., 'csv')
-    
+        start_date (str, optional): Start date in YYYY-MM-DD
+        end_date (str, optional): End date in YYYY-MM-DD
+
     Returns:
         str: Generated filename with timestamp
     """
     # Get current datetime and format as DD-MM-YYYY HH-MM AM-PM
     current_time = datetime.now()
-    
+
     # Format date as DD-MM-YYYY and time as HH-MM AM/PM
     date_str = current_time.strftime("%d-%m-%Y")  # DD-MM-YYYY
     time_str = current_time.strftime("%I-%M %p")  # HH-MM AM/PM
     formatted_datetime = f"{date_str} {time_str}"
-    
+
     # Sanitize report name to remove invalid characters for filenames
     sanitized_report_name = re.sub(r'[<>:"/\\|?*]', '_', report_name)
-    
-    # Build filename: report_name_DD-MM-YYYY HH-MM AM.ext
-    filename = f"{sanitized_report_name}_{formatted_datetime}.{file_type}"
-    
-    return filename
 
+    # Add date filters to filename if both are provided
+    date_range = ""
+    if start_date and end_date:
+        try:
+            # Convert YYYY-MM-DD to DD-MM-YYYY for filename
+            s_date = datetime.strptime(start_date, "%Y-%m-%d").strftime("%d-%m-%Y")
+            e_date = datetime.strptime(end_date, "%Y-%m-%d").strftime("%d-%m-%Y")
+            date_range = f"_{s_date}_to_{e_date}"
+        except (ValueError, TypeError):
+            # Fallback if dates are not in expected format
+            pass
+
+    # Build filename: report_name_START-DATE_to_END-DATE_DD-MM-YYYY HH-MM AM.ext
+    filename = f"{sanitized_report_name}{date_range}_{formatted_datetime}.{file_type}"
+
+    return filename
 
 def _save_temp_file(filename, content):
     """
