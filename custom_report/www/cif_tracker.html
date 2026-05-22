@@ -175,10 +175,12 @@
             <input 
                 type="text" 
                 v-model="cif_id" 
-                placeholder="Enter CIF ID (e.g. 1025488)"
+                maxlength="9"
+                placeholder="Enter 9-digit CIF ID"
+                @input="cif_id = cif_id.replace(/[^0-9]/g, '')"
                 @keyup.enter="fetchDetails"
             >
-            <button @click="fetchDetails" :disabled="loading">
+            <button @click="fetchDetails" :disabled="loading || cif_id.length !== 9">
                 <span v-if="loading">Searching...</span>
                 <span v-else>Search</span>
             </button>
