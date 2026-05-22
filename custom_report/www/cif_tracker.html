@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CIF Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="/assets/custom_report/js/petite-vue.iife.js"></script>
+
+    <style>
+        :root {
+            --primary: #196767;
+            --primary-hover: #145353;
+            --bg-color: #f4f7f7;
+            --surface: #ffffff;
+            --border: #d1d8d8;
+            --text-main: #2c3e50;
+            --text-muted: #7f8c8d;
+            --radius: 8px;
+            --shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: var(--text-main);
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+        }
+
+        .card {
+            background: var(--surface);
+            padding: 30px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h2 {
+            margin: 0;
+            color: var(--primary);
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary);
+        }
+
+        button {
+            padding: 12px 25px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 14px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: #f8fbfb;
+            font-weight: 600;
+            color: var(--primary);
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: #f9fdfd;
+        }
+
+        .error-msg {
+            color: #e74c3c;
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #fdf2f2;
+            border-radius: var(--radius);
+            font-weight: 500;
+        }
+
+        .loading {
+            text-align: center;
+            color: var(--text-muted);
+            margin-top: 20px;
+            font-style: italic;
+        }
+
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="app" v-cloak>
+    <div class="card">
+        <div class="header">
+            <h2>CIF Tracker</h2>
+            <p>Enter CIF ID to fetch linked account details</p>
+        </div>
+
+        <div class="search-box">
+            <input 
+                type="text" 
+                v-model="cif_id" 
+                placeholder="Enter CIF ID (e.g. 1025488)"
+                @keyup.enter="fetchDetails"
+            >
+            <button @click="fetchDetails" :disabled="loading">
+                <span v-if="loading">Searching...</span>
+                <span v-else>Search</span>
+            </button>
+        </div>
+
+        <div v-if="loading" class="loading">Fetching data from server...</div>
+
+        <div v-if="error" class="error-msg">
+            {% raw %}{{ error }}{% endraw %}
+        </div>
+
+        <div v-if="results.length > 0" class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Account No</th>
+                        <th>Account Name</th>
+                        <th>Scheme</th>
+                        <th>Type</th>
+                        <th>Open Date</th>
+                        <th>Branch (SOL)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="row in results" :key="row.account_no">
+                        {% raw %}
+                        <td style="font-weight: 600; color: var(--primary);">{{ row.account_no }}</td>
+                        <td>{{ row.account_name }}</td>
+                        <td>{{ row.schm_code }}</td>
+                        <td>{{ row.schm_type }}</td>
+                        <td>{{ row.opening_date }}</td>
+                        <td>{{ row.sol_id }} - {{ row.sol_desc }}</td>
+                        {% endraw %}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    PetiteVue.createApp({
+        cif_id: '',
+        results: [],
+        loading: false,
+        error: '',
+        async fetchDetails() {
+            if (!this.cif_id.trim()) {
+                this.error = "Please enter a CIF ID";
+                this.results = [];
+                return;
+            }
+
+            this.loading = true;
+            this.error = '';
+            this.results = [];
+
+            try {
+                const response = await fetch(`/api/method/custom_report.www.cif_tracker.get_cif_details?cif_id=${encodeURIComponent(this.cif_id)}`);
+                const res = await response.json();
+                
+                if (res.message && res.message.success) {
+                    this.results = res.message.data;
+                } else {
+                    this.error = (res.message && res.message.error) || "No results found or an error occurred.";
+                }
+            } catch (err) {
+                this.error = "Failed to connect to server. Please try again.";
+                console.error(err);
+            } finally {
+                this.loading = false;
+            }
+        }
+    }).mount('#app')
+</script>
+
+</body>
+</html>
