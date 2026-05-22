@@ -11,13 +11,13 @@
         :root {
             --primary: #196767;
             --primary-hover: #145353;
-            --bg-color: #f4f7f7;
+            --bg-color: #f0f4f4;
             --surface: #ffffff;
-            --border: #d1d8d8;
+            --border: #e1e8e8;
             --text-main: #2c3e50;
             --text-muted: #7f8c8d;
-            --radius: 8px;
-            --shadow: 0 4px 6px rgba(0,0,0,0.05);
+            --radius: 12px;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.04);
         }
 
         body {
@@ -26,31 +26,43 @@
             margin: 0;
             padding: 20px;
             color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
         }
 
         .container {
-            max-width: 1000px;
+            width: 100%;
+            max-width: 850px;
             margin: 40px auto;
         }
 
         .card {
             background: var(--surface);
-            padding: 30px;
+            padding: 35px;
             border-radius: var(--radius);
             box-shadow: var(--shadow);
-            border: 1px solid var(--border);
+            border: 1px solid rgba(25, 103, 103, 0.1);
         }
 
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 35px;
         }
 
         .header h2 {
             margin: 0;
             color: var(--primary);
-            font-size: 28px;
-            font-weight: 700;
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            margin: 8px 0 0;
+            color: var(--text-muted);
+            font-size: 14px;
         }
 
         .search-box {
@@ -152,6 +164,7 @@
 <body>
 
 <div class="container" id="app" v-cloak>
+    {% if has_access %}
     <div class="card">
         <div class="header">
             <h2>CIF Tracker</h2>
@@ -162,10 +175,12 @@
             <input 
                 type="text" 
                 v-model="cif_id" 
-                placeholder="Enter CIF ID (e.g. 1025488)"
+                maxlength="9"
+                placeholder="Enter 9-digit CIF ID"
+                @input="cif_id = cif_id.replace(/[^0-9]/g, '')"
                 @keyup.enter="fetchDetails"
             >
-            <button @click="fetchDetails" :disabled="loading">
+            <button @click="fetchDetails" :disabled="loading || cif_id.length !== 9">
                 <span v-if="loading">Searching...</span>
                 <span v-else>Search</span>
             </button>
@@ -200,6 +215,15 @@
             </table>
         </div>
     </div>
+    {% else %}
+    <div class="card" style="text-align: center;">
+        <div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
+        <h2 style="color: #e74c3c;">Access Denied</h2>
+        <p>You do not have permission to access the <b>CIF Tracker</b>.</p>
+        <p style="color: var(--text-muted); font-size: 14px;">Please contact your IT Administrator to request the 'CIF Tracker' role.</p>
+        <button onclick="window.location.href='/'" style="margin-top: 20px;">Back to Home</button>
+    </div>
+    {% endif %}
 </div>
 
 <script>
