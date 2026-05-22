@@ -181,23 +181,19 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Account No</th>
-                        <th>Account Name</th>
-                        <th>Scheme</th>
-                        <th>Type</th>
-                        <th>Open Date</th>
-                        <th>Branch (SOL)</th>
+                        <th>User ID</th>
+                        <th>User Name</th>
+                        <th>Branch Code</th>
+                        <th>Branch Name</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="row in results" :key="row.account_no">
+                    <tr v-for="row in results" :key="row.user_id + row.branch_code">
                         {% raw %}
-                        <td style="font-weight: 600; color: var(--primary);">{{ row.account_no }}</td>
-                        <td>{{ row.account_name }}</td>
-                        <td>{{ row.schm_code }}</td>
-                        <td>{{ row.schm_type }}</td>
-                        <td>{{ row.opening_date }}</td>
-                        <td>{{ row.sol_id }} - {{ row.sol_desc }}</td>
+                        <td style="font-weight: 600; color: var(--primary);">{{ row.user_id }}</td>
+                        <td>{{ row.user_name }}</td>
+                        <td>{{ row.branch_code }}</td>
+                        <td>{{ row.branch_name }}</td>
                         {% endraw %}
                     </tr>
                 </tbody>
