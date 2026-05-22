@@ -125,10 +125,19 @@ function showAccessDeniedPage(wrapper) {
                         <strong>ℹ️ Need Access?</strong><br>
                         To request access to this page, please contact the IT administrator at:
                     </p>
-                    <div style="margin-top:15px;padding:12px;background:#fff;border-radius:6px;border:1px dashed #ffc107;">
-                        <a href="mailto:atul.n@sahayogmultistate.com" style="color:#196767;font-weight:600;font-size:15px;text-decoration:none;">
-                            📧 atul.n@sahayogmultistate.com
-                        </a>
+                    <div style="margin-top:15px;padding:15px;background:#fff;border-radius:6px;border:1px dashed #ffc107;text-align:center;">
+                        <div style="font-size:24px;margin-bottom:12px;">👤</div>
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            <a href="mailto:juber.sheikh@sahayogmultistate.com" style="color:#196767;font-weight:600;font-size:14px;text-decoration:none;">
+                                📧 juber.sheikh@sahayogmultistate.com
+                            </a>
+                            <a href="mailto:rishab.b@sahayogmultistate.com" style="color:#196767;font-weight:600;font-size:14px;text-decoration:none;">
+                                📧 rishab.b@sahayogmultistate.com
+                            </a>
+                            <a href="mailto:atul.n@sahayogmultistate.com" style="color:#196767;font-weight:600;font-size:14px;text-decoration:none;">
+                                📧 atul.n@sahayogmultistate.com
+                            </a>
+                        </div>
                     </div>
                 </div>
                 <button onclick="window.history.back()" style="margin-top:25px;background:#196767;color:white;border:none;padding:12px 30px;font-weight:600;border-radius:6px;cursor:pointer;font-size:14px;">
