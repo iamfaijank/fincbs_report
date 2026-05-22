@@ -537,7 +537,7 @@
                 pan: '', data: null, err: '', loading: false, bulkLoading: false,
                 file: null, bulkResults: [], totalToFetch: 0, isDragging: false,
                 csrf_token: "{{ frappe.session.csrf_token }}",
-                labels: { doc_type: 'Document Type', pan_no: 'PAN No', aadhaar_no: 'Aadhaar No', name: 'Account Name', cif: 'CIF ID', acc: 'Account No', sc: 'Scheme Code', st: 'Scheme Type', od: 'Open Date', sol: 'SOL ID', dist: 'District', zone: 'Zone', sd: 'SOL Desc' },
+                labels: { doc_type: 'Document Type', pan_no: 'PAN No', aadhaar_no: 'Aadhaar No', name: 'Account Name', cif: 'CIF ID', acc: 'Account No', dob: "DOB", sc: 'Scheme Code', st: 'Scheme Type', od: 'Open Date', sol: 'SOL ID', dist: 'District', zone: 'Zone', sd: 'SOL Desc' },
 
                 async fetch() {
                     if (!this.pan) return;
@@ -550,13 +550,19 @@
 
                             const formatDate = (dateStr) => {
                                 if (!dateStr || dateStr === 'None') return '-';
-                                const datePart = dateStr.split(' ')[0];
-                                const parts = datePart.split('-');
-                                if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-                                return datePart;
+                                const datePart = dateStr.split(' ')[0]; // Get "YYYY-MM-DD"
+                                const parts = datePart.split('-'); // Split into [YYYY, MM, DD]
+                                if (parts.length === 3) {
+                                    return `${parts[2]}/${parts[1]}/${parts[0]}`; // Return "DD/MM/YYYY"
+                                }
+                                return datePart; // Fallback if format is unexpected
                             };
 
+                            // Apply formatting
+                            responseData.dob = formatDate(responseData.dob);
                             responseData.od = formatDate(responseData.od);
+
+                            // responseData.od = formatDate(responseData.od);
 
                             // Dynamically determine PAN vs Aadhaar based on the first character
                             const refVal = responseData.pan || '';
@@ -650,7 +656,7 @@
                 },
 
                 downloadResults() {
-                    const headers = ['Document Type', 'PAN No', 'Aadhaar No', 'Account Name', 'CIF ID', 'Account No', 'Scheme Code', 'Scheme Type', 'Open Date', 'SOL ID', 'District', 'Zone', 'SOL Description', 'Status'];
+                    const headers = ['Document Type', 'PAN No', 'Aadhaar No', 'Account Name', 'CIF ID', 'Account No', 'DOB', 'Scheme Code', 'Scheme Type', 'Open Date', 'SOL ID', 'District', 'Zone', 'SOL Description', 'Status'];
 
                     const formatDate = (dateStr) => {
                         if (!dateStr || dateStr === 'None') return '-';
@@ -676,6 +682,7 @@
                             `"${r.name || '-'}"`,
                             r.cif || '-',
                             accNo,
+                            formatDate(r.dob),
                             r.sc || '-',
                             r.st || '-',
                             formatDate(r.od),
