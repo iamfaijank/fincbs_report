@@ -19,14 +19,19 @@ def get_cif_details(cif_id):
         conn = get_dr_connection()
         cursor = conn.cursor()
         
-        # SQL query to fetch data for the given CIF ID from Finacle DB
+        # SQL query provided by user
         query = """
             SELECT 
-                g.cif_id, g.foracid, g.acct_name, g.schm_code, g.schm_type, 
-                g.acct_opn_date, g.sol_id, s.sol_desc
-            FROM tbaadm.gam g
-            JOIN tbaadm.sol s ON g.sol_id = s.sol_id
-            WHERE g.cif_id = %s AND g.entity_cre_flg = 'Y' AND g.del_flg = 'N'
+                u.loginid AS user_id,
+                g.sol_id AS branch_code,
+                s.sol_desc as branch_name,
+                g.emp_name AS user_name,
+                am.orgkey
+            FROM crmuser.accounts_mod am
+            LEFT JOIN crmuser.users u ON am.assignedto = u.personid
+            LEFT JOIN tbaadm."get" g ON u.loginid = g.emp_id
+            LEFT JOIN tbaadm.sol s ON s.sol_id = g.sol_id
+            WHERE am.orgkey = %s
         """
         cursor.execute(query, (cif_id,))
         rows = cursor.fetchall()
@@ -35,14 +40,11 @@ def get_cif_details(cif_id):
             data = []
             for r in rows:
                 data.append({
-                    "cif_id": r[0],
-                    "account_no": r[1],
-                    "account_name": r[2],
-                    "schm_code": r[3],
-                    "schm_type": r[4],
-                    "opening_date": str(r[5]),
-                    "sol_id": r[6],
-                    "sol_desc": r[7]
+                    "user_id": r[0],
+                    "branch_code": r[1],
+                    "branch_name": r[2],
+                    "user_name": r[3],
+                    "cif_id": r[4]
                 })
             return {"success": True, "data": data}
         else:
