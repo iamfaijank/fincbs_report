@@ -6,11 +6,27 @@ def get_context(context):
     context.no_cache = 1
     context.login_required = True
     
-    # Check if user is Administrator or has specific roles (optional, defaults to True for now)
-    context.has_access = True
+    # Check if user has "CIF Tracker" role
+    context.has_access = check_user_access()
+
+def check_user_access():
+    """Helper to check if user has 'CIF Tracker' or 'Administrator' access"""
+    user = frappe.session.user
+    if user == "Administrator":
+        return True
+
+    user_roles = set(frappe.get_roles(user))
+    if "CIF Tracker" in user_roles or "System Manager" in user_roles:
+        return True
+        
+    return False
 
 @frappe.whitelist()
 def get_cif_details(cif_id):
+    # Security check for API call
+    if not check_user_access():
+        frappe.throw("Access Denied: You do not have the 'CIF Tracker' role.", frappe.PermissionError)
+
     if not cif_id:
         return {"success": False, "error": "CIF ID is required"}
 
