@@ -70,7 +70,7 @@ def get_cif_details(cif_id):
                 })
             return {"success": True, "data": data}
         else:
-            return {"success": False, "error": "No records found for this CIF ID."}
+            return {"success": False, "error": "Invalid CIF ID or already verified by the checker. Please confirm and try again."}
 
     except Exception as e:
         frappe.log_error(message=frappe.get_traceback(), title="CIF Tracker Error")
