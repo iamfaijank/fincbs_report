@@ -41,7 +41,7 @@ def get_cif_details(cif_id):
         conn = get_dr_connection()
         cursor = conn.cursor()
         
-        # SQL query provided by user
+        # SQL query updated to use INNER JOINs for critical assignment data
         query = """
             SELECT 
                 u.loginid AS user_id,
@@ -50,24 +50,28 @@ def get_cif_details(cif_id):
                 g.emp_name AS user_name,
                 am.orgkey
             FROM crmuser.accounts_mod am
-            LEFT JOIN crmuser.users u ON am.assignedto = u.personid
-            LEFT JOIN tbaadm."get" g ON u.loginid = g.emp_id
+            INNER JOIN crmuser.users u ON am.assignedto = u.personid
+            INNER JOIN tbaadm."get" g ON u.loginid = g.emp_id
             LEFT JOIN tbaadm.sol s ON s.sol_id = g.sol_id
             WHERE am.orgkey = %s
         """
         cursor.execute(query, (cif_id,))
         rows = cursor.fetchall()
         
+        data = []
         if rows:
-            data = []
             for r in rows:
-                data.append({
-                    "user_id": r[0],
-                    "branch_code": r[1],
-                    "branch_name": r[2],
-                    "user_name": r[3],
-                    "cif_id": r[4]
-                })
+                # Extra safety check: ensure we have a user_id
+                if r[0]:
+                    data.append({
+                        "user_id": r[0],
+                        "branch_code": r[1],
+                        "branch_name": r[2],
+                        "user_name": r[3],
+                        "cif_id": r[4]
+                    })
+        
+        if data:
             return {"success": True, "data": data}
         else:
             return {"success": False, "error": "Invalid CIF ID or already verified by the checker. Please confirm and try again."}
