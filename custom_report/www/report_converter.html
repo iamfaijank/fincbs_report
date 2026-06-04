@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RPT → Excel Converter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #151820;
+    --surface2: #1c2030;
+    --border: #2a2f42;
+    --border2: #363d56;
+    --accent: #4f8ef7;
+    --accent2: #7eb8ff;
+    --success: #3ecf8e;
+    --warn: #f59e0b;
+    --text: #e8eaf2;
+    --text2: #8a90a8;
+    --text3: #555c78;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(79,142,247,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,142,247,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 24px 60px; width: 100%; }
+
+  header {
+    padding: 36px 0 28px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; flex-direction: column; gap: 4px; }
+  .brand-tag { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; color: var(--accent); text-transform: uppercase; }
+  .brand h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); line-height: 1; }
+  .brand h1 span { color: var(--accent); }
+  .header-meta { font-family: var(--mono); font-size: 11px; color: var(--text3); text-align: right; line-height: 1.7; }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  @media (max-width: 700px) { .cols { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .panel-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: var(--surface2);
+  }
+  .panel-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--text2); text-transform: uppercase; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .dot-r { background: #ff5f57; } .dot-y { background: #ffbd2e; } .dot-g { background: #28c840; }
+  .dots { display: flex; gap: 5px; }
+
+  /* DROP ZONE */
+  .drop-zone {
+    min-height: 260px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 32px 24px;
+    border: 2px dashed var(--border2);
+    margin: 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(79,142,247,0.05);
+  }
+  .drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+  .drop-icon { opacity: 0.4; transition: opacity 0.2s; }
+  .drop-zone:hover .drop-icon { opacity: 0.7; }
+  .drop-title { font-size: 15px; font-weight: 600; color: var(--text2); text-align: center; }
+  .drop-sub { font-family: var(--mono); font-size: 11px; color: var(--text3); text-align: center; line-height: 1.8; }
+  .drop-sub span { color: var(--accent); }
+
+  /* FILE LIST */
+  .file-list {
+    max-height: 180px;
+    overflow-y: auto;
+    margin: 0 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text);
+  }
+  .file-item .fi-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-item .fi-size { color: var(--text3); font-size: 10px; white-space: nowrap; }
+  .file-item .fi-status { font-size: 10px; white-space: nowrap; }
+  .fi-ok { color: var(--success); }
+  .fi-pending { color: var(--warn); }
+  .fi-err { color: #f87171; }
+  .file-item .fi-remove {
+    background: none;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0 2px;
+    transition: color 0.15s;
+  }
+  .file-item .fi-remove:hover { color: #f87171; }
+
+  .actions {
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    background: var(--surface2);
+    margin-top: 16px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 18px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,0.07); }
+  .btn:active { transform: scale(0.97); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .btn.primary:hover { background: var(--accent2); border-color: var(--accent2); color: #0d0f14; }
+  .btn.success-btn { background: var(--success); border-color: var(--success); color: #0a1a12; font-weight: 600; }
+  .btn.success-btn:hover { opacity: 0.9; }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+  .statusbar {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    padding: 2px 10px;
+    border-radius: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+  .statusbar.ok { color: var(--success); border-color: var(--success); background: rgba(62,207,142,0.08); }
+  .statusbar.err { color: #f87171; border-color: #f87171; background: rgba(248,113,113,0.08); }
+
+  .preview-panel { margin-top: 0; }
+  .table-wrap { overflow-x: auto; max-height: 340px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead tr { position: sticky; top: 0; z-index: 2; }
+  th {
+    background: var(--surface2);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border2);
+    text-align: left;
+    white-space: nowrap;
+  }
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+  td.err-msg { white-space: normal; max-width: 320px; color: var(--warn); font-family: var(--sans); font-size: 12px; }
+  td.src-file { color: var(--text3); font-size: 10px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+  tr:hover td { background: rgba(79,142,247,0.05); }
+
+  .stats { display: flex; gap: 24px; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface2); flex-wrap: wrap; }
+  .stat { display: flex; flex-direction: column; gap: 1px; }
+  .stat-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text3); }
+  .stat-val { font-family: var(--mono); font-size: 16px; font-weight: 600; color: var(--text); }
+  .stat-val.accent { color: var(--accent); }
+  .stat-val.green { color: var(--success); }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.05em; }
+  .badge-cr { background: rgba(62,207,142,0.15); color: var(--success); }
+  .badge-dr { background: rgba(248,113,113,0.15); color: #f87171; }
+
+  footer { border-top: 1px solid var(--border); padding: 16px 0; text-align: center; font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: 0.1em; position: relative; z-index: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="brand">
+      <span class="brand-tag">Sahayog Multi State Credit Co.</span>
+      <h1>RPT <span>→</span> Excel Converter</h1>
+    </div>
+    <div class="header-meta">
+      Interest Booking Failure Report<br>
+      Upload · Parse · Download
+    </div>
+  </header>
+
+  <div class="cols">
+    <!-- UPLOAD PANEL -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></span>
+        <span class="panel-title">Upload .RPT Files</span>
+      </div>
+
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" multiple accept=".rpt,.txt,.RPT,.TXT" onchange="handleFiles(this.files)">
+        <svg class="drop-icon" width="48" height="48" fill="none" stroke="#4f8ef7" stroke-width="1.5" viewBox="0 0 24 24">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <div class="drop-title">Drop files here or click to browse</div>
+        <div class="drop-sub">
+          Supports <span>.rpt</span> and <span>.txt</span> files<br>
+          Multiple files allowed — all parsed together
+        </div>
+      </div>
+
+      <div class="file-list" id="fileList"></div>
+
+      <div class="actions">
+        <button class="btn primary" onclick="parseAll()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Parse All Files
+        </button>
+        <button class="btn" onclick="clearAll()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          Clear
+        </button>
+        <span class="statusbar" id="statusBar">ready</span>
+      </div>
+    </div>
+
+    <!-- SUMMARY PANEL -->
+    <div class="panel" style="display:flex;flex-direction:column;justify-content:center;align-items:center;padding:32px 20px;gap:24px;" id="summaryPanel">
+      <svg width="48" height="48" fill="none" stroke="#555c78" stroke-width="1.5" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>
+      </svg>
+      <div style="text-align:center;font-family:var(--mono);font-size:11px;color:var(--text3);line-height:2;">
+        Upload your .rpt files above<br>and click <span style="color:var(--accent)">Parse All Files</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PREVIEW TABLE -->
+  <div class="panel preview-panel" id="previewPanel" style="display:none;">
+    <div class="panel-header">
+      <span class="panel-title">Parsed Records</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" id="copyBtn" onclick="copyTSV()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy for Excel
+        </button>
+        <button class="btn success-btn" id="xlsxBtn" onclick="downloadXLSX()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Excel
+        </button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="previewTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Source File</th>
+            <th>Account Num</th>
+            <th>DR/CR</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Master A/C</th>
+            <th>Error Message</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="stats" id="statsRow"></div>
+  </div>
+
+</div>
+
+<footer>RPT → EXCEL CONVERTER &nbsp;·&nbsp; OFFLINE TOOL &nbsp;·&nbsp; NO DATA LEAVES YOUR DEVICE</footer>
+
+<script>
+let records = [];
+let uploadedFiles = []; // {file, name, status}
+
+// Drag & drop
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  handleFiles(e.dataTransfer.files);
+});
+
+function handleFiles(files) {
+  for (const f of files) {
+    // avoid duplicates
+    if (!uploadedFiles.find(u => u.name === f.name && u.file.size === f.size)) {
+      uploadedFiles.push({ file: f, name: f.name, status: 'pending' });
+    }
+  }
+  renderFileList();
+  setStatus(uploadedFiles.length + ' file(s) queued', '');
+}
+
+function renderFileList() {
+  const el = document.getElementById('fileList');
+  if (!uploadedFiles.length) { el.innerHTML = ''; return; }
+  el.innerHTML = uploadedFiles.map((u, i) => `
+    <div class="file-item">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;color:var(--accent)">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <span class="fi-name" title="${u.name}">${u.name}</span>
+      <span class="fi-size">${formatSize(u.file.size)}</span>
+      <span class="fi-status ${u.status === 'ok' ? 'fi-ok' : u.status === 'err' ? 'fi-err' : 'fi-pending'}">
+        ${u.status === 'ok' ? '✓ parsed' : u.status === 'err' ? '✗ error' : '● queued'}
+      </span>
+      <button class="fi-remove" onclick="removeFile(${i})" title="Remove">×</button>
+    </div>
+  `).join('');
+}
+
+function removeFile(i) {
+  uploadedFiles.splice(i, 1);
+  renderFileList();
+  if (!uploadedFiles.length) { records = []; hidePreview(); setStatus('ready', ''); }
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1048576).toFixed(1) + ' MB';
+}
+
+function parseRPT(text, filename) {
+  const lines = text.split('\n');
+  const result = [];
+  let inData = false, dashCount = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^[\s\-]{20,}$/.test(line) && line.includes('-')) {
+      dashCount++;
+      if (dashCount >= 1) inData = true;
+      continue;
+    }
+    if (!inData) continue;
+    if (/^\s*$/.test(line)) continue;
+    if (/ACCOUNT\s+NUM/i.test(line)) continue;
+    if (/^[\s]*ERROR\s+MESSAGE[\s]*$/i.test(line)) continue;
+    if (/\*{2,}/.test(line)) break;
+
+    if (/^\s*\d{8,}/.test(line)) {
+      const parts = line.trim().split(/\s+/);
+      const err = (lines[i+1] || '').trim();
+      result.push({
+        source: filename,
+        account_num: parts[0] || '',
+        dr_cr: parts[1] || '',
+        start_date: parts[2] || '',
+        end_date: parts[3] || '',
+        master_ac: parts[4] || '',
+        error_message: err
+      });
+      i++;
+    }
+  }
+  return result;
+}
+
+async function parseAll() {
+  if (!uploadedFiles.length) { setStatus('upload files first', 'err'); return; }
+  records = [];
+  let parsed = 0, errored = 0;
+
+  for (let u of uploadedFiles) {
+    try {
+      const text = await readFileAsText(u.file);
+      const recs = parseRPT(text, u.name);
+      records.push(...recs);
+      u.status = 'ok';
+      parsed++;
+    } catch (e) {
+      u.status = 'err';
+      errored++;
+    }
+  }
+
+  renderFileList();
+
+  if (!records.length) {
+    setStatus('no records found', 'err');
+    hidePreview();
+    return;
+  }
+
+  renderTable();
+  renderSummary();
+  const msg = records.length + ' record(s) from ' + parsed + ' file(s)' + (errored ? ` · ${errored} error(s)` : '') + ' ✓';
+  setStatus(msg, 'ok');
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = records.map((r, idx) => `
+    <tr>
+      <td style="color:var(--text3)">${idx+1}</td>
+      <td class="src-file" title="${r.source}">${r.source}</td>
+      <td>${r.account_num}</td>
+      <td><span class="badge ${r.dr_cr.startsWith('C') ? 'badge-cr' : 'badge-dr'}">${r.dr_cr}</span></td>
+      <td>${r.start_date}</td>
+      <td>${r.end_date}</td>
+      <td>${r.master_ac || '—'}</td>
+      <td class="err-msg">${r.error_message}</td>
+    </tr>`).join('');
+
+  document.getElementById('previewPanel').style.display = '';
+  document.getElementById('summaryPanel').style.display = 'none';
+}
+
+function renderSummary() {
+  const cr = records.filter(r => r.dr_cr.startsWith('C')).length;
+  const dr = records.filter(r => r.dr_cr.startsWith('D')).length;
+  const uniqueErrs = new Set(records.map(r => r.error_message)).size;
+  const files = new Set(records.map(r => r.source)).size;
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat"><span class="stat-label">Total Records</span><span class="stat-val accent">${records.length}</span></div>
+    <div class="stat"><span class="stat-label">Files</span><span class="stat-val">${files}</span></div>
+    <div class="stat"><span class="stat-label">Credit (CR)</span><span class="stat-val green">${cr}</span></div>
+    <div class="stat"><span class="stat-label">Debit (DR)</span><span class="stat-val">${dr}</span></div>
+    <div class="stat"><span class="stat-label">Unique Errors</span><span class="stat-val">${uniqueErrs}</span></div>
+  `;
+}
+
+function hidePreview() {
+  document.getElementById('previewPanel').style.display = 'none';
+  document.getElementById('summaryPanel').style.display = 'flex';
+}
+
+function setStatus(msg, type) {
+  const el = document.getElementById('statusBar');
+  el.textContent = msg;
+  el.className = 'statusbar' + (type ? ' ' + type : '');
+}
+
+function copyTSV() {
+  const headers = ['SOURCE FILE','ACCOUNT NUM','DR/CR','START DATE','END DATE','MASTER A/C','ERROR MESSAGE'];
+  const keys = ['source','account_num','dr_cr','start_date','end_date','master_ac','error_message'];
+  const rows = [headers.join('\t'), ...records.map(r => keys.map(k => r[k]).join('\t'))];
+  navigator.clipboard.writeText(rows.join('\n')).then(() => {
+    const btn = document.getElementById('copyBtn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✓ Copied!';
+    btn.style.color = 'var(--success)';
+    setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 2000);
+  });
+}
+
+function downloadXLSX() {
+  if (!records.length) return;
+  const wb = XLSX.utils.book_new();
+  const headers = ['SOURCE FILE','ACCOUNT NUM','DR/CR','START DATE','END DATE','MASTER A/C','ERROR MESSAGE'];
+  const keys = ['source','account_num','dr_cr','start_date','end_date','master_ac','error_message'];
+  const wsData = [headers, ...records.map(r => keys.map(k => r[k]))];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch:22},{wch:22},{wch:8},{wch:14},{wch:14},{wch:14},{wch:60}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Failure Report');
+  const now = new Date();
+  const stamp = `${now.getDate().toString().padStart(2,'0')}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getFullYear()}`;
+  XLSX.writeFile(wb, `Interest_Booking_Failure_${stamp}.xlsx`);
+}
+
+function clearAll() {
+  uploadedFiles = [];
+  records = [];
+  document.getElementById('fileInput').value = '';
+  renderFileList();
+  hidePreview();
+  setStatus('ready', '');
+}
+</script>
+</body>
+</html>
