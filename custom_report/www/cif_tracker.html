@@ -176,11 +176,11 @@
                 type="text" 
                 v-model="cif_id" 
                 maxlength="9"
-                placeholder="Enter 9-digit CIF ID"
+                placeholder="Enter CIF ID"
                 @input="cif_id = cif_id.replace(/[^0-9]/g, '')"
                 @keyup.enter="fetchDetails"
             >
-            <button @click="fetchDetails" :disabled="loading || cif_id.length !== 9">
+            <button @click="fetchDetails" :disabled="loading || cif_id.length < 4 || cif_id.length > 9">
                 <span v-if="loading">Searching...</span>
                 <span v-else>Search</span>
             </button>
@@ -220,7 +220,7 @@
         <div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
         <h2 style="color: #e74c3c;">Access Denied</h2>
         <p>You do not have permission to access the <b>CIF Tracker</b>.</p>
-        <p style="color: var(--text-muted); font-size: 14px;">Access Requirement: CIF Tracker role and a valid designation (BM, BOM, or COM).</p>
+        <p style="color: var(--text-muted); font-size: 14px;">Only BOM, ABM, BM, and COM users have access to the CIF Tracker, please connect with them for assistance.</p>
         <button onclick="window.location.href='/'" style="margin-top: 20px;">Back to Home</button>
     </div>
     {% endif %}
