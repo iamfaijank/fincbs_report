@@ -10,7 +10,7 @@ def get_context(context):
     context.has_access = check_user_access()
 
 def check_user_access():
-    """Helper to check if user has 'CIF Tracker' role AND appropriate designation"""
+    """Helper to check if user has access based on designation OR role"""
     user = frappe.session.user
     if user == "Administrator":
         return True
@@ -19,11 +19,14 @@ def check_user_access():
     if "System Manager" in user_roles:
         return True
         
+    # Check designation first (Full access for these designations)
+    designation = frappe.db.get_value("Employee", {"user_id": user}, "designation")
+    if designation in ['BRANCH MANAGER', 'Branch Operation Manager', 'CLUSTER OPERATION MANAGER', 'Asst. Branch Manager']:
+        return True
+
+    # Fallback to role-based access if designation doesn't match
     if "CIF Tracker" in user_roles:
-        # Check designation for CIF Tracker role holders
-        designation = frappe.db.get_value("Employee", {"user_id": user}, "designation")
-        if designation in ['BRANCH MANAGER', 'Branch Operation Manager', 'CLUSTER OPERATION MANAGER', 'Asst. Branch Manager']:
-            return True
+        return True
         
     return False
 
@@ -31,7 +34,7 @@ def check_user_access():
 def get_cif_details(cif_id):
     # Security check for API call
     if not check_user_access():
-        frappe.throw("Access Denied: You must have the 'CIF Tracker' role AND a valid designation (Branch Manager, Branch Operation Manager, Asst. Branch Manager or Cluster Operation Manager).", frappe.PermissionError)
+        frappe.throw("Access Denied: You must have a valid designation (BM, BOM, ABM, COM) or the 'CIF Tracker' role.", frappe.PermissionError)
 
     if not cif_id:
         return {"success": False, "error": "CIF ID is required"}
