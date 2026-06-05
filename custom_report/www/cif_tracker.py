@@ -34,7 +34,7 @@ def check_user_access():
 def get_cif_details(cif_id):
     # Security check for API call
     if not check_user_access():
-        frappe.throw("Access Denied: You must have a valid designation (BM, BOM, ABM, COM) or the 'CIF Tracker' role.", frappe.PermissionError)
+        frappe.throw("Only BOM, ABM, BM, and COM users have access to the CIF Tracker; please connect with them for assistance.", frappe.PermissionError)
 
     if not cif_id:
         return {"success": False, "error": "CIF ID is required"}
