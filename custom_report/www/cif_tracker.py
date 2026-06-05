@@ -36,8 +36,8 @@ def get_cif_details(cif_id):
     if not check_user_access():
         frappe.throw("Only BOM, ABM, BM, and COM users have access to the CIF Tracker; please connect with them for assistance.", frappe.PermissionError)
 
-    if not cif_id:
-        return {"success": False, "error": "CIF ID is required"}
+    if not cif_id or len(str(cif_id)) < 4 or len(str(cif_id)) > 9:
+        return {"success": False, "error": "CIF ID must be between 4 and 9 digits"}
 
     conn = None
     try:
