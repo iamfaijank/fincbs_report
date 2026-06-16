@@ -21,7 +21,7 @@ def check_user_access():
         
     # Check designation first (Full access for these designations)
     designation = frappe.db.get_value("Employee", {"user_id": user}, "designation")
-    if designation in ['BRANCH MANAGER', 'Branch Operation Manager', 'CLUSTER OPERATION MANAGER', 'Asst. Branch Manager']:
+    if designation in ['BRANCH MANAGER', 'Branch Operation Manager', 'CLUSTER OPERATION MANAGER', 'Asst. Branch Manager', 'BRANCH MANAGER JLL','Sr. Branch Manager','Asst. Branch Manager JLL']:
         return True
 
     # Fallback to role-based access if designation doesn't match
@@ -34,7 +34,7 @@ def check_user_access():
 def get_cif_details(cif_id):
     # Security check for API call
     if not check_user_access():
-        frappe.throw("Only BOM, ABM, BM, and COM users have access to the CIF Tracker; please connect with them for assistance.", frappe.PermissionError)
+        frappe.throw("Only BOM, ABM, BM, Sr. BM and COM users have access to the CIF Tracker; please connect with them for assistance.", frappe.PermissionError)
 
     if not cif_id or len(str(cif_id)) < 4 or len(str(cif_id)) > 9:
         return {"success": False, "error": "CIF ID must be between 4 and 9 digits"}
