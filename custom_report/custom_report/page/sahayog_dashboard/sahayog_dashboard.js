@@ -3347,7 +3347,7 @@ class DrishtiDashboard {
 		let totalAch = 0;
 		reaggregatedZoneData.forEach(item => {
 			if (item.isZoneTotal) {
-				if (this.state.viewType === "Quarterly") {
+				if (this.state.viewType === "Quarterly" || this.state.viewType === "Yearly") {
 					this.months.forEach(month => {
 						const mdata = item.months[month.key];
 						if (mdata) {
@@ -3369,6 +3369,8 @@ class DrishtiDashboard {
 		let targetLabelText = `${this.normalizeTargetType(this.state.targetType)} target`;
 		if (this.state.viewType === "Quarterly") {
 			targetLabelText = "Quarterly target";
+		} else if (this.state.viewType === "Yearly") {
+			targetLabelText = "Yearly target";
 		}
 
 		this.page.main
