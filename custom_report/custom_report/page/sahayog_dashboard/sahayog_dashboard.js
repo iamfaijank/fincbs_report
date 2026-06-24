@@ -483,6 +483,29 @@ class DrishtiDashboard {
 		$(`<style>${style}</style>`).appendTo("head");
 	}
 
+	getQuarterFromDate(dateStr) {
+		const date = new Date(dateStr || frappe.datetime.get_today());
+		const month = date.getMonth(); // 0-indexed
+		if (month >= 3 && month <= 5) return 'Q1';
+		if (month >= 6 && month <= 8) return 'Q2';
+		if (month >= 9 && month <= 11) return 'Q3';
+		return 'Q4';
+	}
+
+	getQuarterDate(quarter, fy) {
+		if (!fy) return frappe.datetime.get_today();
+		const startYear = fy.split("-")[0];
+		const endYear = fy.split("-")[1] ? ("20" + fy.split("-")[1]).replace("2020", "20") : (parseInt(startYear) + 1).toString();
+		const endYearFull = endYear.length === 2 ? "20" + endYear : endYear;
+		switch (quarter) {
+			case 'Q1': return `${startYear}-06-30`;
+			case 'Q2': return `${startYear}-09-30`;
+			case 'Q3': return `${startYear}-12-31`;
+			case 'Q4': return `${endYearFull}-03-31`;
+			default: return frappe.datetime.get_today();
+		}
+	}
+
 	processNewApiResponse() {
 		const data = this.data;
 
@@ -492,6 +515,21 @@ class DrishtiDashboard {
 			display: m.display,
 			date: m.date,
 		}));
+
+		if (this.state.viewType === "Quarterly") {
+			const startYear = this.state.financialYear ? this.state.financialYear.split("-")[0] : new Date().getFullYear().toString();
+			let endYear = this.state.financialYear ? this.state.financialYear.split("-")[1] : (parseInt(startYear) + 1).toString();
+			if (endYear && endYear.length === 2) endYear = "20" + endYear;
+			
+			const qMap = {
+				'Q1': [{key:'APR', display:`APR-${startYear.slice(-2)}`, date:`${startYear}-04-01`}, {key:'MAY', display:`MAY-${startYear.slice(-2)}`, date:`${startYear}-05-01`}, {key:'JUN', display:`JUN-${startYear.slice(-2)}`, date:`${startYear}-06-01`}],
+				'Q2': [{key:'JUL', display:`JUL-${startYear.slice(-2)}`, date:`${startYear}-07-01`}, {key:'AUG', display:`AUG-${startYear.slice(-2)}`, date:`${startYear}-08-01`}, {key:'SEP', display:`SEP-${startYear.slice(-2)}`, date:`${startYear}-09-01`}],
+				'Q3': [{key:'OCT', display:`OCT-${startYear.slice(-2)}`, date:`${startYear}-10-01`}, {key:'NOV', display:`NOV-${startYear.slice(-2)}`, date:`${startYear}-11-01`}, {key:'DEC', display:`DEC-${startYear.slice(-2)}`, date:`${startYear}-12-01`}],
+				'Q4': [{key:'JAN', display:`JAN-${endYear.slice(-2)}`, date:`${endYear}-01-01`}, {key:'FEB', display:`FEB-${endYear.slice(-2)}`, date:`${endYear}-02-01`}, {key:'MAR', display:`MAR-${endYear.slice(-2)}`, date:`${endYear}-03-01`}]
+			};
+			const quarter = this.state.selectedQuarter || this.getQuarterFromDate(this.state.selectedDate || frappe.datetime.get_today());
+			this.months = qMap[quarter] || this.months;
+		}
 
 		// Direct mapping
 		this.zoneData = data.zone_wise;
@@ -561,6 +599,7 @@ class DrishtiDashboard {
 				queryParams.branchSearchTerm || this.state.branchSearchTerm;
 			this.state.selectedMonth = queryParams.selectedMonth || this.state.selectedMonth;
 			this.state.selectedSegment = queryParams.selectedSegment || this.state.selectedSegment;
+			this.state.selectedQuarter = queryParams.selectedQuarter || this.state.selectedQuarter;
 
 			if (queryParams.selectedCategories) {
 				this.state.selectedCategories = queryParams.selectedCategories
@@ -584,6 +623,7 @@ class DrishtiDashboard {
 			targetType: this.state.targetType,
 			formatMode: this.state.formatMode,
 			selectedDate: this.state.selectedDate,
+			selectedQuarter: this.state.selectedQuarter,
 			selectedRegion: this.state.selectedRegion,
 			branchSearchTerm: this.state.branchSearchTerm,
 			selectedMonth: this.state.selectedMonth,
@@ -619,6 +659,16 @@ class DrishtiDashboard {
 		this.page.main
 			.find(`.view-toggle-btn[data-view="${this.state.viewType}"]`)
 			.addClass("active");
+
+		// Update Quarter toggle
+		if (this.state.viewType === "Quarterly") {
+			this.page.main.find("#quarter-selector-container").show();
+			this.page.main.find(".quarter-toggle-btn").removeClass("active btn-primary").addClass("btn-default");
+			const activeQ = this.state.selectedQuarter || this.getQuarterFromDate(this.state.selectedDate || frappe.datetime.get_today());
+			this.page.main.find(`.quarter-toggle-btn[data-quarter="${activeQ}"]`).removeClass("btn-default").addClass("active btn-primary");
+		} else {
+			this.page.main.find("#quarter-selector-container").hide();
+		}
 
 		// Update Target toggle
 		this.page.main.find(".target-toggle-btn").removeClass("active");
@@ -983,12 +1033,24 @@ class DrishtiDashboard {
                     </div>
 
                     <!-- View Toggle Buttons -->
-                    <div>
-                        <label style="font-weight: bold; color: #0d1b2a;">View:</label>
-                        <div class="btn-group" id="view-controls" role="group" style="margin-left: 8px;">
-                            <button type="button" class="btn btn-sm view-toggle-btn" data-view="Monthly">Monthly</button>
-                            <button type="button" class="btn btn-sm view-toggle-btn" data-view="Quarterly">Quarterly</button>
-                            <button type="button" class="btn btn-sm view-toggle-btn" data-view="Yearly">Yearly</button>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div>
+                            <label style="font-weight: bold; color: #0d1b2a;">View:</label>
+                            <div class="btn-group" id="view-controls" role="group" style="margin-left: 8px;">
+                                <button type="button" class="btn btn-sm view-toggle-btn" data-view="Monthly">Monthly</button>
+                                <button type="button" class="btn btn-sm view-toggle-btn" data-view="Quarterly">Quarterly</button>
+                                <button type="button" class="btn btn-sm view-toggle-btn" data-view="Yearly">Yearly</button>
+                            </div>
+                        </div>
+
+                        <!-- Quarter Selector (hidden by default) -->
+                        <div id="quarter-selector-container" style="display: none; padding-left: 45px;">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-xs quarter-toggle-btn" data-quarter="Q1">Q1</button>
+                                <button type="button" class="btn btn-xs quarter-toggle-btn" data-quarter="Q2">Q2</button>
+                                <button type="button" class="btn btn-xs quarter-toggle-btn" data-quarter="Q3">Q3</button>
+                                <button type="button" class="btn btn-xs quarter-toggle-btn" data-quarter="Q4">Q4</button>
+                            </div>
                         </div>
                     </div>
 
@@ -1120,6 +1182,15 @@ class DrishtiDashboard {
 			e.preventDefault();
 			const view = $(this).data("view");
 			self.page.main.find(`.view-toggle-btn[data-view="${view}"]`).trigger("click");
+		});
+
+		// Quarter Toggle Buttons
+		this.page.main.find(".quarter-toggle-btn").on("click", function () {
+			self.state.selectedQuarter = $(this).data("quarter");
+			self.state.selectedDate = self.getQuarterDate(self.state.selectedQuarter, self.state.financialYear);
+			self.updateUrlFromState();
+			self.updateUiFromState();
+			self.loadData();
 		});
 
 		// Target Toggle Buttons
