@@ -55,12 +55,65 @@ class DrishtiDashboard {
 
 	init() {
 		this.setupStyles();
+		this.setupBranchProfilePopup();
 		this.createControls();
 		this.createFilterTags();
 		this.createTabsAndContainer();
 		this.updateStateFromUrl(); // Read from URL and update state
 		this.updateUiFromState(); // Update UI from state
 		this.loadFinancialYears();
+	}
+
+	setupBranchProfilePopup() {
+		if (!window.showBranchProfilePopup) {
+			window.showBranchProfilePopup = (sol_id) => {
+				let d = new frappe.ui.Dialog({
+					title: 'Branch Profile - ' + sol_id,
+					size: 'extra-large',
+					minimizable: true
+				});
+
+				d.$body.html(`
+					<iframe src="/branch_profile?sol_id=${sol_id}" style="width: 100%; height: 85vh; border: none; border-radius: 4px;"></iframe>
+				`);
+
+				d.$wrapper.css({
+					'backdrop-filter': 'blur(5px)',
+					'background-color': 'rgba(15, 23, 42, 0.6)'
+				});
+
+				// Increase the width of the modal
+				d.$wrapper.find('.modal-dialog').css({
+					'max-width': '80vw',
+					'width': '80vw'
+				});
+
+				// Add Full Screen button before the close button
+				const fullScreenBtn = $('<button class="btn btn-default btn-xs" style="margin-right: 12px; font-weight: 500; border-radius: 4px;"><i class="fa fa-external-link"></i> Full Screen</button>');
+				fullScreenBtn.on('click', function() {
+					window.location.href = '/branch_profile?sol_id=' + sol_id;
+				});
+				
+				let actions = d.$wrapper.find('.modal-actions');
+				if (actions.length > 0) {
+					actions.prepend(fullScreenBtn);
+				} else {
+					// Fallback for older Frappe versions
+					let closeBtn = d.$wrapper.find('.modal-header .btn-close, .modal-header .close');
+					if (closeBtn.length > 0) {
+						closeBtn.before(fullScreenBtn);
+					}
+				}
+
+				// Some extra styling for the dialog to look modern and hide the default padding
+				d.$body.css({
+					'padding': '0',
+					'overflow': 'hidden'
+				});
+
+				d.show();
+			};
+		}
 	}
 
 	loadFinancialYears() {
@@ -3108,8 +3161,8 @@ class DrishtiDashboard {
 		html += `<td>
 			<div class="branch-info">
 				<div class="branch-code-name">
-					<a onclick="window.location.href='/branch_profile?sol_id=${branch.sol_id}'; return false;" class="branch-code-link">${branch.sol_id}</a>
-					<a onclick="window.location.href='/branch_profile?sol_id=${branch.sol_id}'; return false;" class="branch-name-link">${branch.branch}</a>
+					<a onclick="window.showBranchProfilePopup('${branch.sol_id}'); return false;" class="branch-code-link" style="cursor: pointer; text-decoration: underline;">${branch.sol_id}</a>
+					<a onclick="window.showBranchProfilePopup('${branch.sol_id}'); return false;" class="branch-name-link" style="cursor: pointer;">${branch.branch}</a>
 				</div>
 				<div class="branch-zone-region">
 					<span class="zone-badge">${branch.zone}</span>
