@@ -3366,9 +3366,14 @@ class DrishtiDashboard {
 		});
 		
 		this.page.main.find("#summary-target-amount").text("₹" + this.formatCurrency(totalTarget));
+		let targetLabelText = `${this.normalizeTargetType(this.state.targetType)} target`;
+		if (this.state.viewType === "Quarterly") {
+			targetLabelText = "Quarterly target";
+		}
+
 		this.page.main
 			.find("#summary-target-label")
-			.text(`${this.normalizeTargetType(this.state.targetType)} target`);
+			.text(targetLabelText);
 		this.page.main.find("#summary-achievement-amount").text("₹" + this.formatCurrency(totalAch));
 		
 		// Achievement Percentage
