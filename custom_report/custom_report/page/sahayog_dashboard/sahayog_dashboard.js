@@ -74,8 +74,19 @@ class DrishtiDashboard {
 				});
 
 				d.$body.html(`
-					<iframe src="/branch_profile?sol_id=${sol_id}" style="width: 100%; height: 85vh; border: none; border-radius: 4px;"></iframe>
+					<div id="iframe-loader-${sol_id}" style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 85vh; width: 100%;">
+						<div class="spinner-border text-primary" role="status" style="margin-bottom: 15px; width: 3rem; height: 3rem; animation: spinner-border .75s linear infinite;"></div>
+						<h4 style="color: #475569; font-weight: 600;">Branch Profile is Loading...</h4>
+						<p style="color: #64748b;">Please wait</p>
+					</div>
+					<iframe id="iframe-content-${sol_id}" src="/branch_profile?sol_id=${sol_id}" style="width: 100%; height: 85vh; border: none; border-radius: 4px; display: none;"></iframe>
 				`);
+
+				d.$body.find(`#iframe-content-${sol_id}`).on('load', function() {
+					d.$body.find(`#iframe-loader-${sol_id}`).fadeOut(200, function() {
+						d.$body.find(`#iframe-content-${sol_id}`).fadeIn(200);
+					});
+				});
 
 				d.$wrapper.css({
 					'backdrop-filter': 'blur(5px)',
