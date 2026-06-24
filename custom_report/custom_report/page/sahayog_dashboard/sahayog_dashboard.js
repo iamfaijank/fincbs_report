@@ -663,9 +663,9 @@ class DrishtiDashboard {
 		// Update Quarter toggle
 		if (this.state.viewType === "Quarterly") {
 			this.page.main.find("#quarter-selector-container").show();
-			this.page.main.find(".quarter-toggle-btn").removeClass("active btn-primary").addClass("btn-default");
+			this.page.main.find(".quarter-toggle-btn").removeClass("active");
 			const activeQ = this.state.selectedQuarter || this.getQuarterFromDate(this.state.selectedDate || frappe.datetime.get_today());
-			this.page.main.find(`.quarter-toggle-btn[data-quarter="${activeQ}"]`).removeClass("btn-default").addClass("active btn-primary");
+			this.page.main.find(`.quarter-toggle-btn[data-quarter="${activeQ}"]`).addClass("active");
 		} else {
 			this.page.main.find("#quarter-selector-container").hide();
 		}
@@ -1044,10 +1044,10 @@ class DrishtiDashboard {
                         <!-- Quarter Selector (hidden by default) -->
                         <div id="quarter-selector-container" style="display: none; margin-left: 10px;">
                             <div class="btn-group" role="group">
-                                <button type="button" class="btn btn-sm quarter-toggle-btn btn-default" data-quarter="Q1">Q1</button>
-                                <button type="button" class="btn btn-sm quarter-toggle-btn btn-default" data-quarter="Q2">Q2</button>
-                                <button type="button" class="btn btn-sm quarter-toggle-btn btn-default" data-quarter="Q3">Q3</button>
-                                <button type="button" class="btn btn-sm quarter-toggle-btn btn-default" data-quarter="Q4">Q4</button>
+                                <button type="button" class="btn btn-sm quarter-toggle-btn" data-quarter="Q1">Q1</button>
+                                <button type="button" class="btn btn-sm quarter-toggle-btn" data-quarter="Q2">Q2</button>
+                                <button type="button" class="btn btn-sm quarter-toggle-btn" data-quarter="Q3">Q3</button>
+                                <button type="button" class="btn btn-sm quarter-toggle-btn" data-quarter="Q4">Q4</button>
                             </div>
                         </div>
                     </div>
