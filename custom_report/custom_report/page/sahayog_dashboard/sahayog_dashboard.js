@@ -1033,23 +1033,21 @@ class DrishtiDashboard {
                     </div>
 
                     <!-- View Toggle Buttons -->
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <div>
-                            <label style="font-weight: bold; color: #0d1b2a;">View:</label>
-                            <div class="btn-group" id="view-controls" role="group" style="margin-left: 8px;">
-                                <button type="button" class="btn btn-sm view-toggle-btn" data-view="Monthly">Monthly</button>
-                                <button type="button" class="btn btn-sm view-toggle-btn" data-view="Quarterly">Quarterly</button>
-                                <button type="button" class="btn btn-sm view-toggle-btn" data-view="Yearly">Yearly</button>
-                            </div>
+                    <div style="display: flex; align-items: center;">
+                        <label style="font-weight: bold; color: #0d1b2a;">View:</label>
+                        <div class="btn-group" id="view-controls" role="group" style="margin-left: 8px;">
+                            <button type="button" class="btn btn-sm view-toggle-btn" data-view="Monthly">Monthly</button>
+                            <button type="button" class="btn btn-sm view-toggle-btn" data-view="Quarterly">Quarterly</button>
+                            <button type="button" class="btn btn-sm view-toggle-btn" data-view="Yearly">Yearly</button>
                         </div>
 
                         <!-- Quarter Selector (hidden by default) -->
-                        <div id="quarter-selector-container" style="display: none; padding-left: 45px;">
+                        <div id="quarter-selector-container" style="display: none; margin-left: 10px;">
                             <div class="btn-group" role="group">
-                                <button type="button" class="btn btn-xs quarter-toggle-btn" data-quarter="Q1">Q1</button>
-                                <button type="button" class="btn btn-xs quarter-toggle-btn" data-quarter="Q2">Q2</button>
-                                <button type="button" class="btn btn-xs quarter-toggle-btn" data-quarter="Q3">Q3</button>
-                                <button type="button" class="btn btn-xs quarter-toggle-btn" data-quarter="Q4">Q4</button>
+                                <button type="button" class="btn btn-sm quarter-toggle-btn btn-default" data-quarter="Q1">Q1</button>
+                                <button type="button" class="btn btn-sm quarter-toggle-btn btn-default" data-quarter="Q2">Q2</button>
+                                <button type="button" class="btn btn-sm quarter-toggle-btn btn-default" data-quarter="Q3">Q3</button>
+                                <button type="button" class="btn btn-sm quarter-toggle-btn btn-default" data-quarter="Q4">Q4</button>
                             </div>
                         </div>
                     </div>
