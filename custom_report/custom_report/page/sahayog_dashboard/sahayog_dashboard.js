@@ -3283,10 +3283,20 @@ class DrishtiDashboard {
 		let totalAch = 0;
 		reaggregatedZoneData.forEach(item => {
 			if (item.isZoneTotal) {
-				const mdata = item.months[currentMonthKey];
-				if (mdata) {
-					totalTarget += mdata.target || 0;
-					totalAch += mdata.achievement || 0;
+				if (this.state.viewType === "Quarterly") {
+					this.months.forEach(month => {
+						const mdata = item.months[month.key];
+						if (mdata) {
+							totalTarget += mdata.target || 0;
+							totalAch += mdata.achievement || 0;
+						}
+					});
+				} else {
+					const mdata = item.months[currentMonthKey];
+					if (mdata) {
+						totalTarget += mdata.target || 0;
+						totalAch += mdata.achievement || 0;
+					}
 				}
 			}
 		});
