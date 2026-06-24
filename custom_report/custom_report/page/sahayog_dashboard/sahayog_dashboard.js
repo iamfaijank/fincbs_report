@@ -1175,6 +1175,7 @@ class DrishtiDashboard {
 			self.state.viewType = $(this).data("view");
 			self.applyPreviousFinancialYearDefaultDate();
 			self.updateUrlFromState();
+			self.updateUiFromState();
 			self.loadData();
 		});
 
