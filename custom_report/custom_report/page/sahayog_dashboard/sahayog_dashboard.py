@@ -322,19 +322,27 @@ def get_latest_agent_report_date():
 
 @frappe.whitelist(allow_guest=True)
 def get_available_financial_years():
-    """Returns distinct financial years from Target Vs Achivement doctype, sorted descending."""
-    fy_list = frappe.db.sql(
-        """SELECT DISTINCT financial_year FROM `tabTarget Vs Achivement`
-           WHERE financial_year IS NOT NULL AND financial_year != ''
-           ORDER BY financial_year DESC""",
-        as_dict=True
-    )
-    return [fy.financial_year for fy in fy_list]
+    """Returns dynamically generated Indian financial years (current and past two)."""
+    import datetime
+    today = datetime.date.today()
+    
+    if today.month >= 4:
+        current_fy_start = today.year
+    else:
+        current_fy_start = today.year - 1
+        
+    fy_list = []
+    for i in range(3):
+        start_year = current_fy_start - i
+        end_year = start_year + 1
+        fy_list.append(f"{start_year}-{end_year}")
+        
+    return fy_list
 
 
 @frappe.whitelist(allow_guest=True)
 def get_sahayog_dashboard(
-    financial_year="2025-2026",
+    financial_year=None,
     view="Monthly",
     target_type="Monthly",
     filters=None,
@@ -343,6 +351,12 @@ def get_sahayog_dashboard(
     user = frappe.session.user
     perms = get_user_report_permissions(user)
     target_type = normalize_target_type(target_type)
+    
+    if not financial_year:
+        import datetime
+        today = datetime.date.today()
+        current_fy_start = today.year if today.month >= 4 else today.year - 1
+        financial_year = f"{current_fy_start}-{current_fy_start + 1}"
     
     months = get_fy_months_with_dates(financial_year, view, selected_date, target_type)
     if not months:
