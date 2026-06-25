@@ -2673,7 +2673,7 @@
 					activeEl.textContent = this.formatIndianNumber(activeNum);
 
 					if (inactiveCountEl) inactiveCountEl.textContent = this.formatIndianNumber(inactiveNum);
-					if (inactivePercEl) inactivePercEl.textContent = inactivePercentage.toFixed(1) + "%";
+					if (inactivePercEl) inactivePercEl.textContent = Math.round(inactivePercentage) + "%";
 				},
 
 				updateCategoryUI(period) {
