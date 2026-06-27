@@ -2389,27 +2389,31 @@
 
 				/* ---------------- Init ---------------- */
 				init() {
-					// Populate dynamic financial years (current + 4 previous years)
+					// Populate dynamic financial years starting from 2025-2026 up to current year
 					const fySelectEl = document.getElementById("fy-select");
 					if (fySelectEl) {
+						const startYrLimit = 2025; // starts from 2025-2026
 						const today = new Date();
 						const currentMonth = today.getMonth();
 						const currentYear = today.getFullYear();
 						
-						let startYear;
+						let currentStartYear;
 						if (currentMonth >= 3) { // April is month index 3
-							startYear = currentYear;
+							currentStartYear = currentYear;
 						} else {
-							startYear = currentYear - 1;
+							currentStartYear = currentYear - 1;
 						}
 						
 						const years = [];
-						for (let i = 0; i < 5; i++) {
-							const yr = startYear - i;
+						for (let yr = startYrLimit; yr <= currentStartYear; yr++) {
 							years.push(`${yr}-${yr + 1}`);
 						}
 						
 						fySelectEl.innerHTML = years.map(fy => `<option value="${fy}">${fy}</option>`).join("");
+						
+						// Default select the current financial year
+						const currentFy = `${currentStartYear}-${currentStartYear + 1}`;
+						fySelectEl.value = currentFy;
 					}
 
 					this.loadRecentBranches(); // Load recent branches on init
