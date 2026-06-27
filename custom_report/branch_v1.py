@@ -502,7 +502,7 @@ def get_performance_data(sol_id, date=None, fy=None):
             "financial_year": fiscal_year,
             "performance": {
                 "monthly": format_ui_output(res.achievement, targets.get("monthly", 0)),
-                "ytd": format_ui_output(res.achievement, targets.get("ytd", 0)),
+                "ytd": format_ui_output(res.yearly_achievement, targets.get("ytd", 0)),
                 "yearly": format_ui_output(res.yearly_achievement, targets.get("yearly", 0))
             }
         }
