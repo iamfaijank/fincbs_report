@@ -103,59 +103,8 @@ def get_branch_profile_data(sol_id: str):
 
 
 # ============================================================================
-# PERFORMANCE DATA API
+# PERFORMANCE DATA API (Note: Implementation moved to the bottom of the file)
 # ============================================================================
-
-@frappe.whitelist()
-def get_performance_data(sol_id: str, date: Optional[str] = None):
-    """
-    Get branch performance data for a specific date
-    If date not provided, latest available date is used
-    """
-    try:
-        selected_date = date or get_latest_performance_date(sol_id)
-
-        if not selected_date:
-            return {
-                "data_exists": False,
-                "latest_date": None,
-                "message": "No performance data available",
-            }
-
-        record = frappe.db.get_value(
-            "Branch Category Report",
-            {"sol_id": sol_id, "date": selected_date},
-            ["achievement", "yearly_achievement"],
-            as_dict=True,
-        )
-
-        if record:
-            fiscal_year = get_fiscal_year(selected_date)
-            targets = get_targets(sol_id, fiscal_year)
-
-            return {
-                "data_exists": True,
-                "monthly_achievement": float(record.achievement or 0),
-                "monthly_target": targets.get("monthly", 0),
-                "yearly_achievement": float(record.yearly_achievement or 0),
-                "yearly_target": targets.get("yearly", 0),
-                "ytd_target": targets.get("ytd", 0),
-                "selected_date": selected_date,
-                "financial_year": fiscal_year,
-            }
-
-        latest_date = get_latest_performance_date(sol_id)
-        return {
-            "data_exists": False,
-            "latest_date": latest_date,
-        }
-
-    except Exception:
-        frappe.log_error(frappe.get_traceback(), "Branch Performance API Error")
-        return {
-            "data_exists": False,
-            "latest_date": None,
-        }
 
 
 
@@ -499,17 +448,36 @@ def format_ui_output(achievement, target):
     }
 
 @frappe.whitelist()
-def get_performance_data(sol_id, date=None):
+def get_performance_data(sol_id, date=None, fy=None):
     try:
+        start_date = None
+        end_date = None
+        if fy:
+            try:
+                parts = fy.split("-")
+                if len(parts) == 2:
+                    start_date = f"{parts[0]}-04-01"
+                    end_date = f"{parts[1]}-03-31"
+            except Exception:
+                pass
+
         # 1. Fetch Latest Record for the SOL
-        # Agar date pass nahi ki, toh latest record uthayega
-        latest_record = frappe.db.sql("""
-            SELECT date, achievement, yearly_achievement 
-            FROM `tabBranch Category Report`
-            WHERE sol_id = %s 
-            ORDER BY date DESC 
-            LIMIT 1
-        """, (sol_id,), as_dict=1)
+        if start_date and end_date:
+            latest_record = frappe.db.sql("""
+                SELECT date, achievement, yearly_achievement 
+                FROM `tabBranch Category Report`
+                WHERE sol_id = %s AND date >= %s AND date <= %s
+                ORDER BY date DESC 
+                LIMIT 1
+            """, (sol_id, start_date, end_date), as_dict=1)
+        else:
+            latest_record = frappe.db.sql("""
+                SELECT date, achievement, yearly_achievement 
+                FROM `tabBranch Category Report`
+                WHERE sol_id = %s 
+                ORDER BY date DESC 
+                LIMIT 1
+            """, (sol_id,), as_dict=1)
 
         if not latest_record:
             return {
@@ -522,7 +490,7 @@ def get_performance_data(sol_id, date=None):
         report_date = res.date
         
         # 2. Get Targets
-        fiscal_year = get_fiscal_year(report_date)
+        fiscal_year = fy or get_fiscal_year(report_date)
         targets = get_targets(sol_id, fiscal_year) 
 
         # 3. Final Response with Monthly, YTD, and Yearly segments

@@ -2389,6 +2389,29 @@
 
 				/* ---------------- Init ---------------- */
 				init() {
+					// Populate dynamic financial years (current + 4 previous years)
+					const fySelectEl = document.getElementById("fy-select");
+					if (fySelectEl) {
+						const today = new Date();
+						const currentMonth = today.getMonth();
+						const currentYear = today.getFullYear();
+						
+						let startYear;
+						if (currentMonth >= 3) { // April is month index 3
+							startYear = currentYear;
+						} else {
+							startYear = currentYear - 1;
+						}
+						
+						const years = [];
+						for (let i = 0; i < 5; i++) {
+							const yr = startYear - i;
+							years.push(`${yr}-${yr + 1}`);
+						}
+						
+						fySelectEl.innerHTML = years.map(fy => `<option value="${fy}">${fy}</option>`).join("");
+					}
+
 					this.loadRecentBranches(); // Load recent branches on init
 					const debouncedSearch = this.debounce(this.fetchSuggestions, 250);
 
@@ -2417,6 +2440,17 @@
 						const sol = new URLSearchParams(location.search).get("sol_id");
 						if (sol) this.loadBranch(sol, false);
 					});
+
+					/* --- Financial Year Filter Logic --- */
+					const fySelect = document.getElementById('fy-select');
+					if (fySelect) {
+						fySelect.addEventListener('change', () => {
+							const solId = BranchDashboard.state.currentSolId;
+							if (solId) {
+								BranchManagerProfile.loadPerformanceData(solId);
+							}
+						});
+					}
 
 					/* --- Category Tab Logic --- */
 					const categoryTabs = document.getElementById('category-tabs');
@@ -2629,7 +2663,7 @@
 						}
 						return numValue.toFixed(2);
 					} else {
-						return this.formatIndianNumber(numValue);
+						return this.formatIndianNumber(numValue.toFixed(2));
 					}
 				},
 
@@ -2742,7 +2776,7 @@
 
 					// Calculate Manpower Percentage
 					const mpPerc = budget > 0 ? (actual / budget * 100) : 0;
-					this.el.manpowerPercentage.textContent = mpPerc.toFixed(2) + "%";
+					this.el.manpowerPercentage.textContent = Math.round(mpPerc) + "%";
 
 					if (actual > budget) {
 						const excess = actual - budget;
@@ -2854,10 +2888,10 @@
 					this.el.rdSmbgPending.textContent = this.formatAmount(d.rd_smbg_pending);
 
 					// Populate Productivity Details
-					if (this.el.totalProductivity) this.el.totalProductivity.textContent = this.formatIndianNumber(parseFloat(d.total_productivity || 0).toFixed(2));
-					if (this.el.bdoAndProductivity) this.el.bdoAndProductivity.textContent = this.formatIndianNumber(parseFloat(d.bdo_and_productivity || 0).toFixed(2));
-					if (this.el.bdeAndProductivity) this.el.bdeAndProductivity.textContent = this.formatIndianNumber(parseFloat(d.bde_and_productivity || 0).toFixed(2));
-					if (this.el.bdoProductivity) this.el.bdoProductivity.textContent = this.formatIndianNumber(parseFloat(d.bdo_productivity || 0).toFixed(2));
+					if (this.el.totalProductivity) this.el.totalProductivity.textContent = this.formatAmount(d.total_productivity);
+					if (this.el.bdoAndProductivity) this.el.bdoAndProductivity.textContent = this.formatAmount(d.bdo_and_productivity);
+					if (this.el.bdeAndProductivity) this.el.bdeAndProductivity.textContent = this.formatAmount(d.bde_and_productivity);
+					if (this.el.bdoProductivity) this.el.bdoProductivity.textContent = this.formatAmount(d.bdo_productivity);
 					if (this.el.nmabAc) this.el.nmabAc.textContent = this.formatIndianNumber(d.nmab_ac);
 					if (this.el.mabAc) this.el.mabAc.textContent = this.formatIndianNumber(d.mab_ac);
 
@@ -3028,18 +3062,43 @@
 						this.loadEmployeeDetails(solId);
 
 						// --- Fetch Performance Data ---
-						const selectedFy = this.el.fySelect.value;
-						const perfR = await fetch(`/api/method/custom_report.branch_v1.get_performance_data?sol_id=${solId}&fy=${selectedFy}`);
-						const perfJ = await perfR.json();
-						if (perfJ.message && perfJ.message.data_exists) {
-							this.state.performanceData = perfJ.message.performance;
-							this.updateCategoryUI('monthly');
-						}
+						await this.loadPerformanceData(solId);
 						// ------------------------------
 					} catch (e) {
 						console.error("Profile Load Error:", e);
 						this.el.name.textContent = "Branch Manager data unavailable";
 					}
+				},
+
+				async loadPerformanceData(solId) {
+					try {
+						const selectedFy = this.el.fySelect.value;
+						const perfR = await fetch(`/api/method/custom_report.branch_v1.get_performance_data?sol_id=${solId}&fy=${selectedFy}`);
+						const perfJ = await perfR.json();
+						if (perfJ.message && perfJ.message.data_exists) {
+							this.state.performanceData = perfJ.message.performance;
+							const activeTab = document.querySelector('#category-tabs .category-tab.active');
+							const period = activeTab ? activeTab.dataset.period : 'monthly';
+							this.updateCategoryUI(period);
+						} else {
+							this.state.performanceData = null;
+							this.clearCategoryUI();
+						}
+					} catch (e) {
+						console.error("Performance Load Error:", e);
+						this.state.performanceData = null;
+						this.clearCategoryUI();
+					}
+				},
+
+				clearCategoryUI() {
+					this.el.performanceStatus.textContent = "--";
+					this.el.catTargetVal.textContent = "--";
+					this.el.catAchievementVal.textContent = "--";
+					this.el.catPercentageVal.textContent = "0.00%";
+					
+					const badges = this.el.categoryHierarchy.querySelectorAll('.hierarchy-badge');
+					badges.forEach(b => b.classList.remove('active'));
 				},
 			};
 			document.addEventListener("DOMContentLoaded", () => BranchDashboard.init());
