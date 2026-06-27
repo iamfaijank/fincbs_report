@@ -2405,7 +2405,7 @@
 						}
 						
 						const years = [];
-						for (let yr = startYrLimit; yr <= currentStartYear; yr++) {
+						for (let yr = currentStartYear; yr >= startYrLimit; yr--) {
 							years.push(`${yr}-${yr + 1}`);
 						}
 						
