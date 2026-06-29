@@ -6,9 +6,12 @@
 frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
-		title: "DRISHTI",
+		title: "",
 		single_column: true,
 	});
+
+	// Hide default Drishti title heading
+	$(wrapper).find(".title-text").hide();
 
 	new DrishtiDashboard(page);
 };
