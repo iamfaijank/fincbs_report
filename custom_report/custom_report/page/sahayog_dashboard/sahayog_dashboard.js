@@ -858,20 +858,21 @@ class DrishtiDashboard {
                     </div>
                 </div>
             </div>
-            <div class="filter-tags-container">
+            <div class="filter-tags-row">
                 <!-- Zone Selection -->
-                <div class="filter-group">
-                    <span class="filter-group-label">Zone:</span>
-                    <div class="filter-tags" id="zone-tags"></div>
+                <div class="filter-tags-container zone-filter-container">
+                    <div class="filter-group">
+                        <span class="filter-group-label">Zone:</span>
+                        <div class="filter-tags" id="zone-tags"></div>
+                    </div>
                 </div>
 
-                <!-- Vertical Divider -->
-                <div class="filter-divider"></div>
-
                 <!-- Performance Categories -->
-                <div class="filter-group">
-                    <span class="filter-group-label">Category:</span>
-                    <div class="filter-tags" id="category-tags"></div>
+                <div class="filter-tags-container category-filter-container">
+                    <div class="filter-group">
+                        <span class="filter-group-label">Category:</span>
+                        <div class="filter-tags" id="category-tags"></div>
+                    </div>
                 </div>
             </div>
         `;
@@ -3546,50 +3547,53 @@ class DrishtiDashboard {
                     display: none !important;
                 }
 
-                /* Filter Tags Styles - Redesigned to modern clean horizontal layout */
+                /* Filter Tags Styles - Side-by-side separate cards with borders like KPIs */
+                .filter-tags-row {
+                    display: flex;
+                    gap: 12px;
+                    margin-bottom: 16px;
+                    flex-wrap: wrap;
+                    width: 100%;
+                }
+                .zone-filter-container {
+                    flex: 1;
+                    min-width: 280px;
+                }
+                .category-filter-container {
+                    flex: 1.8;
+                    min-width: 380px;
+                }
                 .filter-tags-container {
                     display: flex;
                     align-items: center;
                     flex-wrap: wrap;
-                    gap: 20px;
-                    margin-bottom: 20px;
-                    padding: 12px 24px;
+                    gap: 10px;
+                    padding: 6px 12px;
                     background: #ffffff;
-                    border: 1px solid #e2e8f0;
-                    border-radius: 12px;
-                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+                    border: 1px solid #cbd5e1;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
                 }
 
                 .filter-group {
                     display: flex;
                     align-items: center;
-                    gap: 12px;
+                    gap: 8px;
                 }
 
                 .filter-group-label {
-                    font-size: 14px;
+                    font-size: 13px;
                     font-weight: 700;
                     color: #0f172a;
                     white-space: nowrap;
                 }
 
-                .filter-divider {
-                    width: 1px;
-                    height: 28px;
-                    background-color: #cbd5e1;
-                    margin: 0 4px;
-                    align-self: center;
-                }
-
                 @media (max-width: 991px) {
-                    .filter-divider {
-                        display: none;
+                    .zone-filter-container, .category-filter-container {
+                        flex: 1 1 100%;
                     }
                     .filter-tags-container {
-                        flex-direction: column;
-                        align-items: flex-start;
-                        gap: 16px;
-                        padding: 16px;
+                        padding: 8px 12px;
                     }
                     .filter-group {
                         width: 100%;
