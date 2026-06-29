@@ -3542,6 +3542,10 @@ class DrishtiDashboard {
 	setupStyles() {
 		const styles = `
             <style>
+                .page-head .page-head-content {
+                    display: none !important;
+                }
+
                 /* Filter Tags Styles - Redesigned to modern clean horizontal layout */
                 .filter-tags-container {
                     display: flex;
