@@ -971,14 +971,14 @@ class DrishtiDashboard {
 
 	calculateCategoryPercentage(category) {
 		const total = this.categoryCounts["all"] || 0;
-		if (total === 0) return "0.0";
+		if (total === 0) return "0";
 
 		if (category === "all") {
-			return "100.0";
+			return "100";
 		}
 
 		const count = this.categoryCounts[category] || 0;
-		return ((count / total) * 100).toFixed(2);
+		return Math.round((count / total) * 100);
 	}
 
 	attachZoneTagEvents() {
