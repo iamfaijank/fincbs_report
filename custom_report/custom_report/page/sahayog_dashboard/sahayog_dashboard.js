@@ -1245,13 +1245,13 @@ class DrishtiDashboard {
 	// ========================================================================
 	createTabsAndContainer() {
 		const html = `
-            <div style="border: 1px solid #778da9; padding: 12px; background: #fff; border-radius: 6px; margin-top: 15px;">
+            <div style="border: 1px solid #cbd5e1; padding: 12px; background: #fff; border-radius: 8px; margin-top: 15px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);">
                 <!-- Filters Row -->
                 <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ddd;">
                     <!-- Financial Year -->
                     <div>
                         <label style="font-weight: bold; color: #0d1b2a;">FY:</label>
-                        <select id="fy-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;">
+                        <select id="fy-selector" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;">
                         </select>
                     </div>
 
@@ -1288,19 +1288,19 @@ class DrishtiDashboard {
                     <!-- Date Selector -->
                     <div id="date-selector-container">
                         <label style="font-weight: bold; color: #0d1b2a;">Date:</label>
-                        <input type="date" id="date-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;" />
+                        <input type="date" id="date-selector" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;" />
                     </div>
 
                     <!-- Region Filter -->
                     <div>
                         <label style="font-weight: bold; color: #0d1b2a;">Region:</label>
-                        <select id="region-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; min-width: 150px; background: white; color: #1b263b;">
+                        <select id="region-selector" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; margin-left: 8px; min-width: 150px; background: white; color: #1b263b;">
                             <option value="">All Regions</option>
                         </select>
                     </div>
                 </div>
 
-                <div id="tab-buttons" style="display: flex; align-items: center; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #778da9;">
+                <div id="tab-buttons" style="display: flex; align-items: center; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #cbd5e1;">
                     <button class="tab-btn" data-tab="zone">
                         Zone Wise
                     </button>
@@ -1319,7 +1319,7 @@ class DrishtiDashboard {
 
                     <!-- Search and Clear Actions -->
                     <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
-						<select id="segment-filter" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; background: white; color: #1b263b;">
+						<select id="segment-filter" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #1b263b;">
 							<option value="all">All Segments</option>
 							<option value="Top 25%">Top 25%</option>
 							<option value="Next 25%">Next 25%</option>
@@ -1327,7 +1327,7 @@ class DrishtiDashboard {
 							<option value="Bottom 25%">Bottom 25%</option>
 						</select>
                         <input type="text" id="branch-search" placeholder="Search branch..." 
-                               style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; min-width: 200px; background: white; color: #1b263b;" />
+                               style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b;" />
                         <button id="clear-filters" class="btn btn-secondary btn-sm" 
                                 style="background: #417d81; border-color: #1b263b; color: white; font-weight: 600;"
                                 title="Resets all filters to their default state and refreshes the dashboard.">
@@ -3931,7 +3931,7 @@ class DrishtiDashboard {
                 /* Toggle Button Styles */
                 .btn-group .btn {
                     background: #fff;
-                    border: 1px solid #778da9;
+                    border: 1px solid #cbd5e1;
                     color: #1b263b;
                     padding: 6px 12px;
                     font-size: 12px;
@@ -4018,7 +4018,7 @@ class DrishtiDashboard {
 
                 .zone-wise-table td {
                     padding: 10px 8px;
-                    border: 1px solid #778da9;
+                    border: 1px solid #cbd5e1;
                     text-align: center;
                 }
 
@@ -4067,7 +4067,7 @@ class DrishtiDashboard {
                     color: #e0e1dd;
                     padding: 12px 8px;
                     font-weight: 600;
-                    border: 1px solid #778da9;
+                    border: 1px solid #cbd5e1;
                     text-align: center;
                 }
 
@@ -4076,12 +4076,12 @@ class DrishtiDashboard {
                     color: #e0e1dd;
                     padding: 8px;
                     font-size: 11px;
-                    border: 1px solid #778da9;
+                    border: 1px solid #cbd5e1;
                 }
 
                 .category-table td {
                     padding: 10px 8px;
-                    border: 1px solid #778da9;
+                    border: 1px solid #cbd5e1;
                     text-align: center;
                 }
 
@@ -4176,7 +4176,7 @@ class DrishtiDashboard {
 
                 .branch-table td {
                     padding: 10px 8px;
-                    border: 1px solid #778da9;
+                    border: 1px solid #cbd5e1;
                 }
 
                 /* Agent Wise Table - Match Branch Table Styling */
@@ -4215,7 +4215,7 @@ class DrishtiDashboard {
                 }
                 .agent-wise-table td {
                     padding: 10px 8px;
-                    border: 1px solid #778da9;
+                    border: 1px solid #cbd5e1;
                 }
 
                 .sr-col {
