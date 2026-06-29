@@ -831,7 +831,7 @@ class DrishtiDashboard {
                     <div class="summary-info">
                         <span class="summary-label">Target Amount</span>
                         <span class="summary-value" id="summary-target-amount">₹163.04 Cr</span>
-                        <span class="summary-subtext muted" id="summary-target-label">Monthly target</span>
+                        <span class="summary-subtext success" id="summary-target-label">Monthly target</span>
                     </div>
                     <div class="summary-icon-box">
                         <i class="fa fa-bullseye"></i>
