@@ -3573,7 +3573,8 @@ class DrishtiDashboard {
                     border: 1px solid #cbd5e1;
                     border-radius: 8px;
                     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-                    height: 100%;
+                    align-self: stretch; /* Forces identical height stretch */
+                    box-sizing: border-box;
                 }
 
                 .filter-group {
