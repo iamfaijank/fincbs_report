@@ -591,8 +591,8 @@ class DrishtiDashboard {
 			}
 
 			.sahayog-dashboard-full-width .container {
-				max-width: 90% !important;
-				width: 90% !important;
+				max-width: 95% !important;
+				width: 95% !important;
 				padding-left: 0px !important;
 				padding-right: 0px !important;
 				margin: 0px auto !important;
