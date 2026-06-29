@@ -17,6 +17,14 @@ frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 };
 
 frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
+	// Clean up any old unmanaged container style tags from previous development sessions
+	$("head style").each(function() {
+		const text = $(this).text();
+		if (text.includes(".container") && text.includes("max-width: 100%") && !text.includes(".sahayog-dashboard-full-width")) {
+			$(this).remove();
+		}
+	});
+
 	// Add full width class to body for page-specific styling
 	$("body").addClass("sahayog-dashboard-full-width");
 
@@ -583,11 +591,11 @@ class DrishtiDashboard {
 			}
 
 			.sahayog-dashboard-full-width .container {
-				max-width: 100% !important;
-				width: 100% !important;
+				max-width: 90% !important;
+				width: 90% !important;
 				padding-left: 0px !important;
 				padding-right: 0px !important;
-				margin: 0px !important;
+				margin: 0px auto !important;
 			}
 			.sahayog-dashboard-full-width .container .page-body {
 				max-width: 100% !important;
