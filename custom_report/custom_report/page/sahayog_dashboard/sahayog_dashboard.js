@@ -54,6 +54,7 @@ class DrishtiDashboard {
 	}
 
 	init() {
+		this.setupLegacyStyles();
 		this.setupStyles();
 		this.setupBranchProfilePopup();
 		this.createControls();
@@ -212,7 +213,7 @@ class DrishtiDashboard {
 		return ["Monthly", "YTD", "Yearly"].includes(targetType) ? targetType : "Monthly";
 	}
 
-	setupStyles() {
+	setupLegacyStyles() {
 		// --- Font and Style Injection ---
 		const fontLink = document.createElement("link");
 		fontLink.href =
@@ -790,14 +791,17 @@ class DrishtiDashboard {
             </div>
             <div class="filter-tags-container">
                 <!-- Zone Selection -->
-                <div class="filter-section">
-                    <label class="filter-section-label">ZONE SELECTION</label>
+                <div class="filter-group">
+                    <span class="filter-group-label">Zone:</span>
                     <div class="filter-tags" id="zone-tags"></div>
                 </div>
 
+                <!-- Vertical Divider -->
+                <div class="filter-divider"></div>
+
                 <!-- Performance Categories -->
-                <div class="filter-section">
-                    <label class="filter-section-label">PERFORMANCE CATEGORIES</label>
+                <div class="filter-group">
+                    <span class="filter-group-label">Category:</span>
                     <div class="filter-tags" id="category-tags"></div>
                 </div>
             </div>
@@ -820,7 +824,7 @@ class DrishtiDashboard {
 		const allZonesActive = this.state.selectedZones.length === 0;
 		container.append(`
             <button class="filter-tag zone-tag ${allZonesActive ? "active" : ""}" data-zone="all">
-                All Zones
+                All
                 <span class="filter-tag-count">${allZonesCount}</span>
             </button>
         `);
@@ -829,7 +833,7 @@ class DrishtiDashboard {
 			const count = this.zoneCounts[zone] || 0;
 			const isActive = this.state.selectedZones.includes(zone);
 			const zoneNum = zone.match(/\d+/);
-			const displayName = zoneNum ? `Zone ${zoneNum[0]}` : zone;
+			const displayName = zoneNum ? `Z${zoneNum[0]}` : zone;
 
 			container.append(`
                 <button class="filter-tag zone-tag ${
@@ -865,9 +869,11 @@ class DrishtiDashboard {
             <button class="filter-tag category-tag all-tag ${
 				allCategoriesActive ? "active" : ""
 			}" data-category="all">
-                All
-                <span class="filter-tag-count">${allCategoriesCount}</span>
-                <span class="filter-tag-pct">${totalPct}%</span>
+                <span class="category-tag-pct">${totalPct}%</span>
+                <span class="category-tag-content">
+                    All
+                    <span class="filter-tag-count">${allCategoriesCount}</span>
+                </span>
             </button>
         `);
 
@@ -881,9 +887,11 @@ class DrishtiDashboard {
                 <button class="filter-tag category-tag ${isActive ? "active" : ""}" 
                         data-category="${category}" 
                         style="border-left: 3px solid ${color};">
-                    ${category}
-                    <span class="filter-tag-count">${count}</span>
-                    <span class="filter-tag-pct">${pct}%</span>
+                    <span class="category-tag-pct">${pct}%</span>
+                    <span class="category-tag-content">
+                        ${category}
+                        <span class="filter-tag-count">${count}</span>
+                    </span>
                 </button>
             `);
 		});
@@ -3465,81 +3473,197 @@ class DrishtiDashboard {
 	setupStyles() {
 		const styles = `
             <style>
-                /* Filter Tags Styles */
+                /* Filter Tags Styles - Redesigned to modern clean horizontal layout */
                 .filter-tags-container {
-                    margin-bottom: 15px;
-                    padding: 15px;
-                    background: #fff;
-                    border: 1px solid #778da9;
-                    border-radius: 6px;
+                    display: flex;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 20px;
+                    margin-bottom: 20px;
+                    padding: 12px 24px;
+                    background: #ffffff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
                 }
 
-                .filter-section {
-                    margin-bottom: 12px;
+                .filter-group {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
                 }
 
-                .filter-section:last-child {
-                    margin-bottom: 0;
-                }
-
-                .filter-section-label {
-                    display: block;
-                    font-size: 11px;
+                .filter-group-label {
+                    font-size: 14px;
                     font-weight: 700;
-                    color: #0d1b2a;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    margin-bottom: 8px;
+                    color: #0f172a;
+                    white-space: nowrap;
+                }
+
+                .filter-divider {
+                    width: 1px;
+                    height: 28px;
+                    background-color: #cbd5e1;
+                    margin: 0 4px;
+                    align-self: center;
+                }
+
+                @media (max-width: 991px) {
+                    .filter-divider {
+                        display: none;
+                    }
+                    .filter-tags-container {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 16px;
+                        padding: 16px;
+                    }
+                    .filter-group {
+                        width: 100%;
+                    }
                 }
 
                 .filter-tags {
                     display: flex;
+                    align-items: center;
                     flex-wrap: wrap;
                     gap: 8px;
+                }
+
+                #zone-tags {
+                    gap: 5px;
                 }
 
                 .filter-tag {
                     display: inline-flex;
                     align-items: center;
-                    gap: 6px;
-                    padding: 6px 12px;
-                    background: #fff;
-                    border: 2px solid #778da9;
-                    border-radius: 6px;
-                    font-size: 13px;
-                    font-weight: 600;
-                    color: #1b263b;
+                    gap: 8px;
+                    padding: 6px 14px;
+                    background: #ffffff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    font-weight: 700;
+                    color: #1e293b;
                     cursor: pointer;
-                    transition: all 0.2s ease;
+                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+
+                .zone-tag {
+                    padding: 4px 10px;
+                    gap: 5px;
+                    font-size: 13px;
+                }
+
+                .zone-tag .filter-tag-count {
+                    padding: 2px 6px;
+                    font-size: 11px;
                 }
 
                 .filter-tag:hover {
-                    background: #f8f9fa;
-                    border-color: #417d81;
+                    background: #f8fafc;
+                    border-color: #cbd5e1;
                     transform: translateY(-1px);
+                    text-decoration: none;
                 }
 
                 .filter-tag.active {
-                    background: #417d81;
-                    border-color: #417d81;
-                    color: #e0e1dd;
+                    background: #0d9488 !important;
+                    border-color: #0d9488 !important;
+                    color: #ffffff !important;
+                    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
                 }
 
                 .filter-tag-count {
-                    background: rgba(255, 255, 255, 0.2);
+                    background: #f1f5f9;
+                    color: #64748b;
                     padding: 2px 8px;
-                    border-radius: 12px;
-                    font-size: 11px;
+                    border-radius: 9999px;
+                    font-size: 12px;
                     font-weight: 700;
+                    transition: all 0.2s ease;
                 }
 
                 .filter-tag.active .filter-tag-count {
-                    background: rgba(255, 255, 255, 0.3);
+                    background: rgba(255, 255, 255, 0.25) !important;
+                    color: #ffffff !important;
                 }
 
-                .filter-tag-pct {
-                    font-size: 11px;
-                    opacity: 0.8;
+                .category-tag {
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 3px 8px;
+                    gap: 2px !important;
+                    font-size: 13px;
+                    font-weight: 600;
+                }
+
+                .category-tag .filter-tag-count {
+                    padding: 1px 4px;
+                    font-size: 10px;
+                }
+
+                .category-tag-pct {
+                    font-size: 10px;
+                    font-weight: 700;
+                    color: #64748b;
+                    line-height: 1;
+                }
+
+                .category-tag.active .category-tag-pct {
+                    color: rgba(255, 255, 255, 0.85) !important;
+                }
+
+                .category-tag-content {
+                    display: flex;
+                    align-items: center;
+                    gap: 3px;
+                    line-height: 1.2;
+                }
+
+                /* Category-specific Active Colors */
+                .category-tag[data-category="Pinnacle"].active {
+                    background-color: #10b981 !important;
+                    border-color: #10b981 !important;
+                    color: #ffffff !important;
+                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+                }
+                .category-tag[data-category="Master"].active {
+                    background-color: #14b8a6 !important;
+                    border-color: #14b8a6 !important;
+                    color: #ffffff !important;
+                    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.25);
+                }
+                .category-tag[data-category="Accelerator"].active {
+                    background-color: #3b82f6 !important;
+                    border-color: #3b82f6 !important;
+                    color: #ffffff !important;
+                    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+                }
+                .category-tag[data-category="Starter"].active {
+                    background-color: #f59e0b !important;
+                    border-color: #f59e0b !important;
+                    color: #ffffff !important;
+                    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+                }
+                .category-tag[data-category="Learner"].active {
+                    background-color: #ef4444 !important;
+                    border-color: #ef4444 !important;
+                    color: #ffffff !important;
+                    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+                }
+                .category-tag[data-category="Zero Level"].active {
+                    background-color: #dc2626 !important;
+                    border-color: #dc2626 !important;
+                    color: #ffffff !important;
+                    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+                }
+
+                /* Ensure active category tag left border looks clean */
+                .category-tag.active {
+                    border-left-width: 1px !important;
                 }
 
                 /* Toggle Button Styles */
@@ -4212,63 +4336,63 @@ class DrishtiDashboard {
                 /* Summary Cards Styles */
                 .summary-cards-container {
                     display: flex;
-                    gap: 20px;
-                    margin-bottom: 25px;
-                    padding: 5px 0;
+                    gap: 10px;
+                    margin-bottom: 12px;
+                    padding: 2px 0;
                     flex-wrap: wrap;
                 }
                 .summary-card {
                     background: #fff;
-                    border-radius: 16px;
-                    padding: 24px;
+                    border-radius: 8px;
+                    padding: 8px 14px;
                     flex: 1;
-                    min-width: 240px;
+                    min-width: 200px;
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-                    border: 1px solid rgba(0, 0, 0, 0.05);
-                    transition: transform 0.3s ease;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+                    border: 1px solid #cbd5e1;
+                    transition: transform 0.2s ease;
                 }
                 .summary-card:hover {
-                    transform: translateY(-5px);
+                    transform: translateY(-2px);
                 }
                 .summary-info {
                     display: flex;
                     flex-direction: column;
-                    gap: 4px;
+                    gap: 2px;
                 }
                 .summary-label {
-                    font-size: 14px;
+                    font-size: 11px;
                     color: #64748b;
-                    font-weight: 500;
+                    font-weight: 600;
                 }
                 .summary-value {
-                    font-size: 28px;
+                    font-size: 18px;
                     font-weight: 800;
                     color: #1e293b;
-                    letter-spacing: -0.5px;
+                    letter-spacing: -0.3px;
                 }
                 .summary-subtext {
-                    font-size: 13px;
+                    font-size: 10px;
                     font-weight: 600;
-                    margin-top: 4px;
+                    margin-top: 1px;
                 }
                 .summary-subtext.success { color: #10b981; }
                 .summary-subtext.danger { color: #ef4444; }
                 .summary-subtext.muted { color: #94a3b8; }
                 
                 .summary-icon-box {
-                    width: 56px;
-                    height: 56px;
+                    width: 32px;
+                    height: 32px;
                     background: linear-gradient(135deg, #417d81 0%, #346569 100%);
-                    border-radius: 14px;
+                    border-radius: 6px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     color: #fff;
-                    font-size: 24px;
-                    box-shadow: 0 8px 20px rgba(65, 125, 129, 0.25);
+                    font-size: 14px;
+                    box-shadow: 0 2px 6px rgba(65, 125, 129, 0.1);
                 }
             </style>
         `;
