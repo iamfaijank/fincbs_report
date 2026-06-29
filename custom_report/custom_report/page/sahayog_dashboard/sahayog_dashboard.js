@@ -17,17 +17,42 @@ frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 };
 
 frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
+	// Clean up any old unmanaged container style tags from previous development sessions
+	$("head style").each(function() {
+		const text = $(this).text();
+		if (text.includes(".container") && text.includes("max-width: 100%") && !text.includes(".sahayog-dashboard-full-width")) {
+			$(this).remove();
+		}
+	});
+
+	// Add full width class to body for page-specific styling
+	$("body").addClass("sahayog-dashboard-full-width");
+
 	// Inject custom breadcrumbs with live timer
 	setTimeout(() => {
 		const $breadcrumbs = $("#navbar-breadcrumbs");
 		if ($breadcrumbs.length) {
 			$breadcrumbs.html(`
 				<li><a href="/app/sahayog-home" class="btn btn-default btn-xs" style="font-weight: 700; border-radius: 6px; padding: 2px 8px; color: #1e293b; border: 1px solid #cbd5e1; background-color: #f1f5f9; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); margin-right: 4px;">Back</a></li>
-				<li>
-					<span style="font-weight: bold; color: #417d81;">Drishti</span>
-					<span id="drishti-live-timer" style="font-size: 12px; font-weight: 500; color: #64748b; margin-left: 8px;"></span>
+				<li style="display: inline-flex; align-items: center;">
+					<span style="font-weight: bold; color: #417d81; vertical-align: middle;">Drishti</span>
+					<span id="drishti-live-timer" style="font-size: 12px; font-weight: 500; color: #64748b; margin-left: 8px; vertical-align: middle;"></span>
+					<div class="format-header-control" style="display: inline-flex; align-items: center; margin-left: 20px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;">
+						<span style="font-weight: bold; color: #475569; font-size: 12px; margin-right: 8px; line-height: 1;">Format:</span>
+						<div class="btn-group" role="group">
+							<button type="button" class="btn btn-default btn-xs format-toggle-btn" data-format="number" style="font-weight: 600; padding: 2px 8px; border-radius: 4px 0 0 4px;">Numbers</button>
+							<button type="button" class="btn btn-default btn-xs format-toggle-btn" data-format="words" style="font-weight: 600; padding: 2px 8px; border-radius: 0 4px 4px 0;">Words</button>
+						</div>
+					</div>
 				</li>
 			`);
+
+			// Set initial format toggle state from URL or state default
+			const urlParams = new URLSearchParams(window.location.search);
+			const formatMode = urlParams.get("formatMode") || "words";
+			$breadcrumbs
+				.find(`.format-toggle-btn[data-format="${formatMode}"]`)
+				.addClass("active");
 
 			// Clear any existing interval
 			if (frappe.pages["sahayog_dashboard"].timer_interval) {
@@ -45,19 +70,19 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 				const now = new Date();
 
 				// Format Date: DD-MM-YYYY
-				const day = String(now.getDate()).padStart(2, '0');
-				const month = String(now.getMonth() + 1).padStart(2, '0');
+				const day = String(now.getDate()).padStart(2, "0");
+				const month = String(now.getMonth() + 1).padStart(2, "0");
 				const year = now.getFullYear();
 				const dateStr = `${day}-${month}-${year}`;
 
 				// Format Time: HH:MM:SS AM/PM
 				let hours = now.getHours();
-				const minutes = String(now.getMinutes()).padStart(2, '0');
-				const seconds = String(now.getSeconds()).padStart(2, '0');
-				const ampm = hours >= 12 ? 'PM' : 'AM';
+				const minutes = String(now.getMinutes()).padStart(2, "0");
+				const seconds = String(now.getSeconds()).padStart(2, "0");
+				const ampm = hours >= 12 ? "PM" : "AM";
 				hours = hours % 12;
 				hours = hours ? hours : 12;
-				const hoursStr = String(hours).padStart(2, '0');
+				const hoursStr = String(hours).padStart(2, "0");
 				const timeStr = `${hoursStr}:${minutes}:${seconds} ${ampm}`;
 
 				// Calculate days left in current month (inclusive of today and the last day)
@@ -65,16 +90,24 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 				const daysLeft = lastDayOfMonth - now.getDate() + 1;
 				const daysLeftText = daysLeft === 1 ? "1 Day Left" : `${daysLeft} Days Left`;
 
-				$timer.html(`Date: ${dateStr} &nbsp;&nbsp; Time: ${timeStr} &nbsp;&nbsp;&nbsp;&nbsp; <span class="days-left-blink">${daysLeftText}</span>`);
+				$timer.html(
+					`Date: ${dateStr} &nbsp;&nbsp; Time: ${timeStr} &nbsp;&nbsp;&nbsp;&nbsp; <span class="days-left-blink">${daysLeftText}</span>`,
+				);
 			};
 
 			updateDrishtiTimer();
-			frappe.pages["sahayog_dashboard"].timer_interval = setInterval(updateDrishtiTimer, 1000); // Update every 1 second
+			frappe.pages["sahayog_dashboard"].timer_interval = setInterval(
+				updateDrishtiTimer,
+				1000,
+			); // Update every 1 second
 		}
 	}, 100);
 };
 
 frappe.pages["sahayog_dashboard"].on_page_hide = function (wrapper) {
+	// Remove full width class from body
+	$("body").removeClass("sahayog-dashboard-full-width");
+
 	// Clear interval to avoid memory leaks
 	if (frappe.pages["sahayog_dashboard"].timer_interval) {
 		clearInterval(frappe.pages["sahayog_dashboard"].timer_interval);
@@ -138,9 +171,9 @@ class DrishtiDashboard {
 		if (!window.showBranchProfilePopup) {
 			window.showBranchProfilePopup = (sol_id) => {
 				let d = new frappe.ui.Dialog({
-					title: 'Branch Profile - ' + sol_id,
-					size: 'extra-large',
-					minimizable: true
+					title: "Branch Profile - " + sol_id,
+					size: "extra-large",
+					minimizable: true,
 				});
 
 				d.$body.html(`
@@ -152,35 +185,39 @@ class DrishtiDashboard {
 					<iframe id="iframe-content-${sol_id}" src="/branch_profile?sol_id=${sol_id}" style="width: 100%; height: 85vh; border: none; border-radius: 4px; display: none;"></iframe>
 				`);
 
-				d.$body.find(`#iframe-content-${sol_id}`).on('load', function() {
-					d.$body.find(`#iframe-loader-${sol_id}`).fadeOut(200, function() {
+				d.$body.find(`#iframe-content-${sol_id}`).on("load", function () {
+					d.$body.find(`#iframe-loader-${sol_id}`).fadeOut(200, function () {
 						d.$body.find(`#iframe-content-${sol_id}`).fadeIn(200);
 					});
 				});
 
 				d.$wrapper.css({
-					'backdrop-filter': 'blur(5px)',
-					'background-color': 'rgba(15, 23, 42, 0.6)'
+					"backdrop-filter": "blur(5px)",
+					"background-color": "rgba(15, 23, 42, 0.6)",
 				});
 
 				// Increase the width of the modal
-				d.$wrapper.find('.modal-dialog').css({
-					'max-width': '80vw',
-					'width': '80vw'
+				d.$wrapper.find(".modal-dialog").css({
+					"max-width": "80vw",
+					width: "80vw",
 				});
 
 				// Add Full Screen button before the close button
-				const fullScreenBtn = $('<button class="btn btn-default btn-xs" style="margin-right: 12px; font-weight: 500; border-radius: 4px;"><i class="fa fa-external-link"></i> Full Screen</button>');
-				fullScreenBtn.on('click', function() {
-					window.location.href = '/branch_profile?sol_id=' + sol_id;
+				const fullScreenBtn = $(
+					'<button class="btn btn-default btn-xs" style="margin-right: 12px; font-weight: 500; border-radius: 4px;"><i class="fa fa-external-link"></i> Full Screen</button>',
+				);
+				fullScreenBtn.on("click", function () {
+					window.location.href = "/branch_profile?sol_id=" + sol_id;
 				});
-				
-				let actions = d.$wrapper.find('.modal-actions');
+
+				let actions = d.$wrapper.find(".modal-actions");
 				if (actions.length > 0) {
 					actions.prepend(fullScreenBtn);
 				} else {
 					// Fallback for older Frappe versions
-					let closeBtn = d.$wrapper.find('.modal-header .btn-close, .modal-header .close');
+					let closeBtn = d.$wrapper.find(
+						".modal-header .btn-close, .modal-header .close",
+					);
 					if (closeBtn.length > 0) {
 						closeBtn.before(fullScreenBtn);
 					}
@@ -188,8 +225,8 @@ class DrishtiDashboard {
 
 				// Some extra styling for the dialog to look modern and hide the default padding
 				d.$body.css({
-					'padding': '0',
-					'overflow': 'hidden'
+					padding: "0",
+					overflow: "hidden",
 				});
 
 				d.show();
@@ -205,7 +242,10 @@ class DrishtiDashboard {
 				if (r.message && r.message.length > 0) {
 					self.populateFinancialYears(r.message);
 					// Select the latest (first) available year if not already set
-					if (!self.state.financialYear || !r.message.includes(self.state.financialYear)) {
+					if (
+						!self.state.financialYear ||
+						!r.message.includes(self.state.financialYear)
+					) {
 						self.state.financialYear = r.message[0];
 						self.page.main.find("#fy-selector").val(self.state.financialYear);
 					}
@@ -549,6 +589,20 @@ class DrishtiDashboard {
 			.product-wise-table td:nth-child(2) {
 				text-align: left !important;
 			}
+
+			.sahayog-dashboard-full-width .container {
+				max-width: 95% !important;
+				width: 95% !important;
+				padding-left: 0px !important;
+				padding-right: 0px !important;
+				margin: 0px auto !important;
+			}
+			.sahayog-dashboard-full-width .container .page-body {
+				max-width: 100% !important;
+				width: 100% !important;
+				padding: 0px !important;
+				margin: 0px !important;
+			}
 		`;
 		$(`<style>${style}</style>`).appendTo("head");
 	}
@@ -556,23 +610,30 @@ class DrishtiDashboard {
 	getQuarterFromDate(dateStr) {
 		const date = new Date(dateStr || frappe.datetime.get_today());
 		const month = date.getMonth(); // 0-indexed
-		if (month >= 3 && month <= 5) return 'Q1';
-		if (month >= 6 && month <= 8) return 'Q2';
-		if (month >= 9 && month <= 11) return 'Q3';
-		return 'Q4';
+		if (month >= 3 && month <= 5) return "Q1";
+		if (month >= 6 && month <= 8) return "Q2";
+		if (month >= 9 && month <= 11) return "Q3";
+		return "Q4";
 	}
 
 	getQuarterDate(quarter, fy) {
 		if (!fy) return frappe.datetime.get_today();
 		const startYear = fy.split("-")[0];
-		const endYear = fy.split("-")[1] ? ("20" + fy.split("-")[1]).replace("2020", "20") : (parseInt(startYear) + 1).toString();
+		const endYear = fy.split("-")[1]
+			? ("20" + fy.split("-")[1]).replace("2020", "20")
+			: (parseInt(startYear) + 1).toString();
 		const endYearFull = endYear.length === 2 ? "20" + endYear : endYear;
 		switch (quarter) {
-			case 'Q1': return `${startYear}-06-30`;
-			case 'Q2': return `${startYear}-09-30`;
-			case 'Q3': return `${startYear}-12-31`;
-			case 'Q4': return `${endYearFull}-03-31`;
-			default: return frappe.datetime.get_today();
+			case "Q1":
+				return `${startYear}-06-30`;
+			case "Q2":
+				return `${startYear}-09-30`;
+			case "Q3":
+				return `${startYear}-12-31`;
+			case "Q4":
+				return `${endYearFull}-03-31`;
+			default:
+				return frappe.datetime.get_today();
 		}
 	}
 
@@ -587,17 +648,75 @@ class DrishtiDashboard {
 		}));
 
 		if (this.state.viewType === "Quarterly") {
-			const startYear = this.state.financialYear ? this.state.financialYear.split("-")[0] : new Date().getFullYear().toString();
-			let endYear = this.state.financialYear ? this.state.financialYear.split("-")[1] : (parseInt(startYear) + 1).toString();
+			const startYear = this.state.financialYear
+				? this.state.financialYear.split("-")[0]
+				: new Date().getFullYear().toString();
+			let endYear = this.state.financialYear
+				? this.state.financialYear.split("-")[1]
+				: (parseInt(startYear) + 1).toString();
 			if (endYear && endYear.length === 2) endYear = "20" + endYear;
-			
+
 			const qMap = {
-				'Q1': [{key:'APR', display:`APR-${startYear.slice(-2)}`, date:`${startYear}-04-01`}, {key:'MAY', display:`MAY-${startYear.slice(-2)}`, date:`${startYear}-05-01`}, {key:'JUN', display:`JUN-${startYear.slice(-2)}`, date:`${startYear}-06-01`}],
-				'Q2': [{key:'JUL', display:`JUL-${startYear.slice(-2)}`, date:`${startYear}-07-01`}, {key:'AUG', display:`AUG-${startYear.slice(-2)}`, date:`${startYear}-08-01`}, {key:'SEP', display:`SEP-${startYear.slice(-2)}`, date:`${startYear}-09-01`}],
-				'Q3': [{key:'OCT', display:`OCT-${startYear.slice(-2)}`, date:`${startYear}-10-01`}, {key:'NOV', display:`NOV-${startYear.slice(-2)}`, date:`${startYear}-11-01`}, {key:'DEC', display:`DEC-${startYear.slice(-2)}`, date:`${startYear}-12-01`}],
-				'Q4': [{key:'JAN', display:`JAN-${endYear.slice(-2)}`, date:`${endYear}-01-01`}, {key:'FEB', display:`FEB-${endYear.slice(-2)}`, date:`${endYear}-02-01`}, {key:'MAR', display:`MAR-${endYear.slice(-2)}`, date:`${endYear}-03-01`}]
+				Q1: [
+					{
+						key: "APR",
+						display: `APR-${startYear.slice(-2)}`,
+						date: `${startYear}-04-01`,
+					},
+					{
+						key: "MAY",
+						display: `MAY-${startYear.slice(-2)}`,
+						date: `${startYear}-05-01`,
+					},
+					{
+						key: "JUN",
+						display: `JUN-${startYear.slice(-2)}`,
+						date: `${startYear}-06-01`,
+					},
+				],
+				Q2: [
+					{
+						key: "JUL",
+						display: `JUL-${startYear.slice(-2)}`,
+						date: `${startYear}-07-01`,
+					},
+					{
+						key: "AUG",
+						display: `AUG-${startYear.slice(-2)}`,
+						date: `${startYear}-08-01`,
+					},
+					{
+						key: "SEP",
+						display: `SEP-${startYear.slice(-2)}`,
+						date: `${startYear}-09-01`,
+					},
+				],
+				Q3: [
+					{
+						key: "OCT",
+						display: `OCT-${startYear.slice(-2)}`,
+						date: `${startYear}-10-01`,
+					},
+					{
+						key: "NOV",
+						display: `NOV-${startYear.slice(-2)}`,
+						date: `${startYear}-11-01`,
+					},
+					{
+						key: "DEC",
+						display: `DEC-${startYear.slice(-2)}`,
+						date: `${startYear}-12-01`,
+					},
+				],
+				Q4: [
+					{ key: "JAN", display: `JAN-${endYear.slice(-2)}`, date: `${endYear}-01-01` },
+					{ key: "FEB", display: `FEB-${endYear.slice(-2)}`, date: `${endYear}-02-01` },
+					{ key: "MAR", display: `MAR-${endYear.slice(-2)}`, date: `${endYear}-03-01` },
+				],
 			};
-			const quarter = this.state.selectedQuarter || this.getQuarterFromDate(this.state.selectedDate || frappe.datetime.get_today());
+			const quarter =
+				this.state.selectedQuarter ||
+				this.getQuarterFromDate(this.state.selectedDate || frappe.datetime.get_today());
 			this.months = qMap[quarter] || this.months;
 		}
 
@@ -734,8 +853,12 @@ class DrishtiDashboard {
 		if (this.state.viewType === "Quarterly") {
 			this.page.main.find("#quarter-selector-container").show();
 			this.page.main.find(".quarter-toggle-btn").removeClass("active");
-			const activeQ = this.state.selectedQuarter || this.getQuarterFromDate(this.state.selectedDate || frappe.datetime.get_today());
-			this.page.main.find(`.quarter-toggle-btn[data-quarter="${activeQ}"]`).addClass("active");
+			const activeQ =
+				this.state.selectedQuarter ||
+				this.getQuarterFromDate(this.state.selectedDate || frappe.datetime.get_today());
+			this.page.main
+				.find(`.quarter-toggle-btn[data-quarter="${activeQ}"]`)
+				.addClass("active");
 		} else {
 			this.page.main.find("#quarter-selector-container").hide();
 		}
@@ -747,10 +870,8 @@ class DrishtiDashboard {
 			.addClass("active");
 
 		// Update Format toggle
-		this.page.main.find(".format-toggle-btn").removeClass("active");
-		this.page.main
-			.find(`.format-toggle-btn[data-format="${this.state.formatMode}"]`)
-			.addClass("active");
+		$(".format-toggle-btn").removeClass("active");
+		$(`.format-toggle-btn[data-format="${this.state.formatMode}"]`).addClass("active");
 
 		// Update Date selector
 		this.page.main.find("#date-selector").val(this.state.selectedDate);
@@ -938,13 +1059,15 @@ class DrishtiDashboard {
 		const percentages = {};
 		if (allCategoriesCount === 0) {
 			percentages["all"] = 100;
-			this.availableFilters.categories.forEach(cat => { percentages[cat] = 0; });
+			this.availableFilters.categories.forEach((cat) => {
+				percentages[cat] = 0;
+			});
 		} else {
 			percentages["all"] = 100;
 			let sumFloors = 0;
 			const items = [];
 
-			this.availableFilters.categories.forEach(cat => {
+			this.availableFilters.categories.forEach((cat) => {
 				const count = this.categoryCounts[cat] || 0;
 				const exact = (count / allCategoriesCount) * 100;
 				const floorVal = Math.floor(exact);
@@ -953,7 +1076,7 @@ class DrishtiDashboard {
 					category: cat,
 					exact: exact,
 					floorVal: floorVal,
-					remainder: exact - floorVal
+					remainder: exact - floorVal,
 				});
 			});
 
@@ -1122,13 +1245,13 @@ class DrishtiDashboard {
 	// ========================================================================
 	createTabsAndContainer() {
 		const html = `
-            <div style="border: 1px solid #778da9; padding: 12px; background: #fff; border-radius: 6px; margin-top: 15px;">
+            <div style="border: 1px solid #cbd5e1; padding: 12px; background: #fff; border-radius: 8px; margin-top: 15px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);">
                 <!-- Filters Row -->
                 <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ddd;">
                     <!-- Financial Year -->
                     <div>
                         <label style="font-weight: bold; color: #0d1b2a;">FY:</label>
-                        <select id="fy-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;">
+                        <select id="fy-selector" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;">
                         </select>
                     </div>
 
@@ -1165,28 +1288,19 @@ class DrishtiDashboard {
                     <!-- Date Selector -->
                     <div id="date-selector-container">
                         <label style="font-weight: bold; color: #0d1b2a;">Date:</label>
-                        <input type="date" id="date-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;" />
-                    </div>
-
-                    <!-- Format Toggle Buttons -->
-                    <div>
-                        <label style="font-weight: bold; color: #0d1b2a;">Format:</label>
-                        <div class="btn-group" role="group" style="margin-left: 8px;">
-                            <button type="button" class="btn btn-sm format-toggle-btn" data-format="number">Numbers</button>
-                            <button type="button" class="btn btn-sm format-toggle-btn" data-format="words">Words</button>
-                        </div>
+                        <input type="date" id="date-selector" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;" />
                     </div>
 
                     <!-- Region Filter -->
                     <div>
                         <label style="font-weight: bold; color: #0d1b2a;">Region:</label>
-                        <select id="region-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; min-width: 150px; background: white; color: #1b263b;">
+                        <select id="region-selector" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; margin-left: 8px; min-width: 150px; background: white; color: #1b263b;">
                             <option value="">All Regions</option>
                         </select>
                     </div>
                 </div>
 
-                <div id="tab-buttons" style="display: flex; align-items: center; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #778da9;">
+                <div id="tab-buttons" style="display: flex; align-items: center; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #cbd5e1;">
                     <button class="tab-btn" data-tab="zone">
                         Zone Wise
                     </button>
@@ -1205,7 +1319,7 @@ class DrishtiDashboard {
 
                     <!-- Search and Clear Actions -->
                     <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
-						<select id="segment-filter" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; background: white; color: #1b263b;">
+						<select id="segment-filter" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #1b263b;">
 							<option value="all">All Segments</option>
 							<option value="Top 25%">Top 25%</option>
 							<option value="Next 25%">Next 25%</option>
@@ -1213,7 +1327,7 @@ class DrishtiDashboard {
 							<option value="Bottom 25%">Bottom 25%</option>
 						</select>
                         <input type="text" id="branch-search" placeholder="Search branch..." 
-                               style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; min-width: 200px; background: white; color: #1b263b;" />
+                               style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b;" />
                         <button id="clear-filters" class="btn btn-secondary btn-sm" 
                                 style="background: #417d81; border-color: #1b263b; color: white; font-weight: 600;"
                                 title="Resets all filters to their default state and refreshes the dashboard.">
@@ -1277,16 +1391,21 @@ class DrishtiDashboard {
 			self.loadData();
 		});
 
-		this.page.main.find("#error-message").on("click", ".view-change-option-link", function (e) {
-			e.preventDefault();
-			const view = $(this).data("view");
-			self.page.main.find(`.view-toggle-btn[data-view="${view}"]`).trigger("click");
-		});
+		this.page.main
+			.find("#error-message")
+			.on("click", ".view-change-option-link", function (e) {
+				e.preventDefault();
+				const view = $(this).data("view");
+				self.page.main.find(`.view-toggle-btn[data-view="${view}"]`).trigger("click");
+			});
 
 		// Quarter Toggle Buttons
 		this.page.main.find(".quarter-toggle-btn").on("click", function () {
 			self.state.selectedQuarter = $(this).data("quarter");
-			self.state.selectedDate = self.getQuarterDate(self.state.selectedQuarter, self.state.financialYear);
+			self.state.selectedDate = self.getQuarterDate(
+				self.state.selectedQuarter,
+				self.state.financialYear,
+			);
 			self.updateUrlFromState();
 			self.updateUiFromState();
 			self.loadData();
@@ -1314,13 +1433,15 @@ class DrishtiDashboard {
 		});
 
 		// Format Toggle
-		this.page.main.find(".format-toggle-btn").on("click", function () {
-			self.page.main.find(".format-toggle-btn").removeClass("active");
-			$(this).addClass("active");
-			self.state.formatMode = $(this).data("format");
-			self.updateUrlFromState();
-			self.render();
-		});
+		$(document)
+			.off("click", ".format-toggle-btn")
+			.on("click", ".format-toggle-btn", function () {
+				$(".format-toggle-btn").removeClass("active");
+				$(this).addClass("active");
+				self.state.formatMode = $(this).data("format");
+				self.updateUrlFromState();
+				self.render();
+			});
 
 		// Region Filter
 		this.page.main.find("#region-selector").on("change", function () {
@@ -1361,9 +1482,10 @@ class DrishtiDashboard {
 		// SPECIAL CASE: For Agent and Product Wise tabs, default to LATEST AVAILABLE DATE
 		if (tabId === "agent" || tabId === "product") {
 			const self = this;
-			const method = tabId === "agent" 
-				? "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_agent_report_date"
-				: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_product_report_date";
+			const method =
+				tabId === "agent"
+					? "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_agent_report_date"
+					: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_product_report_date";
 
 			frappe.call({
 				method: method,
@@ -1452,7 +1574,7 @@ class DrishtiDashboard {
 						const firstBranch = self.branchData[0];
 						const firstMonthKey = self.months?.[0]?.key;
 						const monthData = firstBranch.months?.[firstMonthKey];
-						
+
 						if (monthData && monthData.target === 0 && monthData.achievement === 0) {
 							self.loadLatestAvailableDate();
 							return;
@@ -1482,14 +1604,14 @@ class DrishtiDashboard {
 				self.isLoadingData = false;
 				console.error("Error loading dashboard data:", err);
 				self.showError("Failed to load data. Please refresh the page.");
-			}
+			},
 		});
 	}
 
 	// Load latest available date from backend
 	loadLatestAvailableDate() {
 		const self = this;
-		
+
 		frappe.call({
 			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_agent_report_date",
 			callback: (r) => {
@@ -1500,20 +1622,20 @@ class DrishtiDashboard {
 					d.setDate(d.getDate() - 1);
 					dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 				}
-				
+
 				// Update state and UI
 				self.state.selectedDate = dateStr;
 				self.tabDates[self.state.activeTab] = dateStr;
-				
+
 				if (self.dateControl) {
 					self.isRefreshingDate = true;
 					self.dateControl.set_value(dateStr);
 					self.isRefreshingDate = false;
 				}
-				
+
 				// Reload data with latest date
 				self.loadData();
-			}
+			},
 		});
 	}
 
@@ -1547,7 +1669,9 @@ class DrishtiDashboard {
 					self.data = r.message;
 					self.permissions = r.message.permissions;
 					console.log("🛡️ Sahayog Dashboard Permissions:", self.permissions);
-					console.log(`[loadData callback] Data received. branchData length: ${self.branchData?.length || 0}`);
+					console.log(
+						`[loadData callback] Data received. branchData length: ${self.branchData?.length || 0}`,
+					);
 
 					if (self.permissions && self.permissions.has_access === false) {
 						self.page.main.html(`
@@ -1618,7 +1742,7 @@ class DrishtiDashboard {
 							</div>
 						</div>
 					</div>
-				</div>`
+				</div>`,
 			)
 			.show();
 		this.page.main.find("#data-container").css("opacity", 0);
@@ -1693,7 +1817,9 @@ class DrishtiDashboard {
 		if (this.state.selectedZones.length > 0) {
 			filtered = filtered.filter((branch) =>
 				this.state.selectedZones.some(
-					(zone) => this.getLocationIdentifier(zone) === this.getLocationIdentifier(branch.zone),
+					(zone) =>
+						this.getLocationIdentifier(zone) ===
+						this.getLocationIdentifier(branch.zone),
 				),
 			);
 		}
@@ -1770,7 +1896,7 @@ class DrishtiDashboard {
 				),
 				isZoneTotal: true,
 			};
-			
+
 			zoneGroup.totalBranches.forEach((branch) => {
 				this.months.forEach((m) => {
 					const monthData = branch.months[m.key];
@@ -2102,14 +2228,14 @@ class DrishtiDashboard {
 			const overallPercentage = totalTarget > 0 ? (totalAchievement / totalTarget) * 100 : 0;
 
 			html += `
-                <td>${this.formatNumber(totalTarget)}</td>
-                <td>${this.formatNumber(totalAchievement)}</td>
-                <td>
-					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-						<span class="pct-value" style="min-width: 45px; text-align: right;">${overallPercentage.toFixed(2)}%</span>
-						${this.renderProgressBar(overallPercentage)}
-					</div>
-				</td>
+                 <td>${this.formatNumber(totalTarget)}</td>
+                 <td>${this.formatNumber(totalAchievement)}</td>
+                 <td>
+ 					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+ 						<span class="pct-value" style="color: ${this.getPctColor(overallPercentage)}; min-width: 45px; text-align: right;">${Math.round(overallPercentage)}%</span>
+ 						${this.renderProgressBar(overallPercentage)}
+ 					</div>
+ 				</td>
             `;
 		});
 		html += `</tr></tfoot>`;
@@ -2145,7 +2271,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 										mdata.percentage,
-									)}; min-width: 45px; text-align: right;">${mdata.percentage?.toFixed(2)}%</span>
+									)}; min-width: 45px; text-align: right;">${Math.round(mdata.percentage)}%</span>
 									${this.renderProgressBar(mdata.percentage)}
 								</div>
 							</td>
@@ -2186,7 +2312,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 										mdata.percentage,
-									)}; min-width: 45px; text-align: right;">${mdata.percentage?.toFixed(2)}%</span>
+									)}; min-width: 45px; text-align: right;">${Math.round(mdata.percentage)}%</span>
 									${this.renderProgressBar(mdata.percentage)}
 								</div>
 							</td>
@@ -2679,8 +2805,7 @@ class DrishtiDashboard {
 			const downCount = filteredChanges.decreased.length;
 
 			const isExpanded = this.state.expandedZones[`cat_${catName}`] || false;
-			const percentage =
-				totalBranches > 0 ? ((count / totalBranches) * 100).toFixed(2) : "0.00";
+			const percentage = totalBranches > 0 ? (count / totalBranches) * 100 : 0;
 
 			html += `
             <tr class="category-row-redesigned" data-category="${catName}" style="border-left: 5px solid ${
@@ -2693,7 +2818,7 @@ class DrishtiDashboard {
 					}</span>
                     <div class="cat-name-wrapper">
                         <span>${catName}</span>
-                        <span class="category-percentage-share">• ${percentage}%</span>
+                        <span class="category-percentage-share" style="color: ${this.getPctColor(percentage)}; font-weight: 600;">• ${Math.round(percentage)}%</span>
                     </div>
                 </td>
                 <td class="perf-band-cell">${config.range}</td>
@@ -3359,15 +3484,15 @@ class DrishtiDashboard {
 				const pct = mdata.percentage || 0;
 
 				html += `
-                <td class="metric-cell category-cell">${this.getCategoryBadge(
-					mdata.category,
-					"small",
-				)}</td>
-                <td class="metric-cell amount-cell">${this.formatNumber(mdata.target)}</td>
-                <td class="metric-cell amount-cell">${this.formatNumber(mdata.achievement)}</td>
-                <td>
+                 <td class="metric-cell category-cell">${this.getCategoryBadge(
+						mdata.category,
+						"small",
+					)}</td>
+                 <td class="metric-cell amount-cell">${this.formatNumber(mdata.target)}</td>
+                 <td class="metric-cell amount-cell">${this.formatNumber(mdata.achievement)}</td>
+                 <td>
 					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-						<span class="pct-value" style="color: ${this.getPctColor(pct)}; min-width: 45px; text-align: right;">${pct.toFixed(2)}%</span>
+						<span class="pct-value" style="color: ${this.getPctColor(pct)}; min-width: 45px; text-align: right;">${Math.round(pct)}%</span>
 						${this.renderProgressBar(pct)}
 					</div>
 				</td>
@@ -3415,12 +3540,9 @@ class DrishtiDashboard {
 	}
 
 	getPctColor(pct) {
-		if (pct >= 100) return "#10b981";
-		if (pct >= 80) return "#14b8a6";
-		if (pct >= 60) return "#3b82f6";
-		if (pct >= 40) return "#f59e0b";
-		if (pct >= 20) return "#ef4444";
-		return "#dc2626";
+		const hue = Math.min(120, Math.max(0, (pct / 100) * 120));
+		const lightness = hue > 45 && hue < 75 ? "35%" : "40%";
+		return `hsl(${hue}, 85%, ${lightness})`;
 	}
 
 	renderProgressBar(percentage) {
@@ -3488,37 +3610,42 @@ class DrishtiDashboard {
 
 	updateSummaryCards(filteredBranches, reaggregatedZoneData) {
 		if (!this.months || this.months.length === 0) return;
-		
+
 		const currentMonthKey = this.months[0].key;
-		
+
 		// 1. Total Branches - Count from filtered branches
 		const totalBranches = filteredBranches.length;
 		this.page.main.find("#summary-total-branches").text(totalBranches);
-		
+
 		// Trend calculation (vs previous month if available)
 		const prevMonthKey = this.months.length > 1 ? this.months[1].key : null;
 		const trendEl = this.page.main.find("#summary-branches-trend");
 		if (prevMonthKey) {
-			const currentCount = filteredBranches.filter(b => b.months[currentMonthKey]).length;
-			const prevCount = filteredBranches.filter(b => b.months[prevMonthKey]).length;
+			const currentCount = filteredBranches.filter((b) => b.months[currentMonthKey]).length;
+			const prevCount = filteredBranches.filter((b) => b.months[prevMonthKey]).length;
 			if (prevCount > 0) {
 				const diff = ((currentCount - prevCount) / prevCount) * 100;
 				trendEl.text(`${diff >= 0 ? "+" : ""}${diff.toFixed(1)}% from last month`);
-				trendEl.removeClass("success danger muted").addClass(diff >= 0 ? "success" : "danger");
+				trendEl
+					.removeClass("success danger muted")
+					.addClass(diff >= 0 ? "success" : "danger");
 			} else {
-				trendEl.text("New data this month").removeClass("success danger").addClass("muted");
+				trendEl
+					.text("New data this month")
+					.removeClass("success danger")
+					.addClass("muted");
 			}
 		} else {
 			trendEl.text("Reporting Period").removeClass("success danger").addClass("muted");
 		}
-		
+
 		// 2. Target Amount & Achievement - Sum from Zone Wise reaggregated data
 		let totalTarget = 0;
 		let totalAch = 0;
-		reaggregatedZoneData.forEach(item => {
+		reaggregatedZoneData.forEach((item) => {
 			if (item.isZoneTotal) {
 				if (this.state.viewType === "Quarterly" || this.state.viewType === "Yearly") {
-					this.months.forEach(month => {
+					this.months.forEach((month) => {
 						const mdata = item.months[month.key];
 						if (mdata) {
 							totalTarget += mdata.target || 0;
@@ -3534,7 +3661,7 @@ class DrishtiDashboard {
 				}
 			}
 		});
-		
+
 		this.page.main.find("#summary-target-amount").text("₹" + this.formatCurrency(totalTarget));
 		let targetLabelText = `${this.normalizeTargetType(this.state.targetType)} target`;
 		if (this.state.viewType === "Quarterly") {
@@ -3543,19 +3670,24 @@ class DrishtiDashboard {
 			targetLabelText = "Yearly target";
 		}
 
+		this.page.main.find("#summary-target-label").text(targetLabelText);
 		this.page.main
-			.find("#summary-target-label")
-			.text(targetLabelText);
-		this.page.main.find("#summary-achievement-amount").text("₹" + this.formatCurrency(totalAch));
-		
+			.find("#summary-achievement-amount")
+			.text("₹" + this.formatCurrency(totalAch));
+
 		// Achievement Percentage
 		const pct = totalTarget > 0 ? (totalAch / totalTarget) * 100 : 0;
 		const pctEl = this.page.main.find("#summary-achievement-pct");
-		pctEl.text(pct.toFixed(2) + "% achieved");
-		pctEl.removeClass("success danger").addClass(pct >= 100 ? "success" : "danger");
-		
+		pctEl.text(Math.round(pct) + "% achieved");
+
+		// Color transition from red to green based on percentage
+		const hue = Math.min(120, Math.max(0, (pct / 100) * 120));
+		const lightness = hue > 45 && hue < 75 ? "35%" : "40%";
+		pctEl.css("color", `hsl(${hue}, 85%, ${lightness})`);
+		pctEl.removeClass("success danger");
+
 		// 3. Active Zones - Unique zones in reaggregated data
-		const activeZonesCount = reaggregatedZoneData.filter(item => item.isZoneTotal).length;
+		const activeZonesCount = reaggregatedZoneData.filter((item) => item.isZoneTotal).length;
 		this.page.main.find("#summary-active-zones").text(activeZonesCount + " Zones");
 	}
 
@@ -3567,6 +3699,31 @@ class DrishtiDashboard {
             <style>
                 .page-head .page-head-content {
                     display: none !important;
+                }
+
+                #navbar-breadcrumbs li:first-child::before,
+                #navbar-breadcrumbs li:first-child a::before,
+                #navbar-breadcrumbs a[href="/app/sahayog-home"]::before {
+                    content: none !important;
+                    display: none !important;
+                }
+
+                .format-toggle-btn.active {
+                    background-color: #417d81 !important;
+                    border-color: #417d81 !important;
+                    color: #ffffff !important;
+                    font-weight: 700 !important;
+                }
+                .format-toggle-btn:not(.active) {
+                    background-color: #ffffff !important;
+                    border-color: #cbd5e1 !important;
+                    color: #1e293b !important;
+                    font-weight: 500 !important;
+                }
+                .format-toggle-btn:not(.active):hover {
+                    background-color: #f1f5f9 !important;
+                    border-color: #94a3b8 !important;
+                    color: #0f172a !important;
                 }
 
                 /* Filter Tags Styles - Side-by-side separate cards with borders like KPIs */
@@ -3774,7 +3931,7 @@ class DrishtiDashboard {
                 /* Toggle Button Styles */
                 .btn-group .btn {
                     background: #fff;
-                    border: 1px solid #778da9;
+                    border: 1px solid #cbd5e1;
                     color: #1b263b;
                     padding: 6px 12px;
                     font-size: 12px;
@@ -3861,7 +4018,7 @@ class DrishtiDashboard {
 
                 .zone-wise-table td {
                     padding: 10px 8px;
-                    border: 1px solid #778da9;
+                    border: 1px solid #cbd5e1;
                     text-align: center;
                 }
 
@@ -3910,7 +4067,7 @@ class DrishtiDashboard {
                     color: #e0e1dd;
                     padding: 12px 8px;
                     font-weight: 600;
-                    border: 1px solid #778da9;
+                    border: 1px solid #cbd5e1;
                     text-align: center;
                 }
 
@@ -3919,12 +4076,12 @@ class DrishtiDashboard {
                     color: #e0e1dd;
                     padding: 8px;
                     font-size: 11px;
-                    border: 1px solid #778da9;
+                    border: 1px solid #cbd5e1;
                 }
 
                 .category-table td {
                     padding: 10px 8px;
-                    border: 1px solid #778da9;
+                    border: 1px solid #cbd5e1;
                     text-align: center;
                 }
 
@@ -4019,7 +4176,7 @@ class DrishtiDashboard {
 
                 .branch-table td {
                     padding: 10px 8px;
-                    border: 1px solid #778da9;
+                    border: 1px solid #cbd5e1;
                 }
 
                 /* Agent Wise Table - Match Branch Table Styling */
@@ -4058,7 +4215,7 @@ class DrishtiDashboard {
                 }
                 .agent-wise-table td {
                     padding: 10px 8px;
-                    border: 1px solid #778da9;
+                    border: 1px solid #cbd5e1;
                 }
 
                 .sr-col {
@@ -4449,7 +4606,7 @@ class DrishtiDashboard {
                 .summary-card {
                     background: #fff;
                     border-radius: 8px;
-                    padding: 8px 14px;
+                    padding: 4px 12px;
                     flex: 1;
                     min-width: 200px;
                     display: flex;
@@ -4465,7 +4622,7 @@ class DrishtiDashboard {
                 .summary-info {
                     display: flex;
                     flex-direction: column;
-                    gap: 2px;
+                    gap: 1px;
                 }
                 .summary-label {
                     font-size: 11px;
@@ -4488,15 +4645,15 @@ class DrishtiDashboard {
                 .summary-subtext.muted { color: #94a3b8; }
                 
                 .summary-icon-box {
-                    width: 32px;
-                    height: 32px;
+                    width: 26px;
+                    height: 26px;
                     background: linear-gradient(135deg, #417d81 0%, #346569 100%);
-                    border-radius: 6px;
+                    border-radius: 5px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     color: #fff;
-                    font-size: 14px;
+                    font-size: 12px;
                     box-shadow: 0 2px 6px rgba(65, 125, 129, 0.1);
                 }
 
