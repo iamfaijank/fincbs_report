@@ -933,13 +933,47 @@ class DrishtiDashboard {
 
 		const allCategoriesCount = this.categoryCounts["all"] || 0;
 		const allCategoriesActive = this.state.selectedCategories.length === 0;
-		const totalPct = this.calculateCategoryPercentage("all");
+
+		// Calculate percentages using Largest Remainder Method to ensure total is exactly 100%
+		const percentages = {};
+		if (allCategoriesCount === 0) {
+			percentages["all"] = 100;
+			this.availableFilters.categories.forEach(cat => { percentages[cat] = 0; });
+		} else {
+			percentages["all"] = 100;
+			let sumFloors = 0;
+			const items = [];
+
+			this.availableFilters.categories.forEach(cat => {
+				const count = this.categoryCounts[cat] || 0;
+				const exact = (count / allCategoriesCount) * 100;
+				const floorVal = Math.floor(exact);
+				sumFloors += floorVal;
+				items.push({
+					category: cat,
+					exact: exact,
+					floorVal: floorVal,
+					remainder: exact - floorVal
+				});
+			});
+
+			let diff = 100 - sumFloors;
+			items.sort((a, b) => b.remainder - a.remainder);
+
+			items.forEach((item, index) => {
+				let finalVal = item.floorVal;
+				if (index < diff) {
+					finalVal += 1;
+				}
+				percentages[item.category] = finalVal;
+			});
+		}
 
 		container.append(`
             <button class="filter-tag category-tag all-tag ${
 				allCategoriesActive ? "active" : ""
 			}" data-category="all">
-                <span class="category-tag-pct">${totalPct}%</span>
+                <span class="category-tag-pct">${percentages["all"]}%</span>
                 <span class="category-tag-content">
                     All
                     <span class="filter-tag-count">${allCategoriesCount}</span>
@@ -951,7 +985,7 @@ class DrishtiDashboard {
 			const count = this.categoryCounts[category] || 0;
 			const isActive = this.state.selectedCategories.includes(category);
 			const color = categoryColors[category] || "#778da9";
-			const pct = this.calculateCategoryPercentage(category);
+			const pct = percentages[category];
 
 			container.append(`
                 <button class="filter-tag category-tag ${isActive ? "active" : ""}" 
@@ -967,18 +1001,6 @@ class DrishtiDashboard {
 		});
 
 		this.attachCategoryTagEvents();
-	}
-
-	calculateCategoryPercentage(category) {
-		const total = this.categoryCounts["all"] || 0;
-		if (total === 0) return "0";
-
-		if (category === "all") {
-			return "100";
-		}
-
-		const count = this.categoryCounts[category] || 0;
-		return Math.round((count / total) * 100);
 	}
 
 	attachZoneTagEvents() {
