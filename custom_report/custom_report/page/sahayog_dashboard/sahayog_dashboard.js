@@ -23,11 +23,23 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 		if ($breadcrumbs.length) {
 			$breadcrumbs.html(`
 				<li><a href="/app/sahayog-home" class="btn btn-default btn-xs" style="font-weight: 700; border-radius: 6px; padding: 2px 8px; color: #1e293b; border: 1px solid #cbd5e1; background-color: #f1f5f9; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); margin-right: 4px;">Back</a></li>
-				<li>
-					<span style="font-weight: bold; color: #417d81;">Drishti</span>
-					<span id="drishti-live-timer" style="font-size: 12px; font-weight: 500; color: #64748b; margin-left: 8px;"></span>
+				<li style="display: inline-flex; align-items: center;">
+					<span style="font-weight: bold; color: #417d81; vertical-align: middle;">Drishti</span>
+					<span id="drishti-live-timer" style="font-size: 12px; font-weight: 500; color: #64748b; margin-left: 8px; vertical-align: middle;"></span>
+					<div class="format-header-control" style="display: inline-flex; align-items: center; margin-left: 20px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;">
+						<span style="font-weight: bold; color: #475569; font-size: 12px; margin-right: 8px; line-height: 1;">Format:</span>
+						<div class="btn-group" role="group">
+							<button type="button" class="btn btn-default btn-xs format-toggle-btn" data-format="number" style="font-weight: 600; padding: 2px 8px; border-radius: 4px 0 0 4px;">Numbers</button>
+							<button type="button" class="btn btn-default btn-xs format-toggle-btn" data-format="words" style="font-weight: 600; padding: 2px 8px; border-radius: 0 4px 4px 0;">Words</button>
+						</div>
+					</div>
 				</li>
 			`);
+
+			// Set initial format toggle state from URL or state default
+			const urlParams = new URLSearchParams(window.location.search);
+			const formatMode = urlParams.get("formatMode") || "words";
+			$breadcrumbs.find(`.format-toggle-btn[data-format="${formatMode}"]`).addClass("active");
 
 			// Clear any existing interval
 			if (frappe.pages["sahayog_dashboard"].timer_interval) {
@@ -747,10 +759,8 @@ class DrishtiDashboard {
 			.addClass("active");
 
 		// Update Format toggle
-		this.page.main.find(".format-toggle-btn").removeClass("active");
-		this.page.main
-			.find(`.format-toggle-btn[data-format="${this.state.formatMode}"]`)
-			.addClass("active");
+		$(".format-toggle-btn").removeClass("active");
+		$(`.format-toggle-btn[data-format="${this.state.formatMode}"]`).addClass("active");
 
 		// Update Date selector
 		this.page.main.find("#date-selector").val(this.state.selectedDate);
@@ -1168,15 +1178,6 @@ class DrishtiDashboard {
                         <input type="date" id="date-selector" style="padding: 6px 12px; border: 1px solid #778da9; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;" />
                     </div>
 
-                    <!-- Format Toggle Buttons -->
-                    <div>
-                        <label style="font-weight: bold; color: #0d1b2a;">Format:</label>
-                        <div class="btn-group" role="group" style="margin-left: 8px;">
-                            <button type="button" class="btn btn-sm format-toggle-btn" data-format="number">Numbers</button>
-                            <button type="button" class="btn btn-sm format-toggle-btn" data-format="words">Words</button>
-                        </div>
-                    </div>
-
                     <!-- Region Filter -->
                     <div>
                         <label style="font-weight: bold; color: #0d1b2a;">Region:</label>
@@ -1314,8 +1315,8 @@ class DrishtiDashboard {
 		});
 
 		// Format Toggle
-		this.page.main.find(".format-toggle-btn").on("click", function () {
-			self.page.main.find(".format-toggle-btn").removeClass("active");
+		$(document).off("click", ".format-toggle-btn").on("click", ".format-toggle-btn", function () {
+			$(".format-toggle-btn").removeClass("active");
 			$(this).addClass("active");
 			self.state.formatMode = $(this).data("format");
 			self.updateUrlFromState();
@@ -3576,6 +3577,24 @@ class DrishtiDashboard {
                 #navbar-breadcrumbs a[href="/app/sahayog-home"]::before {
                     content: none !important;
                     display: none !important;
+                }
+
+                .format-toggle-btn.active {
+                    background-color: #417d81 !important;
+                    border-color: #417d81 !important;
+                    color: #ffffff !important;
+                    font-weight: 700 !important;
+                }
+                .format-toggle-btn:not(.active) {
+                    background-color: #ffffff !important;
+                    border-color: #cbd5e1 !important;
+                    color: #1e293b !important;
+                    font-weight: 500 !important;
+                }
+                .format-toggle-btn:not(.active):hover {
+                    background-color: #f1f5f9 !important;
+                    border-color: #94a3b8 !important;
+                    color: #0f172a !important;
                 }
 
                 /* Filter Tags Styles - Side-by-side separate cards with borders like KPIs */
