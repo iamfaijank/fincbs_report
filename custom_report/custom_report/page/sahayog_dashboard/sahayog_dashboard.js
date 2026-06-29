@@ -22,7 +22,7 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 		const $breadcrumbs = $("#navbar-breadcrumbs");
 		if ($breadcrumbs.length) {
 			$breadcrumbs.html(`
-				<li><a href="/app/sahayog-home" class="btn btn-default btn-xs" style="font-weight: 700; border-radius: 6px; padding: 2px 8px; color: #1e293b; border: 1px solid #cbd5e1; background-color: #f1f5f9; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); margin-right: 4px;"><i class="fa fa-angle-left" style="margin-right: 4px;"></i> Back</a></li>
+				<li><a href="/app/sahayog-home" class="btn btn-default btn-xs" style="font-weight: 700; border-radius: 6px; padding: 2px 8px; color: #1e293b; border: 1px solid #cbd5e1; background-color: #f1f5f9; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); margin-right: 4px;">Back</a></li>
 				<li>
 					<span style="font-weight: bold; color: #417d81;">Drishti</span>
 					<span id="drishti-live-timer" style="font-size: 12px; font-weight: 500; color: #64748b; margin-left: 8px;"></span>
@@ -2102,14 +2102,14 @@ class DrishtiDashboard {
 			const overallPercentage = totalTarget > 0 ? (totalAchievement / totalTarget) * 100 : 0;
 
 			html += `
-                <td>${this.formatNumber(totalTarget)}</td>
-                <td>${this.formatNumber(totalAchievement)}</td>
-                <td>
-					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-						<span class="pct-value" style="min-width: 45px; text-align: right;">${overallPercentage.toFixed(2)}%</span>
-						${this.renderProgressBar(overallPercentage)}
-					</div>
-				</td>
+                 <td>${this.formatNumber(totalTarget)}</td>
+                 <td>${this.formatNumber(totalAchievement)}</td>
+                 <td>
+ 					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+ 						<span class="pct-value" style="color: ${this.getPctColor(overallPercentage)}; min-width: 45px; text-align: right;">${Math.round(overallPercentage)}%</span>
+ 						${this.renderProgressBar(overallPercentage)}
+ 					</div>
+ 				</td>
             `;
 		});
 		html += `</tr></tfoot>`;
@@ -2145,7 +2145,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 										mdata.percentage,
-									)}; min-width: 45px; text-align: right;">${mdata.percentage?.toFixed(2)}%</span>
+									)}; min-width: 45px; text-align: right;">${Math.round(mdata.percentage)}%</span>
 									${this.renderProgressBar(mdata.percentage)}
 								</div>
 							</td>
@@ -2186,7 +2186,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 										mdata.percentage,
-									)}; min-width: 45px; text-align: right;">${mdata.percentage?.toFixed(2)}%</span>
+									)}; min-width: 45px; text-align: right;">${Math.round(mdata.percentage)}%</span>
 									${this.renderProgressBar(mdata.percentage)}
 								</div>
 							</td>
@@ -2680,7 +2680,7 @@ class DrishtiDashboard {
 
 			const isExpanded = this.state.expandedZones[`cat_${catName}`] || false;
 			const percentage =
-				totalBranches > 0 ? ((count / totalBranches) * 100).toFixed(2) : "0.00";
+				totalBranches > 0 ? ((count / totalBranches) * 100) : 0;
 
 			html += `
             <tr class="category-row-redesigned" data-category="${catName}" style="border-left: 5px solid ${
@@ -2693,7 +2693,7 @@ class DrishtiDashboard {
 					}</span>
                     <div class="cat-name-wrapper">
                         <span>${catName}</span>
-                        <span class="category-percentage-share">• ${percentage}%</span>
+                        <span class="category-percentage-share" style="color: ${this.getPctColor(percentage)}; font-weight: 600;">• ${Math.round(percentage)}%</span>
                     </div>
                 </td>
                 <td class="perf-band-cell">${config.range}</td>
@@ -3359,15 +3359,15 @@ class DrishtiDashboard {
 				const pct = mdata.percentage || 0;
 
 				html += `
-                <td class="metric-cell category-cell">${this.getCategoryBadge(
+                 <td class="metric-cell category-cell">${this.getCategoryBadge(
 					mdata.category,
 					"small",
 				)}</td>
-                <td class="metric-cell amount-cell">${this.formatNumber(mdata.target)}</td>
-                <td class="metric-cell amount-cell">${this.formatNumber(mdata.achievement)}</td>
-                <td>
+                 <td class="metric-cell amount-cell">${this.formatNumber(mdata.target)}</td>
+                 <td class="metric-cell amount-cell">${this.formatNumber(mdata.achievement)}</td>
+                 <td>
 					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-						<span class="pct-value" style="color: ${this.getPctColor(pct)}; min-width: 45px; text-align: right;">${pct.toFixed(2)}%</span>
+						<span class="pct-value" style="color: ${this.getPctColor(pct)}; min-width: 45px; text-align: right;">${Math.round(pct)}%</span>
 						${this.renderProgressBar(pct)}
 					</div>
 				</td>
@@ -3415,12 +3415,9 @@ class DrishtiDashboard {
 	}
 
 	getPctColor(pct) {
-		if (pct >= 100) return "#10b981";
-		if (pct >= 80) return "#14b8a6";
-		if (pct >= 60) return "#3b82f6";
-		if (pct >= 40) return "#f59e0b";
-		if (pct >= 20) return "#ef4444";
-		return "#dc2626";
+		const hue = Math.min(120, Math.max(0, (pct / 100) * 120));
+		const lightness = (hue > 45 && hue < 75) ? "35%" : "40%";
+		return `hsl(${hue}, 85%, ${lightness})`;
 	}
 
 	renderProgressBar(percentage) {
@@ -3551,8 +3548,13 @@ class DrishtiDashboard {
 		// Achievement Percentage
 		const pct = totalTarget > 0 ? (totalAch / totalTarget) * 100 : 0;
 		const pctEl = this.page.main.find("#summary-achievement-pct");
-		pctEl.text(pct.toFixed(2) + "% achieved");
-		pctEl.removeClass("success danger").addClass(pct >= 100 ? "success" : "danger");
+		pctEl.text(Math.round(pct) + "% achieved");
+		
+		// Color transition from red to green based on percentage
+		const hue = Math.min(120, Math.max(0, (pct / 100) * 120));
+		const lightness = (hue > 45 && hue < 75) ? "35%" : "40%";
+		pctEl.css("color", `hsl(${hue}, 85%, ${lightness})`);
+		pctEl.removeClass("success danger");
 		
 		// 3. Active Zones - Unique zones in reaggregated data
 		const activeZonesCount = reaggregatedZoneData.filter(item => item.isZoneTotal).length;
@@ -3569,7 +3571,9 @@ class DrishtiDashboard {
                     display: none !important;
                 }
 
-                #navbar-breadcrumbs li:first-child::before {
+                #navbar-breadcrumbs li:first-child::before,
+                #navbar-breadcrumbs li:first-child a::before,
+                #navbar-breadcrumbs a[href="/app/sahayog-home"]::before {
                     content: none !important;
                     display: none !important;
                 }
@@ -4454,7 +4458,7 @@ class DrishtiDashboard {
                 .summary-card {
                     background: #fff;
                     border-radius: 8px;
-                    padding: 8px 14px;
+                    padding: 4px 12px;
                     flex: 1;
                     min-width: 200px;
                     display: flex;
@@ -4470,7 +4474,7 @@ class DrishtiDashboard {
                 .summary-info {
                     display: flex;
                     flex-direction: column;
-                    gap: 2px;
+                    gap: 1px;
                 }
                 .summary-label {
                     font-size: 11px;
@@ -4493,15 +4497,15 @@ class DrishtiDashboard {
                 .summary-subtext.muted { color: #94a3b8; }
                 
                 .summary-icon-box {
-                    width: 32px;
-                    height: 32px;
+                    width: 26px;
+                    height: 26px;
                     background: linear-gradient(135deg, #417d81 0%, #346569 100%);
-                    border-radius: 6px;
+                    border-radius: 5px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     color: #fff;
-                    font-size: 14px;
+                    font-size: 12px;
                     box-shadow: 0 2px 6px rgba(65, 125, 129, 0.1);
                 }
 
