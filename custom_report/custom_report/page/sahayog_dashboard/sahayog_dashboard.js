@@ -19,7 +19,7 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 		const $breadcrumbs = $("#navbar-breadcrumbs");
 		if ($breadcrumbs.length) {
 			$breadcrumbs.html(`
-				<li><a href="/app/sahayog-home">Mysahayog</a></li>
+				<li><a href="/app/sahayog-home" class="btn btn-default btn-xs" style="font-weight: 700; border-radius: 6px; padding: 2px 8px; color: #1e293b; border: 1px solid #cbd5e1; background-color: #f1f5f9; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); margin-right: 4px;">Back</a></li>
 				<li>
 					<span style="font-weight: bold; color: #417d81;">Drishti</span>
 					<span id="drishti-live-timer" style="font-size: 12px; font-weight: 500; color: #64748b; margin-left: 8px;"></span>
@@ -57,7 +57,12 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 				const hoursStr = String(hours).padStart(2, '0');
 				const timeStr = `${hoursStr}:${minutes}:${seconds} ${ampm}`;
 
-				$timer.html(`Date: ${dateStr} &nbsp;&nbsp; Time: ${timeStr}`);
+				// Calculate days left in current month
+				const lastDayOfMonth = new Date(year, now.getMonth() + 1, 0).getDate();
+				const daysLeft = lastDayOfMonth - now.getDate();
+				const daysLeftText = daysLeft === 0 ? "Last Day of Month" : (daysLeft === 1 ? "1 Day Left" : `${daysLeft} Days Left`);
+
+				$timer.html(`Date: ${dateStr} &nbsp;&nbsp; Time: ${timeStr} &nbsp;&nbsp;&nbsp;&nbsp; <span class="days-left-blink">${daysLeftText}</span>`);
 			};
 
 			updateDrishtiTimer();
@@ -4454,6 +4459,16 @@ class DrishtiDashboard {
                     color: #fff;
                     font-size: 14px;
                     box-shadow: 0 2px 6px rgba(65, 125, 129, 0.1);
+                }
+
+                @keyframes redBlink {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.35; }
+                }
+                .days-left-blink {
+                    color: #ef4444 !important;
+                    font-weight: 700;
+                    animation: redBlink 1s ease-in-out infinite;
                 }
             </style>
         `;
