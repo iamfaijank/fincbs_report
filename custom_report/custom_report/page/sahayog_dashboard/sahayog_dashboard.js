@@ -17,6 +17,9 @@ frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 };
 
 frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
+	// Add full width class to body for page-specific styling
+	$("body").addClass("sahayog-dashboard-full-width");
+
 	// Inject custom breadcrumbs with live timer
 	setTimeout(() => {
 		const $breadcrumbs = $("#navbar-breadcrumbs");
@@ -94,6 +97,9 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 };
 
 frappe.pages["sahayog_dashboard"].on_page_hide = function (wrapper) {
+	// Remove full width class from body
+	$("body").removeClass("sahayog-dashboard-full-width");
+
 	// Clear interval to avoid memory leaks
 	if (frappe.pages["sahayog_dashboard"].timer_interval) {
 		clearInterval(frappe.pages["sahayog_dashboard"].timer_interval);
@@ -576,14 +582,14 @@ class DrishtiDashboard {
 				text-align: left !important;
 			}
 
-			.container {
+			.sahayog-dashboard-full-width .container {
 				max-width: 100% !important;
 				width: 100% !important;
 				padding-left: 0px !important;
 				padding-right: 0px !important;
 				margin: 0px !important;
 			}
-			.container .page-body {
+			.sahayog-dashboard-full-width .container .page-body {
 				max-width: 100% !important;
 				width: 100% !important;
 				padding: 0px !important;
