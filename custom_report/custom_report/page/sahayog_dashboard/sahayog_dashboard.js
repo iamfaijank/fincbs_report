@@ -3569,6 +3569,11 @@ class DrishtiDashboard {
                     display: none !important;
                 }
 
+                #navbar-breadcrumbs li:first-child::before {
+                    content: none !important;
+                    display: none !important;
+                }
+
                 /* Filter Tags Styles - Side-by-side separate cards with borders like KPIs */
                 .filter-tags-row {
                     display: flex;
