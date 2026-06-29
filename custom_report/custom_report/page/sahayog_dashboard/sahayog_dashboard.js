@@ -57,10 +57,10 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 				const hoursStr = String(hours).padStart(2, '0');
 				const timeStr = `${hoursStr}:${minutes}:${seconds} ${ampm}`;
 
-				// Calculate days left in current month
+				// Calculate days left in current month (inclusive of today and the last day)
 				const lastDayOfMonth = new Date(year, now.getMonth() + 1, 0).getDate();
-				const daysLeft = lastDayOfMonth - now.getDate();
-				const daysLeftText = daysLeft === 0 ? "Last Day of Month" : (daysLeft === 1 ? "1 Day Left" : `${daysLeft} Days Left`);
+				const daysLeft = lastDayOfMonth - now.getDate() + 1;
+				const daysLeftText = daysLeft === 1 ? "1 Day Left" : `${daysLeft} Days Left`;
 
 				$timer.html(`Date: ${dateStr} &nbsp;&nbsp; Time: ${timeStr} &nbsp;&nbsp;&nbsp;&nbsp; <span class="days-left-blink">${daysLeftText}</span>`);
 			};
