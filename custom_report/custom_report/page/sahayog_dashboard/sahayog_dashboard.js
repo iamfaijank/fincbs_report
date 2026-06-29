@@ -3552,16 +3552,16 @@ class DrishtiDashboard {
                     display: flex;
                     gap: 12px;
                     margin-bottom: 16px;
-                    flex-wrap: wrap;
+                    flex-wrap: nowrap; /* Force single row */
                     width: 100%;
+                    align-items: stretch;
                 }
                 .zone-filter-container {
-                    flex: 1;
-                    min-width: 280px;
+                    flex: 0 0 auto; /* fit content exactly */
                 }
                 .category-filter-container {
-                    flex: 1.8;
-                    min-width: 380px;
+                    flex: 1 1 auto; /* take remaining space */
+                    min-width: 0;
                 }
                 .filter-tags-container {
                     display: flex;
@@ -3573,6 +3573,7 @@ class DrishtiDashboard {
                     border: 1px solid #cbd5e1;
                     border-radius: 8px;
                     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+                    height: 100%;
                 }
 
                 .filter-group {
@@ -3589,14 +3590,18 @@ class DrishtiDashboard {
                 }
 
                 @media (max-width: 991px) {
-                    .zone-filter-container, .category-filter-container {
-                        flex: 1 1 100%;
+                    .filter-tags-row {
+                        gap: 8px;
                     }
                     .filter-tags-container {
-                        padding: 8px 12px;
+                        padding: 4px 8px;
+                        gap: 6px;
                     }
                     .filter-group {
-                        width: 100%;
+                        gap: 6px;
+                    }
+                    .filter-group-label {
+                        font-size: 12px;
                     }
                 }
 
