@@ -22,7 +22,7 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 		const $breadcrumbs = $("#navbar-breadcrumbs");
 		if ($breadcrumbs.length) {
 			$breadcrumbs.html(`
-				<li><a href="/app/sahayog-home" class="btn btn-default btn-xs" style="font-weight: 700; border-radius: 6px; padding: 2px 8px; color: #1e293b; border: 1px solid #cbd5e1; background-color: #f1f5f9; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); margin-right: 4px;">Back</a></li>
+				<li><a href="/app/sahayog-home" class="btn btn-default btn-xs" style="font-weight: 700; border-radius: 6px; padding: 2px 8px; color: #1e293b; border: 1px solid #cbd5e1; background-color: #f1f5f9; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); margin-right: 4px;">&lt; Back</a></li>
 				<li>
 					<span style="font-weight: bold; color: #417d81;">Drishti</span>
 					<span id="drishti-live-timer" style="font-size: 12px; font-weight: 500; color: #64748b; margin-left: 8px;"></span>
