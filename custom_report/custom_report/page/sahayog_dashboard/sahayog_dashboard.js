@@ -13,6 +13,67 @@ frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 	new DrishtiDashboard(page);
 };
 
+frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
+	// Inject custom breadcrumbs with live timer
+	setTimeout(() => {
+		const $breadcrumbs = $("#navbar-breadcrumbs");
+		if ($breadcrumbs.length) {
+			$breadcrumbs.html(`
+				<li><a href="/app/sahayog-home">Mysahayog</a></li>
+				<li>
+					<span style="font-weight: bold; color: #417d81;">Drishti</span>
+					<span id="drishti-live-timer" style="font-size: 12px; font-weight: 500; color: #64748b; margin-left: 8px;"></span>
+				</li>
+			`);
+
+			// Clear any existing interval
+			if (frappe.pages["sahayog_dashboard"].timer_interval) {
+				clearInterval(frappe.pages["sahayog_dashboard"].timer_interval);
+			}
+
+			const updateDrishtiTimer = () => {
+				const $timer = $("#drishti-live-timer");
+				if (!$timer.length) {
+					clearInterval(frappe.pages["sahayog_dashboard"].timer_interval);
+					frappe.pages["sahayog_dashboard"].timer_interval = null;
+					return;
+				}
+
+				const now = new Date();
+
+				// Format Date: DD-MM-YYYY
+				const day = String(now.getDate()).padStart(2, '0');
+				const month = String(now.getMonth() + 1).padStart(2, '0');
+				const year = now.getFullYear();
+				const dateStr = `${day}-${month}-${year}`;
+
+				// Format Time: HH:MM:SS AM/PM
+				let hours = now.getHours();
+				const minutes = String(now.getMinutes()).padStart(2, '0');
+				const seconds = String(now.getSeconds()).padStart(2, '0');
+				const ampm = hours >= 12 ? 'PM' : 'AM';
+				hours = hours % 12;
+				hours = hours ? hours : 12;
+				const hoursStr = String(hours).padStart(2, '0');
+				const timeStr = `${hoursStr}:${minutes}:${seconds} ${ampm}`;
+
+				$timer.html(`Date: ${dateStr} &nbsp;&nbsp; Time: ${timeStr}`);
+			};
+
+			updateDrishtiTimer();
+			frappe.pages["sahayog_dashboard"].timer_interval = setInterval(updateDrishtiTimer, 1000); // Update every 1 second
+		}
+	}, 100);
+};
+
+frappe.pages["sahayog_dashboard"].on_page_hide = function (wrapper) {
+	// Clear interval to avoid memory leaks
+	if (frappe.pages["sahayog_dashboard"].timer_interval) {
+		clearInterval(frappe.pages["sahayog_dashboard"].timer_interval);
+		frappe.pages["sahayog_dashboard"].timer_interval = null;
+	}
+};
+
 class DrishtiDashboard {
 	constructor(page) {
 		this.page = page;
