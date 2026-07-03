@@ -651,6 +651,7 @@ class DrishtiDashboard {
 			.zone-wise-table .branches-col {
 				position: sticky;
 				background-color: #ffffff;
+				background-clip: padding-box !important;
 			}
 			.zone-wise-table th.sr-col,
 			.zone-wise-table th.zone-col,
@@ -682,6 +683,7 @@ class DrishtiDashboard {
 				width: 80px;
 				min-width: 80px;
 				max-width: 80px;
+				border-right: 2px solid #3d7579 !important;
 			}
 			.zone-wise-table tr:hover td.sr-col,
 			.zone-wise-table tr:hover td.zone-col,
@@ -698,16 +700,21 @@ class DrishtiDashboard {
 			.zone-wise-table tr.zone-total-row:hover td.branches-col {
 				background-color: #d4d5d1 !important;
 			}
+			.region-detail-row td.sr-col {
+				border-left: 4px solid #417d81 !important;
+			}
 
-			.branch-table .sr-col,
-			.branch-table .branch-col,
-			.branch-table .segment-col {
+			.branch-table td.sr-col,
+			.branch-table td.branch-col,
+			.branch-table td.segment-col {
 				position: sticky;
 				background-color: inherit;
+				background-clip: padding-box !important;
 			}
 			.branch-table th.sr-col,
 			.branch-table th.branch-col,
 			.branch-table th.segment-col {
+				position: sticky;
 				z-index: 6;
 				background: linear-gradient(180deg, #3d7579 0%, #346569 100%) !important;
 				color: #ffffff !important;
@@ -725,18 +732,27 @@ class DrishtiDashboard {
 			}
 			.branch-table .branch-col {
 				left: 60px;
-				width: 200px;
-				min-width: 200px;
-				max-width: 200px;
+				width: 240px;
+				min-width: 240px;
+				max-width: 240px;
+				white-space: normal !important;
 			}
 			.branch-table .segment-col {
-				left: 260px;
+				left: 300px;
 				width: 140px;
 				min-width: 140px;
 				max-width: 140px;
+				border-right: 2px solid #3d7579 !important;
 			}
 			.branch-table-row {
 				background-color: #ffffff;
+			}
+
+			.zone-wise-table th,
+			.zone-wise-table td,
+			.branch-table th,
+			.branch-table td {
+				white-space: nowrap;
 			}
 		`;
 		$(`<style>${style}</style>`).appendTo("head");
