@@ -37,22 +37,6 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 				<li style="display: inline-flex; align-items: center;">
 					<span style="font-weight: bold; color: #417d81; vertical-align: middle;">Drishti</span>
 					
-					<!-- FY Control -->
-					<div class="fy-header-control" style="display: inline-flex; align-items: center; margin-left: 15px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;">
-						<span style="font-weight: bold; color: #475569; font-size: 12px; margin-right: 6px; line-height: 1;">FY:</span>
-						<select id="fy-selector" style="padding: 2px 6px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #1b263b; font-size: 12px; font-weight: 600; height: 24px; line-height: 1;">
-						</select>
-					</div>
-
-					<!-- Date Control -->
-					<div id="date-selector-container" style="display: inline-flex; align-items: center; margin-left: 15px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;">
-						<span style="font-weight: bold; color: #475569; font-size: 12px; margin-right: 6px; line-height: 1;">Date:</span>
-						<input type="date" id="date-selector" style="padding: 2px 6px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #1b263b; font-size: 12px; font-weight: 600; height: 24px; line-height: 1;" />
-					</div>
-
-					<!-- Days Left countdown -->
-					<span id="drishti-live-timer" style="font-size: 12px; font-weight: 500; color: #64748b; margin-left: 15px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;"></span>
-					
 					<!-- Format Control -->
 					<div class="format-header-control" style="display: inline-flex; align-items: center; margin-left: 15px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;">
 						<span style="font-weight: bold; color: #475569; font-size: 12px; margin-right: 8px; line-height: 1;">Format:</span>
@@ -164,6 +148,7 @@ class DrishtiDashboard {
 		this.createControls();
 		this.createFilterTags();
 		this.createTabsAndContainer();
+		this.initDatePicker();
 		this.updateStateFromUrl(); // Read from URL and update state
 		this.updateUiFromState(); // Update UI from state
 		this.loadFinancialYears();
@@ -236,6 +221,63 @@ class DrishtiDashboard {
 		}
 	}
 
+	initDatePicker() {
+		const self = this;
+		const container = $("#date-selector-container");
+		if (container.length) {
+			container.find(".frappe-control").remove();
+			
+			this.dateControl = frappe.ui.form.make_control({
+				parent: container,
+				df: {
+					fieldtype: "Date",
+					fieldname: "date_selector",
+					placeholder: "DD/MM/YYYY",
+					only_input: true,
+					change: function () {
+						if (self.isRefreshingDate) return;
+						const val = self.dateControl.get_value();
+						self.state.selectedDate = val;
+						if (self.state.activeTab && self.tabDates.hasOwnProperty(self.state.activeTab)) {
+							self.tabDates[self.state.activeTab] = val;
+						}
+						self.updateUrlFromState();
+						self.loadData();
+					}
+				},
+				render_input: true
+			});
+
+			if (this.dateControl && this.dateControl.$input) {
+				this.dateControl.$input.css({
+					"padding": "4px 8px",
+					"border": "1px solid #cbd5e1",
+					"border-radius": "4px",
+					"background": "white",
+					"color": "#1b263b",
+					"font-size": "13px",
+					"font-weight": "600",
+					"height": "30px",
+					"width": "140px",
+					"margin-left": "8px"
+				});
+				this.dateControl.$wrapper.css({
+					"margin": "0",
+					"padding": "0",
+					"display": "inline-block"
+				});
+			}
+		}
+	}
+
+	updateDatePickerValue(dateStr) {
+		if (this.dateControl) {
+			this.isRefreshingDate = true;
+			this.dateControl.set_value(dateStr || "");
+			this.isRefreshingDate = false;
+		}
+	}
+
 	loadFinancialYears() {
 		const self = this;
 		frappe.call({
@@ -290,7 +332,7 @@ class DrishtiDashboard {
 		if (!defaultDate) return;
 
 		this.state.selectedDate = defaultDate;
-		$("#date-selector").val(defaultDate);
+		this.updateDatePickerValue(defaultDate);
 		if (this.state.activeTab && this.tabDates.hasOwnProperty(this.state.activeTab)) {
 			this.tabDates[this.state.activeTab] = defaultDate;
 		}
@@ -861,14 +903,25 @@ class DrishtiDashboard {
 		if (this.state.viewType === "Quarterly") {
 			this.page.main.find("#quarter-selector-container").show();
 			this.page.main.find(".quarter-toggle-btn").removeClass("active");
-			const activeQ =
-				this.state.selectedQuarter ||
-				this.getQuarterFromDate(this.state.selectedDate || frappe.datetime.get_today());
+			if (!this.state.selectedQuarter) {
+				this.state.selectedQuarter = this.getQuarterFromDate(this.state.selectedDate || frappe.datetime.get_today());
+				this.state.selectedDate = this.getQuarterDate(this.state.selectedQuarter, this.state.financialYear);
+			}
 			this.page.main
-				.find(`.quarter-toggle-btn[data-quarter="${activeQ}"]`)
+				.find(`.quarter-toggle-btn[data-quarter="${this.state.selectedQuarter}"]`)
 				.addClass("active");
 		} else {
 			this.page.main.find("#quarter-selector-container").hide();
+		}
+
+		// Update Month selector
+		if (this.state.viewType === "Monthly") {
+			this.page.main.find("#month-selector-container").show();
+			const dateToUse = this.state.selectedDate || frappe.datetime.get_today();
+			const monthVal = new Date(dateToUse).getMonth() + 1; // 1-12
+			this.page.main.find("#month-selector").val(monthVal);
+		} else {
+			this.page.main.find("#month-selector-container").hide();
 		}
 
 		// Update Target toggle
@@ -882,7 +935,7 @@ class DrishtiDashboard {
 		$(`.format-toggle-btn[data-format="${this.state.formatMode}"]`).addClass("active");
 
 		// Update Date selector
-		$("#date-selector").val(this.state.selectedDate);
+		this.updateDatePickerValue(this.state.selectedDate);
 
 		// Update Region selector
 		this.updateRegionDropdownUI();
@@ -924,7 +977,7 @@ class DrishtiDashboard {
 		this.state.selectedMonth = null;
 		this.state.drillDownActive = false;
 
-		$("#date-selector").val("");
+		this.updateDatePickerValue("");
 		this.updateRegionDropdownUI();
 		this.page.main.find("#branch-search").val("");
 
@@ -1263,6 +1316,23 @@ class DrishtiDashboard {
             <div style="border: 1px solid #cbd5e1; padding: 12px; background: #fff; border-radius: 8px; margin-top: 15px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);">
                 <!-- Filters Row -->
                 <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ddd;">
+                    <!-- FY Selector -->
+                    <div class="fy-header-control" style="display: flex; align-items: center;">
+                        <label style="font-weight: bold; color: #0d1b2a; margin-bottom: 0;">FY:</label>
+                        <select id="fy-selector" style="padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #1b263b; font-size: 13px; font-weight: 600; height: 30px; margin-left: 8px;">
+                        </select>
+                    </div>
+
+                    <!-- Date Selector -->
+                    <div id="date-selector-container" style="display: flex; align-items: center;">
+                        <label style="font-weight: bold; color: #0d1b2a; margin-bottom: 0;">Date:</label>
+                    </div>
+
+                    <!-- Days Left countdown -->
+                    <div style="display: flex; align-items: center;">
+                        <span id="drishti-live-timer" style="font-size: 13px; font-weight: 600; color: #64748b; white-space: nowrap;"></span>
+                    </div>
+
                     <!-- View Toggle Buttons -->
                     <div style="display: flex; align-items: center;">
                         <label style="font-weight: bold; color: #0d1b2a;">View:</label>
@@ -1270,6 +1340,24 @@ class DrishtiDashboard {
                             <button type="button" class="btn btn-sm view-toggle-btn" data-view="Monthly">Monthly</button>
                             <button type="button" class="btn btn-sm view-toggle-btn" data-view="Quarterly">Quarterly</button>
                             <button type="button" class="btn btn-sm view-toggle-btn" data-view="Yearly">Yearly</button>
+                        </div>
+
+                        <!-- Month Selector (shown only when view is Monthly) -->
+                        <div id="month-selector-container" style="display: none; margin-left: 10px;">
+                            <select id="month-selector" style="padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #1b263b; font-size: 13px; font-weight: 600; height: 30px;">
+                                <option value="4">April</option>
+                                <option value="5">May</option>
+                                <option value="6">June</option>
+                                <option value="7">July</option>
+                                <option value="8">August</option>
+                                <option value="9">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <option value="3">March</option>
+                            </select>
                         </div>
  
                         <!-- Quarter Selector (hidden by default) -->
@@ -1392,7 +1480,23 @@ class DrishtiDashboard {
 			$(this).addClass("active");
 			self.clearViewControlsHighlight();
 			self.state.viewType = $(this).data("view");
-			self.applyPreviousFinancialYearDefaultDate();
+			
+			if (self.state.viewType === "Quarterly") {
+				const currentQ = self.getQuarterFromDate(frappe.datetime.get_today());
+				self.state.selectedQuarter = currentQ;
+				self.state.selectedDate = self.getQuarterDate(currentQ, self.state.financialYear);
+			} else if (self.state.viewType === "Monthly") {
+				self.state.selectedQuarter = null;
+				if (self.isPreviousFinancialYear()) {
+					self.applyPreviousFinancialYearDefaultDate();
+				} else {
+					self.state.selectedDate = frappe.datetime.get_today();
+				}
+			} else {
+				self.state.selectedQuarter = null;
+				self.applyPreviousFinancialYearDefaultDate();
+			}
+			
 			self.updateUrlFromState();
 			self.updateUiFromState();
 			self.loadData();
@@ -1418,6 +1522,51 @@ class DrishtiDashboard {
 			self.loadData();
 		});
 
+		// Month Selector change
+		this.page.main.on("change", "#month-selector", function () {
+			const selectedMonthNum = parseInt($(this).val()); // 1 to 12
+			
+			const now = new Date();
+			const currentMonth = now.getMonth() + 1; // 1-12
+			const currentYear = now.getFullYear();
+			
+			const startYear = parseInt(self.state.financialYear.split("-")[0]);
+			const endYear = parseInt(self.state.financialYear.split("-")[1]);
+			
+			const selectedYear = (selectedMonthNum >= 4) ? startYear : endYear;
+			
+			const isFuture = (selectedYear > currentYear) || (selectedYear === currentYear && selectedMonthNum > currentMonth);
+			
+			if (isFuture) {
+				frappe.show_alert({
+					message: __("Future months cannot be accessed"),
+					indicator: "orange"
+				});
+				const dateToUse = self.state.selectedDate || frappe.datetime.get_today();
+				const prevMonthVal = new Date(dateToUse).getMonth() + 1;
+				$(this).val(prevMonthVal);
+				return;
+			}
+			
+			let newDateStr = "";
+			if (selectedYear === currentYear && selectedMonthNum === currentMonth) {
+				const todayObj = new Date();
+				newDateStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, "0")}-${String(todayObj.getDate()).padStart(2, "0")}`;
+			} else {
+				const lastDay = new Date(selectedYear, selectedMonthNum, 0).getDate();
+				newDateStr = `${selectedYear}-${String(selectedMonthNum).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+			}
+			
+			self.state.selectedDate = newDateStr;
+			if (self.state.activeTab && self.tabDates.hasOwnProperty(self.state.activeTab)) {
+				self.tabDates[self.state.activeTab] = newDateStr;
+			}
+			
+			self.updateDatePickerValue(newDateStr);
+			self.updateUrlFromState();
+			self.loadData();
+		});
+
 		// Target Toggle Buttons
 		this.page.main.find(".target-toggle-btn").on("click", function () {
 			self.page.main.find(".target-toggle-btn").removeClass("active");
@@ -1427,17 +1576,6 @@ class DrishtiDashboard {
 			self.loadData();
 		});
 
-		// Date Selector
-		$(document).off("change", "#date-selector").on("change", "#date-selector", function () {
-			const newDate = $(this).val();
-			self.state.selectedDate = newDate;
-			// Save date for current tab
-			if (self.state.activeTab && self.tabDates.hasOwnProperty(self.state.activeTab)) {
-				self.tabDates[self.state.activeTab] = newDate;
-			}
-			self.updateUrlFromState();
-			self.loadData();
-		});
 
 		// Format Toggle
 		$(document)
@@ -1639,6 +1777,23 @@ class DrishtiDashboard {
 						return;
 					}
 
+					// Update selectedDate if empty to reflect the actual loaded date
+					if (!self.state.selectedDate && r.message.months && r.message.months.length > 0) {
+						const latestMonth = r.message.months[r.message.months.length - 1];
+						if (latestMonth && latestMonth.date) {
+							self.state.selectedDate = latestMonth.date;
+							if (self.state.activeTab && self.tabDates.hasOwnProperty(self.state.activeTab)) {
+								self.tabDates[self.state.activeTab] = latestMonth.date;
+							}
+							self.updateDatePickerValue(latestMonth.date);
+							if (self.state.viewType === "Monthly") {
+								const monthVal = new Date(latestMonth.date).getMonth() + 1;
+								self.page.main.find("#month-selector").val(monthVal);
+							}
+							self.updateUrlFromState();
+						}
+					}
+
 					self.processNewApiResponse();
 					self.updateFilterCounts();
 					self.render();
@@ -1729,6 +1884,23 @@ class DrishtiDashboard {
 							</div>
 						`);
 						return;
+					}
+
+					// Update selectedDate if empty to reflect the actual loaded date
+					if (!self.state.selectedDate && r.message.months && r.message.months.length > 0) {
+						const latestMonth = r.message.months[r.message.months.length - 1];
+						if (latestMonth && latestMonth.date) {
+							self.state.selectedDate = latestMonth.date;
+							if (self.state.activeTab && self.tabDates.hasOwnProperty(self.state.activeTab)) {
+								self.tabDates[self.state.activeTab] = latestMonth.date;
+							}
+							self.updateDatePickerValue(latestMonth.date);
+							if (self.state.viewType === "Monthly") {
+								const monthVal = new Date(latestMonth.date).getMonth() + 1;
+								self.page.main.find("#month-selector").val(monthVal);
+							}
+							self.updateUrlFromState();
+						}
 					}
 
 					self.processNewApiResponse();

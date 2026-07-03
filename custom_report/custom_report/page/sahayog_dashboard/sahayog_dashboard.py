@@ -154,9 +154,12 @@ def get_fy_months_with_dates(financial_year, view="Monthly", selected_date=None,
     selected_date_obj = getdate(selected_date) if selected_date else None
 
     if view == "Monthly":
+        ref_date = selected_date_obj if selected_date_obj else datetime.now()
+        ref_month = ref_date.month
+        ref_year = ref_date.year
         for m in all_months:
-            if m[1] == current_month and m[2] == current_year:
-                if selected_date_obj and selected_date_obj.month == current_month and selected_date_obj.year == current_year:
+            if m[1] == ref_month and m[2] == ref_year:
+                if selected_date_obj and selected_date_obj.month == ref_month and selected_date_obj.year == ref_year:
                     if selected_date_obj.weekday() != 6:
                         exists = frappe.db.exists("Branch Category Report", {"date": selected_date_obj})
                         if exists:
