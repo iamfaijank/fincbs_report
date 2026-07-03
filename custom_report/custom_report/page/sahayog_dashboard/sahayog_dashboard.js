@@ -13,7 +13,7 @@ frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 	// Hide default Drishti title heading
 	$(wrapper).find(".title-text").hide();
 
-	new DrishtiDashboard(page);
+	wrapper.dashboard = new DrishtiDashboard(page);
 };
 
 frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
@@ -36,8 +36,25 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 				<li><a href="/app/sahayog-home" class="btn btn-default btn-xs" style="font-weight: 700; border-radius: 6px; padding: 2px 8px; color: #1e293b; border: 1px solid #cbd5e1; background-color: #f1f5f9; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); margin-right: 4px;">Back</a></li>
 				<li style="display: inline-flex; align-items: center;">
 					<span style="font-weight: bold; color: #417d81; vertical-align: middle;">Drishti</span>
-					<span id="drishti-live-timer" style="font-size: 12px; font-weight: 500; color: #64748b; margin-left: 8px; vertical-align: middle;"></span>
-					<div class="format-header-control" style="display: inline-flex; align-items: center; margin-left: 20px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;">
+					
+					<!-- FY Control -->
+					<div class="fy-header-control" style="display: inline-flex; align-items: center; margin-left: 15px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;">
+						<span style="font-weight: bold; color: #475569; font-size: 12px; margin-right: 6px; line-height: 1;">FY:</span>
+						<select id="fy-selector" style="padding: 2px 6px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #1b263b; font-size: 12px; font-weight: 600; height: 24px; line-height: 1;">
+						</select>
+					</div>
+
+					<!-- Date Control -->
+					<div id="date-selector-container" style="display: inline-flex; align-items: center; margin-left: 15px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;">
+						<span style="font-weight: bold; color: #475569; font-size: 12px; margin-right: 6px; line-height: 1;">Date:</span>
+						<input type="date" id="date-selector" style="padding: 2px 6px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #1b263b; font-size: 12px; font-weight: 600; height: 24px; line-height: 1;" />
+					</div>
+
+					<!-- Days Left countdown -->
+					<span id="drishti-live-timer" style="font-size: 12px; font-weight: 500; color: #64748b; margin-left: 15px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;"></span>
+					
+					<!-- Format Control -->
+					<div class="format-header-control" style="display: inline-flex; align-items: center; margin-left: 15px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;">
 						<span style="font-weight: bold; color: #475569; font-size: 12px; margin-right: 8px; line-height: 1;">Format:</span>
 						<div class="btn-group" role="group">
 							<button type="button" class="btn btn-default btn-xs format-toggle-btn" data-format="number" style="font-weight: 600; padding: 2px 8px; border-radius: 4px 0 0 4px;">Numbers</button>
@@ -54,36 +71,25 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 				.find(`.format-toggle-btn[data-format="${formatMode}"]`)
 				.addClass("active");
 
+			// Repopulate headers if dashboard instance exists
+			if (wrapper.dashboard) {
+				wrapper.dashboard.repopulateHeaderFilters();
+			}
+
 			// Clear any existing interval
 			if (frappe.pages["sahayog_dashboard"].timer_interval) {
 				clearInterval(frappe.pages["sahayog_dashboard"].timer_interval);
+				frappe.pages["sahayog_dashboard"].timer_interval = null;
 			}
 
 			const updateDrishtiTimer = () => {
 				const $timer = $("#drishti-live-timer");
 				if (!$timer.length) {
-					clearInterval(frappe.pages["sahayog_dashboard"].timer_interval);
-					frappe.pages["sahayog_dashboard"].timer_interval = null;
 					return;
 				}
 
 				const now = new Date();
-
-				// Format Date: DD-MM-YYYY
-				const day = String(now.getDate()).padStart(2, "0");
-				const month = String(now.getMonth() + 1).padStart(2, "0");
 				const year = now.getFullYear();
-				const dateStr = `${day}-${month}-${year}`;
-
-				// Format Time: HH:MM:SS AM/PM
-				let hours = now.getHours();
-				const minutes = String(now.getMinutes()).padStart(2, "0");
-				const seconds = String(now.getSeconds()).padStart(2, "0");
-				const ampm = hours >= 12 ? "PM" : "AM";
-				hours = hours % 12;
-				hours = hours ? hours : 12;
-				const hoursStr = String(hours).padStart(2, "0");
-				const timeStr = `${hoursStr}:${minutes}:${seconds} ${ampm}`;
 
 				// Calculate days left in current month (inclusive of today and the last day)
 				const lastDayOfMonth = new Date(year, now.getMonth() + 1, 0).getDate();
@@ -91,15 +97,11 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 				const daysLeftText = daysLeft === 1 ? "1 Day Left" : `${daysLeft} Days Left`;
 
 				$timer.html(
-					`Date: ${dateStr} &nbsp;&nbsp; Time: ${timeStr} &nbsp;&nbsp;&nbsp;&nbsp; <span class="days-left-blink">${daysLeftText}</span>`,
+					`<span class="days-left-blink">${daysLeftText}</span>`,
 				);
 			};
 
 			updateDrishtiTimer();
-			frappe.pages["sahayog_dashboard"].timer_interval = setInterval(
-				updateDrishtiTimer,
-				1000,
-			); // Update every 1 second
 		}
 	}, 100);
 };
@@ -127,7 +129,7 @@ class DrishtiDashboard {
 			selectedDate: null,
 			selectedCategories: [],
 			selectedZones: [],
-			selectedRegion: "",
+			selectedRegions: [],
 			branchSearchTerm: "",
 			selectedMonth: null,
 			drillDownActive: false,
@@ -240,6 +242,7 @@ class DrishtiDashboard {
 			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_available_financial_years",
 			callback: function (r) {
 				if (r.message && r.message.length > 0) {
+					self.financialYearsList = r.message;
 					self.populateFinancialYears(r.message);
 					// Select the latest (first) available year if not already set
 					if (
@@ -247,7 +250,7 @@ class DrishtiDashboard {
 						!r.message.includes(self.state.financialYear)
 					) {
 						self.state.financialYear = r.message[0];
-						self.page.main.find("#fy-selector").val(self.state.financialYear);
+						$("#fy-selector").val(self.state.financialYear);
 					}
 					self.loadData();
 				}
@@ -256,7 +259,7 @@ class DrishtiDashboard {
 	}
 
 	populateFinancialYears(fyList) {
-		const selector = this.page.main.find("#fy-selector");
+		const selector = $("#fy-selector");
 		selector.empty();
 		fyList.forEach(function (fy) {
 			selector.append(`<option value="${fy}">${fy}</option>`);
@@ -287,7 +290,7 @@ class DrishtiDashboard {
 		if (!defaultDate) return;
 
 		this.state.selectedDate = defaultDate;
-		this.page.main.find("#date-selector").val(defaultDate);
+		$("#date-selector").val(defaultDate);
 		if (this.state.activeTab && this.tabDates.hasOwnProperty(this.state.activeTab)) {
 			this.tabDates[this.state.activeTab] = defaultDate;
 		}
@@ -296,7 +299,7 @@ class DrishtiDashboard {
 	getDashboardViewForRequest() {
 		if (
 			this.isPreviousFinancialYear() &&
-			(this.state.viewType === "Monthly" || this.state.viewType === "Quarterly")
+			this.state.viewType === "Monthly"
 		) {
 			return "Yearly";
 		}
@@ -309,10 +312,6 @@ class DrishtiDashboard {
 
 		if (this.state.viewType === "Monthly") {
 			data.months = (data.months || []).filter((month) => month.key === "MAR");
-		} else if (this.state.viewType === "Quarterly") {
-			data.months = (data.months || []).filter((month) =>
-				["JAN", "FEB", "MAR"].includes(month.key),
-			);
 		}
 
 		return data;
@@ -783,12 +782,19 @@ class DrishtiDashboard {
 			);
 			this.state.formatMode = queryParams.formatMode || this.state.formatMode;
 			this.state.selectedDate = queryParams.selectedDate || this.state.selectedDate;
-			this.state.selectedRegion = queryParams.selectedRegion || this.state.selectedRegion;
 			this.state.branchSearchTerm =
 				queryParams.branchSearchTerm || this.state.branchSearchTerm;
 			this.state.selectedMonth = queryParams.selectedMonth || this.state.selectedMonth;
 			this.state.selectedSegment = queryParams.selectedSegment || this.state.selectedSegment;
 			this.state.selectedQuarter = queryParams.selectedQuarter || this.state.selectedQuarter;
+
+			if (queryParams.selectedRegions) {
+				this.state.selectedRegions = queryParams.selectedRegions.split(",").filter(Boolean);
+			} else if (queryParams.selectedRegion) {
+				this.state.selectedRegions = [queryParams.selectedRegion];
+			} else {
+				this.state.selectedRegions = [];
+			}
 
 			if (queryParams.selectedCategories) {
 				this.state.selectedCategories = queryParams.selectedCategories
@@ -813,7 +819,6 @@ class DrishtiDashboard {
 			formatMode: this.state.formatMode,
 			selectedDate: this.state.selectedDate,
 			selectedQuarter: this.state.selectedQuarter,
-			selectedRegion: this.state.selectedRegion,
 			branchSearchTerm: this.state.branchSearchTerm,
 			selectedMonth: this.state.selectedMonth,
 			selectedSegment: this.state.selectedSegment,
@@ -834,6 +839,9 @@ class DrishtiDashboard {
 		if (this.state.selectedZones.length > 0) {
 			newSearchParams.set("selectedZones", this.state.selectedZones.join(","));
 		}
+		if (this.state.selectedRegions.length > 0) {
+			newSearchParams.set("selectedRegions", this.state.selectedRegions.join(","));
+		}
 
 		newUrl.search = newSearchParams.toString();
 		history.pushState({}, "", newUrl.toString());
@@ -841,7 +849,7 @@ class DrishtiDashboard {
 
 	updateUiFromState() {
 		// Update FY selector
-		this.page.main.find("#fy-selector").val(this.state.financialYear);
+		$("#fy-selector").val(this.state.financialYear);
 
 		// Update View toggle
 		this.page.main.find(".view-toggle-btn").removeClass("active");
@@ -874,10 +882,10 @@ class DrishtiDashboard {
 		$(`.format-toggle-btn[data-format="${this.state.formatMode}"]`).addClass("active");
 
 		// Update Date selector
-		this.page.main.find("#date-selector").val(this.state.selectedDate);
+		$("#date-selector").val(this.state.selectedDate);
 
 		// Update Region selector
-		this.page.main.find("#region-selector").val(this.state.selectedRegion);
+		this.updateRegionDropdownUI();
 
 		// Update Branch search
 		this.page.main.find("#branch-search").val(this.state.branchSearchTerm);
@@ -893,6 +901,13 @@ class DrishtiDashboard {
 		this.updateFilterTagsUI();
 	}
 
+	repopulateHeaderFilters() {
+		if (this.financialYearsList && this.financialYearsList.length > 0) {
+			this.populateFinancialYears(this.financialYearsList);
+		}
+		this.updateUiFromState();
+	}
+
 	// ========================================================================
 	// CONTROLS - View, Target, FY, Date, Region, Branch, Format
 	// ========================================================================
@@ -904,13 +919,13 @@ class DrishtiDashboard {
 		this.state.selectedDate = null;
 		this.state.selectedCategories = [];
 		this.state.selectedZones = [];
-		this.state.selectedRegion = "";
+		this.state.selectedRegions = [];
 		this.state.branchSearchTerm = "";
 		this.state.selectedMonth = null;
 		this.state.drillDownActive = false;
 
-		this.page.main.find("#date-selector").val("");
-		this.page.main.find("#region-selector").val("");
+		$("#date-selector").val("");
+		this.updateRegionDropdownUI();
 		this.page.main.find("#branch-search").val("");
 
 		this.updateFilterCounts();
@@ -1215,9 +1230,9 @@ class DrishtiDashboard {
 		}
 
 		// Apply region filter
-		if (this.state.selectedRegion) {
-			filteredBranches = filteredBranches.filter(
-				(b) => b.region === this.state.selectedRegion,
+		if (this.state.selectedRegions && this.state.selectedRegions.length > 0) {
+			filteredBranches = filteredBranches.filter((b) =>
+				this.state.selectedRegions.includes(b.region),
 			);
 		}
 
@@ -1248,13 +1263,6 @@ class DrishtiDashboard {
             <div style="border: 1px solid #cbd5e1; padding: 12px; background: #fff; border-radius: 8px; margin-top: 15px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);">
                 <!-- Filters Row -->
                 <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ddd;">
-                    <!-- Financial Year -->
-                    <div>
-                        <label style="font-weight: bold; color: #0d1b2a;">FY:</label>
-                        <select id="fy-selector" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;">
-                        </select>
-                    </div>
-
                     <!-- View Toggle Buttons -->
                     <div style="display: flex; align-items: center;">
                         <label style="font-weight: bold; color: #0d1b2a;">View:</label>
@@ -1263,7 +1271,7 @@ class DrishtiDashboard {
                             <button type="button" class="btn btn-sm view-toggle-btn" data-view="Quarterly">Quarterly</button>
                             <button type="button" class="btn btn-sm view-toggle-btn" data-view="Yearly">Yearly</button>
                         </div>
-
+ 
                         <!-- Quarter Selector (hidden by default) -->
                         <div id="quarter-selector-container" style="display: none; margin-left: 10px;">
                             <div class="btn-group" role="group">
@@ -1274,7 +1282,7 @@ class DrishtiDashboard {
                             </div>
                         </div>
                     </div>
-
+ 
                     <!-- Target Toggle Buttons -->
                     <div>
                         <label style="font-weight: bold; color: #0d1b2a;">Target:</label>
@@ -1284,19 +1292,18 @@ class DrishtiDashboard {
                             <button type="button" class="btn btn-sm target-toggle-btn" data-target="Yearly">Yearly</button>
                         </div>
                     </div>
-
-                    <!-- Date Selector -->
-                    <div id="date-selector-container">
-                        <label style="font-weight: bold; color: #0d1b2a;">Date:</label>
-                        <input type="date" id="date-selector" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; margin-left: 8px; background: white; color: #1b263b;" />
-                    </div>
-
-                    <!-- Region Filter -->
-                    <div>
+ 
+                    <!-- Region Filter (Multi-select dropdown) -->
+                    <div class="dropdown" id="region-dropdown-container" style="display: inline-block;">
                         <label style="font-weight: bold; color: #0d1b2a;">Region:</label>
-                        <select id="region-selector" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; margin-left: 8px; min-width: 150px; background: white; color: #1b263b;">
-                            <option value="">All Regions</option>
-                        </select>
+                        <div class="btn-group" style="margin-left: 8px;">
+                            <button class="btn btn-default btn-sm dropdown-toggle" type="button" id="region-dropdown-btn" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 150px; background: white; color: #1b263b; text-align: left; display: inline-flex; align-items: center; justify-content: space-between;">
+                                <span id="region-dropdown-label">All Regions</span>
+                                <span class="caret" style="margin-left: 8px;"></span>
+                            </button>
+                            <ul class="dropdown-menu" id="region-dropdown-menu" aria-labelledby="region-dropdown-btn" style="max-height: 250px; overflow-y: auto; padding: 5px 0; border: 1px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); width: 220px;">
+                            </ul>
+                        </div>
                     </div>
                 </div>
 
@@ -1372,7 +1379,7 @@ class DrishtiDashboard {
 		});
 
 		// Financial Year
-		this.page.main.find("#fy-selector").on("change", function () {
+		$(document).off("change", "#fy-selector").on("change", "#fy-selector", function () {
 			self.state.financialYear = $(this).val();
 			self.applyPreviousFinancialYearDefaultDate();
 			self.updateUrlFromState();
@@ -1421,7 +1428,7 @@ class DrishtiDashboard {
 		});
 
 		// Date Selector
-		this.page.main.find("#date-selector").on("change", function () {
+		$(document).off("change", "#date-selector").on("change", "#date-selector", function () {
 			const newDate = $(this).val();
 			self.state.selectedDate = newDate;
 			// Save date for current tab
@@ -1443,11 +1450,48 @@ class DrishtiDashboard {
 				self.render();
 			});
 
-		// Region Filter
-		this.page.main.find("#region-selector").on("change", function () {
-			self.state.selectedRegion = $(this).val() || "";
+		// Region Filter - All Regions checkbox change
+		this.page.main.on("change", "#region-all-checkbox", function () {
+			const isChecked = $(this).prop("checked");
+			if (isChecked) {
+				self.state.selectedRegions = [];
+			} else {
+				self.state.selectedRegions = [...self.availableFilters.regions];
+			}
+			self.updateRegionDropdownUI();
 			self.updateUrlFromState();
 			self.loadData();
+		});
+
+		// Region Filter - Individual checkbox change
+		this.page.main.on("change", ".region-checkbox", function () {
+			const region = $(this).val();
+			const isChecked = $(this).prop("checked");
+
+			if (isChecked) {
+				if (!self.state.selectedRegions.includes(region)) {
+					self.state.selectedRegions.push(region);
+				}
+			} else {
+				const index = self.state.selectedRegions.indexOf(region);
+				if (index > -1) {
+					self.state.selectedRegions.splice(index, 1);
+				}
+			}
+
+			// If all individual regions are selected, we can optionally clear the array to signify "All Regions"
+			if (self.state.selectedRegions.length === self.availableFilters.regions.length) {
+				self.state.selectedRegions = [];
+			}
+
+			self.updateRegionDropdownUI();
+			self.updateUrlFromState();
+			self.loadData();
+		});
+
+		// Prevent dropdown from closing when clicking inside the menu
+		this.page.main.on("click", "#region-dropdown-menu", function (e) {
+			e.stopPropagation();
 		});
 
 		// Clear Filters
@@ -1705,13 +1749,75 @@ class DrishtiDashboard {
 
 		this.availableFilters.regions = Array.from(regionSet).sort();
 
-		const regionSelector = this.page.main.find("#region-selector");
-		regionSelector.empty();
-		regionSelector.append('<option value="">All Regions</option>');
+		const menu = this.page.main.find("#region-dropdown-menu");
+		if (!menu.length) return;
+		menu.empty();
 
+		// Add "All Regions" / toggle all item
+		menu.append(`
+			<li style="padding: 4px 12px; border-bottom: 1px solid #edf2f7; margin-bottom: 4px; white-space: nowrap; display: flex; align-items: center;">
+				<label style="font-weight: bold; margin-bottom: 0; cursor: pointer; display: flex; align-items: center; width: 100%; color: #0d1b2a;">
+					<input type="checkbox" id="region-all-checkbox" style="margin-right: 8px; cursor: pointer;" />
+					All Regions
+				</label>
+			</li>
+		`);
+
+		// Add each region checkbox
 		this.availableFilters.regions.forEach((region) => {
-			regionSelector.append(`<option value="${region}">${region}</option>`);
+			const isChecked = this.state.selectedRegions.includes(region);
+			menu.append(`
+				<li style="padding: 4px 12px; white-space: nowrap; display: flex; align-items: center;">
+					<label style="font-weight: normal; margin-bottom: 0; cursor: pointer; display: flex; align-items: center; width: 100%; color: #1b263b;">
+						<input type="checkbox" class="region-checkbox" value="${region}" ${isChecked ? "checked" : ""} style="margin-right: 8px; cursor: pointer;" />
+						${region}
+					</label>
+				</li>
+			`);
 		});
+
+		this.updateRegionDropdownUI();
+	}
+
+	updateRegionDropdownUI() {
+		const self = this;
+		const container = this.page.main.find("#region-dropdown-container");
+		if (!container.length) return;
+
+		// Update checkboxes state
+		const checkboxes = container.find(".region-checkbox");
+		checkboxes.each(function () {
+			const region = $(this).val();
+			$(this).prop("checked", self.state.selectedRegions.includes(region));
+		});
+
+		// Update "All Regions" checkbox state
+		const allCheckbox = container.find("#region-all-checkbox");
+		const allSelected = checkboxes.length > 0 && checkboxes.length === self.state.selectedRegions.length;
+		const noneSelected = self.state.selectedRegions.length === 0;
+
+		if (noneSelected) {
+			allCheckbox.prop("checked", true);
+			allCheckbox.prop("indeterminate", false);
+		} else if (allSelected) {
+			allCheckbox.prop("checked", true);
+			allCheckbox.prop("indeterminate", false);
+		} else {
+			allCheckbox.prop("checked", false);
+			allCheckbox.prop("indeterminate", true);
+		}
+
+		// Update label
+		const label = container.find("#region-dropdown-label");
+		if (noneSelected) {
+			label.text("All Regions");
+		} else if (allSelected) {
+			label.text("All Regions");
+		} else if (self.state.selectedRegions.length === 1) {
+			label.text(self.state.selectedRegions[0]);
+		} else {
+			label.text(`${self.state.selectedRegions.length} Regions`);
+		}
 	}
 
 	showError(message) {
@@ -1825,11 +1931,13 @@ class DrishtiDashboard {
 		}
 
 		// 3. Region filter
-		if (this.state.selectedRegion) {
-			filtered = filtered.filter(
-				(branch) =>
-					this.getLocationIdentifier(branch.region) ===
-					this.getLocationIdentifier(this.state.selectedRegion),
+		if (this.state.selectedRegions && this.state.selectedRegions.length > 0) {
+			filtered = filtered.filter((branch) =>
+				this.state.selectedRegions.some(
+					(region) =>
+						this.getLocationIdentifier(region) ===
+						this.getLocationIdentifier(branch.region),
+				),
 			);
 		}
 
@@ -3293,11 +3401,11 @@ class DrishtiDashboard {
 		);
 
 		this.state.selectedZones = [zone];
-		this.state.selectedRegion = region || "";
+		this.state.selectedRegions = region ? [region] : [];
 		this.state.drillDownActive = true;
 
 		// Update filter UI elements to reflect the change
-		this.page.main.find("#region-selector").val(this.state.selectedRegion);
+		this.updateRegionDropdownUI();
 		this.updateFilterTagsUI(); // this will highlight the correct zone
 
 		this.switchTab("branch");

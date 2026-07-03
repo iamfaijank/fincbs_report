@@ -168,15 +168,35 @@ def get_fy_months_with_dates(financial_year, view="Monthly", selected_date=None,
                 break
     
     elif view == "Quarterly":
-        current_idx = next((idx for idx, m in enumerate(all_months) if m[1] == current_month and m[2] == current_year), None)
-        if current_idx is not None:
-            for i in range(2, -1, -1):
-                idx = current_idx - i
-                if idx >= 0:
-                    m = all_months[idx]
-                    last_date = get_last_available_date_for_month(m[1], m[2])
+        ref_date = selected_date_obj if selected_date_obj else datetime.now()
+        ref_month = ref_date.month
+        
+        if ref_month in [4, 5, 6]:
+            q_months = [("APR", 4, start_year), ("MAY", 5, start_year), ("JUN", 6, start_year)]
+        elif ref_month in [7, 8, 9]:
+            q_months = [("JUL", 7, start_year), ("AUG", 8, start_year), ("SEP", 9, start_year)]
+        elif ref_month in [10, 11, 12]:
+            q_months = [("OCT", 10, start_year), ("NOV", 11, start_year), ("DEC", 12, start_year)]
+        else:
+            q_months = [("JAN", 1, start_year + 1), ("FEB", 2, start_year + 1), ("MAR", 3, start_year + 1)]
+            
+        for m_key, m_num, m_year in q_months:
+            if m_num == current_month and m_year == current_year:
+                added = False
+                if selected_date_obj and selected_date_obj.month == current_month and selected_date_obj.year == current_year:
+                    if selected_date_obj.weekday() != 6:
+                        exists = frappe.db.exists("Branch Category Report", {"date": selected_date_obj})
+                        if exists:
+                            result_months.append((m_key, m_num, m_year, str(selected_date_obj)))
+                            added = True
+                if not added:
+                    last_date = get_last_available_date_for_month(m_num, m_year)
                     if last_date:
-                        result_months.append((m[0], m[1], m[2], last_date))
+                        result_months.append((m_key, m_num, m_year, last_date))
+            else:
+                last_date = get_last_available_date_for_month(m_num, m_year)
+                if last_date:
+                    result_months.append((m_key, m_num, m_year, last_date))
     else:  # Yearly
         for m in all_months:
             last_date = get_last_available_date_for_month(m[1], m[2])
