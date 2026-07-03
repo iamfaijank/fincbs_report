@@ -652,6 +652,7 @@ class DrishtiDashboard {
 				position: sticky;
 				background-color: #ffffff;
 				background-clip: padding-box !important;
+				box-sizing: border-box !important;
 			}
 			.zone-wise-table th.sr-col,
 			.zone-wise-table th.zone-col,
@@ -677,13 +678,15 @@ class DrishtiDashboard {
 				min-width: 180px;
 				max-width: 180px;
 				text-align: left !important;
+				white-space: normal !important;
 			}
 			.zone-wise-table .branches-col {
 				left: 230px;
-				width: 80px;
-				min-width: 80px;
-				max-width: 80px;
+				width: 100px;
+				min-width: 100px;
+				max-width: 100px;
 				border-right: 2px solid #3d7579 !important;
+				white-space: normal !important;
 			}
 			.zone-wise-table tr:hover td.sr-col,
 			.zone-wise-table tr:hover td.zone-col,
@@ -710,6 +713,7 @@ class DrishtiDashboard {
 				position: sticky;
 				background-color: inherit;
 				background-clip: padding-box !important;
+				box-sizing: border-box !important;
 			}
 			.branch-table th.sr-col,
 			.branch-table th.branch-col,
@@ -718,6 +722,7 @@ class DrishtiDashboard {
 				z-index: 6;
 				background: linear-gradient(180deg, #3d7579 0%, #346569 100%) !important;
 				color: #ffffff !important;
+				box-sizing: border-box !important;
 			}
 			.branch-table td.sr-col,
 			.branch-table td.branch-col,
@@ -739,13 +744,19 @@ class DrishtiDashboard {
 			}
 			.branch-table .segment-col {
 				left: 300px;
-				width: 140px;
-				min-width: 140px;
-				max-width: 140px;
+				width: 160px;
+				min-width: 160px;
+				max-width: 160px;
 				border-right: 2px solid #3d7579 !important;
+				white-space: normal !important;
 			}
 			.branch-table-row {
 				background-color: #ffffff;
+			}
+
+			.zone-wise-table, .branch-table {
+				width: max-content !important;
+				min-width: 100% !important;
 			}
 
 			.zone-wise-table th,
