@@ -5024,12 +5024,12 @@ class DrishtiDashboard {
                     border: 1px solid #dee2e6;
                 }
                 .category-table-redesigned th {
-                    background-color: #f8f9fa;
+                    background: linear-gradient(180deg, #3d7579 0%, #346569 100%) !important;
+                    color: #ffffff !important;
                     font-weight: 600;
                     padding: 12px 15px;
-                    text-align: left;
-                    border-bottom: 2px solid #dee2e6;
-                    color: #495057;
+                    text-align: left !important;
+                    border: 1px solid #2d5659 !important;
                 }
                 .category-table-redesigned td {
                     padding: 15px;
