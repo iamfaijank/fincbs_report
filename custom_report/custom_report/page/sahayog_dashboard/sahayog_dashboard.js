@@ -5261,11 +5261,16 @@ class DrishtiDashboard {
 
                 /* Category Total Row */
                 .category-table-redesigned tfoot {
-                    border-top: 2px solid #495057;
+                    border-top: 2px solid #3d7579;
+                }
+                .category-total-row {
+                    background-color: #264a4d !important;
                 }
                 .category-total-row td {
                     font-weight: 700;
                     font-size: 15px;
+                    color: #ffffff !important;
+                    border-color: #3d7579 !important;
                 }
                 .total-movement-cell {
                     cursor: pointer;
