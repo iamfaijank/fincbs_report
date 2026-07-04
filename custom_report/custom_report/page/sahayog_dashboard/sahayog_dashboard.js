@@ -404,13 +404,6 @@ class DrishtiDashboard {
 	}
 
 	getDashboardViewForRequest() {
-		if (
-			this.isPreviousFinancialYear() &&
-			this.state.viewType === "Monthly"
-		) {
-			return "Yearly";
-		}
-
 		return this.state.viewType;
 	}
 
