@@ -203,10 +203,10 @@ def get_fy_months_with_dates(financial_year, view="Monthly", selected_date=None,
     else:  # Yearly
         for m in all_months:
             last_date = get_last_available_date_for_month(m[1], m[2])
-            if last_date:
-                result_months.append((m[0], m[1], m[2], last_date))
-            if m[1] == current_month and m[2] == current_year:
-                break
+            if not last_date:
+                # Fallback to a default date for the month if no data exists yet (e.g. first day of the month)
+                last_date = f"{m[2]}-{m[1]:02d}-01"
+            result_months.append((m[0], m[1], m[2], last_date))
     
     return result_months
 

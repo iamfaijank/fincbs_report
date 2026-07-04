@@ -3,6 +3,18 @@
 // Version: 6.0.0 | All Issues Fixed
 // ============================================================================
 
+const getRemainingWorkingDaysExcludingSundays = (year, monthIndex, currentDay) => {
+	const lastDayOfMonth = new Date(year, monthIndex + 1, 0).getDate();
+	let workingDays = 0;
+	for (let day = currentDay; day <= lastDayOfMonth; day++) {
+		const date = new Date(year, monthIndex, day);
+		if (date.getDay() !== 0) { // 0 represents Sunday
+			workingDays++;
+		}
+	}
+	return workingDays;
+};
+
 frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
@@ -17,6 +29,14 @@ frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 };
 
 frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
+	// Inject Drishti title
+	document.title = "Drishti";
+	if ($("head title").length) {
+		$("head title").text("Drishti");
+	} else {
+		$("<title>Drishti</title>").appendTo("head");
+	}
+
 	// Clean up any old unmanaged container style tags from previous development sessions
 	$("head style").each(function() {
 		const text = $(this).text();
@@ -36,6 +56,11 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 				<li><a href="/app/sahayog-home" class="btn btn-default btn-xs" style="font-weight: 700; border-radius: 6px; padding: 2px 8px; color: #1e293b; border: 1px solid #cbd5e1; background-color: #f1f5f9; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); margin-right: 4px;">Back</a></li>
 				<li style="display: inline-flex; align-items: center;">
 					<span style="font-weight: bold; color: #417d81; vertical-align: middle;">Drishti</span>
+
+					<!-- Working Days Left -->
+					<div style="display: inline-flex; align-items: center; margin-left: 15px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;">
+						<span id="drishti-header-timer" class="days-left-blink" style="font-size: 12px;"></span>
+					</div>
 					
 					<!-- Format Control -->
 					<div class="format-header-control" style="display: inline-flex; align-items: center; margin-left: 15px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;">
@@ -68,21 +93,22 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 
 			const updateDrishtiTimer = () => {
 				const $timer = $("#drishti-live-timer");
-				if (!$timer.length) {
-					return;
+				if ($timer.length) {
+					$timer.hide();
 				}
 
-				const now = new Date();
-				const year = now.getFullYear();
+				const $headerTimer = $("#drishti-header-timer");
+				if ($headerTimer.length) {
+					const now = new Date();
+					const year = now.getFullYear();
+					const currentMonthIndex = now.getMonth();
+					const currentDay = now.getDate();
 
-				// Calculate days left in current month (inclusive of today and the last day)
-				const lastDayOfMonth = new Date(year, now.getMonth() + 1, 0).getDate();
-				const daysLeft = lastDayOfMonth - now.getDate() + 1;
-				const daysLeftText = daysLeft === 1 ? "1 Day Left" : `${daysLeft} Days Left`;
+					const workingDaysLeft = getRemainingWorkingDaysExcludingSundays(year, currentMonthIndex, currentDay);
+					const daysLeftText = workingDaysLeft === 1 ? "1 Working Day Left" : `${workingDaysLeft} Working Days Left`;
 
-				$timer.html(
-					`<span class="days-left-blink">${daysLeftText}</span>`,
-				);
+					$headerTimer.html(daysLeftText);
+				}
 			};
 
 			updateDrishtiTimer();
@@ -643,6 +669,136 @@ class DrishtiDashboard {
 				width: 100% !important;
 				padding: 0px !important;
 				margin: 0px !important;
+			}
+
+			/* Sticky columns for Zone table and Branch table */
+			.zone-wise-table .sr-col,
+			.zone-wise-table .zone-col,
+			.zone-wise-table .branches-col {
+				position: sticky;
+				background-color: #ffffff;
+				background-clip: padding-box !important;
+				box-sizing: border-box !important;
+			}
+			.zone-wise-table th.sr-col,
+			.zone-wise-table th.zone-col,
+			.zone-wise-table th.branches-col {
+				z-index: 6;
+				background: linear-gradient(180deg, #3d7579 0%, #346569 100%) !important;
+				color: #ffffff !important;
+			}
+			.zone-wise-table td.sr-col,
+			.zone-wise-table td.zone-col,
+			.zone-wise-table td.branches-col {
+				z-index: 5;
+			}
+			.zone-wise-table .sr-col {
+				left: 0px;
+				width: 50px;
+				min-width: 50px;
+				max-width: 50px;
+			}
+			.zone-wise-table .zone-col {
+				left: 50px;
+				width: 180px;
+				min-width: 180px;
+				max-width: 180px;
+				text-align: left !important;
+				white-space: normal !important;
+			}
+			.zone-wise-table .branches-col {
+				left: 230px;
+				width: 100px;
+				min-width: 100px;
+				max-width: 100px;
+				border-right: 2px solid #3d7579 !important;
+				white-space: normal !important;
+			}
+			.zone-wise-table tr:hover td.sr-col,
+			.zone-wise-table tr:hover td.zone-col,
+			.zone-wise-table tr:hover td.branches-col {
+				background-color: #f8f9fa !important;
+			}
+			.zone-wise-table tr.zone-total-row td.sr-col,
+			.zone-wise-table tr.zone-total-row td.zone-col,
+			.zone-wise-table tr.zone-total-row td.branches-col {
+				background-color: #e0e1dd !important;
+			}
+			.zone-wise-table tr.zone-total-row:hover td.sr-col,
+			.zone-wise-table tr.zone-total-row:hover td.zone-col,
+			.zone-wise-table tr.zone-total-row:hover td.branches-col {
+				background-color: #d4d5d1 !important;
+			}
+			.region-detail-row td.sr-col {
+				border-left: 4px solid #417d81 !important;
+			}
+
+			.branch-table td.sr-col,
+			.branch-table td.branch-col,
+			.branch-table td.segment-col {
+				position: sticky;
+				background-color: inherit;
+				background-clip: padding-box !important;
+				box-sizing: border-box !important;
+			}
+			.branch-table th.sr-col,
+			.branch-table th.branch-col,
+			.branch-table th.segment-col {
+				position: sticky;
+				z-index: 6;
+				background: linear-gradient(180deg, #3d7579 0%, #346569 100%) !important;
+				color: #ffffff !important;
+				box-sizing: border-box !important;
+			}
+			.branch-table td.sr-col,
+			.branch-table td.branch-col,
+			.branch-table td.segment-col {
+				z-index: 5;
+			}
+			.branch-table .sr-col {
+				left: 0px;
+				width: 60px;
+				min-width: 60px;
+				max-width: 60px;
+			}
+			.branch-table .branch-col {
+				left: 60px;
+				width: 240px;
+				min-width: 240px;
+				max-width: 240px;
+				white-space: normal !important;
+			}
+			.branch-table .segment-col {
+				left: 300px;
+				width: 160px;
+				min-width: 160px;
+				max-width: 160px;
+				border-right: 2px solid #3d7579 !important;
+				white-space: normal !important;
+			}
+			.branch-table-row {
+				background-color: #ffffff;
+			}
+
+			.zone-wise-table, .branch-table {
+				width: max-content !important;
+				min-width: 100% !important;
+			}
+
+			.zone-wise-table th,
+			.zone-wise-table td,
+			.branch-table th,
+			.branch-table td {
+				white-space: nowrap;
+			}
+
+			.zone-wise-table th,
+			.branch-table th,
+			.agent-wise-table th,
+			.product-wise-table th,
+			.category-table-redesigned th {
+				text-align: center !important;
+				vertical-align: middle !important;
 			}
 		`;
 		$(`<style>${style}</style>`).appendTo("head");
@@ -2361,9 +2517,9 @@ class DrishtiDashboard {
 			    <table class="table table-bordered zone-wise-table">
 			        <thead>
 			            <tr class="zone-table-header">
-			                <th rowspan="2">Sr</th>
-			                <th rowspan="2">Zone/Region</th>
-			                <th rowspan="2">Branches</th>
+			                <th rowspan="2" class="sr-col">Sr</th>
+			                <th rowspan="2" class="zone-col">Zone/Region</th>
+			                <th rowspan="2" class="branches-col">Branches</th>
 			    `;
 
 		const today = new Date();
@@ -2380,15 +2536,14 @@ class DrishtiDashboard {
 
 			let daysLeftIndicator = "";
 			if (monthIndex === currentMonth && monthYear === currentYear) {
-				const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 				const currentDay = today.getDate();
-				const remainingDays = lastDayOfMonth - currentDay + 1;
+				const remainingDays = getRemainingWorkingDaysExcludingSundays(currentYear, currentMonth, currentDay);
 
 				if (remainingDays >= 0) {
 					daysLeftIndicator = `
 						<br>
 						<span class="days-left-indicator">
-							${remainingDays} Day${remainingDays !== 1 ? "s" : ""} Left
+							${remainingDays} Working Day${remainingDays !== 1 ? "s" : ""} Left
 						</span>
 					`;
 				}
@@ -2400,7 +2555,7 @@ class DrishtiDashboard {
 		html += '</tr><tr class="zone-table-subheader">';
 
 		months.forEach(() => {
-			html += "<th>Target</th><th>Ach</th><th>%</th>";
+			html += "<th>Target</th><th>Ach</th><th>ACH %</th>";
 		});
 
 		html += "</tr></thead><tbody>";
@@ -2533,12 +2688,9 @@ class DrishtiDashboard {
 		const branchCount = firstMonthData?.branches || 0;
 
 		let html = `<tr class="zone-total-row" data-zone="${zoneName}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">`;
-
-		html += `<td>${sr}</td>`;
-
-		html += `<td><span class="zone-toggle">${isExpanded ? "▼" : "▶"}</span> ${zoneName}</td>`;
-
-		html += `<td class="branch-drilldown" data-zone="${zoneName}" title="Click to view branches in ${zoneName}">${branchCount}</td>`;
+		html += `<td class="sr-col">${sr}</td>`;
+		html += `<td class="zone-col"><span class="zone-toggle">${isExpanded ? "▼" : "▶"}</span> ${zoneName}</td>`;
+		html += `<td class="branches-col branch-drilldown" data-zone="${zoneName}" title="Click to view branches in ${zoneName}">${branchCount}</td>`;
 
 		months.forEach((month) => {
 			const mdata = zoneItem.months[month.key];
@@ -2575,11 +2727,9 @@ class DrishtiDashboard {
 			isExpanded ? "table-row" : "none"
 		}; border-left: 4px solid #417d81;">`;
 
-		html += `<td>${sr}</td>`;
-
-		html += `<td style="padding-left: 30px;">${regionItem.region}</td>`;
-
-		html += `<td class="branch-drilldown" data-zone="${zoneName}" data-region="${regionItem.region}" title="Click to view branches in ${regionItem.region}">${branchCount}</td>`;
+		html += `<td class="sr-col">${sr}</td>`;
+		html += `<td class="zone-col" style="padding-left: 30px;">${regionItem.region}</td>`;
+		html += `<td class="branches-col branch-drilldown" data-zone="${zoneName}" data-region="${regionItem.region}" title="Click to view branches in ${regionItem.region}">${branchCount}</td>`;
 
 		months.forEach((month) => {
 			const mdata = regionItem.months[month.key];
@@ -2804,7 +2954,7 @@ class DrishtiDashboard {
 						<th rowspan="2">DD SHORTFALL</th>
 						<th rowspan="2">DD ACTIVE</th>
 						<th rowspan="2">DD INACTIVE</th>
-						<th rowspan="2">%</th>
+						<th rowspan="2">ACH %</th>
 					</tr>
 					<tr class="branch-table-subheader">
 					</tr>
@@ -2872,7 +3022,12 @@ class DrishtiDashboard {
 					<td class="metric-cell amount-cell" style="color: ${zoneAgentShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneAgentShortfall)}</td>
 					<td class="metric-cell amount-cell">${this.formatNumber(zoneActive)}</td>
 					<td class="metric-cell amount-cell">${this.formatNumber(zoneInactive)}</td>
-					<td>${this.renderProgressBar(zonePercent)}</td>
+					<td>
+						<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+							<span class="pct-value" style="color: ${this.getPctColor(zonePercent)}; min-width: 45px; text-align: right;">${Math.round(zonePercent)}%</span>
+							${this.renderProgressBar(zonePercent)}
+						</div>
+					</td>
 				</tr>
 			`;
 
@@ -2922,7 +3077,12 @@ class DrishtiDashboard {
 						<td class="metric-cell amount-cell" style="color: ${rAgentShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rAgentShortfall)}</td>
 						<td class="metric-cell amount-cell">${this.formatNumber(rActive)}</td>
 						<td class="metric-cell amount-cell">${this.formatNumber(rInactive)}</td>
-						<td>${this.renderProgressBar(rPercent)}</td>
+						<td>
+							<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+								<span class="pct-value" style="color: ${this.getPctColor(rPercent)}; min-width: 45px; text-align: right;">${Math.round(rPercent)}%</span>
+								${this.renderProgressBar(rPercent)}
+							</div>
+						</td>
 					</tr>
 				`;
 			});
@@ -3673,7 +3833,7 @@ class DrishtiDashboard {
                 <tr class="branch-table-header">
                     <th rowspan="2" class="sr-col">Sr. No.</th>
                     <th rowspan="2" class="branch-col">Branch</th>
-					<th rowspan="2" >Performance Segments</th>
+					<th rowspan="2" class="segment-col">Performance Segments</th>
         `;
 
 		const today = new Date();
@@ -3690,15 +3850,14 @@ class DrishtiDashboard {
 
 			let daysLeftIndicator = "";
 			if (monthIndex === currentMonth && monthYear === currentYear) {
-				const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 				const currentDay = today.getDate();
-				const remainingDays = lastDayOfMonth - currentDay + 1;
+				const remainingDays = getRemainingWorkingDaysExcludingSundays(currentYear, currentMonth, currentDay);
 
 				if (remainingDays >= 0) {
 					daysLeftIndicator = `
 										<br>
 										<span class="days-left-indicator">
-											${remainingDays} Day${remainingDays !== 1 ? "s" : ""} Left
+											${remainingDays} Working Day${remainingDays !== 1 ? "s" : ""} Left
 										</span>
 									`;
 				}
@@ -3713,7 +3872,7 @@ class DrishtiDashboard {
                 <th>Category</th>
                 <th>Target</th>
                 <th>Ach.</th>
-                <th>%</th>
+                <th>ACH %</th>
             `;
 		});
 
@@ -3743,8 +3902,8 @@ class DrishtiDashboard {
 
 	buildBranchTableRow(branch, months, serialNo, rowStyle = "", segmentName = "") {
 		let html = `<tr class="branch-table-row" data-sol-id="${branch.sol_id}" style="${rowStyle}">`;
-		html += `<td>${serialNo}</td>`;
-		html += `<td>
+		html += `<td class="sr-col">${serialNo}</td>`;
+		html += `<td class="branch-col">
 			<div class="branch-info">
 				<div class="branch-code-name">
 					<a onclick="window.showBranchProfilePopup('${branch.sol_id}'); return false;" class="branch-code-link" style="cursor: pointer; text-decoration: underline;">${branch.sol_id}</a>
@@ -3756,7 +3915,7 @@ class DrishtiDashboard {
 				</div>
 			</div>
 		</td>`;
-		html += `<td>${segmentName}</td>`;
+		html += `<td class="segment-col">${segmentName}</td>`;
 
 		months.forEach((month) => {
 			const mdata = branch.months[month.key];
