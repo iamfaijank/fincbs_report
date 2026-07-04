@@ -1564,7 +1564,7 @@ class DrishtiDashboard {
                     </div>
                 </div>
 
-                <div id="tab-buttons" style="display: flex; align-items: center; gap: 5px; margin-bottom: 8px; border-bottom: 2px solid #cbd5e1;">
+                <div id="tab-buttons" style="display: flex; align-items: center; gap: 24px; margin-bottom: 0; border-bottom: 2px solid #cbd5e1; width: 100%;">
                     <button class="tab-btn" data-tab="zone">
                         Zone Wise
                     </button>
@@ -1582,7 +1582,7 @@ class DrishtiDashboard {
                     </button>
 
                     <!-- Search and Clear Actions -->
-                    <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+                    <div style="margin-left: auto; display: flex; align-items: center; gap: 10px; padding-bottom: 6px;">
 						<select id="segment-filter" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #1b263b;">
 							<option value="all">All Segments</option>
 							<option value="Top 25%">Top 25%</option>
@@ -4154,6 +4154,15 @@ class DrishtiDashboard {
                     margin-bottom: 0 !important;
                 }
 
+                /* Remove top margin of dashboard tables to eliminate header gap */
+                .zone-wise-table,
+                .branch-table,
+                .agent-wise-table,
+                .product-wise-table,
+                .category-table-redesigned {
+                    margin-top: 0 !important;
+                }
+
                 /* Outlined Inputs (Material Design Style) */
                 .outlined-input-container {
                     position: relative;
@@ -4527,27 +4536,31 @@ class DrishtiDashboard {
                     color: #e0e1dd;
                 }
 
-                /* Tab Styles */
+                /* Tab Styles (Active Capsule, Inactive Flat) */
                 .tab-btn {
-                    padding: 10px 20px;
-                    background: #fff;
-                    border: none;
-                    border-bottom: 3px solid transparent;
-                    color: #1b263b;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
+                    padding: 6px 16px !important;
+                    background: transparent !important;
+                    border: none !important;
+                    color: #64748b !important;
+                    font-weight: 600 !important;
+                    font-size: 13px !important;
+                    cursor: pointer !important;
+                    border-radius: 9999px !important;
+                    transition: all 0.15s ease-in-out !important;
+                    outline: none !important;
+                    margin: 0 !important;
                 }
 
                 .tab-btn:hover {
-                    background: #f8f9fa;
-                    color: #417d81;
+                    color: #417d81 !important;
+                    background: rgba(65, 125, 129, 0.08) !important;
                 }
 
                 .tab-btn.active {
-                    border-bottom-color: #417d81;
-                    color: #417d81;
-                    background: #e0e1dd;
+                    background: #417d81 !important;
+                    color: #ffffff !important;
+                    font-weight: 700 !important;
+                    box-shadow: 0 4px 10px rgba(65, 125, 129, 0.25) !important;
                 }
 
                 /* Zone Table Styles */
