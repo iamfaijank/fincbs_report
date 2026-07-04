@@ -276,10 +276,34 @@ class DrishtiDashboard {
 					change: function () {
 						if (self.isRefreshingDate) return;
 						const val = self.dateControl.get_value();
+						if (!val) return;
+
 						self.state.selectedDate = val;
 						if (self.state.activeTab && self.tabDates.hasOwnProperty(self.state.activeTab)) {
 							self.tabDates[self.state.activeTab] = val;
 						}
+
+						// Automatically update financial year based on selected date
+						const calculatedFy = self.getFinancialYearFromDate(val);
+						if (calculatedFy) {
+							const $fySelector = $("#fy-selector");
+							if ($fySelector.length) {
+								if (!$fySelector.find(`option[value="${calculatedFy}"]`).length) {
+									$fySelector.prepend(`<option value="${calculatedFy}">${calculatedFy}</option>`);
+								}
+								$fySelector.val(calculatedFy);
+							}
+							self.state.financialYear = calculatedFy;
+						}
+
+						// Automatically update selected quarter based on selected date
+						self.state.selectedQuarter = self.getQuarterFromDate(val);
+
+						// Automatically update selected month key based on selected date
+						const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+						const monthNum = parseInt(val.split("-")[1], 10); // 1-12
+						self.state.selectedMonth = monthNames[monthNum - 1];
+
 						self.updateUrlFromState();
 						self.loadData();
 					}
@@ -866,6 +890,22 @@ class DrishtiDashboard {
 		if (month >= 6 && month <= 8) return "Q2";
 		if (month >= 9 && month <= 11) return "Q3";
 		return "Q4";
+	}
+
+	getFinancialYearFromDate(dateStr) {
+		if (!dateStr) return null;
+		const parts = dateStr.split("-");
+		const year = parseInt(parts[0], 10);
+		const month = parseInt(parts[1], 10); // 1-12
+
+		let startYear;
+		if (month >= 4) {
+			startYear = year;
+		} else {
+			startYear = year - 1;
+		}
+		const endYear = startYear + 1;
+		return `${startYear}-${endYear}`;
 	}
 
 	getQuarterDate(quarter, fy) {
