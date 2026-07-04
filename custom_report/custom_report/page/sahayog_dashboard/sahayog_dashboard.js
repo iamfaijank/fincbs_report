@@ -692,8 +692,9 @@ class DrishtiDashboard {
 			.zone-wise-table .branches-col {
 				position: sticky;
 				background-color: #ffffff;
-				background-clip: padding-box !important;
+				background-clip: border-box !important;
 				box-sizing: border-box !important;
+				border-right: none !important;
 			}
 			.zone-wise-table th.sr-col,
 			.zone-wise-table th.zone-col,
@@ -701,11 +702,31 @@ class DrishtiDashboard {
 				z-index: 6;
 				background: linear-gradient(180deg, #3d7579 0%, #346569 100%) !important;
 				color: #ffffff !important;
+				border-right: none !important;
+			}
+			.zone-wise-table th.sr-col {
+				box-shadow: inset -1px 0 0 #366b6f !important;
+			}
+			.zone-wise-table th.zone-col {
+				box-shadow: inset -1px 0 0 #366b6f !important;
+			}
+			.zone-wise-table th.branches-col {
+				box-shadow: inset -2px 0 0 #2d5659 !important;
 			}
 			.zone-wise-table td.sr-col,
 			.zone-wise-table td.zone-col,
 			.zone-wise-table td.branches-col {
 				z-index: 5;
+				border-right: none !important;
+			}
+			.zone-wise-table td.sr-col {
+				box-shadow: inset -1px 0 0 #cbd5e1 !important;
+			}
+			.zone-wise-table td.zone-col {
+				box-shadow: inset -1px 0 0 #cbd5e1 !important;
+			}
+			.zone-wise-table td.branches-col {
+				box-shadow: inset -2px 0 0 #3d7579 !important;
 			}
 			.zone-wise-table .sr-col {
 				left: 0px;
@@ -726,7 +747,6 @@ class DrishtiDashboard {
 				width: 100px;
 				min-width: 100px;
 				max-width: 100px;
-				border-right: 2px solid #3d7579 !important;
 				white-space: normal !important;
 			}
 			.zone-wise-table tr:hover td.sr-col,
@@ -752,9 +772,10 @@ class DrishtiDashboard {
 			.branch-table td.branch-col,
 			.branch-table td.segment-col {
 				position: sticky;
-				background-color: inherit;
-				background-clip: padding-box !important;
+				background-color: #ffffff;
+				background-clip: border-box !important;
 				box-sizing: border-box !important;
+				border-right: none !important;
 			}
 			.branch-table th.sr-col,
 			.branch-table th.branch-col,
@@ -764,11 +785,31 @@ class DrishtiDashboard {
 				background: linear-gradient(180deg, #3d7579 0%, #346569 100%) !important;
 				color: #ffffff !important;
 				box-sizing: border-box !important;
+				border-right: none !important;
+			}
+			.branch-table th.sr-col {
+				box-shadow: inset -1px 0 0 #366b6f !important;
+			}
+			.branch-table th.branch-col {
+				box-shadow: inset -1px 0 0 #366b6f !important;
+			}
+			.branch-table th.segment-col {
+				box-shadow: inset -2px 0 0 #2d5659 !important;
 			}
 			.branch-table td.sr-col,
 			.branch-table td.branch-col,
 			.branch-table td.segment-col {
 				z-index: 5;
+				border-right: none !important;
+			}
+			.branch-table td.sr-col {
+				box-shadow: inset -1px 0 0 #cbd5e1 !important;
+			}
+			.branch-table td.branch-col {
+				box-shadow: inset -1px 0 0 #cbd5e1 !important;
+			}
+			.branch-table td.segment-col {
+				box-shadow: inset -2px 0 0 #3d7579 !important;
 			}
 			.branch-table .sr-col {
 				left: 0px;
@@ -788,7 +829,6 @@ class DrishtiDashboard {
 				width: 160px;
 				min-width: 160px;
 				max-width: 160px;
-				border-right: 2px solid #3d7579 !important;
 				white-space: normal !important;
 			}
 			.branch-table-row {
@@ -2549,6 +2589,7 @@ class DrishtiDashboard {
 			const displayYear = `${monthName}-${monthYear}`;
 
 			let daysLeftIndicator = "";
+			let highlightStyle = "";
 			if (monthIndex === currentMonth && monthYear === currentYear) {
 				const currentDay = today.getDate();
 				const remainingDays = getRemainingWorkingDaysExcludingSundays(currentYear, currentMonth, currentDay);
@@ -2561,9 +2602,10 @@ class DrishtiDashboard {
 						</span>
 					`;
 				}
+				highlightStyle = `background: linear-gradient(180deg, #4285F4 0%, #1a73e8 100%) !important; color: #ffffff !important; border-bottom: 2px solid #1557b0 !important;`;
 			}
 
-			html += `<th colspan="3">${displayYear}${daysLeftIndicator}</th>`;
+			html += `<th colspan="3" ${highlightStyle ? `style="${highlightStyle}"` : ""}>${displayYear}${daysLeftIndicator}</th>`;
 		});
 
 		html += '</tr><tr class="zone-table-subheader">';
@@ -2581,13 +2623,21 @@ class DrishtiDashboard {
 			style.innerHTML = `
                 @keyframes smooth-blink {
                     0%, 100% { opacity: 1; }
-                    50% { opacity: 0.3; }
+                    50% { opacity: 0.75; }
                 }
                 .days-left-indicator {
-                    color: red;
-                    font-weight: bold;
-                    animation: smooth-blink 1.5s infinite;
-                    font-size: 12px;
+                    display: inline-block;
+                    background-color: #fef08a !important;
+                    color: #854d0e !important;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    font-weight: 700;
+                    animation: smooth-blink 1.8s ease-in-out infinite;
+                    font-size: 10px;
+                    margin-top: 4px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
                 }
             `;
 			document.head.appendChild(style);
@@ -2665,11 +2715,11 @@ class DrishtiDashboard {
 
 		html += "</tbody>";
 
-		// Grand Total Row
-		html += `<tfoot style="background-color: #264a4d; color: #ffffff; font-weight: bold; border-top: 2px solid #3d7579;">`;
+		// Grand Total Row (Sticky Vertically and Horizontally)
+		html += `<tfoot style="color: #ffffff; font-weight: bold; border-top: 2px solid #3d7579;">`;
 		html += `<tr style="height: 40px;">`;
-		html += `<td colspan="2" style="text-align: left; padding-left: 12px; text-transform: uppercase; letter-spacing: 1px;">TOTAL</td>`;
-		html += `<td style="text-align: center;">${grandTotals.branches}</td>`;
+		html += `<td colspan="2" style="position: sticky; left: 0; bottom: 0; z-index: 9; background-color: #264a4d !important; color: #ffffff !important; text-align: left; padding-left: 12px; text-transform: uppercase; letter-spacing: 1px; border-right: none !important; box-shadow: inset -1px 0 0 #3d7579 !important;">TOTAL</td>`;
+		html += `<td class="branches-col" style="position: sticky; left: 230px; bottom: 0; z-index: 9; background-color: #264a4d !important; color: #ffffff !important; text-align: center; border-right: none !important; box-shadow: inset -2px 0 0 #3d7579 !important;">${grandTotals.branches}</td>`;
 
 		months.forEach((month) => {
 			const totalTarget = grandTotals[month.key].target;
@@ -2677,9 +2727,9 @@ class DrishtiDashboard {
 			const overallPercentage = totalTarget > 0 ? (totalAchievement / totalTarget) * 100 : 0;
 
 			html += `
-                 <td>${this.formatNumber(totalTarget)}</td>
-                 <td>${this.formatNumber(totalAchievement)}</td>
-                 <td>
+                 <td style="position: sticky; bottom: 0; z-index: 7; background-color: #264a4d !important; color: #ffffff !important;">${this.formatNumber(totalTarget)}</td>
+                 <td style="position: sticky; bottom: 0; z-index: 7; background-color: #264a4d !important; color: #ffffff !important;">${this.formatNumber(totalAchievement)}</td>
+                 <td style="position: sticky; bottom: 0; z-index: 7; background-color: #264a4d !important; color: #ffffff !important;">
  					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
  						<span class="pct-value" style="color: ${this.getPctColor(overallPercentage)}; min-width: 45px; text-align: right;">${Math.round(overallPercentage)}%</span>
  						${this.renderProgressBar(overallPercentage)}
@@ -3863,6 +3913,7 @@ class DrishtiDashboard {
 			const displayYear = `${monthName}-${monthYear}`;
 
 			let daysLeftIndicator = "";
+			let highlightStyle = "";
 			if (monthIndex === currentMonth && monthYear === currentYear) {
 				const currentDay = today.getDate();
 				const remainingDays = getRemainingWorkingDaysExcludingSundays(currentYear, currentMonth, currentDay);
@@ -3875,9 +3926,10 @@ class DrishtiDashboard {
 										</span>
 									`;
 				}
+				highlightStyle = `background: linear-gradient(180deg, #4285F4 0%, #1a73e8 100%) !important; color: #ffffff !important; border-bottom: 2px solid #1557b0 !important;`;
 			}
 
-			header += `<th colspan="4" class="month-col">${displayYear}${daysLeftIndicator}</th>`;
+			header += `<th colspan="4" class="month-col" ${highlightStyle ? `style="${highlightStyle}"` : ""}>${displayYear}${daysLeftIndicator}</th>`;
 		});
 		header += `</tr><tr class="branch-table-subheader">`;
 
