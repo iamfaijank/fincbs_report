@@ -3,6 +3,18 @@
 // Version: 6.0.0 | All Issues Fixed
 // ============================================================================
 
+const getRemainingWorkingDaysExcludingSundays = (year, monthIndex, currentDay) => {
+	const lastDayOfMonth = new Date(year, monthIndex + 1, 0).getDate();
+	let workingDays = 0;
+	for (let day = currentDay; day <= lastDayOfMonth; day++) {
+		const date = new Date(year, monthIndex, day);
+		if (date.getDay() !== 0) { // 0 represents Sunday
+			workingDays++;
+		}
+	}
+	return workingDays;
+};
+
 frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
@@ -17,6 +29,14 @@ frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 };
 
 frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
+	// Inject Drishti title
+	document.title = "Drishti";
+	if ($("head title").length) {
+		$("head title").text("Drishti");
+	} else {
+		$("<title>Drishti</title>").appendTo("head");
+	}
+
 	// Clean up any old unmanaged container style tags from previous development sessions
 	$("head style").each(function() {
 		const text = $(this).text();
@@ -74,11 +94,12 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 
 				const now = new Date();
 				const year = now.getFullYear();
+				const currentMonthIndex = now.getMonth();
+				const currentDay = now.getDate();
 
-				// Calculate days left in current month (inclusive of today and the last day)
-				const lastDayOfMonth = new Date(year, now.getMonth() + 1, 0).getDate();
-				const daysLeft = lastDayOfMonth - now.getDate() + 1;
-				const daysLeftText = daysLeft === 1 ? "1 Day Left" : `${daysLeft} Days Left`;
+				// Calculate remaining working days in current month excluding Sundays (inclusive of today)
+				const workingDaysLeft = getRemainingWorkingDaysExcludingSundays(year, currentMonthIndex, currentDay);
+				const daysLeftText = workingDaysLeft === 1 ? "1 Working Day Left" : `${workingDaysLeft} Working Days Left`;
 
 				$timer.html(
 					`<span class="days-left-blink">${daysLeftText}</span>`,
@@ -2510,15 +2531,14 @@ class DrishtiDashboard {
 
 			let daysLeftIndicator = "";
 			if (monthIndex === currentMonth && monthYear === currentYear) {
-				const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 				const currentDay = today.getDate();
-				const remainingDays = lastDayOfMonth - currentDay + 1;
+				const remainingDays = getRemainingWorkingDaysExcludingSundays(currentYear, currentMonth, currentDay);
 
 				if (remainingDays >= 0) {
 					daysLeftIndicator = `
 						<br>
 						<span class="days-left-indicator">
-							${remainingDays} Day${remainingDays !== 1 ? "s" : ""} Left
+							${remainingDays} Working Day${remainingDays !== 1 ? "s" : ""} Left
 						</span>
 					`;
 				}
@@ -3815,15 +3835,14 @@ class DrishtiDashboard {
 
 			let daysLeftIndicator = "";
 			if (monthIndex === currentMonth && monthYear === currentYear) {
-				const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 				const currentDay = today.getDate();
-				const remainingDays = lastDayOfMonth - currentDay + 1;
+				const remainingDays = getRemainingWorkingDaysExcludingSundays(currentYear, currentMonth, currentDay);
 
 				if (remainingDays >= 0) {
 					daysLeftIndicator = `
 										<br>
 										<span class="days-left-indicator">
-											${remainingDays} Day${remainingDays !== 1 ? "s" : ""} Left
+											${remainingDays} Working Day${remainingDays !== 1 ? "s" : ""} Left
 										</span>
 									`;
 				}
