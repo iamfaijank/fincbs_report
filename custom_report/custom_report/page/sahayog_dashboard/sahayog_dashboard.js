@@ -91,19 +91,7 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 				if (!$timer.length) {
 					return;
 				}
-
-				const now = new Date();
-				const year = now.getFullYear();
-				const currentMonthIndex = now.getMonth();
-				const currentDay = now.getDate();
-
-				// Calculate remaining working days in current month excluding Sundays (inclusive of today)
-				const workingDaysLeft = getRemainingWorkingDaysExcludingSundays(year, currentMonthIndex, currentDay);
-				const daysLeftText = workingDaysLeft === 1 ? "1 Working Day Left" : `${workingDaysLeft} Working Days Left`;
-
-				$timer.html(
-					`<span class="days-left-blink">${daysLeftText}</span>`,
-				);
+				$timer.hide();
 			};
 
 			updateDrishtiTimer();
@@ -3017,7 +3005,12 @@ class DrishtiDashboard {
 					<td class="metric-cell amount-cell" style="color: ${zoneAgentShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneAgentShortfall)}</td>
 					<td class="metric-cell amount-cell">${this.formatNumber(zoneActive)}</td>
 					<td class="metric-cell amount-cell">${this.formatNumber(zoneInactive)}</td>
-					<td>${this.renderProgressBar(zonePercent)}</td>
+					<td>
+						<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+							<span class="pct-value" style="color: ${this.getPctColor(zonePercent)}; min-width: 45px; text-align: right;">${Math.round(zonePercent)}%</span>
+							${this.renderProgressBar(zonePercent)}
+						</div>
+					</td>
 				</tr>
 			`;
 
@@ -3067,7 +3060,12 @@ class DrishtiDashboard {
 						<td class="metric-cell amount-cell" style="color: ${rAgentShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rAgentShortfall)}</td>
 						<td class="metric-cell amount-cell">${this.formatNumber(rActive)}</td>
 						<td class="metric-cell amount-cell">${this.formatNumber(rInactive)}</td>
-						<td>${this.renderProgressBar(rPercent)}</td>
+						<td>
+							<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+								<span class="pct-value" style="color: ${this.getPctColor(rPercent)}; min-width: 45px; text-align: right;">${Math.round(rPercent)}%</span>
+								${this.renderProgressBar(rPercent)}
+							</div>
+						</td>
 					</tr>
 				`;
 			});
