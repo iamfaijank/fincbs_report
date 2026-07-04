@@ -2602,7 +2602,7 @@ class DrishtiDashboard {
 						</span>
 					`;
 				}
-				highlightStyle = `background: linear-gradient(180deg, #4285F4 0%, #1a73e8 100%) !important; color: #ffffff !important; border-bottom: 2px solid #1557b0 !important;`;
+				highlightStyle = `background: #6ca8ac !important; color: #ffffff !important; border-bottom: 2px solid #558a8e !important;`;
 			}
 
 			html += `<th colspan="3" ${highlightStyle ? `style="${highlightStyle}"` : ""}>${displayYear}${daysLeftIndicator}</th>`;
@@ -2731,7 +2731,7 @@ class DrishtiDashboard {
 			const monthYear = monthDate.getFullYear();
 			const isCurrentMonth = (monthIndex === currentMonth && monthYear === currentYear);
 
-			const cellBg = isCurrentMonth ? "#1a73e8 !important" : "#264a4d !important";
+			const cellBg = isCurrentMonth ? "#6ca8ac !important" : "#264a4d !important";
 
 			html += `
                  <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">${this.formatNumber(totalTarget)}</td>
@@ -3933,7 +3933,7 @@ class DrishtiDashboard {
 										</span>
 									`;
 				}
-				highlightStyle = `background: linear-gradient(180deg, #4285F4 0%, #1a73e8 100%) !important; color: #ffffff !important; border-bottom: 2px solid #1557b0 !important;`;
+				highlightStyle = `background: #6ca8ac !important; color: #ffffff !important; border-bottom: 2px solid #558a8e !important;`;
 			}
 
 			header += `<th colspan="4" class="month-col" ${highlightStyle ? `style="${highlightStyle}"` : ""}>${displayYear}${daysLeftIndicator}</th>`;
