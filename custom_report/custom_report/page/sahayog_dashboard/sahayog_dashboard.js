@@ -18,12 +18,13 @@ const getRemainingWorkingDaysExcludingSundays = (year, monthIndex, currentDay) =
 frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
-		title: "",
+		title: "Drishti",
 		single_column: true,
 	});
 
-	// Hide default Drishti title heading
-	$(wrapper).find(".title-text").hide();
+	// Style the title heading dynamically with bold styling
+	$(wrapper).find(".title-text").html('<span style="font-weight: 800; color: #417d81; font-size: 24px; letter-spacing: -0.5px; font-family: \'Inter\', sans-serif;">Drishti</span>');
+	$(wrapper).find(".title-text").after('<div id="drishti-subtitle" style="font-size: 12px; color: #64748b; margin-top: 4px; font-weight: 500; font-family: \'Inter\', sans-serif;">Updated till: Loading...</div>');
 
 	wrapper.dashboard = new DrishtiDashboard(page);
 };
@@ -36,6 +37,20 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 	} else {
 		$("<title>Drishti</title>").appendTo("head");
 	}
+
+	// Fetch and update latest date subtitle
+	frappe.call({
+		method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_branch_category_report_date",
+		callback: function (r) {
+			if (r.message) {
+				const dateParts = r.message.split("-");
+				const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+				$(wrapper).find("#drishti-subtitle").text("Updated till: " + formattedDate);
+			} else {
+				$(wrapper).find("#drishti-subtitle").text("");
+			}
+		}
+	});
 
 	// Clean up any old unmanaged container style tags from previous development sessions
 	$("head style").each(function() {
@@ -55,10 +70,8 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 			$breadcrumbs.html(`
 				<li><a href="/app/sahayog-home" class="btn btn-default btn-xs" style="font-weight: 700; border-radius: 6px; padding: 2px 8px; color: #1e293b; border: 1px solid #cbd5e1; background-color: #f1f5f9; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); margin-right: 4px;">Back</a></li>
 				<li style="display: inline-flex; align-items: center;">
-					<span style="font-weight: bold; color: #417d81; vertical-align: middle;">Drishti</span>
-
 					<!-- Working Days Left -->
-					<div style="display: inline-flex; align-items: center; margin-left: 15px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;">
+					<div style="display: inline-flex; align-items: center; margin-left: 10px; vertical-align: middle;">
 						<span id="drishti-header-timer" class="days-left-blink" style="font-size: 12px;"></span>
 					</div>
 					
@@ -276,16 +289,15 @@ class DrishtiDashboard {
 
 			if (this.dateControl && this.dateControl.$input) {
 				this.dateControl.$input.css({
-					"padding": "4px 8px",
+					"padding": "6px 10px",
 					"border": "1px solid #cbd5e1",
-					"border-radius": "4px",
+					"border-radius": "6px",
 					"background": "white",
 					"color": "#1b263b",
 					"font-size": "13px",
 					"font-weight": "600",
-					"height": "30px",
-					"width": "140px",
-					"margin-left": "8px"
+					"height": "32px",
+					"width": "140px"
 				});
 				this.dateControl.$wrapper.css({
 					"margin": "0",
@@ -1469,19 +1481,19 @@ class DrishtiDashboard {
 	// ========================================================================
 	createTabsAndContainer() {
 		const html = `
-            <div style="border: 1px solid #cbd5e1; padding: 12px; background: #fff; border-radius: 8px; margin-top: 15px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);">
+            <div style="border: 1px solid #cbd5e1; padding: 8px 12px; background: #fff; border-radius: 8px; margin-top: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);">
                 <!-- Filters Row -->
-                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #ddd;">
+                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #ddd;">
                     <!-- FY Selector -->
-                    <div class="fy-header-control" style="display: flex; align-items: center;">
-                        <label style="font-weight: bold; color: #0d1b2a; margin-bottom: 0;">FY:</label>
-                        <select id="fy-selector" style="padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #1b263b; font-size: 13px; font-weight: 600; height: 30px; margin-left: 8px;">
+                    <div class="outlined-input-container fy-header-control">
+                        <label class="outlined-input-label">FY</label>
+                        <select id="fy-selector" style="width: 110px;">
                         </select>
                     </div>
 
                     <!-- Date Selector -->
-                    <div id="date-selector-container" style="display: flex; align-items: center;">
-                        <label style="font-weight: bold; color: #0d1b2a; margin-bottom: 0;">Date:</label>
+                    <div id="date-selector-container" class="outlined-input-container">
+                        <label class="outlined-input-label">Date</label>
                     </div>
 
                     <!-- Days Left countdown -->
@@ -1491,7 +1503,7 @@ class DrishtiDashboard {
 
                     <!-- View Toggle Buttons -->
                     <div style="display: flex; align-items: center;">
-                        <label style="font-weight: bold; color: #0d1b2a;">View:</label>
+                        <label style="font-weight: bold; color: #0d1b2a; margin-bottom: 0;">View:</label>
                         <div class="btn-group" id="view-controls" role="group" style="margin-left: 8px;">
                             <button type="button" class="btn btn-sm view-toggle-btn" data-view="Monthly">Monthly</button>
                             <button type="button" class="btn btn-sm view-toggle-btn" data-view="Quarterly">Quarterly</button>
@@ -1528,8 +1540,8 @@ class DrishtiDashboard {
                     </div>
  
                     <!-- Target Toggle Buttons -->
-                    <div>
-                        <label style="font-weight: bold; color: #0d1b2a;">Target:</label>
+                    <div style="display: flex; align-items: center;">
+                        <label style="font-weight: bold; color: #0d1b2a; margin-bottom: 0;">Target:</label>
                         <div class="btn-group" role="group" style="margin-left: 8px;">
                             <button type="button" class="btn btn-sm target-toggle-btn" data-target="Monthly">Monthly</button>
                             <button type="button" class="btn btn-sm target-toggle-btn" data-target="YTD">YTD</button>
@@ -1538,20 +1550,18 @@ class DrishtiDashboard {
                     </div>
  
                     <!-- Region Filter (Multi-select dropdown) -->
-                    <div class="dropdown" id="region-dropdown-container" style="display: inline-block;">
-                        <label style="font-weight: bold; color: #0d1b2a;">Region:</label>
-                        <div class="btn-group" style="margin-left: 8px;">
-                            <button class="btn btn-default btn-sm dropdown-toggle" type="button" id="region-dropdown-btn" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 150px; background: white; color: #1b263b; text-align: left; display: inline-flex; align-items: center; justify-content: space-between;">
-                                <span id="region-dropdown-label">All Regions</span>
-                                <span class="caret" style="margin-left: 8px;"></span>
-                            </button>
-                            <ul class="dropdown-menu" id="region-dropdown-menu" aria-labelledby="region-dropdown-btn" style="max-height: 250px; overflow-y: auto; padding: 5px 0; border: 1px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); width: 220px;">
-                            </ul>
-                        </div>
+                    <div class="dropdown outlined-input-container" id="region-dropdown-container" style="margin-left: 15px;">
+                        <label class="outlined-input-label">Region</label>
+                        <button class="btn btn-default btn-sm dropdown-toggle" type="button" id="region-dropdown-btn" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="min-width: 150px; text-align: left; display: inline-flex; align-items: center; justify-content: space-between;">
+                            <span id="region-dropdown-label">All Regions</span>
+                            <span class="caret" style="margin-left: 8px;"></span>
+                        </button>
+                        <ul class="dropdown-menu" id="region-dropdown-menu" aria-labelledby="region-dropdown-btn" style="max-height: 250px; overflow-y: auto; padding: 5px 0; border: 1px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); width: 220px;">
+                        </ul>
                     </div>
                 </div>
 
-                <div id="tab-buttons" style="display: flex; align-items: center; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #cbd5e1;">
+                <div id="tab-buttons" style="display: flex; align-items: center; gap: 5px; margin-bottom: 8px; border-bottom: 2px solid #cbd5e1;">
                     <button class="tab-btn" data-tab="zone">
                         Zone Wise
                     </button>
@@ -2083,9 +2093,9 @@ class DrishtiDashboard {
 
 		// Add "All Regions" / toggle all item
 		menu.append(`
-			<li style="padding: 4px 12px; border-bottom: 1px solid #edf2f7; margin-bottom: 4px; white-space: nowrap; display: flex; align-items: center;">
+			<li style="padding: 6px 12px; border-bottom: 1px solid #edf2f7; margin-bottom: 4px; white-space: nowrap; display: flex; align-items: center;">
 				<label style="font-weight: bold; margin-bottom: 0; cursor: pointer; display: flex; align-items: center; width: 100%; color: #0d1b2a;">
-					<input type="checkbox" id="region-all-checkbox" style="margin-right: 8px; cursor: pointer;" />
+					<input type="checkbox" id="region-all-checkbox" style="position: relative !important; margin: 0 8px 0 0 !important; cursor: pointer; width: 14px; height: 14px; vertical-align: middle;" />
 					All Regions
 				</label>
 			</li>
@@ -2095,9 +2105,9 @@ class DrishtiDashboard {
 		this.availableFilters.regions.forEach((region) => {
 			const isChecked = this.state.selectedRegions.includes(region);
 			menu.append(`
-				<li style="padding: 4px 12px; white-space: nowrap; display: flex; align-items: center;">
+				<li style="padding: 6px 12px; white-space: nowrap; display: flex; align-items: center;">
 					<label style="font-weight: normal; margin-bottom: 0; cursor: pointer; display: flex; align-items: center; width: 100%; color: #1b263b;">
-						<input type="checkbox" class="region-checkbox" value="${region}" ${isChecked ? "checked" : ""} style="margin-right: 8px; cursor: pointer;" />
+						<input type="checkbox" class="region-checkbox" value="${region}" ${isChecked ? "checked" : ""} style="position: relative !important; margin: 0 8px 0 0 !important; cursor: pointer; width: 14px; height: 14px; vertical-align: middle;" />
 						${region}
 					</label>
 				</li>
@@ -4136,15 +4146,140 @@ class DrishtiDashboard {
 	setupStyles() {
 		const styles = `
             <style>
-                .page-head .page-head-content {
+                #date-selector-container .form-group {
+                    margin-bottom: 0 !important;
+                }
+
+                /* Outlined Inputs (Material Design Style) */
+                .outlined-input-container {
+                    position: relative;
+                    display: inline-flex;
+                    align-items: center;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 6px;
+                    background: #ffffff;
+                    height: 32px;
+                    margin-top: 6px; /* space for overlapping label */
+                    box-sizing: border-box;
+                    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+                }
+
+                #date-selector-container.outlined-input-container {
+                    padding: 0 6px 0 10px;
+                    width: 154px;
+                }
+                
+                .fy-header-control.outlined-input-container {
+                    padding: 0 6px 0 10px;
+                }
+
+                #region-dropdown-container.outlined-input-container {
+                    padding: 0 10px;
+                    min-width: 170px;
+                }
+
+                .outlined-input-label {
+                    position: absolute;
+                    left: 10px;
+                    top: -8px;
+                    background: #ffffff;
+                    padding: 0 4px;
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: #64748b;
+                    pointer-events: none;
+                    z-index: 10;
+                    line-height: 1;
+                    transition: color 0.15s ease-in-out;
+                }
+
+                /* Outlined selectors, inputs, & buttons styles */
+                .outlined-input-container select,
+                .outlined-input-container input:not([type="checkbox"]),
+                .outlined-input-container button {
+                    border: none !important;
+                    background: transparent !important;
+                    outline: none !important;
+                    box-shadow: none !important;
+                    font-size: 13px !important;
+                    font-weight: 600 !important;
+                    color: #1b263b !important;
+                    height: 28px !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    width: 100% !important;
+                }
+
+                /* Frappe wrapper styling overrides to let it fit within container */
+                #date-selector-container .frappe-control,
+                #date-selector-container .form-group,
+                #date-selector-container .control-input-wrapper,
+                #date-selector-container .control-input {
+                    display: inline-block !important;
+                    width: 100% !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    height: 100% !important;
+                }
+                
+                #date-selector-container .clearfix {
                     display: none !important;
                 }
 
-                #navbar-breadcrumbs li:first-child::before,
-                #navbar-breadcrumbs li:first-child a::before,
-                #navbar-breadcrumbs a[href="/app/sahayog-home"]::before {
-                    content: none !important;
-                    display: none !important;
+                /* Container hover/focus states */
+                .outlined-input-container:hover {
+                    border-color: #94a3b8;
+                }
+
+                .outlined-input-container:focus-within {
+                    border-color: #417d81 !important;
+                    box-shadow: 0 0 0 3px rgba(65, 125, 129, 0.15) !important;
+                }
+
+                .outlined-input-container:focus-within .outlined-input-label {
+                    color: #417d81 !important;
+                }
+
+                /* Region Dropdown menu styling for perfect alignment */
+                #region-dropdown-menu {
+                    padding: 4px 0 !important;
+                    border: 1px solid #cbd5e1 !important;
+                    border-radius: 8px !important;
+                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+                }
+
+                #region-dropdown-menu li {
+                    display: flex !important;
+                    align-items: center !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    transition: background-color 0.15s ease !important;
+                }
+
+                #region-dropdown-menu li:hover {
+                    background-color: #f1f5f9 !important;
+                }
+
+                #region-dropdown-menu label {
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    width: 100% !important;
+                    margin: 0 !important;
+                    padding: 8px 16px !important;
+                    font-size: 13px !important;
+                    font-weight: 500 !important;
+                    color: #1b263b !important;
+                    cursor: pointer !important;
+                    user-select: none !important;
+                }
+
+                #region-dropdown-menu input[type="checkbox"] {
+                    position: relative !important;
+                    margin: 0 10px 0 0 !important;
+                    padding: 0 !important;
+                    width: 15px !important;
+                    height: 15px !important;
+                    cursor: pointer !important;
                 }
 
                 .format-toggle-btn.active {
@@ -4169,7 +4304,7 @@ class DrishtiDashboard {
                 .filter-tags-row {
                     display: flex;
                     gap: 12px;
-                    margin-bottom: 16px;
+                    margin-bottom: 6px;
                     flex-wrap: nowrap; /* Force single row */
                     width: 100%;
                     align-items: stretch;

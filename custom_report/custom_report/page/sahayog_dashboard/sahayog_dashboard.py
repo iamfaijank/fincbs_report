@@ -325,6 +325,15 @@ def calculate_category_changes(current_date_data, previous_date_data):
 
 
 @frappe.whitelist(allow_guest=True)
+def get_latest_branch_category_report_date():
+    """Returns the latest available date from 'Branch Category Report' doctype."""
+    latest_date = frappe.db.get_value("Branch Category Report", {}, "date", order_by="date desc")
+    if latest_date:
+        return str(latest_date)[:10]
+    return None
+
+
+@frappe.whitelist(allow_guest=True)
 def get_latest_product_report_date():
     """Returns the latest available date from 'Product Wise Report' doctype."""
     latest_date = frappe.db.get_value("Product Wise Report", {}, "date", order_by="date desc")
