@@ -418,7 +418,8 @@ class DrishtiDashboard {
 		if (!this.isPreviousFinancialYear()) return data;
 
 		if (this.state.viewType === "Monthly") {
-			data.months = (data.months || []).filter((month) => month.key === "MAR");
+			const targetMonth = this.state.selectedMonth || "MAR";
+			data.months = (data.months || []).filter((month) => month.key === targetMonth);
 		}
 
 		return data;
@@ -1811,6 +1812,10 @@ class DrishtiDashboard {
 			if (self.state.activeTab && self.tabDates.hasOwnProperty(self.state.activeTab)) {
 				self.tabDates[self.state.activeTab] = newDateStr;
 			}
+
+			// Automatically update selected month name key
+			const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+			self.state.selectedMonth = monthNames[selectedMonthNum - 1];
 			
 			self.updateDatePickerValue(newDateStr);
 			self.updateUrlFromState();
@@ -1932,6 +1937,12 @@ class DrishtiDashboard {
 
 					// Use saved date if available, otherwise use latest date from server
 					self.state.selectedDate = savedDate || dateStr;
+
+					if (self.state.selectedDate) {
+						const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+						const monthNum = parseInt(self.state.selectedDate.split("-")[1], 10);
+						self.state.selectedMonth = monthNames[monthNum - 1];
+					}
 
 					// Update date control properly
 					if (self.dateControl) {
