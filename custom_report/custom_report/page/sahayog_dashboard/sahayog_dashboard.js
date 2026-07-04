@@ -56,6 +56,11 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 				<li><a href="/app/sahayog-home" class="btn btn-default btn-xs" style="font-weight: 700; border-radius: 6px; padding: 2px 8px; color: #1e293b; border: 1px solid #cbd5e1; background-color: #f1f5f9; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); margin-right: 4px;">Back</a></li>
 				<li style="display: inline-flex; align-items: center;">
 					<span style="font-weight: bold; color: #417d81; vertical-align: middle;">Drishti</span>
+
+					<!-- Working Days Left -->
+					<div style="display: inline-flex; align-items: center; margin-left: 15px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;">
+						<span id="drishti-header-timer" class="days-left-blink" style="font-size: 12px;"></span>
+					</div>
 					
 					<!-- Format Control -->
 					<div class="format-header-control" style="display: inline-flex; align-items: center; margin-left: 15px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;">
@@ -88,10 +93,22 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 
 			const updateDrishtiTimer = () => {
 				const $timer = $("#drishti-live-timer");
-				if (!$timer.length) {
-					return;
+				if ($timer.length) {
+					$timer.hide();
 				}
-				$timer.hide();
+
+				const $headerTimer = $("#drishti-header-timer");
+				if ($headerTimer.length) {
+					const now = new Date();
+					const year = now.getFullYear();
+					const currentMonthIndex = now.getMonth();
+					const currentDay = now.getDate();
+
+					const workingDaysLeft = getRemainingWorkingDaysExcludingSundays(year, currentMonthIndex, currentDay);
+					const daysLeftText = workingDaysLeft === 1 ? "1 Working Day Left" : `${workingDaysLeft} Working Days Left`;
+
+					$headerTimer.html(daysLeftText);
+				}
 			};
 
 			updateDrishtiTimer();
