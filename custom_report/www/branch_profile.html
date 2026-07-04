@@ -1976,7 +1976,7 @@
 							</tr>
 							<tr>
 								<td class="label-col">
-									<span>BDO & Productivity</span>
+									<span>BDO Productivity</span>
 								</td>
 								<td class="amount-col">
 									<span id="bdo-and-productivity">--</span>
@@ -1984,34 +1984,10 @@
 							</tr>
 							<tr>
 								<td class="label-col">
-									<span>BDE & Productivity</span>
+									<span>BDE Productivity</span>
 								</td>
 								<td class="amount-col">
 									<span id="bde-and-productivity">--</span>
-								</td>
-							</tr>
-							<tr>
-								<td class="label-col">
-									<span>BDO Productivity</span>
-								</td>
-								<td class="amount-col">
-									<span id="bdo-productivity">--</span>
-								</td>
-							</tr>
-							<tr>
-								<td class="label-col">
-									<span>NMAB AC</span>
-								</td>
-								<td class="amount-col">
-									<span id="nmab-ac">--</span>
-								</td>
-							</tr>
-							<tr>
-								<td class="label-col">
-									<span>MAB AC</span>
-								</td>
-								<td class="amount-col">
-									<span id="mab-ac">--</span>
 								</td>
 							</tr>
 						</tbody>
@@ -2627,9 +2603,6 @@
 					totalProductivity: document.getElementById("total-productivity"),
 					bdoAndProductivity: document.getElementById("bdo-and-productivity"),
 					bdeAndProductivity: document.getElementById("bde-and-productivity"),
-					bdoProductivity: document.getElementById("bdo-productivity"),
-					nmabAc: document.getElementById("nmab-ac"),
-					mabAc: document.getElementById("mab-ac"),
 					manpowerDetailsTbody: document.getElementById("manpower-details-tbody"),
 					manpowerPipFilter: document.getElementById("manpower-pip-filter"),
 					manpowerSearchInput: document.getElementById("manpower-search-input"),
@@ -2895,9 +2868,7 @@
 					if (this.el.totalProductivity) this.el.totalProductivity.textContent = this.formatAmount(d.total_productivity);
 					if (this.el.bdoAndProductivity) this.el.bdoAndProductivity.textContent = this.formatAmount(d.bdo_and_productivity);
 					if (this.el.bdeAndProductivity) this.el.bdeAndProductivity.textContent = this.formatAmount(d.bde_and_productivity);
-					if (this.el.bdoProductivity) this.el.bdoProductivity.textContent = this.formatAmount(d.bdo_productivity);
-					if (this.el.nmabAc) this.el.nmabAc.textContent = this.formatIndianNumber(d.nmab_ac);
-					if (this.el.mabAc) this.el.mabAc.textContent = this.formatIndianNumber(d.mab_ac);
+
 
 					this.el.photo.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(d.bm_name || "BM")}&background=097c80&color=fff&size=256`;
 
