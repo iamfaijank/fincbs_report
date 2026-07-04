@@ -837,16 +837,16 @@ class DrishtiDashboard {
 			}
 			.branch-table .branch-col {
 				left: 60px;
-				width: 240px;
-				min-width: 240px;
-				max-width: 240px;
+				width: 145px;
+				min-width: 145px;
+				max-width: 145px;
 				white-space: normal !important;
 			}
 			.branch-table .segment-col {
-				left: 300px;
-				width: 160px;
-				min-width: 160px;
-				max-width: 160px;
+				left: 205px;
+				width: 80px;
+				min-width: 80px;
+				max-width: 80px;
 				white-space: normal !important;
 			}
 			.branch-table-row {
@@ -1665,8 +1665,8 @@ class DrishtiDashboard {
 							<option value="Mid 25%">Mid 25%</option>
 							<option value="Bottom 25%">Bottom 25%</option>
 						</select>
-                        <input type="text" id="branch-search" placeholder="Search branch..." 
-                               style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b;" />
+                        <input type="text" id="branch-search" placeholder="Search branch or SOL ID (comma separated)..." 
+                               style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 250px; background: white; color: #1b263b;" />
                         <button id="clear-filters" class="btn btn-secondary btn-sm" 
                                 style="background: #417d81; border-color: #1b263b; color: white; font-weight: 600;"
                                 title="Resets all filters to their default state and refreshes the dashboard.">
@@ -1677,7 +1677,7 @@ class DrishtiDashboard {
 
                 <div id="error-message" style="color: #0d1b2a; display: none; padding: 10px; background: #ffebee; border-radius: 4px;"></div>
 
-                <div id="tab-content" style="overflow-x: auto;">
+                <div id="tab-content" style="overflow: auto; max-height: 75vh;">
                     <div id="data-container" style="transition: opacity 0.2s ease-in-out;"></div>
                 </div>
             </div>
@@ -1703,11 +1703,12 @@ class DrishtiDashboard {
 			searchTimeout = setTimeout(() => {
 				self.state.branchSearchTerm = $(this).val() || "";
 				self.updateUrlFromState();
-				self.loadData();
-				if (self.state.branchSearchTerm) {
+				if (self.state.branchSearchTerm && self.state.activeTab !== "branch") {
 					self.switchTab("branch");
+				} else {
+					self.render();
 				}
-			}, 500);
+			}, 300);
 		});
 
 		// Financial Year
@@ -1726,6 +1727,7 @@ class DrishtiDashboard {
 			self.state.viewType = $(this).data("view");
 			
 			if (self.state.viewType === "Quarterly") {
+				self.state.selectedMonth = null;
 				const currentQ = self.getQuarterFromDate(frappe.datetime.get_today());
 				self.state.selectedQuarter = currentQ;
 				self.state.selectedDate = self.getQuarterDate(currentQ, self.state.financialYear);
@@ -1756,6 +1758,7 @@ class DrishtiDashboard {
 
 		// Quarter Toggle Buttons
 		this.page.main.find(".quarter-toggle-btn").on("click", function () {
+			self.state.selectedMonth = null;
 			self.state.selectedQuarter = $(this).data("quarter");
 			self.state.selectedDate = self.getQuarterDate(
 				self.state.selectedQuarter,
@@ -2368,14 +2371,16 @@ class DrishtiDashboard {
 			);
 		}
 
-		// 4. Branch search term filter
+		// 4. Branch search term filter (supports comma-separated multi-search)
 		if (this.state.branchSearchTerm) {
-			const searchTerm = this.state.branchSearchTerm.toLowerCase().trim();
-			filtered = filtered.filter((branch) => {
-				const branchName = (branch.branch || "").toLowerCase();
-				const solId = (branch.sol_id || "").toLowerCase();
-				return branchName.includes(searchTerm) || solId.includes(searchTerm);
-			});
+			const searchTerms = this.state.branchSearchTerm.toLowerCase().split(",").map(s => s.trim()).filter(Boolean);
+			if (searchTerms.length > 0) {
+				filtered = filtered.filter((branch) => {
+					const branchName = (branch.branch || "").toLowerCase();
+					const solId = (branch.sol_id || "").toLowerCase();
+					return searchTerms.some(term => branchName.includes(term) || solId.includes(term));
+				});
+			}
 		}
 
 		return filtered;
@@ -3871,7 +3876,7 @@ class DrishtiDashboard {
 		}
 
 		let displayMonths = months;
-		if (this.state.selectedMonth) {
+		if (this.state.viewType === "Monthly" && this.state.selectedMonth) {
 			displayMonths = months.filter((m) => m.key === this.state.selectedMonth);
 		}
 
@@ -3893,7 +3898,7 @@ class DrishtiDashboard {
 		sortedBranches.forEach((branch, index) => {
 			if (total < 4) {
 				branch.performanceSegment = "N/A";
-				branch.rowStyle = "transparent";
+				branch.rowStyle = "";
 			} else {
 				const top25_index = Math.floor(total * 0.25);
 				const next25_index = Math.floor(total * 0.5);
@@ -3901,16 +3906,16 @@ class DrishtiDashboard {
 
 				if (index < top25_index) {
 					branch.performanceSegment = "Top 25%";
-					branch.rowStyle = `background-color: #d4edda;`;
+					branch.rowStyle = "";
 				} else if (index < next25_index) {
 					branch.performanceSegment = "Next 25%";
-					branch.rowStyle = `background-color: #cce5ff;`;
+					branch.rowStyle = "";
 				} else if (index < mid25_index) {
 					branch.performanceSegment = "Mid 25%";
-					branch.rowStyle = `background-color: #fff3cd;`;
+					branch.rowStyle = "";
 				} else {
 					branch.performanceSegment = "Bottom 25%";
-					branch.rowStyle = `background-color: #f8d7da;`;
+					branch.rowStyle = "";
 				}
 			}
 		});
@@ -3949,7 +3954,7 @@ class DrishtiDashboard {
                 <tr class="branch-table-header">
                     <th rowspan="2" class="sr-col">Sr. No.</th>
                     <th rowspan="2" class="branch-col">Branch</th>
-					<th rowspan="2" class="segment-col">Performance Segments</th>
+					<th rowspan="2" class="segment-col">Segments</th>
         `;
 
 		const today = new Date();
@@ -4048,8 +4053,8 @@ class DrishtiDashboard {
                  <td class="metric-cell amount-cell">${this.formatNumber(mdata.target)}</td>
                  <td class="metric-cell amount-cell">${this.formatNumber(mdata.achievement)}</td>
                  <td>
-					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-						<span class="pct-value" style="color: ${this.getPctColor(pct)}; min-width: 45px; text-align: right;">${Math.round(pct)}%</span>
+					<div style="display: flex; align-items: center; gap: 4px; justify-content: center;">
+						<span class="pct-value" style="color: ${this.getPctColor(pct)}; min-width: 36px; text-align: right;">${Math.round(pct)}%</span>
 						${this.renderProgressBar(pct)}
 					</div>
 				</td>
@@ -4871,7 +4876,18 @@ class DrishtiDashboard {
                 }
 
                 .branch-table-row:hover {
-                    background: #f8f9fa;
+                    background: #e2e8f0 !important;
+                }
+                .branch-table-row:hover td.sr-col,
+                .branch-table-row:hover td.branch-col,
+                .branch-table-row:hover td.segment-col {
+                    background: #e2e8f0 !important;
+                }
+
+                .branch-table thead {
+                    position: sticky;
+                    top: 0;
+                    z-index: 10;
                 }
 
                 .branch-table td {
@@ -5282,13 +5298,14 @@ class DrishtiDashboard {
                 }
 
                 .progress-container-3d {
-                    width: 80px;
-                    height: 14px;
+                    flex: 1;
+                    height: 10px;
                     background-color: #e9ecef;
-                    border-radius: 8px;
+                    border-radius: 6px;
                     overflow: hidden;
                     box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
                     position: relative;
+                    min-width: 30px;
                 }
 
                 .progress-bar-3d {
