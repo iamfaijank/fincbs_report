@@ -2726,12 +2726,19 @@ class DrishtiDashboard {
 			const totalAchievement = grandTotals[month.key].achievement;
 			const overallPercentage = totalTarget > 0 ? (totalAchievement / totalTarget) * 100 : 0;
 
+			const monthDate = new Date(month.date);
+			const monthIndex = monthDate.getMonth();
+			const monthYear = monthDate.getFullYear();
+			const isCurrentMonth = (monthIndex === currentMonth && monthYear === currentYear);
+
+			const cellBg = isCurrentMonth ? "#1a73e8 !important" : "#264a4d !important";
+
 			html += `
-                 <td style="position: sticky; bottom: 0; z-index: 7; background-color: #264a4d !important; color: #ffffff !important;">${this.formatNumber(totalTarget)}</td>
-                 <td style="position: sticky; bottom: 0; z-index: 7; background-color: #264a4d !important; color: #ffffff !important;">${this.formatNumber(totalAchievement)}</td>
-                 <td style="position: sticky; bottom: 0; z-index: 7; background-color: #264a4d !important; color: #ffffff !important;">
+                 <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">${this.formatNumber(totalTarget)}</td>
+                 <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">${this.formatNumber(totalAchievement)}</td>
+                 <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">
  					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
- 						<span class="pct-value" style="color: ${this.getPctColor(overallPercentage)}; min-width: 45px; text-align: right;">${Math.round(overallPercentage)}%</span>
+ 						<span class="pct-value" style="color: ${isCurrentMonth ? "#ffffff !important" : this.getPctColor(overallPercentage)}; min-width: 45px; text-align: right; font-weight: bold;">${Math.round(overallPercentage)}%</span>
  						${this.renderProgressBar(overallPercentage)}
  					</div>
  				</td>
