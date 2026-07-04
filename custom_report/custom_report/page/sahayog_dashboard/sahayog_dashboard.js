@@ -765,6 +765,15 @@ class DrishtiDashboard {
 			.branch-table td {
 				white-space: nowrap;
 			}
+
+			.zone-wise-table th,
+			.branch-table th,
+			.agent-wise-table th,
+			.product-wise-table th,
+			.category-table-redesigned th {
+				text-align: center !important;
+				vertical-align: middle !important;
+			}
 		`;
 		$(`<style>${style}</style>`).appendTo("head");
 	}
@@ -2521,7 +2530,7 @@ class DrishtiDashboard {
 		html += '</tr><tr class="zone-table-subheader">';
 
 		months.forEach(() => {
-			html += "<th>Target</th><th>Ach</th><th>%</th>";
+			html += "<th>Target</th><th>Ach</th><th>ACH %</th>";
 		});
 
 		html += "</tr></thead><tbody>";
@@ -2920,7 +2929,7 @@ class DrishtiDashboard {
 						<th rowspan="2">DD SHORTFALL</th>
 						<th rowspan="2">DD ACTIVE</th>
 						<th rowspan="2">DD INACTIVE</th>
-						<th rowspan="2">%</th>
+						<th rowspan="2">ACH %</th>
 					</tr>
 					<tr class="branch-table-subheader">
 					</tr>
@@ -3829,7 +3838,7 @@ class DrishtiDashboard {
                 <th>Category</th>
                 <th>Target</th>
                 <th>Ach.</th>
-                <th>%</th>
+                <th>ACH %</th>
             `;
 		});
 
