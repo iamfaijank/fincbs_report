@@ -310,6 +310,9 @@ class DrishtiDashboard {
 
 	updateDatePickerValue(dateStr) {
 		if (this.dateControl) {
+			const currentVal = this.dateControl.get_value();
+			if (currentVal === dateStr) return;
+
 			this.isRefreshingDate = true;
 			this.dateControl.set_value(dateStr || "");
 			this.isRefreshingDate = false;
@@ -1086,7 +1089,7 @@ class DrishtiDashboard {
 		if (this.state.viewType === "Monthly") {
 			this.page.main.find("#month-selector-container").show();
 			const dateToUse = this.state.selectedDate || frappe.datetime.get_today();
-			const monthVal = new Date(dateToUse).getMonth() + 1; // 1-12
+			const monthVal = parseInt(dateToUse.split("-")[1], 10); // 1-12
 			this.page.main.find("#month-selector").val(monthVal);
 		} else {
 			this.page.main.find("#month-selector-container").hide();
@@ -2071,6 +2074,7 @@ class DrishtiDashboard {
 
 					self.processNewApiResponse();
 					self.updateFilterCounts();
+					self.updateUiFromState();
 					self.render();
 				}
 			},
