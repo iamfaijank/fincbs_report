@@ -1594,8 +1594,9 @@ class DrishtiDashboard {
                         </div>
 
                         <!-- Month Selector (shown only when view is Monthly) -->
-                        <div id="month-selector-container" style="display: none; margin-left: 10px;">
-                            <select id="month-selector" style="padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #1b263b; font-size: 13px; font-weight: 600; height: 30px;">
+                        <div id="month-selector-container" class="outlined-input-container" style="display: none; margin-left: 10px;">
+                            <label class="outlined-input-label">Month</label>
+                            <select id="month-selector" style="width: 110px;">
                                 <option value="4">April</option>
                                 <option value="5">May</option>
                                 <option value="6">June</option>
@@ -4283,6 +4284,11 @@ class DrishtiDashboard {
                 
                 .fy-header-control.outlined-input-container {
                     padding: 0 6px 0 10px;
+                }
+
+                #month-selector-container.outlined-input-container {
+                    padding: 0 6px 0 10px;
+                    width: 140px;
                 }
 
                 #region-dropdown-container.outlined-input-container {
