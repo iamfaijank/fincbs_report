@@ -74,15 +74,6 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 					<div style="display: inline-flex; align-items: center; margin-left: 10px; vertical-align: middle;">
 						<span id="drishti-header-timer" class="days-left-blink" style="font-size: 12px;"></span>
 					</div>
-					
-					<!-- Format Control -->
-					<div class="format-header-control" style="display: inline-flex; align-items: center; margin-left: 15px; border-left: 1px solid #cbd5e1; padding-left: 15px; vertical-align: middle;">
-						<span style="font-weight: bold; color: #475569; font-size: 12px; margin-right: 8px; line-height: 1;">Format:</span>
-						<div class="btn-group" role="group">
-							<button type="button" class="btn btn-default btn-xs format-toggle-btn" data-format="number" style="font-weight: 600; padding: 2px 8px; border-radius: 4px 0 0 4px;">Numbers</button>
-							<button type="button" class="btn btn-default btn-xs format-toggle-btn" data-format="words" style="font-weight: 600; padding: 2px 8px; border-radius: 0 4px 4px 0;">Words</button>
-						</div>
-					</div>
 				</li>
 			`);
 
@@ -1326,10 +1317,51 @@ class DrishtiDashboard {
 
 		const allZonesCount = this.zoneCounts["all"] || 0;
 		const allZonesActive = this.state.selectedZones.length === 0;
+
+		// Calculate zone percentages using Largest Remainder Method
+		const zonePercentages = {};
+		if (allZonesCount === 0) {
+			zonePercentages["all"] = 100;
+			this.availableFilters.zones.forEach((z) => {
+				zonePercentages[z] = 0;
+			});
+		} else {
+			zonePercentages["all"] = 100;
+			let sumFloors = 0;
+			const items = [];
+
+			this.availableFilters.zones.forEach((zone) => {
+				const count = this.zoneCounts[zone] || 0;
+				const exact = (count / allZonesCount) * 100;
+				const floorVal = Math.floor(exact);
+				sumFloors += floorVal;
+				items.push({
+					zone: zone,
+					exact: exact,
+					floorVal: floorVal,
+					remainder: exact - floorVal,
+				});
+			});
+
+			let diff = 100 - sumFloors;
+			items.sort((a, b) => b.remainder - a.remainder);
+
+			items.forEach((item, index) => {
+				let finalVal = item.floorVal;
+				if (index < diff) {
+					finalVal += 1;
+				}
+				zonePercentages[item.zone] = finalVal;
+			});
+		}
+
 		container.append(`
             <button class="filter-tag zone-tag ${allZonesActive ? "active" : ""}" data-zone="all">
-                All
-                <span class="filter-tag-count">${allZonesCount}</span>
+                <span class="zone-tag-content">
+                    All
+                    <span class="filter-tag-count">${allZonesCount}</span>
+                    <span class="zone-tag-pct">${zonePercentages["all"]}%</span>
+                </span>
             </button>
         `);
 
@@ -1337,14 +1369,18 @@ class DrishtiDashboard {
 			const count = this.zoneCounts[zone] || 0;
 			const isActive = this.state.selectedZones.includes(zone);
 			const zoneNum = zone.match(/\d+/);
-			const displayName = zoneNum ? `Z${zoneNum[0]}` : zone;
+			const displayName = zoneNum ? `Zone ${zoneNum[0]}` : zone;
+			const pct = zonePercentages[zone];
 
 			container.append(`
                 <button class="filter-tag zone-tag ${
 					isActive ? "active" : ""
 				}" data-zone="${zone}">
-                    ${displayName}
-                    <span class="filter-tag-count">${count}</span>
+                    <span class="zone-tag-content">
+                        ${displayName}
+                        <span class="filter-tag-count">${count}</span>
+                        <span class="zone-tag-pct">${pct}%</span>
+                    </span>
                 </button>
             `);
 		});
@@ -1409,10 +1445,10 @@ class DrishtiDashboard {
             <button class="filter-tag category-tag all-tag ${
 				allCategoriesActive ? "active" : ""
 			}" data-category="all">
-                <span class="category-tag-pct">${percentages["all"]}%</span>
                 <span class="category-tag-content">
                     All
                     <span class="filter-tag-count">${allCategoriesCount}</span>
+                    <span class="category-tag-pct">${percentages["all"]}%</span>
                 </span>
             </button>
         `);
@@ -1427,10 +1463,10 @@ class DrishtiDashboard {
                 <button class="filter-tag category-tag ${isActive ? "active" : ""}" 
                         data-category="${category}" 
                         style="border-left: 3px solid ${color};">
-                    <span class="category-tag-pct">${pct}%</span>
                     <span class="category-tag-content">
                         ${category}
                         <span class="filter-tag-count">${count}</span>
+                        <span class="category-tag-pct">${pct}%</span>
                     </span>
                 </button>
             `);
@@ -1573,6 +1609,25 @@ class DrishtiDashboard {
                         <label class="outlined-input-label">Date</label>
                     </div>
 
+                    <!-- Month Selector (shown only when view is Monthly) -->
+                    <div id="month-selector-container" class="outlined-input-container" style="display: none;">
+                        <label class="outlined-input-label">Month</label>
+                        <select id="month-selector" style="width: 110px;">
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                        </select>
+                    </div>
+
                     <!-- Days Left countdown -->
                     <div style="display: flex; align-items: center;">
                         <span id="drishti-live-timer" style="font-size: 13px; font-weight: 600; color: #64748b; white-space: nowrap;"></span>
@@ -1587,25 +1642,6 @@ class DrishtiDashboard {
                             <button type="button" class="btn btn-sm view-toggle-btn" data-view="Yearly">Yearly</button>
                         </div>
 
-                        <!-- Month Selector (shown only when view is Monthly) -->
-                        <div id="month-selector-container" class="outlined-input-container" style="display: none; margin-left: 10px;">
-                            <label class="outlined-input-label">Month</label>
-                            <select id="month-selector" style="width: 110px;">
-                                <option value="4">April</option>
-                                <option value="5">May</option>
-                                <option value="6">June</option>
-                                <option value="7">July</option>
-                                <option value="8">August</option>
-                                <option value="9">September</option>
-                                <option value="10">October</option>
-                                <option value="11">November</option>
-                                <option value="12">December</option>
-                                <option value="1">January</option>
-                                <option value="2">February</option>
-                                <option value="3">March</option>
-                            </select>
-                        </div>
- 
                         <!-- Quarter Selector (hidden by default) -->
                         <div id="quarter-selector-container" style="display: none; margin-left: 10px;">
                             <div class="btn-group" role="group">
@@ -1628,7 +1664,7 @@ class DrishtiDashboard {
                     </div>
  
                     <!-- Region Filter (Multi-select dropdown) -->
-                    <div class="dropdown outlined-input-container" id="region-dropdown-container" style="margin-left: 15px;">
+                    <div class="dropdown outlined-input-container" id="region-dropdown-container">
                         <label class="outlined-input-label">Region</label>
                         <button class="btn btn-default btn-sm dropdown-toggle" type="button" id="region-dropdown-btn" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="min-width: 150px; text-align: left; display: inline-flex; align-items: center; justify-content: space-between;">
                             <span id="region-dropdown-label">All Regions</span>
@@ -1636,6 +1672,15 @@ class DrishtiDashboard {
                         </button>
                         <ul class="dropdown-menu" id="region-dropdown-menu" aria-labelledby="region-dropdown-btn" style="max-height: 250px; overflow-y: auto; padding: 5px 0; border: 1px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); width: 220px;">
                         </ul>
+                    </div>
+
+                    <!-- Format Control -->
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-sm format-toggle-btn" data-format="number">Numbers</button>
+                            <button type="button" class="btn btn-sm format-toggle-btn" data-format="words">Words</button>
+                        </div>
                     </div>
                 </div>
 
@@ -4427,21 +4472,22 @@ class DrishtiDashboard {
                     color: #0f172a !important;
                 }
 
-                /* Filter Tags Styles - Side-by-side separate cards with borders like KPIs */
+                /* Filter Tags Styles - Stacked vertically: Zone on top, Category below */
                 .filter-tags-row {
                     display: flex;
-                    gap: 12px;
+                    flex-direction: column;
+                    gap: 10px;
                     margin-bottom: 6px;
-                    flex-wrap: nowrap; /* Force single row */
                     width: 100%;
-                    align-items: stretch;
                 }
                 .zone-filter-container {
-                    flex: 0 0 auto; /* fit content exactly */
+                    width: 100%;
+                    padding-bottom: 10px;
+                    border-bottom: 1px dashed #d1d5db;
                 }
                 .category-filter-container {
-                    flex: 1 1 auto; /* take remaining space */
-                    min-width: 0;
+                    width: 100%;
+                    padding-top: 4px;
                 }
                 .filter-tags-container {
                     display: flex;
@@ -4461,6 +4507,7 @@ class DrishtiDashboard {
                     display: flex;
                     align-items: center;
                     gap: 8px;
+                    width: 100%;
                 }
 
                 .filter-group-label {
@@ -4491,6 +4538,8 @@ class DrishtiDashboard {
                     align-items: center;
                     flex-wrap: wrap;
                     gap: 8px;
+                    flex: 1 1 0;
+                    min-width: 0;
                 }
 
                 #zone-tags {
@@ -4501,7 +4550,7 @@ class DrishtiDashboard {
                     display: inline-flex;
                     align-items: center;
                     gap: 8px;
-                    padding: 6px 14px;
+                    padding: 8px 18px;
                     background: #ffffff;
                     border: 1px solid #e2e8f0;
                     border-radius: 8px;
@@ -4510,18 +4559,33 @@ class DrishtiDashboard {
                     color: #1e293b;
                     cursor: pointer;
                     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
                 }
 
                 .zone-tag {
-                    padding: 4px 10px;
-                    gap: 5px;
+                    padding: 8px 18px;
+                    gap: 6px;
                     font-size: 13px;
                 }
 
                 .zone-tag .filter-tag-count {
-                    padding: 2px 6px;
+                    padding: 3px 8px;
                     font-size: 11px;
+                }
+
+                .zone-tag-content {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    line-height: 1.2;
+                }
+
+                .zone-tag-pct {
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: #64748b;
+                    line-height: 1;
+                    margin-left: auto;
                 }
 
                 .filter-tag:hover {
@@ -4531,17 +4595,29 @@ class DrishtiDashboard {
                     text-decoration: none;
                 }
 
+                .filter-tag:active {
+                    transform: scale(0.96);
+                    transition: transform 0.1s ease;
+                }
+
+                @keyframes capsuleGlow {
+                    0% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0); }
+                    50% { box-shadow: 0 0 8px 3px rgba(13, 148, 136, 0.3); }
+                    100% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0); }
+                }
+
                 .filter-tag.active {
                     background: #0d9488 !important;
                     border-color: #0d9488 !important;
                     color: #ffffff !important;
                     box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
+                    animation: capsuleGlow 0.4s ease-out;
                 }
 
                 .filter-tag-count {
                     background: #f1f5f9;
                     color: #64748b;
-                    padding: 2px 8px;
+                    padding: 4px 10px;
                     border-radius: 9999px;
                     font-size: 12px;
                     font-weight: 700;
@@ -4554,25 +4630,26 @@ class DrishtiDashboard {
                 }
 
                 .category-tag {
-                    flex-direction: column;
+                    flex-direction: row;
                     align-items: center;
                     justify-content: center;
-                    padding: 3px 8px;
-                    gap: 2px !important;
+                    padding: 8px 14px;
+                    gap: 6px !important;
                     font-size: 13px;
                     font-weight: 600;
                 }
 
                 .category-tag .filter-tag-count {
-                    padding: 1px 4px;
+                    padding: 3px 8px;
                     font-size: 10px;
                 }
 
                 .category-tag-pct {
-                    font-size: 10px;
+                    font-size: 11px;
                     font-weight: 700;
                     color: #64748b;
                     line-height: 1;
+                    margin-left: auto;
                 }
 
                 .category-tag.active .category-tag-pct {
@@ -4582,7 +4659,7 @@ class DrishtiDashboard {
                 .category-tag-content {
                     display: flex;
                     align-items: center;
-                    gap: 3px;
+                    gap: 6px;
                     line-height: 1.2;
                 }
 
