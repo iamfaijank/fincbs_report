@@ -5,6 +5,7 @@ frappe.listview_settings['Branch Category Report'] = {
 	hide_name_column: true,
 	hide_name_filter: true,
 	onload(listview) {
+		listview.can_create = false;
 		const sync_btn = listview.page.add_inner_button(__('Sync Achievement Data'), () => {
 			frappe.prompt([
 				{
