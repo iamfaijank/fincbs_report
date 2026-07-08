@@ -192,8 +192,17 @@ frappe.listview_settings['Branch Category Report'] = {
 								let is_active = item.date === active_date;
 								let border_style = is_active ? '2px solid #0f172a' : '1px solid transparent';
 								let scale_style = is_active ? 'scale(1.1)' : 'scale(1)';
+								let is_clickable = true;
 								
-								if (item.is_sunday) {
+								if (item.is_future) {
+									bg_color = '#f8fafc'; // Future (Soft grey-white)
+									hover_bg = '#f8fafc';
+									text_color = '#cbd5e1'; // Greyed out text
+									border_style = '1px dashed #cbd5e1';
+									status_text = 'Future Date';
+									is_clickable = false;
+									scale_style = 'scale(1)';
+								} else if (item.is_sunday) {
 									bg_color = '#cbd5e1'; // Sunday (Light Grey)
 									hover_bg = '#94a3b8';
 									text_color = '#475569';
@@ -205,44 +214,48 @@ frappe.listview_settings['Branch Category Report'] = {
 									status_text = 'Synced';
 								}
 								
+								const cursor_style = is_clickable ? 'pointer' : 'not-allowed';
+								
 								const capsule = $(`
 									<div class="day-capsule" 
 										title="${item.formatted_date} (${item.day_name}) - ${status_text}"
-										style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; font-size: 10px; font-weight: 800; cursor: pointer; user-select: none; transition: all 0.15s ease; background-color: ${bg_color}; color: ${text_color}; border: ${border_style}; transform: ${scale_style}; box-shadow: 0 1px 2px rgba(0,0,0,0.08);"
+										style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; font-size: 10px; font-weight: 800; cursor: ${cursor_style}; user-select: none; transition: all 0.15s ease; background-color: ${bg_color}; color: ${text_color}; border: ${border_style}; transform: ${scale_style}; box-shadow: ${item.is_future ? 'none' : '0 1px 2px rgba(0,0,0,0.08)'};"
 									>
 										${day_num}
 									</div>
 								`);
 								
-								// Hover effects
-								capsule.hover(
-									function() {
-										$(this).css({
-											'background-color': hover_bg,
-											'transform': is_active ? 'scale(1.15) translateY(-1px)' : 'scale(1.05) translateY(-1px)',
-											'box-shadow': '0 3px 6px rgba(0,0,0,0.15)'
-										});
-									},
-									function() {
-										$(this).css({
-											'background-color': bg_color,
-											'transform': scale_style,
-											'box-shadow': '0 1px 2px rgba(0,0,0,0.08)'
-										});
-									}
-								);
-								
-								// Click to filter
-								capsule.on('click', function(e) {
-									e.preventDefault();
-									listview.filter_area.clear();
-									listview.filter_area.add_filter('date', '=', item.date);
-									listview.refresh();
+								if (is_clickable) {
+									// Hover effects
+									capsule.hover(
+										function() {
+											$(this).css({
+												'background-color': hover_bg,
+												'transform': is_active ? 'scale(1.15) translateY(-1px)' : 'scale(1.05) translateY(-1px)',
+												'box-shadow': '0 3px 6px rgba(0,0,0,0.15)'
+											});
+										},
+										function() {
+											$(this).css({
+												'background-color': bg_color,
+												'transform': scale_style,
+												'box-shadow': '0 1px 2px rgba(0,0,0,0.08)'
+											});
+										}
+									);
 									
-									// Close dropdown
-									listview.calendar_container.removeClass('open show');
-									listview.calendar_container.find('#sync-status-menu').hide();
-								});
+									// Click to filter
+									capsule.on('click', function(e) {
+										e.preventDefault();
+										listview.filter_area.clear();
+										listview.filter_area.add_filter('date', '=', item.date);
+										listview.refresh();
+										
+										// Close dropdown
+										listview.calendar_container.removeClass('open show');
+										listview.calendar_container.find('#sync-status-menu').hide();
+									});
+								}
 								
 								days_container.append(capsule);
 							});

@@ -592,20 +592,26 @@ def generate_and_save_branch_category_report(input_date):
 @frappe.whitelist()
 def get_current_month_sync_status():
     """
-    Returns the sync status of all days of the current month up to yesterday.
-    Excludes Sundays from the count.
+    Returns the sync status of all days of the current month.
+    Future dates are marked as is_future = True.
+    Excludes Sundays and future dates from the badge count.
     """
     from frappe.utils import getdate, today, add_days
     import datetime
     from dateutil.relativedelta import relativedelta
+    import calendar
 
     today_date = getdate(today())
     start_of_month = today_date.replace(day=1)
     
-    # Normally we check up to yesterday. If it is 1st of month, check up to today.
-    end_date = today_date - relativedelta(days=1)
-    if end_date < start_of_month:
-        end_date = today_date
+    # Calculate last day of the current month
+    _, last_day_num = calendar.monthrange(today_date.year, today_date.month)
+    last_day_of_month = today_date.replace(day=last_day_num)
+    
+    # Sync limit (normally yesterday, but if it is the 1st of month, then today)
+    limit_date = today_date - relativedelta(days=1)
+    if limit_date < start_of_month:
+        limit_date = today_date
         
     # Get all distinct dates in Branch Category Report for this month
     stored_rows = frappe.db.sql("""
@@ -621,11 +627,12 @@ def get_current_month_sync_status():
     total_days = 0
     
     curr = start_of_month
-    while curr <= end_date:
+    while curr <= last_day_of_month:
         is_sunday = curr.weekday() == 6
-        has_data = curr in stored_dates
+        is_future = curr > limit_date
+        has_data = curr in stored_dates if not is_future else False
         
-        if not is_sunday:
+        if not is_future and not is_sunday:
             total_days += 1
             if has_data:
                 synced_count += 1
@@ -635,7 +642,8 @@ def get_current_month_sync_status():
             "day_name": curr.strftime("%a"),
             "formatted_date": curr.strftime("%d %b"),
             "has_data": has_data,
-            "is_sunday": is_sunday
+            "is_sunday": is_sunday,
+            "is_future": is_future
         })
         curr = add_days(curr, 1)
         
@@ -646,6 +654,7 @@ def get_current_month_sync_status():
         "synced_count": synced_count,
         "total_days": total_days
     }
+
 
 
 
