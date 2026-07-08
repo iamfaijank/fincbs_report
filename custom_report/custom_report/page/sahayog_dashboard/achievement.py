@@ -589,6 +589,66 @@ def generate_and_save_branch_category_report(input_date):
     return saved_count
 
 
+@frappe.whitelist()
+def get_current_month_sync_status():
+    """
+    Returns the sync status of all days of the current month up to yesterday.
+    Excludes Sundays from the count.
+    """
+    from frappe.utils import getdate, today, add_days
+    import datetime
+    from dateutil.relativedelta import relativedelta
+
+    today_date = getdate(today())
+    start_of_month = today_date.replace(day=1)
+    
+    # Normally we check up to yesterday. If it is 1st of month, check up to today.
+    end_date = today_date - relativedelta(days=1)
+    if end_date < start_of_month:
+        end_date = today_date
+        
+    # Get all distinct dates in Branch Category Report for this month
+    stored_rows = frappe.db.sql("""
+        SELECT DISTINCT date 
+        FROM `tabBranch Category Report`
+        WHERE date BETWEEN %s AND %s
+    """, (start_of_month, today_date), as_dict=True)
+    
+    stored_dates = {getdate(r.date) for r in stored_rows}
+    
+    dates_status = []
+    synced_count = 0
+    total_days = 0
+    
+    curr = start_of_month
+    while curr <= end_date:
+        is_sunday = curr.weekday() == 6
+        has_data = curr in stored_dates
+        
+        if not is_sunday:
+            total_days += 1
+            if has_data:
+                synced_count += 1
+                
+        dates_status.append({
+            "date": str(curr),
+            "day_name": curr.strftime("%a"),
+            "formatted_date": curr.strftime("%d %b"),
+            "has_data": has_data,
+            "is_sunday": is_sunday
+        })
+        curr = add_days(curr, 1)
+        
+    dates_status.reverse()
+    
+    return {
+        "dates_status": dates_status,
+        "synced_count": synced_count,
+        "total_days": total_days
+    }
+
+
+
 def interactive_date_control():
     while True:
         input_date = input(
