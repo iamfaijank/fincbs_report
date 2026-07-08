@@ -400,46 +400,113 @@ def get_fiscal_year(date_obj):
     return f"{year - 1}-{year}"
 
 
-def get_previous_months_achievement(sol_id, date_obj):
-    """Sum the achievement of the completed months in the same financial year"""
+def get_previous_month_last_ytd(sol_id, date_obj):
+    """
+    Returns the yearly_achievement of the last synced day of the previous month 
+    in the same financial year. Returns 0.0 if there is no previous month or no record.
+    """
     import calendar
+    from frappe.utils import getdate
+    
     fiscal_year = get_fiscal_year(date_obj)
     start_year = int(fiscal_year.split("-")[0])
     
+    # Financial year months list: April is first
     fy_months = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
     current_month = date_obj.month
     
-    prev_months = []
-    for m in fy_months:
-        if m == current_month:
-            break
-        prev_months.append(m)
+    # Find the month immediately preceding current_month in the FY list
+    try:
+        curr_idx = fy_months.index(current_month)
+    except ValueError:
+        return 0.0
         
-    total_prev = 0.0
-    for m in prev_months:
-        m_year = start_year if m >= 4 else start_year + 1
-        last_day = calendar.monthrange(m_year, m)[1]
-        start_date = f"{m_year}-{m:02d}-01"
-        end_date = f"{m_year}-{m:02d}-{last_day:02d}"
+    if curr_idx == 0:
+        # April has no previous month in the current financial year
+        return 0.0
         
-        latest_val = frappe.db.get_value(
-            "Branch Category Report",
-            {
-                "sol_id": sol_id,
-                "date": ["between", [start_date, end_date]],
-                "docstatus": ["<", 2]
-            },
-            "achievement",
-            order_by="date desc"
+    prev_month = fy_months[curr_idx - 1]
+    prev_year = start_year if prev_month >= 4 else start_year + 1
+    
+    # Find the last day of that previous month
+    last_day = calendar.monthrange(prev_year, prev_month)[1]
+    start_date = f"{prev_year}-{prev_month:02d}-01"
+    end_date = f"{prev_year}-{prev_month:02d}-{last_day:02d}"
+    
+    # Query the latest record in that month for this sol_id
+    last_ytd = frappe.db.get_value(
+        "Branch Category Report",
+        {
+            "sol_id": sol_id,
+            "date": ["between", [start_date, end_date]],
+            "docstatus": ["<", 2]
+        },
+        "yearly_achievement",
+        order_by="date desc"
+    )
+    
+    return float(last_ytd or 0.0)
+
+
+def recalculate_subsequent_ytd(sol_id, date_obj):
+    """
+    Recalculates yearly_achievement and ytd_achi for all records of sol_id 
+    in the same financial year that are dated AFTER date_obj.
+    """
+    from frappe.utils import getdate
+    
+    fiscal_year = get_fiscal_year(date_obj)
+    start_year = int(fiscal_year.split("-")[0])
+    
+    # Financial year ends on March 31st of start_year + 1
+    end_of_fy = f"{start_year + 1}-03-31"
+    
+    # Get all subsequent records of the same FY ordered by date ascending
+    records = frappe.db.get_all(
+        "Branch Category Report",
+        filters={
+            "sol_id": sol_id,
+            "date": [">", date_obj],
+            "docstatus": ["<", 2]
+        },
+        fields=["name", "date", "achievement"],
+        order_by="date asc"
+    )
+    
+    if not records:
+        return
+        
+    for rec in records:
+        rec_date = getdate(rec.date)
+        if rec_date > getdate(end_of_fy):
+            continue
+            
+        # Get baseline (previous month's last YTD)
+        prev_month_ytd = get_previous_month_last_ytd(sol_id, rec_date)
+        
+        # Calculate new YTD
+        achievement = float(rec.achievement or 0.0)
+        yearly_achievement = prev_month_ytd + achievement
+        
+        # Fetch YTD target
+        ytd_target = frappe.db.get_value(
+            "Target Vs Achivement",
+            {"sol_id": sol_id, "financial_year": fiscal_year, "type": "YTD"},
+            "target"
         )
+        ytd_target = float(ytd_target or 0.0)
+        ytd_achi_pct = (yearly_achievement / ytd_target * 100) if ytd_target > 0.0 else 0.0
         
-        if latest_val:
-            try:
-                total_prev += float(latest_val)
-            except ValueError:
-                pass
-                
-    return total_prev
+        # Update the record
+        frappe.db.set_value(
+            "Branch Category Report",
+            rec.name,
+            {
+                "yearly_achievement": yearly_achievement,
+                "ytd_achi": safe_str(round(ytd_achi_pct, 2))
+            },
+            update_modified=False
+        )
 
 
 def safe_str(val):
@@ -494,8 +561,8 @@ def generate_and_save_branch_category_report(input_date):
         inc_mab = row[11]
         achievement = float(row[12] or 0)
         
-        # Calculate YTD achievement (previous months + current month)
-        prev_achievement = get_previous_months_achievement(sol_id, processed_date)
+        # Calculate YTD achievement (previous month last YTD + current month achievement)
+        prev_achievement = get_previous_month_last_ytd(sol_id, processed_date)
         yearly_achievement = prev_achievement + achievement
 
         # Fetch proper zone, region, and branch from 'Sahayog Branch' using sol_id
@@ -584,6 +651,7 @@ def generate_and_save_branch_category_report(input_date):
         
         doc.insert(ignore_permissions=True)
         saved_count += 1
+        recalculate_subsequent_ytd(sol_id, processed_date)
         
     frappe.db.commit()
     return saved_count
