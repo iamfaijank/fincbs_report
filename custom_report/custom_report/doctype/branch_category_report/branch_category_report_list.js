@@ -285,9 +285,10 @@ frappe.listview_settings['Branch Category Report'] = {
 								
 								capsule.on('click', function(e) {
 									e.preventDefault();
-									listview.filter_area.clear();
-									listview.filter_area.add_filter('date', '=', item.date);
-									listview.refresh();
+									frappe.route_options = {
+										"date": item.date
+									};
+									frappe.set_route("List", listview.doctype);
 									
 									$('#sync-status-menu').hide();
 								});
