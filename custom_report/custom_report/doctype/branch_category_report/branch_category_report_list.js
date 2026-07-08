@@ -7,264 +7,290 @@ frappe.listview_settings['Branch Category Report'] = {
 	onload(listview) {
 		listview.can_create = false;
 		listview.default_filter_applied = false;
-
-		const sync_btn = listview.page.add_inner_button(__('Sync Achievement Data'), () => {
-			frappe.prompt([
-				{
-					label: __('Date'),
-					fieldname: 'date',
-					fieldtype: 'Date',
-					default: frappe.datetime.get_today(),
-					reqd: 1
-				}
-			], (values) => {
-				frappe.call({
-					method: 'custom_report.custom_report.page.sahayog_dashboard.achievement.generate_and_save_branch_category_report',
-					args: {
-						input_date: values.date
-					},
-					freeze: true,
-					freeze_message: __('Syncing Achievement Data...'),
-					callback(r) {
-						if (!r.exc) {
-							if (r.message && r.message > 0) {
-								frappe.show_alert({
-									message: __('Successfully saved {0} records.', [r.message]),
-									indicator: 'green'
-								});
-							} else {
-								frappe.show_alert({
-									message: __('No new records were saved.'),
-									indicator: 'orange'
-								});
-							}
-							listview.refresh();
-						}
-					}
-				});
-			}, __('Select Date'), __('Sync'));
-		});
-
-		// Create dynamic mini-calendar dropdown container next to Sync button
-		const calendar_container = $(`
-			<div class="dropdown d-inline-block" id="sync-status-dropdown-container" style="margin-left: 8px; vertical-align: middle; display: inline-block;">
-				<button class="btn btn-default btn-xs dropdown-toggle" id="sync-status-badge" style="border-radius: 6px; padding: 4px 10px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); gap: 6px; border: 1px solid #cbd5e1; background-color: #f8fafc; color: #334155; font-size: 11px; height: 26px; cursor: pointer;">
-					<span class="indicator-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: #cbd5e1; display: inline-block;"></span>
-					<span class="sync-text">Calendar View</span>
-				</button>
-				<div class="dropdown-menu dropdown-menu-right" id="sync-status-menu" style="width: 220px; padding: 12px; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; margin-top: 6px; background-color: #ffffff; z-index: 1000; position: absolute; display: none;">
-					<div class="dropdown-header-custom" style="font-weight: 700; padding: 0 4px 8px 4px; border-bottom: 1px solid #f1f5f9; color: #0f172a; font-size: 12px; display: flex; justify-content: space-between; align-items: center; text-transform: uppercase; letter-spacing: 0.5px;">
-						<span>Sync Status</span>
-						<span class="month-label" style="font-size: 11px; font-weight: 600; color: #64748b;">Loading...</span>
-					</div>
-					
-					<!-- Calendar Grid -->
-					<div class="calendar-grid" style="margin-top: 8px;">
-						<!-- Weekdays Header -->
-						<div class="weekdays-header" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 9px; font-weight: 800; color: #94a3b8; margin-bottom: 6px;">
-							<div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div style="color: #ef4444;">S</div>
-						</div>
-						<!-- Days Grid -->
-						<div class="days-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; justify-items: center; align-items: center;">
-							<!-- Loaded dynamically -->
-						</div>
-					</div>
-				</div>
-			</div>
-		`);
-
-		if (sync_btn) {
-			sync_btn.after(calendar_container);
-		}
-
-		// Manual Dropdown Toggle handler
-		calendar_container.find('#sync-status-badge').on('click', function(e) {
-			e.preventDefault();
-			const parent = calendar_container;
-			const menu = calendar_container.find('#sync-status-menu');
-			const isOpen = menu.is(':visible');
-			
-			// Close all other dropdowns
-			$('.dropdown-menu').not(menu).hide();
-			$('.dropdown').removeClass('open show');
-			
-			if (!isOpen) {
-				parent.addClass('open show');
-				menu.show();
-			} else {
-				parent.removeClass('open show');
-				menu.hide();
-			}
-			e.stopPropagation();
-		});
-		
-		$(document).on('click', function(e) {
-			if (!$(e.target).closest('#sync-status-dropdown-container').length) {
-				calendar_container.removeClass('open show');
-				calendar_container.find('#sync-status-menu').hide();
-			}
-		});
-		
-		listview.calendar_container = calendar_container;
 	},
 
 	refresh(listview) {
-		if (listview.calendar_container) {
-			frappe.call({
-				method: 'custom_report.custom_report.page.sahayog_dashboard.achievement.get_current_month_sync_status',
-				callback(r) {
-					if (r.message) {
-						const { dates_status, synced_count, total_days } = r.message;
-						
-						// Update Button Badge Status
-						const badge_btn = listview.calendar_container.find('#sync-status-badge');
-						const dot = badge_btn.find('.indicator-dot');
-						const text_span = badge_btn.find('.sync-text');
-						
-						text_span.text(`${synced_count}/${total_days} Synced`);
-						
-						if (synced_count === total_days && total_days > 0) {
-							dot.css('background-color', '#22c55e');
-							badge_btn.css({
-								'border-color': '#bbf7d0',
-								'background-color': '#f0fdf4',
-								'color': '#15803d'
-							});
-						} else if (synced_count > 0) {
-							dot.css('background-color', '#eab308');
-							badge_btn.css({
-								'border-color': '#fef08a',
-								'background-color': '#fefce8',
-								'color': '#a16207'
-							});
-						} else {
-							dot.css('background-color', '#ef4444');
-							badge_btn.css({
-								'border-color': '#fecaca',
-								'background-color': '#fef2f2',
-								'color': '#b91c1c'
-							});
-						}
+		// Ensure can_create is false to hide Add button
+		listview.can_create = false;
+		if (listview.page.btn_primary) {
+			listview.page.btn_primary.hide();
+		}
 
-						const days_container = listview.calendar_container.find('.days-grid');
-						days_container.empty();
-						
-						if (dates_status && dates_status.length > 0) {
-							// Chronological order (left to right)
-							const chronological_dates = dates_status.slice().reverse();
-							
-							const first_date = new Date(chronological_dates[0].date);
-							const month_name = first_date.toLocaleString('default', { month: 'short', year: '2-digit' });
-							listview.calendar_container.find('.month-label').text(month_name);
+		// Find or add Sync button
+		let sync_btn = listview.page.actions.find('button:contains("Sync Achievement Data")');
+		if (!sync_btn.length) {
+			sync_btn = listview.page.wrapper.find('.page-actions button:contains("Sync Achievement Data")');
+		}
 
-							// Find active filter date
-							const current_filters = listview.filter_area.get();
-							const active_date_filter = current_filters.find(f => f[1] === 'date' && f[2] === '=');
-							const active_date = active_date_filter ? active_date_filter[3] : null;
-
-							// Auto-set latest synced date on first load if no filters are active
-							if (!listview.default_filter_applied && current_filters.length === 0) {
-								const latest_synced = dates_status.find(item => item.has_data && !item.is_sunday);
-								if (latest_synced) {
-									listview.default_filter_applied = true;
-									listview.filter_area.add_filter('date', '=', latest_synced.date);
-									listview.refresh();
-									return;
-								}
-							}
-
-							// Render empty placeholders for days before the 1st
-							let start_day_index = first_date.getDay() - 1; // Sunday is 0, Mon is 1
-							if (start_day_index < 0) start_day_index = 6; // Sunday index adjust
-
-							for (let i = 0; i < start_day_index; i++) {
-								days_container.append('<div style="width: 22px; height: 22px;"></div>');
-							}
-
-							chronological_dates.forEach(item => {
-								const date_obj = new Date(item.date);
-								const day_num = date_obj.getDate();
-								
-								let bg_color = '#ef4444'; // Missing (Red)
-								let hover_bg = '#dc2626';
-								let text_color = '#ffffff';
-								let status_text = 'Missing';
-								let is_active = item.date === active_date;
-								let border_style = is_active ? '2px solid #0f172a' : '1px solid transparent';
-								let scale_style = is_active ? 'scale(1.1)' : 'scale(1)';
-								let is_clickable = true;
-								
-								if (item.is_future) {
-									bg_color = '#f8fafc'; // Future (Soft grey-white)
-									hover_bg = '#f8fafc';
-									text_color = '#cbd5e1'; // Greyed out text
-									border_style = '1px dashed #cbd5e1';
-									status_text = 'Future Date';
-									is_clickable = false;
-									scale_style = 'scale(1)';
-								} else if (item.is_sunday) {
-									bg_color = '#cbd5e1'; // Sunday (Light Grey)
-									hover_bg = '#94a3b8';
-									text_color = '#475569';
-									status_text = 'Sunday';
-								} else if (item.has_data) {
-									bg_color = '#22c55e'; // Synced (Green)
-									hover_bg = '#16a34a';
-									text_color = '#ffffff';
-									status_text = 'Synced';
-								}
-								
-								const cursor_style = is_clickable ? 'pointer' : 'not-allowed';
-								
-								const capsule = $(`
-									<div class="day-capsule" 
-										title="${item.formatted_date} (${item.day_name}) - ${status_text}"
-										style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; font-size: 10px; font-weight: 800; cursor: ${cursor_style}; user-select: none; transition: all 0.15s ease; background-color: ${bg_color}; color: ${text_color}; border: ${border_style}; transform: ${scale_style}; box-shadow: ${item.is_future ? 'none' : '0 1px 2px rgba(0,0,0,0.08)'};"
-									>
-										${day_num}
-									</div>
-								`);
-								
-								if (is_clickable) {
-									// Hover effects
-									capsule.hover(
-										function() {
-											$(this).css({
-												'background-color': hover_bg,
-												'transform': is_active ? 'scale(1.15) translateY(-1px)' : 'scale(1.05) translateY(-1px)',
-												'box-shadow': '0 3px 6px rgba(0,0,0,0.15)'
-											});
-										},
-										function() {
-											$(this).css({
-												'background-color': bg_color,
-												'transform': scale_style,
-												'box-shadow': '0 1px 2px rgba(0,0,0,0.08)'
-											});
-										}
-									);
-									
-									// Click to filter
-									capsule.on('click', function(e) {
-										e.preventDefault();
-										listview.filter_area.clear();
-										listview.filter_area.add_filter('date', '=', item.date);
-										listview.refresh();
-										
-										// Close dropdown
-										listview.calendar_container.removeClass('open show');
-										listview.calendar_container.find('#sync-status-menu').hide();
+		if (!sync_btn.length) {
+			listview.page.add_inner_button(__('Sync Achievement Data'), () => {
+				frappe.prompt([
+					{
+						label: __('Date'),
+						fieldname: 'date',
+						fieldtype: 'Date',
+						default: frappe.datetime.get_today(),
+						reqd: 1
+					}
+				], (values) => {
+					frappe.call({
+						method: 'custom_report.custom_report.page.sahayog_dashboard.achievement.generate_and_save_branch_category_report',
+						args: {
+							input_date: values.date
+						},
+						freeze: true,
+						freeze_message: __('Syncing Achievement Data...'),
+						callback(r) {
+							if (!r.exc) {
+								if (r.message && r.message > 0) {
+									frappe.show_alert({
+										message: __('Successfully saved {0} records.', [r.message]),
+										indicator: 'green'
+									});
+								} else {
+									frappe.show_alert({
+										message: __('No new records were saved.'),
+										indicator: 'orange'
 									});
 								}
-								
-								days_container.append(capsule);
-							});
-						} else {
-							days_container.append('<div style="grid-column: span 7; text-align: center; color: #64748b; font-size: 10px; padding: 4px;">No data</div>');
+								listview.refresh();
+							}
 						}
-					}
+					});
+				}, __('Select Date'), __('Sync'));
+			});
+
+			// Fetch again
+			sync_btn = listview.page.actions.find('button:contains("Sync Achievement Data")');
+			if (!sync_btn.length) {
+				sync_btn = listview.page.wrapper.find('.page-actions button:contains("Sync Achievement Data")');
+			}
+		}
+
+		// Find or add Calendar dropdown container
+		let calendar_container = listview.page.actions.find('#sync-status-dropdown-container');
+		if (!calendar_container.length) {
+			calendar_container = listview.page.wrapper.find('#sync-status-dropdown-container');
+		}
+
+		if (!calendar_container.length) {
+			calendar_container = $(`
+				<div class="dropdown d-inline-block" id="sync-status-dropdown-container" style="margin-left: 8px; vertical-align: middle; display: inline-block;">
+					<button class="btn btn-default btn-xs dropdown-toggle" id="sync-status-badge" style="border-radius: 6px; padding: 4px 10px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); gap: 6px; border: 1px solid #cbd5e1; background-color: #f8fafc; color: #334155; font-size: 11px; height: 26px; cursor: pointer;">
+						<span class="indicator-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: #cbd5e1; display: inline-block;"></span>
+						<span class="sync-text">Calendar View</span>
+					</button>
+					<div class="dropdown-menu dropdown-menu-right" id="sync-status-menu" style="width: 220px; padding: 12px; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; margin-top: 6px; background-color: #ffffff; z-index: 1000; position: absolute; display: none;">
+						<div class="dropdown-header-custom" style="font-weight: 700; padding: 0 4px 8px 4px; border-bottom: 1px solid #f1f5f9; color: #0f172a; font-size: 12px; display: flex; justify-content: space-between; align-items: center; text-transform: uppercase; letter-spacing: 0.5px;">
+							<span>Sync Status</span>
+							<span class="month-label" style="font-size: 11px; font-weight: 600; color: #64748b;">Loading...</span>
+						</div>
+						
+						<!-- Calendar Grid -->
+						<div class="calendar-grid" style="margin-top: 8px;">
+							<!-- Weekdays Header -->
+							<div class="weekdays-header" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 9px; font-weight: 800; color: #94a3b8; margin-bottom: 6px;">
+								<div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div style="color: #ef4444;">S</div>
+							</div>
+							<!-- Days Grid -->
+							<div class="days-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; justify-items: center; align-items: center;">
+								<!-- Loaded dynamically -->
+							</div>
+						</div>
+					</div>
+				</div>
+			`);
+
+			if (sync_btn.length) {
+				sync_btn.after(calendar_container);
+			} else {
+				listview.page.actions.append(calendar_container);
+			}
+
+			// Manual Dropdown Toggle handler
+			calendar_container.find('#sync-status-badge').on('click', function(e) {
+				e.preventDefault();
+				const parent = calendar_container;
+				const menu = calendar_container.find('#sync-status-menu');
+				const isOpen = menu.is(':visible');
+				
+				// Close all other dropdowns
+				$('.dropdown-menu').not(menu).hide();
+				$('.dropdown').removeClass('open show');
+				
+				if (!isOpen) {
+					parent.addClass('open show');
+					menu.show();
+				} else {
+					parent.removeClass('open show');
+					menu.hide();
+				}
+				e.stopPropagation();
+			});
+			
+			// Document global click to close dropdown
+			$(document).off('click.sync-status-dropdown').on('click.sync-status-dropdown', function(e) {
+				if (!$(e.target).closest('#sync-status-dropdown-container').length) {
+					$('#sync-status-dropdown-container').removeClass('open show');
+					$('#sync-status-menu').hide();
 				}
 			});
 		}
+
+		listview.calendar_container = calendar_container;
+
+		// Fetch and update status
+		frappe.call({
+			method: 'custom_report.custom_report.page.sahayog_dashboard.achievement.get_current_month_sync_status',
+			callback(r) {
+				if (r.message) {
+					const { dates_status, synced_count, total_days } = r.message;
+					
+					// Update Button Badge Status
+					const badge_btn = listview.calendar_container.find('#sync-status-badge');
+					const dot = badge_btn.find('.indicator-dot');
+					const text_span = badge_btn.find('.sync-text');
+					
+					text_span.text(`${synced_count}/${total_days} Synced`);
+					
+					if (synced_count === total_days && total_days > 0) {
+						dot.css('background-color', '#22c55e');
+						badge_btn.css({
+							'border-color': '#bbf7d0',
+							'background-color': '#f0fdf4',
+							'color': '#15803d'
+						});
+					} else if (synced_count > 0) {
+						dot.css('background-color', '#eab308');
+						badge_btn.css({
+							'border-color': '#fef08a',
+							'background-color': '#fefce8',
+							'color': '#a16207'
+						});
+					} else {
+						dot.css('background-color', '#ef4444');
+						badge_btn.css({
+							'border-color': '#fecaca',
+							'background-color': '#fef2f2',
+							'color': '#b91c1c'
+						});
+					}
+
+					const days_container = listview.calendar_container.find('.days-grid');
+					days_container.empty();
+					
+					if (dates_status && dates_status.length > 0) {
+						// Chronological order (left to right)
+						const chronological_dates = dates_status.slice().reverse();
+						
+						const first_date = new Date(chronological_dates[0].date);
+						const month_name = first_date.toLocaleString('default', { month: 'short', year: '2-digit' });
+						listview.calendar_container.find('.month-label').text(month_name);
+
+						// Find active filter date
+						const current_filters = listview.filter_area.get();
+						const active_date_filter = current_filters.find(f => f[1] === 'date' && f[2] === '=');
+						const active_date = active_date_filter ? active_date_filter[3] : null;
+
+						// Auto-set latest synced date on first load if no filters are active
+						if (!listview.default_filter_applied && current_filters.length === 0) {
+							const latest_synced = dates_status.find(item => item.has_data && !item.is_sunday);
+							if (latest_synced) {
+								listview.default_filter_applied = true;
+								listview.filter_area.add_filter('date', '=', latest_synced.date);
+								listview.refresh();
+								return;
+							}
+						}
+
+						// Render empty placeholders for days before the 1st
+						let start_day_index = first_date.getDay() - 1; // Sunday is 0, Mon is 1
+						if (start_day_index < 0) start_day_index = 6;
+
+						for (let i = 0; i < start_day_index; i++) {
+							days_container.append('<div style="width: 22px; height: 22px;"></div>');
+						}
+
+						chronological_dates.forEach(item => {
+							const date_obj = new Date(item.date);
+							const day_num = date_obj.getDate();
+							
+							let bg_color = '#ef4444'; // Missing (Red)
+							let hover_bg = '#dc2626';
+							let text_color = '#ffffff';
+							let status_text = 'Missing';
+							let is_active = item.date === active_date;
+							let border_style = is_active ? '2px solid #0f172a' : '1px solid transparent';
+							let scale_style = is_active ? 'scale(1.1)' : 'scale(1)';
+							let is_clickable = true;
+							
+							if (item.is_future) {
+								bg_color = '#f8fafc';
+								hover_bg = '#f8fafc';
+								text_color = '#cbd5e1';
+								border_style = '1px dashed #cbd5e1';
+								status_text = 'Future Date';
+								is_clickable = false;
+								scale_style = 'scale(1)';
+							} else if (item.is_sunday) {
+								bg_color = '#cbd5e1';
+								hover_bg = '#94a3b8';
+								text_color = '#475569';
+								status_text = 'Sunday';
+							} else if (item.has_data) {
+								bg_color = '#22c55e';
+								hover_bg = '#16a34a';
+								text_color = '#ffffff';
+								status_text = 'Synced';
+							}
+							
+							const cursor_style = is_clickable ? 'pointer' : 'not-allowed';
+							
+							const capsule = $(`
+								<div class="day-capsule" 
+									title="${item.formatted_date} (${item.day_name}) - ${status_text}"
+									style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; font-size: 10px; font-weight: 800; cursor: ${cursor_style}; user-select: none; transition: all 0.15s ease; background-color: ${bg_color}; color: ${text_color}; border: ${border_style}; transform: ${scale_style}; box-shadow: ${item.is_future ? 'none' : '0 1px 2px rgba(0,0,0,0.08)'};"
+								>
+									${day_num}
+								</div>
+							`);
+							
+							if (is_clickable) {
+								capsule.hover(
+									function() {
+										$(this).css({
+											'background-color': hover_bg,
+											'transform': is_active ? 'scale(1.15) translateY(-1px)' : 'scale(1.05) translateY(-1px)',
+											'box-shadow': '0 3px 6px rgba(0,0,0,0.15)'
+										});
+									},
+									function() {
+										$(this).css({
+											'background-color': bg_color,
+											'transform': scale_style,
+											'box-shadow': '0 1px 2px rgba(0,0,0,0.08)'
+										});
+									}
+								);
+								
+								capsule.on('click', function(e) {
+									e.preventDefault();
+									listview.filter_area.clear();
+									listview.filter_area.add_filter('date', '=', item.date);
+									listview.refresh();
+									
+									listview.calendar_container.removeClass('open show');
+									listview.calendar_container.find('#sync-status-menu').hide();
+								});
+							}
+							
+							days_container.append(capsule);
+						});
+					} else {
+						days_container.append('<div style="grid-column: span 7; text-align: center; color: #64748b; font-size: 10px; padding: 4px;">No data</div>');
+					}
+				}
+			}
+		});
 	}
 };
