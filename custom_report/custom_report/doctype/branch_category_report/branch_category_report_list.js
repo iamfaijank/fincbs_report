@@ -71,77 +71,83 @@ frappe.listview_settings['Branch Category Report'] = {
 			}
 		}
 
-		// Find or add Calendar dropdown container
-		let calendar_container = actions_wrapper.find('#sync-status-dropdown-container');
-		if (!calendar_container.length) {
-			calendar_container = listview.page.wrapper.find('#sync-status-dropdown-container');
+		// Find or add Calendar button natively
+		let calendar_btn = actions_wrapper.find('button:contains("Synced")');
+		if (!calendar_btn.length) {
+			calendar_btn = actions_wrapper.find('button:contains("Checking")');
+		}
+		if (!calendar_btn.length) {
+			calendar_btn = listview.page.wrapper.find('.page-actions button:contains("Synced")');
+		}
+		if (!calendar_btn.length) {
+			calendar_btn = listview.page.wrapper.find('.page-actions button:contains("Checking")');
 		}
 
-		if (!calendar_container.length) {
-			calendar_container = $(`
-				<div class="dropdown d-inline-block" id="sync-status-dropdown-container" style="margin-left: 8px; vertical-align: middle; display: inline-block;">
-					<button class="btn btn-default btn-xs dropdown-toggle" id="sync-status-badge" style="border-radius: 6px; padding: 4px 10px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); gap: 6px; border: 1px solid #cbd5e1; background-color: #f8fafc; color: #334155; font-size: 11px; height: 26px; cursor: pointer;">
-						<span class="indicator-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: #cbd5e1; display: inline-block;"></span>
-						<span class="sync-text">Calendar View</span>
-					</button>
-					<div class="dropdown-menu dropdown-menu-right" id="sync-status-menu" style="width: 220px; padding: 12px; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; margin-top: 6px; background-color: #ffffff; z-index: 1000; position: absolute; display: none;">
-						<div class="dropdown-header-custom" style="font-weight: 700; padding: 0 4px 8px 4px; border-bottom: 1px solid #f1f5f9; color: #0f172a; font-size: 12px; display: flex; justify-content: space-between; align-items: center; text-transform: uppercase; letter-spacing: 0.5px;">
-							<span>Sync Status</span>
-							<span class="month-label" style="font-size: 11px; font-weight: 600; color: #64748b;">Loading...</span>
+		if (!calendar_btn.length) {
+			calendar_btn = listview.page.add_inner_button(__('Checking status...'), () => {
+				const menu = $('#sync-status-menu');
+				const isOpen = menu.is(':visible');
+				$('.dropdown-menu').not(menu).hide();
+				if (!isOpen) {
+					const offset = calendar_btn.offset();
+					menu.css({
+						top: (offset.top + calendar_btn.outerHeight() + 5) + 'px',
+						left: (offset.left + calendar_btn.outerWidth() - menu.outerWidth()) + 'px',
+						position: 'absolute',
+						zIndex: 1050
+					}).show();
+				} else {
+					menu.hide();
+				}
+			});
+
+			// Add styling to make it look premium
+			calendar_btn.css({
+				'border-radius': '6px',
+				'padding': '4px 10px',
+				'font-weight': '600',
+				'display': 'inline-flex',
+				'align-items': 'center',
+				'justify-content': 'center',
+				'box-shadow': '0 1px 2px rgba(0, 0, 0, 0.05)',
+				'gap': '6px',
+				'height': '26px',
+				'vertical-align': 'middle'
+			});
+		}
+
+		// Create global dropdown menu on body if not exists
+		let menu = $('#sync-status-menu');
+		if (!menu.length) {
+			menu = $(`
+				<div id="sync-status-menu" style="width: 220px; padding: 12px; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; background-color: #ffffff; z-index: 1050; position: absolute; display: none;">
+					<div class="dropdown-header-custom" style="font-weight: 700; padding: 0 4px 8px 4px; border-bottom: 1px solid #f1f5f9; color: #0f172a; font-size: 12px; display: flex; justify-content: space-between; align-items: center; text-transform: uppercase; letter-spacing: 0.5px;">
+						<span>Sync Status</span>
+						<span class="month-label" style="font-size: 11px; font-weight: 600; color: #64748b;">Loading...</span>
+					</div>
+					
+					<!-- Calendar Grid -->
+					<div class="calendar-grid" style="margin-top: 8px;">
+						<!-- Weekdays Header -->
+						<div class="weekdays-header" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 9px; font-weight: 800; color: #94a3b8; margin-bottom: 6px;">
+							<div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div style="color: #ef4444;">S</div>
 						</div>
-						
-						<!-- Calendar Grid -->
-						<div class="calendar-grid" style="margin-top: 8px;">
-							<!-- Weekdays Header -->
-							<div class="weekdays-header" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 9px; font-weight: 800; color: #94a3b8; margin-bottom: 6px;">
-								<div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div style="color: #ef4444;">S</div>
-							</div>
-							<!-- Days Grid -->
-							<div class="days-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; justify-items: center; align-items: center;">
-								<!-- Loaded dynamically -->
-							</div>
+						<!-- Days Grid -->
+						<div class="days-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; justify-items: center; align-items: center;">
+							<!-- Loaded dynamically -->
 						</div>
 					</div>
 				</div>
 			`);
+			$('body').append(menu);
 
-			if (sync_btn.length) {
-				sync_btn.after(calendar_container);
-			} else {
-				actions_wrapper.append(calendar_container);
-			}
-
-			// Manual Dropdown Toggle handler
-			calendar_container.find('#sync-status-badge').on('click', function(e) {
-				e.preventDefault();
-				const parent = calendar_container;
-				const menu = calendar_container.find('#sync-status-menu');
-				const isOpen = menu.is(':visible');
-				
-				// Close all other dropdowns
-				$('.dropdown-menu').not(menu).hide();
-				$('.dropdown').removeClass('open show');
-				
-				if (!isOpen) {
-					parent.addClass('open show');
-					menu.show();
-				} else {
-					parent.removeClass('open show');
-					menu.hide();
-				}
-				e.stopPropagation();
-			});
-			
 			// Document global click to close dropdown
 			$(document).off('click.sync-status-dropdown').on('click.sync-status-dropdown', function(e) {
-				if (!$(e.target).closest('#sync-status-dropdown-container').length) {
-					$('#sync-status-dropdown-container').removeClass('open show');
+				if (!$(e.target).closest(calendar_btn).length && !$(e.target).closest('#sync-status-menu').length) {
 					$('#sync-status-menu').hide();
 				}
 			});
 		}
-
-		listview.calendar_container = calendar_container;
 
 		// Fetch and update status
 		frappe.call({
@@ -150,37 +156,37 @@ frappe.listview_settings['Branch Category Report'] = {
 				if (r.message) {
 					const { dates_status, synced_count, total_days } = r.message;
 					
-					// Update Button Badge Status
-					const badge_btn = listview.calendar_container.find('#sync-status-badge');
-					const dot = badge_btn.find('.indicator-dot');
-					const text_span = badge_btn.find('.sync-text');
-					
-					text_span.text(`${synced_count}/${total_days} Synced`);
-					
+					// Update Button Badge Status content
+					let dot_color = '#cbd5e1';
 					if (synced_count === total_days && total_days > 0) {
-						dot.css('background-color', '#22c55e');
-						badge_btn.css({
+						dot_color = '#22c55e';
+						calendar_btn.css({
 							'border-color': '#bbf7d0',
 							'background-color': '#f0fdf4',
 							'color': '#15803d'
 						});
 					} else if (synced_count > 0) {
-						dot.css('background-color', '#eab308');
-						badge_btn.css({
+						dot_color = '#eab308';
+						calendar_btn.css({
 							'border-color': '#fef08a',
 							'background-color': '#fefce8',
 							'color': '#a16207'
 						});
 					} else {
-						dot.css('background-color', '#ef4444');
-						badge_btn.css({
+						dot_color = '#ef4444';
+						calendar_btn.css({
 							'border-color': '#fecaca',
 							'background-color': '#fef2f2',
 							'color': '#b91c1c'
 						});
 					}
 
-					const days_container = listview.calendar_container.find('.days-grid');
+					calendar_btn.html(`
+						<span class="indicator-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: ${dot_color}; display: inline-block; margin-right: 6px;"></span>
+						<span>${synced_count}/${total_days} Synced</span>
+					`);
+
+					const days_container = menu.find('.days-grid');
 					days_container.empty();
 					
 					if (dates_status && dates_status.length > 0) {
@@ -189,7 +195,7 @@ frappe.listview_settings['Branch Category Report'] = {
 						
 						const first_date = new Date(chronological_dates[0].date);
 						const month_name = first_date.toLocaleString('default', { month: 'short', year: '2-digit' });
-						listview.calendar_container.find('.month-label').text(month_name);
+						menu.find('.month-label').text(month_name);
 
 						// Find active filter date
 						const current_filters = listview.filter_area.get();
@@ -283,8 +289,7 @@ frappe.listview_settings['Branch Category Report'] = {
 									listview.filter_area.add_filter('date', '=', item.date);
 									listview.refresh();
 									
-									listview.calendar_container.removeClass('open show');
-									listview.calendar_container.find('#sync-status-menu').hide();
+									$('#sync-status-menu').hide();
 								});
 							}
 							
