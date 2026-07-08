@@ -6,6 +6,8 @@ frappe.listview_settings['Branch Category Report'] = {
 	hide_name_filter: true,
 	onload(listview) {
 		listview.can_create = false;
+		let default_filter_applied = false;
+
 		const sync_btn = listview.page.add_inner_button(__('Sync Achievement Data'), () => {
 			frappe.prompt([
 				{
@@ -178,7 +180,8 @@ frappe.listview_settings['Branch Category Report'] = {
 								row.on('click', function(e) {
 									e.preventDefault();
 									listview.filter_area.clear();
-									listview.filter_area.add(listview.doctype, 'date', '=', item.date);
+									listview.filter_area.add_filter('date', '=', item.date);
+									listview.refresh();
 									
 									// Close dropdown
 									badge.removeClass('open show');
@@ -187,6 +190,19 @@ frappe.listview_settings['Branch Category Report'] = {
 
 								list_container.append(row);
 							});
+
+							// Auto-set latest synced date on first load if no filters are active
+							if (!default_filter_applied) {
+								const current_filters = listview.filter_area.get();
+								if (current_filters.length === 0) {
+									const latest_synced = dates_status.find(item => item.has_data && !item.is_sunday);
+									if (latest_synced) {
+										listview.filter_area.add_filter('date', '=', latest_synced.date);
+										listview.refresh();
+										default_filter_applied = true;
+									}
+								}
+							}
 						} else {
 							list_container.append('<div style="text-align: center; color: #64748b; font-size: 12px; padding: 10px;">No data found</div>');
 						}
