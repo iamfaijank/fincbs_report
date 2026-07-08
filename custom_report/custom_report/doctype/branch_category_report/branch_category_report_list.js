@@ -285,10 +285,38 @@ frappe.listview_settings['Branch Category Report'] = {
 								
 								capsule.on('click', function(e) {
 									e.preventDefault();
+									
+									// 1. Update URL query parameters in browser history
+									try {
+										let current_url = window.location.href;
+										let url_obj = new URL(current_url);
+										
+										if (url_obj.hash && url_obj.hash.includes('?')) {
+											let hash_parts = url_obj.hash.split('?');
+											let base_hash = hash_parts[0];
+											let hash_params = new URLSearchParams(hash_parts[1]);
+											hash_params.set('date', item.date);
+											url_obj.hash = `${base_hash}?${hash_params.toString()}`;
+										} else if (url_obj.hash) {
+											url_obj.hash = `${url_obj.hash}?date=${item.date}`;
+										} else {
+											url_obj.searchParams.set('date', item.date);
+										}
+										
+										window.history.pushState({}, '', url_obj.pathname + url_obj.search + url_obj.hash);
+									} catch (err) {
+										console.error("Failed to update URL history:", err);
+									}
+
+									// 2. Set route options so Frappe internally knows the new filter state
 									frappe.route_options = {
 										"date": item.date
 									};
-									frappe.set_route("List", listview.doctype);
+
+									// 3. Clear and apply filter to listview directly and refresh
+									listview.filter_area.clear();
+									listview.filter_area.add_filter('date', '=', item.date);
+									listview.refresh();
 									
 									$('#sync-status-menu').hide();
 								});
