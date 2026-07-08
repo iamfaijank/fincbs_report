@@ -10,7 +10,7 @@
  "fields": [
   {
    "default": "0",
-   "description": "if checked = will fetch Category Report",
+   "description": "if checked = will fetch Category Report Daily 8 AM",
    "fieldname": "branch_category_report_sync",
    "fieldtype": "Check",
    "label": "branch category report sync"
@@ -20,7 +20,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-07-08 22:59:05.691429",
+ "modified": "2026-07-08 23:02:03.107425",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Drishti Settings",
