@@ -15,9 +15,13 @@ frappe.listview_settings['Branch Category Report'] = {
 		if (listview.page.btn_primary) {
 			listview.page.btn_primary.hide();
 		}
+		listview.page.wrapper.find('.primary-action').hide();
+
+		// Get JQuery actions wrapper safely
+		const actions_wrapper = listview.page.actions ? $(listview.page.actions) : listview.page.wrapper.find('.page-actions');
 
 		// Find or add Sync button
-		let sync_btn = listview.page.actions.find('button:contains("Sync Achievement Data")');
+		let sync_btn = actions_wrapper.find('button:contains("Sync Achievement Data")');
 		if (!sync_btn.length) {
 			sync_btn = listview.page.wrapper.find('.page-actions button:contains("Sync Achievement Data")');
 		}
@@ -61,14 +65,14 @@ frappe.listview_settings['Branch Category Report'] = {
 			});
 
 			// Fetch again
-			sync_btn = listview.page.actions.find('button:contains("Sync Achievement Data")');
+			sync_btn = actions_wrapper.find('button:contains("Sync Achievement Data")');
 			if (!sync_btn.length) {
 				sync_btn = listview.page.wrapper.find('.page-actions button:contains("Sync Achievement Data")');
 			}
 		}
 
 		// Find or add Calendar dropdown container
-		let calendar_container = listview.page.actions.find('#sync-status-dropdown-container');
+		let calendar_container = actions_wrapper.find('#sync-status-dropdown-container');
 		if (!calendar_container.length) {
 			calendar_container = listview.page.wrapper.find('#sync-status-dropdown-container');
 		}
@@ -104,7 +108,7 @@ frappe.listview_settings['Branch Category Report'] = {
 			if (sync_btn.length) {
 				sync_btn.after(calendar_container);
 			} else {
-				listview.page.actions.append(calendar_container);
+				actions_wrapper.append(calendar_container);
 			}
 
 			// Manual Dropdown Toggle handler
