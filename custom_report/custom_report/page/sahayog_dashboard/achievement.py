@@ -11,7 +11,11 @@ def date_control(input_date):
 
     if current_date >= datetime.today().date():
         current_date = datetime.today().date() - relativedelta(days=1)
-        print(f"Notice: Provided date is today or in the future. Automatically adjusting to T-1 date ({current_date.strftime('%d-%m-%Y')}).")
+        if current_date.weekday() == 6:  # 6 is Sunday
+            current_date = current_date - relativedelta(days=1)
+            print(f"Notice: Adjusted past Sunday. Automatically picking Saturday T-2 date ({current_date.strftime('%d-%m-%Y')}).")
+        else:
+            print(f"Notice: Provided date is today or in the future. Automatically adjusting to T-1 date ({current_date.strftime('%d-%m-%Y')}).")
 
     current_month_first_date = current_date.replace(day=1)
     current_month_total_days_till_date = current_date.day
@@ -341,7 +345,7 @@ LEFT JOIN final_data f
 LEFT JOIN mab_final m
     ON s.sol_id = m.sol_id
 WHERE s.sol_id NOT IN ('1000','1031','1059','1081','1104')   ---EXCLUDE THESE SOL_ID FROM FINAL OUTPUT    
-ORDER BY achivment DESC LIMIT 5;
+ORDER BY achivment DESC;
 """
 
     print("\nExecuting query on DR database... Please wait...")
@@ -364,7 +368,7 @@ ORDER BY achivment DESC LIMIT 5;
         # Get column names
         headers = [desc[0] for desc in cursor.description]
         
-        # Format as JSON for the Top 5 records
+        # Format as JSON for all records
         json_data = []
         for row in result:
             row_dict = {}
@@ -378,7 +382,7 @@ ORDER BY achivment DESC LIMIT 5;
                     row_dict[headers[i]] = str(val)
             json_data.append(row_dict)
             
-        print("Showing Top 5 records by achievement in JSON format:\n")
+        print("Showing records by achievement in JSON format:\n")
         print(json.dumps(json_data, indent=4))
         
         return result
@@ -387,6 +391,202 @@ ORDER BY achivment DESC LIMIT 5;
     finally:
         if conn:
             conn.close()
+
+def get_fiscal_year(date_obj):
+    """Calculate Indian Financial Year (Apr–Mar)"""
+    year = date_obj.year
+    if date_obj.month >= 4:
+        return f"{year}-{year + 1}"
+    return f"{year - 1}-{year}"
+
+
+def get_previous_months_achievement(sol_id, date_obj):
+    """Sum the achievement of the completed months in the same financial year"""
+    import calendar
+    fiscal_year = get_fiscal_year(date_obj)
+    start_year = int(fiscal_year.split("-")[0])
+    
+    fy_months = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+    current_month = date_obj.month
+    
+    prev_months = []
+    for m in fy_months:
+        if m == current_month:
+            break
+        prev_months.append(m)
+        
+    total_prev = 0.0
+    for m in prev_months:
+        m_year = start_year if m >= 4 else start_year + 1
+        last_day = calendar.monthrange(m_year, m)[1]
+        start_date = f"{m_year}-{m:02d}-01"
+        end_date = f"{m_year}-{m:02d}-{last_day:02d}"
+        
+        latest_val = frappe.db.get_value(
+            "Branch Category Report",
+            {
+                "sol_id": sol_id,
+                "date": ["between", [start_date, end_date]],
+                "docstatus": ["<", 2]
+            },
+            "achievement",
+            order_by="date desc"
+        )
+        
+        if latest_val:
+            try:
+                total_prev += float(latest_val)
+            except ValueError:
+                pass
+                
+    return total_prev
+
+
+def safe_str(val):
+    """Helper to convert values to string type safely"""
+    if val is None:
+        return ""
+    try:
+        # If it has a float value, format cleanly without trailing .0 if integer
+        f_val = float(val)
+        return str(int(f_val)) if f_val.is_integer() else str(f_val)
+    except (ValueError, TypeError):
+        return str(val)
+
+
+@frappe.whitelist()
+def generate_and_save_branch_category_report(input_date):
+    """
+    Generate and save achievement records to 'Branch Category Report' doctype for a particular date.
+    Validates if records already exist for the given date before inserting.
+    """
+    from frappe.utils import getdate
+    
+    # 1. Date conversion
+    date_obj = getdate(input_date)
+    input_date_str = date_obj.strftime("%d-%m-%Y")
+    dates = date_control(input_date_str)
+    processed_date = dates["current_date"]
+    
+    # 2. Check if records already exist for this processed date
+    if frappe.db.exists("Branch Category Report", {"date": processed_date}):
+        frappe.msgprint(f"Branch Category Report records already exist for date {processed_date}. Skipping insert.")
+        return []
+        
+    # 3. Execute achievement query
+    query_results = execute_achievement_query(dates)
+    if not query_results:
+        return []
+        
+    saved_count = 0
+    for row in query_results:
+        sol_id = str(row[0]).strip()
+        sol_desc = row[1]
+        region_name = row[2]
+        division_name = row[3]
+        circle_office_name = row[4]
+        total_flow_amount = row[5]
+        total_tran_amt = row[6]
+        opening_balance = row[7]
+        closing_balance = row[8]
+        opening_mab = row[9]
+        closing_mab = row[10]
+        inc_mab = row[11]
+        achievement = float(row[12] or 0)
+        
+        # Calculate YTD achievement (previous months + current month)
+        prev_achievement = get_previous_months_achievement(sol_id, processed_date)
+        yearly_achievement = prev_achievement + achievement
+
+        # Fetch proper zone, region, and branch from 'Sahayog Branch' using sol_id
+        branch_info = frappe.db.get_value(
+            "Sahayog Branch",
+            {"sol_id": sol_id},
+            ["zone", "region", "branch"],
+            as_dict=True
+        )
+        
+        final_zone = division_name
+        final_region = region_name
+        final_branch = sol_desc
+        
+        if branch_info:
+            if branch_info.get("zone"):
+                final_zone = branch_info.get("zone")
+            if branch_info.get("region"):
+                final_region = branch_info.get("region")
+            if branch_info.get("branch"):
+                final_branch = branch_info.get("branch")
+
+        # Get targets from 'Target Vs Achivement' to calculate category and YTD %
+        month_val = processed_date.month
+        year_val = processed_date.year
+        if month_val >= 4:
+            financial_year = f"{year_val}-{year_val+1}"
+        else:
+            financial_year = f"{year_val-1}-{year_val}"
+            
+        month_key = processed_date.strftime("%b").upper()
+
+        monthly_target = frappe.db.get_value(
+            "Target Vs Achivement",
+            {"sol_id": sol_id, "financial_year": financial_year, "type": "Monthly", "month": month_key},
+            "target"
+        )
+        monthly_target = float(monthly_target or 0)
+        
+        ytd_target = frappe.db.get_value(
+            "Target Vs Achivement",
+            {"sol_id": sol_id, "financial_year": financial_year, "type": "YTD"},
+            "target"
+        )
+        ytd_target = float(ytd_target or 0)
+
+        # Calculate percentages
+        monthly_pct = (achievement / monthly_target * 100) if monthly_target > 0 else 0
+        ytd_achi_pct = (yearly_achievement / ytd_target * 100) if ytd_target > 0 else 0
+        
+        # Calculate Category
+        if monthly_pct >= 100:
+            branch_category = "Pinnacle"
+        elif monthly_pct >= 80:
+            branch_category = "Master"
+        elif monthly_pct >= 60:
+            branch_category = "Accelerator"
+        elif monthly_pct >= 40:
+            branch_category = "Starter"
+        elif monthly_pct >= 20:
+            branch_category = "Learner"
+        else:
+            branch_category = "Zero Level"
+        
+        # Create DocType record
+        doc = frappe.get_doc({
+            "doctype": "Branch Category Report",
+            "sol_id": sol_id,
+            "branch": final_branch,
+            "zone": final_zone,
+            "region": final_region,
+            "district": circle_office_name,
+            "date": processed_date,
+            "achievement": safe_str(achievement),
+            "yearly_achievement": yearly_achievement,
+            "branch_category": branch_category,
+            "ytd_achi": safe_str(round(ytd_achi_pct, 2)),
+            "total_flow_amount": safe_str(total_flow_amount),
+            "total_tran_amt": safe_str(total_tran_amt),
+            "opening_balance": safe_str(opening_balance),
+            "closing_balance": safe_str(closing_balance),
+            "opening_mab": safe_str(opening_mab),
+            "closing_mab": safe_str(closing_mab),
+            "inc_mab": safe_str(inc_mab)
+        })
+        
+        doc.insert(ignore_permissions=True)
+        saved_count += 1
+        
+    frappe.db.commit()
+    return saved_count
 
 
 def interactive_date_control():

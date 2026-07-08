@@ -19,7 +19,16 @@
   "branch_score",
   "column_break_qekw",
   "ytd_achi",
-  "branch_category"
+  "branch_category",
+  "section_break_cdis",
+  "total_flow_amount",
+  "total_tran_amt",
+  "opening_balance",
+  "column_break_frzt",
+  "closing_balance",
+  "opening_mab",
+  "closing_mab",
+  "inc_mab"
  ],
  "fields": [
   {
@@ -50,12 +59,14 @@
   {
    "fieldname": "zone",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "ZONE",
    "search_index": 1
   },
   {
    "fieldname": "region",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Region",
    "search_index": 1
   },
@@ -81,14 +92,13 @@
   {
    "fieldname": "achievement",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Achievement",
    "search_index": 1
   },
   {
    "fieldname": "branch_score",
    "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "BRANCH SCORE ",
    "search_index": 1
   },
@@ -113,13 +123,57 @@
   {
    "fieldname": "yearly_achievement",
    "fieldtype": "Currency",
+   "in_list_view": 1,
    "label": "YTD"
+  },
+  {
+   "fieldname": "section_break_cdis",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "total_flow_amount",
+   "fieldtype": "Data",
+   "label": "Total Flow Amount"
+  },
+  {
+   "fieldname": "total_tran_amt",
+   "fieldtype": "Data",
+   "label": "Total Tran Amt"
+  },
+  {
+   "fieldname": "opening_balance",
+   "fieldtype": "Data",
+   "label": "Opening Balance"
+  },
+  {
+   "fieldname": "column_break_frzt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "closing_balance",
+   "fieldtype": "Data",
+   "label": "Closing Balance"
+  },
+  {
+   "fieldname": "opening_mab",
+   "fieldtype": "Data",
+   "label": "Opening MAB"
+  },
+  {
+   "fieldname": "closing_mab",
+   "fieldtype": "Data",
+   "label": "Closing MAB"
+  },
+  {
+   "fieldname": "inc_mab",
+   "fieldtype": "Data",
+   "label": "INC MAB"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-26 17:47:11.902567",
+ "modified": "2026-07-08 16:43:54.893900",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Branch Category Report",
@@ -156,5 +210,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
+ "title_field": "sol_id",
  "track_changes": 1
 }
