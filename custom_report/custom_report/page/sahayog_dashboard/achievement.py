@@ -733,53 +733,19 @@ def get_current_month_sync_status():
 
 def daily_sync_cron():
     """
-    Cron job triggered on the 'all' scheduler event (every minute).
-    Checks the configured time in 'Drishti Settings' and triggers the sync 
-    once daily after that time.
+    Cron job triggered daily at 8:00 AM.
+    Syncs the achievement data for yesterday if enabled in Drishti Settings.
+    If yesterday was Sunday (Today is Monday), it skips execution.
     """
-    import datetime
-    from frappe.utils import getdate, today, add_days, now_datetime
+    from frappe.utils import getdate, today, add_days
     
-    # 1. Check if already run today
+    # 1. Check if sync is enabled in Drishti Settings
+    sync_enabled = frappe.db.get_single_value("Drishti Settings", "branch_category_report_sync")
+    if not sync_enabled:
+        frappe.logger("scheduler").info("Daily Sync Cron: Sync is disabled in Drishti Settings. Skipping execution.")
+        return
+        
     today_date = getdate(today())
-    cache_key = "branch_category_report_last_cron_run"
-    last_run = frappe.cache().get_value(cache_key)
-    if last_run == str(today_date):
-        return
-        
-    # 2. Get configured sync time
-    sync_time_val = frappe.db.get_single_value("Drishti Settings", "branch_category_report_sync")
-    if not sync_time_val:
-        return
-        
-    # 3. Parse configured time safely
-    def parse_time(val):
-        import datetime
-        if isinstance(val, datetime.time):
-            return val
-        if isinstance(val, datetime.timedelta):
-            total_seconds = int(val.total_seconds())
-            hours = total_seconds // 3600
-            minutes = (total_seconds % 3600) // 60
-            seconds = total_seconds % 60
-            return datetime.time(hours, minutes, seconds)
-        if isinstance(val, str) and val:
-            try:
-                parts = [int(p) for p in val.split(":")]
-                return datetime.time(*parts)
-            except Exception:
-                pass
-        return datetime.time(8, 0, 0)
-        
-    configured_time = parse_time(sync_time_val)
-    now_time = now_datetime().time()
-    
-    if now_time < configured_time:
-        return
-        
-    # Set cache immediately to prevent concurrent runs
-    frappe.cache().set_value(cache_key, str(today_date), expires_in_sec=86400)
-    
     yesterday = add_days(today_date, -1)
     
     # 0 = Monday, ..., 6 = Sunday
@@ -790,13 +756,14 @@ def daily_sync_cron():
         frappe.logger("scheduler").info(f"Daily Sync Cron: Skipping sync for Sunday ({yesterday}) on Monday morning.")
         return
         
-    frappe.logger("scheduler").info(f"Daily Sync Cron: Triggering sync for {yesterday} at configured time {configured_time}.")
+    frappe.logger("scheduler").info(f"Daily Sync Cron: Triggering sync for {yesterday} at 8:00 AM.")
     
     try:
         saved_count = generate_and_save_branch_category_report(yesterday)
         frappe.logger("scheduler").info(f"Daily Sync Cron: Successfully synced {saved_count} records for {yesterday}.")
     except Exception as e:
         frappe.logger("scheduler").error(f"Daily Sync Cron Error for {yesterday}: {e}")
+
 
 
 
