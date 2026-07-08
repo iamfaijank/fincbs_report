@@ -753,7 +753,9 @@ def daily_sync_cron():
         # Yesterday was Sunday (meaning today is Monday).
         # Saturday's data was already synced on Sunday morning.
         # So we skip syncing Sunday's data.
-        frappe.logger("scheduler").info(f"Daily Sync Cron: Skipping sync for Sunday ({yesterday}) on Monday morning.")
+        msg = f"Skipping sync for Sunday ({yesterday.strftime('%d-%m-%Y')}) on Monday morning as Saturday data was already synced."
+        frappe.logger("scheduler").info(f"Daily Sync Cron: {msg}")
+        send_sync_status_email(yesterday, "Skipped", msg)
         return
         
     frappe.logger("scheduler").info(f"Daily Sync Cron: Triggering sync for {yesterday} at 8:00 AM.")
@@ -761,8 +763,99 @@ def daily_sync_cron():
     try:
         saved_count = generate_and_save_branch_category_report(yesterday)
         frappe.logger("scheduler").info(f"Daily Sync Cron: Successfully synced {saved_count} records for {yesterday}.")
+        send_sync_status_email(yesterday, "Success", "Sync completed successfully.", saved_count)
     except Exception as e:
+        error_msg = frappe.get_traceback() or str(e)
         frappe.logger("scheduler").error(f"Daily Sync Cron Error for {yesterday}: {e}")
+        send_sync_status_email(yesterday, "Failed", error_msg)
+
+
+def send_sync_status_email(sync_date, status, details_or_error, saved_count=0):
+    """
+    Sends sync status email to configured recipients.
+    """
+    recipients = ["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"]
+    subject = f"Branch Category Report Sync Status - {sync_date.strftime('%d-%m-%Y')}"
+    
+    if status == "Success":
+        message = f"""
+        <p>Dear Team,</p>
+        <p>The daily automated sync for <b>Branch Category Report</b> has completed successfully.</p>
+        <table border="1" cellpadding="6" style="border-collapse: collapse; border-color: #cbd5e1;">
+            <tr style="background-color: #f8fafc;">
+                <th>Parameter</th>
+                <th>Value</th>
+            </tr>
+            <tr>
+                <td><b>Sync Target Date</b></td>
+                <td>{sync_date.strftime('%d-%m-%Y')}</td>
+            </tr>
+            <tr>
+                <td><b>Status</b></td>
+                <td style="color: green; font-weight: bold;">SUCCESS</td>
+            </tr>
+            <tr>
+                <td><b>Records Saved</b></td>
+                <td>{saved_count}</td>
+            </tr>
+            <tr>
+                <td><b>Execution Time</b></td>
+                <td>{frappe.utils.now_datetime().strftime('%d-%m-%Y %I:%M %p')}</td>
+            </tr>
+        </table>
+        <br>
+        <p>Regards,<br>Sahayog System Automation</p>
+        """
+    elif status == "Skipped":
+        message = f"""
+        <p>Dear Team,</p>
+        <p>The daily automated sync for <b>Branch Category Report</b> was skipped.</p>
+        <p><b>Reason:</b> {details_or_error}</p>
+        <br>
+        <p>Regards,<br>Sahayog System Automation</p>
+        """
+    else:
+        message = f"""
+        <p>Dear Team,</p>
+        <p style="color: red; font-weight: bold;">WARNING: The daily automated sync for Branch Category Report has FAILED.</p>
+        <table border="1" cellpadding="6" style="border-collapse: collapse; border-color: #cbd5e1;">
+            <tr style="background-color: #f8fafc;">
+                <th>Parameter</th>
+                <th>Value</th>
+            </tr>
+            <tr>
+                <td><b>Sync Target Date</b></td>
+                <td>{sync_date.strftime('%d-%m-%Y')}</td>
+            </tr>
+            <tr>
+                <td><b>Status</b></td>
+                <td style="color: red; font-weight: bold;">FAILED</td>
+            </tr>
+            <tr>
+                <td><b>Error Details</b></td>
+                <td><pre style="color: red;">{details_or_error}</pre></td>
+            </tr>
+            <tr>
+                <td><b>Execution Time</b></td>
+                <td>{frappe.utils.now_datetime().strftime('%d-%m-%Y %I:%M %p')}</td>
+            </tr>
+        </table>
+        <br>
+        <p>Please check the scheduler logs or Finacle DB Credentials setting.</p>
+        <br>
+        <p>Regards,<br>Sahayog System Automation</p>
+        """
+        
+    try:
+        frappe.sendmail(
+            recipients=recipients,
+            subject=subject,
+            message=message,
+            delayed=False
+        )
+    except Exception as e:
+        frappe.logger("scheduler").error(f"Daily Sync Email Error: Failed to send email to recipients: {e}")
+
 
 
 
