@@ -143,6 +143,7 @@ frappe.listview_settings['Branch Category Report'] = {
 								let text_color = '#334155';
 								let bg_color = 'transparent';
 								let status_label = '';
+								let cursor_style = 'pointer';
 								
 								if (item.is_sunday) {
 									status_indicator = `<span style="width: 8px; height: 8px; border-radius: 50%; background-color: #94a3b8; display: inline-block;"></span>`;
@@ -160,11 +161,29 @@ frappe.listview_settings['Branch Category Report'] = {
 									status_label = '<span style="font-size: 10px; color: #dc2626; font-weight: 600; margin-left: auto;">Missing</span>';
 								}
 								
-								const row = $(`<div style="display: flex; align-items: center; padding: 6px 10px; border-radius: 6px; gap: 8px; background-color: ${bg_color}; border: 1px solid ${bg_color !== 'transparent' ? 'transparent' : '#f1f5f9'};">
+								const row = $(`<div style="display: flex; align-items: center; padding: 6px 10px; border-radius: 6px; gap: 8px; background-color: ${bg_color}; border: 1px solid ${bg_color !== 'transparent' ? 'transparent' : '#f1f5f9'}; cursor: ${cursor_style}; transition: transform 0.1s ease;">
 									${status_indicator}
 									<span style="font-size: 12px; font-weight: 600; color: ${text_color};">${item.formatted_date} (${item.day_name})</span>
 									${status_label}
 								</div>`);
+
+								// Hover effect
+								row.hover(
+									function() { $(this).css('transform', 'scale(1.02)'); },
+									function() { $(this).css('transform', 'scale(1)'); }
+								);
+
+								// Apply filter on click
+								row.on('click', function(e) {
+									e.preventDefault();
+									listview.filter_area.clear();
+									listview.filter_area.add(listview.doctype, 'date', '=', item.date);
+									
+									// Close dropdown
+									badge.removeClass('open show');
+									badge.find('#sync-status-menu').hide();
+								});
+
 								list_container.append(row);
 							});
 						} else {
