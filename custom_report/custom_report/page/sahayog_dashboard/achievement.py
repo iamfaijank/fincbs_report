@@ -731,6 +731,34 @@ def get_current_month_sync_status():
 
 
 
+def daily_sync_cron():
+    """
+    Cron job triggered daily at 8:00 AM.
+    Syncs the achievement data for yesterday (Today - 1 day).
+    If yesterday was Sunday (Today is Monday), it skips execution.
+    """
+    from frappe.utils import getdate, today, add_days
+    
+    today_date = getdate(today())
+    yesterday = add_days(today_date, -1)
+    
+    # 0 = Monday, ..., 6 = Sunday
+    if yesterday.weekday() == 6:
+        # Yesterday was Sunday (meaning today is Monday).
+        # Saturday's data was already synced on Sunday morning.
+        # So we skip syncing Sunday's data.
+        frappe.logger("scheduler").info(f"Daily Sync Cron: Skipping sync for Sunday ({yesterday}) on Monday morning.")
+        return
+        
+    frappe.logger("scheduler").info(f"Daily Sync Cron: Triggering sync for {yesterday} at 8:00 AM.")
+    
+    try:
+        saved_count = generate_and_save_branch_category_report(yesterday)
+        frappe.logger("scheduler").info(f"Daily Sync Cron: Successfully synced {saved_count} records for {yesterday}.")
+    except Exception as e:
+        frappe.logger("scheduler").error(f"Daily Sync Cron Error for {yesterday}: {e}")
+
+
 def interactive_date_control():
     while True:
         input_date = input(

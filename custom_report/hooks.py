@@ -153,23 +153,13 @@ app_include_js = [
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"custom_report.tasks.all"
-# 	],
-# 	"daily": [
-# 		"custom_report.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"custom_report.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"custom_report.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"custom_report.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+	"cron": {
+		"0 8 * * *": [
+			"custom_report.custom_report.page.sahayog_dashboard.achievement.daily_sync_cron"
+		]
+	}
+}
 
 # Testing
 # -------
