@@ -178,8 +178,10 @@ class DrishtiDashboard {
 				tableData: [],
 				kpiData: null,
 				expandedZones: {},
-				expandedRegions: {},
-				checkedRows: {},
+			expandedRegions: {},
+			checkedRows: {},
+			searchTerm: "",
+			allExpanded: false,
 				render: function(container, dashboardInstance) {
 					const self = this;
 					container.html(`
@@ -188,7 +190,7 @@ class DrishtiDashboard {
 							<span style="margin-left: 10px; font-weight: 600; color: #475569; font-size: 14px; font-family: 'Inter', sans-serif;">Loading RD & SMBG Pending data...</span>
 						</div>
 						<div id="mis-kpi-container" style="display: none;"></div>
-						<div style="display: flex; gap: 6px; align-items: center; margin-bottom: 10px;" id="mis-controls" style="display: none;">
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls" style="display: none;">
 							<div style="display: flex; align-items: center; gap: 6px;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
 								<div class="btn-group mis-format-toggle" role="group">
@@ -196,6 +198,8 @@ class DrishtiDashboard {
 									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
 								</div>
 							</div>
+							<input type="text" id="mis-search" placeholder="Search branch or SOL ID..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<div style="margin-left: auto; font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="mis-records-count"></div>
 						</div>
 						<div id="mis-table-container" style="display: none;"></div>
@@ -295,6 +299,34 @@ class DrishtiDashboard {
 						if (self.kpiData) {
 							self.switchFormat(format, container, dashboardInstance);
 						}
+					});
+
+					// Search filter with debounce
+					let searchTimeout;
+					container.off("input", "#mis-search").on("input", "#mis-search", function() {
+						clearTimeout(searchTimeout);
+						searchTimeout = setTimeout(() => {
+							self.searchTerm = $(this).val().toLowerCase().trim();
+							if (self.tableData) {
+								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+							}
+						}, 300);
+					});
+
+					// Expand / Collapse All toggle
+					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function() {
+						self.allExpanded = !self.allExpanded;
+						const expand = self.allExpanded;
+						if (!self.tableData) return;
+						const zoneData = self.aggregateByZone();
+						zoneData.forEach(z => {
+							self.expandedZones[z.zone] = expand;
+							z.regions.forEach(r => {
+								self.expandedRegions[z.zone + "::" + r.region] = expand;
+							});
+						});
+						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 					});
 				},
 				renderKPI: function(container, dashboardInstance) {
@@ -397,7 +429,16 @@ class DrishtiDashboard {
 				},
 				aggregateByZone: function() {
 					const self = this;
-					const data = self.tableData || [];
+					let data = self.tableData || [];
+					const term = (self.searchTerm || "").trim();
+					if (term) {
+						const terms = term.split(",").map(t => t.trim().toLowerCase()).filter(t => t);
+						data = data.filter(row => {
+							const br = (row.branch_name || row.sol_desc || "").toLowerCase();
+							const id = (row.sol_id || "").toLowerCase();
+							return terms.some(t => br.includes(t) || id.includes(t));
+						});
+					}
 					const zoneMap = {};
 
 					data.forEach(row => {
@@ -468,6 +509,9 @@ class DrishtiDashboard {
 					};
 
 					const zoneData = self.aggregateByZone();
+					const totalFilteredBranches = zoneData.reduce((s, z) => s + z.data.branches.length, 0);
+					const totalAllBranches = (self.tableData || []).length;
+					tableContainer.parent().find("#mis-records-count").text(totalFilteredBranches + " / " + totalAllBranches + " branches" + (self.searchTerm ? " (filtered)" : ""));
 					if (!zoneData || zoneData.length === 0) {
 						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600; font-family: \'Inter\', sans-serif;">No data to display.</div>');
 						return;
@@ -548,12 +592,11 @@ class DrishtiDashboard {
 							#mis-analysis-table tfoot { position: sticky; bottom: 0; z-index: 2; }
 							#mis-analysis-table tfoot tr { box-shadow: 0 -2px 6px rgba(0,0,0,0.1); }
 							#mis-analysis-table tbody tr { transition: background-color 0.2s ease; border-bottom: 1px solid #e2e8f0; }
-							#mis-analysis-table tbody tr:hover { background: #f0fdf4 !important; }
-							#mis-analysis-table tbody tr.mis-zone-row:hover { background: #dcfce7 !important; }
-							#mis-analysis-table tbody tr.mis-region-row:hover { background: #dcfce7 !important; }
+							#mis-analysis-table tbody tr:hover { background: #dcfce7 !important; }
 							#mis-analysis-table tbody tr.mis-row-checked { background: #bbf7d0 !important; }
 							#mis-analysis-table tbody tr.mis-zone-row.mis-row-checked { background: #86efac !important; }
 							#mis-analysis-table tbody tr.mis-region-row.mis-row-checked { background: #86efac !important; }
+							#mis-analysis-table tbody tr.mis-branch-row.mis-row-checked { background: #86efac !important; }
 							#mis-scroll-area { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
 						</style>
 						<div id="mis-scroll-area">
