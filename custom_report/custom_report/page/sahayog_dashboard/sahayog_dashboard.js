@@ -455,7 +455,12 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						container.find("#mis-zone-filter-row").hide();
 						return;
 					}
-					const zones = [...new Set(self.tableData.map(r => r.zone).filter(Boolean))].sort();
+					// Get permitted zones from Report Preference (same as Drishti)
+					const permittedZones = (self.filterOptions && self.filterOptions.zones) || [];
+					let zones = [...new Set(self.tableData.map(r => r.zone).filter(Boolean))].sort();
+					if (permittedZones.length > 0) {
+						zones = zones.filter(z => permittedZones.includes(z));
+					}
 					if (zones.length === 0) {
 						container.find("#mis-zone-filter-row").hide();
 						return;
