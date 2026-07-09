@@ -182,15 +182,16 @@ class DrishtiDashboard {
 			checkedRows: {},
 			searchTerm: "",
 			allExpanded: false,
+			selectedMisZones: [],
 				render: function(container, dashboardInstance) {
 					const self = this;
 					container.html(`
-						<div style="display: flex; justify-content: center; align-items: center; min-height: 200px; width: 100%;" id="mis-loading">
+						<div style="display: flex; justify-content: center; align-items: center; min-height: 200px; width: 100%;" id="mis-loading"${self.tableData ? ' style="display: none;"' : ""}>
 							<div class="spinner-border text-primary" role="status" style="width: 1.5rem; height: 1.5rem; border-width: 0.2em; animation: spinner-border .75s linear infinite;"></div>
 							<span style="margin-left: 10px; font-weight: 600; color: #475569; font-size: 14px; font-family: 'Inter', sans-serif;">Loading RD & SMBG Pending data...</span>
 						</div>
-						<div id="mis-kpi-container" style="display: none;"></div>
-						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls" style="display: none;">
+						<div id="mis-kpi-container"${self.kpiData ? "" : ' style="display: none;"'}></div>
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls"${self.tableData ? "" : ' style="display: none;"'}>
 							<div style="display: flex; align-items: center; gap: 6px;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
 								<div class="btn-group mis-format-toggle" role="group">
@@ -202,15 +203,28 @@ class DrishtiDashboard {
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<div style="margin-left: auto; font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="mis-records-count"></div>
 						</div>
-						<div id="mis-table-container" style="display: none;"></div>
+						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
+						<div id="mis-table-container"${self.tableData ? "" : ' style="display: none;"'}></div>
 					`);
+
+					// If data already fetched, just re-render
+					if (self.tableData && self.kpiData) {
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+						container.find("#mis-records-count").text(`${self.tableData.length} branches`);
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderZoneFilterTags(container, dashboardInstance);
+						container.find("#mis-controls, #mis-table-container, #mis-kpi-container").show();
+						container.find("#mis-loading").hide();
+						self.attachReportEventHandlers(container, dashboardInstance);
+						return;
+					}
 
 					let dataLoaded = 0;
 					function checkLoaded() {
 						dataLoaded++;
 						if (dataLoaded >= 2) {
 							container.find("#mis-loading").hide();
-							container.find("#mis-controls, #mis-table-container, #mis-kpi-container").show();
+container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
 						}
 					}
 
@@ -240,6 +254,7 @@ class DrishtiDashboard {
 											self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 											container.find("#mis-records-count").text(`${parsed.tableData.length} branches`);
 											self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+											self.renderZoneFilterTags(container, dashboardInstance);
 											checkLoaded();
 											checkLoaded();
 											return;
@@ -267,6 +282,7 @@ class DrishtiDashboard {
 											self.tableData = r3.message;
 											container.find("#mis-records-count").text(`${r3.message.length} branches`);
 											self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+											self.renderZoneFilterTags(container, dashboardInstance);
 											// Cache after both loaded
 											setTimeout(function() {
 												if (self.kpiData && self.tableData) {
@@ -286,7 +302,10 @@ class DrishtiDashboard {
 						}
 					});
 					
-					// Attach format toggle and view toggle handlers
+					self.attachReportEventHandlers(container, dashboardInstance);
+				},
+				attachReportEventHandlers: function(container, dashboardInstance) {
+					const self = this;
 					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function() {
 						const format = $(this).data("format");
 						dashboardInstance.state.formatMode = format;
@@ -301,7 +320,6 @@ class DrishtiDashboard {
 						}
 					});
 
-					// Search filter with debounce
 					let searchTimeout;
 					container.off("input", "#mis-search").on("input", "#mis-search", function() {
 						clearTimeout(searchTimeout);
@@ -313,7 +331,6 @@ class DrishtiDashboard {
 						}, 300);
 					});
 
-					// Expand / Collapse All toggle
 					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function() {
 						self.allExpanded = !self.allExpanded;
 						const expand = self.allExpanded;
@@ -420,12 +437,50 @@ class DrishtiDashboard {
 					if (self.tableData && self.tableData.length > 0) {
 						const tableContainer = container.find("#mis-table-container");
 						self.renderMisTable(tableContainer, dashboardInstance);
+						self.renderZoneFilterTags(container, dashboardInstance);
 					}
 					self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 				},
 				renderMisTable: function(tableContainer, dashboardInstance) {
 					const self = this;
 					self.renderAnalysisTable(tableContainer, dashboardInstance);
+				},
+				renderZoneFilterTags: function(container, dashboardInstance) {
+					const self = this;
+					if (!self.tableData || self.tableData.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					const zones = [...new Set(self.tableData.map(r => r.zone).filter(Boolean))].sort();
+					if (zones.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					const allSelected = self.selectedMisZones.length === 0;
+					let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
+					html += `<button class="mis-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
+					zones.forEach(zone => {
+						const active = self.selectedMisZones.includes(zone);
+						html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
+					});
+					const $row = container.find("#mis-zone-filter-row");
+					$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
+
+					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function() {
+						const zone = $(this).data("zone");
+						if (zone === "all") {
+							self.selectedMisZones = [];
+						} else {
+							const idx = self.selectedMisZones.indexOf(zone);
+							if (idx > -1) {
+								self.selectedMisZones.splice(idx, 1);
+							} else {
+								self.selectedMisZones.push(zone);
+							}
+						}
+						self.renderZoneFilterTags(container, dashboardInstance);
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+					});
 				},
 				aggregateByZone: function() {
 					const self = this;
@@ -438,6 +493,9 @@ class DrishtiDashboard {
 							const id = (row.sol_id || "").toLowerCase();
 							return terms.some(t => br.includes(t) || id.includes(t));
 						});
+					}
+					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+						data = data.filter(row => self.selectedMisZones.includes(row.zone));
 					}
 					const zoneMap = {};
 
@@ -6167,6 +6225,7 @@ class DrishtiDashboard {
 			if (this.drishti_container) this.drishti_container.show();
 			$(this.page.wrapper).find("#drishti-subtitle").show();
 			$("#drishti-header-timer").show();
+			this.loadData();
 		} else {
 			if (this.drishti_container) this.drishti_container.hide();
 			if (this.mis_container) {
