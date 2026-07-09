@@ -769,45 +769,6 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 					});
 				},
 			},
-			{
-				id: "term_deposit_pending",
-				name: "Term Deposit Pending",
-				columns: ["SOL ID", "Branch", "Account No", "Amount"],
-				getData: () => [
-					{ sol_id: "9001", branch: "Pune Main Branch", acc_no: "TD-88201", amount: "₹5,00,000" },
-					{ sol_id: "9002", branch: "Mumbai Central Branch", acc_no: "TD-99102", amount: "₹12,50,000" },
-					{ sol_id: "9003", branch: "Nagpur East Branch", acc_no: "TD-77303", amount: "₹8,20,000" }
-				],
-				render: function(container) {
-					const data = this.getData();
-					const headersHtml = this.columns.map(col => `
-						<th style="padding: 12px 16px; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #cbd5e1;">${col}</th>
-					`).join('');
-					const rowsHtml = data.map(row => `
-						<tr style="transition: background-color 0.15s ease;">
-							<td style="padding: 12px 16px; border-bottom: 1px solid #cbd5e1; font-weight: 600; color: #1e293b;">${row.sol_id}</td>
-							<td style="padding: 12px 16px; border-bottom: 1px solid #cbd5e1; color: #475569;">${row.branch}</td>
-							<td style="padding: 12px 16px; border-bottom: 1px solid #cbd5e1; color: #475569;">${row.acc_no}</td>
-							<td style="padding: 12px 16px; border-bottom: 1px solid #cbd5e1; color: #475569; font-weight: 500;">${row.amount}</td>
-						</tr>
-					`).join('');
-					
-					container.html(`
-						<div class="mis-report-table-wrapper" style="background: #ffffff; border-radius: 8px; border: 1px solid #cbd5e1; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); margin-top: 15px;">
-							<table style="width: 100%; border-collapse: collapse; text-align: left; font-family: 'Inter', sans-serif;">
-								<thead>
-									<tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
-										${headersHtml}
-									</tr>
-								</thead>
-								<tbody class="mis-table-body">
-									${rowsHtml}
-								</tbody>
-							</table>
-						</div>
-					`);
-				}
-			}
 		];
 
 		this.init();
