@@ -930,3 +930,192 @@ def build_agent_wise(selected_date=None):
         })
 
     return result
+
+
+@frappe.whitelist()
+def get_rd_smbg_pending_data(sol_ids=None, zone=None, region=None, district=None):
+    from custom_report.db_connection import get_dr_connection
+    import json
+    
+    # Parse sol_ids if passed as JSON string, list, int/float, or comma-separated string
+    sol_id_list = []
+    if sol_ids:
+        if isinstance(sol_ids, (int, float)):
+            sol_id_list = [str(sol_ids)]
+        elif isinstance(sol_ids, list):
+            sol_id_list = [str(s) for s in sol_ids]
+        elif isinstance(sol_ids, str):
+            try:
+                parsed = json.loads(sol_ids)
+                if isinstance(parsed, list):
+                    sol_id_list = [str(s) for s in parsed]
+                elif isinstance(parsed, (int, float)):
+                    sol_id_list = [str(parsed)]
+                else:
+                    sol_id_list = [str(parsed)]
+            except ValueError:
+                sol_id_list = [s.strip() for s in sol_ids.split(",") if s.strip()]
+        else:
+            sol_id_list = [str(sol_ids)]
+
+    # Base CTEs
+    query = """
+    WITH main_data AS (
+        SELECT   
+            g.acid, 
+            g.sol_id, 
+            s.sol_desc, 
+            g.cif_id, 
+            g.schm_code,
+            p.schm_desc, 
+            g.foracid, 
+            g.acct_name, 
+            s.division_name, 
+            s.region_name, 
+            s.circle_office_name,
+            g.acct_opn_date, 
+            t.maturity_date, 
+            t.last_repayment_date, 
+            d.rm_id,
+            g2.emp_name AS rm_name,
+            t.deposit_amount, 
+            g.clr_bal_amt, 
+            t.deposit_period_mths, 
+            t.deposit_period_days
+        FROM tbaadm.gam g
+        JOIN tbaadm.tam t 
+            ON g.acid = t.acid  
+        JOIN tbaadm.gsp p 
+            ON g.schm_code = p.schm_code
+        JOIN tbaadm.sol s 
+            ON g.sol_id = s.sol_id
+        JOIN crmuser.address a 
+            ON g.cif_id = a.orgkey
+        LEFT JOIN custom.dsamap d 
+            ON g.foracid = d.account_number
+        LEFT JOIN custom.dsaauth d2 
+            ON d.rm_id = d2.user_id
+        LEFT JOIN tbaadm.get g2 
+            ON d2.user_id = g2.emp_id
+        WHERE
+            g.schm_code IN ('2005','2010','2011','2012','2013','2014','2015','2016')
+            AND g.entity_cre_flg = 'Y'
+            AND g.del_flg = 'N'
+            AND g.acct_cls_flg = 'N'
+            AND a.preferredaddress = 'Y'
+    """
+    
+    # Build filter conditions inside main_data to optimize Oracle execution
+    filter_conditions = ["g.sol_id = '1001'"]
+    params = []
+    
+    query += " AND " + " AND ".join(filter_conditions)
+        
+    query += """
+    ),
+    tdt_summary AS (
+        SELECT
+            acid,
+            COUNT(*) AS total_records,
+            COUNT(CASE WHEN value_date IS NOT NULL AND value_date <= CURRENT_DATE THEN 1 END) AS completed_up_to_today,
+            COUNT(CASE WHEN flow_amt > 0 THEN 1 END) AS total_instalments,
+            COUNT(CASE WHEN tran_amt > 0 THEN 1 END) AS total_instalments_paid_count,
+            COUNT(CASE WHEN flow_amt > 0 THEN 1 END) - COUNT(CASE WHEN tran_amt > 0 THEN 1 END) AS pending_instalments,
+            SUM(flow_amt) AS total_amount_paid,
+            SUM(tran_amt) AS total_instalment_paid,
+            SUM(flow_amt) - SUM(tran_amt) AS pending_amount
+        FROM tbaadm.tdt
+        WHERE
+            flow_code = 'NI'
+            AND (flow_amt > 0 OR tran_amt > 0)
+            AND flow_date <= CURRENT_DATE
+        GROUP BY acid
+    )
+    SELECT
+        m.cif_id,
+        m.acct_name,
+        m.foracid,
+        m.acid,
+        m.sol_id,
+        m.sol_desc,
+        m.schm_code,
+        m.schm_desc,
+        m.division_name,
+        m.region_name,
+        m.circle_office_name,
+        m.acct_opn_date,
+        m.maturity_date,
+        m.last_repayment_date,
+        m.rm_id,
+        m.rm_name,
+        m.deposit_amount,
+        m.clr_bal_amt,
+        m.deposit_period_mths,
+        m.deposit_period_days,
+        COALESCE(t.total_records, 0) AS months_till_now,
+        COALESCE(t.completed_up_to_today, 0) AS installment_paid,
+        COALESCE(t.pending_instalments, 0) AS pending_instalments,
+        COALESCE(t.total_instalment_paid, 0) AS total_instalment_paid_Amt,
+        COALESCE(t.pending_amount, 0) AS pending_amount
+    FROM main_data m
+    LEFT JOIN tdt_summary t 
+        ON m.acid = t.acid
+    LIMIT 10
+    """
+    
+    print("\n[RD/SMBG Debug] Starting fetch from DR database...")
+    print(f"[RD/SMBG Debug] Parameters: {params}")
+    
+    conn = get_dr_connection()
+    if not conn:
+        print("[RD/SMBG Debug] Failed to connect to DR database")
+        frappe.log_error("Failed to connect to DR database", "RD SMBG API")
+        return []
+
+    try:
+        cursor = conn.cursor()
+        print("[RD/SMBG Debug] Executing SQL Query on DR database...")
+        cursor.execute(query, tuple(params))
+        result = cursor.fetchall()
+        print(f"[RD/SMBG Debug] Query execution complete. Fetched {len(result)} rows.")
+        
+        headers = [desc[0].lower() for desc in cursor.description]
+        
+        json_data = []
+        for row in result:
+            row_dict = {}
+            for i, val in enumerate(row):
+                if val is None:
+                    row_dict[headers[i]] = None
+                elif isinstance(val, (int, float, str, bool)):
+                    row_dict[headers[i]] = val
+                else:
+                    row_dict[headers[i]] = str(val)
+            json_data.append(row_dict)
+            
+        print(f"[RD/SMBG Debug] Formatted records JSON:\n{json.dumps(json_data, indent=4, default=str)}")
+        return json_data
+    except Exception as e:
+        print(f"[RD/SMBG Debug] Exception during query: {str(e)}")
+        frappe.log_error(f"Error executing RD/SMBG query: {str(e)}", "RD SMBG API")
+        return []
+    finally:
+        try:
+            conn.close()
+            print("[RD/SMBG Debug] Closed DR connection.")
+        except Exception as e:
+            print(f"[RD/SMBG Debug] Exception closing connection: {str(e)}")
+
+
+@frappe.whitelist()
+def get_mis_filter_options():
+    # Fetch unique zones, regions, and districts from tabBranch Category Report
+    zones = [r[0] for r in frappe.db.sql("SELECT DISTINCT zone FROM `tabBranch Category Report` WHERE zone IS NOT NULL AND zone != ''")]
+    regions = [r[0] for r in frappe.db.sql("SELECT DISTINCT region FROM `tabBranch Category Report` WHERE region IS NOT NULL AND region != ''")]
+    districts = [r[0] for r in frappe.db.sql("SELECT DISTINCT district FROM `tabBranch Category Report` WHERE district IS NOT NULL AND district != ''")]
+    
+    return {
+        "zones": sorted(zones),
+        "regions": sorted(regions),
+        "districts": sorted(districts)
+    }

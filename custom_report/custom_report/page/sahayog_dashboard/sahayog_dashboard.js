@@ -87,6 +87,7 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 			// Repopulate headers if dashboard instance exists
 			if (wrapper.dashboard) {
 				wrapper.dashboard.repopulateHeaderFilters();
+				wrapper.dashboard.setupHeaderToggle();
 			}
 
 			// Clear any existing interval
@@ -149,6 +150,7 @@ class DrishtiDashboard {
 			drillDownActive: false,
 			expandedZones: {}, // Track expanded/collapsed zones
 			selectedSegment: "all",
+			dashboardMode: "drishti",
 		};
 		// Store selected date per tab
 		this.tabDates = {
@@ -168,6 +170,323 @@ class DrishtiDashboard {
 		this.zoneCounts = {};
 		this.productData = [];
 
+		// Registered MIS Reports configuration
+		this.misReportsList = [
+			{
+				id: "rd_smbg_pending",
+				name: "RD & SMBG Pending",
+				data: [],
+				filterOptions: null,
+				filters: {
+					zone: "all",
+					region: "all",
+					district: "all",
+					sol_ids: ""
+				},
+				render: function(container, dashboardInstance) {
+					const self = this;
+					
+					// Fetch filter options first if not cached
+					if (!self.filterOptions) {
+						container.html(`
+							<div style="display: flex; justify-content: center; align-items: center; min-height: 100px;">
+								<div class="spinner-border text-primary" role="status" style="width: 2rem; height: 2rem; border-width: 0.25em; animation: spinner-border .75s linear infinite;"></div>
+								<span style="margin-left: 10px; font-weight: 600; color: #64748b; font-size: 13px; font-family: 'Inter', sans-serif;">Loading filters...</span>
+							</div>
+						`);
+						
+						frappe.call({
+							method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_mis_filter_options",
+							callback: function(r) {
+								if (r.message) {
+									self.filterOptions = r.message;
+									self.renderUI(container, dashboardInstance);
+								} else {
+									container.html('<div style="padding: 20px; color: #ef4444; font-weight: 600; font-family: \'Inter\', sans-serif;">Failed to load filter options.</div>');
+								}
+							}
+						});
+					} else {
+						self.renderUI(container, dashboardInstance);
+					}
+				},
+				renderUI: function(container, dashboardInstance) {
+					const self = this;
+					const zones = self.filterOptions.zones || [];
+					const regions = self.filterOptions.regions || [];
+					const districts = self.filterOptions.districts || [];
+
+					const filterHtml = `
+						<div class="mis-filters-row" style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1; align-items: center;">
+							<div class="outlined-input-container" style="min-width: 140px; margin-top: 0;">
+								<label class="outlined-input-label">Zone</label>
+								<select id="mis-filter-zone">
+									<option value="all">All Zones</option>
+									${zones.map(z => `<option value="${z}" ${self.filters.zone === z ? 'selected' : ''}>${z}</option>`).join('')}
+								</select>
+							</div>
+							<div class="outlined-input-container" style="min-width: 140px; margin-top: 0;">
+								<label class="outlined-input-label">Region</label>
+								<select id="mis-filter-region">
+									<option value="all">All Regions</option>
+									${regions.map(r => `<option value="${r}" ${self.filters.region === r ? 'selected' : ''}>${r}</option>`).join('')}
+								</select>
+							</div>
+							<div class="outlined-input-container" style="min-width: 140px; margin-top: 0;">
+								<label class="outlined-input-label">District</label>
+								<select id="mis-filter-district">
+									<option value="all">All Districts</option>
+									${districts.map(d => `<option value="${d}" ${self.filters.district === d ? 'selected' : ''}>${d}</option>`).join('')}
+								</select>
+							</div>
+							<div class="outlined-input-container" style="min-width: 180px; margin-top: 0; padding: 0 10px;">
+								<label class="outlined-input-label">SOL ID (comma separated)</label>
+								<input type="text" id="mis-filter-sol" value="${self.filters.sol_ids}" placeholder="e.g. 1001,1002,1004" style="border: none !important; outline: none !important; width: 100%; height: 28px; font-size: 13px; font-weight: 600; color: #1b263b;" />
+							</div>
+							<button id="mis-fetch-btn" class="btn btn-primary btn-sm" style="background: #417d81; border-color: #417d81; font-weight: 600; height: 32px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 16px; border-radius: 6px; color: white;">
+								🔍 Fetch Data
+							</button>
+							<div style="display: flex; align-items: center; gap: 6px;">
+								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
+								<div class="btn-group mis-format-toggle" role="group">
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+								</div>
+							</div>
+							<div style="margin-left: auto; font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="mis-records-count">
+								Records: ${self.data.length || 0}
+							</div>
+						</div>
+						<div id="mis-table-container">
+							<div style="padding: 40px 20px; text-align: center; color: #64748b; font-weight: 600; font-family: 'Inter', sans-serif; border: 1px dashed #cbd5e1; border-radius: 8px; background: #ffffff; width: 100%;">
+								⚠️ Please set at least one filter and click "Fetch Data" to load records.
+							</div>
+						</div>
+					`;
+
+					container.html(filterHtml);
+					
+					// Render table if we already have loaded data
+					if (self.data && self.data.length > 0) {
+						self.renderTable(container.find("#mis-table-container"), dashboardInstance);
+						const showingCount = Math.min(10, self.data.length);
+						container.find("#mis-records-count").text(`Showing ${showingCount} of ${self.data.length} records`);
+					}
+
+					// Update filter states in memory on change
+					container.find("#mis-filter-zone").on("change", function() {
+						self.filters.zone = $(this).val();
+					});
+					container.find("#mis-filter-region").on("change", function() {
+						self.filters.region = $(this).val();
+					});
+					container.find("#mis-filter-district").on("change", function() {
+						self.filters.district = $(this).val();
+					});
+					container.find("#mis-filter-sol").on("input", function() {
+						self.filters.sol_ids = $(this).val();
+					});
+
+					// Fetch button click
+					container.find("#mis-fetch-btn").on("click", function() {
+						const hasZone = self.filters.zone !== "all";
+						const hasRegion = self.filters.region !== "all";
+						const hasDistrict = self.filters.district !== "all";
+						const hasSol = self.filters.sol_ids.trim() !== "";
+
+						if (!hasZone && !hasRegion && !hasDistrict && !hasSol) {
+							frappe.show_alert({
+								message: "Please set at least one filter (Zone, Region, District, or SOL ID) before fetching data.",
+								indicator: "orange"
+							});
+							return;
+						}
+
+						const tableContainer = container.find("#mis-table-container");
+						tableContainer.html(`
+							<div style="display: flex; justify-content: center; align-items: center; min-height: 150px; width: 100%;">
+								<div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem; border-width: 0.25em; animation: spinner-border .75s linear infinite;"></div>
+								<span style="margin-left: 15px; font-weight: 600; color: #475569; font-size: 14px; font-family: 'Inter', sans-serif;">Fetching pending records from DR Database...</span>
+							</div>
+						`);
+
+						frappe.call({
+							method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_pending_data",
+							args: {
+								sol_ids: self.filters.sol_ids,
+								zone: self.filters.zone === "all" ? null : self.filters.zone,
+								region: self.filters.region === "all" ? null : self.filters.region,
+								district: self.filters.district === "all" ? null : self.filters.district
+							},
+							callback: function(r) {
+								if (r.message) {
+									self.data = r.message;
+									const showingCount = Math.min(10, self.data.length);
+									container.find("#mis-records-count").text(`Showing ${showingCount} of ${self.data.length} records`);
+									self.renderTable(tableContainer, dashboardInstance);
+								} else {
+									tableContainer.html('<div style="padding: 20px; color: #ef4444; font-weight: 600; font-family: \'Inter\', sans-serif; text-align: center;">Failed to fetch data from DR database.</div>');
+								}
+							}
+						});
+					});
+
+					// MIS Format toggle handler
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function() {
+						const format = $(this).data("format");
+						dashboardInstance.state.formatMode = format;
+						container.find(".mis-format-btn").each(function() {
+							const btn = $(this);
+							const isActive = btn.data("format") === format;
+							btn.css("background", isActive ? "#417d81" : "#e2e8f0");
+							btn.css("color", isActive ? "white" : "#475569");
+						});
+						if (self.data && self.data.length > 0) {
+							self.renderTable(container.find("#mis-table-container"), dashboardInstance);
+						}
+					});
+				},
+				renderTable: function(tableContainer, dashboardInstance) {
+					const self = this;
+					try {
+						if (!self.data || self.data.length === 0) {
+							tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600; font-family: \'Inter\', sans-serif; width: 100%;">No records match the selected filters.</div>');
+							return;
+						}
+
+						const stickyColWidths = ["140px", "220px", "170px"];
+						const headers = [
+							"CIF ID", "Acct Name", "Account No", "SOL ID", "SOL Desc", 
+							"Schm Code", "Schm Desc", "Division Name", 
+							"Region Name", "Circle Office Name", "Acct Opn Date", "Maturity Date", 
+							"Last Repayment Date", "RM ID", "RM Name", "Deposit Amount", "Clr Bal Amt", 
+							"Deposit Period Mths", "Deposit Period Days", "Months Till Now", "Installment Paid", "Pending Instalments", 
+							"Total Instalment Paid Amt", "Pending Amount"
+						];
+
+						const headersHtml = headers.map((h, i) => {
+							let stickyStyle = '';
+							if (i < 3) {
+								const leftPos = i === 0 ? '0' : stickyColWidths.slice(0, i).reduce((a, b) => a + parseInt(b), 0) + 'px';
+								stickyStyle = `position: sticky; left: ${leftPos}; z-index: 3; background: linear-gradient(180deg, #3d7579 0%, #346569 100%); min-width: ${stickyColWidths[i]};`;
+							}
+							return `<th style="padding: 12px 14px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #cbd5e1; text-align: center; white-space: nowrap; ${stickyStyle}">${h}</th>`;
+						}).join('');
+
+						const displayData = self.data.slice(0, 10);
+
+						const stickyTdStyle = (i) => {
+							if (i >= 3) return '';
+							const leftPos = i === 0 ? '0' : stickyColWidths.slice(0, i).reduce((a, b) => a + parseInt(b), 0) + 'px';
+							return `position: sticky; left: ${leftPos}; z-index: 1; background: #ffffff; min-width: ${stickyColWidths[i]};`;
+						};
+
+						const rowsHtml = displayData.map((row, idx) => {
+							const depAmt = row.deposit_amount ? dashboardInstance.formatCurrency(parseFloat(row.deposit_amount)) : "-";
+							const clrBal = row.clr_bal_amt ? dashboardInstance.formatCurrency(parseFloat(row.clr_bal_amt)) : "-";
+							const totPaid = row.total_instalment_paid_amt ? dashboardInstance.formatCurrency(parseFloat(row.total_instalment_paid_amt)) : "-";
+							const pendAmt = row.pending_amount ? dashboardInstance.formatCurrency(parseFloat(row.pending_amount)) : "-";
+
+							const openDate = row.acct_opn_date ? row.acct_opn_date.split(' ')[0] : "-";
+							const matDate = row.maturity_date ? row.maturity_date.split(' ')[0] : "-";
+							const lastRepDate = row.last_repayment_date ? row.last_repayment_date.split(' ')[0] : "-";
+
+							return `
+								<tr class="mis-data-row" style="transition: background-color 0.15s ease; border-bottom: 1px solid #cbd5e1;">
+									<td style="padding: 10px 14px; color: #475569; white-space: nowrap; ${stickyTdStyle(0)}">${row.cif_id || '-'}</td>
+									<td style="padding: 10px 14px; color: #1e293b; font-weight: 500; white-space: nowrap; ${stickyTdStyle(1)}">${row.acct_name || '-'}</td>
+									<td style="padding: 10px 14px; color: #0d9488; font-weight: 600; text-align: center; white-space: nowrap; ${stickyTdStyle(2)}">${row.foracid || '-'}</td>
+									<td style="padding: 10px 14px; font-weight: 600; color: #1e293b; text-align: center; white-space: nowrap;">${row.sol_id || '-'}</td>
+									<td style="padding: 10px 14px; color: #475569; white-space: nowrap;">${row.sol_desc || '-'}</td>
+									<td style="padding: 10px 14px; color: #475569; text-align: center; white-space: nowrap;">${row.schm_code || '-'}</td>
+									<td style="padding: 10px 14px; color: #475569; white-space: nowrap;">${row.schm_desc || '-'}</td>
+									<td style="padding: 10px 14px; color: #475569; white-space: nowrap;">${row.division_name || row.zone || '-'}</td>
+									<td style="padding: 10px 14px; color: #475569; white-space: nowrap;">${row.region_name || row.region || '-'}</td>
+									<td style="padding: 10px 14px; color: #475569; white-space: nowrap;">${row.circle_office_name || row.district || '-'}</td>
+									<td style="padding: 10px 14px; color: #475569; text-align: center; white-space: nowrap;">${openDate}</td>
+									<td style="padding: 10px 14px; color: #475569; text-align: center; white-space: nowrap;">${matDate}</td>
+									<td style="padding: 10px 14px; color: #475569; text-align: center; white-space: nowrap;">${lastRepDate}</td>
+									<td style="padding: 10px 14px; color: #475569; white-space: nowrap;">${row.rm_id || '-'}</td>
+									<td style="padding: 10px 14px; color: #475569; white-space: nowrap;">${row.rm_name || '-'}</td>
+									<td style="padding: 10px 14px; color: #1e293b; font-weight: 600; text-align: right; white-space: nowrap;">${depAmt}</td>
+									<td style="padding: 10px 14px; color: #1e293b; font-weight: 600; text-align: right; white-space: nowrap;">${clrBal}</td>
+									<td style="padding: 10px 14px; color: #475569; text-align: center; white-space: nowrap;">${row.deposit_period_mths || '-'}</td>
+									<td style="padding: 10px 14px; color: #475569; text-align: center; white-space: nowrap;">${row.deposit_period_days || '-'}</td>
+									<td style="padding: 10px 14px; color: #475569; text-align: center; white-space: nowrap;">${row.months_till_now || '0'}</td>
+									<td style="padding: 10px 14px; color: #475569; text-align: center; white-space: nowrap;">${row.installment_paid || '0'}</td>
+									<td style="padding: 10px 14px; color: #ef4444; font-weight: 700; text-align: center; white-space: nowrap;">${row.pending_instalments || '0'}</td>
+									<td style="padding: 10px 14px; color: #1e293b; font-weight: 600; text-align: right; white-space: nowrap;">${totPaid}</td>
+									<td style="padding: 10px 14px; color: #ef4444; font-weight: 700; text-align: right; white-space: nowrap;">${pendAmt}</td>
+								</tr>
+							`;
+						}).join('');
+
+						tableContainer.html(`
+							<style>
+								.mis-data-row:hover { background-color: #e8f5e9 !important; }
+								.mis-data-row:hover td { background-color: #e8f5e9 !important; }
+								.mis-data-row:hover td[style*="position: sticky"] { background-color: #e8f5e9 !important; }
+							</style>
+							<div class="mis-report-table-wrapper" style="background: #ffffff; border-radius: 8px; border: 1px solid #cbd5e1; overflow-x: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); margin-top: 15px; width: 100%;">
+								<table style="width: 100%; border-collapse: collapse; text-align: left; font-family: 'Inter', sans-serif; font-size: 13px;">
+									<thead>
+										<tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
+											${headersHtml}
+										</tr>
+									</thead>
+									<tbody class="mis-table-body">
+										${rowsHtml}
+									</tbody>
+								</table>
+							</div>
+						`);
+					} catch (err) {
+						console.error("[RD/SMBG UI Error]", err);
+						tableContainer.html(`<div style="padding: 20px; color: #ef4444; font-weight: 600; font-family: 'Inter', sans-serif;">Render Error: ${err.message}</div>`);
+					}
+				}
+			},
+			{
+				id: "term_deposit_pending",
+				name: "Term Deposit Pending",
+				columns: ["SOL ID", "Branch", "Account No", "Amount"],
+				getData: () => [
+					{ sol_id: "9001", branch: "Pune Main Branch", acc_no: "TD-88201", amount: "₹5,00,000" },
+					{ sol_id: "9002", branch: "Mumbai Central Branch", acc_no: "TD-99102", amount: "₹12,50,000" },
+					{ sol_id: "9003", branch: "Nagpur East Branch", acc_no: "TD-77303", amount: "₹8,20,000" }
+				],
+				render: function(container) {
+					const data = this.getData();
+					const headersHtml = this.columns.map(col => `
+						<th style="padding: 12px 16px; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #cbd5e1;">${col}</th>
+					`).join('');
+					const rowsHtml = data.map(row => `
+						<tr style="transition: background-color 0.15s ease;">
+							<td style="padding: 12px 16px; border-bottom: 1px solid #cbd5e1; font-weight: 600; color: #1e293b;">${row.sol_id}</td>
+							<td style="padding: 12px 16px; border-bottom: 1px solid #cbd5e1; color: #475569;">${row.branch}</td>
+							<td style="padding: 12px 16px; border-bottom: 1px solid #cbd5e1; color: #475569;">${row.acc_no}</td>
+							<td style="padding: 12px 16px; border-bottom: 1px solid #cbd5e1; color: #475569; font-weight: 500;">${row.amount}</td>
+						</tr>
+					`).join('');
+					
+					container.html(`
+						<div class="mis-report-table-wrapper" style="background: #ffffff; border-radius: 8px; border: 1px solid #cbd5e1; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); margin-top: 15px;">
+							<table style="width: 100%; border-collapse: collapse; text-align: left; font-family: 'Inter', sans-serif;">
+								<thead>
+									<tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
+										${headersHtml}
+									</tr>
+								</thead>
+								<tbody class="mis-table-body">
+									${rowsHtml}
+								</tbody>
+							</table>
+						</div>
+					`);
+				}
+			}
+		];
+
 		this.init();
 	}
 
@@ -175,10 +494,16 @@ class DrishtiDashboard {
 		this.setupLegacyStyles();
 		this.setupStyles();
 		this.setupBranchProfilePopup();
+
+		// Create wrappers for Drishti and MIS Dashboards to toggle visibility easily
+		this.drishti_container = $('<div id="drishti-dashboard-container"></div>').appendTo(this.page.main);
+		this.mis_container = null;
+
 		this.createControls();
 		this.createFilterTags();
 		this.createTabsAndContainer();
 		this.initDatePicker();
+		this.setupHeaderToggle();
 		this.updateStateFromUrl(); // Read from URL and update state
 		this.updateUiFromState(); // Update UI from state
 		this.loadFinancialYears();
@@ -1292,17 +1617,17 @@ class DrishtiDashboard {
                     </div>
                 </div>
 
-                <!-- Performance Categories -->
-                <div class="filter-tags-container category-filter-container">
-                    <div class="filter-group">
-                        <span class="filter-group-label">Category:</span>
-                        <div class="filter-tags" id="category-tags"></div>
-                    </div>
-                </div>
-            </div>
-        `;
+            				<!-- Performance Categories -->
+				<div class="filter-tags-container category-filter-container">
+					<div class="filter-group">
+						<span class="filter-group-label">Category:</span>
+						<div class="filter-tags" id="category-tags"></div>
+					</div>
+				</div>
+			</div>
+		`;
 
-		$(html).appendTo(this.page.main);
+		$(html).appendTo(this.drishti_container || this.page.main);
 		this.populateFilterTags();
 	}
 
@@ -1728,7 +2053,7 @@ class DrishtiDashboard {
             </div>
         `;
 
-		$(html).appendTo(this.page.main);
+		$(html).appendTo(this.drishti_container || this.page.main);
 		this.attachTabEvents();
 	}
 
@@ -2144,6 +2469,9 @@ class DrishtiDashboard {
 	// DATA LOADING
 	// ========================================================================
 	loadData() {
+		if (this.state.dashboardMode === "mis") {
+			return;
+		}
 		const self = this;
 
 		// Use state.selectedDate for API call (this is what the date selector shows)
@@ -5465,9 +5793,187 @@ class DrishtiDashboard {
                     font-weight: 700;
                     animation: redBlink 1s ease-in-out infinite;
                 }
+
+                /* MIS Dashboard & Toggle Custom Styles */
+                .dashboard-header-toggle-wrapper {
+                    position: absolute;
+                    left: 50%;
+                    top: 14px;
+                    transform: translateX(-50%);
+                    z-index: 100;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .dashboard-toggle-switch-container {
+                    display: inline-flex;
+                    align-items: center;
+                    background: #f8fafc;
+                    padding: 2px;
+                    border-radius: 6px;
+                    border: 1px solid #cbd5e1;
+                    font-family: 'Inter', sans-serif;
+                }
+                .dashboard-toggle-btn {
+                    border: none !important;
+                    background: transparent !important;
+                    padding: 4px 10px !important;
+                    font-size: 11px !important;
+                    font-weight: 600 !important;
+                    color: #64748b !important;
+                    border-radius: 4px !important;
+                    cursor: pointer !important;
+                    transition: all 0.15s ease-in-out !important;
+                    box-shadow: none !important;
+                    line-height: 1 !important;
+                }
+                .dashboard-toggle-btn.active {
+                    background: #ffffff !important;
+                    color: #417d81 !important;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+                }
+                .dashboard-toggle-btn:hover:not(.active) {
+                    color: #1e293b !important;
+                }
+                .mis-report-tab-btn {
+                    padding: 6px 16px !important;
+                    background: transparent !important;
+                    border: none !important;
+                    color: #64748b !important;
+                    font-weight: 600 !important;
+                    font-size: 13px !important;
+                    cursor: pointer !important;
+                    border-radius: 9999px !important;
+                    transition: all 0.15s ease-in-out !important;
+                    outline: none !important;
+                    margin: 0 !important;
+                }
+                .mis-report-tab-btn:hover {
+                    color: #417d81 !important;
+                    background: rgba(65, 125, 129, 0.08) !important;
+                }
+                .mis-report-tab-btn.active {
+                    background: #417d81 !important;
+                    color: #ffffff !important;
+                    font-weight: 700 !important;
+                    box-shadow: 0 4px 10px rgba(65, 125, 129, 0.25) !important;
+                }
+                .mis-table-body tr:hover {
+                    background-color: #f8fafc !important;
+                }
+                @media (max-width: 768px) {
+                    .dashboard-header-toggle-wrapper {
+                        position: static !important;
+                        transform: none !important;
+                        margin: 10px auto !important;
+                        width: 100%;
+                        justify-content: center;
+                    }
+                }
             </style>
         `;
 
 		$("head").append(styles);
+	}
+
+	setupHeaderToggle() {
+		const self = this;
+		const header = $(this.page.wrapper || ".frappe-page:visible").find(".page-head-row").length 
+			? $(this.page.wrapper || ".frappe-page:visible").find(".page-head-row") 
+			: $(this.page.wrapper || ".frappe-page:visible").find(".page-head .container");
+
+		if (!header.length) return;
+
+		// Make sure header has relative position for absolute centering of toggle
+		header.css("position", "relative");
+
+		// Remove any existing toggle first to prevent duplicates
+		header.find(".dashboard-header-toggle-wrapper").remove();
+
+		const toggleHtml = `
+			<div class="dashboard-header-toggle-wrapper">
+				<div class="dashboard-toggle-switch-container">
+					<button type="button" class="dashboard-toggle-btn active" data-value="drishti">Drishti</button>
+					<button type="button" class="dashboard-toggle-btn" data-value="mis">MIS Reports</button>
+				</div>
+			</div>
+		`;
+
+		header.append(toggleHtml);
+
+		// Handle click events
+		header.off("click", ".dashboard-toggle-btn").on("click", ".dashboard-toggle-btn", function() {
+			const val = $(this).data("value");
+			header.find(".dashboard-toggle-btn").removeClass("active");
+			$(this).addClass("active");
+			self.switchDashboardMode(val);
+		});
+	}
+
+	switchDashboardMode(mode) {
+		this.state.dashboardMode = mode;
+		if (mode === "drishti") {
+			if (this.mis_container) this.mis_container.hide();
+			if (this.drishti_container) this.drishti_container.show();
+			$(this.page.wrapper).find("#drishti-subtitle").show();
+			$("#drishti-header-timer").show();
+		} else {
+			if (this.drishti_container) this.drishti_container.hide();
+			if (this.mis_container) {
+				this.mis_container.show();
+			} else {
+				this.initMisReportsContainer();
+			}
+			$(this.page.wrapper).find("#drishti-subtitle").hide();
+			$("#drishti-header-timer").hide();
+		}
+	}
+
+	initMisReportsContainer() {
+		this.mis_container = $('<div id="mis-reports-container" style="border: 1px solid #cbd5e1; padding: 16px; background: #fff; border-radius: 8px; margin-top: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);"></div>').appendTo(this.page.main);
+		
+		const selectorHtml = `
+			<div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 16px; width: 100%;">
+				<div style="display: flex; gap: 12px;" id="mis-report-selector-tabs">
+				</div>
+			</div>
+			<div id="mis-report-content-area" style="min-height: 200px;"></div>
+		`;
+		this.mis_container.html(selectorHtml);
+
+		const self = this;
+		const tabSelectorContainer = this.mis_container.find("#mis-report-selector-tabs");
+		this.misReportsList.forEach((report, index) => {
+			const activeClass = index === 0 ? "active" : "";
+			tabSelectorContainer.append(`
+				<button class="mis-report-tab-btn ${activeClass}" data-report-id="${report.id}">
+					${report.name}
+				</button>
+			`);
+		});
+
+		this.mis_container.on("click", ".mis-report-tab-btn", function() {
+			self.mis_container.find(".mis-report-tab-btn").removeClass("active");
+			$(this).addClass("active");
+
+			const reportId = $(this).data("report-id");
+			self.renderMisReport(reportId);
+		});
+
+		if (this.misReportsList.length > 0) {
+			this.renderMisReport(this.misReportsList[0].id);
+		}
+	}
+
+	renderMisReport(reportId) {
+		const report = this.misReportsList.find(r => r.id === reportId);
+		const contentArea = this.mis_container.find("#mis-report-content-area");
+		if (report && contentArea.length) {
+			if (typeof report.render === "function") {
+				report.render(contentArea, this);
+			} else {
+				contentArea.html('<p style="color: #64748b; padding: 20px;">No custom renderer provided for this report.</p>');
+			}
+		}
 	}
 }
