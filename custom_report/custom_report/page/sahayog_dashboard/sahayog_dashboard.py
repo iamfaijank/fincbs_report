@@ -46,23 +46,14 @@ def get_user_report_permissions(user):
     permissions["is_restricted"] = True
     permissions["all_regions"] = doc.all_regions
     
-    def get_list_values(field_name, sub_field):
-        val = getattr(doc, field_name, None)
-        if not val:
-            return []
-        if isinstance(val, list):
-            return [getattr(d, sub_field, None) for d in val if getattr(d, sub_field, None)]
-        if isinstance(val, str):
-            return [v.strip() for v in re.split(r"[, \n]+", val) if v.strip()]
-        return []
-
-    permissions["zones"] = get_list_values("zone", "zone")
+    # Query child tables directly (avoids ORM caching issues)
+    permissions["zones"] = frappe.db.get_all("Zone Items", filters={"parent": pref_name, "parentfield": "zone"}, pluck="zone") or []
     permissions["zone_ids"] = [re.sub(r"\D", "", z) for z in permissions["zones"] if re.sub(r"\D", "", z)]
-
-    permissions["regions"] = get_list_values("region", "region")
+    
+    permissions["regions"] = frappe.db.get_all("Region Items", filters={"parent": pref_name, "parentfield": "region"}, pluck="region") or []
     permissions["region_ids"] = [re.sub(r"\D", "", r) for r in permissions["regions"] if re.sub(r"\D", "", r)]
-
-    permissions["sol_ids"] = get_list_values("sol_id", "sol_id")
+    
+    permissions["sol_ids"] = frappe.db.get_all("Sol Items", filters={"parent": pref_name, "parentfield": "sol_id"}, pluck="sol_id") or []
 
     # Fetch branch names from Sahayog Branch for permitted sol_ids
     if permissions["sol_ids"]:
@@ -1410,8 +1401,21 @@ def get_mis_filter_options():
 
     # Apply same permission logic as Drishti (get_sahayog_dashboard)
     if perms.get("is_restricted"):
-        # If sol_ids provided, fetch zones/regions from those branches
-        if perms["sol_ids"]:
+        allowed_zones = perms.get("zones", [])
+        allowed_regions = perms.get("regions", [])
+        # If zone permissions exist, use zones as primary filter — ignore sol_ids for data scope
+        if allowed_zones:
+            zones = [r[0] for r in frappe.db.sql("SELECT DISTINCT zone FROM `tabSahayog Branch` WHERE zone IS NOT NULL AND zone != ''")]
+            # Normalize: uppercase, remove spaces/dashes/hyphens for matching
+            allowed_norm = [re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones]
+            zones = [z for z in zones if re.sub(r"[\s\-]+", "", z or "").upper() in allowed_norm]
+            regions = [r[0] for r in frappe.db.sql("SELECT DISTINCT region FROM `tabSahayog Branch` WHERE region IS NOT NULL AND region != ''")]
+            if allowed_regions:
+                allowed_reg_norm = [re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions]
+                regions = [r for r in regions if re.sub(r"[\s\-]+", "", r or "").upper() in allowed_reg_norm]
+            districts = [r[0] for r in frappe.db.sql("SELECT DISTINCT district FROM `tabSahayog Branch` WHERE district IS NOT NULL AND district != ''")]
+        elif perms["sol_ids"]:
+            # No zone permissions — restrict by sol_ids
             branch_data = frappe.get_all(
                 "Sahayog Branch",
                 filters={"name": ["in", perms["sol_ids"]]},
@@ -1421,28 +1425,10 @@ def get_mis_filter_options():
             regions = sorted(set(b.region for b in branch_data if b.region))
             districts = sorted(set(b.district for b in branch_data if b.district))
         else:
-            # Use zone_ids (numeric) for REGEXP matching (same as Drishti)
-            if perms["zone_ids"]:
-                regex_pattern = f"({'|'.join(perms['zone_ids'])})"
-                zones = frappe.db.sql("""
-                    SELECT DISTINCT zone FROM `tabSahayog Branch` 
-                    WHERE zone REGEXP %s
-                """, (regex_pattern), pluck=True)
-                zones = sorted(z or "" for z in zones if z)
-            else:
-                zones = [r[0] for r in frappe.db.sql("SELECT DISTINCT zone FROM `tabSahayog Branch` WHERE zone IS NOT NULL AND zone != ''")]
-            
-            if perms["region_ids"]:
-                regex_pattern = f"({'|'.join(perms['region_ids'])})"
-                regions = frappe.db.sql("""
-                    SELECT DISTINCT region FROM `tabSahayog Branch` 
-                    WHERE region REGEXP %s
-                """, (regex_pattern), pluck=True)
-                regions = sorted(r or "" for r in regions if r)
-            else:
-                regions = [r[0] for r in frappe.db.sql("SELECT DISTINCT region FROM `tabSahayog Branch` WHERE region IS NOT NULL AND region != ''")]
-            
+            zones = [r[0] for r in frappe.db.sql("SELECT DISTINCT zone FROM `tabSahayog Branch` WHERE zone IS NOT NULL AND zone != ''")]
+            regions = [r[0] for r in frappe.db.sql("SELECT DISTINCT region FROM `tabSahayog Branch` WHERE region IS NOT NULL AND region != ''")]
             districts = [r[0] for r in frappe.db.sql("SELECT DISTINCT district FROM `tabSahayog Branch` WHERE district IS NOT NULL AND district != ''")]
+
     else:
         # No restrictions — show all
         zones = [r[0] for r in frappe.db.sql("SELECT DISTINCT zone FROM `tabSahayog Branch` WHERE zone IS NOT NULL AND zone != ''")]
@@ -1452,25 +1438,21 @@ def get_mis_filter_options():
     fixed_sol_id = None
     allowed_sol_ids = perms.get("sol_ids", [])
     
-    # Fallback: if no sol_ids from Report Preference, check Employee sahayog_branch
-    if not allowed_sol_ids:
-        employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
-        if employee_sol:
-            allowed_sol_ids = [employee_sol]
-            fixed_sol_id = employee_sol
-    
-    # If exactly one sol_id from report pref, also treat as fixed
-    if not fixed_sol_id and len(allowed_sol_ids) == 1:
-        fixed_sol_id = allowed_sol_ids[0]
-    
-    # Filter zones/regions based on user permissions
-    if perms.get("is_restricted"):
-        allowed_zones = perms.get("zones", [])
-        if allowed_zones:
-            zones = [z for z in zones if z in allowed_zones]
-        allowed_regions = perms.get("regions", [])
-        if allowed_regions:
-            regions = [r for r in regions if r in allowed_regions]
+    # If zone permissions exist, don't use sol_ids (zones are the primary filter)
+    if perms.get("is_restricted") and perms.get("zones"):
+        allowed_sol_ids = []
+        perms["sol_data"] = []
+    else:
+        # Fallback: if no sol_ids from Report Preference, check Employee sahayog_branch
+        if not allowed_sol_ids:
+            employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
+            if employee_sol:
+                allowed_sol_ids = [employee_sol]
+                fixed_sol_id = employee_sol
+        
+        # If exactly one sol_id from report pref, also treat as fixed
+        if not fixed_sol_id and len(allowed_sol_ids) == 1:
+            fixed_sol_id = allowed_sol_ids[0]
     
     # Build sol_data: branch names from Sahayog Branch
     sol_data = perms.get("sol_data", [])

@@ -176,7 +176,6 @@ class DrishtiDashboard {
 				id: "rd_smbg_pending",
 				name: "RD & SMBG Pending",
 				tableData: [],
-				kpiData: null,
 				expandedZones: {},
 			expandedRegions: {},
 			checkedRows: {},
@@ -190,8 +189,8 @@ class DrishtiDashboard {
 							<div class="spinner-border text-primary" role="status" style="width: 1.5rem; height: 1.5rem; border-width: 0.2em; animation: spinner-border .75s linear infinite;"></div>
 							<span style="margin-left: 10px; font-weight: 600; color: #475569; font-size: 14px; font-family: 'Inter', sans-serif;">Loading RD & SMBG Pending data...</span>
 						</div>
-						<div id="mis-kpi-container"${self.kpiData ? "" : ' style="display: none;"'}></div>
-						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls"${self.tableData ? "" : ' style="display: none;"'}>
+						<div id="mis-kpi-container"${self.tableData && self.tableData.length ? "" : ' style="display: none;"'}></div>
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls"${self.tableData && self.tableData.length ? "" : ' style="display: none;"'}>
 							<div style="display: flex; align-items: center; gap: 6px;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
 								<div class="btn-group mis-format-toggle" role="group">
@@ -201,6 +200,7 @@ class DrishtiDashboard {
 							</div>
 							<input type="text" id="mis-search" placeholder="Search branch or SOL ID..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
+							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="margin-left: auto; font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="mis-records-count"></div>
 						</div>
 						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
@@ -208,7 +208,7 @@ class DrishtiDashboard {
 					`);
 
 					// If data already fetched, just re-render
-					if (self.tableData && self.kpiData) {
+					if (self.tableData && self.tableData.length > 0) {
 						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 						container.find("#mis-records-count").text(`${self.tableData.length} branches`);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
@@ -222,7 +222,7 @@ class DrishtiDashboard {
 					let dataLoaded = 0;
 					function checkLoaded() {
 						dataLoaded++;
-						if (dataLoaded >= 2) {
+						if (dataLoaded >= 1) {
 							container.find("#mis-loading").hide();
 container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
 						}
@@ -235,10 +235,13 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 							if (r.message) {
 								self.filterOptions = r.message;
 								const perms = r.message.permissions || {};
+								console.log("Report Preference zones:", r.message.zones);
+								console.log("Report Preference regions:", r.message.regions);
+								console.log("Permissions:", perms);
 								const solData = r.message.sol_data || [];
-								const solIds = perms.allowed_sol_ids && perms.allowed_sol_ids.length > 0
-									? perms.allowed_sol_ids.join(",")
-									: "";
+								// If zone permissions exist, use zones as primary filter — ignore sol_ids
+								const useSolIds = (!r.message.zones || r.message.zones.length === 0) && perms.allowed_sol_ids && perms.allowed_sol_ids.length > 0;
+								const solIds = useSolIds ? perms.allowed_sol_ids.join(",") : "";
 
 								const cacheKey = "rd_smbg_cache_" + (solIds || "all");
 								const cached = localStorage.getItem(cacheKey);
@@ -248,14 +251,17 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 										const parsed = JSON.parse(cached);
 										const age = Date.now() - parsed.timestamp;
 										if (age < 3600000) {
-											// Cache hit — use it
-											self.kpiData = parsed.kpiData;
-											self.tableData = parsed.tableData;
+											// Cache hit — use it, filter by permitted zones
+											let data = parsed.tableData;
+											const pz = self.filterOptions && self.filterOptions.zones;
+											if (pz && pz.length > 0) {
+												data = data.filter(r => pz.includes(r.zone));
+											}
+											self.tableData = data;
 											self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
-											container.find("#mis-records-count").text(`${parsed.tableData.length} branches`);
+											container.find("#mis-records-count").text(`${data.length} branches`);
 											self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 											self.renderZoneFilterTags(container, dashboardInstance);
-											checkLoaded();
 											checkLoaded();
 											return;
 										}
@@ -267,32 +273,25 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 								}
 
 								frappe.call({
-									method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_kpi_data",
-									args: { sol_ids: solIds },
-									callback: function(r2) {
-										if (r2.message) {
-											self.kpiData = r2.message;
-											self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
-										}
-										checkLoaded();
-									}
-								});
-
-								frappe.call({
 									method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_pending_table_data",
 									args: { sol_ids: solIds },
 									callback: function(r3) {
 										if (r3.message) {
-											self.tableData = r3.message;
-											container.find("#mis-records-count").text(`${r3.message.length} branches`);
+											let data = r3.message;
+											const pz = self.filterOptions && self.filterOptions.zones;
+											if (pz && pz.length > 0) {
+												data = data.filter(r => pz.includes(r.zone));
+											}
+											self.tableData = data;
+											self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+											container.find("#mis-records-count").text(`${data.length} branches`);
 											self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 											self.renderZoneFilterTags(container, dashboardInstance);
-											// Cache after both loaded
+											// Cache
 											setTimeout(function() {
-												if (self.kpiData && self.tableData) {
+												if (self.tableData) {
 													localStorage.setItem(cacheKey, JSON.stringify({
 														timestamp: Date.now(),
-														kpiData: self.kpiData,
 														tableData: self.tableData,
 														solIds: solIds
 													}));
@@ -319,7 +318,7 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 							btn.css("background", isActive ? "#417d81" : "#e2e8f0");
 							btn.css("color", isActive ? "white" : "#475569");
 						});
-						if (self.kpiData) {
+						if (self.tableData && self.tableData.length > 0) {
 							self.switchFormat(format, container, dashboardInstance);
 						}
 					});
@@ -349,17 +348,19 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 					});
+
+					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function() {
+						self.refetchData(container, dashboardInstance);
+					});
 				},
 				renderKPI: function(container, dashboardInstance) {
 					const self = this;
-					const raw = self.kpiData || {}
-					const kpi = {
-						totalAccounts: raw.total_accounts ?? raw.totalAccounts ?? 0,
-						totalCollection: raw.total_collection ?? raw.totalCollection ?? 0,
-						pendingAccounts: raw.pending_accounts ?? raw.pendingAccounts ?? 0,
-						pendingInstalments: raw.pending_instalments ?? raw.pendingInstalments ?? 0,
-						pendingAmount: raw.pending_emi ?? raw.pendingAmount ?? 0
-					};
+					const data = self.tableData || [];
+					const totalAccounts = data.reduce((s, r) => s + (r.total_accounts || 0), 0);
+					const totalCollection = data.reduce((s, r) => s + (r.total_collection || 0), 0);
+					const pendingAccounts = data.reduce((s, r) => s + (r.pending_accounts || 0), 0);
+					const pendingInstalments = data.reduce((s, r) => s + (r.pending_instalments || 0), 0);
+					const pendingAmount = data.reduce((s, r) => s + (r.pending_amount || 0), 0);
 
 					const formatCount = (val) => {
 						if (!val && val !== 0) return "0";
@@ -371,11 +372,11 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 					};
 
 					const kpiCards = [
-						{ label: "Total Accounts", value: formatCount(kpi.totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
-						{ label: "Total Collection", value: formatAmount(kpi.totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
-						{ label: "Pending Accounts", value: formatCount(kpi.pendingAccounts), color: "#f59e0b", bg: "#fffbeb", icon: "⏳" },
-						{ label: "Pending Instalments", value: formatCount(kpi.pendingInstalments), color: "#f97316", bg: "#fff7ed", icon: "📅" },
-						{ label: "Pending Amount", value: formatAmount(kpi.pendingAmount), color: "#ef4444", bg: "#fef2f2", icon: "🔴" }
+						{ label: "Total Accounts", value: formatCount(totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
+						{ label: "Total Collection", value: formatAmount(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
+						{ label: "Pending Accounts", value: formatCount(pendingAccounts), color: "#f59e0b", bg: "#fffbeb", icon: "⏳" },
+						{ label: "Pending Instalments", value: formatCount(pendingInstalments), color: "#f97316", bg: "#fff7ed", icon: "📅" },
+						{ label: "Pending Amount", value: formatAmount(pendingAmount), color: "#ef4444", bg: "#fef2f2", icon: "🔴" }
 					];
 
 					const cardsHtml = kpiCards.map(card => `
@@ -436,6 +437,26 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						${cardsHtml}
 					`);
 				},
+				refetchData: function(container, dashboardInstance) {
+					const self = this;
+					// Clear all rd_smbg cache keys from localStorage
+					Object.keys(localStorage).forEach(key => {
+						if (key.startsWith("rd_smbg_cache_")) {
+							localStorage.removeItem(key);
+						}
+					});
+					// Reset state
+					self.tableData = [];
+					self.filterOptions = null;
+					self.selectedMisZones = [];
+					self.expandedZones = {};
+					self.expandedRegions = {};
+					self.checkedRows = {};
+					self.searchTerm = "";
+					self.allExpanded = false;
+					// Re-render which will re-fetch from APIs
+					self.render(container, dashboardInstance);
+				},
 				switchFormat: function(format, container, dashboardInstance) {
 					const self = this;
 					if (self.tableData && self.tableData.length > 0) {
@@ -455,12 +476,10 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						container.find("#mis-zone-filter-row").hide();
 						return;
 					}
-					// Get permitted zones from Report Preference (same as Drishti)
+					// Use permitted zones from Report Preference
 					const permittedZones = (self.filterOptions && self.filterOptions.zones) || [];
-					let zones = [...new Set(self.tableData.map(r => r.zone).filter(Boolean))].sort();
-					if (permittedZones.length > 0) {
-						zones = zones.filter(z => permittedZones.includes(z));
-					}
+					let zones = permittedZones.length > 0 ? permittedZones : [...new Set(self.tableData.map(r => r.zone).filter(Boolean))].sort();
+					console.log("MIS zone filter zones:", zones);
 					if (zones.length === 0) {
 						container.find("#mis-zone-filter-row").hide();
 						return;
