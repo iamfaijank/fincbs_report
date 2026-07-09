@@ -20,23 +20,22 @@ CATEGORY_ORDER = ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Ze
 def get_user_report_permissions(user):
     """
     Fetches permissions from 'Report Preference' for the current user.
-    Returns restricted lists for zones, regions, and sol_ids.
-    Numeric values are extracted for zones and regions to avoid string matching issues.
+    Returns restricted lists for zones, regions, and sol_data (sol_id + branch_name).
     """
     permissions = {
         "zones": [],
         "regions": [],
+        "sol_data": [],
         "sol_ids": [],
         "is_restricted": False,
         "all_regions": False,
-        "zone_ids": [], # Numeric IDs
-        "region_ids": [], # Numeric IDs
+        "zone_ids": [],
+        "region_ids": [],
         "has_access": True
     }
 
     pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
     if not pref_name:
-        # System Manager usually sees everything if no specific preference
         if "System Manager" in frappe.get_roles(user):
             return permissions
         permissions["has_access"] = False
@@ -47,7 +46,6 @@ def get_user_report_permissions(user):
     permissions["is_restricted"] = True
     permissions["all_regions"] = doc.all_regions
     
-    # Helper to handle both Child Table and MultiSelect string fields
     def get_list_values(field_name, sub_field):
         val = getattr(doc, field_name, None)
         if not val:
@@ -55,7 +53,6 @@ def get_user_report_permissions(user):
         if isinstance(val, list):
             return [getattr(d, sub_field, None) for d in val if getattr(d, sub_field, None)]
         if isinstance(val, str):
-            # Handle comma or newline separated values from MultiSelect fields
             return [v.strip() for v in re.split(r"[, \n]+", val) if v.strip()]
         return []
 
@@ -66,7 +63,16 @@ def get_user_report_permissions(user):
     permissions["region_ids"] = [re.sub(r"\D", "", r) for r in permissions["regions"] if re.sub(r"\D", "", r)]
 
     permissions["sol_ids"] = get_list_values("sol_id", "sol_id")
-        
+
+    # Fetch branch names from Sahayog Branch for permitted sol_ids
+    if permissions["sol_ids"]:
+        branches = frappe.get_all(
+            "Sahayog Branch",
+            filters={"name": ["in", permissions["sol_ids"]]},
+            fields=["name as sol_id", "branch as branch_name"]
+        )
+        permissions["sol_data"] = branches
+    
     return permissions
 
 
@@ -1005,9 +1011,29 @@ def get_rd_smbg_pending_data(sol_ids=None, zone=None, region=None, district=None
             AND a.preferredaddress = 'Y'
     """
     
-    # Build filter conditions inside main_data to optimize Oracle execution
-    filter_conditions = ["g.sol_id = '1001'"]
+    # Build filter conditions inside main_data to optimize execution
+    filter_conditions = []
     params = []
+
+    if sol_id_list:
+        placeholders = ','.join(['%s'] * len(sol_id_list))
+        filter_conditions.append(f"g.sol_id IN ({placeholders})")
+        params.extend(sol_id_list)
+
+    if zone:
+        filter_conditions.append("s.division_name = %s")
+        params.append(zone)
+
+    if region:
+        filter_conditions.append("s.region_name = %s")
+        params.append(region)
+
+    if district:
+        filter_conditions.append("s.circle_office_name = %s")
+        params.append(district)
+
+    if not filter_conditions:
+        filter_conditions.append("1=1")
     
     query += " AND " + " AND ".join(filter_conditions)
         
@@ -1060,7 +1086,6 @@ def get_rd_smbg_pending_data(sol_ids=None, zone=None, region=None, district=None
     FROM main_data m
     LEFT JOIN tdt_summary t 
         ON m.acid = t.acid
-    LIMIT 10
     """
     
     print("\n[RD/SMBG Debug] Starting fetch from DR database...")
@@ -1108,14 +1133,371 @@ def get_rd_smbg_pending_data(sol_ids=None, zone=None, region=None, district=None
 
 
 @frappe.whitelist()
+def get_rd_smbg_kpi_data(sol_ids=None, zone=None, region=None, district=None):
+    from custom_report.db_connection import get_dr_connection
+    import json
+
+    sol_id_list = []
+    if sol_ids:
+        if isinstance(sol_ids, (int, float)):
+            sol_id_list = [str(sol_ids)]
+        elif isinstance(sol_ids, list):
+            sol_id_list = [str(s) for s in sol_ids]
+        elif isinstance(sol_ids, str):
+            try:
+                parsed = json.loads(sol_ids)
+                if isinstance(parsed, list):
+                    sol_id_list = [str(s) for s in parsed]
+                elif isinstance(parsed, (int, float)):
+                    sol_id_list = [str(parsed)]
+                else:
+                    sol_id_list = [str(parsed)]
+            except ValueError:
+                sol_id_list = [s.strip() for s in sol_ids.split(",") if s.strip()]
+        else:
+            sol_id_list = [str(sol_ids)]
+
+    query = """
+    WITH main_data AS (
+        SELECT g.acid
+        FROM tbaadm.gam g
+        JOIN tbaadm.tam t ON g.acid = t.acid
+        JOIN tbaadm.gsp p ON g.schm_code = p.schm_code
+        JOIN tbaadm.sol s ON g.sol_id = s.sol_id
+        JOIN crmuser.address a ON g.cif_id = a.orgkey
+        WHERE g.schm_code IN ('2005','2010','2011','2012','2013','2014','2015','2016')
+            AND g.entity_cre_flg = 'Y'
+            AND g.del_flg = 'N'
+            AND g.acct_cls_flg = 'N'
+            AND a.preferredaddress = 'Y'
+    """
+    
+    filter_conditions = []
+    params = []
+
+    if sol_id_list:
+        placeholders = ','.join(['%s'] * len(sol_id_list))
+        filter_conditions.append(f"g.sol_id IN ({placeholders})")
+        params.extend(sol_id_list)
+
+    if zone:
+        filter_conditions.append("s.division_name = %s")
+        params.append(zone)
+
+    if region:
+        filter_conditions.append("s.region_name = %s")
+        params.append(region)
+
+    if district:
+        filter_conditions.append("s.circle_office_name = %s")
+        params.append(district)
+
+    if not filter_conditions:
+        filter_conditions.append("1=1")
+
+    query += " AND " + " AND ".join(filter_conditions)
+
+    query += """
+    ),
+    tdt_summary AS (
+        SELECT acid,
+               COALESCE(SUM(tran_amt), 0) AS total_instalment_paid,
+               COALESCE(SUM(flow_amt) - SUM(tran_amt), 0) AS pending_amount,
+               COUNT(CASE WHEN flow_amt > 0 THEN 1 END) - COUNT(CASE WHEN tran_amt > 0 THEN 1 END) AS pending_instalments
+        FROM tbaadm.tdt
+        WHERE flow_code = 'NI'
+            AND (flow_amt > 0 OR tran_amt > 0)
+            AND flow_date <= CURRENT_DATE
+        GROUP BY acid
+    )
+    SELECT COUNT(*) AS total_accounts,
+           COALESCE(SUM(t.total_instalment_paid), 0) AS total_collection,
+           COALESCE(SUM(CASE WHEN t.pending_amount > 0 THEN 1 ELSE 0 END), 0) AS pending_accounts,
+           COALESCE(SUM(t.pending_amount), 0) AS pending_emi,
+           COALESCE(SUM(t.pending_instalments), 0) AS pending_instalments
+    FROM main_data m
+    LEFT JOIN tdt_summary t ON m.acid = t.acid
+    """
+
+    print(f"\n[RD/SMBG KPI Debug] Starting KPI fetch with params: {params}")
+    print(f"[RD/SMBG KPI Debug] Full query:\n{query}")
+
+    conn = get_dr_connection()
+    if not conn:
+        frappe.log_error("Failed to connect to DR database", "RD SMBG KPI API")
+        return {"total_accounts": 0, "total_collection": 0, "pending_accounts": 0, "pending_emi": 0, "pending_instalments": 0}
+
+    try:
+        cursor = conn.cursor()
+        print(f"[RD/SMBG KPI Debug] Executing query...")
+        cursor.execute(query, tuple(params))
+        row = cursor.fetchone()
+        print(f"[RD/SMBG KPI Debug] Row result: {row}")
+        if row:
+            return {
+                "total_accounts": row[0] or 0,
+                "total_collection": float(row[1]) if row[1] else 0,
+                "pending_accounts": row[2] or 0,
+                "pending_emi": float(row[3]) if row[3] else 0,
+                "pending_instalments": row[4] or 0
+            }
+        return {"total_accounts": 0, "total_collection": 0, "pending_accounts": 0, "pending_emi": 0, "pending_instalments": 0}
+    except Exception as e:
+        print(f"[RD/SMBG KPI Debug] EXCEPTION: {str(e)}")
+        frappe.log_error(f"Error executing RD/SMBG KPI query: {str(e)}", "RD SMBG KPI API")
+        return {"total_accounts": 0, "total_collection": 0, "pending_accounts": 0, "pending_emi": 0, "pending_instalments": 0}
+    finally:
+        try:
+            conn.close()
+        except Exception as e:
+            print(f"[RD/SMBG KPI Debug] Exception closing connection: {str(e)}")
+
+
+@frappe.whitelist()
+def get_rd_smbg_pending_table_data(sol_ids=None, zone=None, region=None, district=None):
+    from custom_report.db_connection import get_dr_connection
+    import json
+
+    sol_id_list = []
+    if sol_ids:
+        if isinstance(sol_ids, (int, float)):
+            sol_id_list = [str(sol_ids)]
+        elif isinstance(sol_ids, list):
+            sol_id_list = [str(s) for s in sol_ids]
+        elif isinstance(sol_ids, str):
+            try:
+                parsed = json.loads(sol_ids)
+                if isinstance(parsed, list):
+                    sol_id_list = [str(s) for s in parsed]
+                elif isinstance(parsed, (int, float)):
+                    sol_id_list = [str(parsed)]
+                else:
+                    sol_id_list = [str(parsed)]
+            except ValueError:
+                sol_id_list = [s.strip() for s in sol_ids.split(",") if s.strip()]
+        else:
+            sol_id_list = [str(sol_ids)]
+
+    query = """
+    WITH main_data AS (
+        SELECT g.acid, g.sol_id, s.sol_desc, s.division_name, s.region_name, s.circle_office_name
+        FROM tbaadm.gam g
+        JOIN tbaadm.tam t ON g.acid = t.acid
+        JOIN tbaadm.gsp p ON g.schm_code = p.schm_code
+        JOIN tbaadm.sol s ON g.sol_id = s.sol_id
+        JOIN crmuser.address a ON g.cif_id = a.orgkey
+        WHERE g.schm_code IN ('2005','2010','2011','2012','2013','2014','2015','2016')
+            AND g.entity_cre_flg = 'Y'
+            AND g.del_flg = 'N'
+            AND g.acct_cls_flg = 'N'
+            AND a.preferredaddress = 'Y'
+    """
+    filter_conditions = []
+    params = []
+
+    if sol_id_list:
+        placeholders = ','.join(['%s'] * len(sol_id_list))
+        filter_conditions.append(f"g.sol_id IN ({placeholders})")
+        params.extend(sol_id_list)
+
+    if zone:
+        filter_conditions.append("s.division_name = %s")
+        params.append(zone)
+
+    if region:
+        filter_conditions.append("s.region_name = %s")
+        params.append(region)
+
+    if district:
+        filter_conditions.append("s.circle_office_name = %s")
+        params.append(district)
+
+    if not filter_conditions:
+        filter_conditions.append("1=1")
+
+    query += " AND " + " AND ".join(filter_conditions)
+
+    query += """
+    ),
+    tdt_summary AS (
+        SELECT acid,
+               COALESCE(SUM(tran_amt), 0) AS total_instalment_paid,
+               COALESCE(SUM(flow_amt) - SUM(tran_amt), 0) AS pending_amount,
+               COUNT(CASE WHEN flow_amt > 0 THEN 1 END) - COUNT(CASE WHEN tran_amt > 0 THEN 1 END) AS pending_instalments
+        FROM tbaadm.tdt
+        WHERE flow_code = 'NI'
+            AND (flow_amt > 0 OR tran_amt > 0)
+            AND flow_date <= CURRENT_DATE
+        GROUP BY acid
+    )
+    SELECT 
+        m.sol_id,
+        m.sol_desc,
+        COUNT(*) AS total_accounts,
+        COALESCE(SUM(t.total_instalment_paid), 0) AS total_collection,
+        COALESCE(SUM(CASE WHEN t.pending_amount > 0 THEN 1 ELSE 0 END), 0) AS pending_accounts,
+        COALESCE(SUM(t.pending_amount), 0) AS pending_amount,
+        COALESCE(SUM(t.pending_instalments), 0) AS pending_instalments
+    FROM main_data m
+    LEFT JOIN tdt_summary t ON m.acid = t.acid
+    GROUP BY m.sol_id, m.sol_desc
+    ORDER BY m.sol_id
+    """
+
+    conn = get_dr_connection()
+    if not conn:
+        frappe.log_error("Failed to connect to DR database", "RD SMBG Table API")
+        return []
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(query, tuple(params))
+        rows = cursor.fetchall()
+        
+        # Fetch Sahayog Branch mapping for these sol_ids
+        sol_ids_found = [str(r[0]) for r in rows] if rows else []
+        branch_map = {}
+        if sol_ids_found:
+            sb_data = frappe.get_all(
+                "Sahayog Branch",
+                filters={"name": ["in", sol_ids_found]},
+                fields=["name as sol_id", "zone", "region", "district", "branch"]
+            )
+            for b in sb_data:
+                branch_map[b.sol_id] = {
+                    "zone": b.zone or "",
+                    "region": b.region or "",
+                    "district": b.district or "",
+                    "branch_name": b.branch or ""
+                }
+
+        result = []
+        for row in rows:
+            sid = str(row[0])
+            sb = branch_map.get(sid, {})
+            result.append({
+                            "sol_id": sid,
+                "sol_desc": row[1] or "",
+                "zone": sb.get("zone", ""),
+                "region": sb.get("region", ""),
+                "district": sb.get("district", ""),
+                "branch_name": sb.get("branch_name", ""),
+                "total_accounts": row[2] or 0,
+                "total_collection": float(row[3]) if row[3] else 0,
+                "pending_accounts": row[4] or 0,
+                "pending_amount": float(row[5]) if row[5] else 0,
+                "pending_instalments": row[6] or 0
+            })
+        return result
+    except Exception as e:
+        frappe.log_error(f"Error executing RD/SMBG table query: {str(e)}", "RD SMBG Table API")
+        return []
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+@frappe.whitelist()
 def get_mis_filter_options():
-    # Fetch unique zones, regions, and districts from tabBranch Category Report
-    zones = [r[0] for r in frappe.db.sql("SELECT DISTINCT zone FROM `tabBranch Category Report` WHERE zone IS NOT NULL AND zone != ''")]
-    regions = [r[0] for r in frappe.db.sql("SELECT DISTINCT region FROM `tabBranch Category Report` WHERE region IS NOT NULL AND region != ''")]
-    districts = [r[0] for r in frappe.db.sql("SELECT DISTINCT district FROM `tabBranch Category Report` WHERE district IS NOT NULL AND district != ''")]
+    user = frappe.session.user
+    perms = get_user_report_permissions(user)
+    
+    zones = []
+    regions = []
+    districts = []
+
+    # Apply same permission logic as Drishti (get_sahayog_dashboard)
+    if perms.get("is_restricted"):
+        # If sol_ids provided, fetch zones/regions from those branches
+        if perms["sol_ids"]:
+            branch_data = frappe.get_all(
+                "Sahayog Branch",
+                filters={"name": ["in", perms["sol_ids"]]},
+                fields=["zone", "region", "district"]
+            )
+            zones = sorted(set(b.zone for b in branch_data if b.zone))
+            regions = sorted(set(b.region for b in branch_data if b.region))
+            districts = sorted(set(b.district for b in branch_data if b.district))
+        else:
+            # Use zone_ids (numeric) for REGEXP matching (same as Drishti)
+            if perms["zone_ids"]:
+                regex_pattern = f"({'|'.join(perms['zone_ids'])})"
+                zones = frappe.db.sql("""
+                    SELECT DISTINCT zone FROM `tabSahayog Branch` 
+                    WHERE zone REGEXP %s
+                """, (regex_pattern), pluck=True)
+                zones = sorted(z or "" for z in zones if z)
+            else:
+                zones = [r[0] for r in frappe.db.sql("SELECT DISTINCT zone FROM `tabSahayog Branch` WHERE zone IS NOT NULL AND zone != ''")]
+            
+            if perms["region_ids"]:
+                regex_pattern = f"({'|'.join(perms['region_ids'])})"
+                regions = frappe.db.sql("""
+                    SELECT DISTINCT region FROM `tabSahayog Branch` 
+                    WHERE region REGEXP %s
+                """, (regex_pattern), pluck=True)
+                regions = sorted(r or "" for r in regions if r)
+            else:
+                regions = [r[0] for r in frappe.db.sql("SELECT DISTINCT region FROM `tabSahayog Branch` WHERE region IS NOT NULL AND region != ''")]
+            
+            districts = [r[0] for r in frappe.db.sql("SELECT DISTINCT district FROM `tabSahayog Branch` WHERE district IS NOT NULL AND district != ''")]
+    else:
+        # No restrictions — show all
+        zones = [r[0] for r in frappe.db.sql("SELECT DISTINCT zone FROM `tabSahayog Branch` WHERE zone IS NOT NULL AND zone != ''")]
+        regions = [r[0] for r in frappe.db.sql("SELECT DISTINCT region FROM `tabSahayog Branch` WHERE region IS NOT NULL AND region != ''")]
+        districts = [r[0] for r in frappe.db.sql("SELECT DISTINCT district FROM `tabSahayog Branch` WHERE district IS NOT NULL AND district != ''")]
+
+    fixed_sol_id = None
+    allowed_sol_ids = perms.get("sol_ids", [])
+    
+    # Fallback: if no sol_ids from Report Preference, check Employee sahayog_branch
+    if not allowed_sol_ids:
+        employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
+        if employee_sol:
+            allowed_sol_ids = [employee_sol]
+            fixed_sol_id = employee_sol
+    
+    # If exactly one sol_id from report pref, also treat as fixed
+    if not fixed_sol_id and len(allowed_sol_ids) == 1:
+        fixed_sol_id = allowed_sol_ids[0]
+    
+    # Filter zones/regions based on user permissions
+    if perms.get("is_restricted"):
+        allowed_zones = perms.get("zones", [])
+        if allowed_zones:
+            zones = [z for z in zones if z in allowed_zones]
+        allowed_regions = perms.get("regions", [])
+        if allowed_regions:
+            regions = [r for r in regions if r in allowed_regions]
+    
+    # Build sol_data: branch names from Sahayog Branch
+    sol_data = perms.get("sol_data", [])
+    if not sol_data and allowed_sol_ids:
+        sol_data = frappe.get_all(
+            "Sahayog Branch",
+            filters={"name": ["in", allowed_sol_ids]},
+            fields=["name as sol_id", "branch as branch_name"],
+            order_by="name asc"
+        )
+    elif not sol_data:
+        sol_data = frappe.get_all(
+            "Sahayog Branch",
+            fields=["name as sol_id", "branch as branch_name"],
+            order_by="name asc"
+        )
     
     return {
         "zones": sorted(zones),
         "regions": sorted(regions),
-        "districts": sorted(districts)
+        "districts": sorted(districts),
+        "sol_data": sol_data,
+        "permissions": {
+            "is_restricted": perms.get("is_restricted", False),
+            "allowed_zones": perms.get("zones", []),
+            "allowed_regions": perms.get("regions", []),
+            "allowed_sol_ids": allowed_sol_ids,
+            "fixed_sol_id": fixed_sol_id
+        }
     }
