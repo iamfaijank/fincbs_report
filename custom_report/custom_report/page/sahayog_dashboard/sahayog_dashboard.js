@@ -259,7 +259,11 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 											checkLoaded();
 											return;
 										}
-									} catch(e) {}
+										// Expired cache — delete it
+										localStorage.removeItem(cacheKey);
+									} catch(e) {
+										localStorage.removeItem(cacheKey);
+									}
 								}
 
 								frappe.call({
