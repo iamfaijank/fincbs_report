@@ -1126,7 +1126,7 @@ def get_daily_account_opening_data(selected_date=None):
 
     product_map = {}
     for p in products:
-        code = p.name
+        code = (p.name or "").strip()
         pname = (p.product_name or "").upper()
         gname = (p.group_name or "").upper()
         gsub = (p.group_subname or "").upper()
@@ -1134,21 +1134,23 @@ def get_daily_account_opening_data(selected_date=None):
         
         category = "FD"  # Default fallback
         
-        if gname == "CASA":
-            if gsub == "SA":
+        # Check group_subname first (if SA, CA, TASC)
+        if gsub == "SA":
+            category = "SA"
+        elif gsub == "CA":
+            category = "CA"
+        elif gsub == "TASC":
+            category = "TASC"
+        # Or if group_name is CASA, map based on group_subname or product type
+        elif gname == "CASA":
+            if gsub == "SA" or ptype == "SBA":
                 category = "SA"
-            elif gsub == "CA":
+            elif gsub == "CA" or ptype == "CAA":
                 category = "CA"
-            elif gsub == "TASC":
+            elif gsub == "TASC" or "TASC" in pname:
                 category = "TASC"
             else:
-                # Fallback within CASA group if group_subname is not set
-                if "TASC" in pname:
-                    category = "TASC"
-                elif ptype == "CAA":
-                    category = "CA"
-                else:
-                    category = "SA"
+                category = "SA"
         elif gname == "RD":
             category = "RD"
         elif gname == "SMBG":
@@ -1158,20 +1160,35 @@ def get_daily_account_opening_data(selected_date=None):
         elif gname in ("FD", "DAM"):
             category = "FD"
         else:
-            # Fallback heuristics for unmapped schemes
-            if gsub == "SA" or code.startswith("SB") or "SAVING" in pname:
+            # Fallback based on product type and name heuristics
+            if ptype == "SBA":
                 category = "SA"
-            elif gsub == "CA" or code.startswith("CA") or "CURRENT" in pname:
+            elif ptype == "CAA":
                 category = "CA"
-            elif gsub == "TASC" or "TASC" in pname:
-                category = "TASC"
-            elif code.startswith("RD") or "RECURRING" in pname:
-                category = "RD"
-            elif code.startswith("DD") or "DAILY" in pname:
-                category = "DD"
+            elif ptype == "TDA":
+                if "RECURRING" in pname or code.startswith("RD") or gname == "RD":
+                    category = "RD"
+                elif "SMBG" in pname or "BACHAT" in pname or gname == "SMBG":
+                    category = "SMBG"
+                elif "DAILY" in pname or code.startswith("DD") or gname == "DD":
+                    category = "DD"
+                else:
+                    category = "FD"
             else:
-                category = "FD"
-                
+                # Heuristics if product_type is also missing
+                if "TASC" in pname or gsub == "TASC":
+                    category = "TASC"
+                elif "SAVING" in pname or code.startswith("SB") or gsub == "SA":
+                    category = "SA"
+                elif "CURRENT" in pname or code.startswith("CA") or gsub == "CA":
+                    category = "CA"
+                elif "RECURRING" in pname or code.startswith("RD"):
+                    category = "RD"
+                elif "DAILY" in pname or code.startswith("DD"):
+                    category = "DD"
+                else:
+                    category = "FD"
+                    
         product_map[code] = category
 
     query = """
@@ -1234,7 +1251,7 @@ def get_daily_account_opening_data(selected_date=None):
         rows = cursor.fetchall()
         
         # Look up zones / regions from local Sahayog Branch
-        sol_ids_found = [str(r[2]) for r in rows] if rows else []
+        sol_ids_found = [str(r[2]).strip() for r in rows] if rows else []
         branch_map = {}
         if sol_ids_found:
             sb_data = frappe.get_all(
@@ -1243,7 +1260,7 @@ def get_daily_account_opening_data(selected_date=None):
                 fields=["name as sol_id", "zone", "region", "district", "branch"]
             )
             for b in sb_data:
-                branch_map[b.sol_id] = {
+                branch_map[b.sol_id.strip()] = {
                     "zone": b.zone or "",
                     "region": b.region or "",
                     "district": b.district or "",
@@ -1253,8 +1270,8 @@ def get_daily_account_opening_data(selected_date=None):
         # Group and aggregate raw records by branch
         branch_aggregates = {}
         for row in rows:
-            schm_code = row[0] or ""
-            sid = str(row[2])
+            schm_code = (row[0] or "").strip()
+            sid = str(row[2]).strip()
             region_name = row[3]
             circle_office_name = row[5]
             count = int(row[6]) if row[6] is not None else 0
@@ -1280,7 +1297,21 @@ def get_daily_account_opening_data(selected_date=None):
                     "total": 0
                 }
                 
-            cat = product_map.get(schm_code, "FD")
+            cat = product_map.get(schm_code)
+            if not cat:
+                # Fallback if scheme code not in local Product doctype
+                code_upper = schm_code.upper()
+                if code_upper.startswith("SB"):
+                    cat = "SA"
+                elif code_upper.startswith("CA"):
+                    cat = "CA"
+                elif code_upper.startswith("RD"):
+                    cat = "RD"
+                elif code_upper.startswith("DD"):
+                    cat = "DD"
+                else:
+                    cat = "FD"
+                    
             if cat == "CA":
                 branch_aggregates[sid]["ca"] += count
             elif cat == "SA":
