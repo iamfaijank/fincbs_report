@@ -1580,6 +1580,36 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 				this.state.selectedQuarter ||
 				this.getQuarterFromDate(this.state.selectedDate || frappe.datetime.get_today());
 			this.months = qMap[quarter] || this.months;
+
+			// Aggregate 3 months into 1 quarterly entry to prevent browser crash
+			const qKey = quarter;
+			const qMonthKeys = this.months.map(m => m.key);
+			data.branch_wise.forEach(branch => {
+				let tgt = 0, ach = 0;
+				qMonthKeys.forEach(k => {
+					const md = branch.months[k];
+					if (md) {
+						tgt += md.target || 0;
+						ach += md.achievement || 0;
+					}
+				});
+				const pct = tgt > 0 ? (ach / tgt) * 100 : 0;
+				let cat = "E";
+				if (pct >= 100) cat = "A";
+				else if (pct >= 80) cat = "B";
+				else if (pct >= 60) cat = "C";
+				else if (pct >= 40) cat = "D";
+				branch.months = {
+					[qKey]: {
+						target: Math.round(tgt * 100) / 100,
+						achievement: Math.round(ach * 100) / 100,
+						percentage: Math.round(pct * 100) / 100,
+						category: cat,
+						status: "aggregated"
+					}
+				};
+			});
+			this.months = [{ key: qKey, display: quarter, date: this.months[0]?.date || frappe.datetime.get_today() }];
 		}
 
 		// Direct mapping
