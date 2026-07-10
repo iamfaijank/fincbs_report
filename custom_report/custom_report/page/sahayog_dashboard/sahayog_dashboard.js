@@ -189,7 +189,6 @@ class DrishtiDashboard {
 							<div class="spinner-border text-primary" role="status" style="width: 1.5rem; height: 1.5rem; border-width: 0.2em; animation: spinner-border .75s linear infinite;"></div>
 							<span style="margin-left: 10px; font-weight: 600; color: #475569; font-size: 14px; font-family: 'Inter', sans-serif;">Loading RD & SMBG Pending data...</span>
 						</div>
-						<div id="mis-kpi-container"${self.tableData && self.tableData.length ? "" : ' style="display: none;"'}></div>
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls"${self.tableData && self.tableData.length ? "" : ' style="display: none;"'}>
 							<div style="display: flex; align-items: center; gap: 6px;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
@@ -204,6 +203,7 @@ class DrishtiDashboard {
 							<div style="margin-left: auto; font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="mis-records-count"></div>
 						</div>
 						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
+						<div id="mis-kpi-container"${self.tableData && self.tableData.length ? "" : ' style="display: none;"'}></div>
 						<div id="mis-table-container"${self.tableData ? "" : ' style="display: none;"'}></div>
 					`);
 
@@ -867,6 +867,8 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 		if (container.length) {
 			container.find(".frappe-control").remove();
 			
+			const yesterday = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+
 			this.dateControl = frappe.ui.form.make_control({
 				parent: container,
 				df: {
@@ -874,39 +876,57 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 					fieldname: "date_selector",
 					placeholder: "DD/MM/YYYY",
 					only_input: true,
+					datepicker_options: {
+						maxDate: yesterday,
+					},
 					change: function () {
 						if (self.isRefreshingDate) return;
 						const val = self.dateControl.get_value();
 						if (!val) return;
 
-						self.state.selectedDate = val;
-						if (self.state.activeTab && self.tabDates.hasOwnProperty(self.state.activeTab)) {
-							self.tabDates[self.state.activeTab] = val;
-						}
-
-						// Automatically update financial year based on selected date
-						const calculatedFy = self.getFinancialYearFromDate(val);
-						if (calculatedFy) {
-							const $fySelector = $("#fy-selector");
-							if ($fySelector.length) {
-								if (!$fySelector.find(`option[value="${calculatedFy}"]`).length) {
-									$fySelector.prepend(`<option value="${calculatedFy}">${calculatedFy}</option>`);
-								}
-								$fySelector.val(calculatedFy);
+						const today = frappe.datetime.get_today();
+						if (val >= today) {
+							if (self._lastRejectedDate !== val) {
+								self._lastRejectedDate = val;
+								frappe.show_alert({
+									message: __("Today and future dates are not allowed."),
+									indicator: "red",
+								}, 5);
 							}
-							self.state.financialYear = calculatedFy;
+							self.isRefreshingDate = true;
+							self.dateControl.set_value(self.state.selectedDate || yesterday);
+							self.isRefreshingDate = false;
+						} else {
+							self._lastRejectedDate = null;
+							self.state.selectedDate = val;
+							if (self.state.activeTab && self.tabDates.hasOwnProperty(self.state.activeTab)) {
+								self.tabDates[self.state.activeTab] = val;
+							}
+
+							// Automatically update financial year based on selected date
+							const calculatedFy = self.getFinancialYearFromDate(val);
+							if (calculatedFy) {
+								const $fySelector = $("#fy-selector");
+								if ($fySelector.length) {
+									if (!$fySelector.find(`option[value="${calculatedFy}"]`).length) {
+										$fySelector.prepend(`<option value="${calculatedFy}">${calculatedFy}</option>`);
+									}
+									$fySelector.val(calculatedFy);
+								}
+								self.state.financialYear = calculatedFy;
+							}
+
+							// Automatically update selected quarter based on selected date
+							self.state.selectedQuarter = self.getQuarterFromDate(val);
+
+							// Automatically update selected month key based on selected date
+							const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+							const monthNum = parseInt(val.split("-")[1], 10); // 1-12
+							self.state.selectedMonth = monthNames[monthNum - 1];
+
+							self.updateUrlFromState();
+							self.loadData();
 						}
-
-						// Automatically update selected quarter based on selected date
-						self.state.selectedQuarter = self.getQuarterFromDate(val);
-
-						// Automatically update selected month key based on selected date
-						const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-						const monthNum = parseInt(val.split("-")[1], 10); // 1-12
-						self.state.selectedMonth = monthNames[monthNum - 1];
-
-						self.updateUrlFromState();
-						self.loadData();
 					}
 				},
 				render_input: true
