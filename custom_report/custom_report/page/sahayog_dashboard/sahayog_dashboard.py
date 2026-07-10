@@ -389,7 +389,7 @@ def get_sahayog_dashboard(
                     matched_zones = frappe.db.sql("""
                         SELECT DISTINCT zone FROM `tabSahayog Branch` 
                         WHERE zone REGEXP %s
-                    """, (regex_pattern), pluck=True)
+                    """, (regex_pattern,), pluck=True)
                     combined_filters["zone"] = ["in", matched_zones] if matched_zones else ["in", ["_NONE_"]]
                 else:
                     combined_filters["zone"] = ["like", f"%{perms['zone_ids'][0]}"]
@@ -401,7 +401,7 @@ def get_sahayog_dashboard(
                     matched_regions = frappe.db.sql("""
                         SELECT DISTINCT region FROM `tabSahayog Branch` 
                         WHERE region REGEXP %s
-                    """, (regex_pattern), pluck=True)
+                    """, (regex_pattern,), pluck=True)
                     combined_filters["region"] = ["in", matched_regions] if matched_regions else ["in", ["_NONE_"]]
                 else:
                     combined_filters["region"] = ["like", f"%{perms['region_ids'][0]}"]

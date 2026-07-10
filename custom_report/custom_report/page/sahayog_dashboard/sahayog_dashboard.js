@@ -8,7 +8,8 @@ const getRemainingWorkingDaysExcludingSundays = (year, monthIndex, currentDay) =
 	let workingDays = 0;
 	for (let day = currentDay; day <= lastDayOfMonth; day++) {
 		const date = new Date(year, monthIndex, day);
-		if (date.getDay() !== 0) { // 0 represents Sunday
+		if (date.getDay() !== 0) {
+			// 0 represents Sunday
 			workingDays++;
 		}
 	}
@@ -23,8 +24,16 @@ frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 	});
 
 	// Style the title heading dynamically with bold styling
-	$(wrapper).find(".title-text").html('<span style="font-weight: 800; color: #417d81; font-size: 24px; letter-spacing: -0.5px; font-family: \'Inter\', sans-serif;">Drishti</span>');
-	$(wrapper).find(".title-text").after('<div id="drishti-subtitle" style="font-size: 12px; color: #64748b; margin-top: 4px; font-weight: 500; font-family: \'Inter\', sans-serif;">Updated till: Loading...</div>');
+	$(wrapper)
+		.find(".title-text")
+		.html(
+			"<span style=\"font-weight: 800; color: #417d81; font-size: 24px; letter-spacing: -0.5px; font-family: 'Inter', sans-serif;\">Drishti</span>",
+		);
+	$(wrapper)
+		.find(".title-text")
+		.after(
+			'<div id="drishti-subtitle" style="font-size: 12px; color: #64748b; margin-top: 4px; font-weight: 500; font-family: \'Inter\', sans-serif;">Updated till: Loading...</div>',
+		);
 
 	wrapper.dashboard = new DrishtiDashboard(page);
 };
@@ -45,17 +54,23 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 			if (r.message) {
 				const dateParts = r.message.split("-");
 				const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-				$(wrapper).find("#drishti-subtitle").text("Updated till: " + formattedDate);
+				$(wrapper)
+					.find("#drishti-subtitle")
+					.text("Updated till: " + formattedDate);
 			} else {
 				$(wrapper).find("#drishti-subtitle").text("");
 			}
-		}
+		},
 	});
 
 	// Clean up any old unmanaged container style tags from previous development sessions
-	$("head style").each(function() {
+	$("head style").each(function () {
 		const text = $(this).text();
-		if (text.includes(".container") && text.includes("max-width: 100%") && !text.includes(".sahayog-dashboard-full-width")) {
+		if (
+			text.includes(".container") &&
+			text.includes("max-width: 100%") &&
+			!text.includes(".sahayog-dashboard-full-width")
+		) {
 			$(this).remove();
 		}
 	});
@@ -109,8 +124,15 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 					const currentMonthIndex = now.getMonth();
 					const currentDay = now.getDate();
 
-					const workingDaysLeft = getRemainingWorkingDaysExcludingSundays(year, currentMonthIndex, currentDay);
-					const daysLeftText = workingDaysLeft === 1 ? "1 Working Day Left" : `${workingDaysLeft} Working Days Left`;
+					const workingDaysLeft = getRemainingWorkingDaysExcludingSundays(
+						year,
+						currentMonthIndex,
+						currentDay,
+					);
+					const daysLeftText =
+						workingDaysLeft === 1
+							? "1 Working Day Left"
+							: `${workingDaysLeft} Working Days Left`;
 
 					$headerTimer.html(daysLeftText);
 				}
@@ -171,148 +193,75 @@ class DrishtiDashboard {
 		this.zoneCounts = {};
 		this.productData = [];
 
+		// Dashboard containers for Drishti / MIS toggle
+		this.drishti_container = null;
+		this.mis_container = null;
+
 		// Registered MIS Reports configuration
 		this.misReportsList = [
 			{
 				id: "rd_smbg_pending",
 				name: "RD & SMBG Pending",
 				tableData: [],
+				filterOptions: null,
 				expandedZones: {},
-			expandedRegions: {},
-			checkedRows: {},
-			searchTerm: "",
-			allExpanded: false,
-			selectedMisZones: [],
-				render: function(container, dashboardInstance) {
+				expandedRegions: {},
+				checkedRows: {},
+				searchTerm: "",
+				allExpanded: false,
+				selectedMisZones: [],
+				render: function (container, dashboardInstance, seq) {
 					const self = this;
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
-							<div style="display: flex; align-items: center; gap: 6px;">
+							<input type="text" id="mis-search" placeholder="Search branch or SOL ID..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
+							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
 								<div class="btn-group mis-format-toggle" role="group">
 									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
 									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
 								</div>
 							</div>
-							<input type="text" id="mis-search" placeholder="Search branch or SOL ID..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
-							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
-							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
-							<div style="margin-left: auto; font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="mis-records-count"></div>
+							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="mis-records-count"></div>
 						</div>
 						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
-							<!-- Skeleton Loader Styles -->
 							<style>
-								.mis-skeleton-table {
-									width: 100%;
-									border-collapse: separate;
-									border-spacing: 0;
-									border: 1px solid #e2e8f0;
-									border-radius: 8px;
-									overflow: hidden;
-									background: #fff;
-								}
-								.mis-skeleton-table th {
-									background: #f1f5f9;
-									padding: 10px 12px;
-									border-bottom: 1px solid #cbd5e1;
-									font-weight: 600;
-									font-size: 12px;
-									color: #475569;
-									text-transform: uppercase;
-									letter-spacing: 0.5px;
-									text-align: left;
-								}
-								.mis-skeleton-table td {
-									padding: 12px;
-									border-bottom: 1px solid #f1f5f9;
-									vertical-align: middle;
-								}
-								.mis-skeleton-pulse {
-									background: linear-gradient(-90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
-									background-size: 400% 400%;
-									animation: mis-shimmer 1.5s ease-in-out infinite;
-									border-radius: 4px;
-									height: 16px;
-								}
-								@keyframes mis-shimmer {
-									0% { background-position: 100% 50%; }
-									100% { background-position: 0% 50%; }
-								}
+								.mis-skeleton-table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; }
+								.mis-skeleton-table th { background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; }
+								.mis-skeleton-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+								.mis-skeleton-pulse { background: linear-gradient(-90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%); background-size: 400% 400%; animation: mis-shimmer 1.5s ease-in-out infinite; border-radius: 4px; height: 16px; }
+								@keyframes mis-shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 							</style>
 							<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
 								<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important; animation: spinner-border .75s linear infinite;"></div>
 								<span style="font-weight: 600; color: #417d81; font-size: 13px;">Fetching latest RD & SMBG data...</span>
 							</div>
 							<table class="mis-skeleton-table">
-								<thead>
-									<tr>
-										<th style="width: 30px;"><div class="mis-skeleton-pulse" style="width: 14px; height: 14px;"></div></th>
-										<th style="width: 40px; text-align: center;">Sr</th>
-										<th>Zone / Region / Branch</th>
-										<th style="text-align: center; width: 80px;">Branches</th>
-										<th style="text-align: right; width: 100px;">Total Accounts</th>
-										<th style="text-align: right; width: 120px;">Total Collection</th>
-										<th style="text-align: right; width: 110px;">Pending Accounts</th>
-										<th style="text-align: right; width: 110px;">Pending Inst.</th>
-										<th style="text-align: right; width: 120px;">Pending Amount</th>
-									</tr>
-								</thead>
+								<thead><tr>
+									<th style="width: 30px;"><div class="mis-skeleton-pulse" style="width: 14px; height: 14px;"></div></th>
+									<th style="width: 40px; text-align: center;">Sr</th>
+									<th>Zone / Region / Branch</th>
+									<th style="text-align: center; width: 80px;">Branches</th>
+									<th style="text-align: right; width: 100px;">Total Accounts</th>
+									<th style="text-align: right; width: 120px;">Total Collection</th>
+									<th style="text-align: right; width: 110px;">Pending Accounts</th>
+									<th style="text-align: right; width: 110px;">Pending Inst.</th>
+									<th style="text-align: right; width: 120px;">Pending Amount</th>
+								</tr></thead>
 								<tbody>
-									<tr style="background: #fff;">
+									${[1,2,3,4,5].map(i => `<tr style="background: ${i%2===0 ? '#f8fafc' : '#fff'};">
 										<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
 										<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 150px;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: ${120 + Math.random()*60}px;"></div></td>
 										<td><div class="mis-skeleton-pulse" style="width: 30px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 60px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 80px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 60px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 50px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 80px; margin-left: auto;"></div></td>
-									</tr>
-									<tr style="background: #f8fafc;">
-										<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 180px;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 30px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 70px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 90px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 50px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 60px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 95px; margin-left: auto;"></div></td>
-									</tr>
-									<tr style="background: #fff;">
-										<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 130px;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 30px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 50px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 75px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 65px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 45px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 70px; margin-left: auto;"></div></td>
-									</tr>
-									<tr style="background: #f8fafc;">
-										<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 160px;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 30px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 65px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 85px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 55px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 55px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 90px; margin-left: auto;"></div></td>
-									</tr>
-									<tr style="background: #fff;">
-										<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 140px;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 30px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 55px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 80px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 70px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 40px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 85px; margin-left: auto;"></div></td>
-									</tr>
+										<td><div class="mis-skeleton-pulse" style="width: ${50 + Math.random()*30}px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: ${60 + Math.random()*30}px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: ${50 + Math.random()*20}px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: ${40 + Math.random()*20}px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: ${60 + Math.random()*30}px; margin-left: auto;"></div></td>
+									</tr>`).join('')}
 								</tbody>
 							</table>
 						</div>
@@ -321,7 +270,6 @@ class DrishtiDashboard {
 						<div id="mis-table-container"${self.tableData ? "" : ' style="display: none;"'}></div>
 					`);
 
-					// If data already fetched, just re-render
 					if (self.tableData && self.tableData.length > 0) {
 						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 						container.find("#mis-records-count").text(`${self.tableData.length} branches`);
@@ -333,34 +281,22 @@ class DrishtiDashboard {
 						return;
 					}
 
-					let dataLoaded = 0;
-					function checkLoaded() {
-						dataLoaded++;
-						if (dataLoaded >= 1) {
-							container.find("#mis-loading").hide();
-container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
-						}
-					}
-
-					// Fetch permissions and data in parallel
 					frappe.call({
 						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_mis_filter_options",
-						callback: function(r) {
+						callback: function (r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
 							if (r.message) {
 								self.filterOptions = r.message;
 								const perms = r.message.permissions || {};
-								console.log("Report Preference zones:", r.message.zones);
-								console.log("Report Preference regions:", r.message.regions);
-								console.log("Permissions:", perms);
 								const solData = r.message.sol_data || [];
-								// If zone permissions exist, use zones as primary filter — ignore sol_ids
 								const useSolIds = (!r.message.zones || r.message.zones.length === 0) && perms.allowed_sol_ids && perms.allowed_sol_ids.length > 0;
 								const solIds = useSolIds ? perms.allowed_sol_ids.join(",") : "";
 
 								frappe.call({
 									method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_pending_table_data",
 									args: { sol_ids: solIds },
-									callback: function(r3) {
+									callback: function (r3) {
+										if (dashboardInstance._misRenderSeq !== seq) return;
 										if (r3.message) {
 											let data = r3.message;
 											const pz = self.filterOptions && self.filterOptions.zones;
@@ -373,21 +309,21 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 											self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 											self.renderZoneFilterTags(container, dashboardInstance);
 										}
-										checkLoaded();
+										container.find("#mis-loading").hide();
+										container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
 									}
 								});
 							}
 						}
 					});
-					
 					self.attachReportEventHandlers(container, dashboardInstance);
 				},
-				attachReportEventHandlers: function(container, dashboardInstance) {
+				attachReportEventHandlers: function (container, dashboardInstance) {
 					const self = this;
-					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function() {
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
 						const format = $(this).data("format");
 						dashboardInstance.state.formatMode = format;
-						container.find(".mis-format-btn").each(function() {
+						container.find(".mis-format-btn").each(function () {
 							const btn = $(this);
 							const isActive = btn.data("format") === format;
 							btn.css("background", isActive ? "#417d81" : "#e2e8f0");
@@ -397,9 +333,8 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 							self.switchFormat(format, container, dashboardInstance);
 						}
 					});
-
 					let searchTimeout;
-					container.off("input", "#mis-search").on("input", "#mis-search", function() {
+					container.off("input", "#mis-search").on("input", "#mis-search", function () {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
@@ -408,8 +343,7 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 							}
 						}, 300);
 					});
-
-					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function() {
+					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function () {
 						self.allExpanded = !self.allExpanded;
 						const expand = self.allExpanded;
 						if (!self.tableData) return;
@@ -423,12 +357,11 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 					});
-
-					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function() {
+					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function () {
 						self.refetchData(container, dashboardInstance);
 					});
 				},
-				renderKPI: function(container, dashboardInstance) {
+				renderKPI: function (container, dashboardInstance) {
 					const self = this;
 					const data = self.tableData || [];
 					const totalAccounts = data.reduce((s, r) => s + (r.total_accounts || 0), 0);
@@ -436,85 +369,37 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 					const pendingAccounts = data.reduce((s, r) => s + (r.pending_accounts || 0), 0);
 					const pendingInstalments = data.reduce((s, r) => s + (r.pending_instalments || 0), 0);
 					const pendingAmount = data.reduce((s, r) => s + (r.pending_amount || 0), 0);
-
-					const formatCount = (val) => {
+					const fmtCount = (val) => {
 						if (!val && val !== 0) return "0";
 						return new Intl.NumberFormat("en-IN").format(val);
 					};
-					const formatAmount = (val) => {
+					const fmtAmt = (val) => {
 						if (!val || val === 0) return "₹0";
 						return "₹" + dashboardInstance.formatCurrency(val);
 					};
-
 					const kpiCards = [
-						{ label: "Total Accounts", value: formatCount(totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
-						{ label: "Total Collection", value: formatAmount(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
-						{ label: "Pending Accounts", value: formatCount(pendingAccounts), color: "#f59e0b", bg: "#fffbeb", icon: "⏳" },
-						{ label: "Pending Instalments", value: formatCount(pendingInstalments), color: "#f97316", bg: "#fff7ed", icon: "📅" },
-						{ label: "Pending Amount", value: formatAmount(pendingAmount), color: "#ef4444", bg: "#fef2f2", icon: "🔴" }
+						{ label: "Total Accounts", value: fmtCount(totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
+						{ label: "Total Collection", value: fmtAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
+						{ label: "Pending Accounts", value: fmtCount(pendingAccounts), color: "#f59e0b", bg: "#fffbeb", icon: "⏳" },
+						{ label: "Pending Instalments", value: fmtCount(pendingInstalments), color: "#f97316", bg: "#fff7ed", icon: "📅" },
+						{ label: "Pending Amount", value: fmtAmt(pendingAmount), color: "#ef4444", bg: "#fef2f2", icon: "🔴" }
 					];
-
-					const cardsHtml = kpiCards.map(card => `
-						<div class="kpi-card" style="background: ${card.bg}; border-left: 4px solid ${card.color};">
-							<div class="kpi-card-header">
-								<span class="kpi-icon">${card.icon}</span>
-								<span class="kpi-label">${card.label}</span>
-							</div>
-							<div class="kpi-value" style="color: ${card.color};">${card.value}</div>
-						</div>
-					`).join('');
-
 					container.html(`
 						<style>
 							#mis-kpi-container { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
-							#mis-kpi-container .kpi-card {
-								flex: 1 1 180px;
-								min-width: 150px;
-								border-radius: 10px;
-								padding: 16px 18px;
-								box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-								box-sizing: border-box;
-								min-height: 100px;
-							}
-							#mis-kpi-container .kpi-card-header {
-								display: flex;
-								align-items: center;
-								gap: 10px;
-								margin-bottom: 10px;
-							}
+							#mis-kpi-container .kpi-card { flex: 1 1 180px; min-width: 150px; border-radius: 10px; padding: 16px 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); box-sizing: border-box; min-height: 100px; }
+							#mis-kpi-container .kpi-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 							#mis-kpi-container .kpi-icon { font-size: 20px; flex-shrink: 0; line-height: 1; }
-							#mis-kpi-container .kpi-label {
-								font-size: 12px;
-								font-weight: 600;
-								color: #64748b;
-								text-transform: uppercase;
-								letter-spacing: 0.5px;
-								font-family: 'Inter', sans-serif;
-								white-space: nowrap;
-								overflow: hidden;
-								text-overflow: ellipsis;
-							}
-							#mis-kpi-container .kpi-value {
-								font-size: clamp(18px, 2.2vw, 24px);
-								font-weight: 800;
-								font-family: 'Inter', sans-serif;
-								line-height: 1.2;
-								word-break: break-word;
-							}
-							@media (max-width: 768px) {
-								#mis-kpi-container .kpi-card { flex: 1 1 140px; min-width: 120px; padding: 12px 14px; min-height: 80px; }
-								#mis-kpi-container .kpi-value { font-size: 16px; }
-							}
-							@media (max-width: 480px) {
-								#mis-kpi-container .kpi-card { flex: 1 1 100%; min-width: unset; }
-							}
+							#mis-kpi-container .kpi-label { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Inter', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+							#mis-kpi-container .kpi-value { font-size: clamp(18px, 2.2vw, 24px); font-weight: 800; font-family: 'Inter', sans-serif; line-height: 1.2; word-break: break-word; }
+							@media (max-width: 768px) { #mis-kpi-container .kpi-card { flex: 1 1 140px; min-width: 120px; padding: 12px 14px; min-height: 80px; } #mis-kpi-container .kpi-value { font-size: 16px; } }
+							@media (max-width: 480px) { #mis-kpi-container .kpi-card { flex: 1 1 100%; min-width: unset; } }
 						</style>
-						${cardsHtml}
+						${kpiCards.map(card => `<div class="kpi-card" style="background: ${card.bg}; border-left: 4px solid ${card.color};"><div class="kpi-card-header"><span class="kpi-icon">${card.icon}</span><span class="kpi-label">${card.label}</span></div><div class="kpi-value" style="color: ${card.color};">${card.value}</div></div>`).join('')}
 					`);
 				},
-				refetchData: function(container, dashboardInstance) {
+				refetchData: function (container, dashboardInstance) {
 					const self = this;
-					// Reset state
 					self.tableData = [];
 					self.filterOptions = null;
 					self.selectedMisZones = [];
@@ -523,32 +408,28 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 					self.checkedRows = {};
 					self.searchTerm = "";
 					self.allExpanded = false;
-					// Re-render which will re-fetch from APIs
 					self.render(container, dashboardInstance);
 				},
-				switchFormat: function(format, container, dashboardInstance) {
+				switchFormat: function (format, container, dashboardInstance) {
 					const self = this;
 					if (self.tableData && self.tableData.length > 0) {
-						const tableContainer = container.find("#mis-table-container");
-						self.renderMisTable(tableContainer, dashboardInstance);
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 						self.renderZoneFilterTags(container, dashboardInstance);
 					}
 					self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 				},
-				renderMisTable: function(tableContainer, dashboardInstance) {
+				renderMisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
 					self.renderAnalysisTable(tableContainer, dashboardInstance);
 				},
-				renderZoneFilterTags: function(container, dashboardInstance) {
+				renderZoneFilterTags: function (container, dashboardInstance) {
 					const self = this;
 					if (!self.tableData || self.tableData.length === 0) {
 						container.find("#mis-zone-filter-row").hide();
 						return;
 					}
-					// Use permitted zones from Report Preference
 					const permittedZones = (self.filterOptions && self.filterOptions.zones) || [];
 					let zones = permittedZones.length > 0 ? permittedZones : [...new Set(self.tableData.map(r => r.zone).filter(Boolean))].sort();
-					console.log("MIS zone filter zones:", zones);
 					if (zones.length === 0) {
 						container.find("#mis-zone-filter-row").hide();
 						return;
@@ -562,24 +443,19 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 					});
 					const $row = container.find("#mis-zone-filter-row");
 					$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
-
-					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function() {
+					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
 						const zone = $(this).data("zone");
 						if (zone === "all") {
 							self.selectedMisZones = [];
 						} else {
 							const idx = self.selectedMisZones.indexOf(zone);
-							if (idx > -1) {
-								self.selectedMisZones.splice(idx, 1);
-							} else {
-								self.selectedMisZones.push(zone);
-							}
+							if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); }
 						}
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 					});
 				},
-				aggregateByZone: function() {
+				aggregateByZone: function () {
 					const self = this;
 					let data = self.tableData || [];
 					const term = (self.searchTerm || "").trim();
@@ -595,7 +471,6 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						data = data.filter(row => self.selectedMisZones.includes(row.zone));
 					}
 					const zoneMap = {};
-
 					data.forEach(row => {
 						const zone = row.zone || "Unknown";
 						const region = row.region || "Unknown";
@@ -618,13 +493,11 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						zoneMap[zone].regions[region].pending_amount += row.pending_amount;
 						zoneMap[zone].regions[region].pending_instalments += row.pending_instalments;
 					});
-
 					const sortedZones = Object.keys(zoneMap).sort((a, b) => {
 						const numA = parseInt(a.replace(/\D/g, "")) || 0;
 						const numB = parseInt(b.replace(/\D/g, "")) || 0;
 						return numA - numB;
 					});
-
 					const result = [];
 					sortedZones.forEach(zoneName => {
 						const zd = zoneMap[zoneName];
@@ -638,10 +511,9 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 					});
 					return result;
 				},
-				renderAnalysisTable: function(tableContainer, dashboardInstance) {
+				renderAnalysisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
 					const format = dashboardInstance.state.formatMode || "number";
-
 					const fmtCount = (val) => {
 						if (!val && val !== 0) return "0";
 						if (format === "words") {
@@ -662,7 +534,6 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						}
 						return "₹" + new Intl.NumberFormat("en-IN").format(Math.round(val));
 					};
-
 					const zoneData = self.aggregateByZone();
 					const totalFilteredBranches = zoneData.reduce((s, z) => s + z.data.branches.length, 0);
 					const totalAllBranches = (self.tableData || []).length;
@@ -671,7 +542,6 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600; font-family: \'Inter\', sans-serif;">No data to display.</div>');
 						return;
 					}
-
 					const grandTotal = { total_accounts: 0, total_collection: 0, pending_accounts: 0, pending_amount: 0, pending_instalments: 0 };
 					zoneData.forEach(z => {
 						grandTotal.total_accounts += z.data.total_accounts;
@@ -680,7 +550,6 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						grandTotal.pending_amount += z.data.pending_amount;
 						grandTotal.pending_instalments += z.data.pending_instalments;
 					});
-
 					const metricCols = [
 						{ key: "total_accounts", label: "Total Accounts", align: "right", fmt: fmtCount },
 						{ key: "total_collection", label: "Total Collection", align: "right", fmt: fmtAmt },
@@ -688,10 +557,8 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						{ key: "pending_instalments", label: "Pending Instalments", align: "right", fmt: fmtCount },
 						{ key: "pending_amount", label: "Pending Amount", align: "right", fmt: fmtAmt }
 					];
-
 					let sr = 0;
 					let rowsHtml = "";
-
 					zoneData.forEach(z => {
 						sr++;
 						const zoneExpanded = self.expandedZones[z.zone];
@@ -700,31 +567,22 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						rowsHtml += `<tr class="mis-zone-row${zoneChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-check-id="zone::${z.zone}" style="cursor: pointer; background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
 							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; width: 30px; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="zone::${z.zone}" ${zoneChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; width: 40px; font-size: 14px;">${sr}</td>
-							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;">
-								<span class="mis-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>
-								${z.zone}
-							</td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;"><span class="mis-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>${z.zone}</td>
 							<td style="padding: 10px 14px; font-weight: 700; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px;">${zoneRow.branches.length}</td>
 							${metricCols.map(mc => `<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: ${mc.align}; white-space: nowrap; font-size: 14px;">${mc.fmt(zoneRow[mc.key])}</td>`).join('')}
 						</tr>`;
-
 						z.regions.forEach(region => {
 							const regionKey = z.zone + "::" + region.region;
 							const regionExpanded = self.expandedRegions[regionKey];
-							const regionRow = region;
 							const regionChecked = self.checkedRows[regionKey];
 							rowsHtml += `<tr class="mis-region-row${regionChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region.region}" data-check-id="${z.zone}::${region.region}" style="display: ${zoneExpanded ? "table-row" : "none"}; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
 								<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${z.zone}::${region.region}" ${regionChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 								<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 30px; font-weight: 600;">
-									<span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>
-									${region.region}
-								</td>
-								<td style="padding: 8px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${regionRow.branches.length}</td>
-								${metricCols.map(mc => `<td style="padding: 8px 14px; color: #334155; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(regionRow[mc.key])}</td>`).join('')}
+								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 30px; font-weight: 600;"><span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${region.region}</td>
+								<td style="padding: 8px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${region.branches.length}</td>
+								${metricCols.map(mc => `<td style="padding: 8px 14px; color: #334155; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(region[mc.key])}</td>`).join('')}
 							</tr>`;
-
-							regionRow.branches.forEach((branch, bi) => {
+							region.branches.forEach((branch, bi) => {
 								const showBranch = zoneExpanded && self.expandedRegions[regionKey];
 								const branchBg = bi % 2 === 0 ? "#ffffff" : "#f1f5f9";
 								const solId = branch.sol_id || "branch_" + bi;
@@ -739,7 +597,6 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 							});
 						});
 					});
-
 					const tableHtml = `
 						<style>
 							#mis-analysis-table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; }
@@ -749,41 +606,32 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 							#mis-analysis-table tbody tr { transition: background-color 0.2s ease; border-bottom: 1px solid #e2e8f0; }
 							#mis-analysis-table tbody tr:hover { background: #dcfce7 !important; }
 							#mis-analysis-table tbody tr.mis-row-checked { background: #bbf7d0 !important; }
-							#mis-analysis-table tbody tr.mis-zone-row.mis-row-checked { background: #86efac !important; }
-							#mis-analysis-table tbody tr.mis-region-row.mis-row-checked { background: #86efac !important; }
+							#mis-analysis-table tbody tr.mis-zone-row.mis-row-checked,
+							#mis-analysis-table tbody tr.mis-region-row.mis-row-checked,
 							#mis-analysis-table tbody tr.mis-branch-row.mis-row-checked { background: #86efac !important; }
 							#mis-scroll-area { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
 						</style>
 						<div id="mis-scroll-area">
 							<table id="mis-analysis-table">
-								<thead>
-									<tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
-										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
-										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
-										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / Branch</th>
-										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">Branches</th>
-										${metricCols.map(mc => `<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: ${mc.align}; white-space: nowrap;">${mc.label}</th>`).join('')}
-									</tr>
-								</thead>
-								<tbody>
-									${rowsHtml}
-								</tbody>
-								<tfoot>
-									<tr style="background: #1e293b; color: #ffffff; font-weight: 700;">
-										<td style="padding: 10px 12px; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-										<td style="padding: 10px 12px; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-										<td style="padding: 10px 12px; text-align: left; white-space: nowrap; font-size: 14px;">TOTAL</td>
-										<td style="padding: 10px 12px; text-align: center; white-space: nowrap; font-size: 14px;">${zoneData.reduce((s, z) => s + z.data.branches.length, 0)}</td>
-										${metricCols.map(mc => `<td style="padding: 10px 12px; text-align: ${mc.align}; white-space: nowrap; font-size: 14px;">${mc.fmt(grandTotal[mc.key])}</td>`).join('')}
-									</tr>
-								</tfoot>
+								<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / Branch</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">Branches</th>
+									${metricCols.map(mc => `<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: ${mc.align}; white-space: nowrap;">${mc.label}</th>`).join('')}
+								</tr></thead>
+								<tbody>${rowsHtml}</tbody>
+								<tfoot><tr style="background: #1e293b; color: #ffffff; font-weight: 700;">
+									<td style="padding: 10px 12px; text-align: center;"></td>
+									<td style="padding: 10px 12px; text-align: center;"></td>
+									<td style="padding: 10px 12px; text-align: left; white-space: nowrap; font-size: 14px;">TOTAL</td>
+									<td style="padding: 10px 12px; text-align: center; white-space: nowrap; font-size: 14px;">${zoneData.reduce((s, z) => s + z.data.branches.length, 0)}</td>
+									${metricCols.map(mc => `<td style="padding: 10px 12px; text-align: ${mc.align}; white-space: nowrap; font-size: 14px;">${mc.fmt(grandTotal[mc.key])}</td>`).join('')}
+								</tr></tfoot>
 							</table>
-						</div>
-					`;
-
+						</div>`;
 					tableContainer.html(tableHtml);
-
-					tableContainer.off("click", ".mis-zone-row").on("click", ".mis-zone-row", function(e) {
+					tableContainer.off("click", ".mis-zone-row").on("click", ".mis-zone-row", function (e) {
 						if ($(e.target).closest(".mis-region-toggle, .mis-region-row, input[type=checkbox]").length) return;
 						const zone = $(this).data("zone");
 						self.expandedZones[zone] = !self.expandedZones[zone];
@@ -792,7 +640,7 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						const $branchRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"]`);
 						if (show) {
 							$regionRows.stop(true, true).slideDown(200);
-							$regionRows.each(function() {
+							$regionRows.each(function () {
 								const r = $(this).data("region");
 								if (self.expandedRegions[zone + "::" + r]) {
 									tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${r}"]`).stop(true, true).slideDown(200);
@@ -804,8 +652,7 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						}
 						$(this).find(".mis-zone-toggle").text(show ? "▼" : "▶");
 					});
-
-					tableContainer.off("click", ".mis-region-row").on("click", ".mis-region-row", function(e) {
+					tableContainer.off("click", ".mis-region-row").on("click", ".mis-region-row", function (e) {
 						if ($(e.target).is("input[type=checkbox]")) return;
 						e.stopPropagation();
 						const zone = $(this).data("zone");
@@ -814,25 +661,18 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						self.expandedRegions[regionKey] = !self.expandedRegions[regionKey];
 						const show = self.expandedRegions[regionKey];
 						const $branchRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"]`);
-						if (show) {
-							$branchRows.stop(true, true).slideDown(200);
-						} else {
-							$branchRows.stop(true, true).slideUp(150);
-						}
+						if (show) { $branchRows.stop(true, true).slideDown(200); } else { $branchRows.stop(true, true).slideUp(150); }
 						$(this).find(".mis-region-toggle").text(show ? "▼" : "▶");
 					});
-
-					tableContainer.off("change", ".mis-row-check").on("change", ".mis-row-check", function(e) {
+					tableContainer.off("change", ".mis-row-check").on("change", ".mis-row-check", function () {
 						const checkId = $(this).data("check-id");
 						const checked = $(this).prop("checked");
 						self.checkedRows[checkId] = checked;
-						const $row = $(this).closest("tr");
-						$row.toggleClass("mis-row-checked", checked);
+						$(this).closest("tr").toggleClass("mis-row-checked", checked);
 					});
-
-					tableContainer.off("change", ".mis-check-all").on("change", ".mis-check-all", function(e) {
+					tableContainer.off("change", ".mis-check-all").on("change", ".mis-check-all", function () {
 						const checked = $(this).prop("checked");
-						tableContainer.find(".mis-row-check").each(function() {
+						tableContainer.find(".mis-row-check").each(function () {
 							$(this).prop("checked", checked).trigger("change");
 						});
 					});
@@ -849,102 +689,27 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 				searchTerm: "",
 				allExpanded: false,
 				selectedMisZones: [],
-				render: function(container, dashboardInstance) {
+				render: function (container, dashboardInstance, seq) {
 					const self = this;
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
-							<div style="display: flex; align-items: center; gap: 6px;">
+							<input type="text" id="mis-search" placeholder="Search branch or SOL ID..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
+							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
 								<div class="btn-group mis-format-toggle" role="group">
 									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
 									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
 								</div>
 							</div>
-							<input type="text" id="mis-search" placeholder="Search branch or SOL ID..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
-							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
-							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
-							<div style="margin-left: auto; font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="mis-records-count"></div>
+							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="mis-records-count"></div>
 						</div>
 						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
-							<!-- Skeleton Loader Styles -->
-							<style>
-								.mis-skeleton-table {
-									width: 100%;
-									border-collapse: separate;
-									border-spacing: 0;
-									border: 1px solid #e2e8f0;
-									border-radius: 8px;
-									overflow: hidden;
-									background: #fff;
-								}
-								.mis-skeleton-table th {
-									background: #f1f5f9;
-									padding: 10px 12px;
-									border-bottom: 1px solid #cbd5e1;
-									font-weight: 600;
-									font-size: 12px;
-									color: #475569;
-									text-transform: uppercase;
-									letter-spacing: 0.5px;
-									text-align: left;
-								}
-								.mis-skeleton-table td {
-									padding: 12px;
-									border-bottom: 1px solid #f1f5f9;
-									vertical-align: middle;
-								}
-								.mis-skeleton-pulse {
-									background: linear-gradient(-90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
-									background-size: 400% 400%;
-									animation: mis-shimmer 1.5s ease-in-out infinite;
-									border-radius: 4px;
-									height: 16px;
-								}
-								@keyframes mis-shimmer {
-									0% { background-position: 100% 50%; }
-									100% { background-position: 0% 50%; }
-								}
-							</style>
 							<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
 								<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important; animation: spinner-border .75s linear infinite;"></div>
 								<span style="font-weight: 600; color: #417d81; font-size: 13px;">Fetching latest Daily Account Opening data...</span>
 							</div>
-							<table class="mis-skeleton-table">
-								<thead>
-									<tr>
-										<th style="width: 30px;"><div class="mis-skeleton-pulse" style="width: 14px; height: 14px;"></div></th>
-										<th style="width: 40px; text-align: center;">Sr</th>
-										<th>Zone / Region / Branch</th>
-										<th style="text-align: right; width: 120px;">Savings Accounts</th>
-										<th style="text-align: right; width: 120px;">Current Accounts</th>
-										<th style="text-align: right; width: 120px;">RD Accounts</th>
-										<th style="text-align: right; width: 120px;">FD Accounts</th>
-										<th style="text-align: right; width: 120px;">Total Opened</th>
-									</tr>
-								</thead>
-								<tbody>
-									<tr style="background: #fff;">
-										<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 150px;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 60px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 60px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 60px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 60px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 80px; margin-left: auto;"></div></td>
-									</tr>
-									<tr style="background: #f8fafc;">
-										<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 180px;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 70px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 70px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 70px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 70px; margin-left: auto;"></div></td>
-										<td><div class="mis-skeleton-pulse" style="width: 90px; margin-left: auto;"></div></td>
-									</tr>
-								</tbody>
-							</table>
 						</div>
 						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<div id="mis-kpi-container" ${self.tableData && self.tableData.length ? "" : 'style="display: none;"'}></div>
@@ -962,25 +727,17 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						return;
 					}
 
-					let dataLoaded = 0;
-					function checkLoaded() {
-						dataLoaded++;
-						if (dataLoaded >= 1) {
-							container.find("#mis-loading").hide();
-							container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
-						}
-					}
-
 					frappe.call({
 						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_mis_filter_options",
-						callback: function(r) {
+						callback: function (r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
 							if (r.message) {
 								self.filterOptions = r.message;
-								
 								frappe.call({
 									method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_daily_account_opening_data",
 									args: { selected_date: dashboardInstance.state.selectedDate },
-									callback: function(r3) {
+									callback: function (r3) {
+										if (dashboardInstance._misRenderSeq !== seq) return;
 										if (r3.message) {
 											self.tableData = r3.message;
 											self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
@@ -988,262 +745,197 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 											self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 											self.renderZoneFilterTags(container, dashboardInstance);
 										}
-										checkLoaded();
+										container.find("#mis-loading").hide();
+										container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
 									}
 								});
 							}
 						}
 					});
-
 					self.attachReportEventHandlers(container, dashboardInstance);
 				},
-				renderKPI: function(container, dashboardInstance) {
+				renderKPI: function (container, dashboardInstance) {
 					const self = this;
 					const data = self.tableData || [];
 					let totSA = 0, totCA = 0, totTASC = 0, totRD = 0, totSMBG = 0, totDD = 0, totFD = 0, totAll = 0;
-					
 					data.forEach(r => {
-						totSA += r.sa || 0;
-						totCA += r.ca || 0;
-						totTASC += r.tasc || 0;
-						totRD += r.rd || 0;
-						totSMBG += r.smbg || 0;
-						totDD += r.dd || 0;
-						totFD += r.fd || 0;
-						totAll += r.total || 0;
+						totSA += r.sa || 0; totCA += r.ca || 0; totTASC += r.tasc || 0; totRD += r.rd || 0;
+						totSMBG += r.smbg || 0; totDD += r.dd || 0; totFD += r.fd || 0; totAll += r.total || 0;
 					});
-					
 					container.html(`
 						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px;">
-							<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
-								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">SA Accounts</div>
-								<div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totSA)}</div>
-							</div>
-							<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
-								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">CA Accounts</div>
-								<div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totCA)}</div>
-							</div>
-							<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
-								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">TASC Accounts</div>
-								<div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totTASC)}</div>
-							</div>
-							<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
-								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">RD Accounts</div>
-								<div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totRD)}</div>
-							</div>
-							<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
-								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">SMBG Accounts</div>
-								<div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totSMBG)}</div>
-							</div>
-							<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
-								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">DD Accounts</div>
-								<div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totDD)}</div>
-							</div>
-							<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
-								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">FD Accounts</div>
-								<div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totFD)}</div>
-							</div>
-							<div style="padding: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; text-align: center;">
-								<div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase;">Total Opened</div>
-								<div style="font-size: 20px; font-weight: 800; color: #15803d; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totAll)}</div>
-							</div>
+							${[
+								{ l: "SA Accounts", v: totSA }, { l: "CA Accounts", v: totCA }, { l: "TASC Accounts", v: totTASC },
+								{ l: "RD Accounts", v: totRD }, { l: "SMBG Accounts", v: totSMBG }, { l: "DD Accounts", v: totDD },
+								{ l: "FD Accounts", v: totFD }
+							].map(c => `<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;"><div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">${c.l}</div><div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(c.v)}</div></div>`).join('')}
+							<div style="padding: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; text-align: center;"><div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase;">Total Opened</div><div style="font-size: 20px; font-weight: 800; color: #15803d; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totAll)}</div></div>
 						</div>
 					`);
 					container.show();
 				},
-				renderMisTable: function(tableContainer, dashboardInstance) {
-					const self = this;
-					self.renderAnalysisTable(tableContainer, dashboardInstance);
+				renderMisTable: function (tableContainer, dashboardInstance) {
+					this.renderAnalysisTable(tableContainer, dashboardInstance);
 				},
-				renderAnalysisTable: function(tableContainer, dashboardInstance) {
+				renderAnalysisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
 					const zoneData = self.aggregateByZone();
 					const totalFilteredBranches = zoneData.reduce((s, z) => s + z.data.branches.length, 0);
 					const totalAllBranches = [...new Set((self.tableData || []).map(r => r.sol_id))].length;
-					
 					tableContainer.parent().find("#mis-records-count").text(totalFilteredBranches + " / " + totalAllBranches + " branches" + (self.searchTerm ? " (filtered)" : ""));
-					
 					if (!zoneData || zoneData.length === 0) {
-						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600; font-family: \'Inter\', sans-serif;">No data to display.</div>');
+						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">No data to display.</div>');
 						return;
 					}
-					
 					const grandTotal = { ca: 0, sa: 0, tasc: 0, rd: 0, smbg: 0, dd: 0, fd: 0, total: 0 };
 					zoneData.forEach(z => {
-						grandTotal.ca += z.data.ca;
-						grandTotal.sa += z.data.sa;
-						grandTotal.tasc += z.data.tasc;
-						grandTotal.rd += z.data.rd;
-						grandTotal.smbg += z.data.smbg;
-						grandTotal.dd += z.data.dd;
-						grandTotal.fd += z.data.fd;
-						grandTotal.total += z.data.total;
+						grandTotal.ca += z.data.ca; grandTotal.sa += z.data.sa; grandTotal.tasc += z.data.tasc;
+						grandTotal.rd += z.data.rd; grandTotal.smbg += z.data.smbg; grandTotal.dd += z.data.dd;
+						grandTotal.fd += z.data.fd; grandTotal.total += z.data.total;
 					});
-					
 					const metricCols = [
-						{ key: "ca", label: "CA", align: "right" },
-						{ key: "sa", label: "SA", align: "right" },
-						{ key: "tasc", label: "TASC", align: "right" },
-						{ key: "rd", label: "RD", align: "right" },
-						{ key: "smbg", label: "SMBG", align: "right" },
-						{ key: "dd", label: "DD", align: "right" },
+						{ key: "ca", label: "CA", align: "right" }, { key: "sa", label: "SA", align: "right" },
+						{ key: "tasc", label: "TASC", align: "right" }, { key: "rd", label: "RD", align: "right" },
+						{ key: "smbg", label: "SMBG", align: "right" }, { key: "dd", label: "DD", align: "right" },
 						{ key: "fd", label: "FD", align: "right" },
 						{ key: "ca_sa_tasc", label: "CA+SA+TASC", align: "right", calc: (r) => (r.ca || 0) + (r.sa || 0) + (r.tasc || 0) },
 						{ key: "rd_smbg_dd_fd", label: "RD+SMBG+DD+FD", align: "right", calc: (r) => (r.rd || 0) + (r.smbg || 0) + (r.dd || 0) + (r.fd || 0) },
-						{ key: "total", label: "TOTAL ACCOUNTS", align: "right" }
+						{ key: "total", label: "TOTAL", align: "right" }
 					];
-					
-					let sr = 0;
-					let rowsHtml = "";
-					
+					let sr = 0, rowsHtml = "";
 					zoneData.forEach(z => {
 						sr++;
 						const zoneExpanded = self.expandedZones[z.zone];
 						const zoneRow = z.data;
 						const zoneChecked = self.checkedRows["zone::" + z.zone];
-						
 						rowsHtml += `<tr class="mis-zone-row${zoneChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-check-id="zone::${z.zone}" style="cursor: pointer; background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
-							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; width: 30px; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="zone::${z.zone}" ${zoneChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
-							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; width: 40px; font-size: 14px;">${sr}</td>
-							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;">
-								<span class="mis-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>
-								${z.zone}
-							</td>
-							<td style="padding: 10px 14px; font-weight: 700; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px;">${zoneRow.branches.length}</td>
-							${metricCols.map(mc => {
-								const val = mc.calc ? mc.calc(zoneRow) : zoneRow[mc.key];
-								return `<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: ${mc.align}; white-space: nowrap; font-size: 14px;">${new Intl.NumberFormat("en-IN").format(val)}</td>`;
-							}).join('')}
+							<td style="padding: 10px 14px; text-align: center; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="zone::${z.zone}" ${zoneChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; width: 40px; font-size: 14px;">${sr}</td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;"><span class="mis-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>${z.zone}</td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0d9488; text-align: center; font-size: 14px;">${zoneRow.branches.length}</td>
+							${metricCols.map(mc => { const val = mc.calc ? mc.calc(zoneRow) : zoneRow[mc.key]; return `<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: ${mc.align}; white-space: nowrap; font-size: 14px;">${new Intl.NumberFormat("en-IN").format(val)}</td>`; }).join('')}
 						</tr>`;
-						
 						z.regions.forEach(region => {
 							const regionKey = z.zone + "::" + region.region;
 							const regionExpanded = self.expandedRegions[regionKey];
-							const regionRow = region;
 							const regionChecked = self.checkedRows[regionKey];
-							
-							rowsHtml += `<tr class="mis-region-row${regionChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region.region}" data-check-id="${z.zone}::${region.region}" style="display: ${zoneExpanded ? "table-row" : "none"}; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-								<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${z.zone}::${region.region}" ${regionChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
-								<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 30px; font-weight: 600;">
-									<span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>
-									${region.region}
-								</td>
-								<td style="padding: 8px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${regionRow.branches.length}</td>
-								${metricCols.map(mc => {
-									const val = mc.calc ? mc.calc(regionRow) : regionRow[mc.key];
-									return `<td style="padding: 8px 14px; color: #334155; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 600;">${new Intl.NumberFormat("en-IN").format(val)}</td>`;
-								}).join('')}
+							rowsHtml += `<tr class="mis-region-row${regionChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region.region}" data-check-id="${regionKey}" style="display: ${zoneExpanded ? "table-row" : "none"}; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+								<td style="padding: 8px 14px; text-align: center; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${regionKey}" ${regionChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+								<td style="padding: 8px 14px; color: #64748b; text-align: center;"></td>
+								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; padding-left: 30px; font-weight: 600;"><span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${region.region}</td>
+								<td style="padding: 8px 14px; color: #0d9488; text-align: center; font-weight: 600;">${region.branches.length}</td>
+								${metricCols.map(mc => { const val = mc.calc ? mc.calc(region) : region[mc.key]; return `<td style="padding: 8px 14px; color: #334155; text-align: ${mc.align}; white-space: nowrap; font-weight: 500;">${new Intl.NumberFormat("en-IN").format(val)}</td>`; }).join('')}
 							</tr>`;
-							
-							regionRow.branches.forEach((branch, bi) => {
+							region.branches.forEach((branch, bi) => {
 								const showBranch = zoneExpanded && self.expandedRegions[regionKey];
 								const branchBg = bi % 2 === 0 ? "#ffffff" : "#f1f5f9";
-								const solId = branch.sol_id || "branch_" + bi;
-								const branchChecked = self.checkedRows[solId];
-								
-								rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region.region}" data-check-id="${solId}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0;">
-									<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${solId}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
-									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-									<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 50px; font-weight: 500;">${branch.sol_id} - ${branch.branch_name || branch.sol_id}</td>
-									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
-									${metricCols.map(mc => {
-										const val = mc.calc ? mc.calc(branch) : branch[mc.key];
-										return `<td style="padding: 6px 14px; color: #475569; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${new Intl.NumberFormat("en-IN").format(val)}</td>`;
-									}).join('')}
+								rowsHtml += `<tr class="mis-branch-row" data-zone="${z.zone}" data-region="${region.region}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0;">
+									<td style="padding: 6px 14px; text-align: center; vertical-align: middle;"><input type="checkbox" class="mis-row-check" style="cursor: pointer; width: 14px; height: 14px;"></td>
+									<td style="padding: 6px 14px; color: #94a3b8; text-align: center;"></td>
+									<td style="padding: 6px 14px; color: #475569; white-space: nowrap; padding-left: 50px; font-weight: 500;">${branch.sol_id} - ${branch.branch_name || branch.sol_id}</td>
+									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; font-weight: 500;">1</td>
+									${metricCols.map(mc => { const val = mc.calc ? mc.calc(branch) : branch[mc.key]; return `<td style="padding: 6px 14px; color: #475569; text-align: ${mc.align}; white-space: nowrap; font-weight: 500;">${new Intl.NumberFormat("en-IN").format(val)}</td>`; }).join('')}
 								</tr>`;
 							});
 						});
 					});
-					
-					const tableHtml = `
-						<style>
-							#mis-analysis-table-dao { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; }
-							#mis-analysis-table-dao thead { position: sticky; top: 0; z-index: 2; }
-							#mis-analysis-table-dao tfoot { position: sticky; bottom: 0; z-index: 2; }
-							#mis-analysis-table-dao tfoot tr { box-shadow: 0 -2px 6px rgba(0,0,0,0.1); }
-							#mis-analysis-table-dao tbody tr { transition: background-color 0.2s ease; border-bottom: 1px solid #e2e8f0; }
-							#mis-analysis-table-dao tbody tr:hover { background: #dcfce7 !important; }
-							#mis-analysis-table-dao tbody tr.mis-row-checked { background: #bbf7d0 !important; }
-							#mis-analysis-table-dao tbody tr.mis-zone-row.mis-row-checked { background: #86efac !important; }
-							#mis-analysis-table-dao tbody tr.mis-region-row.mis-row-checked { background: #86efac !important; }
-							#mis-analysis-table-dao tbody tr.mis-branch-row.mis-row-checked { background: #86efac !important; }
-							#mis-scroll-area-dao { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
-						</style>
-						<div id="mis-scroll-area-dao">
-							<table id="mis-analysis-table-dao">
-								<thead>
-									<tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
-										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
-										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
-										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / Branch</th>
-										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">Branches</th>
-										${metricCols.map(mc => `<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: ${mc.align}; white-space: nowrap;">${mc.label}</th>`).join('')}
-									</tr>
-								</thead>
-								<tbody>
-									${rowsHtml}
-								</tbody>
-								<tfoot>
-									<tr style="background: #e2e8f0; color: #0f172a;">
-										<td style="padding: 10px 14px; text-align: center; font-weight: 700;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></td>
-										<td style="padding: 10px 14px; font-weight: 700;"></td>
-										<td style="padding: 10px 14px; font-weight: 700; font-size: 14px;">Grand Total</td>
-										<td style="padding: 10px 14px; text-align: center; font-weight: 700; font-size: 14px; color: #0d9488;">${totalFilteredBranches}</td>
-										${metricCols.map(mc => {
-											const val = mc.calc ? mc.calc(grandTotal) : grandTotal[mc.key];
-											return `<td style="padding: 10px 14px; font-weight: 700; text-align: ${mc.align}; font-size: 14px;">${new Intl.NumberFormat("en-IN").format(val)}</td>`;
-										}).join('')}
-									</tr>
-								</tfoot>
-							</table>
-						</div>
-					`;
-					tableContainer.html(tableHtml);
+					tableContainer.html(`
+						<style>#mis-analysis-table-dao { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; }
+						#mis-analysis-table-dao thead { position: sticky; top: 0; z-index: 2; }
+						#mis-analysis-table-dao tfoot { position: sticky; bottom: 0; z-index: 2; }
+						#mis-analysis-table-dao tbody tr { transition: background-color 0.2s ease; border-bottom: 1px solid #e2e8f0; }
+						#mis-analysis-table-dao tbody tr:hover { background: #dcfce7 !important; }
+						#mis-analysis-table-dao tbody tr.mis-row-checked { background: #bbf7d0 !important; }
+						#mis-analysis-table-dao tbody tr.mis-zone-row.mis-row-checked,
+						#mis-analysis-table-dao tbody tr.mis-region-row.mis-row-checked,
+						#mis-analysis-table-dao tbody tr.mis-branch-row.mis-row-checked { background: #86efac !important; }
+						#mis-scroll-area-dao { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }</style>
+						<div id="mis-scroll-area-dao"><table id="mis-analysis-table-dao">
+							<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
+								<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: center; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
+								<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
+								<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: left;">Zone / Region / Branch</th>
+								<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: center;">Branches</th>
+								${metricCols.map(mc => `<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: ${mc.align};">${mc.label}</th>`).join('')}
+							</tr></thead>
+							<tbody>${rowsHtml}</tbody>
+							<tfoot><tr style="background: #e2e8f0; color: #0f172a;">
+								<td style="padding: 10px 14px; text-align: center;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></td>
+								<td style="padding: 10px 14px;"></td>
+								<td style="padding: 10px 14px; font-weight: 700; font-size: 14px;">Grand Total</td>
+								<td style="padding: 10px 14px; text-align: center; font-weight: 700; color: #0d9488;">${totalFilteredBranches}</td>
+								${metricCols.map(mc => { const val = mc.calc ? mc.calc(grandTotal) : grandTotal[mc.key]; return `<td style="padding: 10px 14px; font-weight: 700; text-align: ${mc.align};">${new Intl.NumberFormat("en-IN").format(val)}</td>`; }).join('')}
+							</tr></tfoot>
+						</table></div>
+					`);
 					tableContainer.show();
+					tableContainer.off("click", ".mis-zone-row").on("click", ".mis-zone-row", function (e) {
+						if ($(e.target).is("input[type='checkbox']")) return;
+						const zone = $(this).data("zone");
+						self.expandedZones[zone] = !self.expandedZones[zone];
+						const show = self.expandedZones[zone];
+						const $regRows = tableContainer.find(`.mis-region-row[data-zone="${zone}"]`);
+						const $brRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"]`);
+						if (show) {
+							$regRows.stop(true, true).slideDown(200);
+							$regRows.each(function () {
+								const reg = $(this).data("region");
+								if (self.expandedRegions[zone + "::" + reg]) {
+									tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${reg}"]`).stop(true, true).slideDown(200);
+								}
+							});
+						} else {
+							$regRows.stop(true, true).slideUp(150);
+							$brRows.stop(true, true).slideUp(150);
+						}
+						$(this).find(".mis-zone-toggle").text(show ? "▼" : "▶");
+					});
+					tableContainer.off("click", ".mis-region-row").on("click", ".mis-region-row", function (e) {
+						if ($(e.target).is("input[type='checkbox']")) return;
+						e.stopPropagation();
+						const zone = $(this).data("zone");
+						const region = $(this).data("region");
+						const regionKey = zone + "::" + region;
+						self.expandedRegions[regionKey] = !self.expandedRegions[regionKey];
+						const show = self.expandedRegions[regionKey];
+						const $branchRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"]`);
+						if (show) { $branchRows.stop(true, true).slideDown(200); } else { $branchRows.stop(true, true).slideUp(150); }
+						$(this).find(".mis-region-toggle").text(show ? "▼" : "▶");
+					});
+					tableContainer.off("change", ".mis-row-check").on("change", ".mis-row-check", function () {
+						$(this).closest("tr").toggleClass("mis-row-checked", $(this).prop("checked"));
+					});
+					tableContainer.off("change", ".mis-check-all").on("change", ".mis-check-all", function () {
+						const checked = $(this).prop("checked");
+						tableContainer.find(".mis-row-check").each(function () { $(this).prop("checked", checked).trigger("change"); });
+					});
 				},
-				renderZoneFilterTags: function(container, dashboardInstance) {
+				renderZoneFilterTags: function (container, dashboardInstance) {
 					const self = this;
-					if (!self.tableData || self.tableData.length === 0) {
-						container.find("#mis-zone-filter-row").hide();
-						return;
-					}
+					if (!self.tableData || self.tableData.length === 0) { container.find("#mis-zone-filter-row").hide(); return; }
 					const permittedZones = (self.filterOptions && self.filterOptions.zones) || [];
 					let zones = permittedZones.length > 0 ? permittedZones : [...new Set(self.tableData.map(r => r.zone).filter(Boolean))].sort();
-					if (zones.length === 0) {
-						container.find("#mis-zone-filter-row").hide();
-						return;
-					}
+					if (zones.length === 0) { container.find("#mis-zone-filter-row").hide(); return; }
 					const allSelected = self.selectedMisZones.length === 0;
 					let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
-					html += `<button class="mis-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
+					html += `<button class="mis-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer;">All</button>`;
 					zones.forEach(zone => {
 						const active = self.selectedMisZones.includes(zone);
-						html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
+						html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer;">${zone}</button>`;
 					});
 					const $row = container.find("#mis-zone-filter-row");
 					$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
-					
-					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function() {
+					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
 						const zone = $(this).data("zone");
-						if (zone === "all") {
-							self.selectedMisZones = [];
-						} else {
-							const idx = self.selectedMisZones.indexOf(zone);
-							if (idx > -1) {
-								self.selectedMisZones.splice(idx, 1);
-							} else {
-								self.selectedMisZones.push(zone);
-							}
-						}
+						if (zone === "all") { self.selectedMisZones = []; }
+						else { const idx = self.selectedMisZones.indexOf(zone); if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); } }
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 					});
 				},
-				aggregateByZone: function() {
+				aggregateByZone: function () {
 					const self = this;
 					const data = self.tableData || [];
-					
 					let filtered = data;
 					const term = (self.searchTerm || "").trim().toLowerCase();
 					if (term) {
@@ -1253,87 +945,40 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 							return br.includes(term) || sid.includes(term);
 						});
 					}
-					
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
 						filtered = filtered.filter(r => self.selectedMisZones.includes(r.zone));
 					}
-					
 					const zones = {};
 					filtered.forEach(r => {
 						const zName = r.zone || "Unknown Zone";
 						const rName = r.region || "Unknown Region";
 						const solId = r.sol_id;
-						
-						if (!zones[zName]) {
-							zones[zName] = {
-								zone: zName,
-								data: { branches: new Set(), ca: 0, sa: 0, tasc: 0, rd: 0, smbg: 0, dd: 0, fd: 0, total: 0 },
-								regions: {}
-							};
-						}
-						
-						if (!zones[zName].regions[rName]) {
-							zones[zName].regions[rName] = {
-								region: rName,
-								branches: {}
-							};
-						}
-						
+						if (!zones[zName]) { zones[zName] = { zone: zName, data: { branches: new Set(), ca: 0, sa: 0, tasc: 0, rd: 0, smbg: 0, dd: 0, fd: 0, total: 0 }, regions: {} }; }
+						if (!zones[zName].regions[rName]) { zones[zName].regions[rName] = { region: rName, branches: {} }; }
 						if (!zones[zName].regions[rName].branches[solId]) {
-							zones[zName].regions[rName].branches[solId] = {
-								sol_id: solId,
-								branch_name: r.branch_name || ("Branch " + solId),
-								ca: r.ca || 0,
-								sa: r.sa || 0,
-								tasc: r.tasc || 0,
-								rd: r.rd || 0,
-								smbg: r.smbg || 0,
-								dd: r.dd || 0,
-								fd: r.fd || 0,
-								total: r.total || 0
-							};
+							zones[zName].regions[rName].branches[solId] = { sol_id: solId, branch_name: r.branch_name || ("Branch " + solId), ca: r.ca || 0, sa: r.sa || 0, tasc: r.tasc || 0, rd: r.rd || 0, smbg: r.smbg || 0, dd: r.dd || 0, fd: r.fd || 0, total: r.total || 0 };
 						}
-						
 						zones[zName].data.branches.add(solId);
-						zones[zName].data.ca += r.ca || 0;
-						zones[zName].data.sa += r.sa || 0;
-						zones[zName].data.tasc += r.tasc || 0;
-						zones[zName].data.rd += r.rd || 0;
-						zones[zName].data.smbg += r.smbg || 0;
-						zones[zName].data.dd += r.dd || 0;
-						zones[zName].data.fd += r.fd || 0;
-						zones[zName].data.total += r.total || 0;
+						zones[zName].data.ca += r.ca || 0; zones[zName].data.sa += r.sa || 0; zones[zName].data.tasc += r.tasc || 0;
+						zones[zName].data.rd += r.rd || 0; zones[zName].data.smbg += r.smbg || 0; zones[zName].data.dd += r.dd || 0;
+						zones[zName].data.fd += r.fd || 0; zones[zName].data.total += r.total || 0;
 					});
-					
 					return Object.values(zones).map(z => {
 						const regionsArr = Object.values(z.regions).map(reg => {
 							const branchesArr = Object.values(reg.branches);
-							const regData = {
-								region: reg.region,
-								branches: branchesArr,
-								ca: branchesArr.reduce((s, b) => s + b.ca, 0),
-								sa: branchesArr.reduce((s, b) => s + b.sa, 0),
-								tasc: branchesArr.reduce((s, b) => s + b.tasc, 0),
-								rd: branchesArr.reduce((s, b) => s + b.rd, 0),
-								smbg: branchesArr.reduce((s, b) => s + b.smbg, 0),
-								dd: branchesArr.reduce((s, b) => s + b.dd, 0),
-								fd: branchesArr.reduce((s, b) => s + b.fd, 0),
-								total: branchesArr.reduce((s, b) => s + b.total, 0)
-							};
-							return regData;
+							return { region: reg.region, branches: branchesArr, ca: branchesArr.reduce((s, b) => s + b.ca, 0), sa: branchesArr.reduce((s, b) => s + b.sa, 0), tasc: branchesArr.reduce((s, b) => s + b.tasc, 0), rd: branchesArr.reduce((s, b) => s + b.rd, 0), smbg: branchesArr.reduce((s, b) => s + b.smbg, 0), dd: branchesArr.reduce((s, b) => s + b.dd, 0), fd: branchesArr.reduce((s, b) => s + b.fd, 0), total: branchesArr.reduce((s, b) => s + b.total, 0) };
 						});
-						
 						z.data.branches = Array.from(z.data.branches);
 						z.regions = regionsArr;
 						return z;
 					}).sort((a, b) => a.zone.localeCompare(b.zone));
 				},
-				attachReportEventHandlers: function(container, dashboardInstance) {
+				attachReportEventHandlers: function (container, dashboardInstance) {
 					const self = this;
-					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function() {
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
 						const format = $(this).data("format");
 						dashboardInstance.state.formatMode = format;
-						container.find(".mis-format-btn").each(function() {
+						container.find(".mis-format-btn").each(function () {
 							const btn = $(this);
 							const isActive = btn.data("format") === format;
 							btn.css("background", isActive ? "#417d81" : "#e2e8f0");
@@ -1345,106 +990,33 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						}
 						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 					});
-
 					let searchTimeout;
-					container.off("input", "#mis-search").on("input", "#mis-search", function() {
+					container.off("input", "#mis-search").on("input", "#mis-search", function () {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
-							if (self.tableData) {
-								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
-							}
+							if (self.tableData) { self.renderMisTable(container.find("#mis-table-container"), dashboardInstance); }
 						}, 300);
 					});
-
-					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function() {
+					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function () {
 						self.allExpanded = !self.allExpanded;
 						const expand = self.allExpanded;
 						if (!self.tableData) return;
 						const zoneData = self.aggregateByZone();
 						zoneData.forEach(z => {
 							self.expandedZones[z.zone] = expand;
-							z.regions.forEach(r => {
-								self.expandedRegions[z.zone + "::" + r.region] = expand;
-							});
+							z.regions.forEach(r => { self.expandedRegions[z.zone + "::" + r.region] = expand; });
 						});
 						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 					});
-
-					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function() {
-						self.refetchData(container, dashboardInstance);
-					});
-
-					const tableContainer = container.find("#mis-table-container");
-					tableContainer.off("click", ".mis-zone-row").on("click", ".mis-zone-row", function(e) {
-						if ($(e.target).is("input[type='checkbox']")) return;
-						const zone = $(this).data("zone");
-						self.expandedZones[zone] = !self.expandedZones[zone];
-						const show = self.expandedZones[zone];
-						const $regRows = tableContainer.find(`.mis-region-row[data-zone="${zone}"]`);
-						const $brRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"]`);
-						
-						if (show) {
-							$regRows.stop(true, true).slideDown(200);
-							$regRows.each(function() {
-								const reg = $(this).data("region");
-								const regKey = zone + "::" + reg;
-								if (self.expandedRegions[regKey]) {
-									tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${reg}"]`).stop(true, true).slideDown(200);
-								}
-							});
-						} else {
-							$regRows.stop(true, true).slideUp(150);
-							$brRows.stop(true, true).slideUp(150);
-						}
-						$(this).find(".mis-zone-toggle").text(show ? "▼" : "▶");
-					});
-
-					tableContainer.off("click", ".mis-region-row").on("click", ".mis-region-row", function(e) {
-						if ($(e.target).is("input[type='checkbox']")) return;
-						const zone = $(this).data("zone");
-						const region = $(this).data("region");
-						const regionKey = zone + "::" + region;
-						self.expandedRegions[regionKey] = !self.expandedRegions[regionKey];
-						const show = self.expandedRegions[regionKey];
-						const $branchRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"]`);
-						
-						if (show) {
-							$branchRows.stop(true, true).slideDown(200);
-						} else {
-							$branchRows.stop(true, true).slideUp(150);
-						}
-						$(this).find(".mis-region-toggle").text(show ? "▼" : "▶");
-					});
-
-					tableContainer.off("change", ".mis-row-check").on("change", ".mis-row-check", function(e) {
-						const checkId = $(this).data("check-id");
-						const checked = $(this).prop("checked");
-						self.checkedRows[checkId] = checked;
-						const $row = $(this).closest("tr");
-						$row.toggleClass("mis-row-checked", checked);
-					});
-
-					tableContainer.off("change", ".mis-check-all").on("change", ".mis-check-all", function(e) {
-						const checked = $(this).prop("checked");
-						tableContainer.find(".mis-row-check").each(function() {
-							$(this).prop("checked", checked).trigger("change");
-						});
+					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function () {
+						self.tableData = []; self.filterOptions = null; self.selectedMisZones = [];
+						self.expandedZones = {}; self.expandedRegions = {}; self.checkedRows = {};
+						self.searchTerm = ""; self.allExpanded = false;
+						self.render(container, dashboardInstance);
 					});
 				},
-				refetchData: function(container, dashboardInstance) {
-					const self = this;
-					self.tableData = [];
-					self.filterOptions = null;
-					self.selectedMisZones = [];
-					self.expandedZones = {};
-					self.expandedRegions = {};
-					self.checkedRows = {};
-					self.searchTerm = "";
-					self.allExpanded = false;
-					self.render(container, dashboardInstance);
-				}
 			}
 		];
 
@@ -1464,11 +1036,10 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 		this.createFilterTags();
 		this.createTabsAndContainer();
 		this.initDatePicker();
-		this.setupHeaderToggle();
 		this.updateStateFromUrl(); // Read from URL and update state
-		this.switchDashboardMode(this.state.dashboardMode);
 		this.updateUiFromState(); // Update UI from state
 		this.loadFinancialYears();
+		this.switchDashboardMode(this.state.dashboardMode);
 	}
 
 	setupBranchProfilePopup() {
@@ -1543,8 +1114,6 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 		const container = $("#date-selector-container");
 		if (container.length) {
 			container.find(".frappe-control").remove();
-			
-			const yesterday = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
 
 			this.dateControl = frappe.ui.form.make_control({
 				parent: container,
@@ -1553,79 +1122,108 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 					fieldname: "date_selector",
 					placeholder: "DD/MM/YYYY",
 					only_input: true,
-					datepicker_options: {
-						maxDate: yesterday,
-					},
 					change: function () {
 						if (self.isRefreshingDate) return;
 						const val = self.dateControl.get_value();
 						if (!val) return;
 
-						const today = frappe.datetime.get_today();
-						if (val >= today) {
-							if (self._lastRejectedDate !== val) {
-								self._lastRejectedDate = val;
-								frappe.show_alert({
-									message: __("Today and future dates are not allowed."),
-									indicator: "red",
-								}, 5);
-							}
+						const parts = val.split("-");
+						const selected = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+						selected.setHours(0, 0, 0, 0);
+						const today = new Date();
+						today.setHours(0, 0, 0, 0);
+						if (selected >= today) {
+							frappe.show_alert({ message: "Today and future dates are not allowed.", indicator: "red" }, 3);
+							const yesterday = new Date(today);
+							yesterday.setDate(today.getDate() - 1);
+							const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
 							self.isRefreshingDate = true;
-							self.dateControl.set_value(self.state.selectedDate || yesterday);
+							self.dateControl.set_value(yStr);
 							self.isRefreshingDate = false;
-						} else {
-							self._lastRejectedDate = null;
-							self.state.selectedDate = val;
-							if (self.state.activeTab && self.tabDates.hasOwnProperty(self.state.activeTab)) {
-								self.tabDates[self.state.activeTab] = val;
-							}
-
-							// Automatically update financial year based on selected date
-							const calculatedFy = self.getFinancialYearFromDate(val);
-							if (calculatedFy) {
-								const $fySelector = $("#fy-selector");
-								if ($fySelector.length) {
-									if (!$fySelector.find(`option[value="${calculatedFy}"]`).length) {
-										$fySelector.prepend(`<option value="${calculatedFy}">${calculatedFy}</option>`);
-									}
-									$fySelector.val(calculatedFy);
-								}
-								self.state.financialYear = calculatedFy;
-							}
-
-							// Automatically update selected quarter based on selected date
-							self.state.selectedQuarter = self.getQuarterFromDate(val);
-
-							// Automatically update selected month key based on selected date
-							const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-							const monthNum = parseInt(val.split("-")[1], 10); // 1-12
-							self.state.selectedMonth = monthNames[monthNum - 1];
-
-							self.updateUrlFromState();
-							self.loadData();
+							return;
 						}
-					}
+
+						self.state.selectedDate = val;
+						if (
+							self.state.activeTab &&
+							self.tabDates.hasOwnProperty(self.state.activeTab)
+						) {
+							self.tabDates[self.state.activeTab] = val;
+						}
+
+						// Automatically update financial year based on selected date
+						const calculatedFy = self.getFinancialYearFromDate(val);
+						if (calculatedFy) {
+							const $fySelector = $("#fy-selector");
+							if ($fySelector.length) {
+								if (!$fySelector.find(`option[value="${calculatedFy}"]`).length) {
+									$fySelector.prepend(
+										`<option value="${calculatedFy}">${calculatedFy}</option>`,
+									);
+								}
+								$fySelector.val(calculatedFy);
+							}
+							self.state.financialYear = calculatedFy;
+						}
+
+						// Automatically update selected quarter based on selected date
+						self.state.selectedQuarter = self.getQuarterFromDate(val);
+
+						// Automatically update selected month key based on selected date
+						const monthNames = [
+							"JAN",
+							"FEB",
+							"MAR",
+							"APR",
+							"MAY",
+							"JUN",
+							"JUL",
+							"AUG",
+							"SEP",
+							"OCT",
+							"NOV",
+							"DEC",
+						];
+						const monthNum = parseInt(val.split("-")[1], 10); // 1-12
+						self.state.selectedMonth = monthNames[monthNum - 1];
+
+						self.updateUrlFromState();
+						self.loadData();
+					},
 				},
-				render_input: true
+				render_input: true,
 			});
 
 			if (this.dateControl && this.dateControl.$input) {
 				this.dateControl.$input.css({
-					"padding": "6px 10px",
-					"border": "1px solid #cbd5e1",
+					padding: "6px 10px",
+					border: "1px solid #cbd5e1",
 					"border-radius": "6px",
-					"background": "white",
-					"color": "#1b263b",
+					background: "white",
+					color: "#1b263b",
 					"font-size": "13px",
 					"font-weight": "600",
-					"height": "32px",
-					"width": "140px"
+					height: "32px",
+					width: "140px",
 				});
 				this.dateControl.$wrapper.css({
-					"margin": "0",
-					"padding": "0",
-					"display": "inline-block"
+					margin: "0",
+					padding: "0",
+					display: "inline-block",
 				});
+
+				// Default date = yesterday
+				const today = new Date();
+				const yesterday = new Date(today);
+				yesterday.setDate(today.getDate() - 1);
+				const maxDateStr = frappe.datetime.obj_to_str(yesterday);
+
+				if (!this.state.selectedDate) {
+					this.state.selectedDate = maxDateStr;
+					this.isRefreshingDate = true;
+					this.dateControl.set_value(maxDateStr);
+					this.isRefreshingDate = false;
+				}
 			}
 		}
 	}
@@ -1702,7 +1300,6 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 	}
 
 	getDashboardViewForRequest() {
-		if (this.state.viewType === "Quarterly") return "Yearly";
 		return this.state.viewType;
 	}
 
@@ -2226,23 +1823,83 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 		const data = this.data;
 
 		// Extract months
-		const allMonths = data.months.map((m) => ({
+		this.months = data.months.map((m) => ({
 			key: m.key,
 			display: m.display,
 			date: m.date,
 		}));
 
-		if (this.state.viewType === "Quarterly" && this.state.selectedQuarter) {
+		if (this.state.viewType === "Quarterly") {
+			const startYear = this.state.financialYear
+				? this.state.financialYear.split("-")[0]
+				: new Date().getFullYear().toString();
+			let endYear = this.state.financialYear
+				? this.state.financialYear.split("-")[1]
+				: (parseInt(startYear) + 1).toString();
+			if (endYear && endYear.length === 2) endYear = "20" + endYear;
+
 			const qMap = {
-				Q1: ["APR", "MAY", "JUN"],
-				Q2: ["JUL", "AUG", "SEP"],
-				Q3: ["OCT", "NOV", "DEC"],
-				Q4: ["JAN", "FEB", "MAR"],
+				Q1: [
+					{
+						key: "APR",
+						display: `APR-${startYear.slice(-2)}`,
+						date: `${startYear}-04-01`,
+					},
+					{
+						key: "MAY",
+						display: `MAY-${startYear.slice(-2)}`,
+						date: `${startYear}-05-01`,
+					},
+					{
+						key: "JUN",
+						display: `JUN-${startYear.slice(-2)}`,
+						date: `${startYear}-06-01`,
+					},
+				],
+				Q2: [
+					{
+						key: "JUL",
+						display: `JUL-${startYear.slice(-2)}`,
+						date: `${startYear}-07-01`,
+					},
+					{
+						key: "AUG",
+						display: `AUG-${startYear.slice(-2)}`,
+						date: `${startYear}-08-01`,
+					},
+					{
+						key: "SEP",
+						display: `SEP-${startYear.slice(-2)}`,
+						date: `${startYear}-09-01`,
+					},
+				],
+				Q3: [
+					{
+						key: "OCT",
+						display: `OCT-${startYear.slice(-2)}`,
+						date: `${startYear}-10-01`,
+					},
+					{
+						key: "NOV",
+						display: `NOV-${startYear.slice(-2)}`,
+						date: `${startYear}-11-01`,
+					},
+					{
+						key: "DEC",
+						display: `DEC-${startYear.slice(-2)}`,
+						date: `${startYear}-12-01`,
+					},
+				],
+				Q4: [
+					{ key: "JAN", display: `JAN-${endYear.slice(-2)}`, date: `${endYear}-01-01` },
+					{ key: "FEB", display: `FEB-${endYear.slice(-2)}`, date: `${endYear}-02-01` },
+					{ key: "MAR", display: `MAR-${endYear.slice(-2)}`, date: `${endYear}-03-01` },
+				],
 			};
-			const qKeys = qMap[this.state.selectedQuarter] || [];
-			this.months = allMonths.filter((m) => qKeys.includes(m.key));
-		} else {
-			this.months = allMonths;
+			const quarter =
+				this.state.selectedQuarter ||
+				this.getQuarterFromDate(this.state.selectedDate || frappe.datetime.get_today());
+			this.months = qMap[quarter] || this.months;
 		}
 
 		// Direct mapping
@@ -2317,7 +1974,9 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 			this.state.selectedMisReport = queryParams.selectedMisReport || this.state.selectedMisReport;
 
 			if (queryParams.selectedRegions) {
-				this.state.selectedRegions = queryParams.selectedRegions.split(",").filter(Boolean);
+				this.state.selectedRegions = queryParams.selectedRegions
+					.split(",")
+					.filter(Boolean);
 			} else if (queryParams.selectedRegion) {
 				this.state.selectedRegions = [queryParams.selectedRegion];
 			} else {
@@ -2392,8 +2051,13 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 			this.page.main.find("#quarter-selector-container").show();
 			this.page.main.find(".quarter-toggle-btn").removeClass("active");
 			if (!this.state.selectedQuarter) {
-				this.state.selectedQuarter = this.getQuarterFromDate(this.state.selectedDate || frappe.datetime.get_today());
-				this.state.selectedDate = this.getQuarterDate(this.state.selectedQuarter, this.state.financialYear);
+				this.state.selectedQuarter = this.getQuarterFromDate(
+					this.state.selectedDate || frappe.datetime.get_today(),
+				);
+				this.state.selectedDate = this.getQuarterDate(
+					this.state.selectedQuarter,
+					this.state.financialYear,
+				);
 			}
 			this.page.main
 				.find(`.quarter-toggle-btn[data-quarter="${this.state.selectedQuarter}"]`)
@@ -2439,8 +2103,8 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 		this.page.main.find(`.tab-btn[data-tab="${this.state.activeTab}"]`).addClass("active");
 
 		// Update dashboard mode toggle
-		const header = $(this.page.wrapper || ".frappe-page:visible").find(".page-head-row").length 
-			? $(this.page.wrapper || ".frappe-page:visible").find(".page-head-row") 
+		const header = $(this.page.wrapper || ".frappe-page:visible").find(".page-head-row").length
+			? $(this.page.wrapper || ".frappe-page:visible").find(".page-head-row")
 			: $(this.page.wrapper || ".frappe-page:visible").find(".page-head .container");
 		if (header.length) {
 			header.find(".dashboard-toggle-btn").removeClass("active");
@@ -2456,6 +2120,118 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 			this.populateFinancialYears(this.financialYearsList);
 		}
 		this.updateUiFromState();
+	}
+
+	// ========================================================================
+	// MIS DASHBOARD MODE
+	// ========================================================================
+
+	setupHeaderToggle() {
+		const self = this;
+		const header = $(this.page.wrapper || ".frappe-page:visible").find(".page-head-row").length
+			? $(this.page.wrapper || ".frappe-page:visible").find(".page-head-row")
+			: $(this.page.wrapper || ".frappe-page:visible").find(".page-head .container");
+
+		if (!header.length) return;
+
+		header.css("position", "relative");
+		header.find(".dashboard-header-toggle-wrapper").remove();
+
+		const toggleHtml = `
+			<div class="dashboard-header-toggle-wrapper">
+				<div class="dashboard-toggle-switch-container">
+					<button type="button" class="dashboard-toggle-btn ${self.state.dashboardMode === 'drishti' ? 'active' : ''}" data-value="drishti">Drishti</button>
+					<button type="button" class="dashboard-toggle-btn ${self.state.dashboardMode === 'mis' ? 'active' : ''}" data-value="mis">MIS Reports</button>
+				</div>
+			</div>
+		`;
+
+		header.append(toggleHtml);
+
+		header.off("click", ".dashboard-toggle-btn").on("click", ".dashboard-toggle-btn", function () {
+			const val = $(this).data("value");
+			header.find(".dashboard-toggle-btn").removeClass("active");
+			$(this).addClass("active");
+			self.switchDashboardMode(val);
+			self.updateUrlFromState();
+		});
+	}
+
+	switchDashboardMode(mode) {
+		this.state.dashboardMode = mode;
+		if (mode === "drishti") {
+			if (this.mis_container) this.mis_container.hide();
+			if (this.drishti_container) this.drishti_container.show();
+			$(this.page.wrapper).find("#drishti-subtitle").show();
+			$("#drishti-header-timer").show();
+			this.loadData();
+		} else {
+			if (this.drishti_container) this.drishti_container.hide();
+			if (this.mis_container) {
+				this.mis_container.show();
+				const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
+				this.mis_container.find(".mis-report-tab-btn").removeClass("active");
+				this.mis_container.find(`.mis-report-tab-btn[data-report-id="${activeReportId}"]`).addClass("active");
+				this.renderMisReport(activeReportId);
+			} else {
+				this.initMisReportsContainer();
+				const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
+				this.renderMisReport(activeReportId);
+			}
+			$(this.page.wrapper).find("#drishti-subtitle").hide();
+			$("#drishti-header-timer").hide();
+		}
+	}
+
+	initMisReportsContainer() {
+		this.mis_container = $('<div id="mis-reports-container" style="border: 1px solid #cbd5e1; padding: 16px; background: #fff; border-radius: 8px; margin-top: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);"></div>').appendTo(this.page.main);
+
+		const selectorHtml = `
+			<div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 16px; width: 100%;">
+				<div style="display: flex; gap: 12px;" id="mis-report-selector-tabs"></div>
+			</div>
+			<div id="mis-report-content-area" style="min-height: 200px;"></div>
+		`;
+		this.mis_container.html(selectorHtml);
+
+		const self = this;
+		const tabSelectorContainer = this.mis_container.find("#mis-report-selector-tabs");
+		const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
+
+		this.misReportsList.forEach((report) => {
+			const activeClass = report.id === activeReportId ? "active" : "";
+			tabSelectorContainer.append(`
+				<button class="mis-report-tab-btn ${activeClass}" data-report-id="${report.id}">
+					${report.name}
+				</button>
+			`);
+		});
+
+		this.mis_container.on("click", ".mis-report-tab-btn", function () {
+			self.mis_container.find(".mis-report-tab-btn").removeClass("active");
+			$(this).addClass("active");
+			const reportId = $(this).data("report-id");
+			self.state.selectedMisReport = reportId;
+			self.updateUrlFromState();
+			self.renderMisReport(reportId);
+		});
+
+		const contentArea = this.mis_container.find("#mis-report-content-area");
+		contentArea.html('<div style="padding: 40px; text-align: center; color: #64748b; font-weight: 600; font-family: \'Inter\', sans-serif;">Click a report tab above to load data.</div>');
+	}
+
+	renderMisReport(reportId) {
+		this._misRenderSeq = (this._misRenderSeq || 0) + 1;
+		const seq = this._misRenderSeq;
+		const report = this.misReportsList.find(r => r.id === reportId);
+		const contentArea = this.mis_container.find("#mis-report-content-area");
+		if (report && contentArea.length) {
+			if (typeof report.render === "function") {
+				report.render(contentArea, this, seq);
+			} else {
+				contentArea.html('<p style="color: #64748b; padding: 20px;">No custom renderer provided for this report.</p>');
+			}
+		}
 	}
 
 	// ========================================================================
@@ -2553,17 +2329,17 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
                     </div>
                 </div>
 
-            				<!-- Performance Categories -->
-				<div class="filter-tags-container category-filter-container">
-					<div class="filter-group">
-						<span class="filter-group-label">Category:</span>
-						<div class="filter-tags" id="category-tags"></div>
-					</div>
-				</div>
-			</div>
-		`;
+                <!-- Performance Categories -->
+                <div class="filter-tags-container category-filter-container">
+                    <div class="filter-group">
+                        <span class="filter-group-label">Category:</span>
+                        <div class="filter-tags" id="category-tags"></div>
+                    </div>
+                </div>
+            </div>
+        `;
 
-		$(html).appendTo(this.drishti_container || this.page.main);
+		$(html).appendTo(this.drishti_container);
 		this.populateFilterTags();
 	}
 
@@ -2989,7 +2765,7 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
             </div>
         `;
 
-		$(html).appendTo(this.drishti_container || this.page.main);
+		$(html).appendTo(this.drishti_container);
 		this.attachTabEvents();
 	}
 
@@ -3018,12 +2794,14 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 		});
 
 		// Financial Year
-		$(document).off("change", "#fy-selector").on("change", "#fy-selector", function () {
-			self.state.financialYear = $(this).val();
-			self.applyPreviousFinancialYearDefaultDate();
-			self.updateUrlFromState();
-			self.loadData();
-		});
+		$(document)
+			.off("change", "#fy-selector")
+			.on("change", "#fy-selector", function () {
+				self.state.financialYear = $(this).val();
+				self.applyPreviousFinancialYearDefaultDate();
+				self.updateUrlFromState();
+				self.loadData();
+			});
 
 		// View Toggle Buttons
 		this.page.main.find(".view-toggle-btn").on("click", function () {
@@ -3031,7 +2809,7 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 			$(this).addClass("active");
 			self.clearViewControlsHighlight();
 			self.state.viewType = $(this).data("view");
-			
+
 			if (self.state.viewType === "Quarterly") {
 				self.state.selectedMonth = null;
 				const currentQ = self.getQuarterFromDate(frappe.datetime.get_today());
@@ -3048,7 +2826,7 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 				self.state.selectedQuarter = null;
 				self.applyPreviousFinancialYearDefaultDate();
 			}
-			
+
 			self.updateUrlFromState();
 			self.updateUiFromState();
 			self.loadData();
@@ -3078,29 +2856,31 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 		// Month Selector change
 		this.page.main.on("change", "#month-selector", function () {
 			const selectedMonthNum = parseInt($(this).val()); // 1 to 12
-			
+
 			const now = new Date();
 			const currentMonth = now.getMonth() + 1; // 1-12
 			const currentYear = now.getFullYear();
-			
+
 			const startYear = parseInt(self.state.financialYear.split("-")[0]);
 			const endYear = parseInt(self.state.financialYear.split("-")[1]);
-			
-			const selectedYear = (selectedMonthNum >= 4) ? startYear : endYear;
-			
-			const isFuture = (selectedYear > currentYear) || (selectedYear === currentYear && selectedMonthNum > currentMonth);
-			
+
+			const selectedYear = selectedMonthNum >= 4 ? startYear : endYear;
+
+			const isFuture =
+				selectedYear > currentYear ||
+				(selectedYear === currentYear && selectedMonthNum > currentMonth);
+
 			if (isFuture) {
 				frappe.show_alert({
 					message: __("Future months cannot be accessed"),
-					indicator: "orange"
+					indicator: "orange",
 				});
 				const dateToUse = self.state.selectedDate || frappe.datetime.get_today();
 				const prevMonthVal = new Date(dateToUse).getMonth() + 1;
 				$(this).val(prevMonthVal);
 				return;
 			}
-			
+
 			let newDateStr = "";
 			if (selectedYear === currentYear && selectedMonthNum === currentMonth) {
 				const todayObj = new Date();
@@ -3109,16 +2889,29 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 				const lastDay = new Date(selectedYear, selectedMonthNum, 0).getDate();
 				newDateStr = `${selectedYear}-${String(selectedMonthNum).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 			}
-			
+
 			self.state.selectedDate = newDateStr;
 			if (self.state.activeTab && self.tabDates.hasOwnProperty(self.state.activeTab)) {
 				self.tabDates[self.state.activeTab] = newDateStr;
 			}
 
 			// Automatically update selected month name key
-			const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+			const monthNames = [
+				"JAN",
+				"FEB",
+				"MAR",
+				"APR",
+				"MAY",
+				"JUN",
+				"JUL",
+				"AUG",
+				"SEP",
+				"OCT",
+				"NOV",
+				"DEC",
+			];
 			self.state.selectedMonth = monthNames[selectedMonthNum - 1];
-			
+
 			self.updateDatePickerValue(newDateStr);
 			self.updateUrlFromState();
 			self.loadData();
@@ -3132,7 +2925,6 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 			self.updateUrlFromState();
 			self.loadData();
 		});
-
 
 		// Format Toggle
 		$(document)
@@ -3241,7 +3033,20 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 					self.state.selectedDate = savedDate || dateStr;
 
 					if (self.state.selectedDate) {
-						const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+						const monthNames = [
+							"JAN",
+							"FEB",
+							"MAR",
+							"APR",
+							"MAY",
+							"JUN",
+							"JUL",
+							"AUG",
+							"SEP",
+							"OCT",
+							"NOV",
+							"DEC",
+						];
 						const monthNum = parseInt(self.state.selectedDate.split("-")[1], 10);
 						self.state.selectedMonth = monthNames[monthNum - 1];
 					}
@@ -3341,11 +3146,18 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 					}
 
 					// Update selectedDate if empty to reflect the actual loaded date
-					if (!self.state.selectedDate && r.message.months && r.message.months.length > 0) {
+					if (
+						!self.state.selectedDate &&
+						r.message.months &&
+						r.message.months.length > 0
+					) {
 						const latestMonth = r.message.months[r.message.months.length - 1];
 						if (latestMonth && latestMonth.date) {
 							self.state.selectedDate = latestMonth.date;
-							if (self.state.activeTab && self.tabDates.hasOwnProperty(self.state.activeTab)) {
+							if (
+								self.state.activeTab &&
+								self.tabDates.hasOwnProperty(self.state.activeTab)
+							) {
 								self.tabDates[self.state.activeTab] = latestMonth.date;
 							}
 							self.updateDatePickerValue(latestMonth.date);
@@ -3453,11 +3265,18 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 					}
 
 					// Update selectedDate if empty to reflect the actual loaded date
-					if (!self.state.selectedDate && r.message.months && r.message.months.length > 0) {
+					if (
+						!self.state.selectedDate &&
+						r.message.months &&
+						r.message.months.length > 0
+					) {
 						const latestMonth = r.message.months[r.message.months.length - 1];
 						if (latestMonth && latestMonth.date) {
 							self.state.selectedDate = latestMonth.date;
-							if (self.state.activeTab && self.tabDates.hasOwnProperty(self.state.activeTab)) {
+							if (
+								self.state.activeTab &&
+								self.tabDates.hasOwnProperty(self.state.activeTab)
+							) {
 								self.tabDates[self.state.activeTab] = latestMonth.date;
 							}
 							self.updateDatePickerValue(latestMonth.date);
@@ -3532,7 +3351,8 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 
 		// Update "All Regions" checkbox state
 		const allCheckbox = container.find("#region-all-checkbox");
-		const allSelected = checkboxes.length > 0 && checkboxes.length === self.state.selectedRegions.length;
+		const allSelected =
+			checkboxes.length > 0 && checkboxes.length === self.state.selectedRegions.length;
 		const noneSelected = self.state.selectedRegions.length === 0;
 
 		if (noneSelected) {
@@ -3682,12 +3502,18 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 
 		// 4. Branch search term filter (supports comma-separated multi-search)
 		if (this.state.branchSearchTerm) {
-			const searchTerms = this.state.branchSearchTerm.toLowerCase().split(",").map(s => s.trim()).filter(Boolean);
+			const searchTerms = this.state.branchSearchTerm
+				.toLowerCase()
+				.split(",")
+				.map((s) => s.trim())
+				.filter(Boolean);
 			if (searchTerms.length > 0) {
 				filtered = filtered.filter((branch) => {
 					const branchName = (branch.branch || "").toLowerCase();
 					const solId = (branch.sol_id || "").toLowerCase();
-					return searchTerms.some(term => branchName.includes(term) || solId.includes(term));
+					return searchTerms.some(
+						(term) => branchName.includes(term) || solId.includes(term),
+					);
 				});
 			}
 		}
@@ -3878,45 +3704,43 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 		this.page.main.find("#summary-cards-container").show();
 		this.updateSummaryCards(filteredBranches, reaggregatedZoneData);
 
-		requestAnimationFrame(() => {
-			setTimeout(() => {
-				let htmlContent = "";
+		setTimeout(() => {
+			let htmlContent = "";
 
-				if (this.state.activeTab === "zone") {
-					htmlContent = this.renderZoneTable(reaggregatedZoneData);
-				} else if (this.state.activeTab === "category") {
-					htmlContent = this.renderCategoryTable(reaggregatedCategoryData);
-				} else if (this.state.activeTab === "product") {
-					htmlContent = this.renderProductTable(this.productData);
-				} else if (this.state.activeTab === "agent") {
-					htmlContent = this.renderAgentWiseTable(this.agentData);
-				} else if (this.state.activeTab === "branch") {
-					htmlContent = this.buildBranchTable(filteredBranches, this.months);
-				}
+			if (this.state.activeTab === "zone") {
+				htmlContent = this.renderZoneTable(reaggregatedZoneData);
+			} else if (this.state.activeTab === "category") {
+				htmlContent = this.renderCategoryTable(reaggregatedCategoryData);
+			} else if (this.state.activeTab === "product") {
+				htmlContent = this.renderProductTable(this.productData);
+			} else if (this.state.activeTab === "agent") {
+				htmlContent = this.renderAgentWiseTable(this.agentData);
+			} else if (this.state.activeTab === "branch") {
+				htmlContent = this.buildBranchTable(filteredBranches, this.months);
+			}
 
-				dataContainer.html(htmlContent);
+			dataContainer.html(htmlContent);
 
-				requestAnimationFrame(() => {
-					if (this.state.activeTab === "zone") {
-						this.attachZoneExpandHandlers();
-						this.attachZoneDrilldownHandlers();
-					} else if (this.state.activeTab === "product") {
-						this.attachProductExpandHandlers();
-						this.attachProductDrilldownHandlers();
-					} else if (this.state.activeTab === "category") {
-						this.attachMovementPopupHandlers();
-						this.attachCategoryExpandHandlers();
-						this.attachDrillHandlers();
-						this.attachZoneDrillHandlers();
-						this.attachTotalMovementPopupHandler();
-					} else if (this.state.activeTab === "agent") {
-						this.attachAgentExpandHandlers();
-					}
+			// Attach handlers after rendering
 
-					dataContainer.css("opacity", 1);
-				});
-			}, 100);
-		});
+			if (this.state.activeTab === "zone") {
+				this.attachZoneExpandHandlers();
+				this.attachZoneDrilldownHandlers();
+			} else if (this.state.activeTab === "product") {
+				this.attachProductExpandHandlers();
+				this.attachProductDrilldownHandlers();
+			} else if (this.state.activeTab === "category") {
+				this.attachMovementPopupHandlers();
+				this.attachCategoryExpandHandlers();
+				this.attachDrillHandlers();
+				this.attachZoneDrillHandlers();
+				this.attachTotalMovementPopupHandler();
+			} else if (this.state.activeTab === "agent") {
+				this.attachAgentExpandHandlers();
+			}
+
+			dataContainer.css("opacity", 1);
+		}, 200);
 	}
 
 	// ========================================================================
@@ -3953,7 +3777,11 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 			let highlightStyle = "";
 			if (monthIndex === currentMonth && monthYear === currentYear) {
 				const currentDay = today.getDate();
-				const remainingDays = getRemainingWorkingDaysExcludingSundays(currentYear, currentMonth, currentDay);
+				const remainingDays = getRemainingWorkingDaysExcludingSundays(
+					currentYear,
+					currentMonth,
+					currentDay,
+				);
 
 				if (remainingDays >= 0) {
 					daysLeftIndicator = `
@@ -4090,7 +3918,7 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 			const monthDate = new Date(month.date);
 			const monthIndex = monthDate.getMonth();
 			const monthYear = monthDate.getFullYear();
-			const isCurrentMonth = (monthIndex === currentMonth && monthYear === currentYear);
+			const isCurrentMonth = monthIndex === currentMonth && monthYear === currentYear;
 
 			const cellBg = isCurrentMonth ? "#6ca8ac !important" : "#264a4d !important";
 
@@ -5284,7 +5112,11 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 			let highlightStyle = "";
 			if (monthIndex === currentMonth && monthYear === currentYear) {
 				const currentDay = today.getDate();
-				const remainingDays = getRemainingWorkingDaysExcludingSundays(currentYear, currentMonth, currentDay);
+				const remainingDays = getRemainingWorkingDaysExcludingSundays(
+					currentYear,
+					currentMonth,
+					currentDay,
+				);
 
 				if (remainingDays >= 0) {
 					daysLeftIndicator = `
@@ -6812,116 +6644,5 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
         `;
 
 		$("head").append(styles);
-	}
-
-	setupHeaderToggle() {
-		const self = this;
-		const header = $(this.page.wrapper || ".frappe-page:visible").find(".page-head-row").length 
-			? $(this.page.wrapper || ".frappe-page:visible").find(".page-head-row") 
-			: $(this.page.wrapper || ".frappe-page:visible").find(".page-head .container");
-
-		if (!header.length) return;
-
-		// Make sure header has relative position for absolute centering of toggle
-		header.css("position", "relative");
-
-		// Remove any existing toggle first to prevent duplicates
-		header.find(".dashboard-header-toggle-wrapper").remove();
-
-		const toggleHtml = `
-			<div class="dashboard-header-toggle-wrapper">
-				<div class="dashboard-toggle-switch-container">
-					<button type="button" class="dashboard-toggle-btn ${self.state.dashboardMode === 'drishti' ? 'active' : ''}" data-value="drishti">Drishti</button>
-					<button type="button" class="dashboard-toggle-btn ${self.state.dashboardMode === 'mis' ? 'active' : ''}" data-value="mis">MIS Reports</button>
-				</div>
-			</div>
-		`;
-
-		header.append(toggleHtml);
-
-		// Handle click events
-		header.off("click", ".dashboard-toggle-btn").on("click", ".dashboard-toggle-btn", function() {
-			const val = $(this).data("value");
-			header.find(".dashboard-toggle-btn").removeClass("active");
-			$(this).addClass("active");
-			self.switchDashboardMode(val);
-			self.updateUrlFromState();
-		});
-	}
-
-	switchDashboardMode(mode) {
-		this.state.dashboardMode = mode;
-		if (mode === "drishti") {
-			if (this.mis_container) this.mis_container.hide();
-			if (this.drishti_container) this.drishti_container.show();
-			$(this.page.wrapper).find("#drishti-subtitle").show();
-			$("#drishti-header-timer").show();
-			this.loadData();
-		} else {
-			if (this.drishti_container) this.drishti_container.hide();
-			if (this.mis_container) {
-				this.mis_container.show();
-				const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
-				this.mis_container.find(".mis-report-tab-btn").removeClass("active");
-				this.mis_container.find(`.mis-report-tab-btn[data-report-id="${activeReportId}"]`).addClass("active");
-				this.renderMisReport(activeReportId);
-			} else {
-				this.initMisReportsContainer();
-			}
-			$(this.page.wrapper).find("#drishti-subtitle").hide();
-			$("#drishti-header-timer").hide();
-		}
-	}
-
-	initMisReportsContainer() {
-		this.mis_container = $('<div id="mis-reports-container" style="border: 1px solid #cbd5e1; padding: 16px; background: #fff; border-radius: 8px; margin-top: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);"></div>').appendTo(this.page.main);
-		
-		const selectorHtml = `
-			<div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 16px; width: 100%;">
-				<div style="display: flex; gap: 12px;" id="mis-report-selector-tabs">
-				</div>
-			</div>
-			<div id="mis-report-content-area" style="min-height: 200px;"></div>
-		`;
-		this.mis_container.html(selectorHtml);
-
-		const self = this;
-		const tabSelectorContainer = this.mis_container.find("#mis-report-selector-tabs");
-		const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
-		
-		this.misReportsList.forEach((report) => {
-			const activeClass = report.id === activeReportId ? "active" : "";
-			tabSelectorContainer.append(`
-				<button class="mis-report-tab-btn ${activeClass}" data-report-id="${report.id}">
-					${report.name}
-				</button>
-			`);
-		});
-
-		this.mis_container.on("click", ".mis-report-tab-btn", function() {
-			self.mis_container.find(".mis-report-tab-btn").removeClass("active");
-			$(this).addClass("active");
-
-			const reportId = $(this).data("report-id");
-			self.state.selectedMisReport = reportId;
-			self.updateUrlFromState();
-			self.renderMisReport(reportId);
-		});
-
-		if (activeReportId) {
-			this.renderMisReport(activeReportId);
-		}
-	}
-
-	renderMisReport(reportId) {
-		const report = this.misReportsList.find(r => r.id === reportId);
-		const contentArea = this.mis_container.find("#mis-report-content-area");
-		if (report && contentArea.length) {
-			if (typeof report.render === "function") {
-				report.render(contentArea, this);
-			} else {
-				contentArea.html('<p style="color: #64748b; padding: 20px;">No custom renderer provided for this report.</p>');
-			}
-		}
 	}
 }
