@@ -848,15 +848,6 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 				searchTerm: "",
 				allExpanded: false,
 				selectedMisZones: [],
-				getSchmCategory: function(code, desc) {
-					code = (code || "").toUpperCase();
-					desc = (desc || "").toUpperCase();
-					if (code.startsWith("SB") || desc.includes("SAVING")) return "Savings";
-					if (code.startsWith("CA") || desc.includes("CURRENT")) return "Current";
-					if (code.startsWith("RD") || desc.includes("RECURRING")) return "RD";
-					if (code.startsWith("FD") || code.startsWith("TD") || desc.includes("TERM") || desc.includes("FIXED")) return "FD";
-					return "Others";
-				},
 				render: function(container, dashboardInstance) {
 					const self = this;
 					container.html(`
@@ -1008,27 +999,30 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 				renderKPI: function(container, dashboardInstance) {
 					const self = this;
 					const data = self.tableData || [];
-					let totSavings = 0, totCurrent = 0, totRD = 0, totFD = 0, totAll = 0;
+					let totSA = 0, totCA = 0, totTASC = 0, totRD = 0, totFD = 0, totAll = 0;
 					
 					data.forEach(r => {
-						const cat = self.getSchmCategory(r.schm_code, r.schm_desc);
-						const count = r.accounts_opened || 0;
-						if (cat === "Savings") totSavings += count;
-						else if (cat === "Current") totCurrent += count;
-						else if (cat === "RD") totRD += count;
-						else if (cat === "FD") totFD += count;
-						totAll += count;
+						totSA += r.sa || 0;
+						totCA += r.ca || 0;
+						totTASC += r.tasc || 0;
+						totRD += r.rd || 0;
+						totFD += r.fd || 0;
+						totAll += r.total || 0;
 					});
 					
 					container.html(`
-						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px;">
+						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px;">
 							<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
-								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Savings Accounts</div>
-								<div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totSavings)}</div>
+								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">SA Accounts</div>
+								<div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totSA)}</div>
 							</div>
 							<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
-								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Current Accounts</div>
-								<div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totCurrent)}</div>
+								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">CA Accounts</div>
+								<div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totCA)}</div>
+							</div>
+							<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
+								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">TASC Accounts</div>
+								<div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totTASC)}</div>
 							</div>
 							<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
 								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">RD Accounts</div>
@@ -1063,22 +1057,29 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						return;
 					}
 					
-					const grandTotal = { savings: 0, current: 0, rd: 0, fd: 0, other: 0, total: 0 };
+					const grandTotal = { ca: 0, sa: 0, tasc: 0, rd: 0, smbg: 0, dd: 0, fd: 0, total: 0 };
 					zoneData.forEach(z => {
-						grandTotal.savings += z.data.savings;
-						grandTotal.current += z.data.current;
+						grandTotal.ca += z.data.ca;
+						grandTotal.sa += z.data.sa;
+						grandTotal.tasc += z.data.tasc;
 						grandTotal.rd += z.data.rd;
+						grandTotal.smbg += z.data.smbg;
+						grandTotal.dd += z.data.dd;
 						grandTotal.fd += z.data.fd;
-						grandTotal.other += z.data.other;
 						grandTotal.total += z.data.total;
 					});
 					
 					const metricCols = [
-						{ key: "savings", label: "Savings", align: "right" },
-						{ key: "current", label: "Current", align: "right" },
+						{ key: "ca", label: "CA", align: "right" },
+						{ key: "sa", label: "SA", align: "right" },
+						{ key: "tasc", label: "TASC", align: "right" },
 						{ key: "rd", label: "RD", align: "right" },
+						{ key: "smbg", label: "SMBG", align: "right" },
+						{ key: "dd", label: "DD", align: "right" },
 						{ key: "fd", label: "FD", align: "right" },
-						{ key: "total", label: "Total Opened", align: "right" }
+						{ key: "ca_sa_tasc", label: "CA+SA+TASC", align: "right", calc: (r) => (r.ca || 0) + (r.sa || 0) + (r.tasc || 0) },
+						{ key: "rd_smbg_dd_fd", label: "RD+SMBG+DD+FD", align: "right", calc: (r) => (r.rd || 0) + (r.smbg || 0) + (r.dd || 0) + (r.fd || 0) },
+						{ key: "total", label: "TOTAL ACCOUNTS", align: "right" }
 					];
 					
 					let sr = 0;
@@ -1098,7 +1099,10 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 								${z.zone}
 							</td>
 							<td style="padding: 10px 14px; font-weight: 700; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px;">${zoneRow.branches.length}</td>
-							${metricCols.map(mc => `<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: ${mc.align}; white-space: nowrap; font-size: 14px;">${new Intl.NumberFormat("en-IN").format(zoneRow[mc.key])}</td>`).join('')}
+							${metricCols.map(mc => {
+								const val = mc.calc ? mc.calc(zoneRow) : zoneRow[mc.key];
+								return `<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: ${mc.align}; white-space: nowrap; font-size: 14px;">${new Intl.NumberFormat("en-IN").format(val)}</td>`;
+							}).join('')}
 						</tr>`;
 						
 						z.regions.forEach(region => {
@@ -1115,7 +1119,10 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 									${region.region}
 								</td>
 								<td style="padding: 8px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${regionRow.branches.length}</td>
-								${metricCols.map(mc => `<td style="padding: 8px 14px; color: #334155; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 600;">${new Intl.NumberFormat("en-IN").format(regionRow[mc.key])}</td>`).join('')}
+								${metricCols.map(mc => {
+									const val = mc.calc ? mc.calc(regionRow) : regionRow[mc.key];
+									return `<td style="padding: 8px 14px; color: #334155; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 600;">${new Intl.NumberFormat("en-IN").format(val)}</td>`;
+								}).join('')}
 							</tr>`;
 							
 							regionRow.branches.forEach((branch, bi) => {
@@ -1129,7 +1136,10 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 									<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 50px; font-weight: 500;">${branch.sol_id} - ${branch.branch_name || branch.sol_id}</td>
 									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
-									${metricCols.map(mc => `<td style="padding: 6px 14px; color: #475569; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${new Intl.NumberFormat("en-IN").format(branch[mc.key])}</td>`).join('')}
+									${metricCols.map(mc => {
+										const val = mc.calc ? mc.calc(branch) : branch[mc.key];
+										return `<td style="padding: 6px 14px; color: #475569; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${new Intl.NumberFormat("en-IN").format(val)}</td>`;
+									}).join('')}
 								</tr>`;
 							});
 						});
@@ -1169,7 +1179,10 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 										<td style="padding: 10px 14px; font-weight: 700;"></td>
 										<td style="padding: 10px 14px; font-weight: 700; font-size: 14px;">Grand Total</td>
 										<td style="padding: 10px 14px; text-align: center; font-weight: 700; font-size: 14px; color: #0d9488;">${totalFilteredBranches}</td>
-										${metricCols.map(mc => `<td style="padding: 10px 14px; font-weight: 700; text-align: ${mc.align}; font-size: 14px;">${new Intl.NumberFormat("en-IN").format(grandTotal[mc.key])}</td>`).join('')}
+										${metricCols.map(mc => {
+											const val = mc.calc ? mc.calc(grandTotal) : grandTotal[mc.key];
+											return `<td style="padding: 10px 14px; font-weight: 700; text-align: ${mc.align}; font-size: 14px;">${new Intl.NumberFormat("en-IN").format(val)}</td>`;
+										}).join('')}
 									</tr>
 								</tfoot>
 							</table>
@@ -1226,9 +1239,7 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 						filtered = data.filter(r => {
 							const br = (r.branch_name || "").toLowerCase();
 							const sid = (r.sol_id || "").toLowerCase();
-							const cd = (r.schm_code || "").toLowerCase();
-							const ds = (r.schm_desc || "").toLowerCase();
-							return br.includes(term) || sid.includes(term) || cd.includes(term) || ds.includes(term);
+							return br.includes(term) || sid.includes(term);
 						});
 					}
 					
@@ -1239,13 +1250,13 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 					const zones = {};
 					filtered.forEach(r => {
 						const zName = r.zone || "Unknown Zone";
-						const rName = r.region_name || "Unknown Region";
+						const rName = r.region || "Unknown Region";
 						const solId = r.sol_id;
 						
 						if (!zones[zName]) {
 							zones[zName] = {
 								zone: zName,
-								data: { branches: new Set(), savings: 0, current: 0, rd: 0, fd: 0, other: 0, total: 0 },
+								data: { branches: new Set(), ca: 0, sa: 0, tasc: 0, rd: 0, smbg: 0, dd: 0, fd: 0, total: 0 },
 								regions: {}
 							};
 						}
@@ -1261,33 +1272,26 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 							zones[zName].regions[rName].branches[solId] = {
 								sol_id: solId,
 								branch_name: r.branch_name || ("Branch " + solId),
-								savings: 0,
-								current: 0,
-								rd: 0,
-								fd: 0,
-								other: 0,
-								total: 0
+								ca: r.ca || 0,
+								sa: r.sa || 0,
+								tasc: r.tasc || 0,
+								rd: r.rd || 0,
+								smbg: r.smbg || 0,
+								dd: r.dd || 0,
+								fd: r.fd || 0,
+								total: r.total || 0
 							};
 						}
 						
-						const cat = self.getSchmCategory(r.schm_code, r.schm_desc);
-						const count = r.accounts_opened || 0;
-						
-						const brObj = zones[zName].regions[rName].branches[solId];
-						if (cat === "Savings") brObj.savings += count;
-						else if (cat === "Current") brObj.current += count;
-						else if (cat === "RD") brObj.rd += count;
-						else if (cat === "FD") brObj.fd += count;
-						else brObj.other += count;
-						brObj.total += count;
-						
 						zones[zName].data.branches.add(solId);
-						if (cat === "Savings") zones[zName].data.savings += count;
-						else if (cat === "Current") zones[zName].data.current += count;
-						else if (cat === "RD") zones[zName].data.rd += count;
-						else if (cat === "FD") zones[zName].data.fd += count;
-						else zones[zName].data.other += count;
-						zones[zName].data.total += count;
+						zones[zName].data.ca += r.ca || 0;
+						zones[zName].data.sa += r.sa || 0;
+						zones[zName].data.tasc += r.tasc || 0;
+						zones[zName].data.rd += r.rd || 0;
+						zones[zName].data.smbg += r.smbg || 0;
+						zones[zName].data.dd += r.dd || 0;
+						zones[zName].data.fd += r.fd || 0;
+						zones[zName].data.total += r.total || 0;
 					});
 					
 					return Object.values(zones).map(z => {
@@ -1296,11 +1300,13 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 							const regData = {
 								region: reg.region,
 								branches: branchesArr,
-								savings: branchesArr.reduce((s, b) => s + b.savings, 0),
-								current: branchesArr.reduce((s, b) => s + b.current, 0),
+								ca: branchesArr.reduce((s, b) => s + b.ca, 0),
+								sa: branchesArr.reduce((s, b) => s + b.sa, 0),
+								tasc: branchesArr.reduce((s, b) => s + b.tasc, 0),
 								rd: branchesArr.reduce((s, b) => s + b.rd, 0),
+								smbg: branchesArr.reduce((s, b) => s + b.smbg, 0),
+								dd: branchesArr.reduce((s, b) => s + b.dd, 0),
 								fd: branchesArr.reduce((s, b) => s + b.fd, 0),
-								other: branchesArr.reduce((s, b) => s + b.other, 0),
 								total: branchesArr.reduce((s, b) => s + b.total, 0)
 							};
 							return regData;

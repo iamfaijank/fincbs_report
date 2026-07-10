@@ -1115,6 +1115,54 @@ def get_daily_account_opening_data(selected_date=None):
         start_date_str = "2026-07-01"
         end_date_str = "2026-07-09"
 
+    # Fetch local Product mapping to categorize scheme codes
+    try:
+        products = frappe.get_all(
+            "Product",
+            fields=["name", "product_name", "group_name", "product_type"]
+        )
+    except Exception:
+        products = []
+
+    product_map = {}
+    for p in products:
+        code = p.name
+        pname = (p.product_name or "").upper()
+        gname = (p.group_name or "").upper()
+        ptype = (p.product_type or "").upper()
+        
+        category = "FD"  # Default fallback
+        
+        if gname == "CASA":
+            if "TASC" in pname:
+                category = "TASC"
+            elif ptype == "CAA":
+                category = "CA"
+            else:
+                category = "SA"
+        elif gname == "RD":
+            category = "RD"
+        elif gname == "SMBG":
+            category = "SMBG"
+        elif gname == "DD":
+            category = "DD"
+        elif gname in ("FD", "DAM"):
+            category = "FD"
+        else:
+            # Code-based fallback heuristics
+            if code.startswith("SB") or "SAVING" in pname:
+                category = "SA"
+            elif code.startswith("CA") or "CURRENT" in pname:
+                category = "CA"
+            elif code.startswith("RD") or "RECURRING" in pname:
+                category = "RD"
+            elif code.startswith("DD") or "DAILY" in pname:
+                category = "DD"
+            else:
+                category = "FD"
+                
+        product_map[code] = category
+
     query = """
     WITH base_schemes AS (
         SELECT DISTINCT
@@ -1191,22 +1239,56 @@ def get_daily_account_opening_data(selected_date=None):
                     "branch_name": b.branch or ""
                 }
 
-        result = []
+        # Group and aggregate raw records by branch
+        branch_aggregates = {}
         for row in rows:
+            schm_code = row[0] or ""
             sid = str(row[2])
+            region_name = row[3]
+            circle_office_name = row[5]
+            count = int(row[6]) if row[6] is not None else 0
+            
             sb = branch_map.get(sid, {})
-            result.append({
-                "schm_code": row[0] or "",
-                "schm_desc": row[1] or "",
-                "sol_id": sid,
-                "region_name": row[3] or sb.get("region", ""),
-                "division_name": row[4] or "",
-                "circle_office_name": row[5] or "",
-                "zone": sb.get("zone", ""),
-                "branch_name": sb.get("branch_name", ""),
-                "accounts_opened": int(row[6]) if row[6] is not None else 0
-            })
-        return result
+            zone = sb.get("zone", circle_office_name or "Unknown Zone")
+            region = sb.get("region", region_name or "Unknown Region")
+            branch_name = sb.get("branch_name", f"Branch {sid}")
+            
+            if sid not in branch_aggregates:
+                branch_aggregates[sid] = {
+                    "sol_id": sid,
+                    "branch_name": branch_name,
+                    "zone": zone,
+                    "region": region,
+                    "ca": 0,
+                    "sa": 0,
+                    "tasc": 0,
+                    "rd": 0,
+                    "smbg": 0,
+                    "dd": 0,
+                    "fd": 0,
+                    "total": 0
+                }
+                
+            cat = product_map.get(schm_code, "FD")
+            if cat == "CA":
+                branch_aggregates[sid]["ca"] += count
+            elif cat == "SA":
+                branch_aggregates[sid]["sa"] += count
+            elif cat == "TASC":
+                branch_aggregates[sid]["tasc"] += count
+            elif cat == "RD":
+                branch_aggregates[sid]["rd"] += count
+            elif cat == "SMBG":
+                branch_aggregates[sid]["smbg"] += count
+            elif cat == "DD":
+                branch_aggregates[sid]["dd"] += count
+            elif cat == "FD":
+                branch_aggregates[sid]["fd"] += count
+                
+            branch_aggregates[sid]["total"] += count
+            
+        return list(branch_aggregates.values())
+        
     except Exception as e:
         frappe.log_error(f"Error executing Daily Account Opening query: {str(e)}", "Daily Account Opening API")
         return []
