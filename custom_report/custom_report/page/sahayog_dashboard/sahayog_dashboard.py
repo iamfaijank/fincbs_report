@@ -1091,3 +1091,127 @@ def get_mis_filter_options():
             "fixed_sol_id": fixed_sol_id
         }
     }
+
+
+@frappe.whitelist()
+def get_daily_account_opening_data(selected_date=None):
+    from custom_report.db_connection import get_dr_connection
+    from frappe.utils import getdate
+    import datetime
+
+    if not selected_date:
+        # Default to latest date from database or yesterday
+        latest = get_latest_branch_category_report_date()
+        if latest:
+            selected_date = latest
+        else:
+            selected_date = str(datetime.date.today() - datetime.timedelta(days=1))
+
+    try:
+        dt = getdate(selected_date)
+        start_date_str = dt.replace(day=1).strftime("%Y-%m-%d")
+        end_date_str = dt.strftime("%Y-%m-%d")
+    except Exception:
+        start_date_str = "2026-07-01"
+        end_date_str = "2026-07-09"
+
+    query = """
+    WITH base_schemes AS (
+        SELECT DISTINCT
+            gam.schm_code,
+            gsp.schm_desc
+        FROM tbaadm.gam gam
+        JOIN tbaadm.gsp gsp
+            ON gam.schm_code = gsp.schm_code
+        WHERE gam.schm_type NOT IN ('OAB','OAP')
+    ),
+    base_sol AS (
+        SELECT
+            sol.sol_id,
+            sol.region_name,
+            sol.division_name,
+            sol.circle_office_name
+        FROM tbaadm.sol sol
+        JOIN tbaadm.sst sst
+            ON sst.sol_id = sol.sol_id
+        WHERE sst.set_id BETWEEN '1001' AND '1255'
+    )
+    SELECT
+        bs.schm_code,
+        bs.schm_desc,
+        s.sol_id,
+        s.region_name,
+        s.division_name,
+        s.circle_office_name,
+        COUNT(DISTINCT gam.foracid) AS account_opened
+    FROM base_sol s
+    CROSS JOIN base_schemes bs
+    LEFT JOIN tbaadm.gam gam
+           ON gam.sol_id = s.sol_id
+          AND gam.schm_code = bs.schm_code
+          AND gam.acct_opn_date BETWEEN CAST(%s AS DATE) AND CAST(%s AS DATE)
+          AND gam.entity_cre_flg = 'Y'
+          AND gam.schm_type NOT IN ('OAB','OAP')
+    GROUP BY
+        bs.schm_code,
+        bs.schm_desc,
+        s.sol_id,
+        s.region_name,
+        s.division_name,
+        s.circle_office_name
+    ORDER BY
+        s.sol_id,
+        bs.schm_code
+    """
+
+    conn = get_dr_connection()
+    if not conn:
+        frappe.log_error("Failed to connect to DR database", "Daily Account Opening API")
+        return []
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(query, (start_date_str, end_date_str))
+        rows = cursor.fetchall()
+        
+        # Look up zones / regions from local Sahayog Branch
+        sol_ids_found = [str(r[2]) for r in rows] if rows else []
+        branch_map = {}
+        if sol_ids_found:
+            sb_data = frappe.get_all(
+                "Sahayog Branch",
+                filters={"name": ["in", sol_ids_found]},
+                fields=["name as sol_id", "zone", "region", "district", "branch"]
+            )
+            for b in sb_data:
+                branch_map[b.sol_id] = {
+                    "zone": b.zone or "",
+                    "region": b.region or "",
+                    "district": b.district or "",
+                    "branch_name": b.branch or ""
+                }
+
+        result = []
+        for row in rows:
+            sid = str(row[2])
+            sb = branch_map.get(sid, {})
+            result.append({
+                "schm_code": row[0] or "",
+                "schm_desc": row[1] or "",
+                "sol_id": sid,
+                "region_name": row[3] or sb.get("region", ""),
+                "division_name": row[4] or "",
+                "circle_office_name": row[5] or "",
+                "zone": sb.get("zone", ""),
+                "branch_name": sb.get("branch_name", ""),
+                "accounts_opened": int(row[6]) if row[6] is not None else 0
+            })
+        return result
+    except Exception as e:
+        frappe.log_error(f"Error executing Daily Account Opening query: {str(e)}", "Daily Account Opening API")
+        return []
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
