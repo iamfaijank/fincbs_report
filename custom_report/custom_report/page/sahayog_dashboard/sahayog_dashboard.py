@@ -1127,10 +1127,8 @@ def get_daily_account_opening_data(selected_date=None):
     product_map = {}
     for p in products:
         code = (p.name or "").strip()
-        pname = (p.product_name or "").upper()
         gname = (p.group_name or "").upper()
         gsub = (p.group_subname or "").upper()
-        ptype = (p.product_type or "").upper()
         
         category = "FD"  # Default fallback
         
@@ -1160,41 +1158,8 @@ def get_daily_account_opening_data(selected_date=None):
         elif gname in ("FD", "DAM"):
             category = "FD"
         else:
-            # Fallback based on numeric prefix conventions and product type
-            if ptype == "SBA" or code.startswith("10") or code.startswith("SB"):
-                if "TASC" in pname or gsub == "TASC":
-                    category = "TASC"
-                else:
-                    category = "SA"
-            elif ptype == "CAA" or code.startswith("11") or code.startswith("CA"):
-                if "TASC" in pname or gsub == "TASC":
-                    category = "TASC"
-                else:
-                    category = "CA"
-            elif ptype == "TDA" or code.startswith("20") or code.startswith("21") or code.startswith("22"):
-                if "RECURRING" in pname or code.startswith("RD") or gname == "RD" or code.startswith("201"):
-                    category = "RD"
-                elif "SMBG" in pname or "BACHAT" in pname or gname == "SMBG" or code.startswith("2005") or code.startswith("2006"):
-                    category = "SMBG"
-                elif "DAILY" in pname or code.startswith("DD") or gname == "DD" or code.startswith("2004"):
-                    category = "DD"
-                else:
-                    category = "FD"
-            else:
-                # Other generic fallbacks
-                if "TASC" in pname or gsub == "TASC":
-                    category = "TASC"
-                elif "SAVING" in pname or gsub == "SA":
-                    category = "SA"
-                elif "CURRENT" in pname or gsub == "CA":
-                    category = "CA"
-                elif "RECURRING" in pname:
-                    category = "RD"
-                elif "DAILY" in pname:
-                    category = "DD"
-                else:
-                    category = "FD"
-                    
+            category = "FD"
+                
         product_map[code] = category
 
     query = """
