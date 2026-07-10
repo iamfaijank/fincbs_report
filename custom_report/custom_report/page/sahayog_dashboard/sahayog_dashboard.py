@@ -1119,7 +1119,7 @@ def get_daily_account_opening_data(selected_date=None):
     try:
         products = frappe.get_all(
             "Product",
-            fields=["name", "product_name", "group_name", "product_type"]
+            fields=["name", "product_name", "group_name", "group_subname", "product_type"]
         )
     except Exception:
         products = []
@@ -1129,11 +1129,15 @@ def get_daily_account_opening_data(selected_date=None):
         code = p.name
         pname = (p.product_name or "").upper()
         gname = (p.group_name or "").upper()
+        gsub = (p.group_subname or "").upper()
         ptype = (p.product_type or "").upper()
         
         category = "FD"  # Default fallback
         
-        if gname == "CASA":
+        # Check group_subname first (if SA, CA, TASC)
+        if gsub in ("SA", "CA", "TASC"):
+            category = gsub
+        elif gname == "CASA":
             if "TASC" in pname:
                 category = "TASC"
             elif ptype == "CAA":
@@ -1150,10 +1154,12 @@ def get_daily_account_opening_data(selected_date=None):
             category = "FD"
         else:
             # Code-based fallback heuristics
-            if code.startswith("SB") or "SAVING" in pname:
+            if gsub == "SA" or code.startswith("SB") or "SAVING" in pname:
                 category = "SA"
-            elif code.startswith("CA") or "CURRENT" in pname:
+            elif gsub == "CA" or code.startswith("CA") or "CURRENT" in pname:
                 category = "CA"
+            elif gsub == "TASC" or "TASC" in pname:
+                category = "TASC"
             elif code.startswith("RD") or "RECURRING" in pname:
                 category = "RD"
             elif code.startswith("DD") or "DAILY" in pname:
