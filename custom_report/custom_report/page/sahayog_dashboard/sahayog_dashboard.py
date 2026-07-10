@@ -1160,31 +1160,37 @@ def get_daily_account_opening_data(selected_date=None):
         elif gname in ("FD", "DAM"):
             category = "FD"
         else:
-            # Fallback based on product type and name heuristics
-            if ptype == "SBA":
-                category = "SA"
-            elif ptype == "CAA":
-                category = "CA"
-            elif ptype == "TDA":
-                if "RECURRING" in pname or code.startswith("RD") or gname == "RD":
+            # Fallback based on numeric prefix conventions and product type
+            if ptype == "SBA" or code.startswith("10") or code.startswith("SB"):
+                if "TASC" in pname or gsub == "TASC":
+                    category = "TASC"
+                else:
+                    category = "SA"
+            elif ptype == "CAA" or code.startswith("11") or code.startswith("CA"):
+                if "TASC" in pname or gsub == "TASC":
+                    category = "TASC"
+                else:
+                    category = "CA"
+            elif ptype == "TDA" or code.startswith("20") or code.startswith("21") or code.startswith("22"):
+                if "RECURRING" in pname or code.startswith("RD") or gname == "RD" or code.startswith("201"):
                     category = "RD"
-                elif "SMBG" in pname or "BACHAT" in pname or gname == "SMBG":
+                elif "SMBG" in pname or "BACHAT" in pname or gname == "SMBG" or code.startswith("2005") or code.startswith("2006"):
                     category = "SMBG"
-                elif "DAILY" in pname or code.startswith("DD") or gname == "DD":
+                elif "DAILY" in pname or code.startswith("DD") or gname == "DD" or code.startswith("2004"):
                     category = "DD"
                 else:
                     category = "FD"
             else:
-                # Heuristics if product_type is also missing
+                # Other generic fallbacks
                 if "TASC" in pname or gsub == "TASC":
                     category = "TASC"
-                elif "SAVING" in pname or code.startswith("SB") or gsub == "SA":
+                elif "SAVING" in pname or gsub == "SA":
                     category = "SA"
-                elif "CURRENT" in pname or code.startswith("CA") or gsub == "CA":
+                elif "CURRENT" in pname or gsub == "CA":
                     category = "CA"
-                elif "RECURRING" in pname or code.startswith("RD"):
+                elif "RECURRING" in pname:
                     category = "RD"
-                elif "DAILY" in pname or code.startswith("DD"):
+                elif "DAILY" in pname:
                     category = "DD"
                 else:
                     category = "FD"
