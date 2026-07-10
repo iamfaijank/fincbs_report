@@ -1134,16 +1134,21 @@ def get_daily_account_opening_data(selected_date=None):
         
         category = "FD"  # Default fallback
         
-        # Check group_subname first (if SA, CA, TASC)
-        if gsub in ("SA", "CA", "TASC"):
-            category = gsub
-        elif gname == "CASA":
-            if "TASC" in pname:
-                category = "TASC"
-            elif ptype == "CAA":
-                category = "CA"
-            else:
+        if gname == "CASA":
+            if gsub == "SA":
                 category = "SA"
+            elif gsub == "CA":
+                category = "CA"
+            elif gsub == "TASC":
+                category = "TASC"
+            else:
+                # Fallback within CASA group if group_subname is not set
+                if "TASC" in pname:
+                    category = "TASC"
+                elif ptype == "CAA":
+                    category = "CA"
+                else:
+                    category = "SA"
         elif gname == "RD":
             category = "RD"
         elif gname == "SMBG":
@@ -1153,7 +1158,7 @@ def get_daily_account_opening_data(selected_date=None):
         elif gname in ("FD", "DAM"):
             category = "FD"
         else:
-            # Code-based fallback heuristics
+            # Fallback heuristics for unmapped schemes
             if gsub == "SA" or code.startswith("SB") or "SAVING" in pname:
                 category = "SA"
             elif gsub == "CA" or code.startswith("CA") or "CURRENT" in pname:
