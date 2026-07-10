@@ -3144,43 +3144,45 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 		this.page.main.find("#summary-cards-container").show();
 		this.updateSummaryCards(filteredBranches, reaggregatedZoneData);
 
-		setTimeout(() => {
-			let htmlContent = "";
+		requestAnimationFrame(() => {
+			setTimeout(() => {
+				let htmlContent = "";
 
-			if (this.state.activeTab === "zone") {
-				htmlContent = this.renderZoneTable(reaggregatedZoneData);
-			} else if (this.state.activeTab === "category") {
-				htmlContent = this.renderCategoryTable(reaggregatedCategoryData);
-			} else if (this.state.activeTab === "product") {
-				htmlContent = this.renderProductTable(this.productData);
-			} else if (this.state.activeTab === "agent") {
-				htmlContent = this.renderAgentWiseTable(this.agentData);
-			} else if (this.state.activeTab === "branch") {
-				htmlContent = this.buildBranchTable(filteredBranches, this.months);
-			}
+				if (this.state.activeTab === "zone") {
+					htmlContent = this.renderZoneTable(reaggregatedZoneData);
+				} else if (this.state.activeTab === "category") {
+					htmlContent = this.renderCategoryTable(reaggregatedCategoryData);
+				} else if (this.state.activeTab === "product") {
+					htmlContent = this.renderProductTable(this.productData);
+				} else if (this.state.activeTab === "agent") {
+					htmlContent = this.renderAgentWiseTable(this.agentData);
+				} else if (this.state.activeTab === "branch") {
+					htmlContent = this.buildBranchTable(filteredBranches, this.months);
+				}
 
-			dataContainer.html(htmlContent);
+				dataContainer.html(htmlContent);
 
-			// Attach handlers after rendering
+				requestAnimationFrame(() => {
+					if (this.state.activeTab === "zone") {
+						this.attachZoneExpandHandlers();
+						this.attachZoneDrilldownHandlers();
+					} else if (this.state.activeTab === "product") {
+						this.attachProductExpandHandlers();
+						this.attachProductDrilldownHandlers();
+					} else if (this.state.activeTab === "category") {
+						this.attachMovementPopupHandlers();
+						this.attachCategoryExpandHandlers();
+						this.attachDrillHandlers();
+						this.attachZoneDrillHandlers();
+						this.attachTotalMovementPopupHandler();
+					} else if (this.state.activeTab === "agent") {
+						this.attachAgentExpandHandlers();
+					}
 
-			if (this.state.activeTab === "zone") {
-				this.attachZoneExpandHandlers();
-				this.attachZoneDrilldownHandlers();
-			} else if (this.state.activeTab === "product") {
-				this.attachProductExpandHandlers();
-				this.attachProductDrilldownHandlers();
-			} else if (this.state.activeTab === "category") {
-				this.attachMovementPopupHandlers();
-				this.attachCategoryExpandHandlers();
-				this.attachDrillHandlers();
-				this.attachZoneDrillHandlers();
-				this.attachTotalMovementPopupHandler();
-			} else if (this.state.activeTab === "agent") {
-				this.attachAgentExpandHandlers();
-			}
-
-			dataContainer.css("opacity", 1);
-		}, 200);
+					dataContainer.css("opacity", 1);
+				});
+			}, 100);
+		});
 	}
 
 	// ========================================================================
