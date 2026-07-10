@@ -151,6 +151,7 @@ class DrishtiDashboard {
 			expandedZones: {}, // Track expanded/collapsed zones
 			selectedSegment: "all",
 			dashboardMode: "drishti",
+			selectedMisReport: "rd_smbg_pending",
 		};
 		// Store selected date per tab
 		this.tabDates = {
@@ -2303,6 +2304,7 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 			this.state.selectedSegment = queryParams.selectedSegment || this.state.selectedSegment;
 			this.state.selectedQuarter = queryParams.selectedQuarter || this.state.selectedQuarter;
 			this.state.dashboardMode = queryParams.dashboardMode || this.state.dashboardMode;
+			this.state.selectedMisReport = queryParams.selectedMisReport || this.state.selectedMisReport;
 
 			if (queryParams.selectedRegions) {
 				this.state.selectedRegions = queryParams.selectedRegions.split(",").filter(Boolean);
@@ -2339,6 +2341,7 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 			selectedMonth: this.state.selectedMonth,
 			selectedSegment: this.state.selectedSegment,
 			dashboardMode: this.state.dashboardMode,
+			selectedMisReport: this.state.selectedMisReport,
 		};
 
 		// Add non-empty simple string/number parameters
@@ -6818,8 +6821,8 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 		const toggleHtml = `
 			<div class="dashboard-header-toggle-wrapper">
 				<div class="dashboard-toggle-switch-container">
-					<button type="button" class="dashboard-toggle-btn active" data-value="drishti">Drishti</button>
-					<button type="button" class="dashboard-toggle-btn" data-value="mis">MIS Reports</button>
+					<button type="button" class="dashboard-toggle-btn ${self.state.dashboardMode === 'drishti' ? 'active' : ''}" data-value="drishti">Drishti</button>
+					<button type="button" class="dashboard-toggle-btn ${self.state.dashboardMode === 'mis' ? 'active' : ''}" data-value="mis">MIS Reports</button>
 				</div>
 			</div>
 		`;
@@ -6848,6 +6851,10 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 			if (this.drishti_container) this.drishti_container.hide();
 			if (this.mis_container) {
 				this.mis_container.show();
+				const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
+				this.mis_container.find(".mis-report-tab-btn").removeClass("active");
+				this.mis_container.find(`.mis-report-tab-btn[data-report-id="${activeReportId}"]`).addClass("active");
+				this.renderMisReport(activeReportId);
 			} else {
 				this.initMisReportsContainer();
 			}
@@ -6870,8 +6877,10 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 
 		const self = this;
 		const tabSelectorContainer = this.mis_container.find("#mis-report-selector-tabs");
-		this.misReportsList.forEach((report, index) => {
-			const activeClass = index === 0 ? "active" : "";
+		const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
+		
+		this.misReportsList.forEach((report) => {
+			const activeClass = report.id === activeReportId ? "active" : "";
 			tabSelectorContainer.append(`
 				<button class="mis-report-tab-btn ${activeClass}" data-report-id="${report.id}">
 					${report.name}
@@ -6884,11 +6893,13 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 			$(this).addClass("active");
 
 			const reportId = $(this).data("report-id");
+			self.state.selectedMisReport = reportId;
+			self.updateUrlFromState();
 			self.renderMisReport(reportId);
 		});
 
-		if (this.misReportsList.length > 0) {
-			this.renderMisReport(this.misReportsList[0].id);
+		if (activeReportId) {
+			this.renderMisReport(activeReportId);
 		}
 	}
 
