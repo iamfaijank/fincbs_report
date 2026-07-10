@@ -980,6 +980,7 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 	}
 
 	getDashboardViewForRequest() {
+		if (this.state.viewType === "Quarterly") return "Yearly";
 		return this.state.viewType;
 	}
 
@@ -1503,14 +1504,23 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 		const data = this.data;
 
 		// Extract months
-		this.months = data.months.map((m) => ({
+		const allMonths = data.months.map((m) => ({
 			key: m.key,
 			display: m.display,
 			date: m.date,
 		}));
 
-		if (this.state.viewType === "Quarterly") {
-			// Backend already returns correct quarter months — use them directly like Yearly
+		if (this.state.viewType === "Quarterly" && this.state.selectedQuarter) {
+			const qMap = {
+				Q1: ["APR", "MAY", "JUN"],
+				Q2: ["JUL", "AUG", "SEP"],
+				Q3: ["OCT", "NOV", "DEC"],
+				Q4: ["JAN", "FEB", "MAR"],
+			};
+			const qKeys = qMap[this.state.selectedQuarter] || [];
+			this.months = allMonths.filter((m) => qKeys.includes(m.key));
+		} else {
+			this.months = allMonths;
 		}
 
 		// Direct mapping
