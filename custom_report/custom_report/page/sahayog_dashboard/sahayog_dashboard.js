@@ -724,6 +724,18 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 					});
 				},
 			},
+			{
+				id: "daily_account_opening",
+				name: "Daily Account Opening",
+				render: function(container, dashboardInstance) {
+					container.html(`
+						<div style="padding: 40px; text-align: center; background: #fff; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02); margin-top: 10px;">
+							<h3 style="color: #417d81; margin-bottom: 10px; font-weight: 700; font-family: 'Inter', sans-serif;">Daily Account Opening Report</h3>
+							<p style="color: #64748b; font-size: 14px; font-family: 'Inter', sans-serif;">This report is under development and will be available soon.</p>
+						</div>
+					`);
+				}
+			}
 		];
 
 		this.init();
