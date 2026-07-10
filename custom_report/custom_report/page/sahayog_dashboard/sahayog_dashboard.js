@@ -842,9 +842,116 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 				name: "Daily Account Opening",
 				render: function(container, dashboardInstance) {
 					container.html(`
-						<div style="padding: 40px; text-align: center; background: #fff; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02); margin-top: 10px;">
-							<h3 style="color: #417d81; margin-bottom: 10px; font-weight: 700; font-family: 'Inter', sans-serif;">Daily Account Opening Report</h3>
-							<p style="color: #64748b; font-size: 14px; font-family: 'Inter', sans-serif;">This report is under development and will be available soon.</p>
+						<div id="mis-loading-dao" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif;">
+							<!-- Skeleton Loader Styles -->
+							<style>
+								.mis-skeleton-table {
+									width: 100%;
+									border-collapse: separate;
+									border-spacing: 0;
+									border: 1px solid #e2e8f0;
+									border-radius: 8px;
+									overflow: hidden;
+									background: #fff;
+								}
+								.mis-skeleton-table th {
+									background: #f1f5f9;
+									padding: 10px 12px;
+									border-bottom: 1px solid #cbd5e1;
+									font-weight: 600;
+									font-size: 12px;
+									color: #475569;
+									text-transform: uppercase;
+									letter-spacing: 0.5px;
+									text-align: left;
+								}
+								.mis-skeleton-table td {
+									padding: 12px;
+									border-bottom: 1px solid #f1f5f9;
+									vertical-align: middle;
+								}
+								.mis-skeleton-pulse {
+									background: linear-gradient(-90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+									background-size: 400% 400%;
+									animation: mis-shimmer 1.5s ease-in-out infinite;
+									border-radius: 4px;
+									height: 16px;
+								}
+								@keyframes mis-shimmer {
+									0% { background-position: 100% 50%; }
+									100% { background-position: 0% 50%; }
+								}
+							</style>
+							<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+								<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important; animation: spinner-border .75s linear infinite;"></div>
+								<span style="font-weight: 600; color: #417d81; font-size: 13px;">Fetching latest Daily Account Opening data...</span>
+							</div>
+							<table class="mis-skeleton-table">
+								<thead>
+									<tr>
+										<th style="width: 30px;"><div class="mis-skeleton-pulse" style="width: 14px; height: 14px;"></div></th>
+										<th style="width: 40px; text-align: center;">Sr</th>
+										<th>Zone / Region / Branch</th>
+										<th style="text-align: right; width: 120px;">Savings Accounts</th>
+										<th style="text-align: right; width: 120px;">Current Accounts</th>
+										<th style="text-align: right; width: 120px;">RD Accounts</th>
+										<th style="text-align: right; width: 120px;">FD Accounts</th>
+										<th style="text-align: right; width: 120px;">Total Opened</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr style="background: #fff;">
+										<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 150px;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 60px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 60px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 60px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 60px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 80px; margin-left: auto;"></div></td>
+									</tr>
+									<tr style="background: #f8fafc;">
+										<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 180px;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 70px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 70px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 70px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 70px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 90px; margin-left: auto;"></div></td>
+									</tr>
+									<tr style="background: #fff;">
+										<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 130px;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 50px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 50px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 50px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 50px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 75px; margin-left: auto;"></div></td>
+									</tr>
+									<tr style="background: #f8fafc;">
+										<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 160px;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 65px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 65px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 65px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 65px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 85px; margin-left: auto;"></div></td>
+									</tr>
+									<tr style="background: #fff;">
+										<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 140px;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 55px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 55px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 55px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 55px; margin-left: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 80px; margin-left: auto;"></div></td>
+									</tr>
+								</tbody>
+							</table>
 						</div>
 					`);
 				}
