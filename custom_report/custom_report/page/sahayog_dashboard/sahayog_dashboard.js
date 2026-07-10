@@ -1000,19 +1000,21 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 				renderKPI: function(container, dashboardInstance) {
 					const self = this;
 					const data = self.tableData || [];
-					let totSA = 0, totCA = 0, totTASC = 0, totRD = 0, totFD = 0, totAll = 0;
+					let totSA = 0, totCA = 0, totTASC = 0, totRD = 0, totSMBG = 0, totDD = 0, totFD = 0, totAll = 0;
 					
 					data.forEach(r => {
 						totSA += r.sa || 0;
 						totCA += r.ca || 0;
 						totTASC += r.tasc || 0;
 						totRD += r.rd || 0;
+						totSMBG += r.smbg || 0;
+						totDD += r.dd || 0;
 						totFD += r.fd || 0;
 						totAll += r.total || 0;
 					});
 					
 					container.html(`
-						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px;">
+						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px;">
 							<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
 								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">SA Accounts</div>
 								<div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totSA)}</div>
@@ -1028,6 +1030,14 @@ container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zo
 							<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
 								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">RD Accounts</div>
 								<div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totRD)}</div>
+							</div>
+							<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
+								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">SMBG Accounts</div>
+								<div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totSMBG)}</div>
+							</div>
+							<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
+								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">DD Accounts</div>
+								<div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totDD)}</div>
 							</div>
 							<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;">
 								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">FD Accounts</div>
