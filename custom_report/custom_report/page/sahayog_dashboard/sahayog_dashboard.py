@@ -1141,16 +1141,16 @@ def get_daily_account_opening_data(selected_date=None):
             category = "CA"
         elif gsub == "TASC":
             category = "TASC"
-        # Or if group_name is CASA, map based on group_subname or product type
+        # Or if group_name is CASA, map strictly based on group_subname
         elif gname == "CASA":
-            if gsub == "SA" or ptype == "SBA":
+            if gsub == "SA":
                 category = "SA"
-            elif gsub == "CA" or ptype == "CAA":
+            elif gsub == "CA":
                 category = "CA"
-            elif gsub == "TASC" or "TASC" in pname:
+            elif gsub == "TASC":
                 category = "TASC"
             else:
-                category = "SA"
+                category = "FD"
         elif gname == "RD":
             category = "RD"
         elif gname == "SMBG":
