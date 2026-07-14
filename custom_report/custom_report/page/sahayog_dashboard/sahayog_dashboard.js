@@ -1019,10 +1019,45 @@ class DrishtiDashboard {
 				},
 			},
 			{
-				id: "zxc",
-				name: "zxc",
+				id: "ntb_evr",
+				name: "NTB & EVR",
 				render: function (container, dashboardInstance) {
-					container.html(`<div style="padding: 40px; text-align: center; color: #64748b; font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif;">Content not added</div>`);
+					container.html(`
+						<style>
+							#ntb-evr-table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; }
+							#ntb-evr-table thead th { background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff; padding: 10px 14px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; border-bottom: 1px solid #cbd5e1; }
+							#ntb-evr-table thead th:first-child { border-radius: 6px 0 0 0; }
+							#ntb-evr-table thead th:last-child { border-radius: 0 6px 0 0; }
+							#ntb-evr-table tbody td { padding: 10px 14px; font-size: 14px; color: #334155; border-bottom: 1px solid #e2e8f0; }
+							#ntb-evr-table tbody tr:hover { background: #f0fdfa; }
+							#ntb-evr-table tbody tr:nth-child(even) { background: #f8fafc; }
+							#ntb-evr-table tfoot td { padding: 10px 14px; font-size: 14px; font-weight: 700; color: #ffffff; background: #1e293b; }
+						</style>
+						<div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
+							<table id="ntb-evr-table">
+								<thead>
+									<tr>
+										<th>Zone</th>
+										<th>Schema</th>
+										<th style="text-align: right;">NTB</th>
+										<th style="text-align: right;">EVR</th>
+										<th style="text-align: right;">Total</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 30px;">No data available</td></tr>
+								</tbody>
+								<tfoot>
+									<tr>
+										<td colspan="2">TOTAL</td>
+										<td style="text-align: right;">0</td>
+										<td style="text-align: right;">0</td>
+										<td style="text-align: right;">0</td>
+									</tr>
+								</tfoot>
+							</table>
+						</div>
+					`);
 				},
 			}
 		];
