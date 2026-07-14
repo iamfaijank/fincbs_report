@@ -1017,6 +1017,211 @@ class DrishtiDashboard {
 						self.render(container, dashboardInstance);
 					});
 				},
+			},
+			{
+				id: "ntb_evr",
+				name: "NTB & EVR",
+				tableData: [],
+				expandedZones: {},
+				expandedRegions: {},
+				render: function (container, dashboardInstance) {
+					const self = this;
+					container.html(`
+						<style>
+							#ntb-evr-table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; }
+							#ntb-evr-table thead th { background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff; padding: 10px 14px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; border-bottom: 1px solid #cbd5e1; }
+							#ntb-evr-table thead th:first-child { border-radius: 6px 0 0 0; }
+							#ntb-evr-table thead th:last-child { border-radius: 0 6px 0 0; }
+							#ntb-evr-table tbody td { padding: 10px 14px; font-size: 14px; color: #334155; border-bottom: 1px solid #e2e8f0; }
+							#ntb-evr-table tbody tr { transition: background-color 0.2s ease; }
+							#ntb-evr-table tbody tr:hover { background: #dcfce7 !important; }
+							#ntb-evr-table tfoot td { padding: 10px 14px; font-size: 14px; font-weight: 700; color: #ffffff; background: #1e293b; }
+							#ntb-evr-scroll { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
+						</style>
+						<div id="ntb-evr-loading" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+							<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important; animation: spinner-border .75s linear infinite;"></div>
+							<span style="font-weight: 600; color: #417d81; font-size: 13px;">Fetching NTB & EVR data...</span>
+						</div>
+						<div id="ntb-evr-table-container"></div>
+					`);
+
+					const renderTable = (data) => {
+						const fmtCount = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
+
+						const zoneMap = {};
+						data.forEach(r => {
+							const zone = r.zone || "Unknown";
+							const region = r.region || "Unknown";
+							const solId = r.sol_id;
+							if (!zoneMap[zone]) zoneMap[zone] = { zone, regions: {} };
+							if (!zoneMap[zone].regions[region]) zoneMap[zone].regions[region] = { region, branches: [] };
+							zoneMap[zone].regions[region].branches.push(r);
+						});
+
+						const sortedZones = Object.keys(zoneMap).sort((a, b) => {
+							const numA = parseInt(a.replace(/\D/g, "")) || 0;
+							const numB = parseInt(b.replace(/\D/g, "")) || 0;
+							return numA - numB;
+						});
+
+						let sr = 0, rowsHtml = "";
+						const grandTotal = { ntb: 0, evr: 0, total: 0, branches: 0 };
+
+						sortedZones.forEach(zoneName => {
+							const zd = zoneMap[zoneName];
+							const zoneData = { ntb: 0, evr: 0, total: 0, branches: 0 };
+							const sortedRegions = Object.keys(zd.regions).sort((a, b) => {
+								const numA = parseInt(a.replace(/\D/g, "")) || 0;
+								const numB = parseInt(b.replace(/\D/g, "")) || 0;
+								return numA - numB;
+							});
+
+							sortedRegions.forEach(rn => {
+								const rd = zd.regions[rn];
+								rd.branches.forEach(b => {
+									zoneData.ntb += b.ntb || 0;
+									zoneData.evr += b.evr || 0;
+									zoneData.total += (b.ntb || 0) + (b.evr || 0);
+								});
+								zoneData.branches += rd.branches.length;
+							});
+
+							sr++;
+							const zoneExpanded = self.expandedZones[zoneName];
+							grandTotal.ntb += zoneData.ntb;
+							grandTotal.evr += zoneData.evr;
+							grandTotal.total += zoneData.total;
+							grandTotal.branches += zoneData.branches;
+
+							rowsHtml += `<tr class="ntb-zone-row" data-zone="${zoneName}" style="cursor: pointer; background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
+								<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; width: 40px; font-size: 14px;">${sr}</td>
+								<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;"><span class="ntb-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>${zoneName}</td>
+								<td style="padding: 10px 14px; font-weight: 700; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px;">${zoneData.branches}</td>
+								<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: right; white-space: nowrap; font-size: 14px;">${fmtCount(zoneData.ntb)}</td>
+								<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: right; white-space: nowrap; font-size: 14px;">${fmtCount(zoneData.evr)}</td>
+								<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: right; white-space: nowrap; font-size: 14px;">${fmtCount(zoneData.total)}</td>
+							</tr>`;
+
+							sortedRegions.forEach(rn => {
+								const rd = zd.regions[rn];
+								const regionKey = zoneName + "::" + rn;
+								const regionExpanded = self.expandedRegions[regionKey];
+								const regionData = { ntb: 0, evr: 0, total: 0 };
+								rd.branches.forEach(b => {
+									regionData.ntb += b.ntb || 0;
+									regionData.evr += b.evr || 0;
+									regionData.total += (b.ntb || 0) + (b.evr || 0);
+								});
+
+								rowsHtml += `<tr class="ntb-region-row" data-zone="${zoneName}" data-region="${rn}" style="display: ${zoneExpanded ? "table-row" : "none"}; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+									<td style="padding: 8px 14px; color: #64748b; text-align: center;"></td>
+									<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 30px; font-weight: 600;"><span class="ntb-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${rn}</td>
+									<td style="padding: 8px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${rd.branches.length}</td>
+									<td style="padding: 8px 14px; color: #334155; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(regionData.ntb)}</td>
+									<td style="padding: 8px 14px; color: #334155; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(regionData.evr)}</td>
+									<td style="padding: 8px 14px; color: #334155; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(regionData.total)}</td>
+								</tr>`;
+
+								rd.branches.forEach((b, bi) => {
+									const showBranch = zoneExpanded && regionExpanded;
+									const branchBg = bi % 2 === 0 ? "#ffffff" : "#f1f5f9";
+									rowsHtml += `<tr class="ntb-branch-row" data-zone="${zoneName}" data-region="${rn}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0;">
+										<td style="padding: 6px 14px; color: #94a3b8; text-align: center;"></td>
+										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 50px; font-weight: 500;">${b.sol_id} - ${b.branch_name}</td>
+										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
+										<td style="padding: 6px 14px; color: #475569; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(b.ntb)}</td>
+										<td style="padding: 6px 14px; color: #475569; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(b.evr)}</td>
+										<td style="padding: 6px 14px; color: #475569; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount((b.ntb || 0) + (b.evr || 0))}</td>
+									</tr>`;
+								});
+							});
+						});
+
+						container.find("#ntb-evr-table-container").html(`
+								<table id="ntb-evr-table">
+									<thead>
+										<tr>
+											<th style="text-align: center; width: 40px;">Sr</th>
+											<th>Zone / Region / Branch</th>
+											<th style="text-align: center;">Branches</th>
+											<th style="text-align: right;">NTB</th>
+											<th style="text-align: right;">EVR</th>
+											<th style="text-align: right;">Total</th>
+										</tr>
+									</thead>
+									<tbody>${rowsHtml}</tbody>
+									<tfoot>
+										<tr>
+											<td></td>
+											<td style="font-size: 14px;">TOTAL</td>
+											<td style="text-align: center; font-size: 14px;">${grandTotal.branches}</td>
+											<td style="text-align: right; font-size: 14px;">${fmtCount(grandTotal.ntb)}</td>
+											<td style="text-align: right; font-size: 14px;">${fmtCount(grandTotal.evr)}</td>
+											<td style="text-align: right; font-size: 14px;">${fmtCount(grandTotal.total)}</td>
+										</tr>
+									</tfoot>
+								</table>
+						`);
+
+						container.find("#ntb-evr-table-container").off("click", ".ntb-zone-row").on("click", ".ntb-zone-row", function (e) {
+							if ($(e.target).closest(".ntb-region-row, .ntb-region-toggle").length) return;
+							const zone = $(this).data("zone");
+							self.expandedZones[zone] = !self.expandedZones[zone];
+							const show = self.expandedZones[zone];
+							const $regionRows = container.find(`.ntb-region-row[data-zone="${zone}"]`);
+							const $branchRows = container.find(`.ntb-branch-row[data-zone="${zone}"]`);
+							if (show) {
+								$regionRows.stop(true, true).slideDown(200);
+								$regionRows.each(function () {
+									const r = $(this).data("region");
+									if (self.expandedRegions[zone + "::" + r]) {
+										container.find(`.ntb-branch-row[data-zone="${zone}"][data-region="${r}"]`).stop(true, true).slideDown(200);
+									}
+								});
+							} else {
+								$branchRows.stop(true, true).slideUp(150);
+								$regionRows.stop(true, true).slideUp(200);
+							}
+							$(this).find(".ntb-zone-toggle").text(show ? "▼" : "▶");
+						});
+
+						container.find("#ntb-evr-table-container").off("click", ".ntb-region-row").on("click", ".ntb-region-row", function (e) {
+							e.stopPropagation();
+							const zone = $(this).data("zone");
+							const region = $(this).data("region");
+							const regionKey = zone + "::" + region;
+							self.expandedRegions[regionKey] = !self.expandedRegions[regionKey];
+							const show = self.expandedRegions[regionKey];
+							const $branchRows = container.find(`.ntb-branch-row[data-zone="${zone}"][data-region="${region}"]`);
+							if (show) { $branchRows.stop(true, true).slideDown(200); } else { $branchRows.stop(true, true).slideUp(150); }
+							$(this).find(".ntb-region-toggle").text(show ? "▼" : "▶");
+						});
+					};
+
+					const fetchData = () => {
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_ntb_evr_data",
+						args: { selected_date: dashboardInstance.state.selectedDate },
+						callback: function (r) {
+							if (r.message && r.message.data) {
+								self.tableData = r.message.data;
+								self.totalRows = r.message.total_rows || 0;
+								renderTable(self.tableData);
+							} else {
+								container.find("#ntb-evr-table-container").html('<div style="padding: 30px; text-align: center; color: #94a3b8; font-weight: 600;">No data available</div>');
+							}
+							container.find("#ntb-evr-loading").hide();
+						}
+					});
+					};
+
+					if (self.tableData && self.tableData.length > 0) {
+						container.find("#ntb-evr-loading").hide();
+						renderTable(self.tableData);
+					} else {
+						fetchData();
+					}
+				},
 			}
 		];
 
