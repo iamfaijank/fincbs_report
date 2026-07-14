@@ -1017,6 +1017,13 @@ class DrishtiDashboard {
 						self.render(container, dashboardInstance);
 					});
 				},
+			},
+			{
+				id: "zxc",
+				name: "zxc",
+				render: function (container, dashboardInstance) {
+					container.html(`<div style="padding: 40px; text-align: center; color: #64748b; font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif;">Content not added</div>`);
+				},
 			}
 		];
 
