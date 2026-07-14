@@ -1138,8 +1138,6 @@ class DrishtiDashboard {
 						});
 
 						container.find("#ntb-evr-table-container").html(`
-							<div style="margin-bottom: 10px; font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px; display: inline-block;">${data.length} branches</div>
-							<div id="ntb-evr-scroll">
 								<table id="ntb-evr-table">
 									<thead>
 										<tr>
@@ -1163,7 +1161,6 @@ class DrishtiDashboard {
 										</tr>
 									</tfoot>
 								</table>
-							</div>
 						`);
 
 						container.find("#ntb-evr-table-container").off("click", ".ntb-zone-row").on("click", ".ntb-zone-row", function (e) {
