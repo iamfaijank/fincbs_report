@@ -1245,9 +1245,9 @@ class DrishtiDashboard {
 					};
 
 					const columns = [
-						{ key: "cif_id", label: "CIF ID", w: "100px" },
-						{ key: "acct_name", label: "Acct Name", w: "150px" },
-						{ key: "foracid", label: "Foracid", w: "120px" },
+						{ key: "cif_id", label: "CIF ID", w: "100px", sticky: 1 },
+						{ key: "acct_name", label: "Acct Name", w: "150px", sticky: 2 },
+						{ key: "foracid", label: "Foracid", w: "120px", sticky: 3 },
 						{ key: "acct_opn_date", label: "Acct Open Date", w: "100px" },
 						{ key: "schm_code", label: "Schema", w: "80px" },
 						{ key: "sol_id", label: "SOL ID", w: "80px" },
@@ -1279,9 +1279,19 @@ class DrishtiDashboard {
 							#cavg-scroll { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
 							#cavg-table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; white-space: nowrap; }
 							#cavg-table thead th { position: sticky; top: 0; z-index: 2; background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #fff; padding: 8px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; border-bottom: 1px solid #cbd5e1; }
+							#cavg-table thead th.cavg-sticky { position: sticky; z-index: 3; background: #346569; }
+							#cavg-table thead th.cavg-sticky-1 { left: 0; }
+							#cavg-table thead th.cavg-sticky-2 { left: 100px; }
+							#cavg-table thead th.cavg-sticky-3 { left: 250px; }
 							#cavg-table tbody td { padding: 7px 10px; font-size: 12px; color: #334155; border-bottom: 1px solid #e2e8f0; }
-							#cavg-table tbody tr:nth-child(even) { background: #f8fafc; }
-							#cavg-table tbody tr:hover { background: #dcfce7 !important; }
+							#cavg-table tbody td.cavg-sticky { position: sticky; z-index: 1; background: inherit; }
+							#cavg-table tbody td.cavg-sticky-1 { left: 0; }
+							#cavg-table tbody td.cavg-sticky-2 { left: 100px; }
+							#cavg-table tbody td.cavg-sticky-3 { left: 250px; }
+							#cavg-table tbody tr:nth-child(even) td.cavg-sticky { background: #f8fafc; }
+							#cavg-table tbody tr:nth-child(odd) td.cavg-sticky { background: #fff; }
+							#cavg-table tbody tr:hover td.cavg-sticky { background: #dcfce7 !important; }
+							#cavg-table tbody tr:hover td:not(.cavg-sticky) { background: #dcfce7 !important; }
 						</style>
 						<div id="cavg-loading" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
 							<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important;"></div>
@@ -1299,7 +1309,8 @@ class DrishtiDashboard {
 						columns.forEach(c => {
 							const val = r[c.key];
 							const display = c.fmt ? c.fmt(val) : (val !== null && val !== undefined ? val : "-");
-							html += `<td>${display}</td>`;
+							const stickyClass = c.sticky ? ` cavg-sticky cavg-sticky-${c.sticky}` : "";
+							html += `<td class="${stickyClass}">${display}</td>`;
 						});
 						return html + "</tr>";
 					};
@@ -1309,7 +1320,10 @@ class DrishtiDashboard {
 							<div id="cavg-scroll">
 								<table id="cavg-table">
 									<thead><tr>
-										${columns.map(c => `<th style="min-width: ${c.w};">${c.label}</th>`).join("")}
+										${columns.map(c => {
+											const stickyClass = c.sticky ? ` cavg-sticky cavg-sticky-${c.sticky}` : "";
+											return `<th class="${stickyClass}" style="min-width: ${c.w};">${c.label}</th>`;
+										}).join("")}
 									</tr></thead>
 									<tbody id="cavg-tbody"></tbody>
 								</table>
