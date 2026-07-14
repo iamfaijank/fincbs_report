@@ -1229,14 +1229,9 @@ class DrishtiDashboard {
 				tableData: [],
 				totalRows: 0,
 				batchSize: 5000,
+				searchTerm: "",
 				render: function (container, dashboardInstance) {
 					const self = this;
-					const fmtNum = (val) => {
-						if (val === null || val === undefined) return "-";
-						const n = parseFloat(val);
-						if (isNaN(n)) return val;
-						return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
-					};
 					const fmtAmt = (val) => {
 						if (val === null || val === undefined) return "-";
 						const n = parseFloat(val);
@@ -1293,15 +1288,18 @@ class DrishtiDashboard {
 							#cavg-table tbody tr:hover td.cavg-sticky { background: #dcfce7 !important; }
 							#cavg-table tbody tr:hover td:not(.cavg-sticky) { background: #dcfce7 !important; }
 						</style>
-						<div id="cavg-loading" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-							<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important;"></div>
-							<span id="cavg-loading-text" style="font-weight: 600; color: #417d81; font-size: 13px;">Loading batch 1...</span>
-						</div>
-						<div id="cavg-controls" style="display: none; margin-bottom: 10px; display: flex; gap: 8px; align-items: center;">
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="cavg-controls">
 							<input type="text" id="cavg-search" placeholder="Search account, CIF, branch..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 220px; background: white; color: #1b263b; font-size: 13px; outline: none;">
-							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="cavg-count"></div>
+							<button type="button" id="cavg-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px; margin-left: auto;" id="cavg-count"></div>
 						</div>
-						<div id="cavg-table-container"></div>
+						<div id="cavg-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
+							<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+								<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important;"></div>
+								<span id="cavg-loading-text" style="font-weight: 600; color: #417d81; font-size: 13px;">Loading batch 1...</span>
+							</div>
+						</div>
+						<div id="cavg-table-container"${self.tableData && self.tableData.length > 0 ? '' : ' style="display: none;"'}></div>
 					`);
 
 					const buildRowHtml = (r) => {
@@ -1341,6 +1339,13 @@ class DrishtiDashboard {
 						container.find("#cavg-count").text(`${loaded} / ${self.totalRows} records`);
 					};
 
+					const renderAll = () => {
+						initTable();
+						const filtered = self.searchTerm ? self.tableData.filter(r => Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm))) : self.tableData;
+						appendRows(filtered);
+						updateCount();
+					};
+
 					const fetchBatch = (offset) => {
 						const currentBatchSize = offset === 0 ? self.batchSize : 10000;
 						const batchNum = offset === 0 ? 1 : Math.floor((offset - self.batchSize) / 10000) + 2;
@@ -1353,19 +1358,21 @@ class DrishtiDashboard {
 									if (offset === 0) {
 										self.totalRows = r.message.total_rows || 0;
 										initTable();
+										container.find("#cavg-loading").hide();
+										container.find("#cavg-table-container").show();
 									}
 									self.tableData = self.tableData.concat(r.message.data);
 									appendRows(r.message.data);
 									updateCount();
 									if (self.tableData.length < self.totalRows) {
+										container.find("#cavg-loading").show();
 										fetchBatch(offset + currentBatchSize);
 									} else {
 										container.find("#cavg-loading").hide();
-										container.find("#cavg-controls").show();
 									}
 								} else {
 									if (offset === 0) {
-										container.find("#cavg-table-container").html('<div style="padding: 30px; text-align: center; color: #94a3b8; font-weight: 600;">No data available</div>');
+										container.find("#cavg-table-container").html('<div style="padding: 30px; text-align: center; color: #94a3b8; font-weight: 600;">No data available</div>').show();
 									}
 									container.find("#cavg-loading").hide();
 								}
@@ -1373,28 +1380,35 @@ class DrishtiDashboard {
 						});
 					};
 
-					let searchTimeout;
 					container.off("input", "#cavg-search").on("input", "#cavg-search", function () {
-						clearTimeout(searchTimeout);
-						searchTimeout = setTimeout(() => {
-							if (!self.tableData.length) return;
-							const term = $(this).val().toLowerCase().trim();
-							const $tbody = container.find("#cavg-tbody");
-							$tbody.empty();
-							const filtered = term ? self.tableData.filter(r => Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(term))) : self.tableData;
-							filtered.forEach(r => { $tbody.append(buildRowHtml(r)); });
-							container.find("#cavg-count").text(`${filtered.length} / ${self.totalRows} records`);
+						clearTimeout(self._searchTimeout);
+						self._searchTimeout = setTimeout(() => {
+							self.searchTerm = $(this).val().toLowerCase().trim();
+							if (self.tableData.length > 0) {
+								const $tbody = container.find("#cavg-tbody");
+								$tbody.empty();
+								const filtered = self.searchTerm ? self.tableData.filter(r => Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm))) : self.tableData;
+								appendRows(filtered);
+								container.find("#cavg-count").text(`${filtered.length} / ${self.totalRows} records`);
+							}
 						}, 300);
 					});
 
-					if (self.tableData.length > 0 && self.tableData.length >= self.totalRows) {
-						container.find("#cavg-loading").hide();
-						container.find("#cavg-controls").show();
-						initTable();
-						appendRows(self.tableData);
-						updateCount();
-					} else {
+					container.off("click", "#cavg-refetch").on("click", "#cavg-refetch", function () {
 						self.tableData = [];
+						self.totalRows = 0;
+						self.searchTerm = "";
+						container.find("#cavg-search").val("");
+						container.find("#cavg-loading").show();
+						container.find("#cavg-table-container").hide().empty();
+						fetchBatch(0);
+					});
+
+					if (self.tableData && self.tableData.length > 0) {
+						container.find("#cavg-loading").hide();
+						container.find("#cavg-table-container").show();
+						renderAll();
+					} else {
 						fetchBatch(0);
 					}
 				},
