@@ -1222,6 +1222,13 @@ class DrishtiDashboard {
 						fetchData();
 					}
 				},
+			},
+			{
+				id: "cust_wise_avg_bal",
+				name: "Cust Wise AVG Balance",
+				render: function (container, dashboardInstance) {
+					container.html(`<div style="padding: 40px; text-align: center; color: #64748b; font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif;">Content not added</div>`);
+				},
 			}
 		];
 
