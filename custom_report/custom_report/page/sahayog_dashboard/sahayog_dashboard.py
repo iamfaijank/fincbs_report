@@ -1310,3 +1310,191 @@ def get_daily_account_opening_data(selected_date=None):
             conn.close()
         except Exception:
             pass
+
+
+@frappe.whitelist()
+def get_ntb_evr_data(selected_date=None):
+    from custom_report.db_connection import get_dr_connection
+    from frappe.utils import getdate, get_last_day, add_months
+    import datetime
+
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    dt = getdate(selected_date)
+    report_end = dt
+    report_start = dt.replace(day=1)
+    prev_month_end = add_months(report_start, -1)
+    prev_month_start = prev_month_end.replace(day=1)
+
+    if dt.month >= 4:
+        fy_start_year = dt.year
+    else:
+        fy_start_year = dt.year - 1
+    fy_april = f"{fy_start_year}-04-01"
+
+    report_start_str = str(report_start)
+    report_end_str = str(report_end)
+    opening_start_str = str(prev_month_start)
+    opening_end_str = str(prev_month_end)
+
+    query = f"""
+    WITH excluded_accts AS (
+        SELECT column_value AS account_number
+        FROM (VALUES
+            ('100110020002993'),
+            ('100110020101562'),
+            ('100111020003840'),
+            ('100144590010496'),
+            ('110544207002485')
+        ) t(column_value)
+    ),
+    opening_period AS (
+        SELECT
+            DATE '{opening_start_str}' AS opening_start_date,
+            DATE '{opening_end_str}' AS opening_end_date
+    ),
+    sol_gl_transferred_accts AS (
+        SELECT DISTINCT acid
+        FROM tbaadm.htd
+        WHERE (tran_particular ILIKE '%Ac xfr from Sol%'
+               OR tran_particular ILIKE '%Ac xfr from gl%')
+          AND tran_date >= DATE '{report_start_str}'
+          AND tran_date <= DATE '{report_end_str}'
+    ),
+    balance_duration AS (
+        SELECT
+            gam.acid, gam.foracid, gam.sol_id, s.sol_desc, gam.schm_code,
+            gam.acct_name, gam.cif_id, gam.acct_opn_date, gam.acct_cls_flg,
+            gam.acct_cls_date, a.relationshipopeningdate AS CIF_ID_Opening_Date,
+            eab.tran_date_bal AS balance, eab.tran_date_bal, eab.eod_date, gam.clr_bal_amt,
+            EXTRACT(DAY FROM (
+                LEAST(
+                    CASE WHEN eab.end_eod_date = DATE '2099-12-31' THEN DATE '{report_end_str}' ELSE eab.end_eod_date END,
+                    DATE '{report_end_str}'
+                ) - GREATEST(eab.eod_date, DATE '{report_start_str}')
+            )) + 1 AS active_days
+        FROM tbaadm.gam gam
+        INNER JOIN tbaadm.eab eab ON gam.acid = eab.acid
+        INNER JOIN tbaadm.sol s ON s.sol_id = gam.sol_id
+        LEFT JOIN crmuser.accounts a ON a.orgkey = gam.cif_id
+        WHERE gam.schm_code IN ('1002','1102','1103','1104','1011')
+          AND NOT EXISTS (SELECT 1 FROM excluded_accts x WHERE x.account_number = gam.foracid)
+          AND eab.eod_date <= DATE '{report_end_str}'
+          AND (CASE WHEN eab.end_eod_date = DATE '2099-12-31' THEN DATE '{report_end_str}' ELSE eab.end_eod_date END) >= DATE '{report_start_str}'
+          AND (gam.acct_cls_date IS NULL OR (gam.acct_cls_date >= DATE '{report_start_str}' AND gam.acct_cls_date < CURRENT_DATE))
+    ),
+    weighted_balances AS (
+        SELECT bd.*, t.deposit_amount, (bd.balance * bd.active_days) AS weighted_balance
+        FROM balance_duration bd
+        LEFT JOIN tbaadm.tam t ON bd.acid = t.acid
+    ),
+    closing_calc_raw AS (
+        SELECT wb.foracid, SUM(wb.weighted_balance) AS total_weighted_balance,
+            ((DATE '{report_end_str}' - DATE '{report_start_str}') + 1) AS total_days,
+            SUM(wb.weighted_balance)::numeric / NULLIF(((DATE '{report_end_str}' - DATE '{report_start_str}') + 1), 0) AS raw_avg
+        FROM weighted_balances wb GROUP BY wb.foracid
+    ),
+    closing_calc AS (
+        SELECT foracid, total_weighted_balance, total_days,
+            CASE WHEN raw_avg - FLOOR(raw_avg) = 0.5 THEN
+                CASE WHEN MOD(FLOOR(raw_avg)::bigint, 2) = 0 THEN FLOOR(raw_avg) ELSE FLOOR(raw_avg) + 1 END
+            ELSE ROUND(raw_avg, 0) END AS closing_mab
+        FROM closing_calc_raw
+    ),
+    opening_balance_duration AS (
+        SELECT gam.foracid, eab.tran_date_bal,
+            EXTRACT(DAY FROM (
+                LEAST(
+                    CASE WHEN eab.end_eod_date = DATE '2099-12-31' THEN op.opening_end_date ELSE eab.end_eod_date END,
+                    op.opening_end_date
+                ) - GREATEST(eab.eod_date, op.opening_start_date)
+            )) + 1 AS active_days
+        FROM tbaadm.gam gam
+        JOIN tbaadm.eab eab ON gam.acid = eab.acid
+        CROSS JOIN opening_period op
+        WHERE gam.schm_code IN ('1002','1102','1103','1104','1011')
+          AND NOT EXISTS (SELECT 1 FROM excluded_accts x WHERE x.account_number = gam.foracid)
+          AND eab.eod_date <= op.opening_end_date
+          AND (CASE WHEN eab.end_eod_date = DATE '2099-12-31' THEN op.opening_end_date ELSE eab.end_eod_date END) >= op.opening_start_date
+          AND (gam.acct_cls_date IS NULL OR gam.acct_cls_date >= op.opening_start_date)
+    ),
+    opening_calc_raw AS (
+        SELECT ob.foracid,
+            SUM(ob.tran_date_bal * ob.active_days)::numeric / NULLIF((SELECT (opening_end_date - opening_start_date) + 1 FROM opening_period), 0) AS raw_avg
+        FROM opening_balance_duration ob GROUP BY ob.foracid
+    ),
+    opening_mab_calc AS (
+        SELECT foracid,
+            CASE WHEN raw_avg - FLOOR(raw_avg) = 0.5 THEN
+                CASE WHEN MOD(FLOOR(raw_avg)::bigint, 2) = 0 THEN FLOOR(raw_avg) ELSE FLOOR(raw_avg) + 1 END
+            ELSE ROUND(raw_avg, 0) END AS opening_mab
+        FROM opening_calc_raw
+    )
+    SELECT
+        s.circle_office_name AS zone,
+        s.region_name AS region,
+        wb.sol_id,
+        s.sol_desc AS branch_name,
+        wb.schm_code,
+        CASE
+            WHEN wb.CIF_ID_Opening_Date IS NULL THEN 'NTB'
+            WHEN wb.CIF_ID_Opening_Date < DATE '{fy_april}' THEN 'EVR'
+            ELSE 'NTB'
+        END AS cif_status,
+        COUNT(DISTINCT wb.foracid) AS account_count
+    FROM weighted_balances wb
+    INNER JOIN closing_calc cc ON cc.foracid = wb.foracid
+    INNER JOIN tbaadm.sol s ON s.sol_id = wb.sol_id
+    LEFT JOIN sol_gl_transferred_accts sgt ON sgt.acid = wb.acid
+    LEFT JOIN opening_mab_calc om ON om.foracid = wb.foracid
+    LEFT JOIN custom.dsamap dsamap ON dsamap.account_number = wb.foracid
+    LEFT JOIN tbaadm.get get ON dsamap.rm_id = get.emp_id
+    GROUP BY s.circle_office_name, s.region_name, wb.sol_id, s.sol_desc, wb.schm_code, cif_status
+    ORDER BY s.circle_office_name, s.region_name, wb.sol_id, wb.schm_code, cif_status
+    """
+
+    conn = get_dr_connection()
+    if not conn:
+        frappe.log_error("Failed to connect to DR database", "NTB EVR API")
+        return []
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
+
+        branch_map = {}
+        for row in rows:
+            raw_zone = row[0] or "Unknown"
+            region = row[1] or "Unknown"
+            sol_id = str(row[2]) if row[2] else ""
+            branch_name = row[3] or sol_id
+            schema = row[4] or ""
+            status = row[5] or ""
+            count = int(row[6]) if row[6] else 0
+
+            normalized_zone = re.sub(r"[\s\-]+", "", raw_zone).upper()
+
+            if sol_id not in branch_map:
+                branch_map[sol_id] = {
+                    "zone": normalized_zone, "region": region, "sol_id": sol_id,
+                    "branch_name": branch_name, "ntb": 0, "evr": 0
+                }
+            if status == "NTB":
+                branch_map[sol_id]["ntb"] += count
+            elif status == "EVR":
+                branch_map[sol_id]["evr"] += count
+
+        result = list(branch_map.values())
+        result.sort(key=lambda x: (x["zone"], x["region"], x["sol_id"]))
+        return {"total_rows": len(rows), "data": result}
+
+    except Exception as e:
+        frappe.log_error(f"Error executing NTB EVR query: {str(e)}", "NTB EVR API")
+        return []
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
