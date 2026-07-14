@@ -1226,8 +1226,163 @@ class DrishtiDashboard {
 			{
 				id: "cust_wise_avg_bal",
 				name: "Cust Wise AVG Balance",
+				tableData: [],
+				totalRows: 0,
+				batchSize: 5000,
 				render: function (container, dashboardInstance) {
-					container.html(`<div style="padding: 40px; text-align: center; color: #64748b; font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif;">Content not added</div>`);
+					const self = this;
+					const fmtNum = (val) => {
+						if (val === null || val === undefined) return "-";
+						const n = parseFloat(val);
+						if (isNaN(n)) return val;
+						return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+					};
+					const fmtAmt = (val) => {
+						if (val === null || val === undefined) return "-";
+						const n = parseFloat(val);
+						if (isNaN(n)) return val;
+						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+					};
+
+					const columns = [
+						{ key: "cif_id", label: "CIF ID", w: "100px" },
+						{ key: "acct_name", label: "Acct Name", w: "150px" },
+						{ key: "foracid", label: "Foracid", w: "120px" },
+						{ key: "acct_opn_date", label: "Acct Open Date", w: "100px" },
+						{ key: "schm_code", label: "Schema", w: "80px" },
+						{ key: "sol_id", label: "SOL ID", w: "80px" },
+						{ key: "sol_desc", label: "Branch", w: "140px" },
+						{ key: "acct_cls_flg", label: "Cls Flag", w: "70px" },
+						{ key: "acct_cls_date", label: "Cls Date", w: "100px" },
+						{ key: "cif_id_opening_date", label: "CIF Open Date", w: "100px" },
+						{ key: "cif_status", label: "CIF Status", w: "80px" },
+						{ key: "tran_date_bal", label: "Tran Date Bal", w: "110px", fmt: fmtAmt },
+						{ key: "clr_bal_amt", label: "CLR Bal Amt", w: "110px", fmt: fmtAmt },
+						{ key: "deposit_amount", label: "Deposit Amt", w: "110px", fmt: fmtAmt },
+						{ key: "total_weighted_balance", label: "Total Weighted Bal", w: "130px", fmt: fmtAmt },
+						{ key: "total_days", label: "Total Days", w: "80px" },
+						{ key: "average_balance", label: "Avg Balance", w: "110px", fmt: fmtAmt },
+						{ key: "closing_mab", label: "Closing MAB", w: "110px", fmt: fmtAmt },
+						{ key: "opening_mab", label: "Opening MAB", w: "110px", fmt: fmtAmt },
+						{ key: "inc_mab", label: "Inc MAB", w: "100px", fmt: fmtAmt },
+						{ key: "status", label: "Status", w: "70px" },
+						{ key: "sol_gl_transferred_flag", label: "SOL/GL Xfer", w: "80px" },
+						{ key: "rm_id", label: "RM ID", w: "80px" },
+						{ key: "emp_name", label: "Emp Name", w: "120px" },
+						{ key: "division_name", label: "Division", w: "100px" },
+						{ key: "region_name", label: "Region", w: "100px" },
+						{ key: "circle_office_name", label: "Circle Office", w: "110px" },
+					];
+
+					container.html(`
+						<style>
+							#cavg-scroll { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
+							#cavg-table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; white-space: nowrap; }
+							#cavg-table thead th { position: sticky; top: 0; z-index: 2; background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #fff; padding: 8px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; border-bottom: 1px solid #cbd5e1; }
+							#cavg-table tbody td { padding: 7px 10px; font-size: 12px; color: #334155; border-bottom: 1px solid #e2e8f0; }
+							#cavg-table tbody tr:nth-child(even) { background: #f8fafc; }
+							#cavg-table tbody tr:hover { background: #dcfce7 !important; }
+						</style>
+						<div id="cavg-loading" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+							<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important;"></div>
+							<span id="cavg-loading-text" style="font-weight: 600; color: #417d81; font-size: 13px;">Loading batch 1...</span>
+						</div>
+						<div id="cavg-controls" style="display: none; margin-bottom: 10px; display: flex; gap: 8px; align-items: center;">
+							<input type="text" id="cavg-search" placeholder="Search account, CIF, branch..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 220px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="cavg-count"></div>
+						</div>
+						<div id="cavg-table-container"></div>
+					`);
+
+					const buildRowHtml = (r) => {
+						let html = "<tr>";
+						columns.forEach(c => {
+							const val = r[c.key];
+							const display = c.fmt ? c.fmt(val) : (val !== null && val !== undefined ? val : "-");
+							html += `<td>${display}</td>`;
+						});
+						return html + "</tr>";
+					};
+
+					const initTable = () => {
+						container.find("#cavg-table-container").html(`
+							<div id="cavg-scroll">
+								<table id="cavg-table">
+									<thead><tr>
+										${columns.map(c => `<th style="min-width: ${c.w};">${c.label}</th>`).join("")}
+									</tr></thead>
+									<tbody id="cavg-tbody"></tbody>
+								</table>
+							</div>
+						`);
+					};
+
+					const appendRows = (data) => {
+						const $tbody = container.find("#cavg-tbody");
+						data.forEach(r => { $tbody.append(buildRowHtml(r)); });
+					};
+
+					const updateCount = () => {
+						const loaded = self.tableData.length;
+						container.find("#cavg-count").text(`${loaded} / ${self.totalRows} records`);
+					};
+
+					const fetchBatch = (offset) => {
+						const currentBatchSize = offset === 0 ? self.batchSize : 10000;
+						const batchNum = offset === 0 ? 1 : Math.floor((offset - self.batchSize) / 10000) + 2;
+						container.find("#cavg-loading-text").text(`Loading batch ${batchNum}...`);
+						frappe.call({
+							method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_cust_wise_avg_balance",
+							args: { selected_date: dashboardInstance.state.selectedDate, limit: currentBatchSize, offset: offset },
+							callback: function (r) {
+								if (r.message && r.message.data) {
+									if (offset === 0) {
+										self.totalRows = r.message.total_rows || 0;
+										initTable();
+									}
+									self.tableData = self.tableData.concat(r.message.data);
+									appendRows(r.message.data);
+									updateCount();
+									if (self.tableData.length < self.totalRows) {
+										fetchBatch(offset + currentBatchSize);
+									} else {
+										container.find("#cavg-loading").hide();
+										container.find("#cavg-controls").show();
+									}
+								} else {
+									if (offset === 0) {
+										container.find("#cavg-table-container").html('<div style="padding: 30px; text-align: center; color: #94a3b8; font-weight: 600;">No data available</div>');
+									}
+									container.find("#cavg-loading").hide();
+								}
+							}
+						});
+					};
+
+					let searchTimeout;
+					container.off("input", "#cavg-search").on("input", "#cavg-search", function () {
+						clearTimeout(searchTimeout);
+						searchTimeout = setTimeout(() => {
+							if (!self.tableData.length) return;
+							const term = $(this).val().toLowerCase().trim();
+							const $tbody = container.find("#cavg-tbody");
+							$tbody.empty();
+							const filtered = term ? self.tableData.filter(r => Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(term))) : self.tableData;
+							filtered.forEach(r => { $tbody.append(buildRowHtml(r)); });
+							container.find("#cavg-count").text(`${filtered.length} / ${self.totalRows} records`);
+						}, 300);
+					});
+
+					if (self.tableData.length > 0 && self.tableData.length >= self.totalRows) {
+						container.find("#cavg-loading").hide();
+						container.find("#cavg-controls").show();
+						initTable();
+						appendRows(self.tableData);
+						updateCount();
+					} else {
+						self.tableData = [];
+						fetchBatch(0);
+					}
 				},
 			}
 		];
