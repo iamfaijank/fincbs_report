@@ -1475,10 +1475,20 @@ def get_ntb_evr_data(selected_date=None):
             count = int(row[6]) if row[6] else 0
 
             normalized_zone = re.sub(r"[\s\-]+", "", raw_zone).upper()
+            # Extract number from zone name for display
+            zone_num = re.sub(r"[^0-9]", "", normalized_zone)
+            display_zone = f"ZONE-{zone_num}" if zone_num else normalized_zone
+
+            normalized_region = re.sub(r"[\s\-]+", "", region).upper()
+            # Fix common typos like RIGION -> REGION
+            normalized_region = normalized_region.replace("RIGION", "REGION")
+            # Extract number from region name for display
+            region_num = re.sub(r"[^0-9]", "", normalized_region)
+            display_region = f"REGION-{region_num}" if region_num else normalized_region
 
             if sol_id not in branch_map:
                 branch_map[sol_id] = {
-                    "zone": normalized_zone, "region": region, "sol_id": sol_id,
+                    "zone": display_zone, "region": display_region, "sol_id": sol_id,
                     "branch_name": branch_name, "ntb": 0, "evr": 0
                 }
             if status == "NTB":
