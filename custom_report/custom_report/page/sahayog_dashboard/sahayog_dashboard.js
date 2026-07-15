@@ -1020,7 +1020,7 @@ class DrishtiDashboard {
 			},
 			{
 				id: "ntb_evr",
-				name: "NTB & EVR",
+				name: "CASA NTB & EVR",
 				tableData: [],
 				expandedZones: {},
 				expandedRegions: {},
@@ -1040,7 +1040,7 @@ class DrishtiDashboard {
 						</style>
 						<div id="ntb-evr-loading" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
 							<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important; animation: spinner-border .75s linear infinite;"></div>
-							<span style="font-weight: 600; color: #417d81; font-size: 13px;">Fetching NTB & EVR data...</span>
+							<span style="font-weight: 600; color: #417d81; font-size: 13px;">Fetching CASA NTB & EVR data...</span>
 						</div>
 						<div id="ntb-evr-table-container"></div>
 					`);
