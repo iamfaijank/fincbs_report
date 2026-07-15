@@ -39,6 +39,10 @@
   --purple: #a78bfa;
   --teal: #2dd4bf;
 
+  /* Scrollbars */
+  --scrollbar-thumb: rgba(255, 255, 255, 0.08);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.18);
+
   /* Layout */
   --sidebar-w: 280px;
   --header-h: 64px;
@@ -71,6 +75,8 @@
   --red: #dc2626;
   --purple: #7c3aed;
   --teal: #0d9488;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.07);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.15);
 }
 
 html, body { 
@@ -91,12 +97,29 @@ html, body {
   background: var(--bg2);
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column; flex-shrink: 0;
+  overflow: hidden;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-right-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sidebar-inner {
+  width: var(--sidebar-w);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
+  flex-shrink: 0;
+}
+.app.sidebar-collapsed .sidebar {
+  width: 0;
+  border-right-color: transparent;
 }
 .sidebar-logo {
   padding: 20px 20px 16px;
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg2);
 }
 .logo-mark {
   width: 36px; height: 36px; background: var(--accent); border-radius: 8px;
@@ -156,9 +179,26 @@ html, body {
 .search-icon { color: var(--text3); font-size: 14px; }
 
 .content { flex: 1; overflow-y: auto; padding: 20px var(--content-padding); }
-.content::-webkit-scrollbar { width: 5px; }
-.content::-webkit-scrollbar-track { background: transparent; }
-.content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+/* Global Scrollbar Styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
 
 /* ── UI COMPONENTS ── */
 .toggle { position: relative; width: 32px; height: 18px; flex-shrink: 0; }
@@ -191,6 +231,15 @@ html, body {
   padding: 7px 10px; border-radius: 6px; outline: none; cursor: pointer;
 }
 
+/* Multiselect Dropdown Styling */
+.multiselect-dropdown { position: relative; width: 100%; }
+.multiselect-select { display: flex; align-items: center; justify-content: space-between; background: var(--bg4); border: 1px solid var(--border); color: var(--text2); font-family: var(--font-body); font-size: 12px; padding: 7px 10px; border-radius: 6px; cursor: pointer; user-select: none; }
+.multiselect-options { display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--bg2); border: 1px solid var(--border2); border-radius: 6px; margin-top: 4px; max-height: 180px; overflow-y: auto; z-index: 200; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+.multiselect-options.open { display: block; }
+.multiselect-option { display: flex; align-items: center; gap: 8px; padding: 6px 10px; cursor: pointer; transition: background 0.15s; color: var(--text2); font-size: 12px; }
+.multiselect-option:hover { background: var(--bg3); color: var(--text); }
+.multiselect-option input { cursor: pointer; accent-color: var(--accent); }
+
 .filter-row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 7px 8px; border-bottom: 1px solid var(--border);
@@ -203,6 +252,8 @@ html, body {
 .range-vals { display: flex; justify-content: space-between; font-size: 11px; font-family: var(--font-mono); color: var(--text3); }
 input[type=range] { -webkit-appearance: none; width: 100%; height: 4px; background: var(--bg4); border-radius: 4px; outline: none; border: 1px solid var(--border); }
 input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--accent); border-radius: 50%; cursor: pointer; }
+
+.fg-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); margin-bottom: 6px; }
 
 .config-row { display: flex; gap: 6px; }
 .config-btn { flex: 1; font-size: 11px; font-family: var(--font-mono); padding: 7px 4px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg4); color: var(--text2); cursor: pointer; text-align: center; }
@@ -246,9 +297,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px;
 .table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; overflow: visible; }
 .table-header {
   display: flex; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); gap: 10px;
-  position: sticky; top: var(--sticky-table-header-top); z-index: 100;
   background: var(--bg2); border-top-left-radius: 12px; border-top-right-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); background-clip: padding-box;
 }
 .th-title { font-size: 13px; font-weight: 600; color: var(--text); }
 .th-count { font-size: 11px; font-family: var(--font-mono); background: var(--bg4); border: 1px solid var(--border); padding: 2px 8px; border-radius: 20px; color: var(--text3); }
@@ -257,16 +306,12 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px;
 .th-btn.export { background: rgba(79,255,176,0.06); border-color: rgba(79,255,176,0.2); color: var(--accent); }
 
 .table-container { overflow-x: auto; scrollbar-width: thin; }
-.table-container::-webkit-scrollbar { height: 6px; }
-.table-container::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
 
 table { width: 100%; border-collapse: separate; border-spacing: 0; }
 thead th {
   padding: 12px 14px; text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase;
   color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap;
-  position: sticky; top: var(--sticky-thead-top); z-index: 90;
-  background: var(--bg3); box-shadow: 0 2px 4px -2px rgba(0,0,0,0.15);
-  background-clip: padding-box;
+  background: var(--bg3);
 }
 td { padding: 11px 14px; font-size: 13px; color: var(--text2); vertical-align: middle; border-bottom: 1px solid var(--border); }
 tbody tr:hover { background: var(--bg3); cursor: pointer; }
@@ -335,7 +380,8 @@ tfoot td { padding: 12px 14px; font-size: 12px; font-weight: 600; color: var(--t
 
 <!-- ═══════ SIDEBAR ═══════ -->
 <aside class="sidebar">
-  <div class="sidebar-logo">
+  <div class="sidebar-inner">
+    <div class="sidebar-logo">
     <div class="logo-mark">D</div>
     <div>
       <div class="logo-text">DRISHTI</div>
@@ -348,11 +394,7 @@ tfoot td { padding: 12px 14px; font-size: 12px; font-weight: 600; color: var(--t
     <div class="sb-label">Configuration</div>
     <div style="padding: 0 0 10px;">
       <div class="fg-title">Financial Year</div>
-      <div class="config-row">
-        <div class="config-btn active" onclick="setFY(this)">FY 25–26</div>
-        <div class="config-btn" onclick="setFY(this)">FY 24–25</div>
-        <div class="config-btn" onclick="setFY(this)">FY 23–24</div>
-      </div>
+      <select class="sb-select" id="fySelect" onchange="changeFY(this.value)"></select>
     </div>
     <div style="padding: 0 0 10px;">
       <div class="fg-title">View Mode</div>
@@ -378,8 +420,24 @@ tfoot td { padding: 12px 14px; font-size: 12px; font-weight: 600; color: var(--t
       </div>
     </div>
     <div style="padding: 0 0 10px;">
-      <div class="fg-title">As of Date</div>
-      <input type="date" class="date-input" id="globalDate" style="width:100%; padding:7px 10px;" value="2026-06-07">
+      <div class="fg-title">As of Date & Month</div>
+      <div style="display: flex; gap: 8px;">
+        <input type="date" class="date-input" id="globalDate" style="flex: 1; min-width: 0; padding:7px 10px;" value="2026-06-07" onchange="handleDateChange()">
+        <select class="sb-select" id="monthSelect" style="flex: 1; min-width: 0;" onchange="changeMonth(this.value)">
+          <option value="4">April</option>
+          <option value="5">May</option>
+          <option value="6" selected>June</option>
+          <option value="7">July</option>
+          <option value="8">August</option>
+          <option value="9">September</option>
+          <option value="10">October</option>
+          <option value="11">November</option>
+          <option value="12">December</option>
+          <option value="1">January</option>
+          <option value="2">February</option>
+          <option value="3">March</option>
+        </select>
+      </div>
     </div>
   </div>
 
@@ -408,6 +466,20 @@ tfoot td { padding: 12px 14px; font-size: 12px; font-weight: 600; color: var(--t
         <div class="filter-chip" onclick="toggleChip(this,'R2','regionChips')">R2</div>
         <div class="filter-chip" onclick="toggleChip(this,'R3','regionChips')">R3</div>
         <div class="filter-chip" onclick="toggleChip(this,'R4','regionChips')">R4</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DISTRICT FILTER -->
+  <div class="sb-section">
+    <div class="sb-label">District Filter</div>
+    <div class="filter-group">
+      <div class="multiselect-dropdown" id="districtDropdown">
+        <div class="multiselect-select" onclick="toggleMultiselect()">
+          <span id="districtSelectLabel">All Districts</span>
+          <span class="z-arrow">▼</span>
+        </div>
+        <div class="multiselect-options" id="districtOptions"></div>
       </div>
     </div>
   </div>
@@ -468,14 +540,18 @@ tfoot td { padding: 12px 14px; font-size: 12px; font-weight: 600; color: var(--t
     </div>
   </div>
 
-  <div class="sb-footer">
-    <button class="reset-btn" onclick="resetAll()">↺ Reset All Filters</button>
+    <div class="sb-footer">
+      <button class="reset-btn" onclick="resetAll()">↺ Reset All Filters</button>
+    </div>
   </div>
 </aside>
 
 <!-- ═══════ MAIN ═══════ -->
 <main class="main">
   <header class="header">
+    <button class="btn-icon" id="sidebarToggleBtn" onclick="toggleSidebar()" title="Toggle Sidebar" style="margin-right: 12px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M9 3v18M16 15l-3-3 3-3"></path></svg>
+    </button>
     <div>
       <div class="header-title">DRISHTI ANALYTICS</div>
       <div class="header-breadcrumb">Dashboard <span>›</span> Zone Wise</div>
@@ -571,25 +647,25 @@ tfoot td { padding: 12px 14px; font-size: 12px; font-weight: 600; color: var(--t
     <div class="cards-grid">
       <div class="metric-card" style="--card-accent: var(--accent);">
         <div class="mc-label">Total Branches</div>
-        <div class="mc-value">229</div>
+        <div class="mc-value" id="cardTotalBranches">229</div>
         <div class="mc-sub"><span class="mc-badge badge-green">+3.2%</span> vs last month</div>
         <div class="mc-icon">🏢</div>
       </div>
       <div class="metric-card" style="--card-accent: var(--accent2);">
         <div class="mc-label">Target (MTD)</div>
-        <div class="mc-value money"><span class="mc-currency">₹</span><span class="mc-amount">163</span><span class="mc-unit">Cr</span></div>
+        <div class="mc-value money"><span class="mc-currency">₹</span><span class="mc-amount" id="cardTotalTarget">163</span><span class="mc-unit">Cr</span></div>
         <div class="mc-sub"><span class="mc-badge badge-amber">Monthly</span> target set</div>
         <div class="mc-icon">◎</div>
       </div>
       <div class="metric-card" style="--card-accent: var(--amber);">
         <div class="mc-label">Achievement</div>
-        <div class="mc-value money"><span class="mc-currency">₹</span><span class="mc-amount">91.4</span><span class="mc-unit">Cr</span></div>
-        <div class="mc-sub"><span class="mc-badge badge-red">57.9%</span> achieved</div>
+        <div class="mc-value money"><span class="mc-currency">₹</span><span class="mc-amount" id="cardTotalAch">91.4</span><span class="mc-unit">Cr</span></div>
+        <div class="mc-sub" id="cardTotalAchPct"><span class="mc-badge badge-red">57.9%</span> achieved</div>
         <div class="mc-icon">◈</div>
       </div>
       <div class="metric-card" style="--card-accent: var(--purple);">
         <div class="mc-label">Active Zones</div>
-        <div class="mc-value">6</div>
+        <div class="mc-value" id="cardActiveZones">6</div>
         <div class="mc-sub"><span class="mc-badge badge-green">All live</span> operational</div>
         <div class="mc-icon">⬡</div>
       </div>
@@ -611,21 +687,15 @@ tfoot td { padding: 12px 14px; font-size: 12px; font-weight: 600; color: var(--t
       <div class="table-wrap">
         <div class="table-header">
           <span class="th-title">Zone Performance</span>
-          <span class="th-count">6 zones · 229 branches</span>
+          <span class="th-count" id="zoneCount">6 zones · 248 branches</span>
           <div class="th-spacer"></div>
           <button class="th-btn export">⤓ Export</button>
         </div>
         <div class="table-container">
         <table id="zoneTable">
-          <thead>
-            <tr>
-              <th>Sr</th><th>Zone / Region</th><th class="center">Branches</th>
-              <th class="right">Target</th><th class="right">Achievement</th>
-              <th style="min-width:160px;">Ach %</th>
-              <th class="right">Shortfall</th><th class="center">Status</th>
-            </tr>
-          </thead>
+          <thead id="zoneThead"></thead>
           <tbody id="zoneTbody"></tbody>
+          <tfoot id="zoneTfoot"></tfoot>
         </table>
         </div>
       </div>
@@ -782,16 +852,14 @@ tfoot td { padding: 12px 14px; font-size: 12px; font-weight: 600; color: var(--t
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 // ── DATA ──
-const ZONES = [
-  { name:'ZONE-1', branches:42, regions:['R1','R2'], target:2850,  ach:1920 },
-  { name:'ZONE-2', branches:38, regions:['R3','R4'], target:2400,  ach:1680 },
-  { name:'ZONE-3', branches:41, regions:['R1','R3'], target:2600,  ach:1390 },
-  { name:'ZONE-4', branches:35, regions:['R2','R4'], target:2200,  ach:1540 },
-  { name:'ZONE-5', branches:39, regions:['R1','R4'], target:2480,  ach:1820 },
-  { name:'ZONE-6', branches:34, regions:['R2','R3'], target:2170,  ach:1055 },
-];
+let seed = 1;
+function seededRandom() {
+  const x = Math.sin(seed++) * 10000;
+  return x - Math.floor(x);
+}
 
-const BRANCHES = [];
+let ZONES = [];
+let BRANCHES = [];
 const cats = ['Pinnacle','Master','Accelerator','Starter','Learner','Zero Level'];
 const catColors = ['#4fffb0','#2dd4bf','#0ea5e9','#f59e0b','#ef4444','#dc2626'];
 const catBgColors = ['rgba(79,255,176,0.12)','rgba(45,212,191,0.12)','rgba(14,165,233,0.12)','rgba(245,158,11,0.12)','rgba(239,68,68,0.12)','rgba(220,38,38,0.12)'];
@@ -801,46 +869,18 @@ let s = 0;
 catWeights.forEach(w => { catCumul.push(s); s += w; });
 
 const zoneNames = ['ZONE-1','ZONE-2','ZONE-3','ZONE-4','ZONE-5','ZONE-6'];
-for(let i=0;i<229;i++){
-  let catIdx = 0;
-  for(let k=catCumul.length-1;k>=0;k--){ if(i>=catCumul[k]){ catIdx=k; break; } }
-  const zIdx = i % 6;
-  const pctBase = catIdx===0?105:catIdx===1?88:catIdx===2?70:catIdx===3?52:catIdx===4?33:10;
-  const pct = pctBase + (Math.random()-0.5)*12;
-  const tgt = 40+Math.random()*80;
-  const ach = tgt * pct/100;
-  BRANCHES.push({
-    id: i+1,
-    name: `Branch ${String(i+1).padStart(3,'0')}`,
-    sol_id: `SOL${1000+i}`,
-    zone: zoneNames[zIdx],
-    region: ZONES[zIdx].regions[i%2],
-    category: cats[catIdx],
-    catIdx,
-    target: Math.round(tgt*100000),
-    achievement: Math.round(ach*100000),
-    pct: Math.round(pct*10)/10
-  });
-}
-
-// Segment assignment
-const sorted = [...BRANCHES].sort((a,b)=>b.pct-a.pct);
-const q = Math.floor(sorted.length/4);
-sorted.forEach((b,i) => {
-  b.segment = i < q ? 'Top 25%' : i < q*2 ? 'Next 25%' : i < q*3 ? 'Mid 25%' : 'Bottom 25%';
-});
 
 // ── PRODUCT DATA ───────────────────────────────────────────────────────
 const PRODUCTS = ['Gold Loan','Home Loan','Personal Loan','Business Loan','Vehicle Loan','Insurance','Mutual Fund','FD / RD'];
 
-function genProductData() {
+function genProductData(multiplier = 1.0) {
   const rows = [];
   let grandTotals = Object.fromEntries(PRODUCTS.map(p=>[p,0]));
   let grandTotal = 0;
 
   ZONES.forEach(z => {
     const zoneProds = Object.fromEntries(PRODUCTS.map(p => {
-      const v = Math.round((80 + Math.random()*400) * 100000);
+      const v = Math.round((80 + seededRandom()*400) * 100000 * multiplier);
       return [p, v];
     }));
     const zoneTotal = Object.values(zoneProds).reduce((a,b)=>a+b,0);
@@ -848,31 +888,31 @@ function genProductData() {
     grandTotal += zoneTotal;
     rows.push({ name: z.name, is_group: true, products: zoneProds, total: zoneTotal, regions: [] });
     z.regions.forEach(r => {
-      const rProds = Object.fromEntries(PRODUCTS.map(p => [p, Math.round(zoneProds[p] * (0.4 + Math.random()*0.25))]));
+      const rProds = Object.fromEntries(PRODUCTS.map(p => [p, Math.round(zoneProds[p] * (0.4 + seededRandom()*0.25))]));
       const rTotal = Object.values(rProds).reduce((a,b)=>a+b,0);
       rows.push({ name: r, is_group: false, parent: z.name, products: rProds, total: rTotal });
     });
   });
   return { rows, grandTotals, grandTotal };
 }
-const PRODUCT_DATA = genProductData();
+let PRODUCT_DATA = {};
 
 // ── AGENT DATA ─────────────────────────────────────────────────────────
-function genAgentData() {
+function genAgentData(multiplier = 1.0) {
   const rows = [];
   let gSsT=0,gSsA=0,gSsAct=0,gSsInact=0,gDdT=0,gDdA=0,gDdAct=0,gDdInact=0;
   ZONES.forEach(z => {
     let zSsT=0,zSsA=0,zSsAct=0,zSsInact=0,zDdT=0,zDdA=0,zDdAct=0,zDdInact=0;
     const regionRows = [];
     z.regions.forEach(r => {
-      const ssT  = Math.round((500+Math.random()*800)*100000);
-      const ssA  = Math.round(ssT*(0.45+Math.random()*0.5));
-      const ssAct= Math.round(20+Math.random()*40);
-      const ssIn = Math.round(5+Math.random()*15);
-      const ddT  = Math.round((600+Math.random()*1000)*100000);
-      const ddA  = Math.round(ddT*(0.4+Math.random()*0.5));
-      const ddAct= Math.round(25+Math.random()*50);
-      const ddIn = Math.round(5+Math.random()*20);
+      const ssT  = Math.round((500+seededRandom()*800)*100000 * multiplier);
+      const ssA  = Math.round(ssT*(0.45+seededRandom()*0.5));
+      const ssAct= Math.round(20+seededRandom()*40);
+      const ssIn = Math.round(5+seededRandom()*15);
+      const ddT  = Math.round((600+seededRandom()*1000)*100000 * multiplier);
+      const ddA  = Math.round(ddT*(0.4+seededRandom()*0.5));
+      const ddAct= Math.round(25+seededRandom()*50);
+      const ddIn = Math.round(5+seededRandom()*20);
       zSsT+=ssT; zSsA+=ssA; zSsAct+=ssAct; zSsInact+=ssIn;
       zDdT+=ddT; zDdA+=ddA; zDdAct+=ddAct; zDdInact+=ddIn;
       regionRows.push({ name:r, is_group:false, parent:z.name, ssT,ssA,ssAct,ssInact:ssIn, ddT,ddA,ddAct,ddInact:ddIn });
@@ -884,7 +924,7 @@ function genAgentData() {
   });
   return { rows, grand:{ssT:gSsT,ssA:gSsA,ssAct:gSsAct,ssInact:gSsInact,ddT:gDdT,ddA:gDdA,ddAct:gDdAct,ddInact:gDdInact} };
 }
-const AGENT_DATA = genAgentData();
+let AGENT_DATA = {};
 
 // ── STATE ──────────────────────────────────────────────────────────────
 const state = {
@@ -911,6 +951,15 @@ function pctBar(p,w=80){
   const c = pctColor(p);
   return `<div class="pct-cell"><div class="pct-bar-bg" style="min-width:${w}px"><div class="pct-bar-fill" style="width:${Math.min(100,p)}%;background:${c};"></div></div><span class="pct-val" style="color:${c};">${p.toFixed(1)}%</span></div>`;
 }
+function pctBarScreenshot(p, w = 60) {
+  const c = pctColor(p);
+  return `<div class="pct-cell" style="display:inline-flex;align-items:center;gap:6px;justify-content:center;">
+    <span class="pct-val" style="color:${c};font-weight:600;min-width:32px;text-align:right;">${Math.round(p)}%</span>
+    <div class="pct-bar-bg" style="width:${w}px;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;">
+      <div class="pct-bar-fill" style="width:${Math.min(100,p)}%;height:100%;background:${c};border-radius:3px;"></div>
+    </div>
+  </div>`;
+}
 function catBadge(catIdx){ return `<span class="cat-badge" style="background:${catBgColors[catIdx]};color:${catColors[catIdx]};">${cats[catIdx]}</span>`; }
 function segPill(seg){
   const cls = seg==='Top 25%'?'seg-top':seg==='Next 25%'?'seg-next':seg==='Mid 25%'?'seg-mid':'seg-bottom';
@@ -919,32 +968,151 @@ function segPill(seg){
 
 // ── RENDER ──────────────────────────────────────────────────────────
 function renderZoneTable(){
+  const thead = document.getElementById('zoneThead');
   const tbody = document.getElementById('zoneTbody');
+  const tfoot = document.getElementById('zoneTfoot');
+  if (!thead || !tbody) return;
+  
+  const match = state.financialYear.match(/\d+/);
+  const startYY = match ? parseInt(match[0].slice(0, 2)) : 26;
+  const year = 2000 + startYY;
+  
+  thead.innerHTML = `
+    <tr>
+      <th rowspan="2">SR</th>
+      <th rowspan="2">ZONE/REGION</th>
+      <th rowspan="2" class="center">BRANCHES</th>
+      <th colspan="3" class="center">APR-${year}</th>
+      <th colspan="3" class="center">MAY-${year}</th>
+      <th colspan="3" class="center">JUN-${year}</th>
+    </tr>
+    <tr>
+      <th class="right">TARGET</th>
+      <th class="right">ACH</th>
+      <th class="center">ACH %</th>
+      <th class="right">TARGET</th>
+      <th class="right">ACH</th>
+      <th class="center">ACH %</th>
+      <th class="right">TARGET</th>
+      <th class="right">ACH</th>
+      <th class="center">ACH %</th>
+    </tr>
+  `;
+
   const selectedZones = getSelectedChips('zoneChips');
   const selectedRegions = getSelectedChips('regionChips');
-  let html = ''; let sr = 1;
+  const selectedDistricts = getSelectedDistricts();
+  let html = '';
+  let sr = 1;
+  
+  let totalBranches = 0;
+  let monthlyTotals = [
+    { target: 0, ach: 0 },
+    { target: 0, ach: 0 },
+    { target: 0, ach: 0 }
+  ];
+
   ZONES.forEach(z => {
-    if(selectedZones.length && !selectedZones.some(sz=>z.name.includes(sz))) return;
+    if (selectedZones.length && !selectedZones.some(sz => z.name.includes(sz.replace('Z', 'ZONE-')))) return;
     const filteredRegions = z.regions.filter(r => !selectedRegions.length || selectedRegions.includes(r));
     if (selectedRegions.length && !filteredRegions.length) return;
+    
+    // Filter branches in this zone based on selected districts and regions
+    const zoneBranches = BRANCHES.filter(b => b.zone === z.name && selectedDistricts.includes(b.district) && (selectedRegions.length === 0 || selectedRegions.includes(b.region)));
+    if (zoneBranches.length === 0 && selectedDistricts.length < 8) return;
+    
+    totalBranches += zoneBranches.length;
+    const scaleRatio = z.branches > 0 ? zoneBranches.length / z.branches : 0;
+    
+    for (let m = 0; m < 3; m++) {
+      monthlyTotals[m].target += z.months[m].target * scaleRatio;
+      monthlyTotals[m].ach += z.months[m].ach * scaleRatio;
+    }
+    
     const isExp = state.expandedZones[z.name];
-    const pct = (z.ach/z.target)*100;
-    html += `<tr class="zone-row" onclick="toggleZone('${z.name}')">
-      <td class="mono" style="color:var(--text3);">${sr++}</td>
-      <td><div class="z-toggle"><span class="z-arrow ${isExp?'open':''}">▶</span><span class="z-name">${z.name}</span></div></td>
-      <td class="center bold">${z.branches}</td><td class="right mono">${fmt(z.target*100000)}</td><td class="right mono">${fmt(z.ach*100000)}</td>
-      <td>${pctBar(pct)}</td><td class="right mono" style="color:#ef4444;">${fmt((z.target-z.ach)*100000)}</td><td class="center"><span style="color:${pctColor(pct)};font-size:18px;">●</span></td>
-    </tr>`;
-    if(isExp){
+    const monthCols = z.months.map(m => {
+      const scaledTarget = m.target * scaleRatio;
+      const scaledAch = m.ach * scaleRatio;
+      const pct = scaledTarget > 0 ? (scaledAch / scaledTarget) * 100 : 0;
+      return `
+        <td class="right mono">${fmt(scaledTarget)}</td>
+        <td class="right mono">${fmt(scaledAch)}</td>
+        <td class="center">${pctBarScreenshot(pct)}</td>
+      `;
+    }).join('');
+
+    html += `
+      <tr class="zone-row" onclick="toggleZone('${z.name}')">
+        <td class="mono" style="color:var(--text3);">${sr++}</td>
+        <td>
+          <div class="z-toggle">
+            <span class="z-arrow ${isExp ? 'open' : ''}">▶</span>
+            <span class="z-name">${z.name}</span>
+          </div>
+        </td>
+        <td class="center bold">
+          <a href="#" style="color:var(--accent2);text-decoration:underline;" onclick="event.stopPropagation(); switchTab('branch'); document.getElementById('searchInput').value='${z.name}'; renderBranchTable();">${zoneBranches.length}</a>
+        </td>
+        ${monthCols}
+      </tr>
+    `;
+
+    if (isExp) {
       filteredRegions.forEach(r => {
-        html += `<tr class="region-row" style="background:var(--bg3);">
-          <td></td><td style="padding-left:40px;"><span style="color:var(--text3);font-size:11px;margin-right:6px;">└</span><span class="z-region-name">${r}</span></td>
-          <td class="center" style="color:var(--text3);">${Math.round(z.branches/2)}</td><td class="right mono">${fmt(z.target*50000)}</td><td class="right mono">${fmt(z.ach*50000)}</td><td>${pctBar(pct)}</td><td class="right mono">—</td><td></td>
-        </tr>`;
+        const regionBranches = zoneBranches.filter(b => b.region === r);
+        const regionScaleRatio = z.branches > 0 ? regionBranches.length / z.branches : 0;
+        
+        const regionCols = z.months.map(m => {
+          const rt = m.target * regionScaleRatio;
+          const ra = m.ach * regionScaleRatio;
+          const rp = rt > 0 ? (ra / rt) * 100 : 0;
+          return `
+            <td class="right mono">${fmt(rt)}</td>
+            <td class="right mono">${fmt(ra)}</td>
+            <td class="center">${pctBarScreenshot(rp)}</td>
+          `;
+        }).join('');
+
+        html += `
+          <tr class="region-row" style="background:var(--bg3);">
+            <td></td>
+            <td style="padding-left:40px;">
+              <span style="color:var(--text3);font-size:11px;margin-right:6px;">└</span>
+              <span class="z-region-name">${r}</span>
+            </td>
+            <td class="center" style="color:var(--text3);">${regionBranches.length}</td>
+            ${regionCols}
+          </tr>
+        `;
       });
     }
   });
+  
   tbody.innerHTML = html;
+  
+  const zoneCountElem = document.getElementById('zoneCount');
+  if (zoneCountElem) {
+    zoneCountElem.textContent = `6 zones · ${totalBranches} branches`;
+  }
+  
+  const totalCols = monthlyTotals.map(t => {
+    const tp = t.target > 0 ? (t.ach / t.target) * 100 : 0;
+    return `
+      <td class="right mono bold">${fmt(t.target)}</td>
+      <td class="right mono bold">${fmt(t.ach)}</td>
+      <td class="center">${pctBarScreenshot(tp)}</td>
+    `;
+  }).join('');
+
+  if (tfoot) {
+    tfoot.innerHTML = `
+      <tr style="background:rgba(79,255,176,0.04); font-weight:bold;">
+        <td colspan="2">TOTAL</td>
+        <td class="center">${totalBranches}</td>
+        ${totalCols}
+      </tr>
+    `;
+  }
 }
 
 function toggleZone(n){ state.expandedZones[n]=!state.expandedZones[n]; renderZoneTable(); }
@@ -953,11 +1121,13 @@ function renderBranchTable(){
   const term = (document.getElementById('searchInput').value||'').toLowerCase();
   const selectedZones = getSelectedChips('zoneChips');
   const selectedRegions = getSelectedChips('regionChips');
+  const selectedDistricts = getSelectedDistricts();
   let data = BRANCHES.filter(b => {
     const matchTerm = !term || b.name.toLowerCase().includes(term) || b.sol_id.toLowerCase().includes(term) || b.zone.toLowerCase().includes(term);
-    const matchZone = !selectedZones.length || selectedZones.some(z => b.zone.includes(z));
+    const matchZone = !selectedZones.length || selectedZones.some(z => b.zone.includes(z.replace('Z', 'ZONE-')));
     const matchRegion = !selectedRegions.length || selectedRegions.includes(b.region);
-    return matchTerm && matchZone && matchRegion;
+    const matchDistrict = selectedDistricts.includes(b.district);
+    return matchTerm && matchZone && matchRegion && matchDistrict;
   });
   const seg = document.getElementById('segmentSelect').value;
   if(seg && seg!=='all') data = data.filter(b=>b.segment===seg);
@@ -965,7 +1135,7 @@ function renderBranchTable(){
   const tbody = document.getElementById('branchTbody');
   let html = '';
   data.slice(0,100).forEach((b,i) => {
-    html += `<tr><td class="mono">${i+1}</td><td><div class="branch-cell"><div class="b-name">${b.name}</div><div class="b-meta">${b.sol_id} · ${b.zone} · ${b.region}</div></div></td><td>${segPill(b.segment)}</td><td>${catBadge(b.catIdx)}</td><td class="right mono">${fmt(b.target)}</td><td class="right mono">${fmt(b.achievement)}</td><td>${pctBar(b.pct,90)}</td></tr>`;
+    html += `<tr><td class="mono">${i+1}</td><td><div class="branch-cell"><div class="b-name">${b.name}</div><div class="b-meta">${b.sol_id} · ${b.zone} · ${b.region} · ${b.district}</div></div></td><td>${segPill(b.segment)}</td><td>${catBadge(b.catIdx)}</td><td class="right mono">${fmt(b.target)}</td><td class="right mono">${fmt(b.achievement)}</td><td>${pctBar(b.pct,90)}</td></tr>`;
   });
   tbody.innerHTML = html;
 }
@@ -1062,7 +1232,7 @@ function buildOverviewCharts(){
   if(modalCharts.zoneBar) modalCharts.zoneBar.destroy();
   modalCharts.zoneBar = new Chart(document.getElementById('m_zoneBar').getContext('2d'), {
     type: 'bar',
-    data: { labels: ZONES.map(z=>z.name.replace('ZONE-','Z')), datasets: [{ label:'Target', data: ZONES.map(z=>z.target), backgroundColor:'rgba(79,255,176,0.15)', borderColor:'#00c97a', borderWidth:1.5, borderRadius:4 }, { label:'Achievement', data: ZONES.map(z=>z.ach), backgroundColor:'rgba(14,165,233,0.55)', borderColor:'#0ea5e9', borderWidth:1.5, borderRadius:4 }] },
+    data: { labels: ZONES.map(z=>z.name.replace('ZONE-','Z')), datasets: [{ label:'Target', data: ZONES.map(z=>z.months[2].target), backgroundColor:'rgba(79,255,176,0.15)', borderColor:'#00c97a', borderWidth:1.5, borderRadius:4 }, { label:'Achievement', data: ZONES.map(z=>z.months[2].ach), backgroundColor:'rgba(14,165,233,0.55)', borderColor:'#0ea5e9', borderWidth:1.5, borderRadius:4 }] },
     options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:c.tick,font:{size:11}},grid:{color:c.grid}}, y:{ticks:{color:c.tick,font:{size:11}},grid:{color:c.grid}} } }
   });
   if(modalCharts.catDonut) modalCharts.catDonut.destroy();
@@ -1093,10 +1263,432 @@ function toggleTheme(){
 function exportCSV(){ alert('Exporting data...'); }
 function resetAll(){ location.reload(); }
 
+// ── SIDEBAR TOGGLE ───────────────────────────────────────────────────
+const iconExpanded = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M9 3v18M16 15l-3-3 3-3"></path></svg>`;
+const iconCollapsed = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M9 3v18M13 9l3 3-3 3"></path></svg>`;
+
+function toggleSidebar(){
+  const app = document.querySelector('.app');
+  app.classList.toggle('sidebar-collapsed');
+  const isCollapsed = app.classList.contains('sidebar-collapsed');
+  localStorage.setItem('drishti-sidebar-collapsed', isCollapsed ? 'true' : 'false');
+  const btn = document.getElementById('sidebarToggleBtn');
+  if (btn) {
+    btn.innerHTML = isCollapsed ? iconCollapsed : iconExpanded;
+  }
+}
+
+// ── FINANCIAL YEAR UTILS ─────────────────────────────────────────────
+function getIndianFinancialYear(date) {
+  const year = date.getFullYear();
+  const month = date.getMonth(); // 0-indexed (0 is Jan, 3 is Apr)
+  return month >= 3 ? year : year - 1;
+}
+
+function formatFY(startYear) {
+  const endYear = startYear + 1;
+  const yy1 = startYear.toString().slice(-2);
+  const yy2 = endYear.toString().slice(-2);
+  return `FY ${yy1}–${yy2}`;
+}
+
+function initFYDropdown() {
+  const select = document.getElementById('fySelect');
+  if (!select) return;
+  const today = new Date();
+  const currentFYStart = getIndianFinancialYear(today);
+  
+  let html = '';
+  for (let i = 0; i < 3; i++) {
+    const fyStart = currentFYStart - i;
+    const label = formatFY(fyStart);
+    const value = `FY${fyStart.toString().slice(-2)}${(fyStart + 1).toString().slice(-2)}`;
+    const selected = i === 0 ? 'selected' : '';
+    html += `<option value="${value}" ${selected}>${label}</option>`;
+  }
+  select.innerHTML = html;
+  state.financialYear = select.value;
+}
+
+function updateDateForFY(fy) {
+  const match = fy.match(/\d+/);
+  if (!match) return;
+  const startYY = parseInt(match[0].slice(0, 2)); // e.g. 26 from FY2627
+  const year = 2000 + startYY;
+  
+  const dateStr = `${year}-06-07`;
+  const input = document.getElementById('globalDate');
+  if (input) input.value = dateStr;
+  
+  const select = document.getElementById('monthSelect');
+  if (select) select.value = "6";
+  
+  const headerDate = document.getElementById('headerDate');
+  if (headerDate) headerDate.textContent = `Jun 07, ${year}`;
+}
+
+function changeMonth(mVal) {
+  const dateInput = document.getElementById('globalDate');
+  if (!dateInput) return;
+  const currentDate = new Date(dateInput.value);
+  const year = currentDate.getFullYear();
+  
+  let selectMonth = parseInt(mVal);
+  const match = state.financialYear.match(/\d+/);
+  const startYY = match ? parseInt(match[0].slice(0, 2)) : 26;
+  const startYear = 2000 + startYY;
+  
+  let targetYear = startYear;
+  if (selectMonth >= 1 && selectMonth <= 3) {
+    targetYear = startYear + 1;
+  }
+  
+  const mm = String(selectMonth).padStart(2, '0');
+  const dd = String(isNaN(currentDate.getDate()) ? 7 : currentDate.getDate()).padStart(2, '0');
+  const dateStr = `${targetYear}-${mm}-${dd}`;
+  
+  dateInput.value = dateStr;
+  updateHeaderDate(new Date(dateStr));
+}
+
+function handleDateChange() {
+  const dateInput = document.getElementById('globalDate');
+  if (!dateInput) return;
+  const selectedDate = new Date(dateInput.value);
+  const month = selectedDate.getMonth() + 1;
+  
+  const select = document.getElementById('monthSelect');
+  if (select) {
+    select.value = month.toString();
+  }
+  updateHeaderDate(selectedDate);
+}
+
+// Custom Date Formatter
+function updateHeaderDate(dateObj) {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthName = months[dateObj.getMonth()];
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  const year = dateObj.getFullYear();
+  
+  const headerDate = document.getElementById('headerDate');
+  if (headerDate) {
+    headerDate.textContent = `${monthName} ${day}, ${year}`;
+  }
+}
+
+function updateSummaryCards() {
+  let totalTarget = 0;
+  let totalAch = 0;
+  ZONES.forEach(z => {
+    const latestMonth = z.months[2];
+    totalTarget += latestMonth.target;
+    totalAch += latestMonth.ach;
+  });
+  
+  const targetCr = (totalTarget / 10000000).toFixed(1);
+  const achCr = (totalAch / 10000000).toFixed(1);
+  const achPct = totalTarget > 0 ? ((totalAch / totalTarget) * 100).toFixed(1) : '0.0';
+  
+  const targetElem = document.getElementById('cardTotalTarget');
+  if (targetElem) targetElem.textContent = targetCr;
+  
+  const achElem = document.getElementById('cardTotalAch');
+  if (achElem) achElem.textContent = achCr;
+  
+  const pctElem = document.getElementById('cardTotalAchPct');
+  if (pctElem) {
+    const badgeClass = parseFloat(achPct) >= 80 ? 'badge-green' : parseFloat(achPct) >= 50 ? 'badge-amber' : 'badge-red';
+    pctElem.innerHTML = `<span class="mc-badge ${badgeClass}">${achPct}%</span> achieved`;
+  }
+  
+  const branchesElem = document.getElementById('cardTotalBranches');
+  if (branchesElem) branchesElem.textContent = BRANCHES.length;
+}
+
+function initDataForFY(fy) {
+  let multiplier = 1.0;
+  let fySeed = 1;
+  
+  if (fy === 'FY2627') {
+    multiplier = 1.20;
+    fySeed = 2026;
+  } else if (fy === 'FY2526') {
+    multiplier = 1.0;
+    fySeed = 2025;
+  } else if (fy === 'FY2425') {
+    multiplier = 0.82;
+    fySeed = 2024;
+  } else {
+    const match = fy.match(/\d+/);
+    const year = match ? parseInt(match[0]) : 25;
+    multiplier = 1.0 + (year - 25) * 0.15;
+    fySeed = year;
+  }
+  
+  seed = fySeed;
+  
+  const SCREENSHOT_ZONE_DATA = [
+    {
+      name: 'ZONE-1',
+      branches: 112,
+      regions: ['R1', 'R2'],
+      months: [
+        { target: 118.01, ach: 86.20 },
+        { target: 121.00, ach: 115.52 },
+        { target: 123.85, ach: 127.77 }
+      ]
+    },
+    {
+      name: 'ZONE-2',
+      branches: 31,
+      regions: ['R3', 'R4'],
+      months: [
+        { target: 16.90, ach: 5.75 },
+        { target: 18.15, ach: 7.44 },
+        { target: 19.40, ach: 8.47 }
+      ]
+    },
+    {
+      name: 'ZONE-3',
+      branches: 29,
+      regions: ['R1', 'R3'],
+      months: [
+        { target: 8.70, ach: 1.68 },
+        { target: 9.57, ach: 2.51 },
+        { target: 10.44, ach: 2.96 }
+      ]
+    },
+    {
+      name: 'ZONE-4',
+      branches: 23,
+      regions: ['R2', 'R4'],
+      months: [
+        { target: 10.30, ach: 3.17 },
+        { target: 11.03, ach: 4.32 },
+        { target: 11.60, ach: 5.64 }
+      ]
+    },
+    {
+      name: 'ZONE-5',
+      branches: 25,
+      regions: ['R1', 'R4'],
+      months: [
+        { target: 6.70, ach: 1.09 },
+        { target: 7.38, ach: 2.85 },
+        { target: 8.06, ach: 4.04 }
+      ]
+    },
+    {
+      name: 'ZONE-6',
+      branches: 28,
+      regions: ['R2', 'R3'],
+      months: [
+        { target: 6.10, ach: 1.15 },
+        { target: 7.61, ach: 1.34 },
+        { target: 8.22, ach: 2.12 }
+      ]
+    }
+  ];
+  
+  ZONES = SCREENSHOT_ZONE_DATA.map(z => {
+    const months = z.months.map(m => {
+      const targetVal = m.target * multiplier * 10000000;
+      const achVal = m.ach * multiplier * 10000000;
+      return { target: targetVal, ach: achVal };
+    });
+    return {
+      name: z.name,
+      branches: z.branches,
+      regions: [...z.regions],
+      months: months
+    };
+  });
+  
+  BRANCHES = [];
+  const cats = ['Pinnacle','Master','Accelerator','Starter','Learner','Zero Level'];
+  const catWeights = [42, 38, 61, 47, 28, 13];
+  let catCumul = [];
+  let s = 0;
+  catWeights.forEach(w => { catCumul.push(s); s += w; });
+  const zoneNames = ['ZONE-1','ZONE-2','ZONE-3','ZONE-4','ZONE-5','ZONE-6'];
+  
+  let branchZoneAssignments = [];
+  ZONES.forEach((z, zIdx) => {
+    for (let j = 0; j < z.branches; j++) {
+      branchZoneAssignments.push(zIdx);
+    }
+  });
+  
+  for(let i=0; i<248; i++){
+    let catIdx = 0;
+    const scaledIndex = Math.floor(i * 229 / 248);
+    for(let k=catCumul.length-1; k>=0; k--){ 
+      if(scaledIndex>=catCumul[k]){ catIdx=k; break; } 
+    }
+    const zIdx = branchZoneAssignments[i];
+    const pctBase = catIdx===0?105:catIdx===1?88:catIdx===2?70:catIdx===3?52:catIdx===4?33:10;
+    const pct = pctBase + (seededRandom()-0.5)*12;
+    const tgt = (40 + seededRandom()*80) * multiplier;
+    const ach = tgt * pct/100;
+    
+    const districtsList = ['Mumbai', 'Delhi', 'Bengaluru', 'Kolkata', 'Chennai', 'Hyderabad', 'Pune', 'Ahmedabad'];
+    BRANCHES.push({
+      id: i+1,
+      name: `Branch ${String(i+1).padStart(3,'0')}`,
+      sol_id: `SOL${1000+i}`,
+      zone: zoneNames[zIdx],
+      region: ZONES[zIdx].regions[i%2],
+      district: districtsList[i % districtsList.length],
+      category: cats[catIdx],
+      catIdx,
+      target: Math.round(tgt*100000),
+      achievement: Math.round(ach*100000),
+      pct: Math.round(pct*10)/10
+    });
+  }
+  
+  const sorted = [...BRANCHES].sort((a,b)=>b.pct-a.pct);
+  const q = Math.floor(sorted.length/4);
+  sorted.forEach((b,i) => {
+    b.segment = i < q ? 'Top 25%' : i < q*2 ? 'Next 25%' : i < q*3 ? 'Mid 25%' : 'Bottom 25%';
+  });
+  
+  PRODUCT_DATA = genProductData(multiplier);
+  AGENT_DATA = genAgentData(multiplier);
+  
+  updateSummaryCards();
+  updateDateForFY(fy);
+}
+
+function changeFY(val) {
+  state.financialYear = val;
+  console.log("Financial Year changed to:", val);
+  initDataForFY(val);
+  
+  // Re-render current active tab
+  if(state.activeTab === 'branch') renderBranchTable();
+  if(state.activeTab === 'product') renderProductTable();
+  if(state.activeTab === 'agent') renderAgentTable();
+  if(state.activeTab === 'zone') renderZoneTable();
+  
+  if (modalCharts.zoneBar) buildOverviewCharts();
+}
+
+// ── CONFIG HANDLERS ──────────────────────────────────────────────────
+function setView(btn) {
+  const parent = btn.parentNode;
+  parent.querySelectorAll('.config-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.viewMode = btn.textContent.trim().toLowerCase();
+  console.log("View mode changed to:", state.viewMode);
+}
+
+function setTarget(btn) {
+  const parent = btn.parentNode;
+  parent.querySelectorAll('.config-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.targetType = btn.textContent.trim().toLowerCase();
+  console.log("Target type changed to:", state.targetType);
+}
+
+function setFormat(btn) {
+  const parent = btn.parentNode;
+  parent.querySelectorAll('.config-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.formatMode = btn.getAttribute('data-fmt');
+  console.log("Format mode changed to:", state.formatMode);
+  
+  // Re-render to apply format
+  if(state.activeTab === 'branch') renderBranchTable();
+  if(state.activeTab === 'product') renderProductTable();
+  if(state.activeTab === 'agent') renderAgentTable();
+  if(state.activeTab === 'zone') renderZoneTable();
+}
+
+// ── DISTRICT UTILS ───────────────────────────────────────────────────
+function initDistrictDropdown() {
+  const container = document.getElementById('districtOptions');
+  if (!container) return;
+  const districts = ['Mumbai', 'Delhi', 'Bengaluru', 'Kolkata', 'Chennai', 'Hyderabad', 'Pune', 'Ahmedabad'];
+  let html = `
+    <div class="multiselect-option" onclick="event.stopPropagation();">
+      <label style="display:flex;align-items:center;gap:8px;width:100%;cursor:pointer;">
+        <input type="checkbox" id="distSelectAll" checked onchange="toggleAllDistricts(this)">
+        <span>Select All</span>
+      </label>
+    </div>
+  `;
+  districts.forEach(d => {
+    html += `
+      <div class="multiselect-option" onclick="event.stopPropagation();">
+        <label style="display:flex;align-items:center;gap:8px;width:100%;cursor:pointer;">
+          <input type="checkbox" class="district-cb" value="${d}" checked onchange="filterByDistrict()">
+          <span>${d}</span>
+        </label>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+function toggleMultiselect() {
+  const options = document.getElementById('districtOptions');
+  if (options) options.classList.toggle('open');
+}
+
+document.addEventListener('click', function(e) {
+  const dropdown = document.getElementById('districtDropdown');
+  if (dropdown && !dropdown.contains(e.target)) {
+    const options = document.getElementById('districtOptions');
+    if (options) options.classList.remove('open');
+  }
+});
+
+function toggleAllDistricts(source) {
+  const checkboxes = document.querySelectorAll('.district-cb');
+  checkboxes.forEach(cb => cb.checked = source.checked);
+  filterByDistrict();
+}
+
+function getSelectedDistricts() {
+  const checkboxes = document.querySelectorAll('.district-cb:checked');
+  return Array.from(checkboxes).map(cb => cb.value);
+}
+
+function filterByDistrict() {
+  const selected = getSelectedDistricts();
+  const selectAll = document.getElementById('distSelectAll');
+  const allCBs = document.querySelectorAll('.district-cb');
+  if (selectAll) selectAll.checked = (selected.length === allCBs.length);
+  
+  const label = document.getElementById('districtSelectLabel');
+  if (label) {
+    if (selected.length === allCBs.length) label.textContent = "All Districts";
+    else if (selected.length === 0) label.textContent = "No Districts Selected";
+    else label.textContent = `${selected.length} Districts Selected`;
+  }
+  
+  // Re-render
+  if (state.activeTab === 'branch') renderBranchTable();
+  if (state.activeTab === 'zone') renderZoneTable();
+}
+
 // ── INIT ─────────────────────────────────────────────────────────────
 (function init(){
   const saved = localStorage.getItem('drishti-theme');
   if(saved) { document.documentElement.setAttribute('data-theme', saved); const btn = document.getElementById('themeToggleBtn'); if(btn) btn.textContent = saved==='light'?'🌙':'☀️'; }
+  
+  const sidebarCollapsed = localStorage.getItem('drishti-sidebar-collapsed');
+  if (sidebarCollapsed === 'true') {
+    document.querySelector('.app').classList.add('sidebar-collapsed');
+    const btn = document.getElementById('sidebarToggleBtn');
+    if (btn) btn.innerHTML = iconCollapsed;
+  }
+  
+  initFYDropdown();
+  initDataForFY(state.financialYear);
+  initDistrictDropdown();
   renderZoneTable();
 })();
 </script>
