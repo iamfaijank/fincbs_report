@@ -1226,10 +1226,14 @@ class DrishtiDashboard {
 			{
 				id: "cust_wise_avg_bal",
 				name: "Cust Wise AVG Balance",
-				tableData: [],
+				currentPage: 1,
+				pageSize: 5000,
+				totalPages: 0,
 				totalRows: 0,
-				batchSize: 5000,
+				cachedPages: {},
 				searchTerm: "",
+				_bgRunning: false,
+				_renderSeq: 0,
 				render: function (container, dashboardInstance) {
 					const self = this;
 					const fmtAmt = (val) => {
@@ -1287,19 +1291,26 @@ class DrishtiDashboard {
 							#cavg-table tbody tr:nth-child(odd) td.cavg-sticky { background: #fff; }
 							#cavg-table tbody tr:hover td.cavg-sticky { background: #dcfce7 !important; }
 							#cavg-table tbody tr:hover td:not(.cavg-sticky) { background: #dcfce7 !important; }
+							.cavg-page-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; color: #475569; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+							.cavg-page-btn:hover:not(.cavg-active):not(:disabled) { background: #f1f5f9; border-color: #94a3b8; }
+							.cavg-page-btn.cavg-active { background: #417d81; color: #fff; border-color: #417d81; cursor: default; }
+							.cavg-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+							.cavg-page-btn.cfg-loaded { background: #f0fdf4; border-color: #86efac; color: #166534; }
+							.cavg-page-btn.cfg-loaded:hover:not(.cavg-active) { background: #dcfce7; }
 						</style>
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="cavg-controls">
 							<input type="text" id="cavg-search" placeholder="Search account, CIF, branch..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 220px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="cavg-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px; margin-left: auto;" id="cavg-count"></div>
 						</div>
-						<div id="cavg-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
+						<div id="cavg-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif;">
 							<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
 								<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important;"></div>
-								<span id="cavg-loading-text" style="font-weight: 600; color: #417d81; font-size: 13px;">Loading batch 1...</span>
+								<span id="cavg-loading-text" style="font-weight: 600; color: #417d81; font-size: 13px;">Loading page 1...</span>
 							</div>
 						</div>
-						<div id="cavg-table-container"${self.tableData && self.tableData.length > 0 ? '' : ' style="display: none;"'}></div>
+						<div id="cavg-table-container" style="display: none;"></div>
+						<div id="cavg-pagination" style="display: none; align-items: center; gap: 6px; margin-top: 12px; font-family: 'Inter', sans-serif; flex-wrap: wrap;"></div>
 					`);
 
 					const buildRowHtml = (r) => {
@@ -1335,48 +1346,133 @@ class DrishtiDashboard {
 					};
 
 					const updateCount = () => {
-						const loaded = self.tableData.length;
-						container.find("#cavg-count").text(`${loaded} / ${self.totalRows} records`);
+						const loaded = Object.keys(self.cachedPages).length * self.pageSize;
+						if (self.totalRows > 0) {
+							container.find("#cavg-count").text(`${Math.min(loaded, self.totalRows).toLocaleString()} / ${self.totalRows.toLocaleString()} records loaded`);
+						} else {
+							container.find("#cavg-count").text("0 records");
+						}
 					};
 
-					const renderAll = () => {
+					const renderPaginationBar = () => {
+						const $bar = container.find("#cavg-pagination");
+						if (self.totalPages <= 1) { $bar.hide(); return; }
+						$bar.show();
+
+						let html = "";
+						html += `<button class="cavg-page-btn" id="cavg-prev" ${self.currentPage <= 1 ? 'disabled' : ''}>◀ Prev</button>`;
+
+						const pages = [];
+						if (self.totalPages <= 7) {
+							for (let i = 1; i <= self.totalPages; i++) pages.push(i);
+						} else {
+							pages.push(1);
+							if (self.currentPage > 3) pages.push("...");
+							const start = Math.max(2, self.currentPage - 1);
+							const end = Math.min(self.totalPages - 1, self.currentPage + 1);
+							for (let i = start; i <= end; i++) pages.push(i);
+							if (self.currentPage < self.totalPages - 2) pages.push("...");
+							pages.push(self.totalPages);
+						}
+
+						pages.forEach(p => {
+							if (p === "...") {
+								html += `<span style="display:inline-flex;align-items:center;min-width:24px;height:32px;color:#94a3b8;font-size:13px;">…</span>`;
+							} else {
+								const active = p === self.currentPage ? " cavg-active" : "";
+								const loaded = self.cachedPages[p] ? " cfg-loaded" : "";
+								html += `<button class="cavg-page-btn${active}${loaded}" data-page="${p}">${p}</button>`;
+							}
+						});
+
+						html += `<button class="cavg-page-btn" id="cavg-next" ${self.currentPage >= self.totalPages ? 'disabled' : ''}>Next ▶</button>`;
+						$bar.html(html);
+					};
+
+					const renderPage = () => {
 						initTable();
-						const filtered = self.searchTerm ? self.tableData.filter(r => Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm))) : self.tableData;
+						const pageData = self.cachedPages[self.currentPage] || [];
+						const filtered = self.searchTerm
+							? pageData.filter(r => Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm)))
+							: pageData;
 						appendRows(filtered);
 						updateCount();
+						renderPaginationBar();
 					};
 
-					const fetchBatch = (offset) => {
-						const currentBatchSize = offset === 0 ? self.batchSize : 10000;
-						const batchNum = offset === 0 ? 1 : Math.floor((offset - self.batchSize) / 10000) + 2;
-						container.find("#cavg-loading-text").text(`Loading batch ${batchNum}...`);
-						frappe.call({
-							method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_cust_wise_avg_balance",
-							args: { selected_date: dashboardInstance.state.selectedDate, limit: currentBatchSize, offset: offset },
-							callback: function (r) {
-								if (r.message && r.message.data) {
-									if (offset === 0) {
+					const fetchPageAjax = (pageNum) => {
+						return new Promise((resolve) => {
+							if (self.cachedPages[pageNum]) { resolve(true); return; }
+							const offset = (pageNum - 1) * self.pageSize;
+							$.ajax({
+								url: "/api/method/custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_cust_wise_avg_balance",
+								type: "POST",
+								data: {
+									selected_date: dashboardInstance.state.selectedDate,
+									limit: self.pageSize,
+									offset: offset,
+								},
+								timeout: 300000,
+								headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
+								success: function (r) {
+									if (r.message && r.message.data) {
 										self.totalRows = r.message.total_rows || 0;
-										initTable();
-										container.find("#cavg-loading").hide();
-										container.find("#cavg-table-container").show();
-									}
-									self.tableData = self.tableData.concat(r.message.data);
-									appendRows(r.message.data);
-									updateCount();
-									if (self.tableData.length < self.totalRows) {
-										container.find("#cavg-loading").show();
-										fetchBatch(offset + currentBatchSize);
+										self.totalPages = Math.ceil(self.totalRows / self.pageSize) || 1;
+										self.cachedPages[pageNum] = r.message.data;
+										resolve(true);
 									} else {
-										container.find("#cavg-loading").hide();
+										resolve(false);
 									}
-								} else {
-									if (offset === 0) {
-										container.find("#cavg-table-container").html('<div style="padding: 30px; text-align: center; color: #94a3b8; font-weight: 600;">No data available</div>').show();
-									}
-									container.find("#cavg-loading").hide();
-								}
+								},
+								error: function () { resolve(false); },
+							});
+						});
+					};
+
+					const startBgFetch = (fromPage) => {
+						if (self._bgRunning) return;
+						self._bgRunning = true;
+						const seq = self._renderSeq;
+						const maxPreloadPages = Math.min(self.totalPages, 4);
+						const maxPreloadRecords = maxPreloadPages * self.pageSize;
+
+						const loadNext = (page) => {
+							if (seq !== self._renderSeq) { self._bgRunning = false; return; }
+							if (page > self.totalPages || Object.keys(self.cachedPages).length * self.pageSize >= maxPreloadRecords) {
+								self._bgRunning = false;
+								renderPaginationBar();
+								return;
 							}
+							if (self.cachedPages[page]) {
+								loadNext(page + 1);
+								return;
+							}
+							fetchPageAjax(page).then(() => {
+								if (seq !== self._renderSeq) { self._bgRunning = false; return; }
+								updateCount();
+								renderPaginationBar();
+								setTimeout(() => loadNext(page + 1), 2000);
+							});
+						};
+						loadNext(fromPage);
+					};
+
+					const goToPage = (pageNum) => {
+						if (pageNum < 1 || pageNum > self.totalPages) return;
+						if (self.cachedPages[pageNum]) {
+							self.currentPage = pageNum;
+							renderPage();
+							return;
+						}
+						container.find("#cavg-loading").show();
+						container.find("#cavg-loading-text").text(`Loading page ${pageNum}...`);
+						fetchPageAjax(pageNum).then(() => {
+							container.find("#cavg-loading").hide();
+							container.find("#cavg-table-container").show();
+							self.currentPage = pageNum;
+							renderPage();
+							const nextBg = Math.max(...Object.keys(self.cachedPages).map(Number), 0) + 1;
+							if (nextBg <= self.totalPages) startBgFetch(nextBg);
 						});
 					};
 
@@ -1384,32 +1480,57 @@ class DrishtiDashboard {
 						clearTimeout(self._searchTimeout);
 						self._searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
-							if (self.tableData.length > 0) {
-								const $tbody = container.find("#cavg-tbody");
-								$tbody.empty();
-								const filtered = self.searchTerm ? self.tableData.filter(r => Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm))) : self.tableData;
-								appendRows(filtered);
-								container.find("#cavg-count").text(`${filtered.length} / ${self.totalRows} records`);
-							}
+							if (Object.keys(self.cachedPages).length > 0) renderPage();
 						}, 300);
 					});
 
 					container.off("click", "#cavg-refetch").on("click", "#cavg-refetch", function () {
-						self.tableData = [];
+						self.currentPage = 1;
 						self.totalRows = 0;
+						self.totalPages = 0;
+						self.cachedPages = {};
 						self.searchTerm = "";
+						self._bgRunning = false;
+						self._renderSeq++;
 						container.find("#cavg-search").val("");
-						container.find("#cavg-loading").show();
 						container.find("#cavg-table-container").hide().empty();
-						fetchBatch(0);
+						container.find("#cavg-pagination").hide().html("");
+						container.find("#cavg-loading").show();
+						container.find("#cavg-loading-text").text("Loading page 1...");
+						fetchPageAjax(1).then(() => {
+							container.find("#cavg-loading").hide();
+							container.find("#cavg-table-container").show();
+							self.currentPage = 1;
+							renderPage();
+							startBgFetch(2);
+						});
 					});
 
-					if (self.tableData && self.tableData.length > 0) {
+					container.off("click", ".cavg-page-btn[data-page]").on("click", ".cavg-page-btn[data-page]", function () {
+						const page = parseInt($(this).data("page"));
+						if (page && page !== self.currentPage) goToPage(page);
+					});
+
+					container.off("click", "#cavg-prev").on("click", "#cavg-prev", function () {
+						if (self.currentPage > 1) goToPage(self.currentPage - 1);
+					});
+
+					container.off("click", "#cavg-next").on("click", "#cavg-next", function () {
+						if (self.currentPage < self.totalPages) goToPage(self.currentPage + 1);
+					});
+
+					if (Object.keys(self.cachedPages).length > 0) {
 						container.find("#cavg-loading").hide();
 						container.find("#cavg-table-container").show();
-						renderAll();
+						renderPage();
 					} else {
-						fetchBatch(0);
+						fetchPageAjax(1).then(() => {
+							container.find("#cavg-loading").hide();
+							container.find("#cavg-table-container").show();
+							self.currentPage = 1;
+							renderPage();
+							startBgFetch(2);
+						});
 					}
 				},
 			}
