@@ -1240,7 +1240,7 @@ class DrishtiDashboard {
 			},
 			{
 				id: "cust_wise_avg_bal",
-				name: "Cust Wise AVG Balance",
+				name: "CASA Cust Wise AVG Bal",
 				currentPage: 1,
 				pageSize: 5000,
 				totalPages: 0,
