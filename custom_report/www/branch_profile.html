@@ -2942,7 +2942,12 @@
 					const filter = this.state.manpowerFilter;
 					const query = this.state.manpowerSearchQuery.toLowerCase().trim();
 
+					const excludedPrefixes = ['ABPS', 'MCPS', 'NP', 'NT', 'P'];
 					let filteredEmployees = this.state.employees.filter(emp => {
+						// 0. Exclude prefixed IDs
+						const empId = (emp.employee_number || '').toUpperCase();
+						if (excludedPrefixes.some(p => empId.startsWith(p))) return false;
+
 						// 1. PIP Filter
 						let passPip = true;
 						if (filter === 'pip') passPip = emp.pip_status == 1;
