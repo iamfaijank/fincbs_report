@@ -1528,6 +1528,51 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
     prev_month_end = add_months(report_start, -1)
     prev_month_start = prev_month_end.replace(day=1)
 
+def clean_zone_region(value, prefix):
+    if not value:
+        return "Unknown"
+    
+    value_str = str(value).strip().upper()
+    
+    # Extract all digits
+    import re
+    digits = re.sub(r"[^0-9]", "", value_str)
+    
+    if digits:
+        return f"{prefix}-{digits}"
+    else:
+        # If no digits, clean spaces and return uppercase
+        normalized = re.sub(r"[\s\-]+", " ", value_str).strip()
+        return normalized
+
+
+@frappe.whitelist()
+def get_product_wise_casa(selected_date=None):
+    from custom_report.db_connection import get_dr_connection
+    from frappe.utils import getdate
+    import datetime
+
+    # Validate that selected_date is not today or in the future
+    if not selected_date:
+        selected_date = str(datetime.date.today() - datetime.timedelta(days=1))
+    
+    dt = getdate(selected_date)
+    today = datetime.date.today()
+    if dt >= today:
+        frappe.throw("Today's date and future dates cannot be selected. Please select a past date.")
+
+    # Calculate dynamic dates
+    report_end_str = dt.strftime("%Y-%m-%d")
+    report_start_str = dt.replace(day=1).strftime("%Y-%m-%d")
+    
+    # Last month dates:
+    prev_month_end = dt.replace(day=1) - datetime.timedelta(days=1)
+    prev_month_start = prev_month_end.replace(day=1)
+    
+    opening_start_str = prev_month_start.strftime("%Y-%m-%d")
+    opening_end_str = prev_month_end.strftime("%Y-%m-%d")
+    
+    # Financial year start (April 1st)
     if dt.month >= 4:
         fy_start_year = dt.year
     else:
@@ -1735,8 +1780,936 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
     except Exception as e:
         frappe.log_error(f"Error executing Cust Wise AVG Balance query: {str(e)}", "Cust Wise AVG Balance API")
         return {"total_rows": 0, "data": []}
+    fy_april_str = f"{fy_start_year}-04-01"
+
+    print(f"CASA Sync - Selected Date: {selected_date}", flush=True)
+    print(f"CASA Sync - Report Month Start Date: {report_start_str}", flush=True)
+    print(f"CASA Sync - Report Month End Date: {report_end_str}", flush=True)
+    print(f"CASA Sync - Last Month Start Date: {opening_start_str}", flush=True)
+    print(f"CASA Sync - Last Month End Date: {opening_end_str}", flush=True)
+    print(f"CASA Sync - Financial Year Start: {fy_april_str}", flush=True)
+
+    query = f'''
+WITH excluded_accts AS (
+    SELECT column_value AS account_number
+    FROM (VALUES
+        ('100110020002993'),
+        ('100110020101562'),
+        ('100111020003840'),
+        ('100144590010496'),
+        ('110544207002485')
+    ) t(column_value)
+),
+/* ===================== OPENING (PREVIOUS) MONTH DATE RANGE ===================== */
+opening_period AS (
+    SELECT
+        DATE '{opening_start_str}' AS opening_start_date,  ---LAST MONTH START DATE 
+        DATE '{opening_end_str}' AS opening_end_date     ---LAST MONTH END DATE
+),
+/* ===================== ACCOUNTS WITH SOL/GL TRANSFER IN CURRENT PERIOD ===================== */
+sol_gl_transferred_accts AS (
+    SELECT DISTINCT acid
+    FROM tbaadm.htd
+    WHERE (tran_particular ILIKE '%Ac xfr from Sol%'
+           OR tran_particular ILIKE '%Ac xfr from gl%')
+      AND tran_date >= DATE '{report_start_str}'   ---REPORT MONTH START DATE
+      AND tran_date <= DATE '{report_end_str}'   ---REPORT MONTH END DATE
+),
+/* ===================== CLOSING (CURRENT) PERIOD ===================== */
+balance_duration AS (
+    SELECT
+        gam.acid,
+        gam.foracid,
+        gam.sol_id,
+        s.sol_desc,
+        gam.schm_code,
+        gam.acct_name,
+        gam.cif_id,
+        gam.acct_opn_date,
+        gam.acct_cls_flg,
+        gam.acct_cls_date,
+        a.relationshipopeningdate AS CIF_ID_Opening_Date,
+        eab.tran_date_bal AS balance,
+        eab.tran_date_bal,
+        eab.eod_date,
+        gam.clr_bal_amt,
+        EXTRACT(
+            DAY FROM (
+                LEAST(
+                    CASE
+                        WHEN eab.end_eod_date = DATE '2099-12-31'
+                            THEN DATE '{report_end_str}'   ---REPORT MONTH END DATE
+                        ELSE eab.end_eod_date
+                    END,
+                    DATE '{report_end_str}'   ---REPORT MONTH END DATE
+                )
+                -
+                GREATEST(eab.eod_date, DATE '{report_start_str}')   ---REPORT MONTH START DATE
+            )
+        ) + 1 AS active_days
+    FROM
+        tbaadm.gam gam
+    INNER JOIN
+        tbaadm.eab eab ON gam.acid = eab.acid
+    INNER JOIN
+        tbaadm.sol s ON s.sol_id = gam.sol_id
+    LEFT JOIN
+        crmuser.accounts a ON a.orgkey = gam.cif_id
+    WHERE
+        gam.schm_code IN ('1002','1102','1103','1104','1011')
+        AND NOT EXISTS (
+            SELECT 1 FROM excluded_accts x
+            WHERE x.account_number = gam.foracid
+        )
+        AND eab.eod_date <= DATE '{report_end_str}'   ---REPORT MONTH END DATE
+        AND (
+            CASE
+                WHEN eab.end_eod_date = DATE '2099-12-31'  ---FIXED DATE NO CHANGE
+                    THEN DATE '{report_end_str}'  ---REPORT MONTH END DATE
+                ELSE eab.end_eod_date
+            END
+        ) >= DATE '{report_start_str}'   ---REPORT MONTH START DATE
+        AND (
+            gam.acct_cls_date IS NULL
+            OR (
+                gam.acct_cls_date >= DATE '{report_start_str}'   ---REPORT MONTH START DATE
+                AND gam.acct_cls_date < CURRENT_DATE
+            )
+        )
+),
+weighted_balances AS (
+    SELECT
+        bd.*,
+        t.deposit_amount,
+        (bd.balance * bd.active_days) AS weighted_balance
+    FROM balance_duration bd
+    LEFT JOIN tbaadm.tam t ON bd.acid = t.acid
+),
+/* ===================== CLOSING MAB — RAW SUM PER FORACID ===================== */
+closing_calc_raw AS (
+    SELECT
+        wb.foracid,
+        SUM(wb.weighted_balance) AS total_weighted_balance,
+        ((DATE '{report_end_str}' - DATE '{report_start_str}') + 1) AS total_days,    ---REPORT MONTH START & END DATE
+        SUM(wb.weighted_balance)::numeric
+            / NULLIF(((DATE '{report_end_str}' - DATE '{report_start_str}') + 1), 0) AS raw_avg   ---REPORT MONTH START & END DATE
+    FROM weighted_balances wb
+    GROUP BY wb.foracid
+),
+/* ===================== CLOSING MAB — BANKER'S ROUNDING APPLIED ===================== */
+closing_calc AS (
+    SELECT
+        foracid,
+        total_weighted_balance,
+        total_days,
+        CASE
+            WHEN raw_avg - FLOOR(raw_avg) = 0.5 THEN
+                CASE
+                    WHEN MOD(FLOOR(raw_avg)::bigint, 2) = 0 THEN FLOOR(raw_avg)
+                    ELSE FLOOR(raw_avg) + 1
+                END
+            ELSE ROUND(raw_avg, 0)
+        END AS closing_mab
+    FROM closing_calc_raw
+),
+/* ===================== OPENING MONTH MAB ===================== */
+opening_balance_duration AS (
+    SELECT
+        gam.foracid,
+        eab.tran_date_bal,
+        EXTRACT(
+            DAY FROM (
+                LEAST(
+                    CASE
+                        WHEN eab.end_eod_date = DATE '2099-12-31' ---FIXED DATE NO CHANGE
+                            THEN op.opening_end_date
+                        ELSE eab.end_eod_date
+                    END,
+                    op.opening_end_date
+                )
+                -
+                GREATEST(eab.eod_date, op.opening_start_date)
+            )
+        ) + 1 AS active_days
+    FROM tbaadm.gam gam
+    JOIN tbaadm.eab eab ON gam.acid = eab.acid
+    CROSS JOIN opening_period op
+    WHERE
+        gam.schm_code IN ('1002','1102','1103','1104','1011')
+        AND NOT EXISTS (
+            SELECT 1 FROM excluded_accts x
+            WHERE x.account_number = gam.foracid
+        )
+        AND eab.eod_date <= op.opening_end_date
+        AND (
+            CASE
+                WHEN eab.end_eod_date = DATE '2099-12-31'  ---FIXED DATE NO CHANGE
+                    THEN op.opening_end_date
+                ELSE eab.end_eod_date
+            END
+        ) >= op.opening_start_date
+        AND (
+            gam.acct_cls_date IS NULL
+            OR gam.acct_cls_date >= op.opening_start_date
+        )
+),
+/* ===================== OPENING MAB — RAW SUM PER FORACID ===================== */
+opening_calc_raw AS (
+    SELECT
+        ob.foracid,
+        SUM(ob.tran_date_bal * ob.active_days)::numeric
+            / NULLIF((SELECT (opening_end_date - opening_start_date) + 1 FROM opening_period), 0) AS raw_avg
+    FROM opening_balance_duration ob
+    GROUP BY ob.foracid
+),
+/* ===================== OPENING MAB — BANKER'S ROUNDING APPLIED ===================== */
+opening_mab_calc AS (
+    SELECT
+        foracid,
+        CASE
+            WHEN raw_avg - FLOOR(raw_avg) = 0.5 THEN
+                CASE
+                    WHEN MOD(FLOOR(raw_avg)::bigint, 2) = 0 THEN FLOOR(raw_avg)
+                    ELSE FLOOR(raw_avg) + 1
+                END
+            ELSE ROUND(raw_avg, 0)
+        END AS opening_mab
+    FROM opening_calc_raw
+)
+/* ===================== FINAL OUTPUT ===================== */
+SELECT
+    wb.foracid,
+    wb.sol_id,
+    wb.sol_desc,
+    wb.schm_code,
+    wb.acct_name,
+    wb.cif_id,
+    wb.acct_opn_date,
+    wb.acct_cls_flg,
+    wb.acct_cls_date,
+    wb.CIF_ID_Opening_Date,
+    CASE
+        WHEN wb.CIF_ID_Opening_Date IS NULL THEN 'NTB'
+        WHEN wb.CIF_ID_Opening_Date < DATE '{fy_april_str}'   ---YE EVERY FINACIAL YEAR ME CHANGE HOGI NEXT YEAR '2027-04-01' HO JAYEGI
+        THEN 'EVR'
+        ELSE 'NTB'
+    END AS cif_status,
+    (ARRAY_AGG(wb.tran_date_bal ORDER BY wb.eod_date DESC))[1] AS tran_date_bal,
+    wb.clr_bal_amt,
+    wb.deposit_amount,
+    cc.total_weighted_balance,
+    cc.total_days,
+    cc.closing_mab AS average_balance,
+    cc.closing_mab,
+    -- opening_mab: force 0 for SOL/GL transferred accounts, else banker's-rounded value
+    CASE
+        WHEN sgt.acid IS NOT NULL THEN 0
+        ELSE COALESCE(om.opening_mab, 0)
+    END AS opening_mab,
+    cc.closing_mab - CASE
+                          WHEN sgt.acid IS NOT NULL THEN 0
+                          ELSE COALESCE(om.opening_mab, 0)
+                      END AS inc_mab,
+    CASE
+        WHEN wb.schm_code = '1102' AND cc.closing_mab >= 2000 THEN 'MAB'
+        WHEN wb.schm_code IN ('1002','1011') AND cc.closing_mab >= 1000 THEN 'MAB'
+        WHEN wb.schm_code IN ('1103','1104') AND cc.closing_mab >= 4000 THEN 'MAB'
+        WHEN DATE_TRUNC('month', wb.acct_opn_date) = DATE_TRUNC('month', DATE '{report_start_str}')
+             AND (
+                    (wb.schm_code = '1102' AND wb.clr_bal_amt >= 2000)
+                 OR (wb.schm_code IN ('1002','1011') AND wb.clr_bal_amt >= 1000)
+                 OR (wb.schm_code IN ('1103','1104') AND wb.clr_bal_amt >= 4000)
+                 )
+            THEN 'MAB'
+        ELSE 'NMAB'
+    END AS STATUS,
+    CASE WHEN sgt.acid IS NOT NULL THEN 'Y' ELSE 'N' END AS sol_gl_transferred_flag,
+    dsamap.rm_id,
+    get.emp_name,
+    s.division_name,
+    s.region_name,
+    s.circle_office_name
+FROM
+    weighted_balances wb
+INNER JOIN closing_calc cc ON cc.foracid = wb.foracid
+LEFT JOIN custom.dsamap dsamap ON dsamap.account_number = wb.foracid
+LEFT JOIN tbaadm.get get ON dsamap.rm_id = get.emp_id
+INNER JOIN tbaadm.sol s ON s.sol_id = wb.sol_id
+LEFT JOIN opening_mab_calc om ON om.foracid = wb.foracid
+LEFT JOIN sol_gl_transferred_accts sgt ON sgt.acid = wb.acid
+GROUP BY
+    wb.foracid, wb.sol_id, wb.sol_desc, wb.schm_code, wb.acct_name, wb.cif_id,
+    wb.acct_opn_date, wb.acct_cls_flg, wb.acct_cls_date, wb.CIF_ID_Opening_Date,
+    wb.clr_bal_amt, wb.deposit_amount, cc.total_weighted_balance, cc.total_days, cc.closing_mab,
+    dsamap.rm_id, get.emp_id, get.emp_name,
+    s.division_name, s.region_name, s.circle_office_name, om.opening_mab, sgt.acid;'''
+
+    conn = get_dr_connection()
+    if not conn:
+        frappe.log_error("Failed to connect to DR database", "Product Wise CASA Sync API")
+        return 0
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        print(f"CASA Sync - Total rows fetched from DB: {len(rows)}", flush=True)
+        
+        from frappe.utils import now_datetime
+
+        processed_date = dt.strftime("%Y-%m-%d")
+        now_time = now_datetime()
+        bulk_data = []
+        
+        # Pre-fetch product group_name mappings from DB to emulate Fetch From
+        product_map = {p.name: p.group_name for p in frappe.get_all("Product", fields=["name", "group_name"])}
+
+        for row in rows:
+            sol_id = str(row[1]).strip()
+            schm_code = str(row[3]).strip()
+            inc_mab = float(row[19] or 0)
+            
+            final_zone = clean_zone_region(row[26] or row[24], "ZONE")
+            final_region = clean_zone_region(row[25], "REGION")
+            
+            product_group = product_map.get(schm_code)
+            
+            name = frappe.generate_hash(length=16)
+            bulk_data.append((
+                name,
+                now_time,
+                now_time,
+                "Administrator",
+                "Administrator",
+                0,
+                0,
+                final_zone,
+                final_region,
+                product_group or "CASA",
+                inc_mab,
+                processed_date,
+                sol_id,
+                product_group or "CASA",
+                schm_code
+            ))
+
+        # Deleting old records for this date and CASA products to prevent duplicates
+        frappe.db.delete("Product Wise Report", {
+            "date": processed_date,
+            "product": "CASA"
+        })
+
+        print(f"CASA Sync - Starting bulk insertion of {len(bulk_data)} records into Product Wise Report...", flush=True)
+        
+        fields = [
+            "name", "creation", "modified", "modified_by", "owner", 
+            "docstatus", "idx", "zone", "region", "product", "amount", 
+            "date", "sol_id", "product_groupname", "scheme_code"
+        ]
+        
+        frappe.db.bulk_insert("Product Wise Report", fields, bulk_data)
+        frappe.db.commit()
+        
+        print(f"CASA Sync - Successfully synced and committed {len(bulk_data)} records.", flush=True)
+        return len(bulk_data)
+        
+    except Exception as e:
+        frappe.log_error(f"Error in get_product_wise_casa: {str(e)}", "Product Wise CASA API")
+        return 0
     finally:
         try:
             conn.close()
         except Exception:
             pass
+
+
+
+@frappe.whitelist()
+def get_product_wise_tda(selected_date=None):
+    from custom_report.db_connection import get_dr_connection
+    from frappe.utils import getdate, now_datetime
+    import datetime
+
+    # Validate that selected_date is not today or in the future
+    if not selected_date:
+        selected_date = str(datetime.date.today() - datetime.timedelta(days=1))
+    
+    dt = getdate(selected_date)
+    today = datetime.date.today()
+    if dt >= today:
+        frappe.throw("Today's date and future dates cannot be selected. Please select a past date.")
+
+    # Calculate dynamic dates
+    report_end_str = dt.strftime("%Y-%m-%d")
+    report_start_str = dt.replace(day=1).strftime("%Y-%m-%d")
+    processed_date = report_end_str
+    
+    # Last month dates:
+    prev_month_end = dt.replace(day=1) - datetime.timedelta(days=1)
+    prev_month_start = prev_month_end.replace(day=1)
+    
+    opening_start_str = prev_month_start.strftime("%Y-%m-%d")
+    opening_end_str = prev_month_end.strftime("%Y-%m-%d")
+    
+    total_days_till_date = (dt - dt.replace(day=1)).days + 1
+    last_month_total_days = prev_month_end.day
+
+    print(f"TDA Sync - Selected Date: {selected_date}", flush=True)
+    print(f"TDA Sync - Report Month Start Date: {report_start_str}", flush=True)
+    print(f"TDA Sync - Report Month End Date: {report_end_str}", flush=True)
+    print(f"TDA Sync - Last Month Start Date: {opening_start_str}", flush=True)
+    print(f"TDA Sync - Last Month End Date: {opening_end_str}", flush=True)
+    print(f"TDA Sync - Total days till date: {total_days_till_date}", flush=True)
+    print(f"TDA Sync - Last month total days: {last_month_total_days}", flush=True)
+
+    query = f'''WITH excluded_accts AS (
+    SELECT column_value AS account_number
+    FROM (VALUES
+        ('100110020002993'),
+        ('100110020101562'),
+        ('100111020003840'),
+        ('100144590010496'),
+        ('110544207002485')
+    ) t(column_value)
+),
+/* ================= FLOW DATA (SCHM_CODE LEVEL) ================= */
+flow_data AS (
+    SELECT
+        g.sol_id,
+        g.schm_code,
+        s.sol_desc,
+        s.region_name,
+        s.division_name,
+        s.circle_office_name,
+        SUM(tdt.flow_amt) AS total_flow_amount
+    FROM custom.dsamap d
+    INNER JOIN tbaadm.gam g
+        ON g.foracid = d.account_number
+       AND g.schm_type = 'TDA'
+    INNER JOIN tbaadm.sol s
+        ON s.sol_id = g.sol_id
+    INNER JOIN tbaadm.tdt tdt
+        ON tdt.acid = g.acid
+       AND tdt.flow_code IN ('PI','NI')
+    WHERE tdt.flow_date BETWEEN DATE '{report_start_str}' AND DATE '{report_end_str}'  ---REPORT MONTH START & END DATE
+      -- ✅ FIX: FD scheme codes ke closed accounts exclude karo
+      --         Agar account FD scheme ka hai AUR closed hai toh mat lo
+      AND NOT (
+                g.schm_code IN ('2001','2002','2003','2008','2009',
+        '2018','2019','2020','2021','2022','2023','2024','2025','2026','2027','2028','2029','2030','2031','2032','2033',
+        '2101','2102','2103','2104','2105','2106',
+        '2201','2202','2203')
+                AND g.acct_cls_flg != 'N'
+              )
+    GROUP BY
+        g.sol_id,
+        g.schm_code,
+        s.sol_desc,
+        s.region_name,
+        s.division_name,
+        s.circle_office_name
+),
+/* ================= TRAN DATA (SCHM_CODE LEVEL) ================= */
+tran_data AS (
+    SELECT
+        g.sol_id,
+        g.schm_code,
+        SUM(dtt.tran_amt) AS total_tran_amt
+    FROM custom.dsamap d
+    INNER JOIN tbaadm.gam g
+        ON g.foracid = d.account_number
+       AND g.schm_type = 'TDA'
+    INNER JOIN tbaadm.dtt dtt
+        ON dtt.acid = g.acid
+       AND dtt.flow_code IN ('PI','NI')
+    WHERE dtt.value_date BETWEEN DATE '{report_start_str}' AND DATE '{report_end_str}'   ---REPORT MONTH START & END DATE
+      -- ✅ FIX: FD scheme codes ke closed accounts exclude karo
+      --         Agar account FD scheme ka hai AUR closed hai toh mat lo
+      AND NOT (
+                g.schm_code IN ('2001','2002','2003','2008','2009',
+        '2018','2019','2020','2021','2022','2023','2024','2025','2026','2027','2028','2029','2030','2031','2032','2033',
+        '2101','2102','2103','2104','2105','2106',
+        '2201','2202','2203')
+                AND g.acct_cls_flg != 'N'
+              )
+    GROUP BY
+        g.sol_id,
+        g.schm_code
+),
+/* ================= NEW: TRAN DATA FOR SCHM_CODE '1007' (HTD TABLE) ================= */
+tran_data_1007 AS (
+    SELECT
+        g.sol_id,
+        '1007' AS schm_code,
+        SUM(h.tran_amt) AS total_tran_amt
+    FROM tbaadm.htd h
+    JOIN tbaadm.gam g
+        ON g.acid = h.acid
+    WHERE h.tran_date BETWEEN DATE '{report_start_str}' AND DATE '{report_end_str}'  ---REPORT MONTH START & END DATE
+      AND g.schm_code = '1007'
+      AND h.part_tran_type = 'C'
+      AND h.tran_sub_type = 'CI'
+    GROUP BY g.sol_id
+),
+/* ================= FINAL DATA ================= */
+final_data AS (
+    SELECT
+        COALESCE(f.sol_id, t.sol_id) AS sol_id,
+        COALESCE(f.schm_code, t.schm_code) AS schm_code,
+        COALESCE(f.sol_desc, s.sol_desc) AS sol_desc,
+        COALESCE(f.region_name, s.region_name) AS region_name,
+        COALESCE(f.division_name, s.division_name) AS division_name,
+        COALESCE(f.circle_office_name, s.circle_office_name) AS circle_office_name,
+        COALESCE(f.total_flow_amount, 0) AS total_flow_amount,
+        COALESCE(t.total_tran_amt, 0) AS total_tran_amt
+    FROM flow_data f
+    FULL OUTER JOIN tran_data t
+        ON f.sol_id = t.sol_id
+       AND f.schm_code = t.schm_code
+    LEFT JOIN tbaadm.sol s
+        ON s.sol_id = COALESCE(f.sol_id, t.sol_id)
+    UNION ALL
+    -- ✅ NEW: schm_code '1007' ka data yaha merge kiya gaya hai (flow_amount hamesha 0 rahega,
+    --         kyunki 1007 ke liye sirf tran_amt ka logic diya gaya hai)
+    SELECT
+        t7.sol_id,
+        t7.schm_code,
+        s.sol_desc,
+        s.region_name,
+        s.division_name,
+        s.circle_office_name,
+        0 AS total_flow_amount,
+        t7.total_tran_amt
+    FROM tran_data_1007 t7
+    LEFT JOIN tbaadm.sol s
+        ON s.sol_id = t7.sol_id
+),
+/* ================= JUNE DATA (SCHM_CODE LEVEL) ================= */
+june_data AS (
+    SELECT
+        g.sol_id,
+        g.schm_code,
+        e.tran_date_bal,
+        (
+            EXTRACT(
+                DAY FROM (
+                    LEAST(
+                        CASE
+                            WHEN e.end_eod_date = DATE '2099-12-31'
+                                THEN DATE '{report_end_str}'   ---REPORT MONTH END DATE
+                            ELSE e.end_eod_date
+                        END,
+                        DATE '{report_end_str}'  ---REPORT MONTH END DATE
+                    )
+                    -
+                    GREATEST(e.eod_date, DATE '{report_start_str}') ---REPORT MONTH START DATE
+                )
+            ) + 1
+        ) AS active_days
+    FROM tbaadm.gam g
+    JOIN tbaadm.eab e
+        ON g.acid = e.acid
+    WHERE g.schm_code IN (
+        '2001','2002','2003','2004','2005','2006','2007','2008','2009','2010',
+        '2011','2012','2013','2014','2015','2016','2018','2019','2020','2021',
+        '2022','2023','2024','2025','2026','2027','2028','2029','2030','2031',
+        '2032','2033','2034','2035',
+        '2101','2102','2103','2104','2105','2106',
+        '2201','2202','2203',
+        '9001','9002'
+    )
+      AND NOT EXISTS (
+        SELECT 1 FROM excluded_accts x
+        WHERE x.account_number = g.foracid
+      )
+      AND (
+            g.acct_cls_date IS NULL
+            OR g.acct_cls_date BETWEEN DATE '{report_start_str}' AND DATE '{report_end_str}'  ---REPORT MONTH START & END DATE
+          )
+      AND e.eod_date <= DATE '{report_end_str}'  ---REPORT MONTH END DATE
+      AND (
+            CASE
+                WHEN e.end_eod_date = DATE '2099-12-31'
+                    THEN DATE '{report_end_str}'  ---REPORT MONTH END DATE
+                ELSE e.end_eod_date
+            END
+          ) >= DATE '{report_start_str}'  ---REPORT MONTH START DATE
+      -- ✅ FIX: FD scheme codes ke closed accounts exclude karo
+      --         Agar account FD scheme ka hai AUR closed hai toh mat lo
+      AND NOT (
+                g.schm_code IN ('2001','2002','2003','2008','2009',
+        '2018','2019','2020','2021','2022','2023','2024','2025','2026','2027','2028','2029','2030','2031','2032','2033',
+        '2101','2102','2103','2104','2105','2106',
+        '2201','2202','2203')
+                AND g.acct_cls_flg != 'N'
+              )
+),
+/* ================= JUNE MAB ================= */
+june_mab AS (
+    SELECT
+        sol_id,
+        schm_code,
+        SUM(tran_date_bal * active_days) / {total_days_till_date} AS closing_mab  --TOTAL DAYS OF CURRENT MONTH AS PER REPORT DATE RANGE
+    FROM june_data
+    GROUP BY sol_id, schm_code
+),
+/* ================= MAY DATA ================= */
+may_data AS (
+    SELECT
+        g.sol_id,
+        g.schm_code,
+        e.tran_date_bal,
+        (
+            EXTRACT(
+                DAY FROM (
+                    LEAST(
+                        CASE
+                            WHEN e.end_eod_date = DATE '2099-12-31'
+                                THEN DATE '{opening_end_str}'  ---LAST MONTH END DATE
+                            ELSE e.end_eod_date
+                        END,
+                        DATE '{opening_end_str}'  ---LAST MONTH END DATE
+                    )
+                    -
+                    GREATEST(e.eod_date, DATE '{opening_start_str}') ---LAST MONTH START DATE
+                )
+            ) + 1
+        ) AS active_days
+    FROM tbaadm.gam g
+    JOIN tbaadm.eab e
+        ON g.acid = e.acid
+    WHERE g.schm_code IN (
+        '2001','2002','2003','2004','2005','2006','2007','2008','2009','2010',
+        '2011','2012','2013','2014','2015','2016','2018','2019','2020','2021',
+        '2022','2023','2024','2025','2026','2027','2028','2029','2030','2031',
+        '2032','2033','2034','2035',
+        '2101','2102','2103','2104','2105','2106',
+        '2201','2202','2203',
+        '9001','9002'
+    )
+      AND NOT EXISTS (
+        SELECT 1 FROM excluded_accts x
+        WHERE x.account_number = g.foracid
+      )
+      AND (
+            g.acct_cls_date IS NULL
+            OR g.acct_cls_date BETWEEN DATE '{report_start_str}' AND DATE '{report_end_str}'  ---REPORT MONTH START & END DATE
+          )
+      AND e.eod_date <= DATE '{opening_end_str}' ---LAST MONTH END DATE
+      AND (
+            CASE
+                WHEN e.end_eod_date = DATE '2099-12-31'
+                    THEN DATE '{opening_end_str}' ---LAST MONTH END DATE
+                ELSE e.end_eod_date
+            END
+          ) >= DATE '{opening_start_str}' ---LAST MONTH START DATE
+      -- ✅ FIX: FD scheme codes ke closed accounts exclude karo
+      --         Agar account FD scheme ka hai AUR closed hai toh mat lo
+      AND NOT (
+                g.schm_code IN ('2001','2002','2003','2008','2009',
+        '2018','2019','2020','2021','2022','2023','2024','2025','2026','2027','2028','2029','2030','2031','2032','2033',
+        '2101','2102','2103','2104','2105','2106',
+        '2201','2202','2203')
+                AND g.acct_cls_flg != 'N'
+              )
+),
+/* ================= MAY MAB ================= */
+may_mab AS (
+    SELECT
+        sol_id,
+        schm_code,
+        SUM(tran_date_bal * active_days) / {last_month_total_days} AS opening_mab  ---TOTAL DAYS OF MONTH TOTAL
+    FROM may_data
+    GROUP BY sol_id, schm_code
+),
+/* ================= JUNE BALANCE ================= */
+june_balance AS (
+    SELECT
+        g.sol_id,
+        g.schm_code,
+        SUM(e.tran_date_bal) AS closing_balance
+    FROM tbaadm.gam g
+    JOIN tbaadm.eab e
+        ON g.acid = e.acid
+    WHERE g.schm_code IN (
+        '2001','2002','2003','2004','2005','2006','2007','2008','2009','2010',
+        '2011','2012','2013','2014','2015','2016','2018','2019','2020','2021',
+        '2022','2023','2024','2025','2026','2027','2028','2029','2030','2031',
+        '2032','2033','2034','2035',
+        '2101','2102','2103','2104','2105','2106',
+        '2201','2202','2203',
+        '9001','9002'
+    )
+      AND NOT EXISTS (
+        SELECT 1 FROM excluded_accts x
+        WHERE x.account_number = g.foracid
+      )
+      AND DATE '{report_end_str}' BETWEEN e.eod_date  ---REPORT MONTH END DATE
+      AND CASE
+            WHEN e.end_eod_date = DATE '2099-12-31'
+                THEN DATE '{report_end_str}' ---REPORT MONTH END DATE
+            ELSE e.end_eod_date
+          END
+      -- ✅ FIX: FD scheme codes ke closed accounts exclude karo
+      --         Agar account FD scheme ka hai AUR closed hai toh mat lo
+      AND NOT (
+                g.schm_code IN ('2001','2002','2003','2008','2009',
+        '2018','2019','2020','2021','2022','2023','2024','2025','2026','2027','2028','2029','2030','2031','2032','2033',
+        '2101','2102','2103','2104','2105','2106',
+        '2201','2202','2203')
+                AND g.acct_cls_flg != 'N'
+              )
+    GROUP BY g.sol_id, g.schm_code
+),
+/* ================= MAY BALANCE ================= */
+may_balance AS (
+    SELECT
+        g.sol_id,
+        g.schm_code,
+        SUM(e.tran_date_bal) AS opening_balance
+    FROM tbaadm.gam g
+    JOIN tbaadm.eab e
+        ON g.acid = e.acid
+    WHERE g.schm_code IN (
+        '2001','2002','2003','2004','2005','2006','2007','2008','2009','2010',
+        '2011','2012','2013','2014','2015','2016','2018','2019','2020','2021',
+        '2022','2023','2024','2025','2026','2027','2028','2029','2030','2031',
+        '2032','2033','2034','2035',
+        '2101','2102','2103','2104','2105','2106',
+        '2201','2202','2203',
+        '9001','9002'
+    )
+      AND NOT EXISTS (
+        SELECT 1 FROM excluded_accts x
+        WHERE x.account_number = g.foracid
+      )
+      AND DATE '{opening_end_str}' BETWEEN e.eod_date  ---LAST MONTH END DATE
+      AND CASE
+            WHEN e.end_eod_date = DATE '2099-12-31'
+                THEN DATE '{opening_end_str}'  ---LAST MONTH END DATE
+            ELSE e.end_eod_date
+          END
+      -- ✅ FIX: FD scheme codes ke closed accounts exclude karo
+      --         Agar account FD scheme ka hai AUR closed hai toh mat lo
+      AND NOT (
+                g.schm_code IN ('2001','2002','2003','2008','2009',
+        '2018','2019','2020','2021','2022','2023','2024','2025','2026','2027','2028','2029','2030','2031','2032','2033',
+        '2101','2102','2103','2104','2105','2106',
+        '2201','2202','2203')
+                AND g.acct_cls_flg != 'N'
+              )
+    GROUP BY g.sol_id, g.schm_code
+),
+/* ================= MAB FINAL ================= */
+mab_final AS (
+    SELECT
+        m.sol_id,
+        m.schm_code,
+        ab.opening_balance,
+        mb.closing_balance,
+--        COALESCE(a.opening_mab, 0) AS opening_mab,
+--        COALESCE(m.closing_mab, 0) AS closing_mab,
+--        ROUND(COALESCE(m.closing_mab,0) - COALESCE(a.opening_mab,0),0) AS inc_mab
+        ROUND(COALESCE(a.opening_mab, 0), 0)                        AS opening_mab,
+        ROUND(m.closing_mab, 0)                                      AS closing_mab,
+        --ROUND(m.closing_mab - COALESCE(a.opening_mab, 0), 0)        AS inc_mab
+        ROUND(m.closing_mab, 0) - ROUND(COALESCE(a.opening_mab, 0), 0) AS inc_mab
+    FROM june_mab m
+    LEFT JOIN may_mab a
+        ON m.sol_id = a.sol_id
+       AND m.schm_code = a.schm_code
+    LEFT JOIN june_balance mb
+        ON m.sol_id = mb.sol_id
+       AND m.schm_code = mb.schm_code
+    LEFT JOIN may_balance ab
+        ON m.sol_id = ab.sol_id
+       AND m.schm_code = ab.schm_code
+),
+schema_driver AS (
+    SELECT
+        s.sol_id,
+        x.schm_code
+    FROM tbaadm.sol s
+    CROSS JOIN (
+        SELECT '1007' AS schm_code UNION ALL     -- ✅ NEW: added so schm_code 1007 also appears in final output
+        SELECT '2001' UNION ALL SELECT '2002' UNION ALL SELECT '2003'
+        UNION ALL SELECT '2004' UNION ALL SELECT '2005' UNION ALL SELECT '2006'
+        UNION ALL SELECT '2007' UNION ALL SELECT '2008' UNION ALL SELECT '2009'
+        UNION ALL SELECT '2010' UNION ALL SELECT '2011' UNION ALL SELECT '2012'
+        UNION ALL SELECT '2013' UNION ALL SELECT '2014' UNION ALL SELECT '2015'
+        UNION ALL SELECT '2016' UNION ALL SELECT '2018' UNION ALL SELECT '2019'
+        UNION ALL SELECT '2020' UNION ALL SELECT '2021' UNION ALL SELECT '2022'
+        UNION ALL SELECT '2023' UNION ALL SELECT '2024' UNION ALL SELECT '2025'
+        UNION ALL SELECT '2026' UNION ALL SELECT '2027' UNION ALL SELECT '2028'
+        UNION ALL SELECT '2029' UNION ALL SELECT '2030' UNION ALL SELECT '2031'
+        UNION ALL SELECT '2032' UNION ALL SELECT '2033' UNION ALL SELECT '2034'
+        UNION ALL SELECT '2035'
+        UNION ALL SELECT '2101' UNION ALL SELECT '2102' UNION ALL SELECT '2103'
+        UNION ALL SELECT '2104' UNION ALL SELECT '2105' UNION ALL SELECT '2106'
+        UNION ALL SELECT '2201' UNION ALL SELECT '2202' UNION ALL SELECT '2203'
+        UNION ALL SELECT '9001' UNION ALL SELECT '9002'
+    ) x
+)
+/* ================= FINAL OUTPUT ================= */
+SELECT
+    sd.sol_id,
+    sd.schm_code,
+    s.sol_desc,
+    s.region_name,
+    s.division_name,
+    s.circle_office_name,
+--   sd.schm_code,
+    f.schm_code,
+    COALESCE(f.total_flow_amount, 0) AS total_flow_amount,
+    COALESCE(f.total_tran_amt, 0) AS total_tran_amt,
+--    COALESCE(m.opening_balance, 0) AS opening_balance,
+--    COALESCE(m.closing_balance, 0) AS closing_balance,
+    COALESCE(CEIL(m.opening_balance), 0) AS opening_balance,
+    COALESCE(CEIL(m.closing_balance), 0) AS closing_balance,
+    COALESCE(CEIL(m.opening_mab), 0) AS opening_mab,
+    COALESCE(CEIL(m.closing_mab), 0) AS closing_mab,
+    COALESCE(m.inc_mab, 0) AS inc_mab,
+    COALESCE(f.total_tran_amt, 0)
+        + COALESCE(m.inc_mab, 0) AS achivment
+FROM schema_driver sd
+LEFT JOIN tbaadm.sol s
+    ON s.sol_id = sd.sol_id
+LEFT JOIN final_data f
+    ON sd.sol_id = f.sol_id
+   AND sd.schm_code = f.schm_code
+LEFT JOIN mab_final m
+    ON sd.sol_id = m.sol_id
+   AND sd.schm_code = m.schm_code   -- ✅ CHANGED: schm_code condition moved from WHERE into ON,
+                                     --            taki 1007 (jiske paas MAB/balance data nahi hai)
+                                     --            LEFT JOIN se drop na ho. Purane schm_codes ke
+                                     --            result par koi asar nahi padta.
+WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE SOL_ID FROM FINAL OUTPUT'''
+
+    conn = get_dr_connection()
+    if not conn:
+        frappe.log_error("Failed to connect to DR database", "Product Wise TDA Sync API")
+        return 0
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        print(f"TDA Sync - Total rows fetched from DB: {len(rows)}", flush=True)
+
+        now_time = now_datetime()
+        bulk_data = []
+        
+        # Pre-fetch product group_name mappings from DB to emulate Fetch From
+        product_map = {p.name: p.group_name for p in frappe.get_all("Product", fields=["name", "group_name"])}
+
+        for row in rows:
+            sol_id = str(row[0]).strip()
+            schm_code = str(row[1]).strip()
+            achievement = float(row[8] or 0)
+            
+            final_zone = clean_zone_region(row[5] or row[4], "ZONE")
+            final_region = clean_zone_region(row[3], "REGION")
+            
+            product_group = product_map.get(schm_code)
+            
+            name = frappe.generate_hash(length=16)
+            bulk_data.append((
+                name,
+                now_time,
+                now_time,
+                "Administrator",
+                "Administrator",
+                0,
+                0,
+                final_zone,
+                final_region,
+                product_group or "TDA",
+                achievement,
+                processed_date,
+                sol_id,
+                product_group or "TDA",
+                schm_code
+            ))
+
+        # Deleting old records for this date and TDA products to prevent duplicates
+        frappe.db.delete("Product Wise Report", {
+            "date": processed_date,
+            "product": "TDA"
+        })
+
+        print(f"TDA Sync - Starting bulk insertion of {len(bulk_data)} records into Product Wise Report...", flush=True)
+        
+        fields = [
+            "name", "creation", "modified", "modified_by", "owner", 
+            "docstatus", "idx", "zone", "region", "product", "amount", 
+            "date", "sol_id", "product_groupname", "scheme_code"
+        ]
+        
+        frappe.db.bulk_insert("Product Wise Report", fields, bulk_data)
+        frappe.db.commit()
+        
+        print(f"TDA Sync - Successfully synced and committed {len(bulk_data)} records.", flush=True)
+        return len(bulk_data)
+
+    except Exception as e:
+        frappe.log_error(f"Error in get_product_wise_tda: {str(e)}", "Product Wise TDA API")
+        return 0
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+  
+@frappe.whitelist()
+def clear_product_wise_report():
+    try:
+        frappe.db.sql("DELETE FROM `tabProduct Wise Report`")
+        frappe.db.commit()
+        return True
+    except Exception as e:
+        frappe.log_error(f"Error truncating Product Wise Report: {str(e)}", "Clear Product Wise Report API")
+        return False
+
+
+def daily_tda_sync():
+    import datetime
+    yesterday = datetime.date.today() - datetime.timedelta(days=1)
+    date_str = yesterday.strftime("%Y-%m-%d")
+    
+    try:
+        count = get_product_wise_tda(date_str)
+        subject = f"Daily TDA Sync Report - {date_str}"
+        message = f"Daily TDA Sync completed successfully for date {date_str}.<br>Total records synced: {count}"
+    except Exception as e:
+        subject = f"Daily TDA Sync Failed - {date_str}"
+        message = f"Daily TDA Sync failed for date {date_str}.<br>Error: {str(e)}"
+        frappe.log_error(f"Daily TDA Sync failed: {str(e)}", "Daily TDA Sync Scheduler")
+        
+    frappe.sendmail(
+        recipients=["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"],
+        subject=subject,
+        message=message,
+        delayed=False
+    )
+
+
+def daily_casa_sync():
+    import datetime
+    yesterday = datetime.date.today() - datetime.timedelta(days=1)
+    date_str = yesterday.strftime("%Y-%m-%d")
+    
+    try:
+        count = get_product_wise_casa(date_str)
+        subject = f"Daily CASA Sync Report - {date_str}"
+        message = f"Daily CASA Sync completed successfully for date {date_str}.<br>Total records synced: {count}"
+    except Exception as e:
+        subject = f"Daily CASA Sync Failed - {date_str}"
+        message = f"Daily CASA Sync failed for date {date_str}.<br>Error: {str(e)}"
+        frappe.log_error(f"Daily CASA Sync failed: {str(e)}", "Daily CASA Sync Scheduler")
+        
+    frappe.sendmail(
+        recipients=["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"],
+        subject=subject,
+        message=message,
+        delayed=False
+    )

@@ -6,3 +6,4 @@
 # Patches added in this section will be executed after doctypes are migrated
 
 custom_report.patches.add_role
+custom_report.patches.clean_product_wise_report_zone_region
