@@ -85,44 +85,5 @@ frappe.listview_settings['Product Wise Report'] = {
 				d.show();
 			});
 		}
-
-		// 2. Delete All Button (Danger / Red Style)
-		let delete_btn = actions_wrapper.find('button:contains("Delete All")');
-		if (!delete_btn.length) {
-			delete_btn = listview.page.wrapper.find('.page-actions button:contains("Delete All")');
-		}
-
-		if (!delete_btn.length) {
-			let btn = listview.page.add_inner_button(__('Delete All'), () => {
-				frappe.confirm(__('Are you sure you want to delete all records from Product Wise Report? This cannot be undone.'), () => {
-					frappe.call({
-						method: 'custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_product_wise_report',
-						freeze: true,
-						freeze_message: __('Deleting all records...'),
-						callback(r) {
-							if (r.message) {
-								frappe.show_alert({
-									message: __('All records successfully deleted.'),
-									indicator: 'green'
-								});
-								listview.refresh();
-							} else {
-								frappe.show_alert({
-									message: __('Error deleting records.'),
-									indicator: 'red'
-								});
-							}
-						}
-					});
-				});
-			});
-			if (btn) {
-				btn.removeClass('btn-default').addClass('btn-danger').css({
-					'background-color': '#ff4d4f',
-					'color': '#ffffff',
-					'border-color': '#ff4d4f'
-				});
-			}
-		}
 	}
 };
