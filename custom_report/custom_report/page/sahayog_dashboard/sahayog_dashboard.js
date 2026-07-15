@@ -4252,7 +4252,7 @@ class DrishtiDashboard {
 			`;
 		}
 
-		const allProducts = this.allProducts;
+		const allProducts = this.allProducts.filter(p => p !== "TDA");
 
 		// Build dynamic header with product columns
 		let headerHtml = `
