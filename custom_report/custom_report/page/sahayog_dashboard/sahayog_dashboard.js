@@ -1457,6 +1457,16 @@ class DrishtiDashboard {
 						loadNext(fromPage);
 					};
 
+					const preloadPage = (pageNum) => {
+						if (self.cachedPages[pageNum] || self._bgRunning) return;
+						self._bgRunning = true;
+						fetchPageAjax(pageNum).then(() => {
+							self._bgRunning = false;
+							updateCount();
+							renderPaginationBar();
+						});
+					};
+
 					const goToPage = (pageNum) => {
 						if (pageNum < 1 || pageNum > self.totalPages) return;
 						if (self.cachedPages[pageNum]) {
@@ -1517,6 +1527,16 @@ class DrishtiDashboard {
 
 					container.off("click", "#cavg-next").on("click", "#cavg-next", function () {
 						if (self.currentPage < self.totalPages) goToPage(self.currentPage + 1);
+					});
+
+					container.off("mouseenter", ".cavg-page-btn[data-page]").on("mouseenter", ".cavg-page-btn[data-page]", function () {
+						const page = parseInt($(this).data("page"));
+						if (page && !self.cachedPages[page]) preloadPage(page);
+					});
+
+					container.off("mouseenter", "#cavg-next").on("mouseenter", "#cavg-next", function () {
+						const next = self.currentPage + 1;
+						if (next <= self.totalPages && !self.cachedPages[next]) preloadPage(next);
 					});
 
 					if (Object.keys(self.cachedPages).length > 0) {
