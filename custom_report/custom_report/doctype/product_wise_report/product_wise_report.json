@@ -76,6 +76,7 @@
   {
    "fieldname": "scheme_code",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Scheme Code",
    "options": "Product"
   }
@@ -83,7 +84,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-15 12:38:54.410283",
+ "modified": "2026-07-15 12:41:32.590614",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Product Wise Report",

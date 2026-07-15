@@ -1510,6 +1510,24 @@ def get_ntb_evr_data(selected_date=None):
             pass
 
 
+def clean_zone_region(value, prefix):
+    if not value:
+        return "Unknown"
+    
+    value_str = str(value).strip().upper()
+    
+    # Extract all digits
+    import re
+    digits = re.sub(r"[^0-9]", "", value_str)
+    
+    if digits:
+        return f"{prefix}-{digits}"
+    else:
+        # If no digits, clean spaces and return uppercase
+        normalized = re.sub(r"[\s\-]+", " ", value_str).strip()
+        return normalized
+
+
 @frappe.whitelist()
 def get_product_wise_casa(selected_date=None):
     from custom_report.db_connection import get_dr_connection
@@ -1830,8 +1848,8 @@ GROUP BY
             schm_code = str(row[3]).strip()
             inc_mab = float(row[19] or 0)
             
-            final_zone = row[26] or row[24] or "Unknown"
-            final_region = row[25] or "Unknown"
+            final_zone = clean_zone_region(row[26] or row[24], "ZONE")
+            final_region = clean_zone_region(row[25], "REGION")
             
             product_group = product_map.get(schm_code)
             
@@ -2368,8 +2386,8 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
             schm_code = str(row[1]).strip()
             achievement = float(row[8] or 0)
             
-            final_zone = row[5] or row[4] or "Unknown"
-            final_region = row[3] or "Unknown"
+            final_zone = clean_zone_region(row[5] or row[4], "ZONE")
+            final_region = clean_zone_region(row[3], "REGION")
             
             product_group = product_map.get(schm_code)
             
