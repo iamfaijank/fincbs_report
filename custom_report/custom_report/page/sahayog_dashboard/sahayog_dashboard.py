@@ -1846,27 +1846,26 @@ GROUP BY
                 0,
                 final_zone,
                 final_region,
-                schm_code,
+                product_group or "CASA",
                 inc_mab,
                 processed_date,
                 sol_id,
-                product_group
+                product_group or "CASA",
+                schm_code
             ))
 
         # Deleting old records for this date and CASA products to prevent duplicates
-        casa_products = [p.name for p in frappe.get_all("Product", filters={"group_name": "CASA"}, fields=["name"])]
-        if casa_products:
-            frappe.db.delete("Product Wise Report", {
-                "date": processed_date,
-                "product": ["in", casa_products]
-            })
+        frappe.db.delete("Product Wise Report", {
+            "date": processed_date,
+            "product": "CASA"
+        })
 
         print(f"CASA Sync - Starting bulk insertion of {len(bulk_data)} records into Product Wise Report...", flush=True)
         
         fields = [
             "name", "creation", "modified", "modified_by", "owner", 
             "docstatus", "idx", "zone", "region", "product", "amount", 
-            "date", "sol_id", "product_groupname"
+            "date", "sol_id", "product_groupname", "scheme_code"
         ]
         
         frappe.db.bulk_insert("Product Wise Report", fields, bulk_data)
@@ -2385,25 +2384,18 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
                 0,
                 final_zone,
                 final_region,
-                schm_code,
+                product_group or "TDA",
                 achievement,
                 processed_date,
                 sol_id,
-                product_group
+                product_group or "TDA",
+                schm_code
             ))
-
-        tda_scheme_codes = [
-            '1007', '2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009', '2010',
-            '2011', '2012', '2013', '2014', '2015', '2016', '2018', '2019', '2020', '2021',
-            '2022', '2023', '2024', '2025', '2026', '2027', '2028', '2029', '2030', '2031',
-            '2032', '2033', '2034', '2035', '2101', '2102', '2103', '2104', '2105', '2106',
-            '2201', '2202', '2203', '9001', '9002'
-        ]
 
         # Deleting old records for this date and TDA products to prevent duplicates
         frappe.db.delete("Product Wise Report", {
             "date": processed_date,
-            "product": ["in", tda_scheme_codes]
+            "product": "TDA"
         })
 
         print(f"TDA Sync - Starting bulk insertion of {len(bulk_data)} records into Product Wise Report...", flush=True)
@@ -2411,7 +2403,7 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
         fields = [
             "name", "creation", "modified", "modified_by", "owner", 
             "docstatus", "idx", "zone", "region", "product", "amount", 
-            "date", "sol_id", "product_groupname"
+            "date", "sol_id", "product_groupname", "scheme_code"
         ]
         
         frappe.db.bulk_insert("Product Wise Report", fields, bulk_data)

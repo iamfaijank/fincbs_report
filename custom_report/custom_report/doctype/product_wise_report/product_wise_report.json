@@ -13,8 +13,8 @@
   "zone",
   "region",
   "product_details_section",
-  "product_groupname",
   "product",
+  "scheme_code",
   "column_break_mtbq",
   "amount"
  ],
@@ -30,11 +30,12 @@
    "label": "Region"
   },
   {
+   "fetch_from": "scheme_code.group_name",
    "fieldname": "product",
-   "fieldtype": "Link",
+   "fieldtype": "Select",
    "in_list_view": 1,
-   "label": "Scheme Code",
-   "options": "Product"
+   "label": "Product",
+   "options": "\nCASA\nDAM\nFD\nRD\nDD\nSMBG\nSHARE"
   },
   {
    "fieldname": "amount",
@@ -69,22 +70,20 @@
    "label": "Product Details"
   },
   {
-   "fetch_from": "product.group_name",
-   "fieldname": "product_groupname",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Product Groupname",
-   "options": "\nCASA\nDAM\nFD\nRD\nDD\nSMBG\nSHARE"
-  },
-  {
    "fieldname": "column_break_mtbq",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "scheme_code",
+   "fieldtype": "Link",
+   "label": "Scheme Code",
+   "options": "Product"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-15 11:37:56.457773",
+ "modified": "2026-07-15 12:38:54.410283",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Product Wise Report",
