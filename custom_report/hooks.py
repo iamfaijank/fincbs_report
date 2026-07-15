@@ -157,6 +157,12 @@ scheduler_events = {
 	"cron": {
 		"0 8 * * *": [
 			"custom_report.custom_report.page.sahayog_dashboard.achievement.daily_sync_cron"
+		],
+		"10 8 * * *": [
+			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_tda_sync"
+		],
+		"15 8 * * *": [
+			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_casa_sync"
 		]
 	}
 }

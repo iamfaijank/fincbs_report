@@ -6,45 +6,85 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "branch_details_section",
+  "date",
+  "sol_id",
+  "column_break_bcwi",
   "zone",
   "region",
+  "product_details_section",
   "product",
-  "amount",
-  "date"
+  "scheme_code",
+  "column_break_mtbq",
+  "amount"
  ],
  "fields": [
   {
    "fieldname": "zone",
-   "fieldtype": "Link",
-   "label": "Zone",
-   "options": "Zone"
+   "fieldtype": "Data",
+   "label": "Zone"
   },
   {
    "fieldname": "region",
-   "fieldtype": "Link",
-   "label": "Region",
-   "options": "Region"
+   "fieldtype": "Data",
+   "label": "Region"
   },
   {
+   "fetch_from": "scheme_code.group_name",
    "fieldname": "product",
-   "fieldtype": "Data",
-   "label": "Product"
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Product",
+   "options": "\nCASA\nDAM\nFD\nRD\nDD\nSMBG\nSHARE"
   },
   {
    "fieldname": "amount",
    "fieldtype": "Currency",
-   "label": "Amount"
+   "in_list_view": 1,
+   "label": "Total Tran Amount"
   },
   {
    "fieldname": "date",
    "fieldtype": "Date",
+   "in_list_view": 1,
    "label": "Date"
+  },
+  {
+   "fieldname": "branch_details_section",
+   "fieldtype": "Section Break",
+   "label": "Branch Details"
+  },
+  {
+   "fieldname": "sol_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Sol ID"
+  },
+  {
+   "fieldname": "column_break_bcwi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "product_details_section",
+   "fieldtype": "Section Break",
+   "label": "Product Details"
+  },
+  {
+   "fieldname": "column_break_mtbq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "scheme_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Scheme Code",
+   "options": "Product"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-25 13:10:38.230372",
+ "modified": "2026-07-15 12:41:32.590614",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Product Wise Report",
