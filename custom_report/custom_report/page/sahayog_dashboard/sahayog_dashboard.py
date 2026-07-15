@@ -1510,6 +1510,24 @@ def get_ntb_evr_data(selected_date=None):
             pass
 
 
+@frappe.whitelist()
+def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
+    from custom_report.db_connection import get_dr_connection
+    from frappe.utils import getdate, add_months
+    import datetime
+
+    limit = int(limit)
+    offset = int(offset)
+
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    dt = getdate(selected_date)
+    report_end = dt
+    report_start = dt.replace(day=1)
+    prev_month_end = add_months(report_start, -1)
+    prev_month_start = prev_month_end.replace(day=1)
+
 def clean_zone_region(value, prefix):
     if not value:
         return "Unknown"
@@ -1559,6 +1577,209 @@ def get_product_wise_casa(selected_date=None):
         fy_start_year = dt.year
     else:
         fy_start_year = dt.year - 1
+    fy_april = f"{fy_start_year}-04-01"
+
+    report_start_str = str(report_start)
+    report_end_str = str(report_end)
+    opening_start_str = str(prev_month_start)
+    opening_end_str = str(prev_month_end)
+
+    query = f"""
+    WITH excluded_accts AS (
+        SELECT column_value AS account_number
+        FROM (VALUES
+            ('100110020002993'),
+            ('100110020101562'),
+            ('100111020003840'),
+            ('100144590010496'),
+            ('110544207002485')
+        ) t(column_value)
+    ),
+    opening_period AS (
+        SELECT
+            DATE '{opening_start_str}' AS opening_start_date,
+            DATE '{opening_end_str}' AS opening_end_date
+    ),
+    sol_gl_transferred_accts AS (
+        SELECT DISTINCT acid
+        FROM tbaadm.htd
+        WHERE (tran_particular ILIKE '%Ac xfr from Sol%'
+               OR tran_particular ILIKE '%Ac xfr from gl%')
+          AND tran_date >= DATE '{report_start_str}'
+          AND tran_date <= DATE '{report_end_str}'
+    ),
+    balance_duration AS (
+        SELECT
+            gam.acid, gam.foracid, gam.sol_id, s.sol_desc, gam.schm_code,
+            gam.acct_name, gam.cif_id, gam.acct_opn_date, gam.acct_cls_flg,
+            gam.acct_cls_date, a.relationshipopeningdate AS CIF_ID_Opening_Date,
+            eab.tran_date_bal AS balance, eab.tran_date_bal, eab.eod_date, gam.clr_bal_amt,
+            EXTRACT(DAY FROM (
+                LEAST(
+                    CASE WHEN eab.end_eod_date = DATE '2099-12-31' THEN DATE '{report_end_str}' ELSE eab.end_eod_date END,
+                    DATE '{report_end_str}'
+                ) - GREATEST(eab.eod_date, DATE '{report_start_str}')
+            )) + 1 AS active_days
+        FROM tbaadm.gam gam
+        INNER JOIN tbaadm.eab eab ON gam.acid = eab.acid
+        INNER JOIN tbaadm.sol s ON s.sol_id = gam.sol_id
+        LEFT JOIN crmuser.accounts a ON a.orgkey = gam.cif_id
+        WHERE gam.schm_code IN ('1002','1102','1103','1104','1011')
+          AND NOT EXISTS (SELECT 1 FROM excluded_accts x WHERE x.account_number = gam.foracid)
+          AND eab.eod_date <= DATE '{report_end_str}'
+          AND (CASE WHEN eab.end_eod_date = DATE '2099-12-31' THEN DATE '{report_end_str}' ELSE eab.end_eod_date END) >= DATE '{report_start_str}'
+          AND (gam.acct_cls_date IS NULL OR (gam.acct_cls_date >= DATE '{report_start_str}' AND gam.acct_cls_date < CURRENT_DATE))
+    ),
+    weighted_balances AS (
+        SELECT bd.*, t.deposit_amount, (bd.balance * bd.active_days) AS weighted_balance
+        FROM balance_duration bd
+        LEFT JOIN tbaadm.tam t ON bd.acid = t.acid
+    ),
+    closing_calc_raw AS (
+        SELECT wb.foracid, SUM(wb.weighted_balance) AS total_weighted_balance,
+            ((DATE '{report_end_str}' - DATE '{report_start_str}') + 1) AS total_days,
+            SUM(wb.weighted_balance)::numeric / NULLIF(((DATE '{report_end_str}' - DATE '{report_start_str}') + 1), 0) AS raw_avg
+        FROM weighted_balances wb GROUP BY wb.foracid
+    ),
+    closing_calc AS (
+        SELECT foracid, total_weighted_balance, total_days,
+            CASE WHEN raw_avg - FLOOR(raw_avg) = 0.5 THEN
+                CASE WHEN MOD(FLOOR(raw_avg)::bigint, 2) = 0 THEN FLOOR(raw_avg) ELSE FLOOR(raw_avg) + 1 END
+            ELSE ROUND(raw_avg, 0) END AS closing_mab
+        FROM closing_calc_raw
+    ),
+    opening_balance_duration AS (
+        SELECT gam.foracid, eab.tran_date_bal,
+            EXTRACT(DAY FROM (
+                LEAST(
+                    CASE WHEN eab.end_eod_date = DATE '2099-12-31' THEN op.opening_end_date ELSE eab.end_eod_date END,
+                    op.opening_end_date
+                ) - GREATEST(eab.eod_date, op.opening_start_date)
+            )) + 1 AS active_days
+        FROM tbaadm.gam gam
+        JOIN tbaadm.eab eab ON gam.acid = eab.acid
+        CROSS JOIN opening_period op
+        WHERE gam.schm_code IN ('1002','1102','1103','1104','1011')
+          AND NOT EXISTS (SELECT 1 FROM excluded_accts x WHERE x.account_number = gam.foracid)
+          AND eab.eod_date <= op.opening_end_date
+          AND (CASE WHEN eab.end_eod_date = DATE '2099-12-31' THEN op.opening_end_date ELSE eab.end_eod_date END) >= op.opening_start_date
+          AND (gam.acct_cls_date IS NULL OR gam.acct_cls_date >= op.opening_start_date)
+    ),
+    opening_calc_raw AS (
+        SELECT ob.foracid,
+            SUM(ob.tran_date_bal * ob.active_days)::numeric / NULLIF((SELECT (opening_end_date - opening_start_date) + 1 FROM opening_period), 0) AS raw_avg
+        FROM opening_balance_duration ob GROUP BY ob.foracid
+    ),
+    opening_mab_calc AS (
+        SELECT foracid,
+            CASE WHEN raw_avg - FLOOR(raw_avg) = 0.5 THEN
+                CASE WHEN MOD(FLOOR(raw_avg)::bigint, 2) = 0 THEN FLOOR(raw_avg) ELSE FLOOR(raw_avg) + 1 END
+            ELSE ROUND(raw_avg, 0) END AS opening_mab
+        FROM opening_calc_raw
+    )
+    SELECT
+        wb.foracid,
+        wb.sol_id,
+        wb.sol_desc,
+        wb.schm_code,
+        wb.acct_name,
+        wb.cif_id,
+        wb.acct_opn_date,
+        wb.acct_cls_flg,
+        wb.acct_cls_date,
+        wb.CIF_ID_Opening_Date,
+        CASE
+            WHEN wb.CIF_ID_Opening_Date IS NULL THEN 'NTB'
+            WHEN wb.CIF_ID_Opening_Date < DATE '{fy_april}' THEN 'EVR'
+            ELSE 'NTB'
+        END AS cif_status,
+        (ARRAY_AGG(wb.tran_date_bal ORDER BY wb.eod_date DESC))[1] AS tran_date_bal,
+        wb.clr_bal_amt,
+        wb.deposit_amount,
+        cc.total_weighted_balance,
+        cc.total_days,
+        cc.closing_mab AS average_balance,
+        cc.closing_mab,
+        CASE
+            WHEN sgt.acid IS NOT NULL THEN 0
+            ELSE COALESCE(om.opening_mab, 0)
+        END AS opening_mab,
+        cc.closing_mab - CASE
+                              WHEN sgt.acid IS NOT NULL THEN 0
+                              ELSE COALESCE(om.opening_mab, 0)
+                          END AS inc_mab,
+        CASE
+            WHEN wb.schm_code = '1102' AND cc.closing_mab >= 2000 THEN 'MAB'
+            WHEN wb.schm_code IN ('1002','1011') AND cc.closing_mab >= 1000 THEN 'MAB'
+            WHEN wb.schm_code IN ('1103','1104') AND cc.closing_mab >= 4000 THEN 'MAB'
+            WHEN DATE_TRUNC('month', wb.acct_opn_date) = DATE_TRUNC('month', DATE '{report_start_str}')
+                 AND (
+                        (wb.schm_code = '1102' AND wb.clr_bal_amt >= 2000)
+                     OR (wb.schm_code IN ('1002','1011') AND wb.clr_bal_amt >= 1000)
+                     OR (wb.schm_code IN ('1103','1104') AND wb.clr_bal_amt >= 4000)
+                     )
+                THEN 'MAB'
+            ELSE 'NMAB'
+        END AS STATUS,
+        CASE WHEN sgt.acid IS NOT NULL THEN 'Y' ELSE 'N' END AS sol_gl_transferred_flag,
+        dsamap.rm_id,
+        get.emp_name,
+        s.division_name,
+        s.region_name,
+        s.circle_office_name
+    FROM weighted_balances wb
+    INNER JOIN closing_calc cc ON cc.foracid = wb.foracid
+    LEFT JOIN custom.dsamap dsamap ON dsamap.account_number = wb.foracid
+    LEFT JOIN tbaadm.get get ON dsamap.rm_id = get.emp_id
+    INNER JOIN tbaadm.sol s ON s.sol_id = wb.sol_id
+    LEFT JOIN opening_mab_calc om ON om.foracid = wb.foracid
+    LEFT JOIN sol_gl_transferred_accts sgt ON sgt.acid = wb.acid
+    GROUP BY
+        wb.foracid, wb.sol_id, wb.sol_desc, wb.schm_code, wb.acct_name, wb.cif_id,
+        wb.acct_opn_date, wb.acct_cls_flg, wb.acct_cls_date, wb.CIF_ID_Opening_Date,
+        wb.clr_bal_amt, wb.deposit_amount, cc.total_weighted_balance, cc.total_days, cc.closing_mab,
+        dsamap.rm_id, get.emp_id, get.emp_name,
+        s.division_name, s.region_name, s.circle_office_name, om.opening_mab, sgt.acid
+    ORDER BY s.circle_office_name, s.region_name, wb.sol_id
+    """
+
+    count_query = f"SELECT COUNT(*) FROM ({query}) sub"
+    paginated_query = f"{query} LIMIT {limit} OFFSET {offset}"
+
+    conn = get_dr_connection()
+    if not conn:
+        frappe.log_error("Failed to connect to DR database", "Cust Wise AVG Balance API")
+        return {"total_rows": 0, "data": []}
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(count_query)
+        total_rows = cursor.fetchone()[0]
+
+        cursor.execute(paginated_query)
+        rows = cursor.fetchall()
+        headers = [desc[0] for desc in cursor.description]
+
+        result = []
+        for row in rows:
+            row_dict = {}
+            for i, val in enumerate(row):
+                col = headers[i]
+                if val is None:
+                    row_dict[col] = None
+                elif isinstance(val, (int, float)):
+                    row_dict[col] = val
+                elif hasattr(val, 'isoformat'):
+                    row_dict[col] = str(val)[:10]
+                else:
+                    row_dict[col] = str(val)
+            result.append(row_dict)
+
+        return {"total_rows": total_rows, "data": result}
+
+    except Exception as e:
+        frappe.log_error(f"Error executing Cust Wise AVG Balance query: {str(e)}", "Cust Wise AVG Balance API")
+        return {"total_rows": 0, "data": []}
     fy_april_str = f"{fy_start_year}-04-01"
 
     print(f"CASA Sync - Selected Date: {selected_date}", flush=True)
@@ -2437,7 +2658,7 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
         try:
             conn.close()
         except Exception:
-            pass  
+            pass
   
 @frappe.whitelist()
 def clear_product_wise_report():

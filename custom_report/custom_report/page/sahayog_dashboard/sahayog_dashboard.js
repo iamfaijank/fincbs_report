@@ -47,6 +47,15 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 		$("<title>Drishti</title>").appendTo("head");
 	}
 
+	// Reset all caches so dashboard behaves like a fresh load every time
+	if (wrapper.dashboard) {
+		wrapper.dashboard.resetAllCaches();
+		// Trigger fresh data load after cache reset
+		if (wrapper.dashboard._fyLoaded) {
+			wrapper.dashboard.loadData();
+		}
+	}
+
 	// Fetch and update latest date subtitle
 	frappe.call({
 		method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_branch_category_report_date",
@@ -292,10 +301,12 @@ class DrishtiDashboard {
 								const useSolIds = (!r.message.zones || r.message.zones.length === 0) && perms.allowed_sol_ids && perms.allowed_sol_ids.length > 0;
 								const solIds = useSolIds ? perms.allowed_sol_ids.join(",") : "";
 
+								console.log("DEBUG: API CALL get_rd_smbg_pending_table_data START", { sol_ids: solIds });
 								frappe.call({
 									method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_pending_table_data",
 									args: { sol_ids: solIds },
 									callback: function (r3) {
+										console.log("DEBUG: API CALL get_rd_smbg_pending_table_data RESPONSE", r3.message);
 										if (dashboardInstance._misRenderSeq !== seq) return;
 										if (r3.message) {
 											let data = r3.message;
@@ -408,7 +419,8 @@ class DrishtiDashboard {
 					self.checkedRows = {};
 					self.searchTerm = "";
 					self.allExpanded = false;
-					self.render(container, dashboardInstance);
+					dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
+					self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
 				},
 				switchFormat: function (format, container, dashboardInstance) {
 					const self = this;
@@ -733,10 +745,12 @@ class DrishtiDashboard {
 							if (dashboardInstance._misRenderSeq !== seq) return;
 							if (r.message) {
 								self.filterOptions = r.message;
+								console.log("DEBUG: API CALL get_daily_account_opening_data START", { selected_date: dashboardInstance.state.selectedDate });
 								frappe.call({
 									method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_daily_account_opening_data",
 									args: { selected_date: dashboardInstance.state.selectedDate },
 									callback: function (r3) {
+										console.log("DEBUG: API CALL get_daily_account_opening_data RESPONSE", r3.message);
 										if (dashboardInstance._misRenderSeq !== seq) return;
 										if (r3.message) {
 											self.tableData = r3.message;
@@ -1014,13 +1028,14 @@ class DrishtiDashboard {
 						self.tableData = []; self.filterOptions = null; self.selectedMisZones = [];
 						self.expandedZones = {}; self.expandedRegions = {}; self.checkedRows = {};
 						self.searchTerm = ""; self.allExpanded = false;
-						self.render(container, dashboardInstance);
+						dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
+						self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
 					});
 				},
 			},
 			{
 				id: "ntb_evr",
-				name: "NTB & EVR",
+				name: "CASA NTB & EVR",
 				tableData: [],
 				expandedZones: {},
 				expandedRegions: {},
@@ -1040,7 +1055,7 @@ class DrishtiDashboard {
 						</style>
 						<div id="ntb-evr-loading" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
 							<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important; animation: spinner-border .75s linear infinite;"></div>
-							<span style="font-weight: 600; color: #417d81; font-size: 13px;">Fetching NTB & EVR data...</span>
+							<span style="font-weight: 600; color: #417d81; font-size: 13px;">Fetching CASA NTB & EVR data...</span>
 						</div>
 						<div id="ntb-evr-table-container"></div>
 					`);
@@ -1222,6 +1237,337 @@ class DrishtiDashboard {
 						fetchData();
 					}
 				},
+			},
+			{
+				id: "cust_wise_avg_bal",
+				name: "Cust Wise AVG Balance",
+				currentPage: 1,
+				pageSize: 5000,
+				totalPages: 0,
+				totalRows: 0,
+				cachedPages: {},
+				searchTerm: "",
+				_bgRunning: false,
+				_renderSeq: 0,
+				render: function (container, dashboardInstance) {
+					const self = this;
+					const fmtAmt = (val) => {
+						if (val === null || val === undefined) return "-";
+						const n = parseFloat(val);
+						if (isNaN(n)) return val;
+						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+					};
+
+					const columns = [
+						{ key: "cif_id", label: "CIF ID", w: "100px", sticky: 1 },
+						{ key: "acct_name", label: "Acct Name", w: "150px", sticky: 2 },
+						{ key: "foracid", label: "Foracid", w: "120px", sticky: 3 },
+						{ key: "acct_opn_date", label: "Acct Open Date", w: "100px" },
+						{ key: "schm_code", label: "Schema", w: "80px" },
+						{ key: "sol_id", label: "SOL ID", w: "80px" },
+						{ key: "sol_desc", label: "Branch", w: "140px" },
+						{ key: "acct_cls_flg", label: "Cls Flag", w: "70px" },
+						{ key: "acct_cls_date", label: "Cls Date", w: "100px" },
+						{ key: "cif_id_opening_date", label: "CIF Open Date", w: "100px" },
+						{ key: "cif_status", label: "CIF Status", w: "80px" },
+						{ key: "tran_date_bal", label: "Tran Date Bal", w: "110px", fmt: fmtAmt },
+						{ key: "clr_bal_amt", label: "CLR Bal Amt", w: "110px", fmt: fmtAmt },
+						{ key: "deposit_amount", label: "Deposit Amt", w: "110px", fmt: fmtAmt },
+						{ key: "total_weighted_balance", label: "Total Weighted Bal", w: "130px", fmt: fmtAmt },
+						{ key: "total_days", label: "Total Days", w: "80px" },
+						{ key: "average_balance", label: "Avg Balance", w: "110px", fmt: fmtAmt },
+						{ key: "closing_mab", label: "Closing MAB", w: "110px", fmt: fmtAmt },
+						{ key: "opening_mab", label: "Opening MAB", w: "110px", fmt: fmtAmt },
+						{ key: "inc_mab", label: "Inc MAB", w: "100px", fmt: fmtAmt },
+						{ key: "status", label: "Status", w: "70px" },
+						{ key: "sol_gl_transferred_flag", label: "SOL/GL Xfer", w: "80px" },
+						{ key: "rm_id", label: "RM ID", w: "80px" },
+						{ key: "emp_name", label: "Emp Name", w: "120px" },
+						{ key: "division_name", label: "Division", w: "100px" },
+						{ key: "region_name", label: "Region", w: "100px" },
+						{ key: "circle_office_name", label: "Circle Office", w: "110px" },
+					];
+
+					container.html(`
+						<style>
+							#cavg-scroll { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
+							#cavg-table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; white-space: nowrap; }
+							#cavg-table thead th { position: sticky; top: 0; z-index: 2; background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #fff; padding: 8px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; border-bottom: 1px solid #cbd5e1; }
+							#cavg-table thead th.cavg-sticky { position: sticky; z-index: 3; background: #346569; }
+							#cavg-table thead th.cavg-sticky-1 { left: 0; }
+							#cavg-table thead th.cavg-sticky-2 { left: 100px; }
+							#cavg-table thead th.cavg-sticky-3 { left: 250px; }
+							#cavg-table tbody td { padding: 7px 10px; font-size: 12px; color: #334155; border-bottom: 1px solid #e2e8f0; }
+							#cavg-table tbody td.cavg-sticky { position: sticky; z-index: 1; background: inherit; }
+							#cavg-table tbody td.cavg-sticky-1 { left: 0; }
+							#cavg-table tbody td.cavg-sticky-2 { left: 100px; }
+							#cavg-table tbody td.cavg-sticky-3 { left: 250px; }
+							#cavg-table tbody tr:nth-child(even) td.cavg-sticky { background: #f8fafc; }
+							#cavg-table tbody tr:nth-child(odd) td.cavg-sticky { background: #fff; }
+							#cavg-table tbody tr:hover td.cavg-sticky { background: #dcfce7 !important; }
+							#cavg-table tbody tr:hover td:not(.cavg-sticky) { background: #dcfce7 !important; }
+							.cavg-page-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; color: #475569; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+							.cavg-page-btn:hover:not(.cavg-active):not(:disabled) { background: #f1f5f9; border-color: #94a3b8; }
+							.cavg-page-btn.cavg-active { background: #417d81; color: #fff; border-color: #417d81; cursor: default; }
+							.cavg-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+							.cavg-page-btn.cfg-loaded { background: #f0fdf4; border-color: #86efac; color: #166534; }
+							.cavg-page-btn.cfg-loaded:hover:not(.cavg-active) { background: #dcfce7; }
+						</style>
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="cavg-controls">
+							<input type="text" id="cavg-search" placeholder="Search account, CIF, branch..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 220px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<button type="button" id="cavg-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px; margin-left: auto;" id="cavg-count"></div>
+						</div>
+						<div id="cavg-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif;">
+							<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+								<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important;"></div>
+								<span id="cavg-loading-text" style="font-weight: 600; color: #417d81; font-size: 13px;">Loading page 1...</span>
+							</div>
+						</div>
+						<div id="cavg-table-container" style="display: none;"></div>
+						<div id="cavg-pagination" style="display: none; align-items: center; gap: 6px; margin-top: 12px; font-family: 'Inter', sans-serif; flex-wrap: wrap;"></div>
+					`);
+
+					const buildRowHtml = (r) => {
+						let html = "<tr>";
+						columns.forEach(c => {
+							const val = r[c.key];
+							const display = c.fmt ? c.fmt(val) : (val !== null && val !== undefined ? val : "-");
+							const stickyClass = c.sticky ? ` cavg-sticky cavg-sticky-${c.sticky}` : "";
+							html += `<td class="${stickyClass}">${display}</td>`;
+						});
+						return html + "</tr>";
+					};
+
+					const initTable = () => {
+						container.find("#cavg-table-container").html(`
+							<div id="cavg-scroll">
+								<table id="cavg-table">
+									<thead><tr>
+										${columns.map(c => {
+											const stickyClass = c.sticky ? ` cavg-sticky cavg-sticky-${c.sticky}` : "";
+											return `<th class="${stickyClass}" style="min-width: ${c.w};">${c.label}</th>`;
+										}).join("")}
+									</tr></thead>
+									<tbody id="cavg-tbody"></tbody>
+								</table>
+							</div>
+						`);
+					};
+
+					const appendRows = (data) => {
+						const $tbody = container.find("#cavg-tbody");
+						data.forEach(r => { $tbody.append(buildRowHtml(r)); });
+					};
+
+					const updateCount = () => {
+						const loaded = Object.keys(self.cachedPages).length * self.pageSize;
+						if (self.totalRows > 0) {
+							container.find("#cavg-count").text(`${Math.min(loaded, self.totalRows).toLocaleString()} / ${self.totalRows.toLocaleString()} records loaded`);
+						} else {
+							container.find("#cavg-count").text("0 records");
+						}
+					};
+
+					const renderPaginationBar = () => {
+						const $bar = container.find("#cavg-pagination");
+						if (self.totalPages <= 1) { $bar.hide(); return; }
+						$bar.show();
+
+						let html = "";
+						html += `<button class="cavg-page-btn" id="cavg-prev" ${self.currentPage <= 1 ? 'disabled' : ''}>◀ Prev</button>`;
+
+						const pages = [];
+						if (self.totalPages <= 7) {
+							for (let i = 1; i <= self.totalPages; i++) pages.push(i);
+						} else {
+							pages.push(1);
+							if (self.currentPage > 3) pages.push("...");
+							const start = Math.max(2, self.currentPage - 1);
+							const end = Math.min(self.totalPages - 1, self.currentPage + 1);
+							for (let i = start; i <= end; i++) pages.push(i);
+							if (self.currentPage < self.totalPages - 2) pages.push("...");
+							pages.push(self.totalPages);
+						}
+
+						pages.forEach(p => {
+							if (p === "...") {
+								html += `<span style="display:inline-flex;align-items:center;min-width:24px;height:32px;color:#94a3b8;font-size:13px;">…</span>`;
+							} else {
+								const active = p === self.currentPage ? " cavg-active" : "";
+								const loaded = self.cachedPages[p] ? " cfg-loaded" : "";
+								html += `<button class="cavg-page-btn${active}${loaded}" data-page="${p}">${p}</button>`;
+							}
+						});
+
+						html += `<button class="cavg-page-btn" id="cavg-next" ${self.currentPage >= self.totalPages ? 'disabled' : ''}>Next ▶</button>`;
+						$bar.html(html);
+					};
+
+					const renderPage = () => {
+						initTable();
+						const pageData = self.cachedPages[self.currentPage] || [];
+						const filtered = self.searchTerm
+							? pageData.filter(r => Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm)))
+							: pageData;
+						appendRows(filtered);
+						updateCount();
+						renderPaginationBar();
+					};
+
+					const fetchPageAjax = (pageNum) => {
+						return new Promise((resolve) => {
+							if (self.cachedPages[pageNum]) { resolve(true); return; }
+							const offset = (pageNum - 1) * self.pageSize;
+							$.ajax({
+								url: "/api/method/custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_cust_wise_avg_balance",
+								type: "POST",
+								data: {
+									selected_date: dashboardInstance.state.selectedDate,
+									limit: self.pageSize,
+									offset: offset,
+								},
+								timeout: 300000,
+								headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
+								success: function (r) {
+									if (r.message && r.message.data) {
+										self.totalRows = r.message.total_rows || 0;
+										self.totalPages = Math.ceil(self.totalRows / self.pageSize) || 1;
+										self.cachedPages[pageNum] = r.message.data;
+										resolve(true);
+									} else {
+										resolve(false);
+									}
+								},
+								error: function () { resolve(false); },
+							});
+						});
+					};
+
+					const startBgFetch = (fromPage) => {
+						if (self._bgRunning) return;
+						self._bgRunning = true;
+						const seq = self._renderSeq;
+						const maxPreloadPages = Math.min(self.totalPages, 4);
+						const maxPreloadRecords = maxPreloadPages * self.pageSize;
+
+						const loadNext = (page) => {
+							if (seq !== self._renderSeq) { self._bgRunning = false; return; }
+							if (page > self.totalPages || Object.keys(self.cachedPages).length * self.pageSize >= maxPreloadRecords) {
+								self._bgRunning = false;
+								renderPaginationBar();
+								return;
+							}
+							if (self.cachedPages[page]) {
+								loadNext(page + 1);
+								return;
+							}
+							fetchPageAjax(page).then(() => {
+								if (seq !== self._renderSeq) { self._bgRunning = false; return; }
+								updateCount();
+								renderPaginationBar();
+								setTimeout(() => loadNext(page + 1), 2000);
+							});
+						};
+						loadNext(fromPage);
+					};
+
+					const preloadPage = (pageNum) => {
+						if (self.cachedPages[pageNum] || self._bgRunning) return;
+						self._bgRunning = true;
+						fetchPageAjax(pageNum).then(() => {
+							self._bgRunning = false;
+							updateCount();
+							renderPaginationBar();
+						});
+					};
+
+					const goToPage = (pageNum) => {
+						if (pageNum < 1 || pageNum > self.totalPages) return;
+						if (self.cachedPages[pageNum]) {
+							self.currentPage = pageNum;
+							renderPage();
+							return;
+						}
+						container.find("#cavg-loading").show();
+						container.find("#cavg-loading-text").text(`Loading page ${pageNum}...`);
+						fetchPageAjax(pageNum).then(() => {
+							container.find("#cavg-loading").hide();
+							container.find("#cavg-table-container").show();
+							self.currentPage = pageNum;
+							renderPage();
+							const nextBg = Math.max(...Object.keys(self.cachedPages).map(Number), 0) + 1;
+							if (nextBg <= self.totalPages) startBgFetch(nextBg);
+						});
+					};
+
+					container.off("input", "#cavg-search").on("input", "#cavg-search", function () {
+						clearTimeout(self._searchTimeout);
+						self._searchTimeout = setTimeout(() => {
+							self.searchTerm = $(this).val().toLowerCase().trim();
+							if (Object.keys(self.cachedPages).length > 0) renderPage();
+						}, 300);
+					});
+
+					container.off("click", "#cavg-refetch").on("click", "#cavg-refetch", function () {
+						self.currentPage = 1;
+						self.totalRows = 0;
+						self.totalPages = 0;
+						self.cachedPages = {};
+						self.searchTerm = "";
+						self._bgRunning = false;
+						self._renderSeq++;
+						container.find("#cavg-search").val("");
+						container.find("#cavg-table-container").hide().empty();
+						container.find("#cavg-pagination").hide().html("");
+						container.find("#cavg-loading").show();
+						container.find("#cavg-loading-text").text("Loading page 1...");
+						fetchPageAjax(1).then(() => {
+							container.find("#cavg-loading").hide();
+							container.find("#cavg-table-container").show();
+							self.currentPage = 1;
+							renderPage();
+							startBgFetch(2);
+						});
+					});
+
+					container.off("click", ".cavg-page-btn[data-page]").on("click", ".cavg-page-btn[data-page]", function () {
+						const page = parseInt($(this).data("page"));
+						if (page && page !== self.currentPage) goToPage(page);
+					});
+
+					container.off("click", "#cavg-prev").on("click", "#cavg-prev", function () {
+						if (self.currentPage > 1) goToPage(self.currentPage - 1);
+					});
+
+					container.off("click", "#cavg-next").on("click", "#cavg-next", function () {
+						if (self.currentPage < self.totalPages) goToPage(self.currentPage + 1);
+					});
+
+					container.off("mouseenter", ".cavg-page-btn[data-page]").on("mouseenter", ".cavg-page-btn[data-page]", function () {
+						const page = parseInt($(this).data("page"));
+						if (page && !self.cachedPages[page]) preloadPage(page);
+					});
+
+					container.off("mouseenter", "#cavg-next").on("mouseenter", "#cavg-next", function () {
+						const next = self.currentPage + 1;
+						if (next <= self.totalPages && !self.cachedPages[next]) preloadPage(next);
+					});
+
+					if (Object.keys(self.cachedPages).length > 0) {
+						container.find("#cavg-loading").hide();
+						container.find("#cavg-table-container").show();
+						renderPage();
+					} else {
+						fetchPageAjax(1).then(() => {
+							container.find("#cavg-loading").hide();
+							container.find("#cavg-table-container").show();
+							self.currentPage = 1;
+							renderPage();
+							startBgFetch(2);
+						});
+					}
+				},
 			}
 		];
 
@@ -1245,6 +1591,88 @@ class DrishtiDashboard {
 		this.updateUiFromState(); // Update UI from state
 		this.loadFinancialYears();
 		this.switchDashboardMode(this.state.dashboardMode);
+	}
+
+	resetAllCaches() {
+		// Reset data loading flag so loadData() always fetches fresh
+		this._dataLoaded = false;
+
+		// Clear all cached API data
+		this.data = null;
+		this.branchData = null;
+		this.zoneData = null;
+		this.categoryData = null;
+		this.productData = [];
+		this.allProducts = [];
+		this.agentData = [];
+		this.months = [];
+
+		// Clear expanded/collapsed state
+		this.state.expandedZones = {};
+
+		// Clear MIS report caches
+		this.misReportsList.forEach((report) => {
+			report.tableData = [];
+			report.filterOptions = null;
+			report.expandedZones = {};
+			report.expandedRegions = {};
+			report.checkedRows = {};
+			report.searchTerm = "";
+			report.allExpanded = false;
+			report.selectedMisZones = [];
+			// Cust Wise AVG Balance specific
+			if (report.cachedPages !== undefined) {
+				report.cachedPages = {};
+				report.currentPage = 1;
+				report.totalRows = 0;
+				report.totalPages = 0;
+				report._bgRunning = false;
+			}
+		});
+
+		// Increment MIS render sequence to cancel in-flight renders
+		this._misRenderSeq = (this._misRenderSeq || 0) + 1;
+
+		// Show loading skeleton in data container
+		const dataContainer = this.page.main.find("#data-container");
+		if (dataContainer.length) {
+			dataContainer.css("opacity", 0);
+			dataContainer.html(this._buildLoadingSkeleton());
+		}
+
+		// Show loading in summary cards
+		const summaryContainer = this.page.main.find("#summary-cards-container");
+		if (summaryContainer.length) {
+			summaryContainer.hide();
+		}
+
+		// Hide error message
+		this.page.main.find("#error-message").hide();
+	}
+
+	_buildLoadingSkeleton() {
+		return `
+			<style>
+				@keyframes drishti-shimmer {
+					0% { background-position: 400px 0; }
+					100% { background-position: -400px 0; }
+				}
+				.drishti-skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 800px 100%; animation: drishti-shimmer 1.5s ease-in-out infinite; border-radius: 4px; }
+			</style>
+			<div style="padding: 16px; font-family: 'Inter', sans-serif;">
+				<div style="display: flex; gap: 12px; margin-bottom: 16px;">
+					${[1,2,3,4].map(() => `<div class="drishti-skeleton" style="flex: 1; height: 80px; border-radius: 8px;"></div>`).join('')}
+				</div>
+				<div style="display: flex; gap: 8px; margin-bottom: 12px;">
+					${[1,2,3,4,5,6].map(() => `<div class="drishti-skeleton" style="width: 90px; height: 32px; border-radius: 6px;"></div>`).join('')}
+				</div>
+				<div class="drishti-skeleton" style="width: 100%; height: 36px; border-radius: 6px; margin-bottom: 4px;"></div>
+				<div class="drishti-skeleton" style="width: 100%; height: 36px; border-radius: 6px; margin-bottom: 4px;"></div>
+				<div class="drishti-skeleton" style="width: 100%; height: 36px; border-radius: 6px; margin-bottom: 4px;"></div>
+				<div class="drishti-skeleton" style="width: 100%; height: 36px; border-radius: 6px; margin-bottom: 4px;"></div>
+				<div class="drishti-skeleton" style="width: 70%; height: 36px; border-radius: 6px;"></div>
+			</div>
+		`;
 	}
 
 	setupBranchProfilePopup() {
@@ -1461,6 +1889,7 @@ class DrishtiDashboard {
 						$("#fy-selector").val(self.state.financialYear);
 					}
 					self.loadData();
+					self._fyLoaded = true;
 				}
 			},
 		});
@@ -2369,7 +2798,7 @@ class DrishtiDashboard {
 			if (this.drishti_container) this.drishti_container.show();
 			$(this.page.wrapper).find("#drishti-subtitle").show();
 			$("#drishti-header-timer").show();
-			this.loadData();
+			if (this._fyLoaded) this.loadData();
 		} else {
 			if (this.drishti_container) this.drishti_container.hide();
 			if (this.mis_container) {
@@ -3208,6 +3637,16 @@ class DrishtiDashboard {
 
 		this.state.activeTab = tabId;
 
+		// Reset data loaded flag so loadData() fetches fresh for new tab
+		this._dataLoaded = false;
+
+		// Clear data container immediately to remove old tab content
+		const dataContainer = this.page.main.find("#data-container");
+		dataContainer.css("opacity", 0);
+		dataContainer.html(this._buildLoadingSkeleton());
+		dataContainer.css("opacity", 1);
+		this.page.main.find("#summary-cards-container").hide();
+
 		// Update tab button UI immediately to show the tab as active
 		this.page.main.find(".tab-btn").removeClass("active");
 		this.page.main.find(`.tab-btn[data-tab="${tabId}"]`).addClass("active");
@@ -3306,6 +3745,16 @@ class DrishtiDashboard {
 			this.state.selectedDate ||
 			this.getPreviousFinancialYearDefaultDate() ||
 			frappe.datetime.get_today();
+
+		// Show loading skeleton in data container
+		const dataContainer = this.page.main.find("#data-container");
+		if (dataContainer.length && !dataContainer.find(".drishti-skeleton").length) {
+			dataContainer.css("opacity", 0);
+			dataContainer.html(this._buildLoadingSkeleton());
+			dataContainer.css("opacity", 1);
+		}
+		// Hide summary cards while loading
+		this.page.main.find("#summary-cards-container").hide();
 
 		frappe.call({
 			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_sahayog_dashboard",
@@ -3425,7 +3874,19 @@ class DrishtiDashboard {
 		if (this.state.dashboardMode === "mis") {
 			return;
 		}
+		if (this._dataLoaded) return;
+		this._dataLoaded = true;
 		const self = this;
+
+		// Show loading skeleton in data container
+		const dataContainer = this.page.main.find("#data-container");
+		if (dataContainer.length && !dataContainer.find(".drishti-skeleton").length) {
+			dataContainer.css("opacity", 0);
+			dataContainer.html(this._buildLoadingSkeleton());
+			dataContainer.css("opacity", 1);
+		}
+		// Hide summary cards while loading
+		this.page.main.find("#summary-cards-container").hide();
 
 		// Use state.selectedDate for API call (this is what the date selector shows)
 		// Fallback to today's date if no date selected
@@ -3434,18 +3895,22 @@ class DrishtiDashboard {
 			this.getPreviousFinancialYearDefaultDate() ||
 			frappe.datetime.get_today();
 
+		const reqArgs = {
+			financial_year: this.state.financialYear,
+			view: this.getDashboardViewForRequest(),
+			target_type: this.normalizeTargetType(this.state.targetType),
+			filters: JSON.stringify({
+				zones: [],
+			}),
+			selected_date: apiDate,
+		};
+		console.log("DEBUG: API CALL get_sahayog_dashboard START", reqArgs);
+
 		frappe.call({
 			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_sahayog_dashboard",
-			args: {
-				financial_year: this.state.financialYear,
-				view: this.getDashboardViewForRequest(),
-				target_type: this.normalizeTargetType(this.state.targetType),
-				filters: JSON.stringify({
-					zones: [],
-				}),
-				selected_date: apiDate,
-			},
+			args: reqArgs,
 			callback: (r) => {
+				console.log("DEBUG: API CALL get_sahayog_dashboard RESPONSE", r.message);
 				if (r.message) {
 					self.normalizeDashboardResponse(r.message);
 					self.data = r.message;
