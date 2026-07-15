@@ -2438,3 +2438,47 @@ def clear_product_wise_report():
     except Exception as e:
         frappe.log_error(f"Error truncating Product Wise Report: {str(e)}", "Clear Product Wise Report API")
         return False
+
+
+def daily_tda_sync():
+    import datetime
+    yesterday = datetime.date.today() - datetime.timedelta(days=1)
+    date_str = yesterday.strftime("%Y-%m-%d")
+    
+    try:
+        count = get_product_wise_tda(date_str)
+        subject = f"Daily TDA Sync Report - {date_str}"
+        message = f"Daily TDA Sync completed successfully for date {date_str}.<br>Total records synced: {count}"
+    except Exception as e:
+        subject = f"Daily TDA Sync Failed - {date_str}"
+        message = f"Daily TDA Sync failed for date {date_str}.<br>Error: {str(e)}"
+        frappe.log_error(f"Daily TDA Sync failed: {str(e)}", "Daily TDA Sync Scheduler")
+        
+    frappe.sendmail(
+        recipients=["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"],
+        subject=subject,
+        message=message,
+        delayed=False
+    )
+
+
+def daily_casa_sync():
+    import datetime
+    yesterday = datetime.date.today() - datetime.timedelta(days=1)
+    date_str = yesterday.strftime("%Y-%m-%d")
+    
+    try:
+        count = get_product_wise_casa(date_str)
+        subject = f"Daily CASA Sync Report - {date_str}"
+        message = f"Daily CASA Sync completed successfully for date {date_str}.<br>Total records synced: {count}"
+    except Exception as e:
+        subject = f"Daily CASA Sync Failed - {date_str}"
+        message = f"Daily CASA Sync failed for date {date_str}.<br>Error: {str(e)}"
+        frappe.log_error(f"Daily CASA Sync failed: {str(e)}", "Daily CASA Sync Scheduler")
+        
+    frappe.sendmail(
+        recipients=["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"],
+        subject=subject,
+        message=message,
+        delayed=False
+    )
