@@ -1775,8 +1775,10 @@ def get_product_wise_casa(selected_date=None):
         frappe.throw("Today's date and future dates cannot be selected. Please select a past date.")
 
     # Calculate dynamic dates
-    report_end_str = dt.strftime("%Y-%m-%d")
-    report_start_str = dt.replace(day=1).strftime("%Y-%m-%d")
+    report_start = dt.replace(day=1)
+    report_start_str = report_start.strftime("%Y-%m-%d")
+    report_end = dt
+    report_end_str = report_end.strftime("%Y-%m-%d")
     
     # Last month dates:
     prev_month_end = dt.replace(day=1) - datetime.timedelta(days=1)
@@ -2259,8 +2261,7 @@ GROUP BY
 
     conn = get_dr_connection()
     if not conn:
-        frappe.log_error("Failed to connect to DR database", "Product Wise CASA Sync API")
-        return 0
+        frappe.throw("Failed to connect to DR database. Please check your Finacle DR DB credentials.")
 
     try:
         cursor = conn.cursor()
@@ -2327,8 +2328,8 @@ GROUP BY
         return len(bulk_data)
         
     except Exception as e:
-        frappe.log_error(f"Error in get_product_wise_casa: {str(e)}", "Product Wise CASA API")
-        return 0
+        frappe.log_error(message=frappe.get_traceback(), title="Product Wise CASA Sync Failed")
+        raise e
     finally:
         try:
             conn.close()
@@ -2353,8 +2354,10 @@ def get_product_wise_tda(selected_date=None):
         frappe.throw("Today's date and future dates cannot be selected. Please select a past date.")
 
     # Calculate dynamic dates
-    report_end_str = dt.strftime("%Y-%m-%d")
-    report_start_str = dt.replace(day=1).strftime("%Y-%m-%d")
+    report_start = dt.replace(day=1)
+    report_start_str = report_start.strftime("%Y-%m-%d")
+    report_end = dt
+    report_end_str = report_end.strftime("%Y-%m-%d")
     processed_date = report_end_str
     
     # Last month dates:
@@ -2800,8 +2803,7 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
 
     conn = get_dr_connection()
     if not conn:
-        frappe.log_error("Failed to connect to DR database", "Product Wise TDA Sync API")
-        return 0
+        frappe.throw("Failed to connect to DR database. Please check your Finacle DR DB credentials.")
 
     try:
         cursor = conn.cursor()
@@ -2865,8 +2867,8 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
         return len(bulk_data)
 
     except Exception as e:
-        frappe.log_error(f"Error in get_product_wise_tda: {str(e)}", "Product Wise TDA API")
-        return 0
+        frappe.log_error(message=frappe.get_traceback(), title="Product Wise TDA Sync Failed")
+        raise e
     finally:
         try:
             conn.close()
@@ -2896,7 +2898,7 @@ def daily_tda_sync():
     except Exception as e:
         subject = f"Daily TDA Sync Failed - {date_str}"
         message = f"Daily TDA Sync failed for date {date_str}.<br>Error: {str(e)}"
-        frappe.log_error(f"Daily TDA Sync failed: {str(e)}", "Daily TDA Sync Scheduler")
+        frappe.log_error(message=frappe.get_traceback(), title="Daily TDA Sync Scheduler Failed")
         
     frappe.sendmail(
         recipients=["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"],
@@ -2918,7 +2920,7 @@ def daily_casa_sync():
     except Exception as e:
         subject = f"Daily CASA Sync Failed - {date_str}"
         message = f"Daily CASA Sync failed for date {date_str}.<br>Error: {str(e)}"
-        frappe.log_error(f"Daily CASA Sync failed: {str(e)}", "Daily CASA Sync Scheduler")
+        frappe.log_error(message=frappe.get_traceback(), title="Daily CASA Sync Scheduler Failed")
         
     frappe.sendmail(
         recipients=["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"],
