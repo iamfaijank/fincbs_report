@@ -2303,7 +2303,6 @@ GROUP BY
                 inc_mab,
                 processed_date,
                 sol_id,
-                product_group or "CASA",
                 schm_code
             ))
 
@@ -2318,7 +2317,7 @@ GROUP BY
         fields = [
             "name", "creation", "modified", "modified_by", "owner", 
             "docstatus", "idx", "zone", "region", "product", "amount", 
-            "date", "sol_id", "product_groupname", "scheme_code"
+            "date", "sol_id", "scheme_code"
         ]
         
         frappe.db.bulk_insert("Product Wise Report", fields, bulk_data)
@@ -2842,7 +2841,6 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
                 achievement,
                 processed_date,
                 sol_id,
-                product_group or "TDA",
                 schm_code
             ))
 
@@ -2857,7 +2855,7 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
         fields = [
             "name", "creation", "modified", "modified_by", "owner", 
             "docstatus", "idx", "zone", "region", "product", "amount", 
-            "date", "sol_id", "product_groupname", "scheme_code"
+            "date", "sol_id", "scheme_code"
         ]
         
         frappe.db.bulk_insert("Product Wise Report", fields, bulk_data)
