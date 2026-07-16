@@ -4718,6 +4718,9 @@ class DrishtiDashboard {
 		}
 
 		const allProducts = this.allProducts.filter(p => p !== "TDA" && p !== "SHARE");
+		if (this.allProducts.includes("SHARE")) {
+			allProducts.push("SHARE");
+		}
 
 		// Build dynamic header with product columns
 		let headerHtml = `
