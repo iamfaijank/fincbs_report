@@ -1130,37 +1130,26 @@ def get_daily_account_opening_data(selected_date=None):
         gname = (p.group_name or "").upper()
         gsub = (p.group_subname or "").upper()
         
-        category = "FD"  # Default fallback
-        
-        # Check group_subname first (if SA, CA, TASC)
-        if gsub == "SA":
-            category = "SA"
-        elif gsub == "CA":
-            category = "CA"
-        elif gsub == "TASC":
-            category = "TASC"
-        # Or if group_name is CASA, map strictly based on group_subname
-        elif gname == "CASA":
+        category = None
+
+        if gname == "CASA":
             if gsub == "SA":
                 category = "SA"
             elif gsub == "CA":
                 category = "CA"
             elif gsub == "TASC":
                 category = "TASC"
-            else:
-                category = "FD"
         elif gname == "RD":
             category = "RD"
         elif gname == "SMBG":
             category = "SMBG"
         elif gname == "DD":
             category = "DD"
-        elif gname in ("FD", "DAM"):
+        elif gname == "FD":
             category = "FD"
-        else:
-            category = "FD"
-                
-        product_map[code] = category
+
+        if category:
+            product_map[code] = category
 
     query = """
     WITH base_schemes AS (
@@ -1270,7 +1259,6 @@ def get_daily_account_opening_data(selected_date=None):
                 
             cat = product_map.get(schm_code)
             if not cat:
-                # Fallback if scheme code not in local Product doctype
                 code_upper = schm_code.upper()
                 if code_upper.startswith("SB"):
                     cat = "SA"
@@ -1280,25 +1268,28 @@ def get_daily_account_opening_data(selected_date=None):
                     cat = "RD"
                 elif code_upper.startswith("DD"):
                     cat = "DD"
-                else:
-                    cat = "FD"
                     
             if cat == "CA":
                 branch_aggregates[sid]["ca"] += count
+                branch_aggregates[sid]["total"] += count
             elif cat == "SA":
                 branch_aggregates[sid]["sa"] += count
+                branch_aggregates[sid]["total"] += count
             elif cat == "TASC":
                 branch_aggregates[sid]["tasc"] += count
+                branch_aggregates[sid]["total"] += count
             elif cat == "RD":
                 branch_aggregates[sid]["rd"] += count
+                branch_aggregates[sid]["total"] += count
             elif cat == "SMBG":
                 branch_aggregates[sid]["smbg"] += count
+                branch_aggregates[sid]["total"] += count
             elif cat == "DD":
                 branch_aggregates[sid]["dd"] += count
+                branch_aggregates[sid]["total"] += count
             elif cat == "FD":
                 branch_aggregates[sid]["fd"] += count
-                
-            branch_aggregates[sid]["total"] += count
+                branch_aggregates[sid]["total"] += count
             
         return list(branch_aggregates.values())
         
