@@ -202,6 +202,7 @@ class DrishtiDashboard {
 			categories: ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Zero Level"],
 			zones: [],
 			regions: [],
+			districts: [],
 		};
 		this.categoryCounts = {};
 		this.zoneCounts = {};
@@ -2976,6 +2977,16 @@ class DrishtiDashboard {
 
 		// Update region options
 		this.updateRegionOptions();
+
+		// Extract districts
+		const districtSet = new Set();
+		this.zoneData.forEach((item) => {
+			if (item.district && item.district !== item.zone && item.district !== item.region && !item.isZoneTotal && !item.isRegionTotal) {
+				districtSet.add(item.district);
+			}
+		});
+		this.availableFilters.districts = Array.from(districtSet).sort();
+		this.updateDistrictOptions();
 	}
 
 	// ========================================================================
@@ -3014,6 +3025,14 @@ class DrishtiDashboard {
 				this.state.selectedRegions = [queryParams.selectedRegion];
 			} else {
 				this.state.selectedRegions = [];
+			}
+
+			if (queryParams.selectedDistricts) {
+				this.state.selectedDistricts = queryParams.selectedDistricts
+					.split(",")
+					.filter(Boolean);
+			} else {
+				this.state.selectedDistricts = [];
 			}
 
 			if (queryParams.selectedCategories) {
@@ -3063,6 +3082,9 @@ class DrishtiDashboard {
 		}
 		if (this.state.selectedRegions.length > 0) {
 			newSearchParams.set("selectedRegions", this.state.selectedRegions.join(","));
+		}
+		if (this.state.selectedDistricts.length > 0) {
+			newSearchParams.set("selectedDistricts", this.state.selectedDistricts.join(","));
 		}
 
 		newUrl.search = newSearchParams.toString();
@@ -3124,6 +3146,9 @@ class DrishtiDashboard {
 
 		// Update Region selector
 		this.updateRegionDropdownUI();
+
+		// Update District selector
+		this.updateDistrictDropdownUI();
 
 		// Update Branch search
 		this.page.main.find("#branch-search").val(this.state.branchSearchTerm);
@@ -3745,6 +3770,17 @@ class DrishtiDashboard {
                         </ul>
                     </div>
 
+                    <!-- District Filter (Multi-select dropdown) -->
+                    <div class="dropdown outlined-input-container" id="district-dropdown-container">
+                        <label class="outlined-input-label">District</label>
+                        <button class="btn btn-default btn-sm dropdown-toggle" type="button" id="district-dropdown-btn" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="min-width: 150px; text-align: left; display: inline-flex; align-items: center; justify-content: space-between;">
+                            <span id="district-dropdown-label">All Districts</span>
+                            <span class="caret" style="margin-left: 8px;"></span>
+                        </button>
+                        <ul class="dropdown-menu" id="district-dropdown-menu" aria-labelledby="district-dropdown-btn" style="max-height: 250px; overflow-y: auto; padding: 5px 0; border: 1px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); width: 220px;">
+                        </ul>
+                    </div>
+
                     <!-- Format Control -->
                     <div style="display: flex; align-items: center; gap: 6px;">
                         <span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
@@ -4017,6 +4053,49 @@ class DrishtiDashboard {
 
 		// Prevent dropdown from closing when clicking inside the menu
 		this.page.main.on("click", "#region-dropdown-menu", function (e) {
+			e.stopPropagation();
+		});
+
+		// District Filter - All Districts checkbox change
+		this.page.main.on("change", "#district-all-checkbox", function () {
+			const isChecked = $(this).prop("checked");
+			if (isChecked) {
+				self.state.selectedDistricts = [];
+			} else {
+				self.state.selectedDistricts = [...self.availableFilters.districts];
+			}
+			self.updateDistrictDropdownUI();
+			self.updateUrlFromState();
+			self.render();
+		});
+
+		// District Filter - Individual checkbox change
+		this.page.main.on("change", ".district-checkbox", function () {
+			const district = $(this).val();
+			const isChecked = $(this).prop("checked");
+
+			if (isChecked) {
+				if (!self.state.selectedDistricts.includes(district)) {
+					self.state.selectedDistricts.push(district);
+				}
+			} else {
+				const index = self.state.selectedDistricts.indexOf(district);
+				if (index > -1) {
+					self.state.selectedDistricts.splice(index, 1);
+				}
+			}
+
+			if (self.state.selectedDistricts.length === self.availableFilters.districts.length) {
+				self.state.selectedDistricts = [];
+			}
+
+			self.updateDistrictDropdownUI();
+			self.updateUrlFromState();
+			self.render();
+		});
+
+		// Prevent dropdown from closing when clicking inside the menu
+		this.page.main.on("click", "#district-dropdown-menu", function (e) {
 			e.stopPropagation();
 		});
 
@@ -4427,6 +4506,35 @@ class DrishtiDashboard {
 		this.updateRegionDropdownUI();
 	}
 
+	updateDistrictOptions() {
+		const menu = this.page.main.find("#district-dropdown-menu");
+		if (!menu.length) return;
+		menu.empty();
+
+		menu.append(`
+			<li style="padding: 6px 12px; border-bottom: 1px solid #edf2f7; margin-bottom: 4px; white-space: nowrap; display: flex; align-items: center;">
+				<label style="font-weight: bold; margin-bottom: 0; cursor: pointer; display: flex; align-items: center; width: 100%; color: #0d1b2a;">
+					<input type="checkbox" id="district-all-checkbox" style="position: relative !important; margin: 0 8px 0 0 !important; cursor: pointer; width: 14px; height: 14px; vertical-align: middle;" />
+					All Districts
+				</label>
+			</li>
+		`);
+
+		this.availableFilters.districts.forEach((district) => {
+			const isChecked = this.state.selectedDistricts.includes(district);
+			menu.append(`
+				<li style="padding: 6px 12px; white-space: nowrap; display: flex; align-items: center;">
+					<label style="font-weight: normal; margin-bottom: 0; cursor: pointer; display: flex; align-items: center; width: 100%; color: #1b263b;">
+						<input type="checkbox" class="district-checkbox" value="${district}" ${isChecked ? "checked" : ""} style="position: relative !important; margin: 0 8px 0 0 !important; cursor: pointer; width: 14px; height: 14px; vertical-align: middle;" />
+						${district}
+					</label>
+				</li>
+			`);
+		});
+
+		this.updateDistrictDropdownUI();
+	}
+
 	updateRegionDropdownUI() {
 		const self = this;
 		const container = this.page.main.find("#region-dropdown-container");
@@ -4466,6 +4574,45 @@ class DrishtiDashboard {
 			label.text(self.state.selectedRegions[0]);
 		} else {
 			label.text(`${self.state.selectedRegions.length} Regions`);
+		}
+	}
+
+	updateDistrictDropdownUI() {
+		const self = this;
+		const container = this.page.main.find("#district-dropdown-container");
+		if (!container.length) return;
+
+		const checkboxes = container.find(".district-checkbox");
+		checkboxes.each(function () {
+			const district = $(this).val();
+			$(this).prop("checked", self.state.selectedDistricts.includes(district));
+		});
+
+		const allCheckbox = container.find("#district-all-checkbox");
+		const allSelected =
+			checkboxes.length > 0 && checkboxes.length === self.state.selectedDistricts.length;
+		const noneSelected = self.state.selectedDistricts.length === 0;
+
+		if (noneSelected) {
+			allCheckbox.prop("checked", true);
+			allCheckbox.prop("indeterminate", false);
+		} else if (allSelected) {
+			allCheckbox.prop("checked", true);
+			allCheckbox.prop("indeterminate", false);
+		} else {
+			allCheckbox.prop("checked", false);
+			allCheckbox.prop("indeterminate", true);
+		}
+
+		const label = container.find("#district-dropdown-label");
+		if (noneSelected) {
+			label.text("All Districts");
+		} else if (allSelected) {
+			label.text("All Districts");
+		} else if (self.state.selectedDistricts.length === 1) {
+			label.text(self.state.selectedDistricts[0]);
+		} else {
+			label.text(`${self.state.selectedDistricts.length} Districts`);
 		}
 	}
 
