@@ -4101,8 +4101,12 @@ class DrishtiDashboard {
 
 		// District search filter
 		this.page.main.on("input", "#district-search-input", function () {
-			const searchText = $(this).val();
-			self.updateDistrictOptions(searchText);
+			const searchText = $(this).val().toLowerCase();
+			const menu = self.page.main.find("#district-dropdown-menu");
+			menu.find("li.district-item").each(function () {
+				const label = $(this).find("label").text().trim().toLowerCase();
+				$(this).toggle(label.includes(searchText));
+			});
 		});
 
 		// Clear Filters
@@ -4512,7 +4516,7 @@ class DrishtiDashboard {
 		this.updateRegionDropdownUI();
 	}
 
-	updateDistrictOptions(searchText = "") {
+	updateDistrictOptions() {
 		const menu = this.page.main.find("#district-dropdown-menu");
 		if (!menu.length) return;
 		menu.empty();
@@ -4529,16 +4533,10 @@ class DrishtiDashboard {
 			</li>
 		`);
 
-		const filtered = searchText
-			? this.availableFilters.districts.filter((d) =>
-					d.toLowerCase().includes(searchText.toLowerCase()),
-				)
-			: this.availableFilters.districts;
-
-		filtered.forEach((district) => {
+		this.availableFilters.districts.forEach((district) => {
 			const isChecked = this.state.selectedDistricts.includes(district);
 			menu.append(`
-				<li style="padding: 6px 12px; white-space: nowrap; display: flex; align-items: center;">
+				<li class="district-item" style="padding: 6px 12px; white-space: nowrap; display: flex; align-items: center;">
 					<label style="font-weight: normal; margin-bottom: 0; cursor: pointer; display: flex; align-items: center; width: 100%; color: #1b263b;">
 						<input type="checkbox" class="district-checkbox" value="${district}" ${isChecked ? "checked" : ""} style="position: relative !important; margin: 0 8px 0 0 !important; cursor: pointer; width: 14px; height: 14px; vertical-align: middle;" />
 						${district}
