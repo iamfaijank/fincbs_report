@@ -4787,29 +4787,29 @@ class DrishtiDashboard {
 			return this.productData;
 		}
 
-		const selected = new Set(
+		const selectedNames = new Set(
 			this.state.selectedDistricts.map((d) => d.toLowerCase().trim()),
 		);
 
-		const matchingZoneNames = new Set();
-		const matchingRegionNames = new Set();
+		const matchingDistrictPaths = new Set();
+		const matchingRegionPaths = new Set();
+		const matchingZonePaths = new Set();
 
 		this.productData.forEach((item) => {
-			if (item.type === "district") {
-				if (selected.has(item.name.toLowerCase().trim())) {
-					matchingRegionNames.add(item.parent_region);
-					matchingZoneNames.add(item.parent_zone);
-				}
+			if (item.type === "district" && selectedNames.has(item.name.toLowerCase().trim())) {
+				matchingDistrictPaths.add(item.path);
+				matchingRegionPaths.add(item.parent_region);
+				matchingZonePaths.add(item.parent_zone);
 			}
 		});
 
-		if (matchingZoneNames.size === 0) return [];
+		if (matchingZonePaths.size === 0) return [];
 
 		return this.productData.filter((item) => {
-			if (item.type === "zone") return matchingZoneNames.has(item.name);
-			if (item.type === "region") return matchingRegionNames.has(item.name);
-			if (item.type === "district") return selected.has(item.name.toLowerCase().trim());
-			if (item.type === "sol") return selected.has((item.parent_district || "").toLowerCase().trim());
+			if (item.type === "zone") return matchingZonePaths.has(item.path);
+			if (item.type === "region") return matchingRegionPaths.has(item.path);
+			if (item.type === "district") return matchingDistrictPaths.has(item.path);
+			if (item.type === "sol") return matchingDistrictPaths.has(item.parent_district);
 			return true;
 		});
 	}
