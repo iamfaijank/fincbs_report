@@ -2666,6 +2666,184 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
             conn.close()
         except Exception:
             pass
+
+@frappe.whitelist(allow_guest=True)
+def get_gl_wise_ch_report_data(selected_date=None):
+    """
+    Returns the GL Wise CH Report data with hierarchical grouping:
+    Zone -> Region -> District -> Sol (Branch Sol ID)
+    """
+    if not selected_date:
+        selected_date = frappe.db.get_value("Product Wise Report", {}, "date", order_by="date desc")
+
+    if not selected_date:
+        return {"product_wise": [], "all_products": []}
+
+    # Fetch raw product wise report data joined with Sahayog Branch to get district and branch name
+    raw_data = frappe.db.sql("""
+        SELECT
+            p.zone,
+            p.region,
+            COALESCE(b.district, 'Unknown District') as district,
+            p.sol_id,
+            COALESCE(b.branch, '') as branch_name,
+            CASE
+                WHEN p.product = 'RD' AND pr.group_subname = 'JLL RD' AND pr.group_subname_category IS NULL THEN 'JLL RD'
+                WHEN p.product = 'RD' AND pr.group_subname IS NULL AND pr.group_subname_category IS NULL THEN 'RD'
+                WHEN p.product = 'SMBG' AND pr.group_subname = 'SKBG' AND pr.group_subname_category IS NULL THEN 'SKBG'
+                WHEN p.product = 'SMBG' AND pr.group_subname IS NULL AND pr.group_subname_category IS NULL THEN 'SMBG'
+                ELSE p.product
+            END as product,
+            SUM(p.amount) as amount
+        FROM `tabProduct Wise Report` p
+        LEFT JOIN `tabSahayog Branch` b ON p.sol_id = b.name
+        LEFT JOIN `tabProduct` pr ON p.scheme_code = pr.name
+        WHERE p.date = %s
+          AND p.zone IS NOT NULL AND p.zone != ''
+          AND p.region IS NOT NULL AND p.region != ''
+        GROUP BY p.zone, p.region, district, p.sol_id, branch_name,
+            CASE
+                WHEN p.product = 'RD' AND pr.group_subname = 'JLL RD' AND pr.group_subname_category IS NULL THEN 'JLL RD'
+                WHEN p.product = 'RD' AND pr.group_subname IS NULL AND pr.group_subname_category IS NULL THEN 'RD'
+                WHEN p.product = 'SMBG' AND pr.group_subname = 'SKBG' AND pr.group_subname_category IS NULL THEN 'SKBG'
+                WHEN p.product = 'SMBG' AND pr.group_subname IS NULL AND pr.group_subname_category IS NULL THEN 'SMBG'
+                ELSE p.product
+            END
+        ORDER BY p.zone, p.region, district, p.sol_id
+    """, (selected_date,), as_dict=True)
+
+    if not raw_data:
+        return {"product_wise": [], "all_products": []}
+
+    # Get all unique products for dynamic column generation
+    all_products = sorted(list(set(row.product for row in raw_data)))
+
+    # Build nested hierarchy dictionary: zone -> region -> district -> sol_id
+    hierarchy = {}
+    for row in raw_data:
+        z = row.zone
+        r = row.region
+        d = row.district
+        s = row.sol_id
+        bname = row.branch_name
+        prod = row.product
+        amt = row.amount or 0.0
+
+        if z not in hierarchy:
+            hierarchy[z] = {}
+        if r not in hierarchy[z]:
+            hierarchy[z][r] = {}
+        if d not in hierarchy[z][r]:
+            hierarchy[z][r][d] = {}
+        if s not in hierarchy[z][r][d]:
+            hierarchy[z][r][d][s] = {
+                "branch_name": bname,
+                "products": defaultdict(float),
+                "total_amount": 0.0
+            }
+        
+        hierarchy[z][r][d][s]["products"][prod] += amt
+        hierarchy[z][r][d][s]["total_amount"] += amt
+
+    # Process into a flat list with clear parents for UI rendering
+    result = []
+    
+    for zone in sorted(hierarchy.keys()):
+        zone_products = defaultdict(float)
+        zone_amount = 0.0
+        zone_rows = []
+
+        for region in sorted(hierarchy[zone].keys()):
+            region_products = defaultdict(float)
+            region_amount = 0.0
+            region_rows = []
+
+            for district in sorted(hierarchy[zone][region].keys()):
+                district_products = defaultdict(float)
+                district_amount = 0.0
+                district_rows = []
+
+                for sol_id in sorted(hierarchy[zone][region][district].keys()):
+                    sol_info = hierarchy[zone][region][district][sol_id]
+                    sol_amt = sol_info["total_amount"]
+                    sol_prods = sol_info["products"]
+
+                    # Accumulate for District
+                    district_amount += sol_amt
+                    for prod, amt in sol_prods.items():
+                        district_products[prod] += amt
+
+                    sol_display_name = f"{sol_id} - {sol_info['branch_name']}" if sol_info['branch_name'] else sol_id
+                    district_rows.append({
+                        "type": "sol",
+                        "name": sol_display_name,
+                        "path": f"{zone}/{region}/{district}/{sol_id}",
+                        "parent_district": f"{zone}/{region}/{district}",
+                        "parent_region": f"{zone}/{region}",
+                        "parent_zone": zone,
+                        "amount": sol_amt,
+                        "products": dict(sol_prods),
+                        "is_group": False
+                    })
+
+                # Accumulate for Region
+                region_amount += district_amount
+                for prod, amt in district_products.items():
+                    region_products[prod] += amt
+
+                region_rows.append({
+                    "type": "district",
+                    "name": district,
+                    "path": f"{zone}/{region}/{district}",
+                    "parent_region": f"{zone}/{region}",
+                    "parent_zone": zone,
+                    "amount": district_amount,
+                    "products": dict(district_products),
+                    "is_group": True,
+                    "children": district_rows
+                })
+
+            # Accumulate for Zone
+            zone_amount += region_amount
+            for prod, amt in region_products.items():
+                zone_products[prod] += amt
+
+            zone_rows.append({
+                "type": "region",
+                "name": region,
+                "path": f"{zone}/{region}",
+                "parent_zone": zone,
+                "amount": region_amount,
+                "products": dict(region_products),
+                "is_group": True,
+                "children": region_rows
+            })
+
+        # Add Zone Group Row
+        result.append({
+            "type": "zone",
+            "name": zone,
+            "path": zone,
+            "parent_zone": None,
+            "amount": zone_amount,
+            "products": dict(zone_products),
+            "is_group": True
+        })
+
+        # Flatten the structure
+        for r_row in zone_rows:
+            d_rows = r_row.pop("children")
+            result.append(r_row)
+            for d_row in d_rows:
+                s_rows = d_row.pop("children")
+                result.append(d_row)
+                result.extend(s_rows)
+
+    return {
+        "product_wise": result,
+        "all_products": all_products
+    }
+
   
 @frappe.whitelist()
 def clear_product_wise_report():

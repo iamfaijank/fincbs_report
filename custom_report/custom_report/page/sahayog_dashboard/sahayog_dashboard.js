@@ -1568,6 +1568,260 @@ class DrishtiDashboard {
 						});
 					}
 				},
+			},
+			{
+				id: "gl_wise_ch_report",
+				name: "GL Wise CH Report",
+				tableData: [],
+				allProducts: [],
+				expandedZones: {},
+				render: function (container, dashboardInstance, seq) {
+					const self = this;
+					container.html(`
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+						</div>
+						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
+							<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+								<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important; animation: spinner-border .75s linear infinite;"></div>
+								<span style="font-weight: 600; color: #417d81; font-size: 13px;">Fetching latest GL Wise CH Report data...</span>
+							</div>
+						</div>
+						<div id="mis-table-container" ${self.tableData && self.tableData.length > 0 ? "" : 'style="display: none;"'}></div>
+					`);
+
+					if (self.tableData && self.tableData.length > 0) {
+						self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
+						container.find("#mis-controls, #mis-table-container").show();
+						container.find("#mis-loading").hide();
+						self.attachReportEventHandlers(container, dashboardInstance);
+						return;
+					}
+
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_gl_wise_ch_report_data",
+						args: { selected_date: dashboardInstance.state.selectedDate },
+						callback: function (r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
+							if (r.message) {
+								self.tableData = r.message.product_wise || [];
+								self.allProducts = r.message.all_products || [];
+								self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
+							}
+							container.find("#mis-loading").hide();
+							container.find("#mis-controls, #mis-table-container").show();
+						}
+					});
+					self.attachReportEventHandlers(container, dashboardInstance);
+				},
+				attachReportEventHandlers: function (container, dashboardInstance) {
+					const self = this;
+					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function () {
+						self.tableData = [];
+						self.allProducts = [];
+						self.expandedZones = {};
+						dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
+						self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
+					});
+				},
+				renderGLWiseTable: function (tableContainer, dashboardInstance) {
+					const self = this;
+					const productData = self.tableData;
+					if (!productData || productData.length === 0) {
+						tableContainer.html(`
+							<div style="text-align: center; padding: 50px; color: #778da9; font-size: 16px;">
+								<div style="font-size: 48px; margin-bottom: 15px;">📭</div>
+								<div style="font-weight: 600; margin-bottom: 8px;">No data available</div>
+							</div>
+						`);
+						return;
+					}
+
+				const allProducts = self.allProducts.filter(p => p !== "TDA" && p !== "SHARE" && p !== "JLL RD" && p !== "SKBG");
+				if (self.allProducts.includes("SHARE")) {
+					allProducts.push("SHARE");
+				}
+				if (self.allProducts.includes("JLL RD")) {
+					const rdIdx = allProducts.indexOf("RD");
+					if (rdIdx !== -1) {
+						allProducts.splice(rdIdx + 1, 0, "JLL RD");
+					} else {
+						allProducts.push("JLL RD");
+					}
+				}
+				if (self.allProducts.includes("SKBG")) {
+					const smbgIdx = allProducts.indexOf("SMBG");
+					if (smbgIdx !== -1) {
+						allProducts.splice(smbgIdx + 1, 0, "SKBG");
+					} else {
+						allProducts.push("SKBG");
+					}
+				}
+
+					// Build dynamic header with product columns
+					let headerHtml = `
+						<div class="gl-wise-scroll">
+						<table class="table table-bordered gl-wise-table">
+							<thead>
+								<tr class="zone-table-header">
+									<th rowspan="2" style="width:60px;">SR</th>
+									<th rowspan="2">ZONE / REGION / DISTRICT / SOL</th>
+					`;
+
+					allProducts.forEach((product) => {
+						headerHtml += `<th>${product}</th>`;
+					});
+
+					headerHtml += `
+									<th rowspan="2" style="width:140px;">ACHIEVEMENT</th>
+								</tr>
+							</thead>
+							<tbody>
+					`;
+
+					let html = headerHtml;
+
+					let sr = 1;
+					let zoneTotalAmount = 0;
+					let productTotals = {};
+
+					// Initialize product totals
+					allProducts.forEach((product) => {
+						productTotals[product] = 0;
+					});
+
+					productData.forEach((item) => {
+						const products = item.products || {};
+
+						if (item.type === "zone") {
+							const isExpanded = self.expandedZones[item.path] || false;
+
+							html += `
+								<tr class="zone-total-row gl-total-row" data-path="${item.path}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">
+									<td>${sr++}</td>
+									<td style="padding-left: 8px;">
+										<span class="gl-toggle" style="margin-right: 6px; display: inline-block; width: 12px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
+										<strong>${item.name}</strong>
+									</td>
+							`;
+
+							// Add a column for each product (zone totals) and accumulate totals
+							allProducts.forEach((product) => {
+								const amount = products[product] || 0;
+								productTotals[product] += amount;
+								html += `<td>${dashboardInstance.formatCurrency(amount)}</td>`;
+							});
+
+							html += `
+									<td>${dashboardInstance.formatCurrency(item.amount)}</td>
+								</tr>
+							`;
+
+							zoneTotalAmount += item.amount;
+						} else if (item.type === "region") {
+							const isZoneExpanded = self.expandedZones[item.parent_zone] || false;
+							const isExpanded = self.expandedZones[item.path] || false;
+
+							html += `
+								<tr class="region-total-row gl-total-row" data-path="${item.path}" style="display: ${isZoneExpanded ? "table-row" : "none"}; background-color: #f8fafc; font-weight: bold; cursor: pointer; border-left: 4px solid #417d81;">
+									<td></td>
+									<td style="padding-left: 28px; color: #097c80;">
+										<span class="gl-toggle" style="margin-right: 6px; display: inline-block; width: 12px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
+										<strong>${item.name}</strong>
+									</td>
+							`;
+
+							// Add a column for each product
+							allProducts.forEach((product) => {
+								const amount = products[product] || 0;
+								html += `<td>${dashboardInstance.formatCurrency(amount)}</td>`;
+							});
+
+							html += `
+									<td>${dashboardInstance.formatCurrency(item.amount)}</td>
+								</tr>
+							`;
+						} else if (item.type === "district") {
+							const isZoneExpanded = self.expandedZones[item.parent_zone] || false;
+							const isRegionExpanded = self.expandedZones[item.parent_region] || false;
+							const isExpanded = self.expandedZones[item.path] || false;
+							const isVisible = isZoneExpanded && isRegionExpanded;
+
+							html += `
+								<tr class="district-total-row gl-total-row" data-path="${item.path}" style="display: ${isVisible ? "table-row" : "none"}; background-color: #fafafa; font-weight: bold; cursor: pointer; border-left: 6px solid #64748b;">
+									<td></td>
+									<td style="padding-left: 48px; color: #1e293b;">
+										<span class="gl-toggle" style="margin-right: 6px; display: inline-block; width: 12px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
+										<strong>${item.name}</strong>
+									</td>
+							`;
+
+							// Add a column for each product
+							allProducts.forEach((product) => {
+								const amount = products[product] || 0;
+								html += `<td>${dashboardInstance.formatCurrency(amount)}</td>`;
+							});
+
+							html += `
+									<td>${dashboardInstance.formatCurrency(item.amount)}</td>
+								</tr>
+							`;
+						} else if (item.type === "sol") {
+							const isZoneExpanded = self.expandedZones[item.parent_zone] || false;
+							const isRegionExpanded = self.expandedZones[item.parent_region] || false;
+							const isDistrictExpanded = self.expandedZones[item.parent_district] || false;
+							const isVisible = isZoneExpanded && isRegionExpanded && isDistrictExpanded;
+
+							html += `
+								<tr class="sol-detail-row" style="display: ${isVisible ? "table-row" : "none"}; background: #ffffff; border-left: 8px solid #cbd5e1;">
+									<td></td>
+									<td style="padding-left: 68px; color: #475569; font-weight: normal;">
+										${item.name}
+									</td>
+							`;
+
+							// Add a column for each product
+							allProducts.forEach((product) => {
+								const amount = products[product] || 0;
+								html += `<td>${dashboardInstance.formatCurrency(amount)}</td>`;
+							});
+
+							html += `
+									<td>${dashboardInstance.formatCurrency(item.amount)}</td>
+								</tr>
+							`;
+						}
+					});
+
+					// Grand Total Row
+					html += `
+						</tbody>
+						<tfoot style="background-color: #264a4d; color: #ffffff; font-weight: bold; border-top: 2px solid #3d7579;">
+							<tr style="height: 40px;">
+								<td colspan="2" style="text-align: left; padding-left: 12px; text-transform: uppercase; letter-spacing: 1px;">TOTAL</td>
+					`;
+
+					// Add product-wise totals for each product column
+					allProducts.forEach((product) => {
+						html += `<td>${dashboardInstance.formatCurrency(productTotals[product])}</td>`;
+					});
+
+					html += `
+								<td>${dashboardInstance.formatCurrency(zoneTotalAmount)}</td>
+							</tr>
+						</tfoot>
+					</table>
+					</div>`;
+
+					tableContainer.html(html);
+
+					// Attach Expand/Collapse Handlers
+					tableContainer.find(".gl-total-row").off("click").on("click", function () {
+						const path = $(this).data("path");
+						self.expandedZones[path] = !self.expandedZones[path];
+						self.renderGLWiseTable(tableContainer, dashboardInstance);
+					});
+				}
 			}
 		];
 
@@ -2207,16 +2461,16 @@ class DrishtiDashboard {
 			}
 
 			/* Product Wise Table - Column Layout */
-			.product-wise-table th {
+			.product-wise-table th, .gl-wise-table th {
 				text-align: center;
 				vertical-align: middle;
 				background: #f8f9fa;
 			}
-			.product-wise-table td {
+			.product-wise-table td, .gl-wise-table td {
 				text-align: right;
 				vertical-align: middle;
 			}
-			.product-wise-table td:nth-child(2) {
+			.product-wise-table td:nth-child(2), .gl-wise-table td:nth-child(2) {
 				text-align: left !important;
 			}
 
@@ -2399,6 +2653,7 @@ class DrishtiDashboard {
 			.branch-table th,
 			.agent-wise-table th,
 			.product-wise-table th,
+			.gl-wise-table th,
 			.category-table-redesigned th {
 				text-align: center !important;
 				vertical-align: middle !important;
@@ -3872,6 +4127,21 @@ class DrishtiDashboard {
 	// ========================================================================
 	loadData() {
 		if (this.state.dashboardMode === "mis") {
+			const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
+			if (activeReportId) {
+				const report = this.misReportsList.find(r => r.id === activeReportId);
+				if (report) {
+					report.tableData = [];
+					if (report.cachedPages !== undefined) {
+						report.cachedPages = {};
+						report.currentPage = 1;
+						report.totalRows = 0;
+						report.totalPages = 0;
+						report._bgRunning = false;
+					}
+				}
+				this.renderMisReport(activeReportId);
+			}
 			return;
 		}
 		if (this._dataLoaded) return;
@@ -6084,6 +6354,7 @@ class DrishtiDashboard {
                 .branch-table,
                 .agent-wise-table,
                 .product-wise-table,
+                .gl-wise-table,
                 .category-table-redesigned {
                     margin-top: 0 !important;
                 }
