@@ -4099,6 +4099,12 @@ class DrishtiDashboard {
 			e.stopPropagation();
 		});
 
+		// District search filter
+		this.page.main.on("input", "#district-search-input", function () {
+			const searchText = $(this).val();
+			self.updateDistrictOptions(searchText);
+		});
+
 		// Clear Filters
 		this.page.main.find("#clear-filters").on("click", function () {
 			history.pushState({}, "", window.location.pathname);
@@ -4506,7 +4512,7 @@ class DrishtiDashboard {
 		this.updateRegionDropdownUI();
 	}
 
-	updateDistrictOptions() {
+	updateDistrictOptions(searchText = "") {
 		const menu = this.page.main.find("#district-dropdown-menu");
 		if (!menu.length) return;
 		menu.empty();
@@ -4518,9 +4524,18 @@ class DrishtiDashboard {
 					All Districts
 				</label>
 			</li>
+			<li style="padding: 4px 12px; border-bottom: 1px solid #edf2f7; margin-bottom: 4px;">
+				<input type="text" id="district-search-input" placeholder="Search district..." style="width: 100%; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; box-sizing: border-box;" />
+			</li>
 		`);
 
-		this.availableFilters.districts.forEach((district) => {
+		const filtered = searchText
+			? this.availableFilters.districts.filter((d) =>
+					d.toLowerCase().includes(searchText.toLowerCase()),
+				)
+			: this.availableFilters.districts;
+
+		filtered.forEach((district) => {
 			const isChecked = this.state.selectedDistricts.includes(district);
 			menu.append(`
 				<li style="padding: 6px 12px; white-space: nowrap; display: flex; align-items: center;">
