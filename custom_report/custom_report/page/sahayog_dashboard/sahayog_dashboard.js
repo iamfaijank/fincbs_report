@@ -1575,11 +1575,21 @@ class DrishtiDashboard {
 				tableData: [],
 				allProducts: [],
 				expandedZones: {},
+				searchTerm: "",
+				selectedMisZones: [],
 				render: function (container, dashboardInstance, seq) {
 					const self = this;
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="text" id="mis-search" placeholder="Search branch or SOL ID..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
+								<div class="btn-group mis-format-toggle" role="group">
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+								</div>
+							</div>
 						</div>
 						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
 							<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
@@ -1587,12 +1597,14 @@ class DrishtiDashboard {
 								<span style="font-weight: 600; color: #417d81; font-size: 13px;">Fetching latest GL Wise CH Report data...</span>
 							</div>
 						</div>
+						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<div id="mis-table-container" ${self.tableData && self.tableData.length > 0 ? "" : 'style="display: none;"'}></div>
 					`);
 
 					if (self.tableData && self.tableData.length > 0) {
 						self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
-						container.find("#mis-controls, #mis-table-container").show();
+						self.renderZoneFilterTags(container, dashboardInstance);
+						container.find("#mis-controls, #mis-table-container, #mis-zone-filter-row").show();
 						container.find("#mis-loading").hide();
 						self.attachReportEventHandlers(container, dashboardInstance);
 						return;
@@ -1607,26 +1619,75 @@ class DrishtiDashboard {
 								self.tableData = r.message.product_wise || [];
 								self.allProducts = r.message.all_products || [];
 								self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderZoneFilterTags(container, dashboardInstance);
 							}
 							container.find("#mis-loading").hide();
-							container.find("#mis-controls, #mis-table-container").show();
+							container.find("#mis-controls, #mis-table-container, #mis-zone-filter-row").show();
 						}
 					});
 					self.attachReportEventHandlers(container, dashboardInstance);
 				},
 				attachReportEventHandlers: function (container, dashboardInstance) {
 					const self = this;
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
+						const format = $(this).data("format");
+						dashboardInstance.state.formatMode = format;
+						container.find(".mis-format-btn").each(function () {
+							const btn = $(this);
+							const isActive = btn.data("format") === format;
+							btn.css("background", isActive ? "#417d81" : "#e2e8f0");
+							btn.css("color", isActive ? "white" : "#475569");
+						});
+						if (self.tableData && self.tableData.length > 0) {
+							self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
+						}
+					});
+					let searchTimeout;
+					container.off("input", "#mis-search").on("input", "#mis-search", function () {
+						clearTimeout(searchTimeout);
+						searchTimeout = setTimeout(() => {
+							self.searchTerm = $(this).val().toLowerCase().trim();
+							if (self.tableData) {
+								self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
+							}
+						}, 300);
+					});
 					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function () {
 						self.tableData = [];
 						self.allProducts = [];
 						self.expandedZones = {};
+						self.selectedMisZones = [];
+						self.searchTerm = "";
 						dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
 						self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
 					});
 				},
 				renderGLWiseTable: function (tableContainer, dashboardInstance) {
 					const self = this;
-					const productData = self.tableData;
+					let productData = self.tableData;
+					if (!productData || productData.length === 0) {
+						tableContainer.html(`
+							<div style="text-align: center; padding: 50px; color: #778da9; font-size: 16px;">
+								<div style="font-size: 48px; margin-bottom: 15px;">📭</div>
+								<div style="font-weight: 600; margin-bottom: 8px;">No data available</div>
+							</div>
+						`);
+						return;
+					}
+					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+						productData = productData.filter(item =>
+							(item.type === "zone" && self.selectedMisZones.includes(item.name)) ||
+							(item.type !== "zone" && self.selectedMisZones.includes(item.parent_zone))
+						);
+					}
+					if (self.searchTerm) {
+						const terms = self.searchTerm.split(",").map(s => s.trim()).filter(Boolean);
+						productData = productData.filter(item => {
+							if (item.type !== "sol") return true;
+							const name = (item.name || "").toLowerCase();
+							return terms.some(t => name.includes(t));
+						});
+					}
 					if (!productData || productData.length === 0) {
 						tableContainer.html(`
 							<div style="text-align: center; padding: 50px; color: #778da9; font-size: 16px;">
@@ -1637,7 +1698,7 @@ class DrishtiDashboard {
 						return;
 					}
 
-				const allProducts = self.allProducts.filter(p => p !== "TDA" && p !== "SHARE" && p !== "JLL RD" && p !== "SKBG");
+				const allProducts = self.allProducts.filter(p => p !== "TDA" && p !== "SHARE" && p !== "JLL RD" && p !== "SKBG" && p !== "TASKSILVER" && p !== "TASKWEALTH" && p !== "SAVSIL" && p !== "CUGOLD" && p !== "CUWEALTH");
 				if (self.allProducts.includes("SHARE")) {
 					allProducts.push("SHARE");
 				}
@@ -1655,6 +1716,15 @@ class DrishtiDashboard {
 						allProducts.splice(smbgIdx + 1, 0, "SKBG");
 					} else {
 						allProducts.push("SKBG");
+					}
+				}
+				if (self.allProducts.includes("TASKSILVER") || self.allProducts.includes("TASKWEALTH") || self.allProducts.includes("SAVSIL") || self.allProducts.includes("CUGOLD") || self.allProducts.includes("CUWEALTH")) {
+					const skbgIdx = allProducts.indexOf("SKBG");
+					const newCols = ["TASKSILVER", "TASKWEALTH", "SAVSIL", "CUGOLD", "CUWEALTH"].filter(c => self.allProducts.includes(c));
+					if (skbgIdx !== -1) {
+						allProducts.splice(skbgIdx + 1, 0, ...newCols);
+					} else {
+						newCols.forEach(c => allProducts.push(c));
 					}
 				}
 
@@ -1820,6 +1890,38 @@ class DrishtiDashboard {
 						const path = $(this).data("path");
 						self.expandedZones[path] = !self.expandedZones[path];
 						self.renderGLWiseTable(tableContainer, dashboardInstance);
+					});
+				},
+				renderZoneFilterTags: function (container, dashboardInstance) {
+					const self = this;
+					if (!self.tableData || self.tableData.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					let zones = [...new Set(self.tableData.filter(r => r.type === "zone").map(r => r.name).filter(Boolean))].sort();
+					if (zones.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					const allSelected = self.selectedMisZones.length === 0;
+					let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
+					html += `<button class="mis-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
+					zones.forEach(zone => {
+						const active = self.selectedMisZones.includes(zone);
+						html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
+					});
+					const $row = container.find("#mis-zone-filter-row");
+					$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
+					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
+						const zone = $(this).data("zone");
+						if (zone === "all") {
+							self.selectedMisZones = [];
+						} else {
+							const idx = self.selectedMisZones.indexOf(zone);
+							if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); }
+						}
+						self.renderZoneFilterTags(container, dashboardInstance);
+						self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
 					});
 				}
 			}

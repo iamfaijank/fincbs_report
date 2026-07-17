@@ -2682,8 +2682,8 @@ def get_gl_wise_ch_report_data(selected_date=None):
     # Fetch raw product wise report data joined with Sahayog Branch to get district and branch name
     raw_data = frappe.db.sql("""
         SELECT
-            p.zone,
-            p.region,
+            COALESCE(NULLIF(b.zone, ''), p.zone) as zone,
+            COALESCE(NULLIF(b.region, ''), p.region) as region,
             COALESCE(b.district, 'Unknown District') as district,
             p.sol_id,
             COALESCE(b.branch, '') as branch_name,
@@ -2692,6 +2692,11 @@ def get_gl_wise_ch_report_data(selected_date=None):
                 WHEN p.product = 'RD' AND pr.group_subname IS NULL AND pr.group_subname_category IS NULL THEN 'RD'
                 WHEN p.product = 'SMBG' AND pr.group_subname = 'SKBG' AND pr.group_subname_category IS NULL THEN 'SKBG'
                 WHEN p.product = 'SMBG' AND pr.group_subname IS NULL AND pr.group_subname_category IS NULL THEN 'SMBG'
+                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'TASC' AND pr.group_subname_category = 'TASKSILVER' THEN 'TASKSILVER'
+                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'TASC' AND pr.group_subname_category = 'TASKWEALTH' THEN 'TASKWEALTH'
+                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'SA' AND pr.group_subname_category = 'SAVSIL' THEN 'SAVSIL'
+                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'CA' AND pr.group_subname_category = 'CUGOLD' THEN 'CUGOLD'
+                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'CA' AND pr.group_subname_category = 'CUWEALTH' THEN 'CUWEALTH'
                 ELSE p.product
             END as product,
             SUM(p.amount) as amount
@@ -2699,17 +2704,24 @@ def get_gl_wise_ch_report_data(selected_date=None):
         LEFT JOIN `tabSahayog Branch` b ON p.sol_id = b.name
         LEFT JOIN `tabProduct` pr ON p.scheme_code = pr.name
         WHERE p.date = %s
-          AND p.zone IS NOT NULL AND p.zone != ''
-          AND p.region IS NOT NULL AND p.region != ''
-        GROUP BY p.zone, p.region, district, p.sol_id, branch_name,
+          AND COALESCE(NULLIF(b.zone, ''), p.zone) IS NOT NULL
+          AND COALESCE(NULLIF(b.zone, ''), p.zone) != ''
+          AND COALESCE(NULLIF(b.region, ''), p.region) IS NOT NULL
+          AND COALESCE(NULLIF(b.region, ''), p.region) != ''
+        GROUP BY COALESCE(NULLIF(b.zone, ''), p.zone), COALESCE(NULLIF(b.region, ''), p.region), COALESCE(b.district, 'Unknown District'), p.sol_id, COALESCE(b.branch, ''),
             CASE
                 WHEN p.product = 'RD' AND pr.group_subname = 'JLL RD' AND pr.group_subname_category IS NULL THEN 'JLL RD'
                 WHEN p.product = 'RD' AND pr.group_subname IS NULL AND pr.group_subname_category IS NULL THEN 'RD'
                 WHEN p.product = 'SMBG' AND pr.group_subname = 'SKBG' AND pr.group_subname_category IS NULL THEN 'SKBG'
                 WHEN p.product = 'SMBG' AND pr.group_subname IS NULL AND pr.group_subname_category IS NULL THEN 'SMBG'
+                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'TASC' AND pr.group_subname_category = 'TASKSILVER' THEN 'TASKSILVER'
+                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'TASC' AND pr.group_subname_category = 'TASKWEALTH' THEN 'TASKWEALTH'
+                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'SA' AND pr.group_subname_category = 'SAVSIL' THEN 'SAVSIL'
+                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'CA' AND pr.group_subname_category = 'CUGOLD' THEN 'CUGOLD'
+                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'CA' AND pr.group_subname_category = 'CUWEALTH' THEN 'CUWEALTH'
                 ELSE p.product
             END
-        ORDER BY p.zone, p.region, district, p.sol_id
+        ORDER BY COALESCE(NULLIF(b.zone, ''), p.zone), COALESCE(NULLIF(b.region, ''), p.region), COALESCE(b.district, 'Unknown District'), p.sol_id
     """, (selected_date,), as_dict=True)
 
     if not raw_data:
