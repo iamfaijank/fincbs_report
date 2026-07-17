@@ -176,10 +176,13 @@ class DrishtiDashboard {
 			selectedCategories: [],
 			selectedZones: [],
 			selectedRegions: [],
+			selectedDistricts: [],
 			branchSearchTerm: "",
 			selectedMonth: null,
 			drillDownActive: false,
 			expandedZones: {}, // Track expanded/collapsed zones
+			expandedZoneRegions: {}, // Track expanded/collapsed regions in zone table
+			checkedZoneRows: {}, // Track checked rows in zone table
 			expandedProductRows: {},
 			checkedProductRows: {},
 			selectedSegment: "all",
@@ -2001,6 +2004,8 @@ class DrishtiDashboard {
 
 		// Clear expanded/collapsed state
 		this.state.expandedZones = {};
+		this.state.expandedZoneRegions = {};
+		this.state.checkedZoneRows = {};
 		this.state.expandedProductRows = {};
 		this.state.checkedProductRows = {};
 
@@ -2215,6 +2220,7 @@ class DrishtiDashboard {
 						self.state.selectedMonth = monthNames[monthNum - 1];
 
 						self.updateUrlFromState();
+						self._dataLoaded = false;
 						self.loadData();
 					},
 				},
@@ -2704,16 +2710,6 @@ class DrishtiDashboard {
 			.zone-wise-table tr:hover td.branches-col {
 				background-color: #f8f9fa !important;
 			}
-			.zone-wise-table tr.zone-total-row td.sr-col,
-			.zone-wise-table tr.zone-total-row td.zone-col,
-			.zone-wise-table tr.zone-total-row td.branches-col {
-				background-color: #e0e1dd !important;
-			}
-			.zone-wise-table tr.zone-total-row:hover td.sr-col,
-			.zone-wise-table tr.zone-total-row:hover td.zone-col,
-			.zone-wise-table tr.zone-total-row:hover td.branches-col {
-				background-color: #d4d5d1 !important;
-			}
 			.region-detail-row td.sr-col {
 				border-left: 4px solid #417d81 !important;
 			}
@@ -3201,7 +3197,7 @@ class DrishtiDashboard {
 			if (this.drishti_container) this.drishti_container.show();
 			$(this.page.wrapper).find("#drishti-subtitle").show();
 			$("#drishti-header-timer").show();
-			if (this._fyLoaded) this.loadData();
+			if (this._fyLoaded) { this._dataLoaded = false; this.loadData(); }
 		} else {
 			if (this.drishti_container) this.drishti_container.hide();
 			if (this.mis_container) {
@@ -3283,6 +3279,7 @@ class DrishtiDashboard {
 		this.state.selectedCategories = [];
 		this.state.selectedZones = [];
 		this.state.selectedRegions = [];
+		this.state.selectedDistricts = [];
 		this.state.branchSearchTerm = "";
 		this.state.selectedMonth = null;
 		this.state.drillDownActive = false;
@@ -3837,6 +3834,7 @@ class DrishtiDashboard {
 				self.state.financialYear = $(this).val();
 				self.applyPreviousFinancialYearDefaultDate();
 				self.updateUrlFromState();
+				self._dataLoaded = false;
 				self.loadData();
 			});
 
@@ -3866,6 +3864,7 @@ class DrishtiDashboard {
 
 			self.updateUrlFromState();
 			self.updateUiFromState();
+			self._dataLoaded = false;
 			self.loadData();
 		});
 
@@ -3887,6 +3886,7 @@ class DrishtiDashboard {
 			);
 			self.updateUrlFromState();
 			self.updateUiFromState();
+			self._dataLoaded = false;
 			self.loadData();
 		});
 
@@ -3951,6 +3951,7 @@ class DrishtiDashboard {
 
 			self.updateDatePickerValue(newDateStr);
 			self.updateUrlFromState();
+			self._dataLoaded = false;
 			self.loadData();
 		});
 
@@ -3960,6 +3961,7 @@ class DrishtiDashboard {
 			$(this).addClass("active");
 			self.state.targetType = self.normalizeTargetType($(this).data("target"));
 			self.updateUrlFromState();
+			self._dataLoaded = false;
 			self.loadData();
 		});
 
@@ -4588,7 +4590,18 @@ class DrishtiDashboard {
 			);
 		}
 
-		// 4. Branch search term filter (supports comma-separated multi-search)
+		// 4. District filter
+		if (this.state.selectedDistricts && this.state.selectedDistricts.length > 0) {
+			filtered = filtered.filter((branch) =>
+				this.state.selectedDistricts.some(
+					(district) =>
+						this.getLocationIdentifier(district) ===
+						this.getLocationIdentifier(branch.district),
+				),
+			);
+		}
+
+		// 5. Branch search term filter (supports comma-separated multi-search)
 		if (this.state.branchSearchTerm) {
 			const searchTerms = this.state.branchSearchTerm
 				.toLowerCase()
@@ -4612,28 +4625,27 @@ class DrishtiDashboard {
 	reaggregateZoneData(branches) {
 		if (!branches || !this.months || this.months.length === 0) return [];
 
-		const aggregatedMap = new Map(); // Key: zoneName or regionName, Value: aggregated object
-
-		// Group branches into top-level zones and regions
-		const groupedData = {}; // { "ZONE-1": { totalBranches: [], regionBranches: { "REGION-A": [] } } }
+		const groupedData = {};
 
 		branches.forEach((branch) => {
 			const zoneName = branch.zone;
 			const regionName = branch.region;
+			const districtName = branch.district || "Unknown District";
 
 			if (!groupedData[zoneName]) {
 				groupedData[zoneName] = { totalBranches: [], regionBranches: {} };
 			}
-
-			// Add to total zone branches
 			groupedData[zoneName].totalBranches.push(branch);
 
-			// Add to region branches if it's a specific region
 			if (regionName && regionName !== zoneName) {
 				if (!groupedData[zoneName].regionBranches[regionName]) {
-					groupedData[zoneName].regionBranches[regionName] = [];
+					groupedData[zoneName].regionBranches[regionName] = { branches: [], districts: {} };
 				}
-				groupedData[zoneName].regionBranches[regionName].push(branch);
+				groupedData[zoneName].regionBranches[regionName].branches.push(branch);
+				if (!groupedData[zoneName].regionBranches[regionName].districts[districtName]) {
+					groupedData[zoneName].regionBranches[regionName].districts[districtName] = [];
+				}
+				groupedData[zoneName].regionBranches[regionName].districts[districtName].push(branch);
 			}
 		});
 
@@ -4644,70 +4656,63 @@ class DrishtiDashboard {
 			return aNum && bNum ? parseInt(aNum) - parseInt(bNum) : a.localeCompare(b);
 		});
 
-		sortedZoneNames.forEach((zoneName) => {
-			const zoneGroup = groupedData[zoneName];
-
-			// Aggregate for the top-level zone
-			const zoneAgg = {
-				zone: zoneName,
-				region: zoneName,
-				months: Object.fromEntries(
-					this.months.map((m) => [
-						m.key,
-						{ target: 0, achievement: 0, percentage: 0, branches: 0 },
-					]),
-				),
-				isZoneTotal: true,
-			};
-
-			zoneGroup.totalBranches.forEach((branch) => {
+		const aggregateMonths = (branchList) => {
+			const agg = Object.fromEntries(
+				this.months.map((m) => [m.key, { target: 0, achievement: 0, percentage: 0, branches: 0 }]),
+			);
+			branchList.forEach((b) => {
 				this.months.forEach((m) => {
-					const monthData = branch.months[m.key];
-					if (monthData) {
-						zoneAgg.months[m.key].target += monthData.target || 0;
-						zoneAgg.months[m.key].achievement += monthData.achievement || 0;
+					const md = b.months[m.key];
+					if (md) {
+						agg[m.key].target += md.target || 0;
+						agg[m.key].achievement += md.achievement || 0;
 					}
 				});
 			});
-			zoneAgg.months[this.months[0].key].branches = zoneGroup.totalBranches.length; // Count branches for the first month
+			agg[this.months[0].key].branches = branchList.length;
 			this.months.forEach((m) => {
-				const monthAgg = zoneAgg.months[m.key];
-				monthAgg.percentage =
-					monthAgg.target > 0 ? (monthAgg.achievement / monthAgg.target) * 100 : 0;
+				const ma = agg[m.key];
+				ma.percentage = ma.target > 0 ? (ma.achievement / ma.target) * 100 : 0;
 			});
+			return agg;
+		};
+
+		sortedZoneNames.forEach((zoneName) => {
+			const zoneGroup = groupedData[zoneName];
+
+			const zoneAgg = {
+				zone: zoneName,
+				region: zoneName,
+				months: aggregateMonths(zoneGroup.totalBranches),
+				isZoneTotal: true,
+			};
 			result.push(zoneAgg);
 
-			// Aggregate for regions within this zone
 			const sortedRegionNames = Object.keys(zoneGroup.regionBranches).sort();
 			sortedRegionNames.forEach((regionName) => {
-				const regionBranches = zoneGroup.regionBranches[regionName];
+				const regionGroup = zoneGroup.regionBranches[regionName];
+
 				const regionAgg = {
 					zone: zoneName,
 					region: regionName,
-					months: Object.fromEntries(
-						this.months.map((m) => [
-							m.key,
-							{ target: 0, achievement: 0, percentage: 0, branches: 0 },
-						]),
-					),
+					months: aggregateMonths(regionGroup.branches),
 					isZoneTotal: false,
+					isRegionTotal: true,
 				};
-				regionBranches.forEach((branch) => {
-					this.months.forEach((m) => {
-						const monthData = branch.months[m.key];
-						if (monthData) {
-							regionAgg.months[m.key].target += monthData.target || 0;
-							regionAgg.months[m.key].achievement += monthData.achievement || 0;
-						}
+				result.push(regionAgg);
+
+				const sortedDistrictNames = Object.keys(regionGroup.districts).sort();
+				sortedDistrictNames.forEach((districtName) => {
+					const districtBranches = regionGroup.districts[districtName];
+					result.push({
+						zone: zoneName,
+						region: regionName,
+						district: districtName,
+						months: aggregateMonths(districtBranches),
+						isZoneTotal: false,
+						isRegionTotal: false,
 					});
 				});
-				regionAgg.months[this.months[0].key].branches = regionBranches.length; // Count branches for the first month
-				this.months.forEach((m) => {
-					const monthAgg = regionAgg.months[m.key];
-					monthAgg.percentage =
-						monthAgg.target > 0 ? (monthAgg.achievement / monthAgg.target) * 100 : 0;
-				});
-				result.push(regionAgg);
 			});
 		});
 
@@ -4841,11 +4846,13 @@ class DrishtiDashboard {
 		const months = this.months;
 
 		let html = `
-			    <table class="table table-bordered zone-wise-table">
-			        <thead>
+			<div style="overflow-x: auto; max-height: 75vh; overflow-y: auto;">
+			    <table class="table table-bordered zone-wise-table" style="min-width: 100%; border-collapse: separate; border-spacing: 0;">
+			        <thead style="position: sticky; top: 0; z-index: 20; background: white;">
 			            <tr class="zone-table-header">
-			                <th rowspan="2" class="sr-col">Sr</th>
-			                <th rowspan="2" class="zone-col">Zone/Region</th>
+			                <th rowspan="2" style="text-align: center; width: 40px;"><input type="checkbox" class="zone-check-all" style="cursor: pointer;"></th>
+			                <th rowspan="2" class="sr-col" style="width: 40px;">Sr</th>
+			                <th rowspan="2" class="zone-col" style="text-align: left;">Z/R/DIS</th>
 			                <th rowspan="2" class="branches-col">Branches</th>
 			    `;
 
@@ -4882,13 +4889,14 @@ class DrishtiDashboard {
 				highlightStyle = `background: #6ca8ac !important; color: #ffffff !important; border-bottom: 2px solid #558a8e !important;`;
 			}
 
-			html += `<th colspan="3" ${highlightStyle ? `style="${highlightStyle}"` : ""}>${displayYear}${daysLeftIndicator}</th>`;
+			const thStyle = highlightStyle ? "background: #6ca8ac !important; color: #ffffff !important; border-bottom: 2px solid #558a8e !important;" : "background: white; color: #1b263b;";
+			html += `<th colspan="3" style="${thStyle}">${displayYear}${daysLeftIndicator}</th>`;
 		});
 
 		html += '</tr><tr class="zone-table-subheader">';
 
 		months.forEach(() => {
-			html += "<th>Target</th><th>Ach</th><th>ACH %</th>";
+			html += "<th style=\"background: white; color: #1b263b;\">Target</th><th style=\"background: white; color: #1b263b;\">Ach</th><th style=\"background: white; color: #1b263b;\">ACH %</th>";
 		});
 
 		html += "</tr></thead><tbody>";
@@ -4916,6 +4924,24 @@ class DrishtiDashboard {
                     letter-spacing: 0.05em;
                     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
                 }
+                .zone-table-row td { background: inherit; }
+                .zone-total-row td { background: #e0e1dd; }
+                .zone-total-row td.sr-col,
+                .zone-total-row td.zone-col,
+                .zone-total-row td.branches-col { background: inherit; }
+                .zone-table-row:hover td { background-color: #e8f4f8 !important; }
+                .zone-table-row.checked td { background-color: #c8e6c9 !important; }
+                .zone-table-row.checked:hover td { background-color: #b8d9b9 !important; }
+                .region-detail-row td { background: inherit; }
+                .region-detail-row:hover td { background-color: #e8f4f8 !important; }
+                .region-detail-row.checked td { background-color: #c8e6c9 !important; }
+                .region-detail-row.checked:hover td { background-color: #b8d9b9 !important; }
+                .district-detail-row td { background: inherit; }
+                .district-detail-row:hover td { background-color: #e8f4f8 !important; }
+                .district-detail-row.checked td { background-color: #c8e6c9 !important; }
+                .district-detail-row.checked:hover td { background-color: #b8d9b9 !important; }
+                .zone-wise-table thead th { background: white; }
+                .zone-wise-table tfoot td { position: sticky; bottom: 0; z-index: 9; }
             `;
 			document.head.appendChild(style);
 		}
@@ -4930,7 +4956,6 @@ class DrishtiDashboard {
 		// Accumulate grand totals only from zone total items (isZoneTotal === true)
 		zoneData.forEach((item) => {
 			if (item.isZoneTotal) {
-				// Only sum from the main zone aggregates to avoid double-counting regions
 				const firstMonthData = item.months[months[0].key];
 				grandTotals.branches += firstMonthData?.branches || 0;
 
@@ -4944,24 +4969,34 @@ class DrishtiDashboard {
 			}
 		});
 
-		// Group data by zone from the reaggregated data
+		// Group data by zone → region (with districts)
 		const zoneGroups = {};
 
 		zoneData.forEach((item) => {
-			const isZoneTotal = item.isZoneTotal; // Use the flag from reaggregated data
-
-			if (isZoneTotal) {
+			if (item.isZoneTotal) {
 				if (!zoneGroups[item.zone]) {
-					zoneGroups[item.zone] = { total: item, regions: [] };
+					zoneGroups[item.zone] = { total: item, regionItems: {} };
 				} else {
 					zoneGroups[item.zone].total = item;
 				}
-			} else {
+			} else if (item.isRegionTotal) {
 				if (!zoneGroups[item.zone]) {
-					// Ensure a total object exists for zones that only have regions in the filtered data
-					zoneGroups[item.zone] = { total: null, regions: [] };
+					zoneGroups[item.zone] = { total: null, regionItems: {} };
 				}
-				zoneGroups[item.zone].regions.push(item);
+				if (!zoneGroups[item.zone].regionItems[item.region]) {
+					zoneGroups[item.zone].regionItems[item.region] = { total: item, districts: [] };
+				} else {
+					zoneGroups[item.zone].regionItems[item.region].total = item;
+				}
+			} else {
+				// District item
+				if (!zoneGroups[item.zone]) {
+					zoneGroups[item.zone] = { total: null, regionItems: {} };
+				}
+				if (!zoneGroups[item.zone].regionItems[item.region]) {
+					zoneGroups[item.zone].regionItems[item.region] = { total: null, districts: [] };
+				}
+				zoneGroups[item.zone].regionItems[item.region].districts.push(item);
 			}
 		});
 
@@ -4977,16 +5012,30 @@ class DrishtiDashboard {
 			.forEach((zoneName) => {
 				const zoneGroup = zoneGroups[zoneName];
 
-				const isExpanded = this.state.expandedZones[zoneName] || false;
+				const isZoneExpanded = this.state.expandedZones[zoneName] || false;
 
 				// Zone Total Row
 				if (zoneGroup.total) {
-					html += this.buildZoneRow(zoneGroup.total, sr++, true, zoneName, isExpanded);
+					html += this.buildZoneRow(zoneGroup.total, sr++, zoneName, isZoneExpanded);
 				}
 
-				// Region Rows (hidden by default)
-				zoneGroup.regions.forEach((regionItem) => {
-					html += this.buildRegionRow(regionItem, "", zoneName, isExpanded);
+				// Region and District Rows
+				Object.keys(zoneGroup.regionItems).sort().forEach((regionName) => {
+					const regionGroup = zoneGroup.regionItems[regionName];
+					const regionKey = zoneName + "::" + regionName;
+					const isRegionExpanded = this.state.expandedZoneRegions[regionKey] || false;
+
+					// Region Row
+					if (regionGroup.total) {
+						html += this.buildRegionRow(regionGroup.total, zoneName, isZoneExpanded, regionKey, isRegionExpanded);
+					}
+
+					// District Rows (hidden unless region expanded)
+					if (regionGroup.total) {
+						regionGroup.districts.forEach((districtItem) => {
+							html += this.buildDistrictRow(districtItem, zoneName, isZoneExpanded, isRegionExpanded);
+						});
+					}
 				});
 			});
 
@@ -4995,7 +5044,7 @@ class DrishtiDashboard {
 		// Grand Total Row (Sticky Vertically and Horizontally)
 		html += `<tfoot style="color: #ffffff; font-weight: bold; border-top: 2px solid #3d7579;">`;
 		html += `<tr style="height: 40px;">`;
-		html += `<td colspan="2" style="position: sticky; left: 0; bottom: 0; z-index: 9; background-color: #264a4d !important; color: #ffffff !important; text-align: left; padding-left: 12px; text-transform: uppercase; letter-spacing: 1px; border-right: none !important; box-shadow: inset -1px 0 0 #3d7579 !important;">TOTAL</td>`;
+		html += `<td colspan="3" style="position: sticky; left: 0; bottom: 0; z-index: 9; background-color: #264a4d !important; color: #ffffff !important; text-align: left; padding-left: 12px; text-transform: uppercase; letter-spacing: 1px; border-right: none !important; box-shadow: inset -1px 0 0 #3d7579 !important;">TOTAL</td>`;
 		html += `<td class="branches-col" style="position: sticky; left: 230px; bottom: 0; z-index: 9; background-color: #264a4d !important; color: #ffffff !important; text-align: center; border-right: none !important; box-shadow: inset -2px 0 0 #3d7579 !important;">${grandTotals.branches}</td>`;
 
 		months.forEach((month) => {
@@ -5023,19 +5072,21 @@ class DrishtiDashboard {
 		});
 		html += `</tr></tfoot>`;
 
-		html += "</table>";
+		html += "</table></div>";
 
 		return html;
 	}
 
-	buildZoneRow(zoneItem, sr, isZoneTotal, zoneName, isExpanded) {
+	buildZoneRow(zoneItem, sr, zoneName, isExpanded) {
 		const months = this.months;
+		const checked = this.state.checkedZoneRows["zone::" + zoneName] ? ' checked' : '';
 
 		const firstMonthData = zoneItem.months[months[0].key];
 
 		const branchCount = firstMonthData?.branches || 0;
 
-		let html = `<tr class="zone-total-row" data-zone="${zoneName}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">`;
+		let html = `<tr class="zone-total-row zone-table-row${checked}" data-zone="${zoneName}" style="font-weight: bold; cursor: pointer;">`;
+		html += `<td style="text-align: center;"><input type="checkbox" class="zone-row-check" data-check-id="zone::${zoneName}"${checked} style="cursor: pointer;"></td>`;
 		html += `<td class="sr-col">${sr}</td>`;
 		html += `<td class="zone-col"><span class="zone-toggle">${isExpanded ? "▼" : "▶"}</span> ${zoneName}</td>`;
 		html += `<td class="branches-col branch-drilldown" data-zone="${zoneName}" title="Click to view branches in ${zoneName}">${branchCount}</td>`;
@@ -5064,23 +5115,67 @@ class DrishtiDashboard {
 		return html + "</tr>";
 	}
 
-	buildRegionRow(regionItem, sr, zoneName, isExpanded) {
+	buildRegionRow(regionItem, zoneName, isZoneExpanded, regionKey, isRegionExpanded) {
 		const months = this.months;
+		const checked = this.state.checkedZoneRows[regionKey] ? ' checked' : '';
 
 		const firstMonthData = regionItem.months[months[0].key];
 
 		const branchCount = firstMonthData?.branches || 0;
 
-		let html = `<tr class="region-detail-row" data-zone="${zoneName}" style="display: ${
-			isExpanded ? "table-row" : "none"
-		}; border-left: 4px solid #417d81;">`;
+		let html = `<tr class="region-detail-row zone-table-row${checked}" data-zone="${zoneName}" data-region="${regionItem.region}" data-region-key="${regionKey}" style="display: ${
+			isZoneExpanded ? "table-row" : "none"
+		}; border-left: 4px solid #417d81; cursor: pointer;">`;
 
-		html += `<td class="sr-col">${sr}</td>`;
-		html += `<td class="zone-col" style="padding-left: 30px;">${regionItem.region}</td>`;
+		html += `<td style="text-align: center;"><input type="checkbox" class="zone-row-check" data-check-id="${regionKey}"${checked} style="cursor: pointer;"></td>`;
+		html += `<td class="sr-col"></td>`;
+		html += `<td class="zone-col" style="padding-left: 30px;"><span class="region-toggle" style="margin-right: 4px;">${isRegionExpanded ? "▼" : "▶"}</span> ${regionItem.region}</td>`;
 		html += `<td class="branches-col branch-drilldown" data-zone="${zoneName}" data-region="${regionItem.region}" title="Click to view branches in ${regionItem.region}">${branchCount}</td>`;
 
 		months.forEach((month) => {
 			const mdata = regionItem.months[month.key];
+
+			if (mdata) {
+				html += `
+			                <td>${this.formatNumber(mdata.target)}</td>
+			                <td>${this.formatNumber(mdata.achievement)}</td>
+			                <td>
+								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+									<span class="pct-value" style="color: ${this.getPctColor(
+										mdata.percentage,
+									)}; min-width: 45px; text-align: right;">${Math.round(mdata.percentage)}%</span>
+									${this.renderProgressBar(mdata.percentage)}
+								</div>
+							</td>
+			            `;
+			} else {
+				html += "<td>-</td><td>-</td><td>-</td>";
+			}
+		});
+
+		return html + "</tr>";
+	}
+
+	buildDistrictRow(districtItem, zoneName, isZoneExpanded, isRegionExpanded) {
+		const months = this.months;
+		const districtKey = zoneName + "::" + districtItem.region + "::" + districtItem.district;
+		const checked = this.state.checkedZoneRows[districtKey] ? ' checked' : '';
+
+		const firstMonthData = districtItem.months[months[0].key];
+
+		const branchCount = firstMonthData?.branches || 0;
+
+		let html = `<tr class="district-detail-row zone-table-row${checked}" data-zone="${zoneName}" data-region="${districtItem.region}" data-district="${districtItem.district}" data-district-key="${districtKey}" style="display: ${
+			isZoneExpanded && isRegionExpanded ? "table-row" : "none"
+		};">`;
+
+		html += `<td style="text-align: center;"><input type="checkbox" class="zone-row-check" data-check-id="${districtKey}"${checked} style="cursor: pointer;"></td>`;
+		html += `<td class="sr-col"></td>`;
+		html += `<td class="zone-col" style="padding-left: 60px;">${districtItem.district}</td>`;
+		html += `<td class="branches-col branch-drilldown" data-zone="${zoneName}" data-region="${districtItem.region}" data-district="${districtItem.district}" title="Click to view branches in ${districtItem.district}">${branchCount}</td>`;
+
+		months.forEach((month) => {
+			const mdata = districtItem.months[month.key];
 
 			if (mdata) {
 				html += `
@@ -5112,10 +5207,68 @@ class DrishtiDashboard {
 
 			.off("click")
 
-			.on("click", function () {
+			.on("click", function (e) {
+				if ($(e.target).is("input[type=checkbox]") || $(e.target).closest("input[type=checkbox]").length) return;
 				const zoneName = $(this).data("zone");
 
 				self.state.expandedZones[zoneName] = !self.state.expandedZones[zoneName];
+
+				self.render();
+			});
+
+		this.page.main
+
+			.find(".zone-row-check")
+
+			.off("click")
+
+			.on("click", function (e) {
+				e.stopPropagation();
+				const checkId = $(this).data("check-id");
+				const checked = $(this).prop("checked");
+
+				if (checked) {
+					self.state.checkedZoneRows[checkId] = true;
+				} else {
+					delete self.state.checkedZoneRows[checkId];
+				}
+
+				self.render();
+			});
+
+		this.page.main
+
+			.find(".zone-check-all")
+
+			.off("click")
+
+			.on("click", function () {
+				const checked = $(this).prop("checked");
+				self.state.checkedZoneRows = {};
+				if (checked) {
+					// Check all visible rows
+					self.page.main.find(".zone-table-row:visible").each(function () {
+						const cb = $(this).find(".zone-row-check");
+						if (cb.length) {
+							self.state.checkedZoneRows[cb.data("check-id")] = true;
+						}
+					});
+				}
+				self.render();
+			});
+
+		this.page.main
+
+			.find(".region-detail-row")
+
+			.off("click")
+
+			.on("click", function (e) {
+				if ($(e.target).is("input[type=checkbox]") || $(e.target).closest("input[type=checkbox]").length) return;
+				const regionKey = $(this).data("region-key");
+				if (!regionKey) return;
+
+				self.state.expandedZoneRegions[regionKey] = !self.state.expandedZoneRegions[regionKey];
 
 				self.render();
 			});
@@ -5516,6 +5669,7 @@ class DrishtiDashboard {
 		this.tabDates["agent"] = formatted_for_input;
 
 		// Reload data with new date
+		this._dataLoaded = false;
 		this.loadData();
 	}
 
@@ -6114,23 +6268,26 @@ class DrishtiDashboard {
 	attachZoneDrilldownHandlers() {
 		const self = this;
 		this.page.main.find(".zone-wise-table .branch-drilldown").on("click", function (e) {
-			e.stopPropagation(); // Prevents the row's expand/collapse click handler from firing
+			e.stopPropagation();
 
 			const zone = $(this).data("zone");
-			const region = $(this).data("region"); // This will be undefined for the zone total row, which is fine
+			const region = $(this).data("region");
+			const district = $(this).data("district");
 
-			self.drillDownToBranchView(zone, region);
+			self.drillDownToBranchView(zone, region, district);
 		});
 	}
 
-	drillDownToBranchView(zone, region = null) {
+	drillDownToBranchView(zone, region = null, district = null) {
 		console.log(
 			`Drilling down to Branch view for Zone: ${zone}` +
-				(region ? `, Region: ${region}` : ""),
+				(region ? `, Region: ${region}` : "") +
+				(district ? `, District: ${district}` : ""),
 		);
 
 		this.state.selectedZones = [zone];
 		this.state.selectedRegions = region ? [region] : [];
+		this.state.selectedDistricts = district ? [district] : [];
 		this.state.drillDownActive = true;
 
 		// Update filter UI elements to reflect the change
@@ -6309,9 +6466,9 @@ class DrishtiDashboard {
 		html += `<td class="branch-col">
 			<div class="branch-info">
 				<div class="branch-code-name">
-					<a onclick="window.showBranchProfilePopup('${branch.sol_id}'); return false;" class="branch-code-link" style="cursor: pointer; text-decoration: underline;">${branch.sol_id}</a>
-					<a onclick="window.showBranchProfilePopup('${branch.sol_id}'); return false;" class="branch-name-link" style="cursor: pointer;">${branch.branch}</a>
+					<a onclick="window.showBranchProfilePopup('${branch.sol_id}'); return false;" class="branch-code-link" style="cursor: pointer; text-decoration: underline;">${branch.sol_id}-${branch.branch.replace(/\s*BRANCH\s*$/i, '')}</a>
 				</div>
+				<div class="branch-district">${branch.district || ''}</div>
 				<div class="branch-zone-region">
 					<span class="zone-badge">${branch.zone}</span>
 					<span class="region-label">${branch.region}</span>
@@ -7264,8 +7421,7 @@ class DrishtiDashboard {
 
                 .branch-code-name {
                     display: flex;
-                    flex-direction: column;
-                    gap: 4px;
+                    align-items: center;
                 }
 
                 /* Agent toggle - keep arrow and zone name in same row */
@@ -7279,11 +7435,23 @@ class DrishtiDashboard {
                     color: #417d81;
                     font-weight: 600;
                     text-decoration: none;
-                    font-size: 13px;
+                    font-size: 11px;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    display: inline-block;
+                    max-width: 100%;
+                    vertical-align: middle;
                 }
 
                 .branch-code-link:hover {
                     text-decoration: underline;
+                }
+
+                .branch-district {
+                    font-size: 11px;
+                    color: #475569;
+                    margin: 2px 0;
                 }
 
                 .branch-name {

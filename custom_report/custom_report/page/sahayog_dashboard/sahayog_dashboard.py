@@ -436,6 +436,12 @@ def get_sahayog_dashboard(
         
     targets_map = get_targets_map(financial_year, target_type, month_keys, allowed_sol_ids)
     
+    # Build sol_id -> district mapping from Sahayog Branch
+    district_map = {}
+    branch_recs = frappe.db.sql("SELECT name, COALESCE(district, 'Unknown District') as district FROM `tabSahayog Branch`", as_dict=True)
+    for br in branch_recs:
+        district_map[br.name] = br.district
+    
     all_branch_data = []
     for month_key, month_num, year, eff_date in months:
         branch_filters = {"date": eff_date}
@@ -451,10 +457,10 @@ def get_sahayog_dashboard(
             rec["month_key"] = month_key
         all_branch_data.extend(month_data)
     
-    zone_wise = build_zone_wise(all_branch_data, targets_map, target_type)
+    zone_wise = build_zone_wise(all_branch_data, targets_map, target_type, district_map)
     product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type, selected_date)
     category_wise = build_category_wise(all_branch_data, targets_map, months, target_type)
-    branch_wise = build_branch_wise(all_branch_data, targets_map, months, target_type)
+    branch_wise = build_branch_wise(all_branch_data, targets_map, months, target_type, district_map)
     agent_wise = build_agent_wise(selected_date)
 
     return {
@@ -518,26 +524,30 @@ def get_targets_map(financial_year, target_type, month_keys, allowed_sol_ids=Non
     return targets_map
 
 
-def build_zone_wise(branch_data, targets_map, target_type):
-    zone_hierarchy = defaultdict(lambda: defaultdict(lambda: {"zone": "", "region": "", "months": {}}))
+def build_zone_wise(branch_data, targets_map, target_type, district_map=None):
+    if district_map is None:
+        district_map = {}
+    zone_hierarchy = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: {"zone": "", "region": "", "district": "", "months": {}})))
     
     for row in branch_data:
         zone = row.get("zone") or "Unknown"
         region = row.get("region") or "Unknown"
         sol_id = str(row.get("sol_id") or "")
+        district = district_map.get(sol_id, "Unknown District")
         month_key = row.get("month_key")
         if not month_key: continue
         
-        if region not in zone_hierarchy[zone]:
-            zone_hierarchy[zone][region] = {"zone": zone, "region": region, "months": {}}
+        if district not in zone_hierarchy[zone][region]:
+            zone_hierarchy[zone][region][district] = {"zone": zone, "region": region, "district": district, "months": {}}
         
-        if month_key not in zone_hierarchy[zone][region]["months"]:
-            zone_hierarchy[zone][region]["months"][month_key] = {"branches": set(), "target": 0.0, "achievement": 0.0}
+        zrd = zone_hierarchy[zone][region][district]["months"]
+        if month_key not in zrd:
+            zrd[month_key] = {"branches": set(), "target": 0.0, "achievement": 0.0}
         
         ach = float(row.get("achievement") or 0) if target_type == "Monthly" else float(row.get("yearly_achievement") or 0)
         tgt = targets_map[sol_id][month_key]
         
-        zrm = zone_hierarchy[zone][region]["months"][month_key]
+        zrm = zrd[month_key]
         zrm["branches"].add(sol_id)
         zrm["target"] += tgt
         zrm["achievement"] += ach
@@ -550,31 +560,64 @@ def build_zone_wise(branch_data, targets_map, target_type):
         return (2, z)
     
     for zone in sorted(zone_hierarchy.keys(), key=zone_sort_key):
-        zone_total = {"zone": zone, "region": zone, "months": {}}
+        zone_total = {"zone": zone, "region": zone, "months": {}, "isZoneTotal": True}
         
         for region in sorted(zone_hierarchy[zone].keys()):
-            reg = zone_hierarchy[zone][region]
-            for mk, mdata in reg["months"].items():
-                branch_count = len(mdata["branches"])
-                target = mdata["target"]
-                ach = mdata["achievement"]
-                pct = round((ach / target) * 100, 2) if target > 0 else 0.0
-                mdata["branches"] = branch_count
-                mdata["percentage"] = pct
-                
-                if mk not in zone_total["months"]:
-                    zone_total["months"][mk] = {"branches": 0, "target": 0.0, "achievement": 0.0, "percentage": 0.0}
-                ztm = zone_total["months"][mk]
-                ztm["branches"] += branch_count
-                ztm["target"] += target
-                ztm["achievement"] += ach
-        
-        for mk, mdata in zone_total["months"].items():
-            mdata["percentage"] = round((mdata["achievement"] / mdata["target"]) * 100, 2) if mdata["target"] > 0 else 0.0
+            region_total = {"zone": zone, "region": region, "months": {}, "isZoneTotal": False, "isRegionTotal": True}
+            
+            for district in sorted(zone_hierarchy[zone][region].keys()):
+                dist = zone_hierarchy[zone][region][district]
+                for mk, mdata in dist["months"].items():
+                    branch_count = len(mdata["branches"])
+                    target = mdata["target"]
+                    ach = mdata["achievement"]
+                    pct = round((ach / target) * 100, 2) if target > 0 else 0.0
+                    mdata["branches"] = branch_count
+                    mdata["percentage"] = pct
+                    
+                    if mk not in zone_total["months"]:
+                        zone_total["months"][mk] = {"branches": 0, "target": 0.0, "achievement": 0.0, "percentage": 0.0}
+                    ztm = zone_total["months"][mk]
+                    ztm["branches"] += branch_count
+                    ztm["target"] += target
+                    ztm["achievement"] += ach
+                    
+                    if mk not in region_total["months"]:
+                        region_total["months"][mk] = {"branches": 0, "target": 0.0, "achievement": 0.0, "percentage": 0.0}
+                    rtm = region_total["months"][mk]
+                    rtm["branches"] += branch_count
+                    rtm["target"] += target
+                    rtm["achievement"] += ach
+            
+            for mk, mdata in region_total["months"].items():
+                mdata["percentage"] = round((mdata["achievement"] / mdata["target"]) * 100, 2) if mdata["target"] > 0 else 0.0
+            
+            for mk, mdata in zone_total["months"].items():
+                mdata["percentage"] = round((mdata["achievement"] / mdata["target"]) * 100, 2) if mdata["target"] > 0 else 0.0
         
         zone_wise.append(zone_total)
         for region in sorted(zone_hierarchy[zone].keys()):
-            zone_wise.append(zone_hierarchy[zone][region])
+            # Add region aggregate row first
+            region_total = {"zone": zone, "region": region, "months": {}, "isZoneTotal": False, "isRegionTotal": True}
+            for district in sorted(zone_hierarchy[zone][region].keys()):
+                dist = zone_hierarchy[zone][region][district]
+                for mk, mdata in dist["months"].items():
+                    pct = round((mdata["achievement"] / mdata["target"]) * 100, 2) if mdata["target"] > 0 else 0.0
+                    mdata["percentage"] = pct
+                    
+                    if mk not in region_total["months"]:
+                        region_total["months"][mk] = {"branches": 0, "target": 0.0, "achievement": 0.0, "percentage": 0.0}
+                    rtm = region_total["months"][mk]
+                    rtm["branches"] += mdata["branches"]
+                    rtm["target"] += mdata["target"]
+                    rtm["achievement"] += mdata["achievement"]
+            
+            for mk, mdata in region_total["months"].items():
+                mdata["percentage"] = round((mdata["achievement"] / mdata["target"]) * 100, 2) if mdata["target"] > 0 else 0.0
+            
+            zone_wise.append(region_total)
+            for district in sorted(zone_hierarchy[zone][region].keys()):
+                zone_wise.append(zone_hierarchy[zone][region][district])
     
     return zone_wise
 
@@ -786,8 +829,10 @@ def build_category_wise(branch_data, targets_map, months, target_type):
     return out
 
 
-def build_branch_wise(branch_data, targets_map, months, target_type):
-    branch_map = defaultdict(lambda: {"branch": "", "zone": "", "region": "", "months": {}})
+def build_branch_wise(branch_data, targets_map, months, target_type, district_map=None):
+    if district_map is None:
+        district_map = {}
+    branch_map = defaultdict(lambda: {"branch": "", "zone": "", "region": "", "district": "", "months": {}})
     
     for month_key, month_num, year, current_date in months:
         previous_date = get_previous_available_date(current_date)
@@ -810,6 +855,7 @@ def build_branch_wise(branch_data, targets_map, months, target_type):
             branch_map[sol_id]["branch"] = branch
             branch_map[sol_id]["zone"] = zone
             branch_map[sol_id]["region"] = region
+            branch_map[sol_id]["district"] = district_map.get(sol_id, "Unknown District")
             
             month_data = {
                 "category": cat,
@@ -854,6 +900,7 @@ def build_branch_wise(branch_data, targets_map, months, target_type):
             "branch": data["branch"],
             "zone": data["zone"],
             "region": data["region"],
+            "district": data["district"],
             "months": data["months"]
         })
 
