@@ -4782,6 +4782,38 @@ class DrishtiDashboard {
 		return filtered;
 	}
 
+	getFilteredProductData() {
+		if (!this.state.selectedDistricts || this.state.selectedDistricts.length === 0) {
+			return this.productData;
+		}
+
+		const selected = new Set(
+			this.state.selectedDistricts.map((d) => d.toLowerCase().trim()),
+		);
+
+		const matchingZoneNames = new Set();
+		const matchingRegionNames = new Set();
+
+		this.productData.forEach((item) => {
+			if (item.type === "district") {
+				if (selected.has(item.name.toLowerCase().trim())) {
+					matchingRegionNames.add(item.parent_region);
+					matchingZoneNames.add(item.parent_zone);
+				}
+			}
+		});
+
+		if (matchingZoneNames.size === 0) return [];
+
+		return this.productData.filter((item) => {
+			if (item.type === "zone") return matchingZoneNames.has(item.name);
+			if (item.type === "region") return matchingRegionNames.has(item.name);
+			if (item.type === "district") return selected.has(item.name.toLowerCase().trim());
+			if (item.type === "sol") return selected.has((item.parent_district || "").toLowerCase().trim());
+			return true;
+		});
+	}
+
 	reaggregateZoneData(branches) {
 		if (!branches || !this.months || this.months.length === 0) return [];
 
@@ -4965,7 +4997,8 @@ class DrishtiDashboard {
 			} else if (this.state.activeTab === "category") {
 				htmlContent = this.renderCategoryTable(reaggregatedCategoryData);
 			} else if (this.state.activeTab === "product") {
-				htmlContent = this.renderProductTable(this.productData);
+				const filteredProductData = this.getFilteredProductData();
+				htmlContent = this.renderProductTable(filteredProductData);
 			} else if (this.state.activeTab === "agent") {
 				htmlContent = this.renderAgentWiseTable(this.agentData);
 			} else if (this.state.activeTab === "branch") {
