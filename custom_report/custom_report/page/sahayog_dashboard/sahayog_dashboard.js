@@ -1577,6 +1577,7 @@ class DrishtiDashboard {
 				expandedZones: {},
 				searchTerm: "",
 				selectedMisZones: [],
+				checkedRows: {},
 				render: function (container, dashboardInstance, seq) {
 					const self = this;
 					container.html(`
@@ -1658,6 +1659,7 @@ class DrishtiDashboard {
 						self.expandedZones = {};
 						self.selectedMisZones = [];
 						self.searchTerm = "";
+						self.checkedRows = {};
 						dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
 						self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
 					});
@@ -1730,12 +1732,21 @@ class DrishtiDashboard {
 
 					// Build dynamic header with product columns
 					let headerHtml = `
+						<style>
+							.gl-wise-table tbody tr:not(.grand-total-row):hover { background-color: #e8f4f8 !important; cursor: pointer; }
+							.gl-wise-table tbody tr.checked-row { background-color: #c8e6c9 !important; }
+							.gl-wise-table tbody tr.checked-row:hover { background-color: #a5d6a7 !important; }
+							.gl-wise-table .row-checkbox { width: 32px; text-align: center; vertical-align: middle; }
+							.gl-wise-table .row-checkbox input { cursor: pointer; width: 15px; height: 15px; accent-color: #417d81; }
+							.gl-wise-scroll { overflow-x: auto; max-height: 550px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
+						</style>
 						<div class="gl-wise-scroll">
 						<table class="table table-bordered gl-wise-table">
 							<thead>
 								<tr class="zone-table-header">
+									<th rowspan="2" style="width:32px;" class="row-checkbox"></th>
 									<th rowspan="2" style="width:60px;">SR</th>
-									<th rowspan="2">ZONE / REGION / DISTRICT / SOL</th>
+									<th rowspan="2" style="text-align: left;">Z/R/DIS/SOL</th>
 					`;
 
 					allProducts.forEach((product) => {
@@ -1766,10 +1777,12 @@ class DrishtiDashboard {
 						if (item.type === "zone") {
 							const isExpanded = self.expandedZones[item.path] || false;
 
+							const checked = self.checkedRows[item.path] ? ' checked' : '';
 							html += `
-								<tr class="zone-total-row gl-total-row" data-path="${item.path}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">
+								<tr class="zone-total-row gl-total-row${checked ? ' checked-row' : ''}" data-path="${item.path}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">
+									<td class="row-checkbox"><input type="checkbox" class="gl-row-checkbox" data-path="${item.path}"${checked}></td>
 									<td>${sr++}</td>
-									<td style="padding-left: 8px;">
+									<td style="padding-left: 8px; text-align: left;">
 										<span class="gl-toggle" style="margin-right: 6px; display: inline-block; width: 12px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
 										<strong>${item.name}</strong>
 									</td>
@@ -1792,10 +1805,12 @@ class DrishtiDashboard {
 							const isZoneExpanded = self.expandedZones[item.parent_zone] || false;
 							const isExpanded = self.expandedZones[item.path] || false;
 
+							const checked = self.checkedRows[item.path] ? ' checked' : '';
 							html += `
-								<tr class="region-total-row gl-total-row" data-path="${item.path}" style="display: ${isZoneExpanded ? "table-row" : "none"}; background-color: #f8fafc; font-weight: bold; cursor: pointer; border-left: 4px solid #417d81;">
+								<tr class="region-total-row gl-total-row${checked ? ' checked-row' : ''}" data-path="${item.path}" style="display: ${isZoneExpanded ? "table-row" : "none"}; background-color: #f8fafc; font-weight: bold; cursor: pointer; border-left: 4px solid #417d81;">
+									<td class="row-checkbox"><input type="checkbox" class="gl-row-checkbox" data-path="${item.path}"${checked}></td>
 									<td></td>
-									<td style="padding-left: 28px; color: #097c80;">
+									<td style="padding-left: 8px; color: #097c80; text-align: left;">
 										<span class="gl-toggle" style="margin-right: 6px; display: inline-block; width: 12px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
 										<strong>${item.name}</strong>
 									</td>
@@ -1817,10 +1832,12 @@ class DrishtiDashboard {
 							const isExpanded = self.expandedZones[item.path] || false;
 							const isVisible = isZoneExpanded && isRegionExpanded;
 
+							const checked = self.checkedRows[item.path] ? ' checked' : '';
 							html += `
-								<tr class="district-total-row gl-total-row" data-path="${item.path}" style="display: ${isVisible ? "table-row" : "none"}; background-color: #fafafa; font-weight: bold; cursor: pointer; border-left: 6px solid #64748b;">
+								<tr class="district-total-row gl-total-row${checked ? ' checked-row' : ''}" data-path="${item.path}" style="display: ${isVisible ? "table-row" : "none"}; background-color: #fafafa; font-weight: bold; cursor: pointer; border-left: 6px solid #64748b;">
+									<td class="row-checkbox"><input type="checkbox" class="gl-row-checkbox" data-path="${item.path}"${checked}></td>
 									<td></td>
-									<td style="padding-left: 48px; color: #1e293b;">
+									<td style="padding-left: 8px; color: #1e293b; text-align: left;">
 										<span class="gl-toggle" style="margin-right: 6px; display: inline-block; width: 12px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
 										<strong>${item.name}</strong>
 									</td>
@@ -1842,10 +1859,12 @@ class DrishtiDashboard {
 							const isDistrictExpanded = self.expandedZones[item.parent_district] || false;
 							const isVisible = isZoneExpanded && isRegionExpanded && isDistrictExpanded;
 
+							const checked = self.checkedRows[item.path] ? ' checked' : '';
 							html += `
-								<tr class="sol-detail-row" style="display: ${isVisible ? "table-row" : "none"}; background: #ffffff; border-left: 8px solid #cbd5e1;">
+								<tr class="sol-detail-row${checked ? ' checked-row' : ''}" style="display: ${isVisible ? "table-row" : "none"}; background: #ffffff; border-left: 8px solid #cbd5e1;">
+									<td class="row-checkbox"><input type="checkbox" class="gl-row-checkbox" data-path="${item.path}"${checked}></td>
 									<td></td>
-									<td style="padding-left: 68px; color: #475569; font-weight: normal;">
+									<td style="padding-left: 8px; color: #475569; font-weight: normal; text-align: left;">
 										${item.name}
 									</td>
 							`;
@@ -1868,6 +1887,7 @@ class DrishtiDashboard {
 						</tbody>
 						<tfoot style="background-color: #264a4d; color: #ffffff; font-weight: bold; border-top: 2px solid #3d7579;">
 							<tr style="height: 40px;">
+								<td></td>
 								<td colspan="2" style="text-align: left; padding-left: 12px; text-transform: uppercase; letter-spacing: 1px;">TOTAL</td>
 					`;
 
@@ -1885,8 +1905,22 @@ class DrishtiDashboard {
 
 					tableContainer.html(html);
 
-					// Attach Expand/Collapse Handlers
-					tableContainer.find(".gl-total-row").off("click").on("click", function () {
+					// Attach Checkbox Handlers
+					tableContainer.find(".gl-row-checkbox").off("change").on("change", function (e) {
+						e.stopPropagation();
+						const path = $(this).data("path");
+						const checked = $(this).prop("checked");
+						if (checked) {
+							self.checkedRows[path] = true;
+							$(this).closest("tr").addClass("checked-row");
+						} else {
+							delete self.checkedRows[path];
+							$(this).closest("tr").removeClass("checked-row");
+						}
+					});
+					// Attach Expand/Collapse Handlers (skip if checkbox clicked)
+					tableContainer.find(".gl-total-row").off("click").on("click", function (e) {
+						if ($(e.target).is("input[type=checkbox]")) return;
 						const path = $(this).data("path");
 						self.expandedZones[path] = !self.expandedZones[path];
 						self.renderGLWiseTable(tableContainer, dashboardInstance);
