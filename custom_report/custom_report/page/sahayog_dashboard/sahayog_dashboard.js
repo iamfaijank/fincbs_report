@@ -180,6 +180,8 @@ class DrishtiDashboard {
 			selectedMonth: null,
 			drillDownActive: false,
 			expandedZones: {}, // Track expanded/collapsed zones
+			expandedProductRows: {},
+			checkedProductRows: {},
 			selectedSegment: "all",
 			dashboardMode: "drishti",
 			selectedMisReport: "rd_smbg_pending",
@@ -1999,6 +2001,8 @@ class DrishtiDashboard {
 
 		// Clear expanded/collapsed state
 		this.state.expandedZones = {};
+		this.state.expandedProductRows = {};
+		this.state.checkedProductRows = {};
 
 		// Clear MIS report caches
 		this.misReportsList.forEach((report) => {
@@ -2601,6 +2605,14 @@ class DrishtiDashboard {
 				text-align: center;
 				vertical-align: middle;
 				background: #f8f9fa;
+				position: sticky;
+				top: 0;
+				z-index: 2;
+			}
+			.product-wise-table thead, .gl-wise-table thead {
+				position: sticky;
+				top: 0;
+				z-index: 2;
 			}
 			.product-wise-table td, .gl-wise-table td {
 				text-align: right;
@@ -5128,13 +5140,20 @@ class DrishtiDashboard {
 			allProducts.push("SHARE");
 		}
 
-		// Build dynamic header with product columns
 		let headerHtml = `
+			<style>
+				.product-wise-table tbody tr:hover { background-color: #e8f4f8 !important; cursor: pointer; }
+				.product-wise-table tbody tr.checked-row { background-color: #c8e6c9 !important; }
+				.product-wise-table tbody tr.checked-row:hover { background-color: #a5d6a7 !important; }
+				.product-wise-table .row-checkbox { width: 32px; text-align: center; vertical-align: middle; }
+				.product-wise-table .row-checkbox input { cursor: pointer; width: 15px; height: 15px; accent-color: #417d81; }
+			</style>
 			<table class="table table-bordered product-wise-table">
 				<thead>
 					<tr class="zone-table-header">
+						<th rowspan="2" style="width:32px;" class="row-checkbox"></th>
 						<th rowspan="2" style="width:60px;">SR</th>
-						<th rowspan="2">ZONE/REGION</th>
+						<th rowspan="2" style="text-align: left;">Z/R/DIS/SOL</th>
 		`;
 
 		allProducts.forEach((product) => {
@@ -5151,81 +5170,104 @@ class DrishtiDashboard {
 		let html = headerHtml;
 
 		let sr = 1;
-		let zoneTotalAmount = 0;
-		let zoneTotalCount = 0;
+		let grandTotal = 0;
 		let productTotals = {};
 
-		// Initialize product totals
 		allProducts.forEach((product) => {
 			productTotals[product] = 0;
 		});
 
 		productData.forEach((item) => {
-			if (item.is_group) {
-				const isExpanded = this.state.expandedZones[item.name] || false;
-				const products = item.products || {};
+			const products = item.products || {};
+			const isExpanded = this.state.expandedProductRows[item.path] || false;
+			const checked = this.state.checkedProductRows && this.state.checkedProductRows[item.path] ? ' checked' : '';
+			const checkedClass = checked ? ' checked-row' : '';
 
+			if (item.type === "zone") {
 				html += `
-					<tr class="zone-total-row product-total-row" data-zone="${item.name}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">
+					<tr class="zone-total-row product-total-row${checkedClass}" data-path="${item.path}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">
+						<td class="row-checkbox"><input type="checkbox" class="product-row-checkbox" data-path="${item.path}"${checked}></td>
 						<td>${sr++}</td>
-						<td>
-							<span class="product-toggle">${isExpanded ? "▼" : "▶"}</span>
+						<td style="text-align: left; padding-left: 8px;">
+							<span class="product-toggle" style="margin-right: 6px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
 							<strong>${item.name}</strong>
 						</td>
 				`;
-
-				// Add a column for each product (zone totals) and accumulate totals
 				allProducts.forEach((product) => {
 					const amount = products[product] || 0;
 					productTotals[product] += amount;
 					html += `<td>${this.formatCurrency(amount)}</td>`;
 				});
-
+				html += `<td>${this.formatCurrency(item.amount)}</td></tr>`;
+				grandTotal += item.amount;
+			} else if (item.type === "region") {
+				const parentExpanded = this.state.expandedProductRows[item.parent_zone] || false;
+				const show = parentExpanded;
 				html += `
-						<td>${this.formatCurrency(item.amount)}</td>
-					</tr>
-				`;
-
-				zoneTotalAmount += item.amount;
-				zoneTotalCount += item.count;
-			} else {
-				const isExpanded = this.state.expandedZones[item.parent] || false;
-				const products = item.products || {};
-
-				html += `
-					<tr class="region-detail-row product-detail-row" data-parent-zone="${item.parent}" data-region="${item.name}" style="display: ${isExpanded ? "table-row" : "none"}; cursor: pointer; background: #ffffff; border-left: 4px solid #417d81;">
+					<tr class="product-detail-row${checkedClass}" data-path="${item.path}" data-parent="${item.parent_zone}" style="display: ${show ? "table-row" : "none"}; background-color: #f8fafc; font-weight: bold; cursor: pointer; border-left: 4px solid #417d81;">
+						<td class="row-checkbox"><input type="checkbox" class="product-row-checkbox" data-path="${item.path}"${checked}></td>
 						<td></td>
-						<td style="padding-left: 40px; color: #097c80; font-weight: 500;">${item.name}</td>
+						<td style="text-align: left; padding-left: 28px; color: #097c80;">
+							<span class="product-toggle" style="margin-right: 6px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
+							<strong>${item.name}</strong>
+						</td>
 				`;
-
-				// Add a column for each product
 				allProducts.forEach((product) => {
 					const amount = products[product] || 0;
 					html += `<td>${this.formatCurrency(amount)}</td>`;
 				});
-
+				html += `<td>${this.formatCurrency(item.amount)}</td></tr>`;
+			} else if (item.type === "district") {
+				const zoneExp = this.state.expandedProductRows[item.parent_zone] || false;
+				const regionExp = this.state.expandedProductRows[item.parent_region] || false;
+				const show = zoneExp && regionExp;
 				html += `
-						<td>${this.formatCurrency(item.amount)}</td>
-					</tr>
+					<tr class="product-detail-row${checkedClass}" data-path="${item.path}" data-parent="${item.parent_region}" style="display: ${show ? "table-row" : "none"}; background-color: #fafafa; font-weight: bold; cursor: pointer; border-left: 6px solid #64748b;">
+						<td class="row-checkbox"><input type="checkbox" class="product-row-checkbox" data-path="${item.path}"${checked}></td>
+						<td></td>
+						<td style="text-align: left; padding-left: 48px; color: #1e293b;">
+							<span class="product-toggle" style="margin-right: 6px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
+							<strong>${item.name}</strong>
+						</td>
 				`;
+				allProducts.forEach((product) => {
+					const amount = products[product] || 0;
+					html += `<td>${this.formatCurrency(amount)}</td>`;
+				});
+				html += `<td>${this.formatCurrency(item.amount)}</td></tr>`;
+			} else if (item.type === "sol") {
+				const zoneExp = this.state.expandedProductRows[item.parent_zone] || false;
+				const regionExp = this.state.expandedProductRows[item.parent_region] || false;
+				const districtExp = this.state.expandedProductRows[item.parent_district] || false;
+				const show = zoneExp && regionExp && districtExp;
+				html += `
+					<tr class="product-detail-row${checkedClass}" style="display: ${show ? "table-row" : "none"}; background: #ffffff; border-left: 8px solid #cbd5e1;">
+						<td class="row-checkbox"><input type="checkbox" class="product-row-checkbox" data-path="${item.path}"${checked}></td>
+						<td></td>
+						<td style="text-align: left; padding-left: 68px; color: #475569; font-weight: normal;">${item.name}</td>
+				`;
+				allProducts.forEach((product) => {
+					const amount = products[product] || 0;
+					html += `<td>${this.formatCurrency(amount)}</td>`;
+				});
+				html += `<td>${this.formatCurrency(item.amount)}</td></tr>`;
 			}
 		});
 
-		// Grand Total Row
 		html += `
 			</tbody>
 			<tfoot style="background-color: #264a4d; color: #ffffff; font-weight: bold; border-top: 2px solid #3d7579;">
 				<tr style="height: 40px;">
+					<td></td>
 					<td colspan="2" style="text-align: left; padding-left: 12px; text-transform: uppercase; letter-spacing: 1px;">TOTAL</td>
 		`;
 
-		// Add product-wise totals for each product column
 		allProducts.forEach((product) => {
 			html += `<td>${this.formatCurrency(productTotals[product])}</td>`;
 		});
 
 		html += `
-					<td>${this.formatCurrency(zoneTotalAmount)}</td>
+					<td>${this.formatCurrency(grandTotal)}</td>
 				</tr>
 			</tfoot>
 		</table>`;
@@ -5236,14 +5278,30 @@ class DrishtiDashboard {
 	attachProductExpandHandlers() {
 		const self = this;
 
-		// Handle Zone Expand/Collapse
+		this.page.main.find(".product-row-checkbox").off("change").on("change", function (e) {
+			e.stopPropagation();
+			const path = $(this).data("path");
+			const checked = $(this).prop("checked");
+			if (!self.state.checkedProductRows) self.state.checkedProductRows = {};
+			if (checked) {
+				self.state.checkedProductRows[path] = true;
+				$(this).closest("tr").addClass("checked-row");
+			} else {
+				delete self.state.checkedProductRows[path];
+				$(this).closest("tr").removeClass("checked-row");
+			}
+		});
+
 		this.page.main
-			.find(".product-total-row")
+			.find(".product-wise-table .product-total-row, .product-wise-table .product-detail-row")
 			.off("click")
-			.on("click", function () {
-				const zoneName = $(this).data("zone");
-				self.state.expandedZones[zoneName] = !self.state.expandedZones[zoneName];
-				self.render();
+			.on("click", function (e) {
+				if ($(e.target).is("input[type=checkbox]")) return;
+				const path = $(this).data("path");
+				if (path) {
+					self.state.expandedProductRows[path] = !self.state.expandedProductRows[path];
+					self.render();
+				}
 			});
 	}
 

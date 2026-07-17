@@ -580,88 +580,149 @@ def build_zone_wise(branch_data, targets_map, target_type):
 
 
 def build_product_wise(branch_data, targets_map, target_type, selected_date=None):
-    # Determine the effective date: use selected_date or default to the last available date
     if not selected_date:
         selected_date = frappe.db.get_value("Product Wise Report", {}, "date", order_by="date desc")
 
     if not selected_date:
         return [], []
 
-    # 1. Server-side query with GROUP BY for performance - Filtered by date
-    data = frappe.db.sql("""
+    raw_data = frappe.db.sql("""
         SELECT
-            zone,
-            region,
-            COUNT(*) as record_count,
-            SUM(amount) as total_amount
-        FROM `tabProduct Wise Report`
-        WHERE zone IS NOT NULL AND region IS NOT NULL AND zone != '' AND region != ''
-        AND date = %s
-        GROUP BY zone, region
-        ORDER BY zone, region
+            COALESCE(NULLIF(b.zone, ''), p.zone) as zone,
+            COALESCE(NULLIF(b.region, ''), p.region) as region,
+            COALESCE(b.district, 'Unknown District') as district,
+            p.sol_id,
+            COALESCE(b.branch, '') as branch_name,
+            p.product,
+            SUM(p.amount) as amount
+        FROM `tabProduct Wise Report` p
+        LEFT JOIN `tabSahayog Branch` b ON p.sol_id = b.name
+        WHERE p.date = %s
+          AND COALESCE(NULLIF(b.zone, ''), p.zone) IS NOT NULL
+          AND COALESCE(NULLIF(b.zone, ''), p.zone) != ''
+          AND COALESCE(NULLIF(b.region, ''), p.region) IS NOT NULL
+          AND COALESCE(NULLIF(b.region, ''), p.region) != ''
+        GROUP BY zone, region, district, p.sol_id, branch_name, p.product
+        ORDER BY zone, region, district, p.sol_id
     """, (selected_date,), as_dict=True)
 
-    # Fetch individual product details for each zone/region - Filtered by date
-    product_details = frappe.db.sql("""
-        SELECT
-            zone,
-            region,
-            product,
-            SUM(amount) as amount
-        FROM `tabProduct Wise Report`
-        WHERE zone IS NOT NULL AND region IS NOT NULL AND zone != '' AND region != ''
-        AND date = %s
-        GROUP BY zone, region, product
-        ORDER BY zone, region, amount DESC
-    """, (selected_date,), as_dict=True)
-
-    if not data:
+    if not raw_data:
         return [], []
 
-    # Get all unique products for dynamic column generation
-    all_products = sorted(set(row.product for row in product_details))
+    all_products = sorted(set(row.product for row in raw_data))
 
-    # Build a lookup for product details: {(zone, region): {product: amount, ...}}
-    product_lookup = defaultdict(dict)
-    for row in product_details:
-        key = (row.zone, row.region)
-        product_lookup[key][row.product] = row.amount
+    hierarchy = {}
+    for row in raw_data:
+        z = row.zone
+        r = row.region
+        d = row.district
+        s = row.sol_id
+        bname = row.branch_name
+        prod = row.product
+        amt = row.amount or 0.0
 
-    # Calculate zone-wise product totals
-    zone_product_totals = defaultdict(lambda: defaultdict(float))
-    for row in product_details:
-        zone_product_totals[row.zone][row.product] += row.amount
+        if z not in hierarchy:
+            hierarchy[z] = {}
+        if r not in hierarchy[z]:
+            hierarchy[z][r] = {}
+        if d not in hierarchy[z][r]:
+            hierarchy[z][r][d] = {}
+        if s not in hierarchy[z][r][d]:
+            hierarchy[z][r][d][s] = {
+                "branch_name": bname,
+                "products": defaultdict(float),
+                "total_amount": 0.0
+            }
+        hierarchy[z][r][d][s]["products"][prod] += amt
+        hierarchy[z][r][d][s]["total_amount"] += amt
 
-    # 2. Process into a hierarchical structure for the frontend
-    zone_summary = defaultdict(lambda: {'count': 0, 'amount': 0.0})
-    for row in data:
-        zone_summary[row.zone]['count'] += row.record_count
-        zone_summary[row.zone]['amount'] += (row.total_amount or 0)
-
-    # 3. Build the final flat list with parent (Zone) and child (Region) rows
     result = []
-    for zone, summary in sorted(zone_summary.items()):
-        # Add Zone Group Row with product totals
-        result.append({
-            "name": zone,
-            "parent": None,
-            "count": summary['count'],
-            "amount": summary['amount'],
-            "is_group": True,
-            "products": dict(zone_product_totals.get(zone, {}))  # Product-wise totals for zone
-        })
-        # Add corresponding Region Rows
-        for row in data:
-            if row.zone == zone:
-                result.append({
-                    "name": row.region,
-                    "parent": zone,
-                    "count": row.record_count,
-                    "amount": row.total_amount or 0,
-                    "is_group": False,
-                    "products": product_lookup.get((zone, row.region), {})
+    for zone in sorted(hierarchy.keys()):
+        zone_products = defaultdict(float)
+        zone_amount = 0.0
+        zone_rows = []
+
+        for region in sorted(hierarchy[zone].keys()):
+            region_products = defaultdict(float)
+            region_amount = 0.0
+            region_rows = []
+
+            for district in sorted(hierarchy[zone][region].keys()):
+                district_products = defaultdict(float)
+                district_amount = 0.0
+                district_rows = []
+
+                for sol_id in sorted(hierarchy[zone][region][district].keys()):
+                    sol_info = hierarchy[zone][region][district][sol_id]
+                    sol_amt = sol_info["total_amount"]
+                    sol_prods = sol_info["products"]
+
+                    district_amount += sol_amt
+                    for prod, amt in sol_prods.items():
+                        district_products[prod] += amt
+
+                    sol_display_name = f"{sol_id} - {sol_info['branch_name']}" if sol_info['branch_name'] else sol_id
+                    district_rows.append({
+                        "type": "sol",
+                        "name": sol_display_name,
+                        "path": f"{zone}/{region}/{district}/{sol_id}",
+                        "parent_district": f"{zone}/{region}/{district}",
+                        "parent_region": f"{zone}/{region}",
+                        "parent_zone": zone,
+                        "amount": sol_amt,
+                        "products": dict(sol_prods),
+                        "is_group": False
+                    })
+
+                region_amount += district_amount
+                for prod, amt in district_products.items():
+                    region_products[prod] += amt
+
+                region_rows.append({
+                    "type": "district",
+                    "name": district,
+                    "path": f"{zone}/{region}/{district}",
+                    "parent_region": f"{zone}/{region}",
+                    "parent_zone": zone,
+                    "amount": district_amount,
+                    "products": dict(district_products),
+                    "is_group": True,
+                    "children": district_rows
                 })
-    
+
+            zone_amount += region_amount
+            for prod, amt in region_products.items():
+                zone_products[prod] += amt
+
+            zone_rows.append({
+                "type": "region",
+                "name": region,
+                "path": f"{zone}/{region}",
+                "parent_zone": zone,
+                "amount": region_amount,
+                "products": dict(region_products),
+                "is_group": True,
+                "children": region_rows
+            })
+
+        result.append({
+            "type": "zone",
+            "name": zone,
+            "path": zone,
+            "parent_zone": None,
+            "amount": zone_amount,
+            "products": dict(zone_products),
+            "is_group": True
+        })
+
+        for r_row in zone_rows:
+            d_rows = r_row.pop("children")
+            result.append(r_row)
+            for d_row in d_rows:
+                s_rows = d_row.pop("children")
+                result.append(d_row)
+                result.extend(s_rows)
+
     return result, all_products
 
 
