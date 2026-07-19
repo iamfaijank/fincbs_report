@@ -748,16 +748,6 @@ def daily_sync_cron():
     today_date = getdate(today())
     yesterday = add_days(today_date, -1)
     
-    # 0 = Monday, ..., 6 = Sunday
-    if yesterday.weekday() == 6:
-        # Yesterday was Sunday (meaning today is Monday).
-        # Saturday's data was already synced on Sunday morning.
-        # So we skip syncing Sunday's data.
-        msg = f"Skipping sync for Sunday ({yesterday.strftime('%d-%m-%Y')}) on Monday morning as Saturday data was already synced."
-        frappe.logger("scheduler").info(f"Daily Sync Cron: {msg}")
-        send_sync_status_email(yesterday, "Skipped", msg)
-        return
-        
     frappe.logger("scheduler").info(f"Daily Sync Cron: Triggering sync for {yesterday} at 8:00 AM.")
     
     try:
