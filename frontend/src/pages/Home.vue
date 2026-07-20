@@ -16,13 +16,6 @@ const formattedDate = new Date().toLocaleDateString('en-US', {
   <div style="display:flex;flex-direction:column;height:100%;">
     <!-- Header -->
     <header class="app-header">
-      <button class="collapse-btn" @click="toggleSidebar" title="Toggle Sidebar">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-          <path d="M9 3v18M16 15l-3-3 3-3"></path>
-        </svg>
-      </button>
-
       <div class="header-title-group">
         <div class="header-title">DRISHTI ANALYTICS</div>
         <div class="header-breadcrumb">Dashboard <span>›</span> Zone Wise</div>

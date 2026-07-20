@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { Select, DatePicker } from 'frappe-ui'
+import { Select, DatePicker, frappeRequest } from 'frappe-ui'
 import { useSidebar } from '@/composables/useSidebar.js'
 
 const { collapsed, toggleSidebar } = useSidebar()
@@ -55,23 +55,19 @@ const monthOptions = [
   { label: 'March', value: '3' },
 ]
 
-const zoneFilterOptions = [
-  'Z-1', 'Z-2', 'Z-3', 'Z-4', 'Z-5', 'Z-6',
-]
+const zoneFilterOptions = ref<{ name: string; label: string }[]>([])
 
-const regionFilterOptions = [
-  'R1', 'R2', 'R3', 'R4',
-]
+const regionFilterOptions = ref<{ name: string; label: string }[]>([])
 
-const districtOptions = [
+const districtOptions = ref([
   'Mumbai', 'Delhi', 'Bengaluru', 'Kolkata',
   'Chennai', 'Hyderabad', 'Pune', 'Ahmedabad',
-]
+])
 
-const branchOptions = [
+const branchOptions = ref([
   { label: 'ABD (1001)', value: 'abd1001' },
   { label: 'JHD (1002)', value: 'jhd1002' },
-]
+])
 
 const financialYearOptions = [
   { label: 'FY 26–27', value: 'fy2627' },
@@ -90,10 +86,10 @@ const segmentOptions = [
 // District helpers
 const filteredDistricts = computed(() => {
   const q = districtSearch.value.toLowerCase()
-  return districtOptions.filter(d => d.toLowerCase().includes(q))
+  return districtOptions.value.filter(d => d.toLowerCase().includes(q))
 })
 
-const allDistrictsSelected = computed(() => districtFilter.value.length === districtOptions.length)
+const allDistrictsSelected = computed(() => districtFilter.value.length === districtOptions.value.length)
 
 function toggleDistrict(d: string) {
   const idx = districtFilter.value.indexOf(d)
@@ -108,7 +104,7 @@ function toggleAllDistricts() {
   if (allDistrictsSelected.value) {
     districtFilter.value = []
   } else {
-    districtFilter.value = [...districtOptions]
+    districtFilter.value = [...districtOptions.value]
   }
 }
 
@@ -119,14 +115,14 @@ const districtLabel = computed(() => {
 })
 
 // Zone helpers
-const allZonesSelected = computed(() => zoneFilter.value.length === zoneFilterOptions.length)
+const allZonesSelected = computed(() => zoneFilter.value.length === zoneFilterOptions.value.length)
 
-function toggleZone(z: string) {
-  const idx = zoneFilter.value.indexOf(z)
+function toggleZone(name: string) {
+  const idx = zoneFilter.value.indexOf(name)
   if (idx >= 0) {
     zoneFilter.value.splice(idx, 1)
   } else {
-    zoneFilter.value.push(z)
+    zoneFilter.value.push(name)
   }
 }
 
@@ -134,19 +130,19 @@ function toggleAllZones() {
   if (allZonesSelected.value) {
     zoneFilter.value = []
   } else {
-    zoneFilter.value = [...zoneFilterOptions]
+    zoneFilter.value = zoneFilterOptions.value.map(z => z.name)
   }
 }
 
 // Region helpers
-const allRegionsSelected = computed(() => regionFilter.value.length === regionFilterOptions.length)
+const allRegionsSelected = computed(() => regionFilter.value.length === regionFilterOptions.value.length)
 
-function toggleRegion(r: string) {
-  const idx = regionFilter.value.indexOf(r)
+function toggleRegion(name: string) {
+  const idx = regionFilter.value.indexOf(name)
   if (idx >= 0) {
     regionFilter.value.splice(idx, 1)
   } else {
-    regionFilter.value.push(r)
+    regionFilter.value.push(name)
   }
 }
 
@@ -154,17 +150,17 @@ function toggleAllRegions() {
   if (allRegionsSelected.value) {
     regionFilter.value = []
   } else {
-    regionFilter.value = [...regionFilterOptions]
+    regionFilter.value = regionFilterOptions.value.map(r => r.name)
   }
 }
 
 // Branch helpers
 const filteredBranches = computed(() => {
   const q = branchSearch.value.toLowerCase()
-  return branchOptions.filter(b => b.label.toLowerCase().includes(q))
+  return branchOptions.value.filter(b => b.label.toLowerCase().includes(q))
 })
 
-const allBranchesSelected = computed(() => branchFilter.value.length === branchOptions.length)
+const allBranchesSelected = computed(() => branchFilter.value.length === branchOptions.value.length)
 
 function toggleBranch(val: string) {
   const idx = branchFilter.value.indexOf(val)
@@ -179,14 +175,14 @@ function toggleAllBranches() {
   if (allBranchesSelected.value) {
     branchFilter.value = []
   } else {
-    branchFilter.value = branchOptions.map(b => b.value)
+    branchFilter.value = branchOptions.value.map(b => b.value)
   }
 }
 
 const branchLabel = computed(() => {
   if (branchFilter.value.length === 0) return 'No Branches Selected'
   if (allBranchesSelected.value) return 'All Branches'
-  const selected = branchOptions.filter(b => branchFilter.value.includes(b.value))
+  const selected = branchOptions.value.filter(b => branchFilter.value.includes(b.value))
   return `${selected.length} Branches Selected`
 })
 
@@ -210,14 +206,79 @@ function toggleTheme() {
   document.documentElement.setAttribute('data-theme', theme)
 }
 
-onMounted(() => {
+function mapZoneName(name: string): string {
+  return name.replace(/^Zone\s*-?\s*/i, 'Z-')
+}
+
+function mapRegionName(name: string): string {
+  return name.replace(/^Region\s*-?\s*/i, 'R-')
+}
+
+onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
-  zoneFilter.value = [...zoneFilterOptions]
-  regionFilter.value = [...regionFilterOptions]
-  districtFilter.value = [...districtOptions]
-  branchFilter.value = branchOptions.map(b => b.value)
   isDark.value = localStorage.getItem('theme') === 'dark'
   document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light')
+
+  let allZones: string[] = []
+  let allRegions: string[] = []
+  let allDistricts: string[] = []
+  let allSolIds: string[] = []
+
+  try {
+    const opts = await frappeRequest({
+      url: '/api/method/custom_report.www.drishti.get_filter_options',
+      method: 'POST',
+    }) || {}
+    allZones = opts.zones || []
+    allRegions = opts.regions || []
+    allDistricts = opts.districts || []
+    allSolIds = opts.sol_ids || []
+  } catch (e) {
+    console.error('Failed to load filter options', e)
+  }
+
+  zoneFilterOptions.value = allZones.map(z => ({ name: z, label: mapZoneName(z) }))
+  regionFilterOptions.value = allRegions.map(r => ({ name: r, label: mapRegionName(r) }))
+  districtOptions.value = allDistricts.length ? allDistricts : ['Mumbai', 'Delhi', 'Bengaluru', 'Kolkata', 'Chennai', 'Hyderabad', 'Pune', 'Ahmedabad']
+  if (allSolIds.length) {
+    branchOptions.value = allSolIds.map(s => ({ label: s, value: s }))
+  }
+
+  try {
+    const pref = await frappeRequest({
+      url: '/api/method/custom_report.www.drishti.get_report_preference',
+      method: 'POST',
+    }) || {}
+
+    if (pref.zone && pref.zone.length) {
+      zoneFilter.value = pref.zone
+    } else {
+      zoneFilter.value = zoneFilterOptions.value.map(z => z.name)
+    }
+
+    if (pref.region && pref.region.length) {
+      regionFilter.value = pref.region
+    } else {
+      regionFilter.value = regionFilterOptions.value.map(r => r.name)
+    }
+
+    if (pref.district && pref.district.length) {
+      districtFilter.value = pref.district
+    } else {
+      districtFilter.value = [...districtOptions.value]
+    }
+
+    if (pref.sol_id && pref.sol_id.length) {
+      branchFilter.value = pref.sol_id
+    } else {
+      branchFilter.value = branchOptions.value.map(b => b.value)
+    }
+  } catch (e) {
+    zoneFilter.value = zoneFilterOptions.value.map(z => z.name)
+    regionFilter.value = regionFilterOptions.value.map(r => r.name)
+    districtFilter.value = [...districtOptions.value]
+    branchFilter.value = branchOptions.value.map(b => b.value)
+  }
 })
 
 watch(showDistrictDropdown, (val) => {
@@ -304,8 +365,8 @@ onUnmounted(() => {
         <div class="sb-label">Zone Filter</div>
         <div class="filter-chips">
           <div class="filter-chip" :class="{ active: allZonesSelected }" @click="toggleAllZones()">All</div>
-          <div v-for="z in zoneFilterOptions" :key="z" class="filter-chip" :class="{ active: zoneFilter.includes(z) }" @click="toggleZone(z)">
-            {{ z }}
+          <div v-for="z in zoneFilterOptions" :key="z.name" class="filter-chip" :class="{ active: zoneFilter.includes(z.name) }" @click="toggleZone(z.name)">
+            {{ z.label }}
           </div>
         </div>
       </div>
@@ -315,8 +376,8 @@ onUnmounted(() => {
         <div class="sb-label">Region Filter</div>
         <div class="filter-chips">
           <div class="filter-chip" :class="{ active: allRegionsSelected }" @click="toggleAllRegions()">All</div>
-          <div v-for="r in regionFilterOptions" :key="r" class="filter-chip" :class="{ active: regionFilter.includes(r) }" @click="toggleRegion(r)">
-            {{ r }}
+          <div v-for="r in regionFilterOptions" :key="r.name" class="filter-chip" :class="{ active: regionFilter.includes(r.name) }" @click="toggleRegion(r.name)">
+            {{ r.label }}
           </div>
         </div>
       </div>
