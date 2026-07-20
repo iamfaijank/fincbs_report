@@ -206,12 +206,20 @@ function toggleTheme() {
   document.documentElement.setAttribute('data-theme', theme)
 }
 
+function toInitials(name: string): string {
+  return name.split(/[\s_-]+/).filter(Boolean).map(w => w[0].toUpperCase()).join('')
+}
+
 function mapZoneName(name: string): string {
-  return name.replace(/^Zone\s*-?\s*/i, 'Z-')
+  const match = name.match(/^Zone\s*-?\s*(.+)/i)
+  if (match) return 'Z' + (match[1] ? '-' + match[1] : '')
+  return toInitials(name)
 }
 
 function mapRegionName(name: string): string {
-  return name.replace(/^Region\s*-?\s*/i, 'R-')
+  const match = name.match(/^Region\s*-?\s*(.+)/i)
+  if (match) return 'R' + (match[1] ? '-' + match[1] : '')
+  return toInitials(name)
 }
 
 onMounted(async () => {
