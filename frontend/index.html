@@ -22,7 +22,7 @@
 			window.csrf_token = "{{ csrf_token }}"
 			window.site_name = '{{ site_name }}'
 			if (!window.frappe) window.frappe = {}
-			frappe.boot = {{ boot }}
+			frappe.boot = {{ boot|safe }}
 		</script>
 
 		<script type="module" src="/src/main.js"></script>

@@ -1,20 +1,35 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { Select, DatePicker } from 'frappe-ui'
+import { useSidebar } from '@/composables/useSidebar.js'
 
-const collapsed = ref(false)
+const { collapsed, toggleSidebar } = useSidebar()
 const viewMode = ref('monthly')
 const targetType = ref('monthly')
 const numberFormat = ref('words')
 const financialYear = ref('')
 const asOfDate = ref('')
 const asOfMonth = ref('6')
-const zoneFilter = ref('all')
-const regionFilter = ref('all')
+const segmentSelect = ref('all')
+const isDark = ref(false)
+
+// Zone Filter
+const zoneFilter = ref<string[]>([])
+
+// Region Filter
+const regionFilter = ref<string[]>([])
+
+// District Filter
 const districtFilter = ref<string[]>([])
 const showDistrictDropdown = ref(false)
-const segmentSelect = ref('all')
-const pctRange = ref(150)
+const districtSearch = ref('')
+const districtInputRef = ref<HTMLInputElement | null>(null)
+
+// Branch Filter
+const branchFilter = ref<string[]>([])
+const showBranchDropdown = ref(false)
+const branchSearch = ref('')
+const branchInputRef = ref<HTMLInputElement | null>(null)
 
 const categories = ref([
   { name: 'Pinnacle', range: '>100%', color: '#4fffb0', count: 42, enabled: true },
@@ -41,26 +56,21 @@ const monthOptions = [
 ]
 
 const zoneFilterOptions = [
-  { label: 'All', value: 'all' },
-  { label: 'Z-1', value: 'z1' },
-  { label: 'Z-2', value: 'z2' },
-  { label: 'Z-3', value: 'z3' },
-  { label: 'Z-4', value: 'z4' },
-  { label: 'Z-5', value: 'z5' },
-  { label: 'Z-6', value: 'z6' },
+  'Z-1', 'Z-2', 'Z-3', 'Z-4', 'Z-5', 'Z-6',
 ]
 
 const regionFilterOptions = [
-  { label: 'All', value: 'all' },
-  { label: 'R1', value: 'r1' },
-  { label: 'R2', value: 'r2' },
-  { label: 'R3', value: 'r3' },
-  { label: 'R4', value: 'r4' },
+  'R1', 'R2', 'R3', 'R4',
 ]
 
 const districtOptions = [
   'Mumbai', 'Delhi', 'Bengaluru', 'Kolkata',
   'Chennai', 'Hyderabad', 'Pune', 'Ahmedabad',
+]
+
+const branchOptions = [
+  { label: 'ABD (1001)', value: 'abd1001' },
+  { label: 'JHD (1002)', value: 'jhd1002' },
 ]
 
 const financialYearOptions = [
@@ -76,6 +86,12 @@ const segmentOptions = [
   { label: 'Mid 25%', value: 'mid25' },
   { label: 'Bottom 25%', value: 'bottom25' },
 ]
+
+// District helpers
+const filteredDistricts = computed(() => {
+  const q = districtSearch.value.toLowerCase()
+  return districtOptions.filter(d => d.toLowerCase().includes(q))
+})
 
 const allDistrictsSelected = computed(() => districtFilter.value.length === districtOptions.length)
 
@@ -97,21 +113,119 @@ function toggleAllDistricts() {
 }
 
 const districtLabel = computed(() => {
-  if (allDistrictsSelected.value) return 'All Districts'
   if (districtFilter.value.length === 0) return 'No Districts Selected'
+  if (allDistrictsSelected.value) return 'All Districts'
   return `${districtFilter.value.length} Districts Selected`
 })
 
+// Zone helpers
+const allZonesSelected = computed(() => zoneFilter.value.length === zoneFilterOptions.length)
+
+function toggleZone(z: string) {
+  const idx = zoneFilter.value.indexOf(z)
+  if (idx >= 0) {
+    zoneFilter.value.splice(idx, 1)
+  } else {
+    zoneFilter.value.push(z)
+  }
+}
+
+function toggleAllZones() {
+  if (allZonesSelected.value) {
+    zoneFilter.value = []
+  } else {
+    zoneFilter.value = [...zoneFilterOptions]
+  }
+}
+
+// Region helpers
+const allRegionsSelected = computed(() => regionFilter.value.length === regionFilterOptions.length)
+
+function toggleRegion(r: string) {
+  const idx = regionFilter.value.indexOf(r)
+  if (idx >= 0) {
+    regionFilter.value.splice(idx, 1)
+  } else {
+    regionFilter.value.push(r)
+  }
+}
+
+function toggleAllRegions() {
+  if (allRegionsSelected.value) {
+    regionFilter.value = []
+  } else {
+    regionFilter.value = [...regionFilterOptions]
+  }
+}
+
+// Branch helpers
+const filteredBranches = computed(() => {
+  const q = branchSearch.value.toLowerCase()
+  return branchOptions.filter(b => b.label.toLowerCase().includes(q))
+})
+
+const allBranchesSelected = computed(() => branchFilter.value.length === branchOptions.length)
+
+function toggleBranch(val: string) {
+  const idx = branchFilter.value.indexOf(val)
+  if (idx >= 0) {
+    branchFilter.value.splice(idx, 1)
+  } else {
+    branchFilter.value.push(val)
+  }
+}
+
+function toggleAllBranches() {
+  if (allBranchesSelected.value) {
+    branchFilter.value = []
+  } else {
+    branchFilter.value = branchOptions.map(b => b.value)
+  }
+}
+
+const branchLabel = computed(() => {
+  if (branchFilter.value.length === 0) return 'No Branches Selected'
+  if (allBranchesSelected.value) return 'All Branches'
+  const selected = branchOptions.filter(b => branchFilter.value.includes(b.value))
+  return `${selected.length} Branches Selected`
+})
+
+// Click outside
 function handleClickOutside(e: MouseEvent) {
   const target = e.target as HTMLElement
-  if (!target.closest('.multiselect-dropdown')) {
+  if (!target.closest('.ms-dropdown-district')) {
     showDistrictDropdown.value = false
+    districtSearch.value = ''
   }
+  if (!target.closest('.ms-dropdown-branch')) {
+    showBranchDropdown.value = false
+    branchSearch.value = ''
+  }
+}
+
+function toggleTheme() {
+  isDark.value = !isDark.value
+  const theme = isDark.value ? 'dark' : 'light'
+  localStorage.setItem('theme', theme)
+  document.documentElement.setAttribute('data-theme', theme)
 }
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  zoneFilter.value = [...zoneFilterOptions]
+  regionFilter.value = [...regionFilterOptions]
   districtFilter.value = [...districtOptions]
+  branchFilter.value = branchOptions.map(b => b.value)
+  isDark.value = localStorage.getItem('theme') === 'dark'
+  document.documentElement.setAttribute('data-theme', isDark.value ? 'dark' : 'light')
+})
+
+watch(showDistrictDropdown, (val) => {
+  if (val) nextTick(() => districtInputRef.value?.focus())
+})
+
+watch(showBranchDropdown, (val) => {
+  if (val) nextTick(() => branchInputRef.value?.focus())
 })
 
 onUnmounted(() => {
@@ -122,32 +236,33 @@ onUnmounted(() => {
 <template>
   <aside
     class="sidebar flex h-screen flex-col border-r transition-all duration-300"
-    :class="collapsed ? 'w-0 border-transparent' : ''"
+    :class="collapsed ? 'sidebar-collapsed' : ''"
     :style="!collapsed ? { width: 'var(--sidebar-w)' } : {}"
   >
     <div class="sidebar-inner">
       <!-- Logo -->
-      <div class="sidebar-logo">
+      <div class="sidebar-logo" :class="{ 'logo-clickable': collapsed }" @click="collapsed ? toggleSidebar() : null" style="cursor: default;">
         <img src="/fav-icon.png" alt="Drishti" class="logo-mark" />
-        <div>
+        <div v-if="!collapsed">
           <div class="logo-text">DRISHTI</div>
           <div class="logo-sub">Performance Intelligence</div>
         </div>
+        <div style="flex:1" />
+        <button class="collapse-btn" @click="toggleSidebar" :title="collapsed ? 'Expand' : 'Collapse'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline v-if="!collapsed" points="11 17 6 12 11 7" />
+            <polyline v-else points="13 7 18 12 13 17" />
+          </svg>
+        </button>
       </div>
 
+      <template v-if="!collapsed">
       <!-- CONFIGURATION -->
       <div class="sb-section">
-        <!-- Financial Year -->
         <div class="sb-field">
           <div class="fg-title">Financial Year</div>
-          <Select
-            v-model="financialYear"
-            placeholder="Select FY"
-            :options="financialYearOptions"
-          />
+          <Select v-model="financialYear" placeholder="Select FY" :options="financialYearOptions" />
         </div>
-
-        <!-- View Mode -->
         <div class="sb-field">
           <div class="fg-title">View Mode</div>
           <div class="config-row">
@@ -156,8 +271,6 @@ onUnmounted(() => {
             <div class="config-btn" :class="{ active: viewMode === 'yearly' }" @click="viewMode = 'yearly'">Yearly</div>
           </div>
         </div>
-
-        <!-- Target Type -->
         <div class="sb-field">
           <div class="fg-title">Target Type</div>
           <div class="config-row">
@@ -166,8 +279,6 @@ onUnmounted(() => {
             <div class="config-btn" :class="{ active: targetType === 'yearly' }" @click="targetType = 'yearly'">Yearly</div>
           </div>
         </div>
-
-        <!-- Number Format -->
         <div class="sb-field">
           <div class="fg-title">Number Format</div>
           <div class="config-row">
@@ -175,8 +286,6 @@ onUnmounted(() => {
             <div class="config-btn" :class="{ active: numberFormat === 'number' }" @click="numberFormat = 'number'">Numeric</div>
           </div>
         </div>
-
-        <!-- As of Date & Month -->
         <div class="sb-field">
           <div class="fg-title">As of Date & Month</div>
           <div class="sb-row">
@@ -194,14 +303,9 @@ onUnmounted(() => {
       <div class="sb-section">
         <div class="sb-label">Zone Filter</div>
         <div class="filter-chips">
-          <div
-            v-for="opt in zoneFilterOptions"
-            :key="opt.value"
-            class="filter-chip"
-            :class="{ active: zoneFilter === opt.value }"
-            @click="zoneFilter = opt.value"
-          >
-            {{ opt.label }}
+          <div class="filter-chip" :class="{ active: allZonesSelected }" @click="toggleAllZones()">All</div>
+          <div v-for="z in zoneFilterOptions" :key="z" class="filter-chip" :class="{ active: zoneFilter.includes(z) }" @click="toggleZone(z)">
+            {{ z }}
           </div>
         </div>
       </div>
@@ -210,14 +314,9 @@ onUnmounted(() => {
       <div class="sb-section">
         <div class="sb-label">Region Filter</div>
         <div class="filter-chips">
-          <div
-            v-for="opt in regionFilterOptions"
-            :key="opt.value"
-            class="filter-chip"
-            :class="{ active: regionFilter === opt.value }"
-            @click="regionFilter = opt.value"
-          >
-            {{ opt.label }}
+          <div class="filter-chip" :class="{ active: allRegionsSelected }" @click="toggleAllRegions()">All</div>
+          <div v-for="r in regionFilterOptions" :key="r" class="filter-chip" :class="{ active: regionFilter.includes(r) }" @click="toggleRegion(r)">
+            {{ r }}
           </div>
         </div>
       </div>
@@ -225,24 +324,69 @@ onUnmounted(() => {
       <!-- DISTRICT FILTER -->
       <div class="sb-section">
         <div class="sb-label">District Filter</div>
-        <div class="multiselect-dropdown">
+        <div class="multiselect-dropdown ms-dropdown-district">
           <div class="multiselect-select" @click.stop="showDistrictDropdown = !showDistrictDropdown">
-            <span>{{ districtLabel }}</span>
+            <input
+              v-if="showDistrictDropdown"
+              ref="districtInputRef"
+              v-model="districtSearch"
+              type="text"
+              class="ms-inline-input"
+              placeholder="Search district…"
+              @click.stop
+            />
+            <span v-else>{{ districtLabel }}</span>
             <span class="z-arrow">▼</span>
           </div>
           <div class="multiselect-options" :class="{ open: showDistrictDropdown }">
-            <div class="multiselect-option">
+            <div class="ms-option">
               <label class="ms-label">
                 <input type="checkbox" :checked="allDistrictsSelected" @change="toggleAllDistricts" />
                 <span>Select All</span>
               </label>
             </div>
-            <div v-for="d in districtOptions" :key="d" class="multiselect-option">
+            <div v-for="d in filteredDistricts" :key="d" class="ms-option">
               <label class="ms-label">
                 <input type="checkbox" :value="d" :checked="districtFilter.includes(d)" @change="toggleDistrict(d)" />
                 <span>{{ d }}</span>
               </label>
             </div>
+            <div v-if="filteredDistricts.length === 0" class="ms-empty">No results found</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BRANCH FILTER -->
+      <div class="sb-section">
+        <div class="sb-label">Branch</div>
+        <div class="multiselect-dropdown ms-dropdown-branch">
+          <div class="multiselect-select" @click.stop="showBranchDropdown = !showBranchDropdown">
+            <input
+              v-if="showBranchDropdown"
+              ref="branchInputRef"
+              v-model="branchSearch"
+              type="text"
+              class="ms-inline-input"
+              placeholder="Search branch…"
+              @click.stop
+            />
+            <span v-else>{{ branchLabel }}</span>
+            <span class="z-arrow">▼</span>
+          </div>
+          <div class="multiselect-options" :class="{ open: showBranchDropdown }">
+            <div class="ms-option">
+              <label class="ms-label">
+                <input type="checkbox" :checked="allBranchesSelected" @change="toggleAllBranches" />
+                <span>Select All</span>
+              </label>
+            </div>
+            <div v-for="b in filteredBranches" :key="b.value" class="ms-option">
+              <label class="ms-label">
+                <input type="checkbox" :value="b.value" :checked="branchFilter.includes(b.value)" @change="toggleBranch(b.value)" />
+                <span>{{ b.label }}</span>
+              </label>
+            </div>
+            <div v-if="filteredBranches.length === 0" class="ms-empty">No results found</div>
           </div>
         </div>
       </div>
@@ -272,21 +416,29 @@ onUnmounted(() => {
         <Select v-model="segmentSelect" placeholder="All Segments" :options="segmentOptions" />
       </div>
 
-      <!-- ACH% RANGE -->
-      <div class="sb-section">
-        <div class="sb-label">Ach% Range</div>
-        <div class="range-wrap">
-          <input type="range" min="0" max="150" v-model.number="pctRange" />
-          <div class="range-vals">
-            <span>0%</span>
-            <span>{{ pctRange }}%</span>
-          </div>
-        </div>
-      </div>
+      </template>
 
       <!-- Footer -->
       <div class="sb-footer">
-        <button class="reset-btn" @click="$emit('reset')">↺ Reset All Filters</button>
+        <div class="sb-footer-row">
+          <button class="reset-btn" @click="$emit('reset')">↺ Reset All Filters</button>
+          <button class="theme-toggle-btn-sm" @click="toggleTheme" title="Toggle light/dark theme">
+            <svg v-if="isDark" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   </aside>

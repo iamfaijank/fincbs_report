@@ -1,4 +1,5 @@
 import frappe
+import json
 from frappe.boot import load_translations
 
 no_cache = 1
@@ -9,7 +10,7 @@ def get_context(context):
 	frappe.db.commit()  # nosempgrep
 	context = frappe._dict()
 	context.csrf_token = csrf_token
-	context.boot = get_boot()
+	context.boot = json.dumps(get_boot())
 	context.site_name = frappe.local.site
 	return context
 
