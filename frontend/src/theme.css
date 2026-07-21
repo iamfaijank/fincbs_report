@@ -102,6 +102,8 @@ html, body {
 }
 .sidebar-collapsed .sidebar-inner {
   width: 52px;
+  min-width: 52px;
+  max-width: 52px;
   overflow: hidden;
 }
 .sidebar-collapsed .logo-clickable {

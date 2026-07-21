@@ -307,7 +307,7 @@ onUnmounted(() => {
   <aside
     class="sidebar flex h-screen flex-col border-r transition-all duration-300"
     :class="collapsed ? 'sidebar-collapsed' : ''"
-    :style="!collapsed ? { width: 'var(--sidebar-w)' } : {}"
+    :style="{ width: collapsed ? '52px' : 'var(--sidebar-w)' }"
   >
     <div class="sidebar-inner">
       <!-- Logo -->
