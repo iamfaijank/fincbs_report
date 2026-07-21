@@ -138,6 +138,48 @@ const branchData = ref([
   { sr: 8, branch: 'KOL-1008', segments: 'SB/CA/ND', category: 'Accelerator', target: 1123400, julTarget: 374467, ach: 298765, achPercent: 79.2 },
 ])
 
+// Daily Account Opening data - hierarchical: Zone > Region > Branch
+const dailyAccountData = ref([
+  {
+    zone: 'Z-1',
+    regions: [
+      {
+        region: 'R-1',
+        branches: [
+          { branch: 'ABD-1001', ca: 120, sa: 850, tasc: 35, rd: 420, smbg: 180, dd: 95, fd: 65, totalOpened: 1765 },
+          { branch: 'ABD-1002', ca: 95, sa: 720, tasc: 28, rd: 380, smbg: 150, dd: 82, fd: 55, totalOpened: 1510 },
+        ]
+      },
+      {
+        region: 'R-2',
+        branches: [
+          { branch: 'JHD-1001', ca: 110, sa: 780, tasc: 32, rd: 395, smbg: 165, dd: 88, fd: 60, totalOpened: 1630 },
+          { branch: 'JHD-1002', ca: 88, sa: 690, tasc: 25, rd: 350, smbg: 140, dd: 75, fd: 48, totalOpened: 1416 },
+        ]
+      },
+    ]
+  },
+  {
+    zone: 'Z-2',
+    regions: [
+      {
+        region: 'R-3',
+        branches: [
+          { branch: 'PUN-1001', ca: 135, sa: 920, tasc: 40, rd: 450, smbg: 195, dd: 102, fd: 72, totalOpened: 1914 },
+          { branch: 'PUN-1002', ca: 105, sa: 810, tasc: 30, rd: 410, smbg: 170, dd: 90, fd: 58, totalOpened: 1673 },
+        ]
+      },
+      {
+        region: 'R-4',
+        branches: [
+          { branch: 'MUM-1001', ca: 150, sa: 980, tasc: 45, rd: 480, smbg: 210, dd: 110, fd: 78, totalOpened: 2053 },
+          { branch: 'MUM-1002', ca: 125, sa: 890, tasc: 38, rd: 435, smbg: 185, dd: 98, fd: 68, totalOpened: 1839 },
+        ]
+      },
+    ]
+  },
+])
+
 
 function toggleZone(zone) {
   if (expandedZones.value.has(zone)) {
@@ -276,6 +318,57 @@ function getAgentZoneTotals(zoneData) {
 function getAgentRegionTotals(regionData) {
   const t = { ssTarget: regionData.ssTarget, ssAchievement: regionData.ssAchievement, ssShortfall: regionData.ssShortfall, ssActive: regionData.ssActive, ssInactive: regionData.ssInactive, ddTarget: regionData.ddTarget, ddAchievement: regionData.ddAchievement, ddShortfall: regionData.ddShortfall, ddActive: regionData.ddActive, ddInactive: regionData.ddInactive }
   t.achPercent = t.ssTarget > 0 ? ((t.ssAchievement / t.ssTarget) * 100).toFixed(1) : 0
+  return t
+}
+
+// Daily Account Opening helpers
+const expandedDailyZones = ref(new Set())
+const expandedDailyRegions = ref(new Set())
+
+function toggleDailyZone(zone) {
+  if (expandedDailyZones.value.has(zone)) {
+    expandedDailyZones.value.delete(zone)
+  } else {
+    expandedDailyZones.value.add(zone)
+  }
+}
+
+function isDailyZoneExpanded(zone) {
+  return expandedDailyZones.value.has(zone)
+}
+
+function toggleDailyRegion(key) {
+  if (expandedDailyRegions.value.has(key)) {
+    expandedDailyRegions.value.delete(key)
+  } else {
+    expandedDailyRegions.value.add(key)
+  }
+}
+
+function isDailyRegionExpanded(key) {
+  return expandedDailyRegions.value.has(key)
+}
+
+function sumBranches(branches, field) {
+  return branches.reduce((a, b) => a + b[field], 0)
+}
+
+function getDailyRegionTotals(regionData) {
+  const b = regionData.branches
+  const ca = sumBranches(b, 'ca'), sa = sumBranches(b, 'sa'), tasc = sumBranches(b, 'tasc')
+  const rd = sumBranches(b, 'rd'), smbg = sumBranches(b, 'smbg'), dd = sumBranches(b, 'dd'), fd = sumBranches(b, 'fd')
+  return { ca, sa, tasc, rd, smbg, dd, fd, branches: b.length, caSaTasc: ca + sa + tasc, rdSmbgDdFd: rd + smbg + dd + fd, totalOpened: sumBranches(b, 'totalOpened') }
+}
+
+function getDailyZoneTotals(zoneData) {
+  const t = { ca: 0, sa: 0, tasc: 0, rd: 0, smbg: 0, dd: 0, fd: 0, branches: 0, totalOpened: 0 }
+  zoneData.regions.forEach(r => {
+    const rt = getDailyRegionTotals(r)
+    t.ca += rt.ca; t.sa += rt.sa; t.tasc += rt.tasc; t.rd += rt.rd; t.smbg += rt.smbg; t.dd += rt.dd; t.fd += rt.fd
+    t.branches += rt.branches; t.totalOpened += rt.totalOpened
+  })
+  t.caSaTasc = t.ca + t.sa + t.tasc
+  t.rdSmbgDdFd = t.rd + t.smbg + t.dd + t.fd
   return t
 }
 </script>
@@ -1059,10 +1152,135 @@ function getAgentRegionTotals(regionData) {
       </div>
 
       <!-- Daily Account Opening -->
-      <div v-if="activeTab === 'daily_acct'" class="sb-card card-table">
-        <div class="p-6 text-center text-[var(--text3)]">
-          <div class="text-sm font-medium">Daily Account Opening</div>
-          <div class="mt-1 text-xs">Data will be loaded from backend</div>
+      <div v-if="activeTab === 'daily_acct'">
+        <!-- Summary Cards -->
+        <div class="mb-4 grid grid-cols-4 gap-3">
+          <div class="sb-card flex items-start justify-between">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">SA ACCOUNTS</div>
+            <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">2,942</div>
+          </div>
+          <div class="sb-card flex items-start justify-between">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">CA ACCOUNTS</div>
+            <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">5</div>
+          </div>
+          <div class="sb-card flex items-start justify-between">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">TASC ACCOUNTS</div>
+            <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">10,443</div>
+          </div>
+          <div class="sb-card flex items-start justify-between">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">RD ACCOUNTS</div>
+            <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">6,442</div>
+          </div>
+        </div>
+        <div class="mb-4 grid grid-cols-4 gap-3">
+          <div class="sb-card flex items-start justify-between">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">SMBG ACCOUNTS</div>
+            <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">5,389</div>
+          </div>
+          <div class="sb-card flex items-start justify-between">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">DD ACCOUNTS</div>
+            <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">3,122</div>
+          </div>
+          <div class="sb-card flex items-start justify-between">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">FD ACCOUNTS</div>
+            <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">8</div>
+          </div>
+          <div class="sb-card flex items-start justify-between">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">TOTAL OPENED</div>
+            <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">28,351</div>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="sb-card card-table overflow-x-auto">
+          <table class="w-full border-collapse text-sm">
+            <thead>
+              <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+                <th class="border-r border-[var(--border)] px-4 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)] w-12">SR</th>
+                <th class="border-r border-[var(--border)] px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">ZONE / REGION / BRANCH</th>
+                <th class="border-r border-[var(--border)] px-4 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">BRANCHES</th>
+                <th class="border-r border-[var(--border)] px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">CA</th>
+                <th class="border-r border-[var(--border)] px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">SA</th>
+                <th class="border-r border-[var(--border)] px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">TASC</th>
+                <th class="border-r border-[var(--border)] px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">RD</th>
+                <th class="border-r border-[var(--border)] px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">SMBG</th>
+                <th class="border-r border-[var(--border)] px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">DD</th>
+                <th class="border-r border-[var(--border)] px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">FD</th>
+                <th class="border-r border-[var(--border)] px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">CA+SA+TASC</th>
+                <th class="border-r border-[var(--border)] px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">RD+SMBG+DD+FD</th>
+                <th class="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">TOTAL</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="(zone, zi) in dailyAccountData" :key="zone.zone">
+                <!-- Zone row -->
+                <tr class="cursor-pointer border-b border-[var(--border)] bg-[var(--bg2)] transition hover:bg-[var(--bg)]"
+                    @click="toggleDailyZone(zone.zone)">
+                  <td class="border-r border-[var(--border)] px-4 py-2.5 text-center font-mono text-sm font-semibold text-[var(--text3)]">{{ zi + 1 }}</td>
+                  <td class="border-r border-[var(--border)] px-4 py-2.5 text-sm font-semibold text-[var(--text)]">
+                    <span class="mr-2 text-[var(--text3)]">{{ isDailyZoneExpanded(zone.zone) ? '▼' : '▶' }}</span>
+                    {{ zone.zone }}
+                  </td>
+                  <td class="border-r border-[var(--border)] px-4 py-2.5 text-center font-mono text-sm font-semibold text-[var(--text)]">{{ getDailyZoneTotals(zone).branches }}</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm font-semibold text-[var(--text)]">{{ getDailyZoneTotals(zone).ca.toLocaleString() }}</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm font-semibold text-[var(--text)]">{{ getDailyZoneTotals(zone).sa.toLocaleString() }}</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm font-semibold text-[var(--text)]">{{ getDailyZoneTotals(zone).tasc.toLocaleString() }}</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm font-semibold text-[var(--text)]">{{ getDailyZoneTotals(zone).rd.toLocaleString() }}</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm font-semibold text-[var(--text)]">{{ getDailyZoneTotals(zone).smbg.toLocaleString() }}</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm font-semibold text-[var(--text)]">{{ getDailyZoneTotals(zone).dd.toLocaleString() }}</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm font-semibold text-[var(--text)]">{{ getDailyZoneTotals(zone).fd.toLocaleString() }}</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm font-semibold text-[var(--text)]">{{ getDailyZoneTotals(zone).caSaTasc.toLocaleString() }}</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm font-semibold text-[var(--text)]">{{ getDailyZoneTotals(zone).rdSmbgDdFd.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right font-mono text-sm font-semibold text-[var(--text)]">{{ getDailyZoneTotals(zone).totalOpened.toLocaleString() }}</td>
+                </tr>
+
+                <!-- Region rows -->
+                <template v-if="isDailyZoneExpanded(zone.zone)">
+                  <template v-for="(region, ri) in zone.regions" :key="region.region">
+                    <tr class="cursor-pointer border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
+                        @click="toggleDailyRegion(zone.zone + '-' + region.region)">
+                      <td class="border-r border-[var(--border)] px-4 py-2.5 text-center font-mono text-sm text-[var(--text3)]">{{ zi + 1 }}.{{ ri + 1 }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-2.5 pl-8 text-sm font-medium text-[var(--text)]">
+                        <span class="mr-2 text-[var(--text3)]">{{ isDailyRegionExpanded(zone.zone + '-' + region.region) ? '▼' : '▶' }}</span>
+                        {{ region.region }}
+                      </td>
+                      <td class="border-r border-[var(--border)] px-4 py-2.5 text-center font-mono text-sm text-[var(--text)]">{{ getDailyRegionTotals(region).branches }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ getDailyRegionTotals(region).ca.toLocaleString() }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ getDailyRegionTotals(region).sa.toLocaleString() }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ getDailyRegionTotals(region).tasc.toLocaleString() }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ getDailyRegionTotals(region).rd.toLocaleString() }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ getDailyRegionTotals(region).smbg.toLocaleString() }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ getDailyRegionTotals(region).dd.toLocaleString() }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ getDailyRegionTotals(region).fd.toLocaleString() }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ getDailyRegionTotals(region).caSaTasc.toLocaleString() }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ getDailyRegionTotals(region).rdSmbgDdFd.toLocaleString() }}</td>
+                      <td class="px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ getDailyRegionTotals(region).totalOpened.toLocaleString() }}</td>
+                    </tr>
+
+                    <!-- Branch rows -->
+                    <template v-if="isDailyRegionExpanded(zone.zone + '-' + region.region)">
+                      <tr v-for="(branch, bi) in region.branches" :key="branch.branch"
+                          class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]">
+                        <td class="border-r border-[var(--border)] px-4 py-2.5 text-center font-mono text-xs text-[var(--text3)]">{{ zi + 1 }}.{{ ri + 1 }}.{{ bi + 1 }}</td>
+                        <td class="border-r border-[var(--border)] px-4 py-2.5 pl-16 text-sm text-[var(--text)]">{{ branch.branch }}</td>
+                        <td class="border-r border-[var(--border)] px-4 py-2.5 text-center font-mono text-sm text-[var(--text)]">1</td>
+                        <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ branch.ca.toLocaleString() }}</td>
+                        <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ branch.sa.toLocaleString() }}</td>
+                        <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ branch.tasc.toLocaleString() }}</td>
+                        <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ branch.rd.toLocaleString() }}</td>
+                        <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ branch.smbg.toLocaleString() }}</td>
+                        <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ branch.dd.toLocaleString() }}</td>
+                        <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ branch.fd.toLocaleString() }}</td>
+                        <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ (branch.ca + branch.sa + branch.tasc).toLocaleString() }}</td>
+                        <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ (branch.rd + branch.smbg + branch.dd + branch.fd).toLocaleString() }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ branch.totalOpened.toLocaleString() }}</td>
+                      </tr>
+                    </template>
+                  </template>
+                </template>
+              </template>
+            </tbody>
+          </table>
         </div>
       </div>
 
