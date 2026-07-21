@@ -97,55 +97,63 @@ function getCategoryTotals() {
     <!-- Summary Cards - Only in Drishti mode -->
     <div v-if="activeView === 'drishti'" class="mb-4 grid grid-cols-4 gap-3">
       <div class="sb-card">
-        <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">
-          Total Branches
+        <div class="flex items-center justify-between w-full">
+          <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">
+            Total Branches
+          </div>
+          <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">229</div>
         </div>
-        <div class="font-mono text-lg font-semibold text-[var(--text)]">229</div>
-        <div class="text-[10px] text-[var(--text3)]">
+        <div class="text-[10px] text-[var(--text3)] flex items-center gap-1">
           <span class="rounded bg-green-50 px-1 py-0.5 text-[9px] font-medium text-green-600 dark:bg-green-900/30 dark:text-green-400">
             +3.2%
           </span>
-          vs last month
+          <span>vs last month</span>
         </div>
       </div>
       <div class="sb-card">
-        <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">
-          Target (MTD)
+        <div class="flex items-center justify-between w-full">
+          <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">
+            Target (MTD)
+          </div>
+          <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">
+            <span class="text-xs text-[var(--text3)]">₹</span>163<span class="text-xs text-[var(--text3)]">Cr</span>
+          </div>
         </div>
-        <div class="font-mono text-lg font-semibold text-[var(--text)]">
-          <span class="text-xs text-[var(--text3)]">₹</span>163<span class="text-xs text-[var(--text3)]">Cr</span>
-        </div>
-        <div class="text-[10px] text-[var(--text3)]">
+        <div class="text-[10px] text-[var(--text3)] flex items-center gap-1">
           <span class="rounded bg-amber-50 px-1 py-0.5 text-[9px] font-medium text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
             Monthly
           </span>
-          target set
+          <span>target set</span>
         </div>
       </div>
       <div class="sb-card">
-        <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">
-          Achievement
+        <div class="flex items-center justify-between w-full">
+          <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">
+            Achievement
+          </div>
+          <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">
+            <span class="text-xs text-[var(--text3)]">₹</span>91.4<span class="text-xs text-[var(--text3)]">Cr</span>
+          </div>
         </div>
-        <div class="font-mono text-lg font-semibold text-[var(--text)]">
-          <span class="text-xs text-[var(--text3)]">₹</span>91.4<span class="text-xs text-[var(--text3)]">Cr</span>
-        </div>
-        <div class="text-[10px] text-[var(--text3)]">
+        <div class="text-[10px] text-[var(--text3)] flex items-center gap-1">
           <span class="rounded bg-red-50 px-1 py-0.5 text-[9px] font-medium text-red-600 dark:bg-red-900/30 dark:text-red-400">
             57.9%
           </span>
-          achieved
+          <span>achieved</span>
         </div>
       </div>
       <div class="sb-card">
-        <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">
-          Active Zones
+        <div class="flex items-center justify-between w-full">
+          <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">
+            Active Zones
+          </div>
+          <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">6</div>
         </div>
-        <div class="font-mono text-lg font-semibold text-[var(--text)]">6</div>
-        <div class="text-[10px] text-[var(--text3)]">
+        <div class="text-[10px] text-[var(--text3)] flex items-center gap-1">
           <span class="rounded bg-green-50 px-1 py-0.5 text-[9px] font-medium text-green-600 dark:bg-green-900/30 dark:text-green-400">
             All live
           </span>
-          operational
+          <span>operational</span>
         </div>
       </div>
     </div>
@@ -170,7 +178,7 @@ function getCategoryTotals() {
     </div>
 
     <!-- Table - Only in Drishti mode -->
-    <div v-if="activeView === 'drishti' && activeTab === 'zone'" class="sb-card">
+    <div v-if="activeView === 'drishti' && activeTab === 'zone'" class="sb-card card-table">
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead>
@@ -291,7 +299,7 @@ function getCategoryTotals() {
     </div>
 
     <!-- Category Wise Table - Only in Drishti mode -->
-    <div v-if="activeView === 'drishti' && activeTab === 'category'" class="sb-card">
+    <div v-if="activeView === 'drishti' && activeTab === 'category'" class="sb-card card-table">
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead>
