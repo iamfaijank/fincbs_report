@@ -93,6 +93,37 @@ const productData = ref([
   },
 ])
 
+// Agent table data - hierarchical: Zone > Region
+const agentData = ref([
+  {
+    zone: 'Z-1',
+    regions: [
+      { region: 'R-1', ssTarget: 500, ssAchievement: 425, ssShortfall: 75, ssActive: 38, ssInactive: 12, ddTarget: 300, ddAchievement: 270, ddShortfall: 30, ddActive: 28, ddInactive: 5 },
+      { region: 'R-2', ssTarget: 450, ssAchievement: 405, ssShortfall: 45, ssActive: 35, ssInactive: 10, ddTarget: 280, ddAchievement: 252, ddShortfall: 28, ddActive: 25, ddInactive: 4 },
+      { region: 'R-3', ssTarget: 380, ssAchievement: 304, ssShortfall: 76, ssActive: 30, ssInactive: 8, ddTarget: 220, ddAchievement: 187, ddShortfall: 33, ddActive: 20, ddInactive: 6 },
+    ]
+  },
+  {
+    zone: 'Z-2',
+    regions: [
+      { region: 'R-4', ssTarget: 520, ssAchievement: 494, ssShortfall: 26, ssActive: 42, ssInactive: 8, ddTarget: 310, ddAchievement: 294, ddShortfall: 16, ddActive: 30, ddInactive: 3 },
+      { region: 'R-5', ssTarget: 400, ssAchievement: 340, ssShortfall: 60, ssActive: 32, ssInactive: 10, ddTarget: 250, ddAchievement: 212, ddShortfall: 38, ddActive: 22, ddInactive: 7 },
+    ]
+  },
+])
+
+// Branch table data
+const branchData = ref([
+  { sr: 1, branch: 'ABD-1001', segments: 'SB/CA/ND', category: 'Pinnacle', target: 1567890, julTarget: 522630, ach: 456789, achPercent: 87.4 },
+  { sr: 2, branch: 'JHD-1002', segments: 'SB/CA', category: 'Master', target: 1432500, julTarget: 477500, ach: 423456, achPercent: 88.7 },
+  { sr: 3, branch: 'PUN-1003', segments: 'SB/CA/FD', category: 'Accelerator', target: 1289000, julTarget: 429667, ach: 345678, achPercent: 80.5 },
+  { sr: 4, branch: 'MUM-1004', segments: 'SB/CA/ND/RD', category: 'Pinnacle', target: 1890000, julTarget: 630000, ach: 598765, achPercent: 95.0 },
+  { sr: 5, branch: 'DEL-1005', segments: 'SB/CA', category: 'Starter', target: 987650, julTarget: 329217, ach: 234567, achPercent: 71.3 },
+  { sr: 6, branch: 'CHN-1006', segments: 'SB/CA/FD/RD', category: 'Master', target: 1654300, julTarget: 551433, ach: 498765, achPercent: 90.6 },
+  { sr: 7, branch: 'HYD-1007', segments: 'SB/CA', category: 'Learner', target: 756000, julTarget: 252000, ach: 156789, achPercent: 62.4 },
+  { sr: 8, branch: 'KOL-1008', segments: 'SB/CA/ND', category: 'Accelerator', target: 1123400, julTarget: 374467, ach: 298765, achPercent: 79.2 },
+])
+
 
 function toggleZone(zone) {
   if (expandedZones.value.has(zone)) {
@@ -188,6 +219,50 @@ function getProductRegionTotals(regionData) {
   })
   totals.achievement = totals.totalTarget > 0 ? ((totals.totalAch / totals.totalTarget) * 100).toFixed(1) : 0
   return totals
+}
+
+// Agent table helpers
+const expandedAgentZones = ref(new Set())
+const expandedAgentRegions = ref(new Set())
+
+function toggleAgentZone(zone) {
+  if (expandedAgentZones.value.has(zone)) {
+    expandedAgentZones.value.delete(zone)
+  } else {
+    expandedAgentZones.value.add(zone)
+  }
+}
+
+function isAgentZoneExpanded(zone) {
+  return expandedAgentZones.value.has(zone)
+}
+
+function toggleAgentRegion(key) {
+  if (expandedAgentRegions.value.has(key)) {
+    expandedAgentRegions.value.delete(key)
+  } else {
+    expandedAgentRegions.value.add(key)
+  }
+}
+
+function isAgentRegionExpanded(key) {
+  return expandedAgentRegions.value.has(key)
+}
+
+function getAgentZoneTotals(zoneData) {
+  const t = { ssTarget: 0, ssAchievement: 0, ssShortfall: 0, ssActive: 0, ssInactive: 0, ddTarget: 0, ddAchievement: 0, ddShortfall: 0, ddActive: 0, ddInactive: 0 }
+  zoneData.regions.forEach(r => {
+    t.ssTarget += r.ssTarget; t.ssAchievement += r.ssAchievement; t.ssShortfall += r.ssShortfall; t.ssActive += r.ssActive; t.ssInactive += r.ssInactive
+    t.ddTarget += r.ddTarget; t.ddAchievement += r.ddAchievement; t.ddShortfall += r.ddShortfall; t.ddActive += r.ddActive; t.ddInactive += r.ddInactive
+  })
+  t.achPercent = t.ssTarget > 0 ? ((t.ssAchievement / t.ssTarget) * 100).toFixed(1) : 0
+  return t
+}
+
+function getAgentRegionTotals(regionData) {
+  const t = { ssTarget: regionData.ssTarget, ssAchievement: regionData.ssAchievement, ssShortfall: regionData.ssShortfall, ssActive: regionData.ssActive, ssInactive: regionData.ssInactive, ddTarget: regionData.ddTarget, ddAchievement: regionData.ddAchievement, ddShortfall: regionData.ddShortfall, ddActive: regionData.ddActive, ddInactive: regionData.ddInactive }
+  t.achPercent = t.ssTarget > 0 ? ((t.ssAchievement / t.ssTarget) * 100).toFixed(1) : 0
+  return t
 }
 </script>
 
@@ -647,6 +722,204 @@ function getProductRegionTotals(regionData) {
                 </template>
               </template>
             </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Agent Wise Table - Only in Drishti mode -->
+    <div v-if="activeView === 'drishti' && activeTab === 'agent'" class="sb-card card-table">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+              <th rowspan="2" class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                ZONE/REGION
+              </th>
+              <th colspan="5" class="border-b border-r border-[var(--border)] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                SS
+              </th>
+              <th colspan="5" class="border-b border-r border-[var(--border)] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                DD
+              </th>
+              <th rowspan="2" class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                ACH %
+              </th>
+            </tr>
+            <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Target</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Ach</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Shortfall</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Active</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Inactive</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Target</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Ach</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Shortfall</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Active</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Inactive</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template v-for="zoneData in agentData" :key="zoneData.zone">
+              <!-- Zone Row -->
+              <tr
+                class="cursor-pointer border-b border-[var(--border)] bg-[var(--bg1)] font-semibold transition hover:bg-[var(--bg2)]"
+                @click="toggleAgentZone(zoneData.zone)"
+              >
+                <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text)]">
+                  <div class="flex items-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform" :class="isAgentZoneExpanded(zoneData.zone) ? 'rotate-90' : ''">
+                      <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                    {{ zoneData.zone }}
+                  </div>
+                </td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getAgentZoneTotals(zoneData).ssTarget) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getAgentZoneTotals(zoneData).ssAchievement) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getAgentZoneTotals(zoneData).ssShortfall) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getAgentZoneTotals(zoneData).ssActive) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getAgentZoneTotals(zoneData).ssInactive) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getAgentZoneTotals(zoneData).ddTarget) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getAgentZoneTotals(zoneData).ddAchievement) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getAgentZoneTotals(zoneData).ddShortfall) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getAgentZoneTotals(zoneData).ddActive) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getAgentZoneTotals(zoneData).ddInactive) }}</td>
+                <td class="px-4 py-3 text-center font-mono text-sm">
+                  <span class="inline-block rounded px-2 py-0.5 text-xs font-medium" :class="getAgentZoneTotals(zoneData).achPercent >= 90 ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' : getAgentZoneTotals(zoneData).achPercent >= 75 ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'">
+                    {{ getAgentZoneTotals(zoneData).achPercent }}%
+                  </span>
+                </td>
+              </tr>
+
+              <!-- Region Rows -->
+              <template v-if="isAgentZoneExpanded(zoneData.zone)">
+                <tr
+                  v-for="regionData in zoneData.regions"
+                  :key="`${zoneData.zone}-${regionData.region}`"
+                  class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
+                >
+                  <td class="border-r border-[var(--border)] px-4 py-3 pl-12 text-sm text-[var(--text2)]">
+                    {{ regionData.region }}
+                  </td>
+                  <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ssTarget) }}</td>
+                  <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ssAchievement) }}</td>
+                  <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ssShortfall) }}</td>
+                  <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ssActive) }}</td>
+                  <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ssInactive) }}</td>
+                  <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ddTarget) }}</td>
+                  <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ddAchievement) }}</td>
+                  <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ddShortfall) }}</td>
+                  <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ddActive) }}</td>
+                  <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ddInactive) }}</td>
+                  <td class="px-4 py-3 text-center font-mono text-sm">
+                    <span class="inline-block rounded px-2 py-0.5 text-xs font-medium" :class="getAgentRegionTotals(regionData).achPercent >= 90 ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' : getAgentRegionTotals(regionData).achPercent >= 75 ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'">
+                      {{ getAgentRegionTotals(regionData).achPercent }}%
+                    </span>
+                  </td>
+                </tr>
+              </template>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Branch Wise Table - Only in Drishti mode -->
+    <div v-if="activeView === 'drishti' && activeTab === 'branch'" class="sb-card card-table">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+              <th class="border-r border-[var(--border)] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                SR. NO.
+              </th>
+              <th class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                BRANCH
+              </th>
+              <th class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                SEGMENTS
+              </th>
+              <th class="border-r border-[var(--border)] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                CATEGORY
+              </th>
+              <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                TARGET
+              </th>
+              <th colspan="2" class="border-b border-r border-[var(--border)] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                JUL-2026<br/>
+                <span class="text-[10px] font-normal">10 WORKING DAYS LEFT</span>
+              </th>
+              <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                ACH %
+              </th>
+            </tr>
+            <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+              <th colspan="5" class="border-r border-[var(--border)]"></th>
+              <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">ACH</th>
+              <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">ACH %</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="row in branchData"
+              :key="row.sr"
+              class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
+            >
+              <td class="border-r border-[var(--border)] px-4 py-3 text-center font-mono text-sm text-[var(--text3)]">
+                {{ row.sr }}
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--text)]">
+                {{ row.branch }}
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text2)]">
+                {{ row.segments }}
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-center">
+                <span class="inline-block rounded px-2 py-0.5 text-xs font-medium"
+                  :class="
+                    row.category === 'Pinnacle' ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                    : row.category === 'Master' ? 'bg-teal-50 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400'
+                    : row.category === 'Accelerator' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                    : row.category === 'Starter' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
+                    : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                  "
+                >
+                  {{ row.category }}
+                </span>
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
+                {{ formatNumber(row.target) }}
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
+                {{ formatNumber(row.ach) }}
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
+                {{ row.achPercent }}%
+              </td>
+              <td class="px-4 py-3 text-center font-mono text-sm">
+                <span class="inline-block rounded px-2 py-0.5 text-xs font-medium"
+                  :class="
+                    row.achPercent >= 90 ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                    : row.achPercent >= 75 ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
+                    : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                  "
+                >
+                  {{ row.achPercent }}%
+                </span>
+              </td>
+            </tr>
+            <!-- Total Row -->
+            <tr class="border-t-2 border-[var(--border)] bg-[var(--bg2)] font-semibold">
+              <td class="border-r border-[var(--border)] px-4 py-3 text-center text-sm text-[var(--text3)]"></td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text)]">Total</td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text3)]">—</td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-center text-sm text-[var(--text3)]">—</td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(branchData.reduce((a, r) => a + r.target, 0)) }}</td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(branchData.reduce((a, r) => a + r.ach, 0)) }}</td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ (branchData.reduce((a, r) => a + r.ach, 0) / branchData.reduce((a, r) => a + r.target, 0) * 100).toFixed(1) }}%</td>
+              <td class="px-4 py-3 text-center text-sm text-[var(--text3)]">—</td>
+            </tr>
           </tbody>
         </table>
       </div>
