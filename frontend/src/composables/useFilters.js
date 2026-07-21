@@ -6,6 +6,9 @@ const regionFilter = ref([])
 const allZones = ref([])
 const allRegions = ref([])
 
+const zoneFilterOptions = ref([])
+const regionFilterOptions = ref([])
+
 function mapZoneName(name) {
   const match = name.match(/^Zone\s*-?\s*(.+)/i)
   if (match) return 'Z' + (match[1] ? '-' + match[1] : '')
@@ -21,10 +24,12 @@ function mapRegionName(name) {
 export function useFilters() {
   function setZoneOptions(zones) {
     allZones.value = zones
+    zoneFilterOptions.value = zones.map(z => ({ name: z, label: mapZoneName(z) }))
   }
 
   function setRegionOptions(regions) {
     allRegions.value = regions
+    regionFilterOptions.value = regions.map(r => ({ name: r, label: mapRegionName(r) }))
   }
 
   function setZoneFilter(zones) {
@@ -53,6 +58,8 @@ export function useFilters() {
     regionFilter,
     allZones,
     allRegions,
+    zoneFilterOptions,
+    regionFilterOptions,
     setZoneOptions,
     setRegionOptions,
     setZoneFilter,
