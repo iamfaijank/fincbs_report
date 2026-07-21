@@ -19,11 +19,6 @@ const formattedDate = new Date().toLocaleDateString('en-US', {
   <div style="display:flex;flex-direction:column;height:100%;">
     <!-- Header -->
     <header class="app-header">
-      <div class="header-title-group">
-        <div class="header-title">DRISHTI ANALYTICS</div>
-        <div class="header-breadcrumb">Dashboard <span>›</span> Zone Wise</div>
-      </div>
-
       <div class="header-view-toggle">
         <button
           class="view-toggle-btn"
