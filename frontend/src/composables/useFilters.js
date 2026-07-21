@@ -1,0 +1,65 @@
+import { ref, computed } from 'vue'
+
+const zoneFilter = ref([])
+const regionFilter = ref([])
+
+const allZones = ref([])
+const allRegions = ref([])
+
+function mapZoneName(name) {
+  const match = name.match(/^Zone\s*-?\s*(.+)/i)
+  if (match) return 'Z' + (match[1] ? '-' + match[1] : '')
+  return name
+}
+
+function mapRegionName(name) {
+  const match = name.match(/^Region\s*-?\s*(.+)/i)
+  if (match) return 'R' + (match[1] ? '-' + match[1] : '')
+  return name
+}
+
+export function useFilters() {
+  function setZoneOptions(zones) {
+    allZones.value = zones
+  }
+
+  function setRegionOptions(regions) {
+    allRegions.value = regions
+  }
+
+  function setZoneFilter(zones) {
+    zoneFilter.value = zones
+  }
+
+  function setRegionFilter(regions) {
+    regionFilter.value = regions
+  }
+
+  const allZonesSelected = computed(() => zoneFilter.value.length === allZones.value.length || zoneFilter.value.length === 0)
+  const allRegionsSelected = computed(() => regionFilter.value.length === allRegions.value.length || regionFilter.value.length === 0)
+
+  function isZoneSelected(displayName) {
+    if (allZonesSelected.value) return true
+    return zoneFilter.value.some(apiName => mapZoneName(apiName) === displayName)
+  }
+
+  function isRegionSelected(displayName) {
+    if (allRegionsSelected.value) return true
+    return regionFilter.value.some(apiName => mapRegionName(apiName) === displayName)
+  }
+
+  return {
+    zoneFilter,
+    regionFilter,
+    allZones,
+    allRegions,
+    setZoneOptions,
+    setRegionOptions,
+    setZoneFilter,
+    setRegionFilter,
+    allZonesSelected,
+    allRegionsSelected,
+    isZoneSelected,
+    isRegionSelected,
+  }
+}

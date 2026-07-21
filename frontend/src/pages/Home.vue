@@ -1,9 +1,12 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, provide } from 'vue'
 import { useSidebar } from '@/composables/useSidebar.js'
 
 const { toggleSidebar } = useSidebar()
 const searchQuery = ref('')
+const activeView = ref('drishti')
+
+provide('activeView', activeView)
 
 const formattedDate = new Date().toLocaleDateString('en-US', {
   month: 'short',
@@ -16,9 +19,21 @@ const formattedDate = new Date().toLocaleDateString('en-US', {
   <div style="display:flex;flex-direction:column;height:100%;">
     <!-- Header -->
     <header class="app-header">
-      <div class="header-title-group">
-        <div class="header-title">DRISHTI ANALYTICS</div>
-        <div class="header-breadcrumb">Dashboard <span>›</span> Zone Wise</div>
+      <div class="header-view-toggle">
+        <button
+          class="view-toggle-btn"
+          :class="{ active: activeView === 'drishti' }"
+          @click="activeView = 'drishti'"
+        >
+          Drishti
+        </button>
+        <button
+          class="view-toggle-btn"
+          :class="{ active: activeView === 'mis' }"
+          @click="activeView = 'mis'"
+        >
+          MIS Reports
+        </button>
       </div>
 
       <div class="header-spacer"></div>
@@ -45,6 +60,12 @@ const formattedDate = new Date().toLocaleDateString('en-US', {
         </svg>
         Visualize
       </button>
+      <a href="/app/sahayog-home" class="ml-2 flex h-7 w-7 items-center justify-center rounded-md text-[var(--text3)] transition hover:bg-[var(--bg2)] hover:text-[var(--text)]" title="Go to Home">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+      </a>
     </header>
 
     <!-- Content -->
