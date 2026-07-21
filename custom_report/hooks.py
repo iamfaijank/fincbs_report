@@ -32,6 +32,10 @@ app_include_js = [
     "/assets/custom_report/js/petite-vue.js"
 ]
 
+website_route_rules = [
+	{"from_route": "/drishti/<path:app_path>", "to_route": "drishti"},
+]
+
 
 # include js, css files in header of web template
 # web_include_css = "/assets/custom_report/css/custom_report.css"

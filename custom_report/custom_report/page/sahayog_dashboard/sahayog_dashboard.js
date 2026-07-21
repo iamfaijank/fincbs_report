@@ -1299,15 +1299,9 @@ class DrishtiDashboard {
 							#cavg-scroll { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
 							#cavg-table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; white-space: nowrap; }
 							#cavg-table thead th { position: sticky; top: 0; z-index: 2; background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #fff; padding: 8px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; border-bottom: 1px solid #cbd5e1; }
-							#cavg-table thead th.cavg-sticky { position: sticky; z-index: 3; background: #346569; }
-							#cavg-table thead th.cavg-sticky-1 { left: 0; }
-							#cavg-table thead th.cavg-sticky-2 { left: 100px; }
-							#cavg-table thead th.cavg-sticky-3 { left: 250px; }
+							#cavg-table thead th.cavg-sticky { position: sticky; z-index: 3; background: #346569; overflow: hidden; }
 							#cavg-table tbody td { padding: 7px 10px; font-size: 12px; color: #334155; border-bottom: 1px solid #e2e8f0; }
-							#cavg-table tbody td.cavg-sticky { position: sticky; z-index: 1; background: inherit; }
-							#cavg-table tbody td.cavg-sticky-1 { left: 0; }
-							#cavg-table tbody td.cavg-sticky-2 { left: 100px; }
-							#cavg-table tbody td.cavg-sticky-3 { left: 250px; }
+							#cavg-table tbody td.cavg-sticky { position: sticky; z-index: 1; overflow: hidden; }
 							#cavg-table tbody tr:nth-child(even) td.cavg-sticky { background: #f8fafc; }
 							#cavg-table tbody tr:nth-child(odd) td.cavg-sticky { background: #fff; }
 							#cavg-table tbody tr:hover td.cavg-sticky { background: #dcfce7 !important; }
@@ -1340,7 +1334,8 @@ class DrishtiDashboard {
 							const val = r[c.key];
 							const display = c.fmt ? c.fmt(val) : (val !== null && val !== undefined ? val : "-");
 							const stickyClass = c.sticky ? ` cavg-sticky cavg-sticky-${c.sticky}` : "";
-							html += `<td class="${stickyClass}">${display}</td>`;
+							const wStyle = c.sticky ? ` style="width:${c.w};"` : "";
+							html += `<td class="${stickyClass}"${wStyle}>${display}</td>`;
 						});
 						return html + "</tr>";
 					};
@@ -1352,13 +1347,49 @@ class DrishtiDashboard {
 									<thead><tr>
 										${columns.map(c => {
 											const stickyClass = c.sticky ? ` cavg-sticky cavg-sticky-${c.sticky}` : "";
-											return `<th class="${stickyClass}" style="min-width: ${c.w};">${c.label}</th>`;
+											const wStyle = c.sticky ? `width: ${c.w};` : `min-width: ${c.w};`;
+											return `<th class="${stickyClass}" style="${wStyle}">${c.label}</th>`;
 										}).join("")}
 									</tr></thead>
 									<tbody id="cavg-tbody"></tbody>
 								</table>
 							</div>
 						`);
+					};
+
+					const applyStickyLeft = () => {
+						const table = container.find("#cavg-table")[0];
+						if (!table) return;
+						const ths = table.querySelectorAll("thead th");
+						let cumulativeLeft = 0;
+						const stickyCols = columns.filter(c => c.sticky);
+						stickyCols.forEach((c, i) => {
+							const th = ths[i];
+							if (!th) return;
+							const colWidth = th.offsetWidth;
+							const cssProp = `--cavg-sticky-${c.sticky}`;
+							table.style.setProperty(cssProp, cumulativeLeft + "px");
+							cumulativeLeft += colWidth;
+						});
+						const styleId = "cavg-dynamic-sticky";
+						let styleEl = document.getElementById(styleId);
+						const s1 = table.style.getPropertyValue("--cavg-sticky-1") || "0px";
+						const s2 = table.style.getPropertyValue("--cavg-sticky-2") || "100px";
+						const s3 = table.style.getPropertyValue("--cavg-sticky-3") || "250px";
+						const css = `
+							#cavg-table thead th.cavg-sticky-1 { left: ${s1}; }
+							#cavg-table thead th.cavg-sticky-2 { left: ${s2}; }
+							#cavg-table thead th.cavg-sticky-3 { left: ${s3}; }
+							#cavg-table tbody td.cavg-sticky-1 { left: ${s1}; }
+							#cavg-table tbody td.cavg-sticky-2 { left: ${s2}; }
+							#cavg-table tbody td.cavg-sticky-3 { left: ${s3}; }
+						`;
+						if (!styleEl) {
+							styleEl = document.createElement("style");
+							styleEl.id = styleId;
+							document.head.appendChild(styleEl);
+						}
+						styleEl.textContent = css;
 					};
 
 					const appendRows = (data) => {
@@ -1417,6 +1448,7 @@ class DrishtiDashboard {
 							? pageData.filter(r => Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm)))
 							: pageData;
 						appendRows(filtered);
+						applyStickyLeft();
 						updateCount();
 						renderPaginationBar();
 					};
