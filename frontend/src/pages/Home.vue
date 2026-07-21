@@ -60,6 +60,12 @@ const formattedDate = new Date().toLocaleDateString('en-US', {
         </svg>
         Visualize
       </button>
+      <a href="/app/sahayog-home" class="ml-2 flex h-7 w-7 items-center justify-center rounded-md text-[var(--text3)] transition hover:bg-[var(--bg2)] hover:text-[var(--text)]" title="Go to Home">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+      </a>
     </header>
 
     <!-- Content -->
