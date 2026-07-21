@@ -58,14 +58,39 @@ const categoryData = ref([
   { category: 'Zero Level', performanceBand: '0–20%', branchCount: 13, movement: '0', movementDirection: 'neutral', healthStatus: 'critical' },
 ])
 
-// Product table data
+// Product table data - hierarchical: Zone > Region > District/SOL
 const productData = ref([
-  { sr: 1, zoneRegionDistrictSol: 'Z-1 / R-1 / DIS-1 / SOL-1001', casa: 15678900, dam: 2345678, dd: 890123, fd: 4567890, rd: 1234567, smbg: 567890, share: 8901234, achievement: 85.8 },
-  { sr: 2, zoneRegionDistrictSol: 'Z-1 / R-1 / DIS-1 / SOL-1002', casa: 14325000, dam: 2156789, dd: 789012, fd: 4321098, rd: 1123456, smbg: 456789, share: 8234567, achievement: 92.4 },
-  { sr: 3, zoneRegionDistrictSol: 'Z-1 / R-2 / DIS-2 / SOL-2001', casa: 12890000, dam: 1987654, dd: 678901, fd: 3987654, rd: 1012345, smbg: 345678, share: 7654321, achievement: 79.4 },
-  { sr: 4, zoneRegionDistrictSol: 'Z-1 / R-2 / DIS-2 / SOL-2002', casa: 11234000, dam: 1765432, dd: 567890, fd: 3543210, rd: 901234, smbg: 234567, share: 6543210, achievement: 84.2 },
-  { sr: 5, zoneRegionDistrictSol: 'Z-2 / R-3 / DIS-3 / SOL-3001', casa: 12890000, dam: 1654321, dd: 456789, fd: 3210987, rd: 890123, smbg: 123456, share: 5432109, achievement: 76.6 },
-  { sr: 6, zoneRegionDistrictSol: 'Z-2 / R-3 / DIS-3 / SOL-3002', casa: 16750000, dam: 2345678, dd: 890123, fd: 4567890, rd: 1345678, smbg: 678901, share: 9012345, achievement: 93.6 },
+  {
+    zone: 'Z-1',
+    regions: [
+      {
+        region: 'R-1',
+        sols: [
+          { sol: 'DIS-1 / SOL-1001', casa: 15678900, dam: 2345678, dd: 890123, fd: 4567890, rd: 1234567, smbg: 567890, share: 8901234, achievement: 85.8 },
+          { sol: 'DIS-1 / SOL-1002', casa: 14325000, dam: 2156789, dd: 789012, fd: 4321098, rd: 1123456, smbg: 456789, share: 8234567, achievement: 92.4 },
+        ]
+      },
+      {
+        region: 'R-2',
+        sols: [
+          { sol: 'DIS-2 / SOL-2001', casa: 12890000, dam: 1987654, dd: 678901, fd: 3987654, rd: 1012345, smbg: 345678, share: 7654321, achievement: 79.4 },
+          { sol: 'DIS-2 / SOL-2002', casa: 11234000, dam: 1765432, dd: 567890, fd: 3543210, rd: 901234, smbg: 234567, share: 6543210, achievement: 84.2 },
+        ]
+      },
+    ]
+  },
+  {
+    zone: 'Z-2',
+    regions: [
+      {
+        region: 'R-3',
+        sols: [
+          { sol: 'DIS-3 / SOL-3001', casa: 12890000, dam: 1654321, dd: 456789, fd: 3210987, rd: 890123, smbg: 123456, share: 5432109, achievement: 76.6 },
+          { sol: 'DIS-3 / SOL-3002', casa: 16750000, dam: 2345678, dd: 890123, fd: 4567890, rd: 1345678, smbg: 678901, share: 9012345, achievement: 93.6 },
+        ]
+      },
+    ]
+  },
 ])
 
 
@@ -99,6 +124,70 @@ function getCategoryTotals() {
     return acc
   }, { branchCount: 0 })
   return total
+}
+
+// Product table helpers
+const expandedProductZones = ref(new Set())
+const expandedProductRegions = ref(new Set())
+
+function toggleProductZone(zone) {
+  if (expandedProductZones.value.has(zone)) {
+    expandedProductZones.value.delete(zone)
+  } else {
+    expandedProductZones.value.add(zone)
+  }
+}
+
+function isProductZoneExpanded(zone) {
+  return expandedProductZones.value.has(zone)
+}
+
+function toggleProductRegion(key) {
+  if (expandedProductRegions.value.has(key)) {
+    expandedProductRegions.value.delete(key)
+  } else {
+    expandedProductRegions.value.add(key)
+  }
+}
+
+function isProductRegionExpanded(key) {
+  return expandedProductRegions.value.has(key)
+}
+
+function getProductZoneTotals(zoneData) {
+  const totals = { casa: 0, dam: 0, dd: 0, fd: 0, rd: 0, smbg: 0, share: 0, totalAch: 0, totalTarget: 0 }
+  zoneData.regions.forEach(region => {
+    region.sols.forEach(sol => {
+      totals.casa += sol.casa
+      totals.dam += sol.dam
+      totals.dd += sol.dd
+      totals.fd += sol.fd
+      totals.rd += sol.rd
+      totals.smbg += sol.smbg
+      totals.share += sol.share
+      totals.totalAch += sol.casa * sol.achievement / 100
+      totals.totalTarget += sol.casa
+    })
+  })
+  totals.achievement = totals.totalTarget > 0 ? ((totals.totalAch / totals.totalTarget) * 100).toFixed(1) : 0
+  return totals
+}
+
+function getProductRegionTotals(regionData) {
+  const totals = { casa: 0, dam: 0, dd: 0, fd: 0, rd: 0, smbg: 0, share: 0, totalAch: 0, totalTarget: 0 }
+  regionData.sols.forEach(sol => {
+    totals.casa += sol.casa
+    totals.dam += sol.dam
+    totals.dd += sol.dd
+    totals.fd += sol.fd
+    totals.rd += sol.rd
+    totals.smbg += sol.smbg
+    totals.share += sol.share
+    totals.totalAch += sol.casa * sol.achievement / 100
+    totals.totalTarget += sol.casa
+  })
+  totals.achievement = totals.totalTarget > 0 ? ((totals.totalAch / totals.totalTarget) * 100).toFixed(1) : 0
+  return totals
 }
 </script>
 
@@ -447,86 +536,117 @@ function getCategoryTotals() {
         <table class="w-full">
           <thead>
             <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
-              <th class="border-r border-[var(--border)] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-                SR
-              </th>
-              <th class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+              <th rowspan="2" class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
                 Z/R/DIS/SOL
               </th>
-              <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-                CASA
+              <th colspan="7" class="border-b border-r border-[var(--border)] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                Product Values
               </th>
-              <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-                DAM
-              </th>
-              <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-                DD
-              </th>
-              <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-                FD
-              </th>
-              <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-                RD
-              </th>
-              <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-                SMBG
-              </th>
-              <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+              <th rowspan="2" class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
                 SHARE
               </th>
-              <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+              <th rowspan="2" class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
                 ACHIEVEMENT
               </th>
             </tr>
+            <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+              <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">CASA</th>
+              <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">DAM</th>
+              <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">DD</th>
+              <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">FD</th>
+              <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">RD</th>
+              <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">SMBG</th>
+              <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Total</th>
+            </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="row in productData"
-              :key="row.sr"
-              class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
-            >
-              <td class="border-r border-[var(--border)] px-4 py-3 text-center font-mono text-sm text-[var(--text3)]">
-                {{ row.sr }}
-              </td>
-              <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text)]">
-                {{ row.zoneRegionDistrictSol }}
-              </td>
-              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
-                {{ formatNumber(row.casa) }}
-              </td>
-              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
-                {{ formatNumber(row.dam) }}
-              </td>
-              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
-                {{ formatNumber(row.dd) }}
-              </td>
-              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
-                {{ formatNumber(row.fd) }}
-              </td>
-              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
-                {{ formatNumber(row.rd) }}
-              </td>
-              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
-                {{ formatNumber(row.smbg) }}
-              </td>
-              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
-                {{ formatNumber(row.share) }}
-              </td>
-              <td class="px-4 py-3 text-center font-mono text-sm">
-                <span
-                  class="inline-block rounded px-2 py-0.5 text-xs font-medium"
-                  :class="
-                    row.achievement >= 90
-                      ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                      : row.achievement >= 75
-                      ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
-                      : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                  "
-                >
-                  {{ row.achievement }}%
-                </span>
-              </td>
-            </tr>
+            <template v-for="zoneData in productData" :key="zoneData.zone">
+              <!-- Zone Row -->
+              <tr
+                class="cursor-pointer border-b border-[var(--border)] bg-[var(--bg1)] font-semibold transition hover:bg-[var(--bg2)]"
+                @click="toggleProductZone(zoneData.zone)"
+              >
+                <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text)]">
+                  <div class="flex items-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform" :class="isProductZoneExpanded(zoneData.zone) ? 'rotate-90' : ''">
+                      <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                    {{ zoneData.zone }}
+                  </div>
+                </td>
+                <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getProductZoneTotals(zoneData).casa) }}</td>
+                <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getProductZoneTotals(zoneData).dam) }}</td>
+                <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getProductZoneTotals(zoneData).dd) }}</td>
+                <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getProductZoneTotals(zoneData).fd) }}</td>
+                <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getProductZoneTotals(zoneData).rd) }}</td>
+                <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getProductZoneTotals(zoneData).smbg) }}</td>
+                <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getProductZoneTotals(zoneData).casa + getProductZoneTotals(zoneData).dam + getProductZoneTotals(zoneData).dd + getProductZoneTotals(zoneData).fd + getProductZoneTotals(zoneData).rd + getProductZoneTotals(zoneData).smbg) }}</td>
+                <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getProductZoneTotals(zoneData).share) }}</td>
+                <td class="px-4 py-3 text-center font-mono text-sm">
+                  <span class="inline-block rounded px-2 py-0.5 text-xs font-medium" :class="getProductZoneTotals(zoneData).achievement >= 90 ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' : getProductZoneTotals(zoneData).achievement >= 75 ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'">
+                    {{ getProductZoneTotals(zoneData).achievement }}%
+                  </span>
+                </td>
+              </tr>
+
+              <!-- Region Rows -->
+              <template v-if="isProductZoneExpanded(zoneData.zone)">
+                <template v-for="regionData in zoneData.regions" :key="`${zoneData.zone}-${regionData.region}`">
+                  <tr
+                    class="cursor-pointer border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
+                    @click="toggleProductRegion(`${zoneData.zone}-${regionData.region}`)"
+                  >
+                    <td class="border-r border-[var(--border)] px-4 py-3 pl-12 text-sm text-[var(--text2)]">
+                      <div class="flex items-center gap-2">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform" :class="isProductRegionExpanded(`${zoneData.zone}-${regionData.region}`) ? 'rotate-90' : ''">
+                          <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                        {{ regionData.region }}
+                      </div>
+                    </td>
+                    <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getProductRegionTotals(regionData).casa) }}</td>
+                    <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getProductRegionTotals(regionData).dam) }}</td>
+                    <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getProductRegionTotals(regionData).dd) }}</td>
+                    <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getProductRegionTotals(regionData).fd) }}</td>
+                    <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getProductRegionTotals(regionData).rd) }}</td>
+                    <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getProductRegionTotals(regionData).smbg) }}</td>
+                    <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getProductRegionTotals(regionData).casa + getProductRegionTotals(regionData).dam + getProductRegionTotals(regionData).dd + getProductRegionTotals(regionData).fd + getProductRegionTotals(regionData).rd + getProductRegionTotals(regionData).smbg) }}</td>
+                    <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getProductRegionTotals(regionData).share) }}</td>
+                    <td class="px-4 py-3 text-center font-mono text-sm">
+                      <span class="inline-block rounded px-2 py-0.5 text-xs font-medium" :class="getProductRegionTotals(regionData).achievement >= 90 ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' : getProductRegionTotals(regionData).achievement >= 75 ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'">
+                        {{ getProductRegionTotals(regionData).achievement }}%
+                      </span>
+                    </td>
+                  </tr>
+
+                  <!-- SOL Rows -->
+                  <template v-if="isProductRegionExpanded(`${zoneData.zone}-${regionData.region}`)">
+                    <tr
+                      v-for="(sol, solIdx) in regionData.sols"
+                      :key="solIdx"
+                      class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
+                    >
+                      <td class="border-r border-[var(--border)] px-4 py-3 pl-20 text-sm text-[var(--text3)]">
+                        {{ sol.sol }}
+                      </td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(sol.casa) }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(sol.dam) }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(sol.dd) }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(sol.fd) }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(sol.rd) }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(sol.smbg) }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(sol.casa + sol.dam + sol.dd + sol.fd + sol.rd + sol.smbg) }}</td>
+                      <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(sol.share) }}</td>
+                      <td class="px-4 py-3 text-center font-mono text-sm">
+                        <span class="inline-block rounded px-2 py-0.5 text-xs font-medium" :class="sol.achievement >= 90 ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' : sol.achievement >= 75 ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'">
+                          {{ sol.achievement }}%
+                        </span>
+                      </td>
+                    </tr>
+                  </template>
+                </template>
+              </template>
+            </template>
           </tbody>
         </table>
       </div>
