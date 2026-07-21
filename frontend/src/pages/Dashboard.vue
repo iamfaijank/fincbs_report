@@ -1,6 +1,9 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, inject } from 'vue'
+import { useNumberFormat } from '@/composables/useNumberFormat.js'
 
+const activeView = inject('activeView')
+const { formatNumber } = useNumberFormat()
 const activeTab = ref('zone')
 
 const tabs = [
@@ -80,10 +83,6 @@ function getZoneTotals(zoneData) {
   return totals
 }
 
-function formatNumber(num) {
-  return num.toLocaleString('en-IN')
-}
-
 function getCategoryTotals() {
   const total = categoryData.value.reduce((acc, cat) => {
     acc.branchCount += cat.branchCount
@@ -95,8 +94,8 @@ function getCategoryTotals() {
 
 <template>
   <div>
-    <!-- Summary Cards -->
-    <div class="mb-4 grid grid-cols-4 gap-3">
+    <!-- Summary Cards - Only in Drishti mode -->
+    <div v-if="activeView === 'drishti'" class="mb-4 grid grid-cols-4 gap-3">
       <div class="sb-card">
         <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">
           Total Branches
@@ -175,8 +174,8 @@ function getCategoryTotals() {
       </button>
     </div>
 
-    <!-- Table -->
-    <div v-if="activeTab === 'zone'" class="sb-card">
+    <!-- Table - Only in Drishti mode -->
+    <div v-if="activeView === 'drishti' && activeTab === 'zone'" class="sb-card">
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead>
@@ -296,8 +295,8 @@ function getCategoryTotals() {
       </div>
     </div>
 
-    <!-- Category Wise Table -->
-    <div v-if="activeTab === 'category'" class="sb-card">
+    <!-- Category Wise Table - Only in Drishti mode -->
+    <div v-if="activeView === 'drishti' && activeTab === 'category'" class="sb-card">
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead>

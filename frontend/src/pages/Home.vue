@@ -1,9 +1,12 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, provide } from 'vue'
 import { useSidebar } from '@/composables/useSidebar.js'
 
 const { toggleSidebar } = useSidebar()
 const searchQuery = ref('')
+const activeView = ref('drishti')
+
+provide('activeView', activeView)
 
 const formattedDate = new Date().toLocaleDateString('en-US', {
   month: 'short',
@@ -19,6 +22,23 @@ const formattedDate = new Date().toLocaleDateString('en-US', {
       <div class="header-title-group">
         <div class="header-title">DRISHTI ANALYTICS</div>
         <div class="header-breadcrumb">Dashboard <span>›</span> Zone Wise</div>
+      </div>
+
+      <div class="header-view-toggle">
+        <button
+          class="view-toggle-btn"
+          :class="{ active: activeView === 'drishti' }"
+          @click="activeView = 'drishti'"
+        >
+          Drishti
+        </button>
+        <button
+          class="view-toggle-btn"
+          :class="{ active: activeView === 'mis' }"
+          @click="activeView = 'mis'"
+        >
+          MIS Reports
+        </button>
       </div>
 
       <div class="header-spacer"></div>

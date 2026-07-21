@@ -2,11 +2,12 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { Select, DatePicker, frappeRequest } from 'frappe-ui'
 import { useSidebar } from '@/composables/useSidebar.js'
+import { useNumberFormat } from '@/composables/useNumberFormat.js'
 
 const { collapsed, toggleSidebar } = useSidebar()
+const { numberFormat } = useNumberFormat()
 const viewMode = ref('monthly')
 const targetType = ref('monthly')
-const numberFormat = ref('words')
 const financialYear = ref('')
 const asOfDate = ref('')
 const asOfMonth = ref('6')
