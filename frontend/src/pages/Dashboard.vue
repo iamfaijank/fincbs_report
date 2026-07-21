@@ -167,11 +167,6 @@ function getCategoryTotals() {
         {{ tab.label }}
       </button>
       <div class="flex-1" />
-      <button
-        class="config-btn"
-      >
-        Export CSV
-      </button>
     </div>
 
     <!-- Table - Only in Drishti mode -->

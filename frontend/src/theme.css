@@ -92,6 +92,8 @@ html, body {
 }
 .sidebar-collapsed {
   width: 52px !important;
+  min-width: 52px !important;
+  max-width: 52px !important;
 }
 .sidebar-collapsed .sidebar-logo {
   justify-content: center;
@@ -116,7 +118,9 @@ html, body {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  flex-shrink: 0;
+  overflow-x: hidden;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .sidebar-logo {
