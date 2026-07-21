@@ -1,18 +1,32 @@
 <script setup>
-import { ref, inject } from 'vue'
+import { ref, inject, computed, watch } from 'vue'
 import { useNumberFormat } from '@/composables/useNumberFormat.js'
 
 const activeView = inject('activeView')
 const { formatNumber } = useNumberFormat()
 const activeTab = ref('zone')
 
-const tabs = [
+const drishtiTabs = [
   { id: 'zone', label: 'Zone Wise', color: '#4fffb0' },
   { id: 'category', label: 'Category Wise', color: '#0ea5e9' },
   { id: 'product', label: 'Product Wise', color: '#a78bfa' },
   { id: 'agent', label: 'Agent Wise', color: '#2dd4bf' },
   { id: 'branch', label: 'Branch Wise', color: '#f59e0b' },
 ]
+
+const misTabs = [
+  { id: 'rd_smbg', label: 'RD & SMBG Pending', color: '#ef4444' },
+  { id: 'daily_acct', label: 'Daily Account Opening', color: '#0ea5e9' },
+  { id: 'casa_ntb', label: 'CASA NTB & EVR', color: '#10b981' },
+  { id: 'casa_avg', label: 'CASA Cust Wise AVG Bal', color: '#a78bfa' },
+  { id: 'gl_report', label: 'GL. Wise CH Report', color: '#f59e0b' },
+]
+
+const tabs = computed(() => activeView.value === 'drishti' ? drishtiTabs : misTabs)
+
+watch(activeView, () => {
+  activeTab.value = tabs.value[0].id
+})
 
 // Expanded zones tracker
 const expandedZones = ref(new Set())
@@ -911,5 +925,170 @@ function getAgentRegionTotals(regionData) {
         </table>
       </div>
     </div>
+
+    <!-- MIS Reports Tabs Content -->
+    <template v-if="activeView === 'mis'">
+      <!-- RD & SMBG Pending -->
+      <div v-if="activeTab === 'rd_smbg'">
+        <!-- Summary Cards -->
+        <div class="mb-4 grid grid-cols-5 gap-3">
+          <div class="sb-card">
+            <div class="flex items-center justify-between w-full">
+              <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Total Accounts</div>
+              <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">4,27,943</div>
+            </div>
+          </div>
+          <div class="sb-card">
+            <div class="flex items-center justify-between w-full">
+              <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Total Collection</div>
+              <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">₹233.95 Cr</div>
+            </div>
+          </div>
+          <div class="sb-card">
+            <div class="flex items-center justify-between w-full">
+              <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Pending Accounts</div>
+              <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">2,43,415</div>
+            </div>
+          </div>
+          <div class="sb-card">
+            <div class="flex items-center justify-between w-full">
+              <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Pending Instalments</div>
+              <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">13,75,432</div>
+            </div>
+          </div>
+          <div class="sb-card">
+            <div class="flex items-center justify-between w-full">
+              <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Pending Amount</div>
+              <div class="font-mono text-lg font-semibold text-[var(--text)] leading-tight">₹401.21 Cr</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="sb-card card-table">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+                  <th class="border-r border-[var(--border)] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">SR</th>
+                  <th class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">ZONE/REGION/BRANCH</th>
+                  <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">BRANCHES</th>
+                  <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">TOTAL ACCOUNTS</th>
+                  <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">TOTAL COLLECTION</th>
+                  <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">PENDING ACCOUNTS</th>
+                  <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">PENDING INSTALMENTS</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">PENDING AMOUNT</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]">
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-center font-mono text-sm text-[var(--text3)]">1</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--text)]">Z-1 / R-1 / ABD-1001</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">42</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">52,340</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">₹28.45 Cr</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">28,920</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">1,65,230</td>
+                  <td class="px-4 py-3 text-right font-mono text-sm text-[var(--text)]">₹48.76 Cr</td>
+                </tr>
+                <tr class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]">
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-center font-mono text-sm text-[var(--text3)]">2</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--text)]">Z-1 / R-2 / JHD-1002</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">38</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">48,120</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">₹25.67 Cr</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">24,560</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">1,42,890</td>
+                  <td class="px-4 py-3 text-right font-mono text-sm text-[var(--text)]">₹42.34 Cr</td>
+                </tr>
+                <tr class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]">
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-center font-mono text-sm text-[var(--text3)]">3</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--text)]">Z-2 / R-3 / PUN-1003</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">35</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">45,670</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">₹22.34 Cr</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">22,180</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">1,28,450</td>
+                  <td class="px-4 py-3 text-right font-mono text-sm text-[var(--text)]">₹38.92 Cr</td>
+                </tr>
+                <tr class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]">
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-center font-mono text-sm text-[var(--text3)]">4</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--text)]">Z-2 / R-4 / MUM-1004</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">45</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">58,900</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">₹32.12 Cr</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">31,200</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">1,78,900</td>
+                  <td class="px-4 py-3 text-right font-mono text-sm text-[var(--text)]">₹52.45 Cr</td>
+                </tr>
+                <tr class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]">
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-center font-mono text-sm text-[var(--text3)]">5</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--text)]">Z-3 / R-5 / DEL-1005</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">32</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">42,340</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">₹20.78 Cr</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">19,870</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">1,12,340</td>
+                  <td class="px-4 py-3 text-right font-mono text-sm text-[var(--text)]">₹35.67 Cr</td>
+                </tr>
+                <tr class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]">
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-center font-mono text-sm text-[var(--text3)]">6</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--text)]">Z-3 / R-6 / CHN-1006</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">40</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">50,230</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">₹26.89 Cr</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">26,450</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">1,52,670</td>
+                  <td class="px-4 py-3 text-right font-mono text-sm text-[var(--text)]">₹45.23 Cr</td>
+                </tr>
+                <!-- Total Row -->
+                <tr class="border-t-2 border-[var(--border)] bg-[var(--bg2)] font-semibold">
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-center text-sm text-[var(--text3)]"></td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text)]">Total</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">232</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">2,97,600</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">₹156.25 Cr</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">1,53,180</td>
+                  <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">8,80,480</td>
+                  <td class="px-4 py-3 text-right font-mono text-sm text-[var(--text)]">₹263.37 Cr</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily Account Opening -->
+      <div v-if="activeTab === 'daily_acct'" class="sb-card card-table">
+        <div class="p-6 text-center text-[var(--text3)]">
+          <div class="text-sm font-medium">Daily Account Opening</div>
+          <div class="mt-1 text-xs">Data will be loaded from backend</div>
+        </div>
+      </div>
+
+      <!-- CASA NTB & EVR -->
+      <div v-if="activeTab === 'casa_ntb'" class="sb-card card-table">
+        <div class="p-6 text-center text-[var(--text3)]">
+          <div class="text-sm font-medium">CASA NTB & EVR</div>
+          <div class="mt-1 text-xs">Data will be loaded from backend</div>
+        </div>
+      </div>
+
+      <!-- CASA Cust Wise AVG Bal -->
+      <div v-if="activeTab === 'casa_avg'" class="sb-card card-table">
+        <div class="p-6 text-center text-[var(--text3)]">
+          <div class="text-sm font-medium">CASA Cust Wise AVG Bal</div>
+          <div class="mt-1 text-xs">Data will be loaded from backend</div>
+        </div>
+      </div>
+
+      <!-- GL. Wise CH Report -->
+      <div v-if="activeTab === 'gl_report'" class="sb-card card-table">
+        <div class="p-6 text-center text-[var(--text3)]">
+          <div class="text-sm font-medium">GL. Wise CH Report</div>
+          <div class="mt-1 text-xs">Data will be loaded from backend</div>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
