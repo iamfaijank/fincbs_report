@@ -58,6 +58,16 @@ const categoryData = ref([
   { category: 'Zero Level', performanceBand: '0–20%', branchCount: 13, movement: '0', movementDirection: 'neutral', healthStatus: 'critical' },
 ])
 
+// Product table data
+const productData = ref([
+  { sr: 1, zoneRegionDistrictSol: 'Z-1 / R-1 / DIS-1 / SOL-1001', casa: 15678900, dam: 2345678, dd: 890123, fd: 4567890, rd: 1234567, smbg: 567890, share: 8901234, achievement: 85.8 },
+  { sr: 2, zoneRegionDistrictSol: 'Z-1 / R-1 / DIS-1 / SOL-1002', casa: 14325000, dam: 2156789, dd: 789012, fd: 4321098, rd: 1123456, smbg: 456789, share: 8234567, achievement: 92.4 },
+  { sr: 3, zoneRegionDistrictSol: 'Z-1 / R-2 / DIS-2 / SOL-2001', casa: 12890000, dam: 1987654, dd: 678901, fd: 3987654, rd: 1012345, smbg: 345678, share: 7654321, achievement: 79.4 },
+  { sr: 4, zoneRegionDistrictSol: 'Z-1 / R-2 / DIS-2 / SOL-2002', casa: 11234000, dam: 1765432, dd: 567890, fd: 3543210, rd: 901234, smbg: 234567, share: 6543210, achievement: 84.2 },
+  { sr: 5, zoneRegionDistrictSol: 'Z-2 / R-3 / DIS-3 / SOL-3001', casa: 12890000, dam: 1654321, dd: 456789, fd: 3210987, rd: 890123, smbg: 123456, share: 5432109, achievement: 76.6 },
+  { sr: 6, zoneRegionDistrictSol: 'Z-2 / R-3 / DIS-3 / SOL-3002', casa: 16750000, dam: 2345678, dd: 890123, fd: 4567890, rd: 1345678, smbg: 678901, share: 9012345, achievement: 93.6 },
+])
+
 
 function toggleZone(zone) {
   if (expandedZones.value.has(zone)) {
@@ -424,6 +434,97 @@ function getCategoryTotals() {
               </td>
               <td class="px-5 py-3 text-center text-sm text-[var(--text3)]">
                 —
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Product Wise Table - Only in Drishti mode -->
+    <div v-if="activeView === 'drishti' && activeTab === 'product'" class="sb-card card-table">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+              <th class="border-r border-[var(--border)] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                SR
+              </th>
+              <th class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                Z/R/DIS/SOL
+              </th>
+              <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                CASA
+              </th>
+              <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                DAM
+              </th>
+              <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                DD
+              </th>
+              <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                FD
+              </th>
+              <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                RD
+              </th>
+              <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                SMBG
+              </th>
+              <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                SHARE
+              </th>
+              <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                ACHIEVEMENT
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="row in productData"
+              :key="row.sr"
+              class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
+            >
+              <td class="border-r border-[var(--border)] px-4 py-3 text-center font-mono text-sm text-[var(--text3)]">
+                {{ row.sr }}
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text)]">
+                {{ row.zoneRegionDistrictSol }}
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
+                {{ formatNumber(row.casa) }}
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
+                {{ formatNumber(row.dam) }}
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
+                {{ formatNumber(row.dd) }}
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
+                {{ formatNumber(row.fd) }}
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
+                {{ formatNumber(row.rd) }}
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
+                {{ formatNumber(row.smbg) }}
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
+                {{ formatNumber(row.share) }}
+              </td>
+              <td class="px-4 py-3 text-center font-mono text-sm">
+                <span
+                  class="inline-block rounded px-2 py-0.5 text-xs font-medium"
+                  :class="
+                    row.achievement >= 90
+                      ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                      : row.achievement >= 75
+                      ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
+                      : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                  "
+                >
+                  {{ row.achievement }}%
+                </span>
               </td>
             </tr>
           </tbody>
