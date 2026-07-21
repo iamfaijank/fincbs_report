@@ -3,9 +3,11 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { Select, DatePicker, frappeRequest } from 'frappe-ui'
 import { useSidebar } from '@/composables/useSidebar.js'
 import { useNumberFormat } from '@/composables/useNumberFormat.js'
+import { useFilters } from '@/composables/useFilters.js'
 
 const { collapsed, toggleSidebar } = useSidebar()
 const { numberFormat } = useNumberFormat()
+const { setZoneOptions, setRegionOptions, setZoneFilter, setRegionFilter } = useFilters()
 const viewMode = ref('monthly')
 const targetType = ref('monthly')
 const financialYear = ref('')
@@ -119,12 +121,17 @@ const districtLabel = computed(() => {
 const allZonesSelected = computed(() => zoneFilter.value.length === zoneFilterOptions.value.length)
 
 function toggleZone(name: string) {
-  const idx = zoneFilter.value.indexOf(name)
-  if (idx >= 0) {
-    zoneFilter.value.splice(idx, 1)
+  if (allZonesSelected.value) {
+    zoneFilter.value = [name]
   } else {
-    zoneFilter.value.push(name)
+    const idx = zoneFilter.value.indexOf(name)
+    if (idx >= 0) {
+      zoneFilter.value.splice(idx, 1)
+    } else {
+      zoneFilter.value.push(name)
+    }
   }
+  setZoneFilter([...zoneFilter.value])
 }
 
 function toggleAllZones() {
@@ -133,18 +140,24 @@ function toggleAllZones() {
   } else {
     zoneFilter.value = zoneFilterOptions.value.map(z => z.name)
   }
+  setZoneFilter([...zoneFilter.value])
 }
 
 // Region helpers
 const allRegionsSelected = computed(() => regionFilter.value.length === regionFilterOptions.value.length)
 
 function toggleRegion(name: string) {
-  const idx = regionFilter.value.indexOf(name)
-  if (idx >= 0) {
-    regionFilter.value.splice(idx, 1)
+  if (allRegionsSelected.value) {
+    regionFilter.value = [name]
   } else {
-    regionFilter.value.push(name)
+    const idx = regionFilter.value.indexOf(name)
+    if (idx >= 0) {
+      regionFilter.value.splice(idx, 1)
+    } else {
+      regionFilter.value.push(name)
+    }
   }
+  setRegionFilter([...regionFilter.value])
 }
 
 function toggleAllRegions() {
@@ -153,7 +166,11 @@ function toggleAllRegions() {
   } else {
     regionFilter.value = regionFilterOptions.value.map(r => r.name)
   }
+  setRegionFilter([...regionFilter.value])
 }
+
+watch(zoneFilter, (val) => { setZoneFilter([...val]) }, { deep: true })
+watch(regionFilter, (val) => { setRegionFilter([...val]) }, { deep: true })
 
 // Branch helpers
 const filteredBranches = computed(() => {
@@ -248,6 +265,10 @@ onMounted(async () => {
 
   zoneFilterOptions.value = allZones.map(z => ({ name: z, label: mapZoneName(z) }))
   regionFilterOptions.value = allRegions.map(r => ({ name: r, label: mapRegionName(r) }))
+
+  setZoneOptions(allZones)
+  setRegionOptions(allRegions)
+
   districtOptions.value = allDistricts.length ? allDistricts : ['Mumbai', 'Delhi', 'Bengaluru', 'Kolkata', 'Chennai', 'Hyderabad', 'Pune', 'Ahmedabad']
   if (allSolIds.length) {
     branchOptions.value = allSolIds.map(s => ({ label: s, value: s }))
@@ -270,6 +291,9 @@ onMounted(async () => {
     } else {
       regionFilter.value = regionFilterOptions.value.map(r => r.name)
     }
+
+    setZoneFilter(zoneFilter.value)
+    setRegionFilter(regionFilter.value)
 
     if (pref.district && pref.district.length) {
       districtFilter.value = pref.district

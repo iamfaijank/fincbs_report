@@ -1,9 +1,11 @@
 <script setup>
 import { ref, inject, computed, watch } from 'vue'
 import { useNumberFormat } from '@/composables/useNumberFormat.js'
+import { useFilters } from '@/composables/useFilters.js'
 
 const activeView = inject('activeView')
 const { formatNumber } = useNumberFormat()
+const { zoneFilter, regionFilter, allZonesSelected, allRegionsSelected, isZoneSelected, isRegionSelected } = useFilters()
 const activeTab = ref('zone')
 
 const drishtiTabs = [
@@ -318,6 +320,65 @@ function getZoneGlTotals(zone) {
   zone.regions.forEach(r => { const rt = getRegionGlTotals(r); Object.keys(t).forEach(k => t[k] += rt[k]) })
   return t
 }
+
+// Filtered data based on sidebar zone/region filters - only applies to active tab
+const isFilterApplied = computed(() => !allZonesSelected.value || !allRegionsSelected.value)
+
+const filteredTableData = computed(() => {
+  if (!isFilterApplied.value || activeTab.value !== 'zone') return tableData.value
+  return tableData.value
+    .filter(z => isZoneSelected(z.zone))
+    .map(z => ({ ...z, regions: z.regions.filter(r => isRegionSelected(r.region)) }))
+    .filter(z => z.regions.length > 0)
+})
+
+const filteredCategoryData = computed(() => {
+  return categoryData.value
+})
+
+const filteredProductData = computed(() => {
+  if (!isFilterApplied.value || activeTab.value !== 'product') return productData.value
+  return productData.value
+    .filter(z => isZoneSelected(z.zone))
+    .map(z => ({ ...z, regions: z.regions.filter(r => isRegionSelected(r.region)) }))
+    .filter(z => z.regions.length > 0)
+})
+
+const filteredAgentData = computed(() => {
+  if (!isFilterApplied.value || activeTab.value !== 'agent') return agentData.value
+  return agentData.value
+    .filter(z => isZoneSelected(z.zone))
+    .map(z => ({ ...z, regions: z.regions.filter(r => isRegionSelected(r.region)) }))
+    .filter(z => z.regions.length > 0)
+})
+
+const filteredBranchData = computed(() => {
+  return branchData.value
+})
+
+const filteredDailyAccountData = computed(() => {
+  if (!isFilterApplied.value || activeTab.value !== 'daily_acct') return dailyAccountData.value
+  return dailyAccountData.value
+    .filter(z => isZoneSelected(z.zone))
+    .map(z => ({ ...z, regions: z.regions.filter(r => isRegionSelected(r.region)) }))
+    .filter(z => z.regions.length > 0)
+})
+
+const filteredCasaNtbData = computed(() => {
+  if (!isFilterApplied.value || activeTab.value !== 'casa_ntb') return casaNtbData.value
+  return casaNtbData.value
+    .filter(z => isZoneSelected(z.zone))
+    .map(z => ({ ...z, regions: z.regions.filter(r => isRegionSelected(r.region)) }))
+    .filter(z => z.regions.length > 0)
+})
+
+const filteredGlReportData = computed(() => {
+  if (!isFilterApplied.value || activeTab.value !== 'gl_report') return glReportData.value
+  return glReportData.value
+    .filter(z => isZoneSelected(z.zone))
+    .map(z => ({ ...z, regions: z.regions.filter(r => isRegionSelected(r.region)) }))
+    .filter(z => z.regions.length > 0)
+})
 
 
 function toggleZone(zone) {
@@ -691,7 +752,7 @@ function isGlDistrictExpanded(key) { return expandedGlDistricts.value.has(key) }
             </tr>
           </thead>
           <tbody>
-            <template v-for="zoneData in tableData" :key="zoneData.zone">
+            <template v-for="zoneData in filteredTableData" :key="zoneData.zone">
               <!-- Zone Row (Collapsed shows totals) -->
               <tr
                 class="cursor-pointer border-b border-[var(--border)] bg-[var(--bg1)] font-semibold transition hover:bg-[var(--bg2)]"
@@ -807,7 +868,7 @@ function isGlDistrictExpanded(key) { return expandedGlDistricts.value.has(key) }
           </thead>
           <tbody>
             <tr
-              v-for="(row, index) in categoryData"
+              v-for="(row, index) in filteredCategoryData"
               :key="index"
               class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
             >
@@ -945,7 +1006,7 @@ function isGlDistrictExpanded(key) { return expandedGlDistricts.value.has(key) }
             </tr>
           </thead>
           <tbody>
-            <template v-for="zoneData in productData" :key="zoneData.zone">
+            <template v-for="zoneData in filteredProductData" :key="zoneData.zone">
               <!-- Zone Row -->
               <tr
                 class="cursor-pointer border-b border-[var(--border)] bg-[var(--bg1)] font-semibold transition hover:bg-[var(--bg2)]"
@@ -1070,7 +1131,7 @@ function isGlDistrictExpanded(key) { return expandedGlDistricts.value.has(key) }
             </tr>
           </thead>
           <tbody>
-            <template v-for="zoneData in agentData" :key="zoneData.zone">
+            <template v-for="zoneData in filteredAgentData" :key="zoneData.zone">
               <!-- Zone Row -->
               <tr
                 class="cursor-pointer border-b border-[var(--border)] bg-[var(--bg1)] font-semibold transition hover:bg-[var(--bg2)]"
@@ -1163,7 +1224,7 @@ function isGlDistrictExpanded(key) { return expandedGlDistricts.value.has(key) }
           </thead>
           <tbody>
             <tr
-              v-for="row in branchData"
+              v-for="row in filteredBranchData"
               :key="row.sr"
               class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
             >
@@ -1415,7 +1476,7 @@ function isGlDistrictExpanded(key) { return expandedGlDistricts.value.has(key) }
               </tr>
             </thead>
             <tbody>
-              <template v-for="(zone, zi) in dailyAccountData" :key="zone.zone">
+              <template v-for="(zone, zi) in filteredDailyAccountData" :key="zone.zone">
                 <!-- Zone row -->
                 <tr class="cursor-pointer border-b border-[var(--border)] bg-[var(--bg2)] transition hover:bg-[var(--bg)]"
                     @click="toggleDailyZone(zone.zone)">
@@ -1502,7 +1563,7 @@ function isGlDistrictExpanded(key) { return expandedGlDistricts.value.has(key) }
               </tr>
             </thead>
             <tbody>
-              <template v-for="(zone, zi) in casaNtbData" :key="zone.zone">
+              <template v-for="(zone, zi) in filteredCasaNtbData" :key="zone.zone">
                 <!-- Zone row -->
                 <tr class="cursor-pointer border-b border-[var(--border)] bg-[var(--bg2)] transition hover:bg-[var(--bg)]"
                     @click="toggleCasaNtbZone(zone.zone)">
@@ -1646,7 +1707,7 @@ function isGlDistrictExpanded(key) { return expandedGlDistricts.value.has(key) }
             </tr>
           </thead>
           <tbody>
-            <template v-for="(zone, zi) in glReportData" :key="zone.zone">
+            <template v-for="(zone, zi) in filteredGlReportData" :key="zone.zone">
               <!-- Zone row -->
               <tr class="cursor-pointer border-b border-[var(--border)] bg-[var(--bg2)] transition hover:bg-[var(--bg)]"
                   @click="toggleGlZone(zone.zone)">
