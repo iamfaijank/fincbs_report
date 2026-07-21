@@ -830,34 +830,25 @@ function getAgentRegionTotals(regionData) {
         <table class="w-full">
           <thead>
             <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
-              <th class="border-r border-[var(--border)] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+              <th rowspan="2" class="border-r border-[var(--border)] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
                 SR. NO.
               </th>
-              <th class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+              <th rowspan="2" class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
                 BRANCH
               </th>
-              <th class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+              <th rowspan="2" class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
                 SEGMENTS
               </th>
-              <th class="border-r border-[var(--border)] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-                CATEGORY
-              </th>
-              <th class="border-r border-[var(--border)] px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-                TARGET
-              </th>
-              <th colspan="2" class="border-b border-r border-[var(--border)] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+              <th colspan="4" class="border-b border-r border-[var(--border)] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
                 JUL-2026<br/>
                 <span class="text-[10px] font-normal">10 WORKING DAYS LEFT</span>
               </th>
-              <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-                ACH %
-              </th>
             </tr>
             <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
-              <th colspan="5" class="border-r border-[var(--border)]"></th>
+              <th class="border-r border-[var(--border)] px-4 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">CATEGORY</th>
+              <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">TARGET</th>
               <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">ACH</th>
               <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">ACH %</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -894,10 +885,7 @@ function getAgentRegionTotals(regionData) {
               <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
                 {{ formatNumber(row.ach) }}
               </td>
-              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
-                {{ row.achPercent }}%
-              </td>
-              <td class="px-4 py-3 text-center font-mono text-sm">
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm">
                 <span class="inline-block rounded px-2 py-0.5 text-xs font-medium"
                   :class="
                     row.achPercent >= 90 ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
@@ -918,7 +906,6 @@ function getAgentRegionTotals(regionData) {
               <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(branchData.reduce((a, r) => a + r.target, 0)) }}</td>
               <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(branchData.reduce((a, r) => a + r.ach, 0)) }}</td>
               <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ (branchData.reduce((a, r) => a + r.ach, 0) / branchData.reduce((a, r) => a + r.target, 0) * 100).toFixed(1) }}%</td>
-              <td class="px-4 py-3 text-center text-sm text-[var(--text3)]">—</td>
             </tr>
           </tbody>
         </table>
