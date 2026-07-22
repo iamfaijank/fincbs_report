@@ -6,6 +6,7 @@ const showDropdown = ref(false)
 const search = ref('')
 const inputRef = ref(null)
 const branchOptions = ref([])
+const initialized = ref(false)
 
 const filteredBranches = computed(() => {
   const q = search.value.toLowerCase()
@@ -53,13 +54,19 @@ watch(showDropdown, (val) => {
 })
 
 const props = defineProps({
-  options: { type: Array, default: () => [] }
+  options: { type: Array, default: () => [] },
+  initialValue: { type: Array, default: () => [] }
 })
 
-watch(() => props.options, (val) => {
-  branchOptions.value = val
-  if (branchFilter.value.length === 0) {
-    branchFilter.value = val.map(b => b.value)
+watch([() => props.options, () => props.initialValue], ([opts, pref]) => {
+  branchOptions.value = opts
+  if (!initialized.value) {
+    if (pref && pref.length) {
+      branchFilter.value = [...pref]
+    } else {
+      branchFilter.value = opts.map(b => b.value)
+    }
+    initialized.value = true
   }
 }, { immediate: true })
 </script>

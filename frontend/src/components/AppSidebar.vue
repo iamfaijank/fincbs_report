@@ -46,6 +46,8 @@ const monthOptions = [
 
 const districtOptions = ref([])
 const branchOptions = ref([])
+const prefDistricts = ref([])
+const prefSolIds = ref([])
 
 const financialYearOptions = [
   { label: 'FY 26–27', value: 'fy2627' },
@@ -185,6 +187,9 @@ const initFilters = async () => {
     } else {
       setRegionFilter(fetchedRegions)
     }
+
+    prefDistricts.value = pref.district || []
+    prefSolIds.value = pref.sol_id || []
   } catch (e) {
     setZoneFilter(fetchedZones)
     setRegionFilter(fetchedRegions)
@@ -263,8 +268,8 @@ initFilters()
       <!-- FILTERS -->
       <ZoneFilter />
       <RegionFilter />
-      <DistrictFilter :options="districtOptions" />
-      <BranchFilter :options="branchOptions" />
+      <DistrictFilter :options="districtOptions" :initialValue="prefDistricts" />
+      <BranchFilter :options="branchOptions" :initialValue="prefSolIds" />
 
       <!-- CATEGORIES -->
       <div class="sb-section">
