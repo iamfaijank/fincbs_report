@@ -186,6 +186,8 @@ const initFilters = async () => {
 
     if (pref.region && pref.region.length) {
       setRegionFilter(pref.region)
+      const allowedRegions = fetchedRegions.filter(r => pref.region.includes(r))
+      setRegionOptions(allowedRegions.length ? allowedRegions : fetchedRegions)
     } else {
       setRegionFilter(fetchedRegions)
     }
