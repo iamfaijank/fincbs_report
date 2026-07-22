@@ -142,7 +142,7 @@ const initFilters = async () => {
   let fetchedZones: string[] = []
   let fetchedRegions: string[] = []
   let fetchedDistricts: string[] = []
-  let allSolIds: string[] = []
+  let fetchedBranches: { label: string; value: string }[] = []
 
   try {
     const opts = await frappeRequest({
@@ -152,7 +152,7 @@ const initFilters = async () => {
     fetchedZones = opts.zones || []
     fetchedRegions = opts.regions || []
     fetchedDistricts = opts.districts || []
-    allSolIds = opts.sol_ids || []
+    fetchedBranches = opts.branches || []
   } catch (e) {
     console.error('Failed to load filter options', e)
   }
@@ -164,8 +164,8 @@ const initFilters = async () => {
   setRegionOptions(fetchedRegions)
 
   districtOptions.value = fetchedDistricts.length ? fetchedDistricts : ['Mumbai', 'Delhi', 'Bengaluru', 'Kolkata', 'Chennai', 'Hyderabad', 'Pune', 'Ahmedabad']
-  if (allSolIds.length) {
-    branchOptions.value = allSolIds.map(s => ({ label: s, value: s }))
+  if (fetchedBranches.length) {
+    branchOptions.value = fetchedBranches
   }
 
   try {
