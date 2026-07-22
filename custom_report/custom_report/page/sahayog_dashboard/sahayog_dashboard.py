@@ -3887,6 +3887,271 @@ def get_staff_wise_demand_collection_data(selected_date=None):
 
 
 @frappe.whitelist()
+def get_agent_wise_demand_collection_data(selected_date=None):
+    from custom_report.db_connection import get_dr_connection
+    from frappe.utils import getdate
+    import datetime
+    import time
+
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    dt = getdate(selected_date)
+    month_start = dt.replace(day=1).strftime("%Y-%m-%d")
+    ref_date = dt.strftime("%Y-%m-%d")
+
+    # SQL query is identical but we will group/extract agents
+    query = f"""
+    WITH account_data AS (
+        SELECT
+            d.rm_id,
+            g2.emp_name AS rm_name,
+            d2.operacc,
+            d2.auth_id,
+            d2.auth_role_id,
+            g.cif_id,
+            g.acct_opn_date,
+            a2.relationshipopeningdate AS cif_id_opening_date,
+            g.foracid,
+            g.clr_bal_amt,
+            tam.deposit_period_mths,
+            tam.deposit_period_days,
+            tam.deposit_amount,
+            tam.maturity_amount,
+            tam.maturity_date,
+            g.sol_id,
+            sol.sol_desc,
+            g.schm_code,
+            gsp.schm_desc,
+            g.acct_cls_date,
+            g.acct_cls_flg
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        LEFT JOIN
+            crmuser.accounts AS a2 ON g.cif_id = a2.orgkey
+        LEFT JOIN
+            tbaadm.sol AS sol ON g.sol_id = sol.sol_id
+        LEFT JOIN
+            tbaadm.gsp AS gsp ON g.schm_code = gsp.schm_code
+        LEFT JOIN
+            custom.dsaauth AS d2 ON d.rm_id = d2.user_id
+        LEFT JOIN
+            tbaadm.get AS g2 ON d2.user_id = g2.emp_id
+        LEFT JOIN
+            tbaadm.tam AS tam ON g.acid = tam.acid    
+        WHERE
+            g.acct_cls_flg <> 'Y'
+            OR g.acct_cls_date >= DATE_TRUNC('month', CURRENT_DATE)::DATE
+    ),
+    demand_data AS (
+        SELECT
+            ad.foracid,
+            ad.schm_code,
+            CASE
+                WHEN ad.acct_opn_date::DATE < DATE_TRUNC('month', CURRENT_DATE)::DATE
+              AND ad.maturity_date::DATE >
+             (DATE_TRUNC('month', CURRENT_DATE)
+              + INTERVAL '1 month'
+              - INTERVAL '1 day')::DATE
+               THEN ad.deposit_amount * (
+            (
+              DATE_TRUNC('month', CURRENT_DATE)
+              + INTERVAL '1 month'
+              - INTERVAL '1 day'
+            )::DATE
+            - DATE_TRUNC('month', CURRENT_DATE)::DATE
+            + 1
+           )
+                WHEN ad.maturity_date::DATE >= DATE_TRUNC('month', CURRENT_DATE)::DATE
+            AND ad.maturity_date::DATE <= (
+             DATE_TRUNC('month', CURRENT_DATE)
+             + INTERVAL '1 month'
+             - INTERVAL '1 day'
+           )::DATE
+                THEN ad.deposit_amount * (
+             ad.maturity_date::DATE
+             - DATE_TRUNC('month', CURRENT_DATE)::DATE
+            )
+               WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', CURRENT_DATE)::DATE
+                AND ad.acct_opn_date::DATE <= (
+                 DATE_TRUNC('month', CURRENT_DATE)
+                + INTERVAL '1 month'
+                 - INTERVAL '1 day'
+             )::DATE
+           THEN ad.deposit_amount * (
+        ad.acct_opn_date::DATE
+        - DATE_TRUNC('month', CURRENT_DATE)::DATE
+        + 1
+    )
+    ELSE 0
+    END AS demand_amount
+    FROM
+        account_data AS ad
+    ),
+    flow_data AS (
+        SELECT
+            d.rm_id,
+            g.foracid,
+            g.schm_code,
+            SUM(tdt.flow_amt) AS total_flow_amount
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        INNER JOIN
+            tbaadm.tdt AS tdt ON tdt.acid = g.acid AND tdt.flow_code = 'NI'
+        WHERE
+            tdt.flow_date BETWEEN DATE '{month_start}' AND DATE '{ref_date}'
+            AND (
+                g.acct_cls_flg <> 'Y'
+                OR g.acct_cls_date >= DATE_TRUNC('month', CURRENT_DATE)::DATE
+            )
+        GROUP BY
+            d.rm_id, g.foracid, g.schm_code
+        HAVING
+            SUM(tdt.flow_amt) > 0
+    ),
+    tran_data AS (
+        SELECT
+            d.rm_id,
+            g.foracid,
+            g.schm_code,
+            SUM(dtt.tran_amt) AS total_tran_amt
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        INNER JOIN
+            tbaadm.dtt AS dtt ON dtt.acid = g.acid AND dtt.flow_code = 'NI'
+        WHERE
+            dtt.value_date BETWEEN DATE '{month_start}' AND DATE '{ref_date}'
+            AND (
+                g.acct_cls_flg <> 'Y'
+                OR g.acct_cls_date >= DATE_TRUNC('month', CURRENT_DATE)::DATE
+            )
+        GROUP BY
+            d.rm_id, g.foracid, g.schm_code
+        HAVING
+            SUM(dtt.tran_amt) > 0
+    )
+    SELECT
+        ad.rm_id,
+        ad.rm_name,
+        ad.operacc,
+        ad.auth_id,
+        ad.auth_role_id AS auth_name,
+        ad.cif_id,
+        ad.acct_opn_date,
+        ad.cif_id_opening_date,
+        ad.foracid,
+        ad.deposit_amount,
+        ad.sol_id,
+        ad.sol_desc,
+        COALESCE(dd.demand_amount, 0) AS monthly_demand_amount,
+        COALESCE(td.total_tran_amt, 0) AS monthly_collection
+    FROM
+        account_data AS ad
+    LEFT JOIN
+        flow_data AS fd ON ad.rm_id = fd.rm_id AND ad.foracid = fd.foracid AND ad.schm_code = fd.schm_code
+    LEFT JOIN
+        tran_data AS td ON ad.rm_id = td.rm_id AND ad.foracid = td.foracid AND ad.schm_code = td.schm_code
+    LEFT JOIN
+        demand_data AS dd ON ad.foracid = dd.foracid AND ad.schm_code = dd.schm_code
+    WHERE
+        (fd.total_flow_amount > 0 OR td.total_tran_amt > 0)
+    ORDER BY
+        ad.foracid, ad.rm_id, ad.schm_code
+    """
+
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        conn = get_dr_connection()
+        if not conn:
+            frappe.log_error("Failed to connect to DR database", "Agent Demand Collection API")
+            return []
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SET statement_timeout TO '180000'")
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            headers = [desc[0] for desc in cursor.description]
+
+            raw_data = []
+            for row in rows:
+                row_dict = {}
+                for i, val in enumerate(row):
+                    col = headers[i]
+                    if val is None:
+                        row_dict[col] = None
+                    elif isinstance(val, (int, float)):
+                        row_dict[col] = val
+                    elif hasattr(val, 'isoformat'):
+                        row_dict[col] = str(val)[:10]
+                    else:
+                        row_dict[col] = str(val)
+                raw_data.append(row_dict)
+
+            sol_ids = list(set(r["sol_id"] for r in raw_data if r.get("sol_id")))
+            branch_map = {}
+            if sol_ids:
+                sb_data = frappe.get_all(
+                    "Sahayog Branch",
+                    filters={"name": ["in", sol_ids]},
+                    fields=["name as sol_id", "zone", "region", "district", "branch"]
+                )
+                for b in sb_data:
+                    branch_map[b.sol_id] = {
+                        "zone": b.zone or "Unknown",
+                        "region": b.region or "Unknown",
+                        "district": b.district or "Unknown",
+                        "branch_name": b.branch or b.sol_id
+                    }
+
+            summary = {}
+            for r in raw_data:
+                sid = r.get("sol_id")
+                if not sid:
+                    continue
+
+                br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
+                rm_id = r.get("rm_id") or "Unknown"
+                rm_name = r.get("rm_name") or "Unknown"
+                auth_id = r.get("auth_id") or "Unknown"
+                auth_name = r.get("auth_name") or "Unknown"
+
+                key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{rm_id}||{rm_name}||{auth_id}||{auth_name}"
+                if key not in summary:
+                    summary[key] = {
+                        "zone": br["zone"],
+                        "region": br["region"],
+                        "district": br["district"],
+                        "sol_id": sid,
+                        "sol_desc": br["branch_name"],
+                        "rm_id": rm_id,
+                        "rm_name": rm_name,
+                        "auth_id": auth_id,
+                        "auth_name": auth_name,
+                        "monthly_demand_amount": 0.0,
+                        "monthly_collection": 0.0
+                    }
+
+                summary[key]["monthly_demand_amount"] += float(r.get("monthly_demand_amount") or 0)
+                summary[key]["monthly_collection"] += float(r.get("monthly_collection") or 0)
+
+            result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+            return result
+        except Exception as e:
+            frappe.log_error(f"Error executing Agent Demand Collection query (attempt {attempt+1}): {str(e)}", "Agent Demand Collection API")
+            conn.close()
+            if attempt < max_attempts - 1:
+                time.sleep(2)
+            else:
+                return []
+
+
+@frappe.whitelist()
 def clear_product_wise_report():
     try:
         frappe.db.sql("DELETE FROM `tabProduct Wise Report`")
