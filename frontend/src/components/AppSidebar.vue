@@ -189,7 +189,7 @@ const initFilters = async () => {
     }
 
     prefDistricts.value = pref.district || []
-    prefSolIds.value = pref.sol_id || []
+    prefSolIds.value = (pref.sol_id || []).map(s => String(s))
   } catch (e) {
     setZoneFilter(fetchedZones)
     setRegionFilter(fetchedRegions)
