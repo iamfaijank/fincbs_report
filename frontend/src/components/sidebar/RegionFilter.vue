@@ -4,7 +4,7 @@ import { useFilters } from '@/composables/useFilters.js'
 
 const { regionFilterOptions, regionFilter, setRegionFilter } = useFilters()
 
-const allRegionsSelected = computed(() => regionFilter.value.length === regionFilterOptions.value.length)
+const allRegionsSelected = computed(() => regionFilter.value.length === 0 || regionFilter.value.length === regionFilterOptions.value.length)
 
 function toggleRegion(name) {
   if (allRegionsSelected.value) {
@@ -23,7 +23,7 @@ function toggleAllRegions() {
   if (allRegionsSelected.value) {
     setRegionFilter([])
   } else {
-    setRegionFilter(regionFilterOptions.value.map(r => r.name))
+    setRegionFilter([])
   }
 }
 </script>

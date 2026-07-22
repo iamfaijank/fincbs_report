@@ -4,7 +4,7 @@ import { useFilters } from '@/composables/useFilters.js'
 
 const { zoneFilterOptions, zoneFilter, setZoneFilter } = useFilters()
 
-const allZonesSelected = computed(() => zoneFilter.value.length === zoneFilterOptions.value.length)
+const allZonesSelected = computed(() => zoneFilter.value.length === 0 || zoneFilter.value.length === zoneFilterOptions.value.length)
 
 function toggleZone(name) {
   if (allZonesSelected.value) {
@@ -23,7 +23,7 @@ function toggleAllZones() {
   if (allZonesSelected.value) {
     setZoneFilter([])
   } else {
-    setZoneFilter(zoneFilterOptions.value.map(z => z.name))
+    setZoneFilter([])
   }
 }
 </script>

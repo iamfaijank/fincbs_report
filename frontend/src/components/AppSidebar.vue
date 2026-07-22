@@ -179,7 +179,8 @@ const initFilters = async () => {
       const allowedZones = fetchedZones.filter(z => pref.zone.includes(z))
       setZoneOptions(allowedZones.length ? allowedZones : fetchedZones)
     } else {
-      setZoneFilter(fetchedZones)
+      setZoneFilter([])
+      setZoneOptions(fetchedZones)
     }
 
     if (pref.region && pref.region.length) {
@@ -187,14 +188,15 @@ const initFilters = async () => {
       const allowedRegions = fetchedRegions.filter(r => pref.region.includes(r))
       setRegionOptions(allowedRegions.length ? allowedRegions : fetchedRegions)
     } else {
-      setRegionFilter(fetchedRegions)
+      setRegionFilter([])
+      setRegionOptions(fetchedRegions)
     }
 
     prefDistricts.value = pref.district || []
     prefSolIds.value = (pref.sol_id || []).map(s => String(s))
   } catch (e) {
-    setZoneFilter(fetchedZones)
-    setRegionFilter(fetchedRegions)
+    setZoneFilter([])
+    setRegionFilter([])
   }
 
   districtOptions.value = fetchedDistricts.length ? fetchedDistricts : ['Mumbai', 'Delhi', 'Bengaluru', 'Kolkata', 'Chennai', 'Hyderabad', 'Pune', 'Ahmedabad']
