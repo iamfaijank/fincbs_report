@@ -699,6 +699,12 @@ class DrishtiDashboard {
 				},
 			},
 			{
+				id: "daily_ch_report",
+				name: "Daily CH Report",
+				type: "group",
+				children: ["daily_account_opening", "gl_wise_ch_report"]
+			},
+			{
 				id: "daily_account_opening",
 				name: "Daily Account Opening",
 				tableData: [],
@@ -726,10 +732,7 @@ class DrishtiDashboard {
 							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="mis-records-count"></div>
 						</div>
 						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
-							<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-								<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important; animation: spinner-border .75s linear infinite;"></div>
-								<span style="font-weight: 600; color: #417d81; font-size: 13px;">Fetching latest Daily Account Opening data...</span>
-							</div>
+							${dashboardInstance.buildMisSkeletonTable("Fetching latest Daily Account Opening data...")}
 						</div>
 						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<div id="mis-kpi-container" ${self.tableData && self.tableData.length ? "" : 'style="display: none;"'}></div>
@@ -1044,6 +1047,12 @@ class DrishtiDashboard {
 				},
 			},
 			{
+				id: "casa_daily_report",
+				name: "CASA Daily Report",
+				type: "group",
+				children: ["ntb_evr", "cust_wise_avg_bal"]
+			},
+			{
 				id: "ntb_evr",
 				name: "CASA NTB & EVR",
 				tableData: [],
@@ -1063,9 +1072,8 @@ class DrishtiDashboard {
 							#ntb-evr-table tfoot td { padding: 10px 14px; font-size: 14px; font-weight: 700; color: #ffffff; background: #1e293b; }
 							#ntb-evr-scroll { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
 						</style>
-						<div id="ntb-evr-loading" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-							<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important; animation: spinner-border .75s linear infinite;"></div>
-							<span style="font-weight: 600; color: #417d81; font-size: 13px;">Fetching CASA NTB & EVR data...</span>
+						<div id="ntb-evr-loading" style="width: 100%; margin-top: 10px;">
+							${dashboardInstance.buildMisSkeletonTable("Fetching CASA NTB & EVR data...")}
 						</div>
 						<div id="ntb-evr-table-container"></div>
 					`);
@@ -1328,11 +1336,8 @@ class DrishtiDashboard {
 							<button type="button" id="cavg-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px; margin-left: auto;" id="cavg-count"></div>
 						</div>
-						<div id="cavg-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif;">
-							<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-								<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important;"></div>
-								<span id="cavg-loading-text" style="font-weight: 600; color: #417d81; font-size: 13px;">Loading page 1...</span>
-							</div>
+						<div id="cavg-loading" style="width: 100%; margin-top: 10px;">
+							${dashboardInstance.buildMisSkeletonTable("Loading page 1...")}
 						</div>
 						<div id="cavg-table-container" style="display: none;"></div>
 						<div id="cavg-pagination" style="display: none; align-items: center; gap: 6px; margin-top: 12px; font-family: 'Inter', sans-serif; flex-wrap: wrap;"></div>
@@ -1500,7 +1505,6 @@ class DrishtiDashboard {
 							return;
 						}
 						container.find("#cavg-loading").show();
-						container.find("#cavg-loading-text").text(`Loading page ${pageNum}...`);
 						fetchPageAjax(pageNum).then(() => {
 							container.find("#cavg-loading").hide();
 							container.find("#cavg-table-container").show();
@@ -1531,7 +1535,6 @@ class DrishtiDashboard {
 						container.find("#cavg-table-container").hide().empty();
 						container.find("#cavg-pagination").hide().html("");
 						container.find("#cavg-loading").show();
-						container.find("#cavg-loading-text").text("Loading page 1...");
 						fetchPageAjax(1).then(() => {
 							container.find("#cavg-loading").hide();
 							container.find("#cavg-table-container").show();
@@ -1603,10 +1606,7 @@ class DrishtiDashboard {
 							</div>
 						</div>
 						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
-							<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-								<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important; animation: spinner-border .75s linear infinite;"></div>
-								<span style="font-weight: 600; color: #417d81; font-size: 13px;">Fetching latest GL Wise CH Report data...</span>
-							</div>
+							${dashboardInstance.buildMisSkeletonTable("Fetching latest GL Wise CH Report data...")}
 						</div>
 						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<div id="mis-table-container" ${self.tableData && self.tableData.length > 0 ? "" : 'style="display: none;"'}></div>
@@ -1968,6 +1968,121 @@ class DrishtiDashboard {
 						self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
 					});
 				}
+			},
+			// ── DD Tracker Report (Dropdown Group) ──
+			{
+				id: "dd_tracker_report_group",
+				name: "DD Tracker Report",
+				type: "group",
+				children: ["bucket_wise_account_mis", "new_account_report", "staff_wise_demand_collection", "agent_wise_demand_collection"]
+			},
+			{	id: "bucket_wise_account_mis",
+				name: "Bucket Wise Account MIS",
+				tableData: [],
+				render: function(container, dashboardInstance, seq) {
+					const self = this;
+					container.html(`
+						<div id="bucket-loading" style="width: 100%; margin-top: 10px;">
+							${dashboardInstance.buildMisSkeletonTable("Loading Bucket Wise Account MIS...")}
+						</div>
+						<div id="bucket-content"></div>
+					`);
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_bucket_wise_account_mis_data",
+						args: { selected_date: dashboardInstance.state.selectedDate },
+						callback: function(r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
+							container.find("#bucket-loading").hide();
+							if (r.message && r.message.length) {
+								self.tableData = r.message;
+								container.find("#bucket-content").html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">Bucket Wise Account MIS — ' + r.message.length + ' records loaded.</div>');
+							} else {
+								container.find("#bucket-content").html('<div style="padding: 40px; text-align: center; color: #94a3b8; font-weight: 600;">No data available</div>');
+							}
+						}
+					});
+				}
+			},
+			{	id: "new_account_report",
+				name: "New Account Report",
+				tableData: [],
+				render: function(container, dashboardInstance, seq) {
+					const self = this;
+					container.html(`
+						<div id="bucket-loading" style="width: 100%; margin-top: 10px;">
+							${dashboardInstance.buildMisSkeletonTable("Loading New Account Report...")}
+						</div>
+						<div id="bucket-content"></div>
+					`);
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_new_account_report_data",
+						args: { selected_date: dashboardInstance.state.selectedDate },
+						callback: function(r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
+							container.find("#bucket-loading").hide();
+							if (r.message && r.message.length) {
+								self.tableData = r.message;
+								container.find("#bucket-content").html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">New Account Report — ' + r.message.length + ' records loaded.</div>');
+							} else {
+								container.find("#bucket-content").html('<div style="padding: 40px; text-align: center; color: #94a3b8; font-weight: 600;">No data available</div>');
+							}
+						}
+					});
+				}
+			},
+			{	id: "staff_wise_demand_collection",
+				name: "Staff Wise Demand Vs Collection Report",
+				tableData: [],
+				render: function(container, dashboardInstance, seq) {
+					const self = this;
+					container.html(`
+						<div id="bucket-loading" style="width: 100%; margin-top: 10px;">
+							${dashboardInstance.buildMisSkeletonTable("Loading Staff Wise Demand Vs Collection...")}
+						</div>
+						<div id="bucket-content"></div>
+					`);
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_staff_wise_demand_collection_data",
+						args: { selected_date: dashboardInstance.state.selectedDate },
+						callback: function(r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
+							container.find("#bucket-loading").hide();
+							if (r.message && r.message.length) {
+								self.tableData = r.message;
+								container.find("#bucket-content").html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">Staff Wise Demand Vs Collection — ' + r.message.length + ' records loaded.</div>');
+							} else {
+								container.find("#bucket-content").html('<div style="padding: 40px; text-align: center; color: #94a3b8; font-weight: 600;">No data available</div>');
+							}
+						}
+					});
+				}
+			},
+			{	id: "agent_wise_demand_collection",
+				name: "Agent Wise Demand Vs Collection Report",
+				tableData: [],
+				render: function(container, dashboardInstance, seq) {
+					const self = this;
+					container.html(`
+						<div id="bucket-loading" style="width: 100%; margin-top: 10px;">
+							${dashboardInstance.buildMisSkeletonTable("Loading Agent Wise Demand Vs Collection...")}
+						</div>
+						<div id="bucket-content"></div>
+					`);
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_agent_wise_demand_collection_data",
+						args: { selected_date: dashboardInstance.state.selectedDate },
+						callback: function(r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
+							container.find("#bucket-loading").hide();
+							if (r.message && r.message.length) {
+								self.tableData = r.message;
+								container.find("#bucket-content").html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">Agent Wise Demand Vs Collection — ' + r.message.length + ' records loaded.</div>');
+							} else {
+								container.find("#bucket-content").html('<div style="padding: 40px; text-align: center; color: #94a3b8; font-weight: 600;">No data available</div>');
+							}
+						}
+					});
+				}
 			}
 		];
 
@@ -2016,6 +2131,7 @@ class DrishtiDashboard {
 
 		// Clear MIS report caches
 		this.misReportsList.forEach((report) => {
+			if (report.type === "group") return;
 			report.tableData = [];
 			report.filterOptions = null;
 			report.expandedZones = {};
@@ -2076,6 +2192,44 @@ class DrishtiDashboard {
 				<div class="drishti-skeleton" style="width: 100%; height: 36px; border-radius: 6px; margin-bottom: 4px;"></div>
 				<div class="drishti-skeleton" style="width: 70%; height: 36px; border-radius: 6px;"></div>
 			</div>
+		`;
+	}
+
+	buildMisSkeletonTable(label) {
+		return `
+			<style>
+				.mis-skeleton-table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; }
+				.mis-skeleton-table th { background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; }
+				.mis-skeleton-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+				.mis-skeleton-pulse { background: linear-gradient(-90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%); background-size: 400% 400%; animation: mis-shimmer 1.5s ease-in-out infinite; border-radius: 4px; height: 16px; }
+				@keyframes mis-shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+			</style>
+			<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+				<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important; animation: spinner-border .75s linear infinite;"></div>
+				<span style="font-weight: 600; color: #417d81; font-size: 13px;">${label || "Fetching data..."}</span>
+			</div>
+			<table class="mis-skeleton-table">
+				<thead><tr>
+					<th style="width: 30px;"><div class="mis-skeleton-pulse" style="width: 14px; height: 14px;"></div></th>
+					<th style="width: 40px; text-align: center;">Sr</th>
+					<th>Zone / Region / Branch</th>
+					<th style="text-align: center; width: 80px;">Branches</th>
+					<th style="text-align: right; width: 100px;">Accounts</th>
+					<th style="text-align: right; width: 120px;">Collection</th>
+					<th style="text-align: right; width: 110px;">Pending</th>
+				</tr></thead>
+				<tbody>
+					${[1,2,3,4,5].map(i => `<tr style="background: ${i%2===0 ? '#f8fafc' : '#fff'};">
+						<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
+						<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
+						<td><div class="mis-skeleton-pulse" style="width: ${120 + Math.random()*60}px;"></div></td>
+						<td><div class="mis-skeleton-pulse" style="width: 30px; margin: auto;"></div></td>
+						<td><div class="mis-skeleton-pulse" style="width: ${50 + Math.random()*30}px; margin-left: auto;"></div></td>
+						<td><div class="mis-skeleton-pulse" style="width: ${60 + Math.random()*30}px; margin-left: auto;"></div></td>
+						<td><div class="mis-skeleton-pulse" style="width: ${50 + Math.random()*20}px; margin-left: auto;"></div></td>
+					</tr>`).join('')}
+				</tbody>
+			</table>
 		`;
 	}
 
@@ -3233,7 +3387,21 @@ class DrishtiDashboard {
 				this.mis_container.show();
 				const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
 				this.mis_container.find(".mis-report-tab-btn").removeClass("active");
-				this.mis_container.find(`.mis-report-tab-btn[data-report-id="${activeReportId}"]`).addClass("active");
+				this.mis_container.find(".mis-dropdown-toggle").removeClass("active");
+				const $matchedTab = this.mis_container.find(`.mis-report-tab-btn[data-report-id="${activeReportId}"]`);
+				if ($matchedTab.length) {
+					$matchedTab.addClass("active");
+				} else {
+					const $dropdown = this.mis_container.find(".mis-report-dropdown");
+					if ($dropdown.length) {
+						const childIds = ($dropdown.data("child-ids") || "").split(",");
+						if (childIds.includes(activeReportId)) {
+							$dropdown.find(".mis-dropdown-toggle").addClass("active").attr("data-selected-child", activeReportId);
+							$dropdown.find(".mis-dropdown-item.active").removeClass("active");
+							$dropdown.find(`.mis-dropdown-item[data-report-id="${activeReportId}"]`).addClass("active");
+						}
+					}
+				}
 				this.renderMisReport(activeReportId);
 			} else {
 				this.initMisReportsContainer();
@@ -3252,6 +3420,7 @@ class DrishtiDashboard {
 			<div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 16px; width: 100%;">
 				<div style="display: flex; gap: 12px;" id="mis-report-selector-tabs"></div>
 			</div>
+			<div id="mis-report-title" style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px; padding: 0 4px;"></div>
 			<div id="mis-report-content-area" style="min-height: 200px;"></div>
 		`;
 		this.mis_container.html(selectorHtml);
@@ -3261,21 +3430,70 @@ class DrishtiDashboard {
 		const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
 
 		this.misReportsList.forEach((report) => {
-			const activeClass = report.id === activeReportId ? "active" : "";
-			tabSelectorContainer.append(`
-				<button class="mis-report-tab-btn ${activeClass}" data-report-id="${report.id}">
-					${report.name}
-				</button>
-			`);
+			if (report.type === "group") {
+				const firstChildId = report.children[0];
+				const selectedChildId = report.children.includes(activeReportId) ? activeReportId : firstChildId;
+				const selectedChild = this.misReportsList.find(r => r.id === selectedChildId);
+				const isActive = report.children.includes(activeReportId);
+				const childIds = report.children.join(",");
+
+				tabSelectorContainer.append(`
+					<div class="mis-report-dropdown" data-child-ids="${childIds}" style="position: relative; display: inline-block;">
+						<button class="mis-report-tab-btn mis-dropdown-toggle ${isActive ? "active" : ""}" data-selected-child="${selectedChildId}" style="display: inline-flex; align-items: center; gap: 4px;">
+							${report.name} <span style="font-size: 10px; margin-left: 2px;">▾</span>
+						</button>
+						<div class="mis-dropdown-menu" style="display: none; position: absolute; top: 100%; left: 0; min-width: 280px; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 100; padding: 4px; margin-top: 4px;">
+							${report.children.map(childId => {
+								const child = self.misReportsList.find(r => r.id === childId);
+								return `<button class="mis-dropdown-item ${childId === activeReportId ? "active" : ""}" data-report-id="${childId}">${child.name}</button>`;
+							}).join("")}
+						</div>
+					</div>
+				`);
+			} else {
+				const isChildOfGroup = this.misReportsList.some(r => r.type === "group" && r.children && r.children.includes(report.id));
+				if (isChildOfGroup) return;
+				const activeClass = report.id === activeReportId ? "active" : "";
+				tabSelectorContainer.append(`
+					<button class="mis-report-tab-btn ${activeClass}" data-report-id="${report.id}">
+						${report.name}
+					</button>
+				`);
+			}
 		});
 
-		this.mis_container.on("click", ".mis-report-tab-btn", function () {
-			self.mis_container.find(".mis-report-tab-btn").removeClass("active");
+		this.mis_container.on("click", ".mis-report-tab-btn:not(.mis-dropdown-toggle)", function () {
+			self.mis_container.find(".mis-report-tab-btn.active, .mis-dropdown-toggle.active, .mis-dropdown-item.active").removeClass("active");
 			$(this).addClass("active");
 			const reportId = $(this).data("report-id");
 			self.state.selectedMisReport = reportId;
 			self.updateUrlFromState();
 			self.renderMisReport(reportId);
+		});
+
+		this.mis_container.on("click", ".mis-dropdown-toggle", function (e) {
+			e.stopPropagation();
+			const $menu = $(this).siblings(".mis-dropdown-menu");
+			$(".mis-dropdown-menu").not($menu).hide();
+			$menu.toggle();
+		});
+
+		this.mis_container.on("click", ".mis-dropdown-item", function () {
+			const reportId = $(this).data("report-id");
+			const $dropdown = $(this).closest(".mis-report-dropdown");
+			self.mis_container.find(".mis-dropdown-item.active").removeClass("active");
+			$(this).addClass("active");
+			$dropdown.find(".mis-dropdown-toggle").attr("data-selected-child", reportId);
+			$dropdown.find(".mis-dropdown-menu").hide();
+			self.mis_container.find(".mis-report-tab-btn.active, .mis-dropdown-toggle.active").removeClass("active");
+			$dropdown.find(".mis-dropdown-toggle").addClass("active");
+			self.state.selectedMisReport = reportId;
+			self.updateUrlFromState();
+			self.renderMisReport(reportId);
+		});
+
+		$(document).on("click", function () {
+			$(".mis-dropdown-menu").hide();
 		});
 
 		const contentArea = this.mis_container.find("#mis-report-content-area");
@@ -3287,7 +3505,9 @@ class DrishtiDashboard {
 		const seq = this._misRenderSeq;
 		const report = this.misReportsList.find(r => r.id === reportId);
 		const contentArea = this.mis_container.find("#mis-report-content-area");
+		const titleEl = this.mis_container.find("#mis-report-title");
 		if (report && contentArea.length) {
+			titleEl.text(report.name);
 			if (typeof report.render === "function") {
 				report.render(contentArea, this, seq);
 			} else {
@@ -8121,15 +8341,32 @@ class DrishtiDashboard {
                     outline: none !important;
                     margin: 0 !important;
                 }
-                .mis-report-tab-btn:hover {
-                    color: #417d81 !important;
-                    background: rgba(65, 125, 129, 0.08) !important;
-                }
                 .mis-report-tab-btn.active {
                     background: #417d81 !important;
                     color: #ffffff !important;
                     font-weight: 700 !important;
                     box-shadow: 0 4px 10px rgba(65, 125, 129, 0.25) !important;
+                }
+                .mis-dropdown-item {
+                    display: block !important;
+                    width: 100% !important;
+                    padding: 8px 12px !important;
+                    background: transparent !important;
+                    color: #1e293b !important;
+                    border: none !important;
+                    text-align: left !important;
+                    font-size: 13px !important;
+                    font-weight: 600 !important;
+                    border-radius: 6px !important;
+                    cursor: pointer !important;
+                }
+                .mis-dropdown-item.active {
+                    background: #417d81 !important;
+                    color: #fff !important;
+                    font-weight: 700 !important;
+                }
+                .mis-dropdown-item:hover:not(.active) {
+                    background: #f1f5f9 !important;
                 }
                 .mis-table-body tr:hover {
                     background-color: #f8fafc !important;
