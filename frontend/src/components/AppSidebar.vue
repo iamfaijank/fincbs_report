@@ -178,6 +178,8 @@ const initFilters = async () => {
 
     if (pref.zone && pref.zone.length) {
       setZoneFilter(pref.zone)
+      const allowedZones = fetchedZones.filter(z => pref.zone.includes(z))
+      setZoneOptions(allowedZones.length ? allowedZones : fetchedZones)
     } else {
       setZoneFilter(fetchedZones)
     }
