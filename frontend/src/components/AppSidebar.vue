@@ -165,10 +165,8 @@ const initFilters = async () => {
   setZoneOptions(fetchedZones)
   setRegionOptions(fetchedRegions)
 
-  districtOptions.value = fetchedDistricts.length ? fetchedDistricts : ['Mumbai', 'Delhi', 'Bengaluru', 'Kolkata', 'Chennai', 'Hyderabad', 'Pune', 'Ahmedabad']
-  if (fetchedBranches.length) {
-    branchOptions.value = fetchedBranches
-  }
+  let prefDistrictsVal: string[] = []
+  let prefSolIdsVal: string[] = []
 
   try {
     const pref = await frappeRequest({
@@ -197,6 +195,11 @@ const initFilters = async () => {
   } catch (e) {
     setZoneFilter(fetchedZones)
     setRegionFilter(fetchedRegions)
+  }
+
+  districtOptions.value = fetchedDistricts.length ? fetchedDistricts : ['Mumbai', 'Delhi', 'Bengaluru', 'Kolkata', 'Chennai', 'Hyderabad', 'Pune', 'Ahmedabad']
+  if (fetchedBranches.length) {
+    branchOptions.value = fetchedBranches
   }
 }
 

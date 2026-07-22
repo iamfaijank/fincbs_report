@@ -6,7 +6,6 @@ const showDropdown = ref(false)
 const search = ref('')
 const inputRef = ref(null)
 const districtOptions = ref([])
-const initialized = ref(false)
 
 const filteredDistricts = computed(() => {
   const q = search.value.toLowerCase()
@@ -59,13 +58,12 @@ const props = defineProps({
 
 watch([() => props.options, () => props.initialValue], ([opts, pref]) => {
   districtOptions.value = opts
-  if (!initialized.value) {
+  if (opts.length) {
     if (pref && pref.length) {
       districtFilter.value = [...pref]
     } else {
       districtFilter.value = [...opts]
     }
-    initialized.value = true
   }
 }, { immediate: true })
 </script>

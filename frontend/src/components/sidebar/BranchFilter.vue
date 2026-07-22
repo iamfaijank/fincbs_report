@@ -6,7 +6,6 @@ const showDropdown = ref(false)
 const search = ref('')
 const inputRef = ref(null)
 const branchOptions = ref([])
-const initialized = ref(false)
 
 const filteredBranches = computed(() => {
   const q = search.value.toLowerCase()
@@ -16,11 +15,12 @@ const filteredBranches = computed(() => {
 const allBranchesSelected = computed(() => branchFilter.value.length === branchOptions.value.length)
 
 function toggleBranch(val) {
-  const idx = branchFilter.value.indexOf(val)
+  const v = String(val)
+  const idx = branchFilter.value.indexOf(v)
   if (idx >= 0) {
     branchFilter.value.splice(idx, 1)
   } else {
-    branchFilter.value.push(val)
+    branchFilter.value.push(v)
   }
 }
 
@@ -28,14 +28,14 @@ function toggleAllBranches() {
   if (allBranchesSelected.value) {
     branchFilter.value = []
   } else {
-    branchFilter.value = branchOptions.value.map(b => b.value)
+    branchFilter.value = branchOptions.value.map(b => String(b.value))
   }
 }
 
 const label = computed(() => {
   if (branchFilter.value.length === 0) return 'No Branches Selected'
   if (allBranchesSelected.value) return 'All Branches'
-  const selected = branchOptions.value.filter(b => branchFilter.value.includes(b.value))
+  const selected = branchOptions.value.filter(b => branchFilter.value.includes(String(b.value)))
   return `${selected.length} Branches Selected`
 })
 
@@ -60,13 +60,12 @@ const props = defineProps({
 
 watch([() => props.options, () => props.initialValue], ([opts, pref]) => {
   branchOptions.value = opts
-  if (!initialized.value) {
+  if (opts.length) {
     if (pref && pref.length) {
-      branchFilter.value = [...pref]
+      branchFilter.value = pref.map(String)
     } else {
-      branchFilter.value = opts.map(b => b.value)
+      branchFilter.value = opts.map(b => String(b.value))
     }
-    initialized.value = true
   }
 }, { immediate: true })
 </script>
@@ -97,7 +96,7 @@ watch([() => props.options, () => props.initialValue], ([opts, pref]) => {
         </div>
         <div v-for="b in filteredBranches" :key="b.value" class="ms-option">
           <label class="ms-label">
-            <input type="checkbox" :value="b.value" :checked="branchFilter.includes(b.value)" @change="toggleBranch(b.value)" />
+            <input type="checkbox" :value="String(b.value)" :checked="branchFilter.includes(String(b.value))" @change="toggleBranch(b.value)" />
             <span>{{ b.label }}</span>
           </label>
         </div>
