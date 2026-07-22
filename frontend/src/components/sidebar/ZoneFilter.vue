@@ -8,7 +8,7 @@ const allZonesSelected = computed(() => zoneFilter.value.length === 0 || zoneFil
 
 function toggleZone(name) {
   if (allZonesSelected.value) {
-    setZoneFilter([name])
+    setZoneFilter(zoneFilterOptions.value.filter(z => z.name !== name).map(z => z.name))
   } else {
     const idx = zoneFilter.value.indexOf(name)
     if (idx >= 0) {
@@ -33,7 +33,7 @@ function toggleAllZones() {
     <div class="sb-label">Zone Filter</div>
     <div class="filter-chips">
       <div class="filter-chip" :class="{ active: allZonesSelected }" @click="toggleAllZones()">All</div>
-      <div v-for="z in zoneFilterOptions" :key="z.name" class="filter-chip" :class="{ active: zoneFilter.includes(z.name) }" @click="toggleZone(z.name)">
+      <div v-for="z in zoneFilterOptions" :key="z.name" class="filter-chip" :class="{ active: !allZonesSelected && zoneFilter.includes(z.name) }" @click="toggleZone(z.name)">
         {{ z.label }}
       </div>
     </div>

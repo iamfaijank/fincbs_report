@@ -8,7 +8,7 @@ const allRegionsSelected = computed(() => regionFilter.value.length === 0 || reg
 
 function toggleRegion(name) {
   if (allRegionsSelected.value) {
-    setRegionFilter([name])
+    setRegionFilter(regionFilterOptions.value.filter(r => r.name !== name).map(r => r.name))
   } else {
     const idx = regionFilter.value.indexOf(name)
     if (idx >= 0) {
@@ -33,7 +33,7 @@ function toggleAllRegions() {
     <div class="sb-label">Region Filter</div>
     <div class="filter-chips">
       <div class="filter-chip" :class="{ active: allRegionsSelected }" @click="toggleAllRegions()">All</div>
-      <div v-for="r in regionFilterOptions" :key="r.name" class="filter-chip" :class="{ active: regionFilter.includes(r.name) }" @click="toggleRegion(r.name)">
+      <div v-for="r in regionFilterOptions" :key="r.name" class="filter-chip" :class="{ active: !allRegionsSelected && regionFilter.includes(r.name) }" @click="toggleRegion(r.name)">
         {{ r.label }}
       </div>
     </div>
