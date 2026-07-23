@@ -3573,6 +3573,29 @@ def get_new_account_report_data(selected_date=None):
                         "branch_name": b.branch or b.sol_id
                     }
 
+            # Fetch designations for all unique employee IDs in bulk
+            emp_ids = set()
+            for r in raw_data:
+                auth_id = r.get("auth_id")
+                if auth_id and auth_id != "Unknown":
+                    digits = re.findall(r'\d+', auth_id)
+                    if digits:
+                        try:
+                            emp_id = str(int(''.join(digits)))
+                            emp_ids.add(emp_id)
+                        except ValueError:
+                            pass
+            
+            designation_map = {}
+            if emp_ids:
+                employees = frappe.get_all(
+                    "Employee",
+                    filters={"name": ["in", list(emp_ids)]},
+                    fields=["name", "designation"]
+                )
+                for emp in employees:
+                    designation_map[emp.name] = emp.designation or ""
+
             summary = {}
             for r in raw_data:
                 sid = r.get("sol_id")
@@ -3597,7 +3620,17 @@ def get_new_account_report_data(selected_date=None):
                 auth_id = r.get("auth_id") or "Unknown"
                 auth_name = r.get("auth_name") or "Unknown"
 
-                key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{auth_id}||{auth_name}"
+                designation = ""
+                if auth_id and auth_id != "Unknown":
+                    digits = re.findall(r'\d+', auth_id)
+                    if digits:
+                        try:
+                            emp_id = str(int(''.join(digits)))
+                            designation = designation_map.get(emp_id) or ""
+                        except ValueError:
+                            pass
+
+                key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{auth_id}||{auth_name}||{designation}"
                 if key not in summary:
                     summary[key] = {
                         "zone": br["zone"],
@@ -3607,6 +3640,7 @@ def get_new_account_report_data(selected_date=None):
                         "sol_desc": br["branch_name"],
                         "auth_id": auth_id,
                         "auth_name": auth_name,
+                        "designation": designation,
                         "new_ac": 0,
                         "deposit_amount": 0.0
                     }
@@ -3848,6 +3882,29 @@ def get_staff_wise_demand_collection_data(selected_date=None):
                         "branch_name": b.branch or b.sol_id
                     }
 
+            # Fetch designations for all unique employee IDs in bulk
+            emp_ids = set()
+            for r in raw_data:
+                auth_id = r.get("auth_id")
+                if auth_id and auth_id != "Unknown":
+                    digits = re.findall(r'\d+', auth_id)
+                    if digits:
+                        try:
+                            emp_id = str(int(''.join(digits)))
+                            emp_ids.add(emp_id)
+                        except ValueError:
+                            pass
+            
+            designation_map = {}
+            if emp_ids:
+                employees = frappe.get_all(
+                    "Employee",
+                    filters={"name": ["in", list(emp_ids)]},
+                    fields=["name", "designation"]
+                )
+                for emp in employees:
+                    designation_map[emp.name] = emp.designation or ""
+
             summary = {}
             for r in raw_data:
                 sid = r.get("sol_id")
@@ -3858,7 +3915,17 @@ def get_staff_wise_demand_collection_data(selected_date=None):
                 auth_id = r.get("auth_id") or "Unknown"
                 auth_name = r.get("auth_name") or "Unknown"
 
-                key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{auth_id}||{auth_name}"
+                designation = ""
+                if auth_id and auth_id != "Unknown":
+                    digits = re.findall(r'\d+', auth_id)
+                    if digits:
+                        try:
+                            emp_id = str(int(''.join(digits)))
+                            designation = designation_map.get(emp_id) or ""
+                        except ValueError:
+                            pass
+
+                key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{auth_id}||{auth_name}||{designation}"
                 if key not in summary:
                     summary[key] = {
                         "zone": br["zone"],
@@ -3868,6 +3935,7 @@ def get_staff_wise_demand_collection_data(selected_date=None):
                         "sol_desc": br["branch_name"],
                         "auth_id": auth_id,
                         "auth_name": auth_name,
+                        "designation": designation,
                         "monthly_demand_amount": 0.0,
                         "monthly_collection": 0.0
                     }
@@ -4109,6 +4177,29 @@ def get_agent_wise_demand_collection_data(selected_date=None):
                         "branch_name": b.branch or b.sol_id
                     }
 
+            # Fetch designations for all unique employee IDs in bulk
+            emp_ids = set()
+            for r in raw_data:
+                auth_id = r.get("auth_id")
+                if auth_id and auth_id != "Unknown":
+                    digits = re.findall(r'\d+', auth_id)
+                    if digits:
+                        try:
+                            emp_id = str(int(''.join(digits)))
+                            emp_ids.add(emp_id)
+                        except ValueError:
+                            pass
+            
+            designation_map = {}
+            if emp_ids:
+                employees = frappe.get_all(
+                    "Employee",
+                    filters={"name": ["in", list(emp_ids)]},
+                    fields=["name", "designation"]
+                )
+                for emp in employees:
+                    designation_map[emp.name] = emp.designation or ""
+
             summary = {}
             for r in raw_data:
                 sid = r.get("sol_id")
@@ -4121,7 +4212,17 @@ def get_agent_wise_demand_collection_data(selected_date=None):
                 auth_id = r.get("auth_id") or "Unknown"
                 auth_name = r.get("auth_name") or "Unknown"
 
-                key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{rm_id}||{rm_name}||{auth_id}||{auth_name}"
+                designation = ""
+                if auth_id and auth_id != "Unknown":
+                    digits = re.findall(r'\d+', auth_id)
+                    if digits:
+                        try:
+                            emp_id = str(int(''.join(digits)))
+                            designation = designation_map.get(emp_id) or ""
+                        except ValueError:
+                            pass
+
+                key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{rm_id}||{rm_name}||{auth_id}||{auth_name}||{designation}"
                 if key not in summary:
                     summary[key] = {
                         "zone": br["zone"],
@@ -4133,6 +4234,7 @@ def get_agent_wise_demand_collection_data(selected_date=None):
                         "rm_name": rm_name,
                         "auth_id": auth_id,
                         "auth_name": auth_name,
+                        "designation": designation,
                         "monthly_demand_amount": 0.0,
                         "monthly_collection": 0.0
                     }
