@@ -535,11 +535,6 @@ def generate_and_save_branch_category_report(input_date):
     dates = date_control(input_date_str)
     processed_date = dates["current_date"]
     
-    # Sunday validation (exclude Sundays)
-    if processed_date.weekday() == 6:  # 6 is Sunday in Python
-        frappe.msgprint(f"Date {processed_date} is a Sunday. Sundays are excluded from data sync.")
-        return []
-        
     # 2. Check if records already exist for this processed date
     if frappe.db.exists("Branch Category Report", {"date": processed_date}):
         frappe.msgprint(f"Branch Category Report records already exist for date {processed_date}. Skipping insert.")
@@ -735,7 +730,6 @@ def daily_sync_cron():
     """
     Cron job triggered daily at 8:00 AM.
     Syncs the achievement data for yesterday if enabled in Drishti Settings.
-    If yesterday was Sunday (Today is Monday), it skips execution.
     """
     from frappe.utils import getdate, today, add_days
     

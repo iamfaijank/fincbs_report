@@ -48,13 +48,6 @@ frappe.listview_settings['Branch Category Report'] = {
 							return;
 						}
 						
-						// Check if selected date is Sunday (0 is Sunday in JS getDay)
-						const selected_date_obj = frappe.datetime.str_to_obj(selected_date);
-						if (selected_date_obj.getDay() === 0) {
-							frappe.msgprint(__('Sundays are excluded from data sync. Please select a weekday.'));
-							return;
-						}
-						
 						d.hide();
 						frappe.call({
 							method: 'custom_report.custom_report.page.sahayog_dashboard.achievement.generate_and_save_branch_category_report',
