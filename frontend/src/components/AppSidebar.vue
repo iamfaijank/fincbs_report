@@ -11,10 +11,16 @@ import BranchFilter from '@/components/sidebar/BranchFilter.vue'
 
 const { collapsed, toggleSidebar } = useSidebar()
 const { numberFormat } = useNumberFormat()
-const { setZoneOptions, setRegionOptions, setZoneFilter, setRegionFilter } = useFilters()
+const { setZoneOptions, setRegionOptions, setZoneFilterOptions, setRegionFilterOptions, setZoneFilter, setRegionFilter } = useFilters()
+
+const now = new Date()
+const currentMonth = now.getMonth() + 1
+const currentYear = now.getFullYear()
+const fyStartYear = currentMonth >= 4 ? currentYear : currentYear - 1
+
 const viewMode = ref('monthly')
 const targetType = ref('monthly')
-const financialYear = ref('')
+const financialYear = ref(`fy${fyStartYear}${fyStartYear + 1}`)
 const asOfDate = ref('')
 const asOfMonth = ref('6')
 const segmentSelect = ref('all')
@@ -50,9 +56,9 @@ const prefDistricts = ref([])
 const prefSolIds = ref([])
 
 const financialYearOptions = [
-  { label: 'FY 26–27', value: 'fy2627' },
-  { label: 'FY 25–26', value: 'fy2526' },
-  { label: 'FY 24–25', value: 'fy2425' },
+  { label: `FY ${String(fyStartYear).slice(-2)}–${String(fyStartYear + 1).slice(-2)}`, value: `fy${fyStartYear}${fyStartYear + 1}` },
+  { label: `FY ${String(fyStartYear - 1).slice(-2)}–${String(fyStartYear).slice(-2)}`, value: `fy${fyStartYear - 1}${fyStartYear}` },
+  { label: `FY ${String(fyStartYear - 2).slice(-2)}–${String(fyStartYear - 1).slice(-2)}`, value: `fy${fyStartYear - 2}${fyStartYear - 1}` },
 ]
 
 const segmentOptions = [
@@ -177,7 +183,7 @@ const initFilters = async () => {
     if (pref.zone && pref.zone.length) {
       setZoneFilter(pref.zone)
       const allowedZones = fetchedZones.filter(z => pref.zone.includes(z))
-      setZoneOptions(allowedZones.length ? allowedZones : fetchedZones)
+      setZoneFilterOptions(allowedZones.length ? allowedZones : fetchedZones)
     } else {
       setZoneFilter([])
       setZoneOptions(fetchedZones)
@@ -186,7 +192,7 @@ const initFilters = async () => {
     if (pref.region && pref.region.length) {
       setRegionFilter(pref.region)
       const allowedRegions = fetchedRegions.filter(r => pref.region.includes(r))
-      setRegionOptions(allowedRegions.length ? allowedRegions : fetchedRegions)
+      setRegionFilterOptions(allowedRegions.length ? allowedRegions : fetchedRegions)
     } else {
       setRegionFilter([])
       setRegionOptions(fetchedRegions)
