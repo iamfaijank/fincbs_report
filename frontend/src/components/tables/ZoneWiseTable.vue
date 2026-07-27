@@ -6,7 +6,7 @@ import { useExpandableSet } from '@/composables/useExpandableSet.js'
 import AchievementBadge from './AchievementBadge.vue'
 
 const { formatNumber } = useNumberFormat()
-const { isZoneSelected, isRegionSelected, allZonesSelected, allRegionsSelected } = useFilters()
+const { isZoneSelected, isRegionSelected, zoneFilter, regionFilter } = useFilters()
 const { toggle, isExpanded } = useExpandableSet()
 
 const tableData = ref([
@@ -37,9 +37,18 @@ const tableData = ref([
       { region: 'R-4', branches: 36, target: 14678000, ach: 13123000, achPercent: 89.4 },
     ]
   },
+  {
+    zone: 'Z-4',
+    regions: [
+      { region: 'R-1', branches: 33, target: 11234000, ach: 9345000, achPercent: 83.2 },
+      { region: 'R-2', branches: 40, target: 15678000, ach: 14234000, achPercent: 90.8 },
+      { region: 'R-3', branches: 28, target: 10345000, ach: 8567000, achPercent: 82.8 },
+      { region: 'R-4', branches: 37, target: 13456000, ach: 11890000, achPercent: 88.4 },
+    ]
+  },
 ])
 
-const isFilterApplied = computed(() => !allZonesSelected.value || !allRegionsSelected.value)
+const isFilterApplied = computed(() => zoneFilter.value.length > 0 || regionFilter.value.length > 0)
 
 const filteredTableData = computed(() => {
   if (!isFilterApplied.value) return tableData.value

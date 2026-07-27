@@ -6,10 +6,10 @@ import { useExpandableSet } from '@/composables/useExpandableSet.js'
 import AchievementBadge from './AchievementBadge.vue'
 
 const { formatNumber } = useNumberFormat()
-const { isZoneSelected, isRegionSelected, allZonesSelected, allRegionsSelected } = useFilters()
+const { isZoneSelected, isRegionSelected, zoneFilter, regionFilter } = useFilters()
 const { toggle: toggleZone, isExpanded: isZoneExpanded } = useExpandableSet()
 
-const isFilterApplied = computed(() => !allZonesSelected.value || !allRegionsSelected.value)
+const isFilterApplied = computed(() => zoneFilter.value.length > 0 || regionFilter.value.length > 0)
 
 const agentData = ref([
   {

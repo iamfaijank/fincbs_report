@@ -3,12 +3,12 @@ import { ref, computed } from 'vue'
 import { useFilters } from '@/composables/useFilters.js'
 import { useExpandableSet } from '@/composables/useExpandableSet.js'
 
-const { isZoneSelected, isRegionSelected, allZonesSelected, allRegionsSelected } = useFilters()
+const { isZoneSelected, isRegionSelected, zoneFilter, regionFilter } = useFilters()
 const { toggle: toggleZone, isExpanded: isZoneExpanded } = useExpandableSet()
 const { toggle: toggleRegion, isExpanded: isRegionExpanded } = useExpandableSet()
 const { toggle: toggleDistrict, isExpanded: isDistrictExpanded } = useExpandableSet()
 
-const isFilterApplied = computed(() => !allZonesSelected.value || !allRegionsSelected.value)
+const isFilterApplied = computed(() => zoneFilter.value.length > 0 || regionFilter.value.length > 0)
 
 const glReportData = ref([
   {

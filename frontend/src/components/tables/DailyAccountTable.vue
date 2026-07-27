@@ -4,11 +4,11 @@ import { useFilters } from '@/composables/useFilters.js'
 import { useExpandableSet } from '@/composables/useExpandableSet.js'
 import SummaryCardGroup from '@/components/cards/SummaryCardGroup.vue'
 
-const { isZoneSelected, isRegionSelected, allZonesSelected, allRegionsSelected } = useFilters()
+const { isZoneSelected, isRegionSelected, zoneFilter, regionFilter } = useFilters()
 const { toggle: toggleZone, isExpanded: isZoneExpanded } = useExpandableSet()
 const { toggle: toggleRegion, isExpanded: isRegionExpanded } = useExpandableSet()
 
-const isFilterApplied = computed(() => !allZonesSelected.value || !allRegionsSelected.value)
+const isFilterApplied = computed(() => zoneFilter.value.length > 0 || regionFilter.value.length > 0)
 
 const summaryCards = [
   { label: 'SA ACCOUNTS', value: '2,942' },
