@@ -146,13 +146,28 @@ website_route_rules = [
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"Sahayog Branch": {
+		"on_update": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_sahayog_branches_cache",
+		"on_trash": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_sahayog_branches_cache"
+	},
+	"Product": {
+		"on_update": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_products_cache",
+		"on_trash": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_products_cache"
+	},
+	"Report Preference": {
+		"on_update": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_user_permissions_cache",
+		"on_trash": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_user_permissions_cache"
+	},
+	"Target Vs Achivement": {
+		"on_update": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_targets_cache",
+		"on_trash": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_targets_cache"
+	},
+	"Branch Category Report": {
+		"on_update": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_branch_category_report_cache",
+		"on_trash": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_branch_category_report_cache"
+	}
+}
 
 # Scheduled Tasks
 # ---------------

@@ -14,9 +14,160 @@ from collections import defaultdict
 from datetime import datetime
 
 
+def sahayog_cache(ttl=86400):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            import json
+            import hashlib
+            import inspect
+
+            # Filter args and kwargs based on target function's signature
+            sig = inspect.signature(func)
+            has_kwargs = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+            has_args = any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in sig.parameters.values())
+            
+            if has_kwargs:
+                filtered_kwargs = kwargs
+            else:
+                filtered_kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
+                
+            if has_args:
+                filtered_args = args
+            else:
+                pos_params = [p for p in sig.parameters.values() if p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)]
+                filtered_args = args[:len(pos_params)]
+
+            # Generate deterministic cache key based on function name and filtered arguments
+            args_str = f"{filtered_args}_{json.dumps(filtered_kwargs, sort_keys=True, default=str)}"
+            key_hash = hashlib.md5(args_str.encode('utf-8')).hexdigest()
+            cache_key = f"sahayog_cache|{func.__name__}|{key_hash}"
+            
+            cached_data = frappe.cache.get_value(cache_key)
+            if cached_data is not None:
+                return cached_data
+                
+            result = func(*filtered_args, **filtered_kwargs)
+            
+            # ONLY cache if result is truthy (non-empty list, non-empty dict, non-None)
+            if result:
+                frappe.cache.set_value(cache_key, result, expires_in_sec=ttl)
+            return result
+            
+        def clear_cache():
+            frappe.cache.delete_keys(f"sahayog_cache|{func.__name__}|*")
+            
+        wrapper.clear_cache = clear_cache
+        wrapper.__name__ = func.__name__
+        wrapper.__doc__ = func.__doc__
+        return wrapper
+    return decorator
+
+
 CATEGORY_ORDER = ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Zero Level"]
 
 
+def get_products_cached():
+    """Fetches all Product records and caches them in Redis."""
+    cache_key = "sahayog_products_list"
+    cached_data = frappe.cache.get_value(cache_key)
+    if cached_data:
+        return cached_data
+    products = frappe.get_all(
+        "Product",
+        fields=["name", "product_name", "group_name", "group_subname", "product_type"]
+    )
+    frappe.cache.set_value(cache_key, products, expires_in_sec=86400)
+    return products
+
+
+def get_product_group_map_cached():
+    """Fetches name to group_name mapping for Products and caches them in Redis."""
+    cache_key = "sahayog_product_group_map"
+    cached_data = frappe.cache.get_value(cache_key)
+    if cached_data:
+        return cached_data
+    products = frappe.get_all("Product", fields=["name", "group_name"])
+    group_map = {p.name: p.group_name for p in products}
+    frappe.cache.set_value(cache_key, group_map, expires_in_sec=86400)
+    return group_map
+
+
+def get_products_map_cached():
+    """Returns a map of product name to product doc fields."""
+    cache_key = "sahayog_products_map"
+    cached_data = frappe.cache.get_value(cache_key)
+    if cached_data:
+        return cached_data
+    products = frappe.get_all(
+        "Product",
+        fields=["name", "product_name", "group_name", "group_subname", "group_subname_category", "product_type"]
+    )
+    prod_map = {p.name: p for p in products}
+    frappe.cache.set_value(cache_key, prod_map, expires_in_sec=86400)
+    return prod_map
+
+
+def clear_products_cache(doc=None, method=None):
+    """Clears product-related caches from Redis."""
+    frappe.cache.delete_value("sahayog_products_list")
+    frappe.cache.delete_value("sahayog_product_group_map")
+    frappe.cache.delete_value("sahayog_products_map")
+
+
+def get_sahayog_branches_cached():
+    """
+    Fetches all Sahayog Branch records, caches them in Redis (using frappe.cache),
+    and returns a dictionary mapped by sol_id (name).
+    """
+    cache_key = "sahayog_branches_map"
+    cached_data = frappe.cache.get_value(cache_key)
+    
+    if cached_data:
+        return cached_data
+        
+    branches = frappe.get_all(
+        "Sahayog Branch",
+        fields=["name as sol_id", "branch as branch_name", "zone", "region", "district"]
+    )
+    
+    branches_map = {}
+    for b in branches:
+        sol_id = str(b.sol_id or "")
+        branches_map[sol_id] = {
+            "sol_id": sol_id,
+            "branch_name": b.branch_name or "",
+            "zone": b.zone or "",
+            "region": b.region or "",
+            "district": b.district or ""
+        }
+        
+    # Cache for 24 hours
+    frappe.cache.set_value(cache_key, branches_map, expires_in_sec=86400)
+    return branches_map
+
+
+def clear_sahayog_branches_cache(doc=None, method=None):
+    """Clears the cached Sahayog Branch map from Redis."""
+    frappe.cache.delete_value("sahayog_branches_map")
+
+
+def clear_user_permissions_cache(doc=None, method=None):
+    """Clears the cached report permissions from Redis."""
+    get_user_report_permissions.clear_cache()
+
+
+def clear_targets_cache(doc=None, method=None):
+    """Clears the cached targets map from Redis."""
+    frappe.cache.delete_keys("targets_map|*")
+
+
+def clear_branch_category_report_cache(doc=None, method=None):
+    """Clears cache related to Branch Category Report."""
+    get_last_available_date_for_month.clear_cache()
+    get_previous_available_date.clear_cache()
+
+
+@sahayog_cache(ttl=86400)
 def get_user_report_permissions(user):
     """
     Fetches permissions from 'Report Preference' for the current user.
@@ -57,12 +208,12 @@ def get_user_report_permissions(user):
 
     # Fetch branch names from Sahayog Branch for permitted sol_ids
     if permissions["sol_ids"]:
-        branches = frappe.get_all(
-            "Sahayog Branch",
-            filters={"name": ["in", permissions["sol_ids"]]},
-            fields=["name as sol_id", "branch as branch_name"]
-        )
-        permissions["sol_data"] = branches
+        branches_map = get_sahayog_branches_cached()
+        permissions["sol_data"] = [
+            {"sol_id": sid, "branch_name": branches_map[sid]["branch_name"]}
+            for sid in permissions["sol_ids"]
+            if sid in branches_map
+        ]
     
     return permissions
 
@@ -77,6 +228,7 @@ def calculate_category(achievement_pct):
     else: return "Zero Level"
 
 
+@sahayog_cache(ttl=86400)
 def get_last_available_date_for_month(month_num, year):
     dates = frappe.db.sql("""
         SELECT DISTINCT date 
@@ -92,6 +244,7 @@ def get_last_available_date_for_month(month_num, year):
     return None
 
 
+@sahayog_cache(ttl=86400)
 def get_previous_available_date(current_date):
     dates = frappe.db.sql("""
         SELECT DISTINCT date 
@@ -382,26 +535,23 @@ def get_sahayog_dashboard(
         
         # Priority 2: Zone & Region (if no specific SOL IDs provided)
         else:
+            branches_map = get_sahayog_branches_cached()
             # 🛡️ Numeric Matching Logic for Zones
             if perms["zone_ids"]:
+                all_zones = set(b["zone"] for b in branches_map.values() if b["zone"])
                 if len(perms["zone_ids"]) > 1:
-                    regex_pattern = f"({'|'.join(perms['zone_ids'])})"
-                    matched_zones = frappe.db.sql("""
-                        SELECT DISTINCT zone FROM `tabSahayog Branch` 
-                        WHERE zone REGEXP %s
-                    """, (regex_pattern,), pluck=True)
+                    zone_pattern = re.compile(f"({'|'.join(re.escape(zid) for zid in perms['zone_ids'])})")
+                    matched_zones = [z for z in all_zones if zone_pattern.search(z)]
                     combined_filters["zone"] = ["in", matched_zones] if matched_zones else ["in", ["_NONE_"]]
                 else:
                     combined_filters["zone"] = ["like", f"%{perms['zone_ids'][0]}"]
             
             # 🛡️ Numeric Matching Logic for Regions
             if not perms["all_regions"] and perms["region_ids"]:
+                all_regions = set(b["region"] for b in branches_map.values() if b["region"])
                 if len(perms["region_ids"]) > 1:
-                    regex_pattern = f"({'|'.join(perms['region_ids'])})"
-                    matched_regions = frappe.db.sql("""
-                        SELECT DISTINCT region FROM `tabSahayog Branch` 
-                        WHERE region REGEXP %s
-                    """, (regex_pattern,), pluck=True)
+                    region_pattern = re.compile(f"({'|'.join(re.escape(rid) for rid in perms['region_ids'])})")
+                    matched_regions = [r for r in all_regions if region_pattern.search(r)]
                     combined_filters["region"] = ["in", matched_regions] if matched_regions else ["in", ["_NONE_"]]
                 else:
                     combined_filters["region"] = ["like", f"%{perms['region_ids'][0]}"]
@@ -437,10 +587,8 @@ def get_sahayog_dashboard(
     targets_map = get_targets_map(financial_year, target_type, month_keys, allowed_sol_ids)
     
     # Build sol_id -> district mapping from Sahayog Branch
-    district_map = {}
-    branch_recs = frappe.db.sql("SELECT name, COALESCE(district, 'Unknown District') as district FROM `tabSahayog Branch`", as_dict=True)
-    for br in branch_recs:
-        district_map[br.name] = br.district
+    branches_map = get_sahayog_branches_cached()
+    district_map = {sid: b["district"] or "Unknown District" for sid, b in branches_map.items()}
     
     all_branch_data = []
     for month_key, month_num, year, eff_date in months:
@@ -480,6 +628,20 @@ def get_sahayog_dashboard(
 
 
 def get_targets_map(financial_year, target_type, month_keys, allowed_sol_ids=None):
+    # Convert lists/tuples to sorted tuples for deterministic cache key
+    m_keys_tuple = tuple(sorted(month_keys)) if month_keys else ()
+    sol_ids_tuple = tuple(sorted(allowed_sol_ids)) if allowed_sol_ids else ()
+    
+    cache_key = f"targets_map|{financial_year}|{target_type}|{m_keys_tuple}|{sol_ids_tuple}"
+    cached_data = frappe.cache.get_value(cache_key)
+    
+    if cached_data:
+        reconstructed = defaultdict(lambda: defaultdict(float))
+        for sol_id, months in cached_data.items():
+            for m_key, val in months.items():
+                reconstructed[sol_id][m_key] = val
+        return reconstructed
+
     targets_map = defaultdict(lambda: defaultdict(float))
     
     base_filters = {"financial_year": financial_year}
@@ -520,6 +682,12 @@ def get_targets_map(financial_year, target_type, month_keys, allowed_sol_ids=Non
             val = float(t.target or 0)
             for mk in month_keys:
                 targets_map[sol_id][mk] = val
+                
+    # Store standard dict in Redis (so lambda doesn't break pickling)
+    standard_targets_map = {}
+    for sol_id, months in targets_map.items():
+        standard_targets_map[sol_id] = dict(months)
+    frappe.cache.set_value(cache_key, standard_targets_map, expires_in_sec=86400)
     
     return targets_map
 
@@ -629,25 +797,52 @@ def build_product_wise(branch_data, targets_map, target_type, selected_date=None
     if not selected_date:
         return [], []
 
-    raw_data = frappe.db.sql("""
+    raw_data_db = frappe.db.sql("""
         SELECT
-            COALESCE(NULLIF(b.zone, ''), p.zone) as zone,
-            COALESCE(NULLIF(b.region, ''), p.region) as region,
-            COALESCE(b.district, 'Unknown District') as district,
-            p.sol_id,
-            COALESCE(b.branch, '') as branch_name,
-            p.product,
-            SUM(p.amount) as amount
-        FROM `tabProduct Wise Report` p
-        LEFT JOIN `tabSahayog Branch` b ON p.sol_id = b.name
-        WHERE p.date = %s
-          AND COALESCE(NULLIF(b.zone, ''), p.zone) IS NOT NULL
-          AND COALESCE(NULLIF(b.zone, ''), p.zone) != ''
-          AND COALESCE(NULLIF(b.region, ''), p.region) IS NOT NULL
-          AND COALESCE(NULLIF(b.region, ''), p.region) != ''
-        GROUP BY zone, region, district, p.sol_id, branch_name, p.product
-        ORDER BY zone, region, district, p.sol_id
+            zone,
+            region,
+            sol_id,
+            product,
+            SUM(amount) as amount
+        FROM `tabProduct Wise Report`
+        WHERE date = %s
+        GROUP BY zone, region, sol_id, product
     """, (selected_date,), as_dict=True)
+
+    branches_map = get_sahayog_branches_cached()
+    raw_data = []
+    
+    # We want to group by the resolved values to combine amounts if multiple rows map to the same values
+    grouped_map = defaultdict(float)
+    
+    for row in raw_data_db:
+        sid = str(row.sol_id or "").strip()
+        b = branches_map.get(sid, {})
+        
+        zone = b.get("zone") or row.zone or ""
+        region = b.get("region") or row.region or ""
+        district = b.get("district") or "Unknown District"
+        branch_name = b.get("branch_name") or ""
+        
+        if not zone or not region:
+            continue
+            
+        key = (zone, region, district, sid, branch_name, row.product)
+        grouped_map[key] += float(row.amount or 0)
+        
+    for key, amount in grouped_map.items():
+        zone, region, district, sid, branch_name, product = key
+        raw_data.append(frappe._dict({
+            "zone": zone,
+            "region": region,
+            "district": district,
+            "sol_id": sid,
+            "branch_name": branch_name,
+            "product": product,
+            "amount": amount
+        }))
+        
+    raw_data.sort(key=lambda x: (x.zone, x.region, x.district, x.sol_id))
 
     if not raw_data:
         return [], []
@@ -1008,6 +1203,7 @@ def build_agent_wise(selected_date=None):
 
 
 @frappe.whitelist()
+@sahayog_cache(ttl=86400)
 def get_rd_smbg_pending_table_data():
     from custom_report.db_connection import get_dr_connection
     import json
@@ -1065,18 +1261,16 @@ def get_rd_smbg_pending_table_data():
         sol_ids_found = [str(r[0]) for r in rows] if rows else []
         branch_map = {}
         if sol_ids_found:
-            sb_data = frappe.get_all(
-                "Sahayog Branch",
-                filters={"name": ["in", sol_ids_found]},
-                fields=["name as sol_id", "zone", "region", "district", "branch"]
-            )
-            for b in sb_data:
-                branch_map[b.sol_id] = {
-                    "zone": b.zone or "",
-                    "region": b.region or "",
-                    "district": b.district or "",
-                    "branch_name": b.branch or ""
-                }
+            branches_map = get_sahayog_branches_cached()
+            for sid in sol_ids_found:
+                if sid in branches_map:
+                    b = branches_map[sid]
+                    branch_map[sid] = {
+                        "zone": b.get("zone") or "",
+                        "region": b.get("region") or "",
+                        "district": b.get("district") or "",
+                        "branch_name": b.get("branch_name") or ""
+                    }
 
         result = []
         for row in rows:
@@ -1115,41 +1309,41 @@ def get_mis_filter_options():
     regions = []
     districts = []
 
+    branches_map = get_sahayog_branches_cached()
+    all_zones = sorted(list(set(b["zone"] for b in branches_map.values() if b["zone"])))
+    all_regions = sorted(list(set(b["region"] for b in branches_map.values() if b["region"])))
+    all_districts = sorted(list(set(b["district"] for b in branches_map.values() if b["district"])))
+
     # Apply same permission logic as Drishti (get_sahayog_dashboard)
     if perms.get("is_restricted"):
         allowed_zones = perms.get("zones", [])
         allowed_regions = perms.get("regions", [])
         # If zone permissions exist, use zones as primary filter — ignore sol_ids for data scope
         if allowed_zones:
-            zones = [r[0] for r in frappe.db.sql("SELECT DISTINCT zone FROM `tabSahayog Branch` WHERE zone IS NOT NULL AND zone != ''")]
             # Normalize: uppercase, remove spaces/dashes/hyphens for matching
             allowed_norm = [re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones]
-            zones = [z for z in zones if re.sub(r"[\s\-]+", "", z or "").upper() in allowed_norm]
-            regions = [r[0] for r in frappe.db.sql("SELECT DISTINCT region FROM `tabSahayog Branch` WHERE region IS NOT NULL AND region != ''")]
+            zones = [z for z in all_zones if re.sub(r"[\s\-]+", "", z or "").upper() in allowed_norm]
+            regions = all_regions
             if allowed_regions:
                 allowed_reg_norm = [re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions]
-                regions = [r for r in regions if re.sub(r"[\s\-]+", "", r or "").upper() in allowed_reg_norm]
-            districts = [r[0] for r in frappe.db.sql("SELECT DISTINCT district FROM `tabSahayog Branch` WHERE district IS NOT NULL AND district != ''")]
+                regions = [r for r in all_regions if re.sub(r"[\s\-]+", "", r or "").upper() in allowed_reg_norm]
+            districts = all_districts
         elif perms["sol_ids"]:
             # No zone permissions — restrict by sol_ids
-            branch_data = frappe.get_all(
-                "Sahayog Branch",
-                filters={"name": ["in", perms["sol_ids"]]},
-                fields=["zone", "region", "district"]
-            )
-            zones = sorted(set(b.zone for b in branch_data if b.zone))
-            regions = sorted(set(b.region for b in branch_data if b.region))
-            districts = sorted(set(b.district for b in branch_data if b.district))
+            sol_branches = [branches_map[sid] for sid in perms["sol_ids"] if sid in branches_map]
+            zones = sorted(list(set(b["zone"] for b in sol_branches if b["zone"])))
+            regions = sorted(list(set(b["region"] for b in sol_branches if b["region"])))
+            districts = sorted(list(set(b["district"] for b in sol_branches if b["district"])))
         else:
-            zones = [r[0] for r in frappe.db.sql("SELECT DISTINCT zone FROM `tabSahayog Branch` WHERE zone IS NOT NULL AND zone != ''")]
-            regions = [r[0] for r in frappe.db.sql("SELECT DISTINCT region FROM `tabSahayog Branch` WHERE region IS NOT NULL AND region != ''")]
-            districts = [r[0] for r in frappe.db.sql("SELECT DISTINCT district FROM `tabSahayog Branch` WHERE district IS NOT NULL AND district != ''")]
+            zones = all_zones
+            regions = all_regions
+            districts = all_districts
 
     else:
         # No restrictions — show all
-        zones = [r[0] for r in frappe.db.sql("SELECT DISTINCT zone FROM `tabSahayog Branch` WHERE zone IS NOT NULL AND zone != ''")]
-        regions = [r[0] for r in frappe.db.sql("SELECT DISTINCT region FROM `tabSahayog Branch` WHERE region IS NOT NULL AND region != ''")]
-        districts = [r[0] for r in frappe.db.sql("SELECT DISTINCT district FROM `tabSahayog Branch` WHERE district IS NOT NULL AND district != ''")]
+        zones = all_zones
+        regions = all_regions
+        districts = all_districts
 
     fixed_sol_id = None
     allowed_sol_ids = perms.get("sol_ids", [])
@@ -1172,19 +1366,18 @@ def get_mis_filter_options():
     
     # Build sol_data: branch names from Sahayog Branch
     sol_data = perms.get("sol_data", [])
-    if not sol_data and allowed_sol_ids:
-        sol_data = frappe.get_all(
-            "Sahayog Branch",
-            filters={"name": ["in", allowed_sol_ids]},
-            fields=["name as sol_id", "branch as branch_name"],
-            order_by="name asc"
-        )
-    elif not sol_data:
-        sol_data = frappe.get_all(
-            "Sahayog Branch",
-            fields=["name as sol_id", "branch as branch_name"],
-            order_by="name asc"
-        )
+    if not sol_data:
+        if allowed_sol_ids:
+            sol_data = [
+                {"sol_id": sid, "branch_name": branches_map[sid]["branch_name"]}
+                for sid in sorted(allowed_sol_ids)
+                if sid in branches_map
+            ]
+        else:
+            sol_data = [
+                {"sol_id": sid, "branch_name": branches_map[sid]["branch_name"]}
+                for sid in sorted(branches_map.keys())
+            ]
     
     return {
         "zones": sorted(zones),
@@ -1202,6 +1395,7 @@ def get_mis_filter_options():
 
 
 @frappe.whitelist()
+@sahayog_cache(ttl=86400)
 def get_daily_account_opening_data(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate
@@ -1225,10 +1419,7 @@ def get_daily_account_opening_data(selected_date=None):
 
     # Fetch local Product mapping to categorize scheme codes
     try:
-        products = frappe.get_all(
-            "Product",
-            fields=["name", "product_name", "group_name", "group_subname", "product_type"]
-        )
+        products = get_products_cached()
     except Exception:
         products = []
 
@@ -1322,18 +1513,16 @@ def get_daily_account_opening_data(selected_date=None):
         sol_ids_found = [str(r[2]).strip() for r in rows] if rows else []
         branch_map = {}
         if sol_ids_found:
-            sb_data = frappe.get_all(
-                "Sahayog Branch",
-                filters={"name": ["in", sol_ids_found]},
-                fields=["name as sol_id", "zone", "region", "district", "branch"]
-            )
-            for b in sb_data:
-                branch_map[b.sol_id.strip()] = {
-                    "zone": b.zone or "",
-                    "region": b.region or "",
-                    "district": b.district or "",
-                    "branch_name": b.branch or ""
-                }
+            branches_map = get_sahayog_branches_cached()
+            for sid in sol_ids_found:
+                if sid in branches_map:
+                    b = branches_map[sid]
+                    branch_map[sid] = {
+                        "zone": b.get("zone") or "",
+                        "region": b.get("region") or "",
+                        "district": b.get("district") or "",
+                        "branch_name": b.get("branch_name") or ""
+                    }
 
         # Group and aggregate raw records by branch
         branch_aggregates = {}
@@ -1412,6 +1601,7 @@ def get_daily_account_opening_data(selected_date=None):
 
 
 @frappe.whitelist()
+@sahayog_cache(ttl=86400)
 def get_ntb_evr_data(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate, get_last_day, add_months
@@ -1610,6 +1800,7 @@ def get_ntb_evr_data(selected_date=None):
 
 
 @frappe.whitelist()
+@sahayog_cache(ttl=86400)
 def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate, add_months
@@ -1859,6 +2050,7 @@ def clean_zone_region(value, prefix):
 
 
 @frappe.whitelist()
+@sahayog_cache(ttl=86400)
 def get_product_wise_casa(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate
@@ -2178,7 +2370,7 @@ GROUP BY
         bulk_data = []
         
         # Pre-fetch product group_name mappings from DB to emulate Fetch From
-        product_map = {p.name: p.group_name for p in frappe.get_all("Product", fields=["name", "group_name"])}
+        product_map = get_product_group_map_cached()
 
         for row in rows:
             sol_id = str(row[1]).strip()
@@ -2240,6 +2432,7 @@ GROUP BY
 
 
 @frappe.whitelist()
+@sahayog_cache(ttl=86400)
 def get_product_wise_tda(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate, now_datetime
@@ -2716,7 +2909,7 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
         bulk_data = []
         
         # Pre-fetch product group_name mappings from DB to emulate Fetch From
-        product_map = {p.name: p.group_name for p in frappe.get_all("Product", fields=["name", "group_name"])}
+        product_map = get_product_group_map_cached()
 
         for row in rows:
             sol_id = str(row[0]).strip()
@@ -2776,6 +2969,7 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
             pass
 
 @frappe.whitelist(allow_guest=True)
+@sahayog_cache(ttl=86400)
 def get_gl_wise_ch_report_data(selected_date=None):
     """
     Returns the GL Wise CH Report data with hierarchical grouping:
@@ -2787,50 +2981,81 @@ def get_gl_wise_ch_report_data(selected_date=None):
     if not selected_date:
         return {"product_wise": [], "all_products": []}
 
-    # Fetch raw product wise report data joined with Sahayog Branch to get district and branch name
-    raw_data = frappe.db.sql("""
+    # Fetch raw product wise report data without joins
+    raw_data_db = frappe.db.sql("""
         SELECT
-            COALESCE(NULLIF(b.zone, ''), p.zone) as zone,
-            COALESCE(NULLIF(b.region, ''), p.region) as region,
-            COALESCE(b.district, 'Unknown District') as district,
-            p.sol_id,
-            COALESCE(b.branch, '') as branch_name,
-            CASE
-                WHEN p.product = 'RD' AND pr.group_subname = 'JLL RD' AND pr.group_subname_category IS NULL THEN 'JLL RD'
-                WHEN p.product = 'RD' AND pr.group_subname IS NULL AND pr.group_subname_category IS NULL THEN 'RD'
-                WHEN p.product = 'SMBG' AND pr.group_subname = 'SKBG' AND pr.group_subname_category IS NULL THEN 'SKBG'
-                WHEN p.product = 'SMBG' AND pr.group_subname IS NULL AND pr.group_subname_category IS NULL THEN 'SMBG'
-                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'TASC' AND pr.group_subname_category = 'TASKSILVER' THEN 'TASKSILVER'
-                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'TASC' AND pr.group_subname_category = 'TASKWEALTH' THEN 'TASKWEALTH'
-                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'SA' AND pr.group_subname_category = 'SAVSIL' THEN 'SAVSIL'
-                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'CA' AND pr.group_subname_category = 'CUGOLD' THEN 'CUGOLD'
-                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'CA' AND pr.group_subname_category = 'CUWEALTH' THEN 'CUWEALTH'
-                ELSE p.product
-            END as product,
-            SUM(p.amount) as amount
-        FROM `tabProduct Wise Report` p
-        LEFT JOIN `tabSahayog Branch` b ON p.sol_id = b.name
-        LEFT JOIN `tabProduct` pr ON p.scheme_code = pr.name
-        WHERE p.date = %s
-          AND COALESCE(NULLIF(b.zone, ''), p.zone) IS NOT NULL
-          AND COALESCE(NULLIF(b.zone, ''), p.zone) != ''
-          AND COALESCE(NULLIF(b.region, ''), p.region) IS NOT NULL
-          AND COALESCE(NULLIF(b.region, ''), p.region) != ''
-        GROUP BY COALESCE(NULLIF(b.zone, ''), p.zone), COALESCE(NULLIF(b.region, ''), p.region), COALESCE(b.district, 'Unknown District'), p.sol_id, COALESCE(b.branch, ''),
-            CASE
-                WHEN p.product = 'RD' AND pr.group_subname = 'JLL RD' AND pr.group_subname_category IS NULL THEN 'JLL RD'
-                WHEN p.product = 'RD' AND pr.group_subname IS NULL AND pr.group_subname_category IS NULL THEN 'RD'
-                WHEN p.product = 'SMBG' AND pr.group_subname = 'SKBG' AND pr.group_subname_category IS NULL THEN 'SKBG'
-                WHEN p.product = 'SMBG' AND pr.group_subname IS NULL AND pr.group_subname_category IS NULL THEN 'SMBG'
-                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'TASC' AND pr.group_subname_category = 'TASKSILVER' THEN 'TASKSILVER'
-                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'TASC' AND pr.group_subname_category = 'TASKWEALTH' THEN 'TASKWEALTH'
-                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'SA' AND pr.group_subname_category = 'SAVSIL' THEN 'SAVSIL'
-                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'CA' AND pr.group_subname_category = 'CUGOLD' THEN 'CUGOLD'
-                WHEN pr.group_name = 'CASA' AND pr.group_subname = 'CA' AND pr.group_subname_category = 'CUWEALTH' THEN 'CUWEALTH'
-                ELSE p.product
-            END
-        ORDER BY COALESCE(NULLIF(b.zone, ''), p.zone), COALESCE(NULLIF(b.region, ''), p.region), COALESCE(b.district, 'Unknown District'), p.sol_id
+            zone,
+            region,
+            sol_id,
+            product,
+            scheme_code,
+            SUM(amount) as amount
+        FROM `tabProduct Wise Report`
+        WHERE date = %s
+        GROUP BY zone, region, sol_id, product, scheme_code
     """, (selected_date,), as_dict=True)
+
+    prod_map = get_products_map_cached()
+    branches_map = get_sahayog_branches_cached()
+    
+    raw_data = []
+    grouped_map = defaultdict(float)
+    
+    for row in raw_data_db:
+        sid = str(row.sol_id or "").strip()
+        b = branches_map.get(sid, {})
+        
+        zone = b.get("zone") or row.zone or ""
+        region = b.get("region") or row.region or ""
+        district = b.get("district") or "Unknown District"
+        branch_name = b.get("branch_name") or ""
+        
+        if not zone or not region:
+            continue
+            
+        pr = prod_map.get(row.scheme_code)
+        
+        product = row.product
+        if pr:
+            group_name = pr.group_name
+            group_subname = pr.group_subname
+            group_subname_category = pr.group_subname_category
+            
+            if row.product == 'RD' and group_subname == 'JLL RD' and not group_subname_category:
+                product = 'JLL RD'
+            elif row.product == 'RD' and not group_subname and not group_subname_category:
+                product = 'RD'
+            elif row.product == 'SMBG' and group_subname == 'SKBG' and not group_subname_category:
+                product = 'SKBG'
+            elif row.product == 'SMBG' and not group_subname and not group_subname_category:
+                product = 'SMBG'
+            elif group_name == 'CASA' and group_subname == 'TASC' and group_subname_category == 'TASKSILVER':
+                product = 'TASKSILVER'
+            elif group_name == 'CASA' and group_subname == 'TASC' and group_subname_category == 'TASKWEALTH':
+                product = 'TASKWEALTH'
+            elif group_name == 'CASA' and group_subname == 'SA' and group_subname_category == 'SAVSIL':
+                product = 'SAVSIL'
+            elif group_name == 'CASA' and group_subname == 'CA' and group_subname_category == 'CUGOLD':
+                product = 'CUGOLD'
+            elif group_name == 'CASA' and group_subname == 'CA' and group_subname_category == 'CUWEALTH':
+                product = 'CUWEALTH'
+                
+        key = (zone, region, district, sid, branch_name, product)
+        grouped_map[key] += float(row.amount or 0)
+        
+    for key, amount in grouped_map.items():
+        zone, region, district, sid, branch_name, product = key
+        raw_data.append(frappe._dict({
+            "zone": zone,
+            "region": region,
+            "district": district,
+            "sol_id": sid,
+            "branch_name": branch_name,
+            "product": product,
+            "amount": amount
+        }))
+        
+    raw_data.sort(key=lambda x: (x.zone, x.region, x.district, x.sol_id))
 
     if not raw_data:
         return {"product_wise": [], "all_products": []}
@@ -2966,6 +3191,7 @@ def get_gl_wise_ch_report_data(selected_date=None):
 
   
 @frappe.whitelist()
+@sahayog_cache(ttl=86400)
 def get_bucket_wise_account_mis_data(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate
@@ -3287,18 +3513,23 @@ def get_bucket_wise_account_mis_data(selected_date=None):
             sol_ids = list(set(r["sol_id"] for r in raw_data if r.get("sol_id")))
             branch_map = {}
             if sol_ids:
-                sb_data = frappe.get_all(
-                    "Sahayog Branch",
-                    filters={"name": ["in", sol_ids]},
-                    fields=["name as sol_id", "zone", "region", "district", "branch"]
-                )
-                for b in sb_data:
-                    branch_map[b.sol_id] = {
-                        "zone": b.zone or "Unknown",
-                        "region": b.region or "Unknown",
-                        "district": b.district or "Unknown",
-                        "branch_name": b.branch or b.sol_id
-                    }
+                branches_map = get_sahayog_branches_cached()
+                for sid in sol_ids:
+                    if sid in branches_map:
+                        b = branches_map[sid]
+                        branch_map[sid] = {
+                            "zone": b.get("zone") or "Unknown",
+                            "region": b.get("region") or "Unknown",
+                            "district": b.get("district") or "Unknown",
+                            "branch_name": b.get("branch_name") or sid
+                        }
+                    else:
+                        branch_map[sid] = {
+                            "zone": "Unknown",
+                            "region": "Unknown",
+                            "district": "Unknown",
+                            "branch_name": sid
+                        }
 
             summary = {}
             for r in raw_data:
@@ -3338,6 +3569,7 @@ def get_bucket_wise_account_mis_data(selected_date=None):
 
 
 @frappe.whitelist()
+@sahayog_cache(ttl=86400)
 def get_new_account_report_data(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate
@@ -3560,18 +3792,23 @@ def get_new_account_report_data(selected_date=None):
             sol_ids = list(set(r["sol_id"] for r in raw_data if r.get("sol_id")))
             branch_map = {}
             if sol_ids:
-                sb_data = frappe.get_all(
-                    "Sahayog Branch",
-                    filters={"name": ["in", sol_ids]},
-                    fields=["name as sol_id", "zone", "region", "district", "branch"]
-                )
-                for b in sb_data:
-                    branch_map[b.sol_id] = {
-                        "zone": b.zone or "Unknown",
-                        "region": b.region or "Unknown",
-                        "district": b.district or "Unknown",
-                        "branch_name": b.branch or b.sol_id
-                    }
+                branches_map = get_sahayog_branches_cached()
+                for sid in sol_ids:
+                    if sid in branches_map:
+                        b = branches_map[sid]
+                        branch_map[sid] = {
+                            "zone": b.get("zone") or "Unknown",
+                            "region": b.get("region") or "Unknown",
+                            "district": b.get("district") or "Unknown",
+                            "branch_name": b.get("branch_name") or sid
+                        }
+                    else:
+                        branch_map[sid] = {
+                            "zone": "Unknown",
+                            "region": "Unknown",
+                            "district": "Unknown",
+                            "branch_name": sid
+                        }
 
             # Fetch designations for all unique employee IDs in bulk
             emp_ids = set()
@@ -3660,6 +3897,7 @@ def get_new_account_report_data(selected_date=None):
 
 
 @frappe.whitelist()
+@sahayog_cache(ttl=86400)
 def get_staff_wise_demand_collection_data(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate
@@ -3869,18 +4107,23 @@ def get_staff_wise_demand_collection_data(selected_date=None):
             sol_ids = list(set(r["sol_id"] for r in raw_data if r.get("sol_id")))
             branch_map = {}
             if sol_ids:
-                sb_data = frappe.get_all(
-                    "Sahayog Branch",
-                    filters={"name": ["in", sol_ids]},
-                    fields=["name as sol_id", "zone", "region", "district", "branch"]
-                )
-                for b in sb_data:
-                    branch_map[b.sol_id] = {
-                        "zone": b.zone or "Unknown",
-                        "region": b.region or "Unknown",
-                        "district": b.district or "Unknown",
-                        "branch_name": b.branch or b.sol_id
-                    }
+                branches_map = get_sahayog_branches_cached()
+                for sid in sol_ids:
+                    if sid in branches_map:
+                        b = branches_map[sid]
+                        branch_map[sid] = {
+                            "zone": b.get("zone") or "Unknown",
+                            "region": b.get("region") or "Unknown",
+                            "district": b.get("district") or "Unknown",
+                            "branch_name": b.get("branch_name") or sid
+                        }
+                    else:
+                        branch_map[sid] = {
+                            "zone": "Unknown",
+                            "region": "Unknown",
+                            "district": "Unknown",
+                            "branch_name": sid
+                        }
 
             # Fetch designations for all unique employee IDs in bulk
             emp_ids = set()
@@ -3955,6 +4198,7 @@ def get_staff_wise_demand_collection_data(selected_date=None):
 
 
 @frappe.whitelist()
+@sahayog_cache(ttl=86400)
 def get_agent_wise_demand_collection_data(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate
@@ -4164,18 +4408,23 @@ def get_agent_wise_demand_collection_data(selected_date=None):
             sol_ids = list(set(r["sol_id"] for r in raw_data if r.get("sol_id")))
             branch_map = {}
             if sol_ids:
-                sb_data = frappe.get_all(
-                    "Sahayog Branch",
-                    filters={"name": ["in", sol_ids]},
-                    fields=["name as sol_id", "zone", "region", "district", "branch"]
-                )
-                for b in sb_data:
-                    branch_map[b.sol_id] = {
-                        "zone": b.zone or "Unknown",
-                        "region": b.region or "Unknown",
-                        "district": b.district or "Unknown",
-                        "branch_name": b.branch or b.sol_id
-                    }
+                branches_map = get_sahayog_branches_cached()
+                for sid in sol_ids:
+                    if sid in branches_map:
+                        b = branches_map[sid]
+                        branch_map[sid] = {
+                            "zone": b.get("zone") or "Unknown",
+                            "region": b.get("region") or "Unknown",
+                            "district": b.get("district") or "Unknown",
+                            "branch_name": b.get("branch_name") or sid
+                        }
+                    else:
+                        branch_map[sid] = {
+                            "zone": "Unknown",
+                            "region": "Unknown",
+                            "district": "Unknown",
+                            "branch_name": sid
+                        }
 
             # Fetch designations for all unique employee IDs in bulk
             emp_ids = set()
