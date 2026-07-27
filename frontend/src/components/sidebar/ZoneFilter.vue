@@ -8,7 +8,7 @@ const allZonesSelected = computed(() => zoneFilter.value.length === 0 || zoneFil
 
 function toggleZone(name) {
   if (allZonesSelected.value) {
-    setZoneFilter(zoneFilterOptions.value.filter(z => z.name !== name).map(z => z.name))
+    setZoneFilter([name])
   } else {
     const idx = zoneFilter.value.indexOf(name)
     if (idx >= 0) {

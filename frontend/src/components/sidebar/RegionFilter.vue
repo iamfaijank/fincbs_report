@@ -8,7 +8,7 @@ const allRegionsSelected = computed(() => regionFilter.value.length === 0 || reg
 
 function toggleRegion(name) {
   if (allRegionsSelected.value) {
-    setRegionFilter(regionFilterOptions.value.filter(r => r.name !== name).map(r => r.name))
+    setRegionFilter([name])
   } else {
     const idx = regionFilter.value.indexOf(name)
     if (idx >= 0) {
