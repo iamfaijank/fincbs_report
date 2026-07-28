@@ -67,9 +67,11 @@ def get_report_preference():
 def get_filter_options():
 	cache_key = "drishti_filter_options"
 	cached = frappe.cache().get_value(cache_key)
+	print(f"[Drishti] Cache check: {'HIT' if cached else 'MISS'} (key={cache_key})")
 	if cached:
 		return cached
 
+	print("[Drishti] Fetching filter options from DB...")
 	zones = frappe.get_all("Zone", fields=["name"], order_by="name asc")
 	regions = frappe.get_all("Region", fields=["name"], order_by="name asc")
 
@@ -87,4 +89,5 @@ def get_filter_options():
 	}
 
 	frappe.cache().set_value(cache_key, result, expires_in_sec=30)
+	print(f"[Drishti] Cached filter options for 30s")
 	return result
