@@ -1,10 +1,7 @@
 <script setup>
-import { computed } from 'vue'
 import { useFilters } from '@/composables/useFilters.js'
 
-const { zoneFilterOptions, zoneFilter, setZoneFilter } = useFilters()
-
-const allZonesSelected = computed(() => zoneFilter.value.length === 0 || zoneFilter.value.length === zoneFilterOptions.value.length)
+const { zoneFilterOptions, zoneFilter, setZoneFilter, selectAllZones, allZonesSelected } = useFilters()
 
 function toggleZone(name) {
   if (allZonesSelected.value) {
@@ -21,9 +18,9 @@ function toggleZone(name) {
 
 function toggleAllZones() {
   if (allZonesSelected.value) {
-    setZoneFilter([])
+    setZoneFilter(zoneFilterOptions.value.map(z => z.name))
   } else {
-    setZoneFilter([])
+    selectAllZones()
   }
 }
 </script>

@@ -1,10 +1,7 @@
 <script setup>
-import { computed } from 'vue'
 import { useFilters } from '@/composables/useFilters.js'
 
-const { regionFilterOptions, regionFilter, setRegionFilter } = useFilters()
-
-const allRegionsSelected = computed(() => regionFilter.value.length === 0 || regionFilter.value.length === regionFilterOptions.value.length)
+const { regionFilterOptions, regionFilter, setRegionFilter, selectAllRegions, allRegionsSelected } = useFilters()
 
 function toggleRegion(name) {
   if (allRegionsSelected.value) {
@@ -21,9 +18,9 @@ function toggleRegion(name) {
 
 function toggleAllRegions() {
   if (allRegionsSelected.value) {
-    setRegionFilter([])
+    setRegionFilter(regionFilterOptions.value.map(r => r.name))
   } else {
-    setRegionFilter([])
+    selectAllRegions()
   }
 }
 </script>

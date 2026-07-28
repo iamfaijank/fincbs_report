@@ -25,11 +25,13 @@ export function useFilters() {
   function setZoneOptions(zones) {
     allZones.value = zones
     zoneFilterOptions.value = zones.map(z => ({ name: z, label: mapZoneName(z) }))
+    zoneFilter.value = zones.map(z => z)
   }
 
   function setRegionOptions(regions) {
     allRegions.value = regions
     regionFilterOptions.value = regions.map(r => ({ name: r, label: mapRegionName(r) }))
+    regionFilter.value = regions.map(r => r)
   }
 
   function setZoneFilterOptions(zones) {
@@ -48,16 +50,22 @@ export function useFilters() {
     regionFilter.value = regions
   }
 
-  const allZonesSelected = computed(() => zoneFilter.value.length === 0 || zoneFilter.value.length === zoneFilterOptions.value.length)
-  const allRegionsSelected = computed(() => regionFilter.value.length === 0 || regionFilter.value.length === regionFilterOptions.value.length)
+  function selectAllZones() {
+    zoneFilter.value = zoneFilterOptions.value.map(z => z.name)
+  }
+
+  function selectAllRegions() {
+    regionFilter.value = regionFilterOptions.value.map(r => r.name)
+  }
+
+  const allZonesSelected = computed(() => zoneFilter.value.length === zoneFilterOptions.value.length)
+  const allRegionsSelected = computed(() => regionFilter.value.length === regionFilterOptions.value.length)
 
   function isZoneSelected(displayName) {
-    if (zoneFilter.value.length === 0) return true
     return zoneFilter.value.some(apiName => mapZoneName(apiName) === displayName)
   }
 
   function isRegionSelected(displayName) {
-    if (regionFilter.value.length === 0) return true
     return regionFilter.value.some(apiName => mapRegionName(apiName) === displayName)
   }
 
@@ -74,6 +82,8 @@ export function useFilters() {
     setRegionFilterOptions,
     setZoneFilter,
     setRegionFilter,
+    selectAllZones,
+    selectAllRegions,
     allZonesSelected,
     allRegionsSelected,
     isZoneSelected,
