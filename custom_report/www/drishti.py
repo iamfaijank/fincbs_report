@@ -65,6 +65,11 @@ def get_report_preference():
 
 @frappe.whitelist(methods=["POST"], allow_guest=True)
 def get_filter_options():
+	cache_key = "drishti_filter_options"
+	cached = frappe.cache().get_value(cache_key)
+	if cached:
+		return cached
+
 	zones = frappe.get_all("Zone", fields=["name"], order_by="name asc")
 	regions = frappe.get_all("Region", fields=["name"], order_by="name asc")
 
@@ -74,9 +79,12 @@ def get_filter_options():
 		districts = frappe.get_all("Sahayog Branch", filters={"district": ["is", "set"]}, fields=["district"], group_by="district", order_by="district asc")
 		branches = frappe.get_all("Sahayog Branch", filters={"branch": ["is", "set"]}, fields=["branch", "name", "sol_id"], order_by="branch asc")
 
-	return {
+	result = {
 		"zones": [z.name for z in zones],
 		"regions": [r.name for r in regions],
 		"districts": [d.district for d in districts],
 		"branches": [{"label": f"{b.branch} ({b.name})", "value": b.name} for b in branches],
 	}
+
+	frappe.cache().set_value(cache_key, result, expires_in_sec=30)
+	return result
