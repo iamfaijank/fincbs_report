@@ -46,34 +46,38 @@ const drishtiCards = [
 </script>
 
 <template>
-  <div>
-    <SummaryCardGroup v-if="activeView === 'drishti'" :cards="drishtiCards" :cols="4" />
+  <div class="flex flex-col h-full">
+    <div class="flex-shrink-0">
+      <SummaryCardGroup v-if="activeView === 'drishti'" :cards="drishtiCards" :cols="4" />
 
-    <div class="mb-4 flex gap-2">
-      <button
-        v-for="tab in tabs"
-        :key="tab.id"
-        class="rounded-lg px-4 py-2 text-xs font-medium transition"
-        :class="activeTab === tab.id
-          ? 'text-white shadow-sm'
-          : 'bg-[var(--bg2)] text-[var(--text3)] hover:bg-[var(--bg)] hover:text-[var(--text)]'"
-        :style="activeTab === tab.id ? { backgroundColor: tab.color } : {}"
-        @click="activeTab = tab.id"
-      >
-        {{ tab.label }}
-      </button>
+      <div class="mb-4 flex gap-2">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          class="rounded-lg px-4 py-2 text-xs font-medium transition"
+          :class="activeTab === tab.id
+            ? 'text-white shadow-sm'
+            : 'bg-[var(--bg2)] text-[var(--text3)] hover:bg-[var(--bg)] hover:text-[var(--text)]'"
+          :style="activeTab === tab.id ? { backgroundColor: tab.color } : {}"
+          @click="activeTab = tab.id"
+        >
+          {{ tab.label }}
+        </button>
+      </div>
     </div>
 
-    <ZoneWiseTable v-if="activeView === 'drishti' && activeTab === 'zone'" />
-    <CategoryWiseTable v-if="activeView === 'drishti' && activeTab === 'category'" />
-    <ProductWiseTable v-if="activeView === 'drishti' && activeTab === 'product'" />
-    <AgentWiseTable v-if="activeView === 'drishti' && activeTab === 'agent'" />
-    <BranchWiseTable v-if="activeView === 'drishti' && activeTab === 'branch'" />
+    <div class="flex-1 min-h-0 overflow-y-auto">
+      <ZoneWiseTable v-if="activeView === 'drishti' && activeTab === 'zone'" />
+      <CategoryWiseTable v-if="activeView === 'drishti' && activeTab === 'category'" />
+      <ProductWiseTable v-if="activeView === 'drishti' && activeTab === 'product'" />
+      <AgentWiseTable v-if="activeView === 'drishti' && activeTab === 'agent'" />
+      <BranchWiseTable v-if="activeView === 'drishti' && activeTab === 'branch'" />
 
-    <RdSmbgPendingTable v-if="activeView === 'mis' && activeTab === 'rd_smbg'" />
-    <DailyAccountTable v-if="activeView === 'mis' && activeTab === 'daily_acct'" />
-    <CasaNtbTable v-if="activeView === 'mis' && activeTab === 'casa_ntb'" />
-    <CasaAvgTable v-if="activeView === 'mis' && activeTab === 'casa_avg'" />
-    <GlReportTable v-if="activeView === 'mis' && activeTab === 'gl_report'" />
+      <RdSmbgPendingTable v-if="activeView === 'mis' && activeTab === 'rd_smbg'" />
+      <DailyAccountTable v-if="activeView === 'mis' && activeTab === 'daily_acct'" />
+      <CasaNtbTable v-if="activeView === 'mis' && activeTab === 'casa_ntb'" />
+      <CasaAvgTable v-if="activeView === 'mis' && activeTab === 'casa_avg'" />
+      <GlReportTable v-if="activeView === 'mis' && activeTab === 'gl_report'" />
+    </div>
   </div>
 </template>

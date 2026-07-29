@@ -161,3 +161,11 @@ function getMonthData(row) {
     </div>
   </div>
 </template>
+
+<style scoped>
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+</style>
