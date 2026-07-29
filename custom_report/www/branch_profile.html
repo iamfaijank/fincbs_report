@@ -1585,52 +1585,186 @@
 				</section>
 			</div>
 
-			<section class="staff-detail-section" style="margin-bottom: 20px;">
-				<h2>Product Wise Target VS Collection</h2>
+			<section class="staff-detail-section modern-table-card" style="margin-bottom: 20px; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); padding: 24px;">
+				<div style="margin-bottom: 20px;">
+					<h2 style="margin: 0; font-size: 20px; color: #1e293b; font-weight: 700;">Product Wise Target VS Collection</h2>
+				</div>
 				<div class="financial-table-container" style="overflow-x: auto;">
-					<table class="financial-table" style="width: 100%; border-collapse: collapse; text-align: center;">
+					<table class="financial-table" style="width: 100%; border-collapse: collapse; text-align: center; border: 1px solid #e2e8f0; font-family: 'Inter', sans-serif;">
 						<thead>
-							<tr style="background-color: #e2e8f0;">
-								<th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left; font-weight: 600; width: 16%;">PRODUCT</th>
-								<th id="th-casa" style="padding: 8px; border: 1px solid #cbd5e1; font-weight: 600; width: 12%;">CASA</th>
-								<th id="th-dam" style="padding: 8px; border: 1px solid #cbd5e1; font-weight: 600; width: 12%;">DAM</th>
-								<th id="th-dd" style="padding: 8px; border: 1px solid #cbd5e1; font-weight: 600; width: 12%;">DD</th>
-								<th id="th-fd" style="padding: 8px; border: 1px solid #cbd5e1; font-weight: 600; width: 12%;">FD</th>
-								<th id="th-rd" style="padding: 8px; border: 1px solid #cbd5e1; font-weight: 600; width: 12%;">RD</th>
-								<th id="th-smbg" style="padding: 8px; border: 1px solid #cbd5e1; font-weight: 600; width: 12%;">SMBG</th>
-								<th id="th-total" style="padding: 8px; border: 1px solid #cbd5e1; font-weight: 600; width: 12%;">TOTAL TARGET (100%)</th>
+							<tr>
+								<th style="padding: 16px; border: 1px solid #e2e8f0; text-align: left; font-weight: 600; color: var(--primary-1); font-size: 13px; background: #fff; width: 16%;">PRODUCT</th>
+								<th id="th-casa" style="padding: 16px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary-1); font-size: 13px; background: #fff; width: 12%;">CASA</th>
+								<th id="th-dam" style="padding: 16px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary-1); font-size: 13px; background: #fff; width: 12%;">DAM</th>
+								<th id="th-dd" style="padding: 16px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary-1); font-size: 13px; background: #fff; width: 12%;">DD</th>
+								<th id="th-fd" style="padding: 16px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary-1); font-size: 13px; background: #fff; width: 12%;">FD</th>
+								<th id="th-rd" style="padding: 16px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary-1); font-size: 13px; background: #fff; width: 12%;">RD</th>
+								<th id="th-smbg" style="padding: 16px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary-1); font-size: 13px; background: #fff; width: 12%;">SMBG</th>
+								<th id="th-total" style="padding: 16px; border: 1px solid #e2e8f0; font-weight: 600; color: #fff; background: var(--primary-2); font-size: 13px; width: 12%;">TOTAL TARGET (100%)</th>
 							</tr>
 						</thead>
 						<tbody>
 							<tr>
-								<td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left; font-weight: 600; background-color: #f1f5f9;">TARGET</td>
-								<td id="target-casa" style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td id="target-dam" style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td id="target-dd" style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td id="target-fd" style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td id="target-rd" style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td id="target-smbg" style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td id="target-total" style="padding: 8px; border: 1px solid #cbd5e1;"></td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0; text-align: left; background-color: #fafaf9;">
+									<div style="display: flex; align-items: center; gap: 10px;">
+										<i class="fa fa-bullseye" style="color: var(--primary-1); font-size: 18px;"></i>
+										<div>
+											<div style="font-weight: 700; color: var(--primary-1); font-size: 14px;">TARGET</div>
+											<div style="font-size: 12px; color: #64748b;">Planned Amount</div>
+										</div>
+									</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="target-casa" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-casa" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="target-dam" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-dam" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="target-dd" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-dd" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="target-fd" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-fd" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="target-rd" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-rd" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="target-smbg" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-smbg" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="target-total" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-total" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
+								</td>
 							</tr>
 							<tr>
-								<td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left; font-weight: 600; background-color: #f1f5f9;">ACH%</td>
-								<td id="ach-casa" style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td id="ach-dam" style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td id="ach-dd" style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td id="ach-fd" style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td id="ach-rd" style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td id="ach-smbg" style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td id="ach-total" style="padding: 8px; border: 1px solid #cbd5e1;"></td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0; text-align: left; background-color: #fafaf9;">
+									<div style="display: flex; align-items: center; gap: 10px;">
+										<i class="fa fa-bar-chart" style="color: var(--primary-1); font-size: 18px;"></i>
+										<div>
+											<div style="font-weight: 700; color: var(--primary-1); font-size: 14px;">ACH%</div>
+											<div style="font-size: 12px; color: #64748b;">Achieved Amount</div>
+										</div>
+									</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="ach-casa" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="ach-pct-casa" style="font-size: 12px; font-weight: 600; color: #22c55e; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="ach-bar-casa" style="height: 100%; background: #22c55e; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="ach-dam" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="ach-pct-dam" style="font-size: 12px; font-weight: 600; color: #22c55e; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="ach-bar-dam" style="height: 100%; background: #22c55e; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="ach-dd" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="ach-pct-dd" style="font-size: 12px; font-weight: 600; color: #22c55e; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="ach-bar-dd" style="height: 100%; background: #22c55e; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="ach-fd" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="ach-pct-fd" style="font-size: 12px; font-weight: 600; color: #22c55e; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="ach-bar-fd" style="height: 100%; background: #22c55e; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="ach-rd" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="ach-pct-rd" style="font-size: 12px; font-weight: 600; color: #22c55e; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="ach-bar-rd" style="height: 100%; background: #22c55e; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="ach-smbg" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="ach-pct-smbg" style="font-size: 12px; font-weight: 600; color: #22c55e; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="ach-bar-smbg" style="height: 100%; background: #22c55e; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="ach-total" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="ach-pct-total" style="font-size: 12px; font-weight: 600; color: #22c55e; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="ach-bar-total" style="height: 100%; background: #22c55e; width: 0%;"></div></div>
+								</td>
 							</tr>
 							<tr>
-								<td style="padding: 8px; border: 1px solid #cbd5e1; text-align: left; font-weight: 600; background-color: #f1f5f9;">Remaining + Spill over Total Target</td>
-								<td style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td style="padding: 8px; border: 1px solid #cbd5e1;"></td>
-								<td style="padding: 8px; border: 1px solid #cbd5e1;"></td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0; text-align: left; background-color: #fafaf9;">
+									<div style="display: flex; align-items: center; gap: 10px;">
+										<i class="fa fa-refresh" style="color: var(--primary-1); font-size: 18px;"></i>
+										<div>
+											<div style="font-weight: 700; color: var(--primary-1); font-size: 13px;">REMAINING + SPILL OVER</div>
+											<div style="font-size: 12px; color: #64748b;">Balance / Over Achieved</div>
+										</div>
+									</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="rem-casa" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="rem-pct-casa" style="font-size: 12px; font-weight: 600; color: #ef4444; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="rem-bar-casa" style="height: 100%; background: #ef4444; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="rem-dam" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="rem-pct-dam" style="font-size: 12px; font-weight: 600; color: #ef4444; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="rem-bar-dam" style="height: 100%; background: #ef4444; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="rem-dd" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="rem-pct-dd" style="font-size: 12px; font-weight: 600; color: #ef4444; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="rem-bar-dd" style="height: 100%; background: #ef4444; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="rem-fd" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="rem-pct-fd" style="font-size: 12px; font-weight: 600; color: #ef4444; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="rem-bar-fd" style="height: 100%; background: #ef4444; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="rem-rd" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="rem-pct-rd" style="font-size: 12px; font-weight: 600; color: #ef4444; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="rem-bar-rd" style="height: 100%; background: #ef4444; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="rem-smbg" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="rem-pct-smbg" style="font-size: 12px; font-weight: 600; color: #ef4444; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="rem-bar-smbg" style="height: 100%; background: #ef4444; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="rem-total" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="rem-pct-total" style="font-size: 12px; font-weight: 600; color: #ef4444; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="rem-bar-total" style="height: 100%; background: #ef4444; width: 0%;"></div></div>
+								</td>
+							</tr>
+							<tr>
+								<td style="padding: 16px; border: 1px solid #e2e8f0; text-align: left; background-color: #fafaf9;">
+									<div style="display: flex; align-items: center; gap: 10px;">
+										<div>
+											<div style="font-weight: 700; color: var(--primary-1); font-size: 13px;">ACHIEVEMENT STATUS</div>
+											<div style="font-size: 12px; color: #64748b;">vs Target</div>
+										</div>
+									</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="status-casa" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500;">--</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="status-dam" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500;">--</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="status-dd" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500;">--</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="status-fd" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500;">--</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="status-rd" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500;">--</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="status-smbg" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500;">--</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="status-total" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500;">--</div>
+								</td>
 							</tr>
 						</tbody>
 					</table>
@@ -2519,6 +2653,9 @@
 							// Re-render
 							BranchManagerProfile.render();
 							BranchManagerProfile.renderManpowerDetails();
+							if(typeof BranchManagerProfile.renderProductCollections === 'function') {
+								BranchManagerProfile.renderProductCollections();
+							}
 						});
 					}
 
@@ -3135,72 +3272,134 @@
 						let fy = fyElem ? fyElem.value : "2026-2027";
 						const res = await fetch(`/api/method/custom_report.custom_api.get_sol_product_wise_collection?sol_id=${solId}&zone=${zone}&financial_year=${fy}`);
 						const json = await res.json();
-						if (json.message && json.message.collections) {
-							const cols = json.message.collections;
-							
-							const formatAmt = (val) => {
-								if(!val) return "--";
-								return val.toLocaleString('en-IN', {
-									maximumFractionDigits: 0,
-									style: 'currency',
-									currency: 'INR'
-								});
-							};
-
-							const elC = document.getElementById("ach-casa");
-							if(elC) elC.textContent = formatAmt(cols["CASA"]);
-							
-							const elDam = document.getElementById("ach-dam");
-							if(elDam) elDam.textContent = formatAmt(cols["DAM"]);
-							
-							const elDd = document.getElementById("ach-dd");
-							if(elDd) elDd.textContent = formatAmt(cols["DD"]);
-							
-							const elFd = document.getElementById("ach-fd");
-							if(elFd) elFd.textContent = formatAmt(cols["FD"]);
-							
-							const elRd = document.getElementById("ach-rd");
-							if(elRd) elRd.textContent = formatAmt(cols["RD"]);
-							
-							const elSmbg = document.getElementById("ach-smbg");
-							if(elSmbg) elSmbg.textContent = formatAmt(cols["SMBG"]);
-							
-							const elTot = document.getElementById("ach-total");
-							if(elTot) elTot.textContent = formatAmt(cols["TOTAL TARGET"]);
-						}
-						
-						if (json.message && json.message.targets) {
-							const tg = json.message.targets;
-							const setTh = (id, label, pct) => {
-								const el = document.getElementById(id);
-								if(el) el.textContent = `${label} (${pct}%)`;
-							};
-							setTh("th-casa", "CASA", tg["CASA"]);
-							setTh("th-dam", "DAM", tg["DAM"]);
-							setTh("th-dd", "DD", tg["DD"]);
-							setTh("th-fd", "FD", tg["FD"]);
-							setTh("th-rd", "RD", tg["RD"]);
-							setTh("th-smbg", "SMBG", tg["SMBG"]);
-							setTh("th-total", "TOTAL TARGET", "100");
-						}
-
-						if (json.message && json.message.target_amounts) {
-							const tAmt = json.message.target_amounts;
-							const setAmt = (id, val) => {
-								const el = document.getElementById(id);
-								if(el) el.textContent = val ? val.toLocaleString('en-IN', {maximumFractionDigits: 0, style: 'currency', currency: 'INR'}) : "--";
-							};
-							
-							setAmt("target-casa", tAmt["CASA"]);
-							setAmt("target-dam", tAmt["DAM"]);
-							setAmt("target-dd", tAmt["DD"]);
-							setAmt("target-fd", tAmt["FD"]);
-							setAmt("target-rd", tAmt["RD"]);
-							setAmt("target-smbg", tAmt["SMBG"]);
-							setAmt("target-total", tAmt["TOTAL TARGET"]);
+						if (json.message) {
+							this.state.productCollectionsData = json.message;
+							this.renderProductCollections();
 						}
 					} catch(e) {
 						console.error("Product Collections Load Error:", e);
+					}
+				},
+
+				renderProductCollections() {
+					const data = this.state.productCollectionsData;
+					if(!data) return;
+
+					if (data.targets) {
+						const tg = data.targets;
+						const setTh = (id, label, pct) => {
+							const el = document.getElementById(id);
+							if(el) el.textContent = `${label} (${pct}%)`;
+						};
+						setTh("th-casa", "CASA", tg["CASA"]);
+						setTh("th-dam", "DAM", tg["DAM"]);
+						setTh("th-dd", "DD", tg["DD"]);
+						setTh("th-fd", "FD", tg["FD"]);
+						setTh("th-rd", "RD", tg["RD"]);
+						setTh("th-smbg", "SMBG", tg["SMBG"]);
+						setTh("th-total", "TOTAL TARGET", "100");
+					}
+
+					if (data.target_amounts && data.collections) {
+						const tAmt = data.target_amounts;
+						const cCols = data.collections;
+						const tg = data.targets || {};
+						
+						const products = [
+							{ key: "CASA", id: "casa", tgPct: tg["CASA"] || 0 },
+							{ key: "DAM", id: "dam", tgPct: tg["DAM"] || 0 },
+							{ key: "DD", id: "dd", tgPct: tg["DD"] || 0 },
+							{ key: "FD", id: "fd", tgPct: tg["FD"] || 0 },
+							{ key: "RD", id: "rd", tgPct: tg["RD"] || 0 },
+							{ key: "SMBG", id: "smbg", tgPct: tg["SMBG"] || 0 },
+							{ key: "TOTAL TARGET", id: "total", tgPct: 100 }
+						];
+
+						products.forEach(p => {
+							const targetVal = tAmt[p.key] || 0;
+							const achVal = cCols[p.key] || 0;
+							const remVal = targetVal - achVal;
+
+							// TARGET ROW
+							const elTarget = document.getElementById(`target-${p.id}`);
+							if (elTarget) elTarget.textContent = this.formatAmount(targetVal);
+							const elTargetBar = document.getElementById(`target-bar-${p.id}`);
+							if (elTargetBar) elTargetBar.style.width = `${Math.min(p.tgPct, 100)}%`;
+
+							// ACH ROW
+							const achPct = targetVal ? ((achVal / targetVal) * 100) : 0;
+							const elAch = document.getElementById(`ach-${p.id}`);
+							if (elAch) elAch.textContent = this.formatAmount(achVal);
+							const elAchPct = document.getElementById(`ach-pct-${p.id}`);
+							if (elAchPct) elAchPct.textContent = `${achPct.toFixed(2)}%`;
+							const elAchBar = document.getElementById(`ach-bar-${p.id}`);
+							if (elAchBar) elAchBar.style.width = `${Math.min(achPct, 100)}%`;
+
+							// REMAINING ROW
+							const remPct = targetVal ? ((remVal / targetVal) * 100) : 0;
+							const isOverAchieved = remVal < 0;
+							const displayRemVal = Math.abs(remVal);
+							
+							const elRem = document.getElementById(`rem-${p.id}`);
+							if (elRem) {
+								let formattedAmt = this.formatAmount(displayRemVal);
+								if (isOverAchieved && formattedAmt !== "--") {
+									formattedAmt = "+ " + formattedAmt;
+								}
+								elRem.textContent = formattedAmt;
+							}
+							
+							const elRemPct = document.getElementById(`rem-pct-${p.id}`);
+							const elRemBar = document.getElementById(`rem-bar-${p.id}`);
+							
+							const remColor = isOverAchieved ? "#9333ea" : "#ef4444";
+							
+							if (elRemPct) {
+								let displayPct = Math.abs(remPct).toFixed(2) + "%";
+								if (isOverAchieved) displayPct = "+" + displayPct;
+								elRemPct.textContent = displayPct;
+								elRemPct.style.color = remColor;
+							}
+							if (elRemBar) {
+								elRemBar.style.width = `${Math.min(Math.abs(remPct), 100)}%`;
+								elRemBar.style.background = remColor;
+							}
+
+							// STATUS ROW
+							const elStatus = document.getElementById(`status-${p.id}`);
+							if (elStatus) {
+								if (achPct >= 100) {
+									elStatus.innerHTML = `<i class="fa fa-arrow-circle-up"></i> Over Achieved`;
+									elStatus.style.color = "#9333ea";
+								} else if (achPct >= 50) {
+									elStatus.innerHTML = `<i class="fa fa-arrow-circle-up"></i> On Track`;
+									elStatus.style.color = "#22c55e";
+								} else {
+									elStatus.innerHTML = `<i class="fa fa-arrow-circle-down"></i> Below Target`;
+									elStatus.style.color = "#ef4444";
+								}
+							}
+
+							// HIGHLIGHT COLUMN IF OVER TARGET
+							const isTargetMet = achPct >= 100;
+							const highlightBg = isTargetMet ? "color-mix(in srgb, var(--primary-1) 8%, transparent)" : "";
+							const highlightThBg = isTargetMet && p.id !== 'total' ? "color-mix(in srgb, var(--primary-1) 12%, transparent)" : (p.id === 'total' ? 'var(--primary-2)' : '#fff');
+							
+							const elTh = document.getElementById(`th-${p.id}`);
+							if(elTh) elTh.style.backgroundColor = highlightThBg;
+							
+							[elTarget, elAch, elRem, elStatus].forEach(el => {
+								if (el && el.parentElement) {
+									el.parentElement.style.backgroundColor = highlightBg;
+									// Make border match the highlight to blend smoothly
+									if(isTargetMet) {
+										el.parentElement.style.borderColor = "color-mix(in srgb, var(--primary-1) 20%, transparent)";
+									} else {
+										el.parentElement.style.borderColor = "#e2e8f0";
+									}
+								}
+							});
+						});
 					}
 				},
 
