@@ -126,3 +126,19 @@ def get_zone_wise_data(financial_year=None, view="Monthly", target_type="Monthly
   "months": result.get("months", []),
   "permissions": result.get("permissions", {}),
  }
+
+
+@frappe.whitelist(methods=["POST"], allow_guest=True)
+def get_category_wise_data(financial_year=None, view="Monthly", target_type="Monthly", filters=None, selected_date=None):
+ from custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard import get_sahayog_dashboard
+ result = get_sahayog_dashboard(
+  financial_year=financial_year,
+  view=view,
+  target_type=target_type,
+  filters=filters,
+  selected_date=selected_date,
+ )
+ return {
+  "category_wise": result.get("category_wise", []),
+  "months": result.get("months", []),
+ }
