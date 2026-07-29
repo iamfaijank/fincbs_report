@@ -16,19 +16,19 @@ const activeView = inject('activeView')
 const activeTab = ref('zone')
 
 const drishtiTabs = [
-  { id: 'zone', label: 'Zone Wise', color: '#4fffb0' },
-  { id: 'category', label: 'Category Wise', color: '#0ea5e9' },
-  { id: 'product', label: 'Product Wise', color: '#a78bfa' },
-  { id: 'agent', label: 'Agent Wise', color: '#2dd4bf' },
-  { id: 'branch', label: 'Branch Wise', color: '#f59e0b' },
+  { id: 'zone', label: 'Zone Wise', color: '#065f46' },
+  { id: 'category', label: 'Category Wise', color: '#1e40af' },
+  { id: 'product', label: 'Product Wise', color: '#5b21b6' },
+  { id: 'agent', label: 'Agent Wise', color: '#115e59' },
+  { id: 'branch', label: 'Branch Wise', color: '#92400e' },
 ]
 
 const misTabs = [
-  { id: 'rd_smbg', label: 'RD & SMBG Pending', color: '#ef4444' },
-  { id: 'daily_acct', label: 'Daily Account Opening', color: '#0ea5e9' },
-  { id: 'casa_ntb', label: 'CASA NTB & EVR', color: '#10b981' },
-  { id: 'casa_avg', label: 'CASA Cust Wise AVG Bal', color: '#a78bfa' },
-  { id: 'gl_report', label: 'GL. Wise CH Report', color: '#f59e0b' },
+  { id: 'rd_smbg', label: 'RD & SMBG Pending', color: '#991b1b' },
+  { id: 'daily_acct', label: 'Daily Account Opening', color: '#1e40af' },
+  { id: 'casa_ntb', label: 'CASA NTB & EVR', color: '#065f46' },
+  { id: 'casa_avg', label: 'CASA Cust Wise AVG Bal', color: '#5b21b6' },
+  { id: 'gl_report', label: 'GL. Wise CH Report', color: '#92400e' },
 ]
 
 const tabs = computed(() => activeView.value === 'drishti' ? drishtiTabs : misTabs)
@@ -57,7 +57,7 @@ const drishtiCards = [
           class="rounded-lg px-4 py-2 text-xs font-medium transition"
           :class="activeTab === tab.id
             ? 'text-white shadow-sm'
-            : 'bg-[var(--bg2)] text-[var(--text3)] hover:bg-[var(--bg)] hover:text-[var(--text)]'"
+            : 'bg-[var(--bg2)] text-[var(--text)] hover:bg-[var(--bg)]'"
           :style="activeTab === tab.id ? { backgroundColor: tab.color } : {}"
           @click="activeTab = tab.id"
         >
