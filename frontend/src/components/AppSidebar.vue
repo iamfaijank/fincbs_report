@@ -74,14 +74,18 @@ function toInitials(name: string): string {
 }
 
 function mapZoneName(name: string): string {
-  const match = name.match(/^Zone\s*-?\s*(.+)/i)
-  if (match) return 'Z' + (match[1] ? '-' + match[1] : '')
+  const match = name.match(/^ZONE-?\s*(.+)/i)
+  if (match) return 'Z-' + (match[1] || '')
+  const match2 = name.match(/^Zone\s*-?\s*(.+)/i)
+  if (match2) return 'Z-' + (match2[1] || '')
   return toInitials(name)
 }
 
 function mapRegionName(name: string): string {
-  const match = name.match(/^Region\s*-?\s*(.+)/i)
-  if (match) return 'R' + (match[1] ? '-' + match[1] : '')
+  const match = name.match(/^REGION-?\s*(.+)/i)
+  if (match) return 'R-' + (match[1] || '')
+  const match2 = name.match(/^Region\s*-?\s*(.+)/i)
+  if (match2) return 'R-' + (match2[1] || '')
   return toInitials(name)
 }
 

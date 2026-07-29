@@ -39,6 +39,20 @@ def get_default_route():
 	return "/drishti"
 
 
+def _map_zone_name(name):
+	import re
+	match = re.match(r'^Zone\s*-?\s*(.+)', name, re.IGNORECASE)
+	if match:
+		return 'ZONE-' + match.group(1).strip()
+	return name
+
+def _map_region_name(name):
+	import re
+	match = re.match(r'^Region\s*-?\s*(.+)', name, re.IGNORECASE)
+	if match:
+		return 'REGION-' + match.group(1).strip()
+	return name
+
 @frappe.whitelist(methods=["POST"], allow_guest=True)
 def get_report_preference():
 	user = frappe.session.user
@@ -56,8 +70,8 @@ def get_report_preference():
 	doc = frappe.get_doc("Report Preference", pref)
 	return {
 		"user": user,
-		"zone": [d.zone for d in doc.get("zone", []) if d.zone],
-		"region": [d.region for d in doc.get("region", []) if d.region],
+		"zone": [_map_zone_name(d.zone) for d in doc.get("zone", []) if d.zone],
+		"region": [_map_region_name(d.region) for d in doc.get("region", []) if d.region],
 		"district": [d.district for d in doc.get("district", []) if d.district],
 		"sol_id": [d.sol_id for d in doc.get("sol_id", []) if d.sol_id],
 	}
@@ -72,18 +86,22 @@ def get_filter_options():
 		return cached
 
 	print("[Drishti] Fetching filter options from DB...")
-	zones = frappe.get_all("Zone", fields=["name"], order_by="name asc")
-	regions = frappe.get_all("Region", fields=["name"], order_by="name asc")
-
+	zones = []
+	regions = []
 	districts = []
 	branches = []
 	if frappe.db.exists("DocType", "Sahayog Branch"):
+		zones = frappe.get_all("Sahayog Branch", filters={"zone": ["is", "set"]}, fields=["zone"], group_by="zone", order_by="zone asc")
+		regions = frappe.get_all("Sahayog Branch", filters={"region": ["is", "set"]}, fields=["region"], group_by="region", order_by="region asc")
 		districts = frappe.get_all("Sahayog Branch", filters={"district": ["is", "set"]}, fields=["district"], group_by="district", order_by="district asc")
 		branches = frappe.get_all("Sahayog Branch", filters={"branch": ["is", "set"]}, fields=["branch", "name", "sol_id"], order_by="branch asc")
+	else:
+		zones = frappe.get_all("Zone", fields=["name"], order_by="name asc")
+		regions = frappe.get_all("Region", fields=["name"], order_by="name asc")
 
 	result = {
-		"zones": [z.name for z in zones],
-		"regions": [r.name for r in regions],
+		"zones": [z.zone for z in zones],
+		"regions": [r.region for r in regions],
 		"districts": [d.district for d in districts],
 		"branches": [{"label": f"{b.branch} ({b.name})", "value": b.name} for b in branches],
 	}
@@ -91,3 +109,20 @@ def get_filter_options():
 	frappe.cache().set_value(cache_key, result, expires_in_sec=30)
 	print(f"[Drishti] Cached filter options for 30s")
 	return result
+
+
+@frappe.whitelist(methods=["POST"], allow_guest=True)
+def get_zone_wise_data(financial_year=None, view="Monthly", target_type="Monthly", filters=None, selected_date=None):
+ from custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard import get_sahayog_dashboard
+ result = get_sahayog_dashboard(
+  financial_year=financial_year,
+  view=view,
+  target_type=target_type,
+  filters=filters,
+  selected_date=selected_date,
+ )
+ return {
+  "zone_wise": result.get("zone_wise", []),
+  "months": result.get("months", []),
+  "permissions": result.get("permissions", {}),
+ }

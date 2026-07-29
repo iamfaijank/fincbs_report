@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { frappeRequest } from 'frappe-ui'
 import { useNumberFormat } from '@/composables/useNumberFormat.js'
 import { useFilters } from '@/composables/useFilters.js'
 import { useExpandableSet } from '@/composables/useExpandableSet.js'
@@ -9,75 +10,65 @@ const { formatNumber } = useNumberFormat()
 const { isZoneSelected, isRegionSelected, zoneFilter, regionFilter } = useFilters()
 const { toggle, isExpanded } = useExpandableSet()
 
-const tableData = ref([
-  {
-    zone: 'Z-1',
-    regions: [
-      { region: 'R-1', branches: 42, target: 15678900, ach: 13456780, achPercent: 85.8 },
-      { region: 'R-2', branches: 38, target: 14325000, ach: 13234500, achPercent: 92.4 },
-      { region: 'R-3', branches: 35, target: 12890000, ach: 10234000, achPercent: 79.4 },
-      { region: 'R-4', branches: 28, target: 11234000, ach: 9456000, achPercent: 84.2 },
-    ]
-  },
-  {
-    zone: 'Z-2',
-    regions: [
-      { region: 'R-1', branches: 35, target: 12890000, ach: 9876543, achPercent: 76.6 },
-      { region: 'R-2', branches: 41, target: 16750000, ach: 15678900, achPercent: 93.6 },
-      { region: 'R-3', branches: 32, target: 13450000, ach: 11234000, achPercent: 83.5 },
-      { region: 'R-4', branches: 39, target: 15234000, ach: 13567000, achPercent: 89.1 },
-    ]
-  },
-  {
-    zone: 'Z-3',
-    regions: [
-      { region: 'R-1', branches: 29, target: 9845000, ach: 6734500, achPercent: 68.4 },
-      { region: 'R-2', branches: 44, target: 18932000, ach: 16789000, achPercent: 88.7 },
-      { region: 'R-3', branches: 31, target: 12567000, ach: 10234000, achPercent: 81.4 },
-      { region: 'R-4', branches: 36, target: 14678000, ach: 13123000, achPercent: 89.4 },
-    ]
-  },
-  {
-    zone: 'Z-4',
-    regions: [
-      { region: 'R-1', branches: 33, target: 11234000, ach: 9345000, achPercent: 83.2 },
-      { region: 'R-2', branches: 40, target: 15678000, ach: 14234000, achPercent: 90.8 },
-      { region: 'R-3', branches: 28, target: 10345000, ach: 8567000, achPercent: 82.8 },
-      { region: 'R-4', branches: 37, target: 13456000, ach: 11890000, achPercent: 88.4 },
-    ]
-  },
-])
+const rawZoneWise = ref([])
+const months = ref([])
+const loading = ref(true)
 
-const isFilterApplied = computed(() => zoneFilter.value.length > 0 || regionFilter.value.length > 0)
-
-const filteredTableData = computed(() => {
-  if (!isFilterApplied.value) return tableData.value
-  return tableData.value
-    .filter(zone => isZoneSelected(zone.zone))
-    .map(zone => ({
-      ...zone,
-      regions: zone.regions.filter(region => isRegionSelected(region.region)),
-    }))
-    .filter(zone => zone.regions.length > 0)
+onMounted(async () => {
+  try {
+    const data = await frappeRequest({
+      url: '/api/method/custom_report.www.drishti.get_zone_wise_data',
+      method: 'POST',
+    }) || {}
+    rawZoneWise.value = data.zone_wise || []
+    months.value = data.months || []
+  } catch (e) {
+    console.error('Failed to load zone wise data', e)
+  } finally {
+    loading.value = false
+  }
 })
 
-function getZoneTotals(zoneData) {
-  const totals = zoneData.regions.reduce(
-    (acc, r) => ({
-      branches: acc.branches + r.branches,
-      target: acc.target + r.target,
-      ach: acc.ach + r.ach,
-    }),
-    { branches: 0, target: 0, ach: 0 }
-  )
-  totals.achPercent = totals.target ? Math.round((totals.ach / totals.target) * 1000) / 10 : 0
-  return totals
+const filteredTableData = computed(() => {
+  const zoneMap = {}
+  for (const row of rawZoneWise.value) {
+    const zone = row.zone
+    const region = row.region
+    if (zone === region) {
+      zoneMap[zone] = { ...row, regions: [] }
+    }
+  }
+  for (const row of rawZoneWise.value) {
+    const zone = row.zone
+    const region = row.region
+    if (zone !== region && zoneMap[zone]) {
+      zoneMap[zone].regions.push(row)
+    }
+  }
+  return Object.values(zoneMap)
+    .filter(z => isZoneSelected(z.zone))
+    .map(z => ({
+      ...z,
+      regions: z.regions.filter(r => isRegionSelected(r.region)),
+    }))
+    .filter(z => z.regions.length > 0 || z.months)
+})
+
+const activeMonth = computed(() => {
+  if (months.value.length === 0) return null
+  return months.value[months.value.length - 1]
+})
+
+function getMonthData(row) {
+  if (!activeMonth.value) return { branches: 0, target: 0, achievement: 0, percentage: 0 }
+  return row.months?.[activeMonth.value.key] || { branches: 0, target: 0, achievement: 0, percentage: 0 }
 }
 </script>
 
 <template>
   <div class="sb-card card-table">
-    <div class="overflow-x-auto">
+    <div v-if="loading" class="p-8 text-center text-sm text-[var(--text3)]">Loading...</div>
+    <div v-else class="overflow-x-auto">
       <table class="w-full">
         <thead>
           <tr class="border-b border-[var(--border)]">
@@ -87,12 +78,11 @@ function getZoneTotals(zoneData) {
             <th rowspan="2" class="border-r border-[var(--border)] bg-[var(--bg2)] px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
               Branches
             </th>
-            <th colspan="3" class="border-b border-[var(--border)] bg-[var(--bg1)] px-5 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-              Jul-2026<br/>
-              <span class="text-[10px] font-normal">SR % | 14 Working Days Left</span>
+            <th colspan="3" v-if="activeMonth" class="border-b border-[var(--border)] bg-[var(--bg1)] px-5 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+              {{ activeMonth.display }}
             </th>
           </tr>
-          <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+          <tr v-if="activeMonth" class="border-b border-[var(--border)] bg-[var(--bg2)]">
             <th class="border-r border-[var(--border)] px-5 py-2 text-right text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
               Target
             </th>
@@ -130,16 +120,16 @@ function getZoneTotals(zoneData) {
                 </div>
               </td>
               <td class="border-r border-[var(--border)] px-5 py-3 text-sm text-[var(--text)]">
-                {{ getZoneTotals(zoneData).branches }}
+                {{ getMonthData(zoneData).branches }}
               </td>
-              <td class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">
-                {{ formatNumber(getZoneTotals(zoneData).target) }}
+              <td v-if="activeMonth" class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">
+                {{ formatNumber(getMonthData(zoneData).target) }}
               </td>
-              <td class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">
-                {{ formatNumber(getZoneTotals(zoneData).ach) }}
+              <td v-if="activeMonth" class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">
+                {{ formatNumber(getMonthData(zoneData).achievement) }}
               </td>
-              <td class="px-5 py-3 text-center font-mono text-sm text-[var(--text)]">
-                <AchievementBadge :value="getZoneTotals(zoneData).achPercent" />
+              <td v-if="activeMonth" class="px-5 py-3 text-center font-mono text-sm text-[var(--text)]">
+                <AchievementBadge :value="getMonthData(zoneData).percentage" />
               </td>
             </tr>
             <template v-if="isExpanded(zoneData.zone)">
@@ -152,16 +142,16 @@ function getZoneTotals(zoneData) {
                   {{ region.region }}
                 </td>
                 <td class="border-r border-[var(--border)] px-5 py-3 text-sm text-[var(--text)]">
-                  {{ region.branches }}
+                  {{ getMonthData(region).branches }}
                 </td>
-                <td class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">
-                  {{ formatNumber(region.target) }}
+                <td v-if="activeMonth" class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">
+                  {{ formatNumber(getMonthData(region).target) }}
                 </td>
-                <td class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">
-                  {{ formatNumber(region.ach) }}
+                <td v-if="activeMonth" class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">
+                  {{ formatNumber(getMonthData(region).achievement) }}
                 </td>
-                <td class="px-5 py-3 text-center font-mono text-sm text-[var(--text)]">
-                  <AchievementBadge :value="region.achPercent" />
+                <td v-if="activeMonth" class="px-5 py-3 text-center font-mono text-sm text-[var(--text)]">
+                  <AchievementBadge :value="getMonthData(region).percentage" />
                 </td>
               </tr>
             </template>
