@@ -702,7 +702,6 @@
 			font-size: 11px;
 			font-weight: 700;
 			background: #f8fafc;
-			color: #94a3b8;
 			border: 1px solid #e2e8f0;
 			text-transform: uppercase;
 			text-align: center;
@@ -712,6 +711,14 @@
 			gap: 4px;
 			line-height: 1.2;
 		}
+		
+		/* Default Font Colors */
+		.hierarchy-badge[data-level="pinnacle"] { color: #0F766E; }
+		.hierarchy-badge[data-level="master"] { color: #15803D; }
+		.hierarchy-badge[data-level="accelerator"] { color: #65A30D; }
+		.hierarchy-badge[data-level="starter"] { color: #B45309; }
+		.hierarchy-badge[data-level="learner"] { color: #C2410C; }
+		.hierarchy-badge[data-level="zero"] { color: #B91C1C; }
 
 		.hierarchy-badge .criteria {
 			font-size: 9px;
@@ -721,9 +728,23 @@
 
 		.hierarchy-badge.active {
 			background: rgba(9, 124, 128, 0.1);
-			color: var(--primary-1);
 			border-color: var(--primary-1);
+			animation: active-badge-pulse 1.5s infinite ease-in-out;
 		}
+		
+		@keyframes active-badge-pulse {
+			0% { box-shadow: 0 0 0 0 transparent; transform: scale(1); }
+			50% { box-shadow: 0 0 8px 1px currentColor; transform: scale(1.03); opacity: 0.85; }
+			100% { box-shadow: 0 0 0 0 transparent; transform: scale(1); }
+		}
+		
+		/* Active state backgrounds and borders */
+		.hierarchy-badge.active[data-level="pinnacle"] { background: #EAFBF3; border-color: #99F6E4; }
+		.hierarchy-badge.active[data-level="master"] { background: #EEF9F1; border-color: #BBF7D0; }
+		.hierarchy-badge.active[data-level="accelerator"] { background: #F5FAEA; border-color: #D9F99D; }
+		.hierarchy-badge.active[data-level="starter"] { background: #FFF8E8; border-color: #FDE68A; }
+		.hierarchy-badge.active[data-level="learner"] { background: #FFF3EB; border-color: #FED7AA; }
+		.hierarchy-badge.active[data-level="zero"] { background: #FEF2F2; border-color: #FECACA; }
 
 		/* Financial Table Styles */
 		.financial-table-container {
@@ -1534,27 +1555,27 @@
 							Accelerator</div>
 
 						<div class="category-hierarchy" id="category-hierarchy">
-							<div class="hierarchy-badge">
+							<div class="hierarchy-badge" data-level="pinnacle">
 								<span>Pinnacle</span>
 								<span class="criteria">>100%</span>
 							</div>
-							<div class="hierarchy-badge">
+							<div class="hierarchy-badge" data-level="master">
 								<span>Master</span>
 								<span class="criteria">80-100%</span>
 							</div>
-							<div class="hierarchy-badge active">
+							<div class="hierarchy-badge active" data-level="accelerator">
 								<span>Accelerator</span>
 								<span class="criteria">60-80%</span>
 							</div>
-							<div class="hierarchy-badge">
+							<div class="hierarchy-badge" data-level="starter">
 								<span>Starter</span>
 								<span class="criteria">40-60%</span>
 							</div>
-							<div class="hierarchy-badge">
+							<div class="hierarchy-badge" data-level="learner">
 								<span>Learner</span>
 								<span class="criteria">20-40%</span>
 							</div>
-							<div class="hierarchy-badge">
+							<div class="hierarchy-badge" data-level="zero">
 								<span>Zero</span>
 								<span class="criteria">0-20%</span>
 							</div>
@@ -2890,6 +2911,27 @@
 					this.el.catAchievementVal.textContent = this.formatAmount(data.achievement);
 					this.el.catPercentageVal.textContent = data.percentage;
 
+					// Apply Color to performanceStatus, percentage and section background
+					const categoryConfig = {
+						"Pinnacle":    { text: "#0F766E", bg: "#EAFBF3", border: "#99F6E4" },
+						"Master":      { text: "#15803D", bg: "#EEF9F1", border: "#BBF7D0" },
+						"Accelerator": { text: "#65A30D", bg: "#F5FAEA", border: "#D9F99D" },
+						"Starter":     { text: "#B45309", bg: "#FFF8E8", border: "#FDE68A" },
+						"Learner":     { text: "#C2410C", bg: "#FFF3EB", border: "#FED7AA" },
+						"Zero Level":  { text: "#B91C1C", bg: "#FEF2F2", border: "#FECACA" },
+						"Zero":        { text: "#B91C1C", bg: "#FEF2F2", border: "#FECACA" }
+					};
+					const config = categoryConfig[data.category] || { text: "var(--primary-1)", bg: "#fff", border: "#e2e8f0" };
+					if (this.el.performanceStatus) this.el.performanceStatus.style.color = config.text;
+					if (this.el.catPercentageVal) this.el.catPercentageVal.style.color = config.text;
+
+					const sectionEl = document.getElementById("category-card");
+					if (sectionEl) {
+						sectionEl.style.backgroundColor = config.bg;
+						sectionEl.style.borderColor = config.border;
+						sectionEl.style.transition = "all 0.3s ease";
+					}
+
 					// Update Hierarchy Badges
 					const badges = this.el.categoryHierarchy.querySelectorAll('.hierarchy-badge');
 					badges.forEach(b => b.classList.remove('active'));
@@ -3409,6 +3451,12 @@
 					this.el.catAchievementVal.textContent = "--";
 					this.el.catPercentageVal.textContent = "0.00%";
 					
+					const sectionEl = document.getElementById("category-card");
+					if (sectionEl) {
+						sectionEl.style.backgroundColor = "#fff";
+						sectionEl.style.borderColor = "#e2e8f0";
+					}
+
 					const badges = this.el.categoryHierarchy.querySelectorAll('.hierarchy-badge');
 					badges.forEach(b => b.classList.remove('active'));
 				},
