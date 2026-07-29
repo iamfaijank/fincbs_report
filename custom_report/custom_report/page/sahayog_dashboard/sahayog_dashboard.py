@@ -807,6 +807,13 @@ def build_agent_wise(selected_date=None):
     """
     if not selected_date:
         selected_date = frappe.utils.today()
+    
+    # Check if data exists for selected_date, fallback to latest available
+    has_data = frappe.db.exists("Agent  Wise Report", {"date": ["between", [f"{selected_date} 00:00:00", f"{selected_date} 23:59:59"]]})
+    if not has_data:
+        latest = frappe.db.get_value("Agent  Wise Report", {}, "date", order_by="date desc")
+        if latest:
+            selected_date = str(latest)[:10]
         
     # Fetch data from Agent  Wise Report doctype
     agent_data = frappe.get_all(

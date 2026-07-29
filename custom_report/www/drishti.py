@@ -158,3 +158,27 @@ def get_product_wise_data(financial_year=None, view="Monthly", target_type="Mont
   "product_wise": result.get("product_wise", []),
   "all_products": result.get("all_products", []),
  }
+
+
+@frappe.whitelist(methods=["POST"], allow_guest=True)
+def get_agent_wise_data(financial_year=None, view="Monthly", target_type="Monthly", filters=None, selected_date=None):
+ import re
+ from custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard import get_sahayog_dashboard
+ result = get_sahayog_dashboard(
+  financial_year=financial_year,
+  view=view,
+  target_type=target_type,
+  filters=filters,
+  selected_date=selected_date,
+ )
+ agent_wise = result.get("agent_wise", [])
+ for row in agent_wise:
+  z_match = re.match(r'^Zone\s*-?\s*(.+)', row.get("zone", ""), re.IGNORECASE)
+  if z_match:
+   row["zone"] = "ZONE-" + z_match.group(1).strip()
+  r_match = re.match(r'^Region\s*-?\s*(.+)', row.get("region", ""), re.IGNORECASE)
+  if r_match:
+   row["region"] = "REGION-" + r_match.group(1).strip()
+ return {
+  "agent_wise": agent_wise,
+ }

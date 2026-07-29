@@ -1,53 +1,59 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { frappeRequest } from 'frappe-ui'
 import { useNumberFormat } from '@/composables/useNumberFormat.js'
 import { useFilters } from '@/composables/useFilters.js'
 import { useExpandableSet } from '@/composables/useExpandableSet.js'
 import AchievementBadge from './AchievementBadge.vue'
 
 const { formatNumber } = useNumberFormat()
-const { isZoneSelected, isRegionSelected, zoneFilter, regionFilter } = useFilters()
+const { isZoneSelected, isRegionSelected } = useFilters()
 const { toggle: toggleZone, isExpanded: isZoneExpanded } = useExpandableSet()
 
-const isFilterApplied = computed(() => zoneFilter.value.length > 0 || regionFilter.value.length > 0)
+const rawAgentWise = ref([])
+const loading = ref(true)
 
-const agentData = ref([
-  {
-    zone: 'Z-1',
-    regions: [
-      { region: 'R-1', ssTarget: 450, ssAchievement: 412, ssShortfall: 38, ssActive: 35, ssInactive: 5, ddTarget: 280, ddAchievement: 264, ddShortfall: 16, ddActive: 25, ddInactive: 2 },
-      { region: 'R-2', ssTarget: 380, ssAchievement: 325, ssShortfall: 55, ssActive: 28, ssInactive: 8, ddTarget: 220, ddAchievement: 198, ddShortfall: 22, ddActive: 18, ddInactive: 4 },
-    ]
-  },
-  {
-    zone: 'Z-2',
-    regions: [
-      { region: 'R-3', ssTarget: 520, ssAchievement: 494, ssShortfall: 26, ssActive: 42, ssInactive: 3, ddTarget: 310, ddAchievement: 294, ddShortfall: 16, ddActive: 30, ddInactive: 1 },
-      { region: 'R-4', ssTarget: 400, ssAchievement: 340, ssShortfall: 60, ssActive: 32, ssInactive: 10, ddTarget: 250, ddAchievement: 212, ddShortfall: 38, ddActive: 22, ddInactive: 7 },
-    ]
-  },
-])
+onMounted(async () => {
+  try {
+    const data = await frappeRequest({
+      url: '/api/method/custom_report.www.drishti.get_agent_wise_data',
+      method: 'POST',
+    }) || {}
+    rawAgentWise.value = data.agent_wise || []
+  } catch (e) {
+    console.error('Failed to load agent wise data', e)
+  } finally {
+    loading.value = false
+  }
+})
 
 const filteredAgentData = computed(() => {
-  if (!isFilterApplied.value) return agentData.value
-  return agentData.value
-    .filter(z => isZoneSelected(z.zone))
-    .map(z => ({ ...z, regions: z.regions.filter(r => isRegionSelected(r.region)) }))
-    .filter(z => z.regions.length > 0)
+  const zoneMap = {}
+  for (const row of rawAgentWise.value) {
+    if (!isZoneSelected(row.zone)) continue
+    if (!isRegionSelected(row.region)) continue
+    if (!zoneMap[row.zone]) {
+      zoneMap[row.zone] = { zone: row.zone, regions: [] }
+    }
+    zoneMap[row.zone].regions.push(row)
+  }
+  return Object.values(zoneMap)
 })
 
 function getZoneTotals(zoneData) {
-  const t = { ssTarget: 0, ssAchievement: 0, ssShortfall: 0, ssActive: 0, ssInactive: 0, ddTarget: 0, ddAchievement: 0, ddShortfall: 0, ddActive: 0, ddInactive: 0 }
+  const t = { ssTarget: 0, ssAchievement: 0, ssShortfall: 0, ssActive: 0, ssInactive: 0, target: 0, achievement: 0, agentShortfall: 0, active: 0, inactive: 0 }
   zoneData.regions.forEach(r => {
-    t.ssTarget += r.ssTarget; t.ssAchievement += r.ssAchievement; t.ssShortfall += r.ssShortfall; t.ssActive += r.ssActive; t.ssInactive += r.ssInactive
-    t.ddTarget += r.ddTarget; t.ddAchievement += r.ddAchievement; t.ddShortfall += r.ddShortfall; t.ddActive += r.ddActive; t.ddInactive += r.ddInactive
+    t.ssTarget += r.ss_target || 0
+    t.ssAchievement += r.ss_achievement || 0
+    t.ssShortfall += r.ss_shortfall || 0
+    t.ssActive += r.ss_active || 0
+    t.ssInactive += r.ss_inactive || 0
+    t.target += r.target || 0
+    t.achievement += r.achievement || 0
+    t.agentShortfall += r.agent_shortfall || 0
+    t.active += r.active || 0
+    t.inactive += r.inactive || 0
   })
-  t.achPercent = t.ssTarget > 0 ? ((t.ssAchievement / t.ssTarget) * 100).toFixed(1) : 0
-  return t
-}
-
-function getRegionTotals(regionData) {
-  const t = { ssTarget: regionData.ssTarget, ssAchievement: regionData.ssAchievement, ssShortfall: regionData.ssShortfall, ssActive: regionData.ssActive, ssInactive: regionData.ssInactive, ddTarget: regionData.ddTarget, ddAchievement: regionData.ddAchievement, ddShortfall: regionData.ddShortfall, ddActive: regionData.ddActive, ddInactive: regionData.ddInactive }
   t.achPercent = t.ssTarget > 0 ? ((t.ssAchievement / t.ssTarget) * 100).toFixed(1) : 0
   return t
 }
@@ -55,7 +61,9 @@ function getRegionTotals(regionData) {
 
 <template>
   <div class="sb-card card-table">
-    <div class="overflow-x-auto">
+    <div v-if="loading" class="p-8 text-center text-sm text-[var(--text3)]">Loading...</div>
+    <div v-else-if="filteredAgentData.length === 0" class="p-8 text-center text-sm text-[var(--text3)]">No agent data available for the selected date.</div>
+    <div v-else class="overflow-x-auto">
       <table class="w-full">
         <thead>
           <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
@@ -66,7 +74,7 @@ function getRegionTotals(regionData) {
               SS
             </th>
             <th colspan="5" class="border-b border-r border-[var(--border)] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-              DD
+              Agent
             </th>
             <th rowspan="2" class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
               ACH %
@@ -104,36 +112,36 @@ function getRegionTotals(regionData) {
               <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getZoneTotals(zoneData).ssShortfall) }}</td>
               <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getZoneTotals(zoneData).ssActive) }}</td>
               <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getZoneTotals(zoneData).ssInactive) }}</td>
-              <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getZoneTotals(zoneData).ddTarget) }}</td>
-              <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getZoneTotals(zoneData).ddAchievement) }}</td>
-              <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getZoneTotals(zoneData).ddShortfall) }}</td>
-              <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getZoneTotals(zoneData).ddActive) }}</td>
-              <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getZoneTotals(zoneData).ddInactive) }}</td>
+              <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getZoneTotals(zoneData).target) }}</td>
+              <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getZoneTotals(zoneData).achievement) }}</td>
+              <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getZoneTotals(zoneData).agentShortfall) }}</td>
+              <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getZoneTotals(zoneData).active) }}</td>
+              <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(getZoneTotals(zoneData).inactive) }}</td>
               <td class="px-4 py-3 text-center font-mono text-sm">
                 <AchievementBadge :value="getZoneTotals(zoneData).achPercent" />
               </td>
             </tr>
             <template v-if="isZoneExpanded(zoneData.zone)">
               <tr
-                v-for="regionData in zoneData.regions"
-                :key="`${zoneData.zone}-${regionData.region}`"
+                v-for="region in zoneData.regions"
+                :key="`${zoneData.zone}-${region.region}`"
                 class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
               >
                 <td class="border-r border-[var(--border)] px-4 py-3 pl-12 text-sm text-[var(--text2)]">
-                  {{ regionData.region }}
+                  {{ region.region }}
                 </td>
-                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ssTarget) }}</td>
-                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ssAchievement) }}</td>
-                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ssShortfall) }}</td>
-                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ssActive) }}</td>
-                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ssInactive) }}</td>
-                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ddTarget) }}</td>
-                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ddAchievement) }}</td>
-                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ddShortfall) }}</td>
-                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ddActive) }}</td>
-                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(regionData.ddInactive) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(region.ss_target) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(region.ss_achievement) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(region.ss_shortfall) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(region.ss_active) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(region.ss_inactive) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(region.target) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(region.achievement) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(region.agent_shortfall) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(region.active) }}</td>
+                <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(region.inactive) }}</td>
                 <td class="px-4 py-3 text-center font-mono text-sm">
-                  <AchievementBadge :value="getRegionTotals(regionData).achPercent" />
+                  <AchievementBadge :value="region.ss_target > 0 ? ((region.ss_achievement / region.ss_target) * 100).toFixed(1) : 0" />
                 </td>
               </tr>
             </template>
