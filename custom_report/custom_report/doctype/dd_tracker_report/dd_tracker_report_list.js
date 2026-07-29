@@ -22,8 +22,9 @@ frappe.listview_settings['DD Tracker Report'] = {
                         freeze: true,
                         freeze_message: "Syncing data from DR. This may take a while...",
                         callback: function(r) {
-                            if (!r.exc) {
-                                frappe.msgprint("Data synced successfully for " + values.sync_date);
+                            if (!r.exc && r.message) {
+                                let total = r.message.total || 0;
+                                frappe.msgprint(`Data synced successfully for ${values.sync_date}. Total records inserted: <b>${total}</b>`);
                                 listview.refresh();
                             }
                             d.hide();
