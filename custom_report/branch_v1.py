@@ -119,13 +119,17 @@ def get_book_position_details(sol_id: str):
     )
 
     result = {
-        "sa_book": 0.0,
-        "ca_book": 0.0,
-        "fd_book": 0.0,
-        "rd_book": 0.0,
-        "dds_book": 0.0,
-        "smbg_book": 0.0,
-        "total_book": 0.0
+        "sa_book": 0.0, "ca_book": 0.0, "fd_book": 0.0,
+        "rd_book": 0.0, "dds_book": 0.0, "smbg_book": 0.0,
+        "total_book": 0.0,
+        
+        "sa_accounts_opened": 0, "sa_accounts_total": 0,
+        "ca_accounts_opened": 0, "ca_accounts_total": 0,
+        "fd_accounts_opened": 0, "fd_accounts_total": 0,
+        "rd_accounts_opened": 0, "rd_accounts_total": 0,
+        "dds_accounts_opened": 0, "dds_accounts_total": 0,
+        "smbg_accounts_opened": 0, "smbg_accounts_total": 0,
+        "total_accounts_opened": 0, "total_accounts_total": 0
     }
 
     if not latest_date:
@@ -134,37 +138,63 @@ def get_book_position_details(sol_id: str):
     data = frappe.db.get_list(
         "Book Position and Account Details",
         filters={"sol_id": sol_id, "date": latest_date},
-        fields=["group_name", "group_subname", "closing_balance"],
+        fields=["group_name", "group_subname", "closing_balance", "account_opened", "closing_no_of_accounts"],
     )
 
     total_balance = 0.0
     for row in data:
         balance = flt(row.closing_balance)
+        opened = frappe.utils.cint(row.account_opened)
+        total = frappe.utils.cint(row.closing_no_of_accounts)
+        
         g_name = (row.group_name or "").upper().strip()
         g_subname = (row.group_subname or "").upper().strip()
 
         if g_name == "CASA" and g_subname == "SA":
             result["sa_book"] += balance
+            result["sa_accounts_opened"] += opened
+            result["sa_accounts_total"] += total
         elif g_name == "CASA" and g_subname == "CA":
             result["ca_book"] += balance
+            result["ca_accounts_opened"] += opened
+            result["ca_accounts_total"] += total
         elif g_name == "FD":
             result["fd_book"] += balance
+            result["fd_accounts_opened"] += opened
+            result["fd_accounts_total"] += total
         elif g_name == "RD":
             result["rd_book"] += balance
+            result["rd_accounts_opened"] += opened
+            result["rd_accounts_total"] += total
         elif g_name == "DD":
             result["dds_book"] += balance
+            result["dds_accounts_opened"] += opened
+            result["dds_accounts_total"] += total
         elif g_name == "SMBG":
             result["smbg_book"] += balance
+            result["smbg_accounts_opened"] += opened
+            result["smbg_accounts_total"] += total
             
         total_balance += balance
 
     # Total Book should probably be sum of all categories, or sum of everything.
     # The requirement is just showing these compositions of the total book.
-    # Let's sum all mapped ones or the total balance? Let's use the sum of mapped ones for composition 100%.
+    # Let's sum all mapped ones for composition 100%.
     result["total_book"] = (
         result["sa_book"] + result["ca_book"] + result["fd_book"] +
         result["rd_book"] + result["dds_book"] + result["smbg_book"]
     )
+    
+    result["total_accounts_opened"] = (
+        result["sa_accounts_opened"] + result["ca_accounts_opened"] + result["fd_accounts_opened"] +
+        result["rd_accounts_opened"] + result["dds_accounts_opened"] + result["smbg_accounts_opened"]
+    )
+    
+    result["total_accounts_total"] = (
+        result["sa_accounts_total"] + result["ca_accounts_total"] + result["fd_accounts_total"] +
+        result["rd_accounts_total"] + result["dds_accounts_total"] + result["smbg_accounts_total"]
+    )
+
     
     return result
 

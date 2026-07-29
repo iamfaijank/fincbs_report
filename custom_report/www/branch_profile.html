@@ -1929,7 +1929,8 @@
 						<thead>
 							<tr>
 								<th>Category</th>
-								<th class="amount-col">Account Count</th>
+								<th class="amount-col">Current Month Count</th>
+								<th class="amount-col">Total Account Count</th>
 								<th class="bar-col">Composition</th>
 							</tr>
 						</thead>
@@ -1937,6 +1938,11 @@
 							<tr class="total-row">
 								<td class="label-col">
 									<strong>Total Accounts</strong>
+								</td>
+								<td class="amount-col">
+									<div class="data-wrapper">
+										<span id="total-accounts-opened">--</span>
+									</div>
 								</td>
 								<td class="amount-col">
 									<div class="data-wrapper">
@@ -1949,6 +1955,9 @@
 								<td class="label-col">
 									<span class="acc-dot sa"></span>
 									<span>Savings Account (SA)</span>
+								</td>
+								<td class="amount-col">
+									<span id="sa-accounts-opened">--</span>
 								</td>
 								<td class="amount-col">
 									<span id="total-sa-no-of-customers">--</span>
@@ -1968,6 +1977,9 @@
 									<span>Current Account (CA)</span>
 								</td>
 								<td class="amount-col">
+									<span id="ca-accounts-opened">--</span>
+								</td>
+								<td class="amount-col">
 									<span id="total-ca-no-of-customers">--</span>
 								</td>
 								<td class="bar-col">
@@ -1983,6 +1995,9 @@
 								<td class="label-col">
 									<span class="acc-dot fd"></span>
 									<span>Fixed Deposit (FD)</span>
+								</td>
+								<td class="amount-col">
+									<span id="fd-accounts-opened">--</span>
 								</td>
 								<td class="amount-col">
 									<span id="total-fd-no-of-customers">--</span>
@@ -2002,7 +2017,10 @@
 									<span>Recurring Deposit (RD)</span>
 								</td>
 								<td class="amount-col">
-									<span id="total-rd-no-of_customers">--</span>
+									<span id="rd-accounts-opened">--</span>
+								</td>
+								<td class="amount-col">
+									<span id="total-rd-no-of-customers">--</span>
 								</td>
 								<td class="bar-col">
 									<div class="bar-wrapper">
@@ -2017,6 +2035,9 @@
 								<td class="label-col">
 									<span class="acc-dot dds"></span>
 									<span>Daily Deposit Scheme (DDS)</span>
+								</td>
+								<td class="amount-col">
+									<span id="dds-accounts-opened">--</span>
 								</td>
 								<td class="amount-col">
 									<span id="total-dds-no-of-customers">--</span>
@@ -2034,6 +2055,9 @@
 								<td class="label-col">
 									<span class="acc-dot smbg"></span>
 									<span>SMBG</span>
+								</td>
+								<td class="amount-col">
+									<span id="smbg-accounts-opened">--</span>
 								</td>
 								<td class="amount-col">
 									<span id="total-smbg-no-of-customers">--</span>
@@ -3063,27 +3087,35 @@
 					updateComp('smbg-book', d.smbg_book, totalBookVal);
 
 					// --- COMPOSITION UPDATES (CUSTOMERS) ---
-					const totalCustVal = parseFloat(d.total_customers_id) || 0;
+					const totalCustVal = parseFloat(d.total_accounts_total) || 0;
 					this.el.totalCustomersId.textContent = this.formatIndianNumber(totalCustVal);
+					
+					const totalOpenedVal = parseFloat(d.total_accounts_opened) || 0;
+					const totalOpenedEl = document.getElementById("total-accounts-opened");
+					if (totalOpenedEl) totalOpenedEl.textContent = this.formatIndianNumber(totalOpenedVal);
 
-					const updateCustComp = (amountId, compPrefix, val, total) => {
-						const amountEl = document.getElementById(amountId);
+					const updateCustComp = (openedId, totalId, compPrefix, valOpened, valTotal, overallTotal) => {
+						const openedEl = document.getElementById(openedId);
+						const totalEl = document.getElementById(totalId);
 						const percEl = document.getElementById(compPrefix + '-perc');
 						const barEl = document.getElementById(compPrefix + '-bar');
-						const numVal = parseFloat(val) || 0;
-						const perc = total > 0 ? (numVal / total * 100) : 0;
+						
+						const numOpened = parseFloat(valOpened) || 0;
+						const numTotal = parseFloat(valTotal) || 0;
+						const perc = overallTotal > 0 ? (numTotal / overallTotal * 100) : 0;
 
-						if (amountEl) amountEl.textContent = this.formatIndianNumber(numVal);
+						if (openedEl) openedEl.textContent = this.formatIndianNumber(numOpened);
+						if (totalEl) totalEl.textContent = this.formatIndianNumber(numTotal);
 						if (percEl) percEl.textContent = perc.toFixed(1) + '%';
 						if (barEl) barEl.style.width = perc + '%';
 					};
 
-					updateCustComp('total-sa-no-of-customers', 'sa-cust', d.total_sa_no_of_customers, totalCustVal);
-					updateCustComp('total-ca-no-of-customers', 'ca-cust', d.total_ca_no_of_customers, totalCustVal);
-					updateCustComp('total-fd-no-of-customers', 'fd-cust', d.total_fd_no_of_customers, totalCustVal);
-					updateCustComp('total-rd-no-of_customers', 'rd-cust', d.total_rd_no_of_customers, totalCustVal);
-					updateCustComp('total-dds-no-of-customers', 'dds-cust', d.total_dds_no_of_customers, totalCustVal);
-					updateCustComp('total-smbg-no-of-customers', 'smbg-cust', d.total_smbg_no_of_customers, totalCustVal);
+					updateCustComp('sa-accounts-opened', 'total-sa-no-of-customers', 'sa-cust', d.sa_accounts_opened, d.sa_accounts_total, totalCustVal);
+					updateCustComp('ca-accounts-opened', 'total-ca-no-of-customers', 'ca-cust', d.ca_accounts_opened, d.ca_accounts_total, totalCustVal);
+					updateCustComp('fd-accounts-opened', 'total-fd-no-of-customers', 'fd-cust', d.fd_accounts_opened, d.fd_accounts_total, totalCustVal);
+					updateCustComp('rd-accounts-opened', 'total-rd-no-of-customers', 'rd-cust', d.rd_accounts_opened, d.rd_accounts_total, totalCustVal);
+					updateCustComp('dds-accounts-opened', 'total-dds-no-of-customers', 'dds-cust', d.dds_accounts_opened, d.dds_accounts_total, totalCustVal);
+					updateCustComp('smbg-accounts-opened', 'total-smbg-no-of-customers', 'smbg-cust', d.smbg_accounts_opened, d.smbg_accounts_total, totalCustVal);
 
 					// Populate Demand & Collection Performance
 					this.el.ddCollection.textContent = this.formatAmount(d.dds_collection);
