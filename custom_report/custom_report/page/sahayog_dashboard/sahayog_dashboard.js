@@ -5789,12 +5789,12 @@ class DrishtiDashboard {
 		container.empty();
 
 		const categoryColors = {
-			Pinnacle: "#10b981",
-			Master: "#14b8a6",
-			Accelerator: "#3b82f6",
-			Starter: "#f59e0b",
-			Learner: "#ef4444",
-			"Zero Level": "#dc2626",
+			Pinnacle: "#6D28D9",
+			Master: "#1D4ED8",
+			Accelerator: "#047857",
+			Starter: "#B45309",
+			Learner: "#BE185D",
+			"Zero Level": "#991B1B",
 		};
 
 		const allCategoriesCount = this.categoryCounts["all"] || 0;
@@ -5840,7 +5840,7 @@ class DrishtiDashboard {
 		container.append(`
             <button class="filter-tag category-tag all-tag ${
 				allCategoriesActive ? "active" : ""
-			}" data-category="all">
+			}" data-category="all" style="--fill-pct: ${percentages["all"]}%; --fill-color: #cbd5e133; color: #475569;">
                 <span class="category-tag-content">
                     All
                     <span class="filter-tag-count">${allCategoriesCount}</span>
@@ -5858,7 +5858,7 @@ class DrishtiDashboard {
 			container.append(`
                 <button class="filter-tag category-tag ${isActive ? "active" : ""}" 
                         data-category="${category}" 
-                        style="border-left: 3px solid ${color};">
+                        style="--fill-pct: ${pct}%; --fill-color: ${color}26; color: ${color};">
                     <span class="category-tag-content">
                         ${category}
                         <span class="filter-tag-count">${count}</span>
@@ -8216,12 +8216,12 @@ class DrishtiDashboard {
 		if (!latestMonthKey) return "<div>No data available for the selected period.</div>";
 
 		const categoryConfig = {
-			Pinnacle: { grade: "A+", range: ">100%", color: "#10b981", health: "Excellent" },
-			Master: { grade: "A", range: "80-100%", color: "#14b8a6", health: "Good" },
-			Accelerator: { grade: "B", range: "60-80%", color: "#3b82f6", health: "Improving" },
-			Starter: { grade: "C", range: "40-60%", color: "#f59e0b", health: "Needs Attention" },
-			Learner: { grade: "D", range: "20-40%", color: "#ef4444", health: "At Risk" },
-			"Zero Level": { grade: "E", range: "0-20%", color: "#dc2626", health: "Critical" },
+			Pinnacle: { grade: "A+", range: ">100%", color: "#6D28D9", health: "Excellent" },
+			Master: { grade: "A", range: "80-100%", color: "#1D4ED8", health: "Good" },
+			Accelerator: { grade: "B", range: "60-80%", color: "#047857", health: "Improving" },
+			Starter: { grade: "C", range: "40-60%", color: "#B45309", health: "Needs Attention" },
+			Learner: { grade: "D", range: "20-40%", color: "#BE185D", health: "At Risk" },
+			"Zero Level": { grade: "E", range: "0-20%", color: "#991B1B", health: "Critical" },
 		};
 		const categoryOrder = Object.keys(categoryConfig);
 
@@ -8295,13 +8295,13 @@ class DrishtiDashboard {
             <tr class="category-row-redesigned" data-category="${catName}" style="border-left: 5px solid ${
 				config.color
 			};">
-                <td class="cat-name-cell">
+                <td class="cat-name-cell" style="--fill-pct: ${percentage}%; --fill-color: ${config.color}26;">
                     <span class="category-toggle">${isExpanded ? "▼" : "▶"}</span>
                     <span class="cat-grade" style="background-color: ${config.color};">${
 						config.grade
 					}</span>
                     <div class="cat-name-wrapper">
-                        <span>${catName}</span>
+                        <span style="color: ${config.color};">${catName}</span>
                         <span class="category-percentage-share" style="color: ${this.getPctColor(percentage)}; font-weight: 600;">• ${Math.round(percentage)}%</span>
                     </div>
                 </td>
@@ -9061,43 +9061,18 @@ class DrishtiDashboard {
 	}
 
 	getCategoryBadge(category, size = "normal") {
-		const colors = {
-			Pinnacle: "#10b981",
-			Master: "#14b8a6",
-			Accelerator: "#3b82f6",
-			Starter: "#f59e0b",
-			Learner: "#ef4444",
-			"Zero Level": "#dc2626",
+		const categoryConfig = {
+			"Pinnacle":    { text: "#6D28D9", bg: "#F5F3FF", border: "#C4B5FD" },
+			"Master":      { text: "#1D4ED8", bg: "#EFF6FF", border: "#93C5FD" },
+			"Accelerator": { text: "#047857", bg: "#ECFDF5", border: "#6EE7B7" },
+			"Starter":     { text: "#B45309", bg: "#FFFBEB", border: "#FDE68A" },
+			"Learner":     { text: "#BE185D", bg: "#FDF2F8", border: "#F9A8D4" },
+			"Zero Level":  { text: "#991B1B", bg: "#FEF2F2", border: "#FECACA" },
+			"Zero":        { text: "#991B1B", bg: "#FEF2F2", border: "#FECACA" }
 		};
-		const color = colors[category] || "#778da9";
+		const config = categoryConfig[category] || { text: "#64748b", bg: "#f8fafc", border: "#e2e8f0" };
 		const fontSize = size === "small" ? "10px" : "12px";
-		return `<span class="category-badge" style="background:${color};color:white;padding:4px 8px;border-radius:4px;font-size:${fontSize};font-weight:600;display:inline-block;">${category}</span>`;
-	}
-
-	getStatusIcon(status) {
-		const icons = {
-			improved: "🟢",
-			declined: "🔴",
-			increased: "🟡↑",
-			decreased: "🟠↓",
-			unchanged: "⚪",
-			new: "✨",
-		};
-		return icons[status] || "";
-	}
-
-	getCategoryBadge(category, size = "normal") {
-		const colors = {
-			Pinnacle: "#10b981",
-			Master: "#14b8a6",
-			Accelerator: "#3b82f6",
-			Starter: "#f59e0b",
-			Learner: "#ef4444",
-			"Zero Level": "#dc2626",
-		};
-		const color = colors[category] || "#778da9";
-		const fontSize = size === "small" ? "10px" : "12px";
-		return `<span class="category-badge" style="background:${color};color:white;padding:4px 8px;border-radius:4px;font-size:${fontSize};font-weight:600;display:inline-block;">${category}</span>`;
+		return `<span class="category-badge" style="background:${config.bg};color:${config.text};border:1px solid ${config.border};padding:4px 8px;border-radius:4px;font-size:${fontSize};font-weight:700;display:inline-block;text-transform:uppercase;">${category}</span>`;
 	}
 
 	updateSummaryCards(filteredBranches, reaggregatedZoneData) {
@@ -9523,6 +9498,15 @@ class DrishtiDashboard {
                     gap: 6px !important;
                     font-size: 13px;
                     font-weight: 600;
+                    background-image: linear-gradient(to right, var(--fill-color, transparent) var(--fill-pct, 0%), #ffffff var(--fill-pct, 0%));
+                }
+
+                .category-tag:hover {
+                    background-image: linear-gradient(to right, var(--fill-color, transparent) var(--fill-pct, 0%), #f8fafc var(--fill-pct, 0%)) !important;
+                }
+
+                .category-tag.active {
+                    background-image: none !important;
                 }
 
                 .category-tag .filter-tag-count {
@@ -9551,46 +9535,42 @@ class DrishtiDashboard {
 
                 /* Category-specific Active Colors */
                 .category-tag[data-category="Pinnacle"].active {
-                    background-color: #10b981 !important;
-                    border-color: #10b981 !important;
+                    background-color: #6D28D9 !important;
+                    border-color: #6D28D9 !important;
                     color: #ffffff !important;
-                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+                    box-shadow: 0 4px 12px rgba(109, 40, 217, 0.25);
                 }
                 .category-tag[data-category="Master"].active {
-                    background-color: #14b8a6 !important;
-                    border-color: #14b8a6 !important;
+                    background-color: #1D4ED8 !important;
+                    border-color: #1D4ED8 !important;
                     color: #ffffff !important;
-                    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.25);
+                    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);
                 }
                 .category-tag[data-category="Accelerator"].active {
-                    background-color: #3b82f6 !important;
-                    border-color: #3b82f6 !important;
+                    background-color: #047857 !important;
+                    border-color: #047857 !important;
                     color: #ffffff !important;
-                    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+                    box-shadow: 0 4px 12px rgba(4, 120, 87, 0.25);
                 }
                 .category-tag[data-category="Starter"].active {
-                    background-color: #f59e0b !important;
-                    border-color: #f59e0b !important;
+                    background-color: #B45309 !important;
+                    border-color: #B45309 !important;
                     color: #ffffff !important;
-                    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+                    box-shadow: 0 4px 12px rgba(180, 83, 9, 0.25);
                 }
                 .category-tag[data-category="Learner"].active {
-                    background-color: #ef4444 !important;
-                    border-color: #ef4444 !important;
+                    background-color: #BE185D !important;
+                    border-color: #BE185D !important;
                     color: #ffffff !important;
-                    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+                    box-shadow: 0 4px 12px rgba(190, 24, 93, 0.25);
                 }
                 .category-tag[data-category="Zero Level"].active {
-                    background-color: #dc2626 !important;
-                    border-color: #dc2626 !important;
+                    background-color: #991B1B !important;
+                    border-color: #991B1B !important;
                     color: #ffffff !important;
-                    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+                    box-shadow: 0 4px 12px rgba(153, 27, 27, 0.25);
                 }
 
-                /* Ensure active category tag left border looks clean */
-                .category-tag.active {
-                    border-left-width: 1px !important;
-                }
 
                 /* Toggle Button Styles */
                 .btn-group .btn {
@@ -10141,12 +10121,17 @@ class DrishtiDashboard {
                 .popup-section.improved .diff-change { color: #10b981; }
                 .popup-section.declined .diff-change { color: #dc2626; }
 
-                /* Category Row Expansion & Drilldown */
                 .category-row-redesigned {
                     cursor: pointer;
                 }
                 .category-row-redesigned:hover {
                     background-color: #f8f9fa;
+                }
+                .category-row-redesigned .cat-name-cell {
+                    background-image: linear-gradient(to right, var(--fill-color, transparent) var(--fill-pct, 0%), #ffffff var(--fill-pct, 0%));
+                }
+                .category-row-redesigned:hover .cat-name-cell {
+                    background-image: linear-gradient(to right, var(--fill-color, transparent) var(--fill-pct, 0%), #f8f9fa var(--fill-pct, 0%)) !important;
                 }
                 .count-cell .drill-link {
                     color: #007bff;

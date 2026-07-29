@@ -702,7 +702,6 @@
 			font-size: 11px;
 			font-weight: 700;
 			background: #f8fafc;
-			color: #94a3b8;
 			border: 1px solid #e2e8f0;
 			text-transform: uppercase;
 			text-align: center;
@@ -712,6 +711,14 @@
 			gap: 4px;
 			line-height: 1.2;
 		}
+		
+		/* Default Font Colors */
+		.hierarchy-badge[data-level="pinnacle"] { color: #6D28D9; }
+		.hierarchy-badge[data-level="master"] { color: #1D4ED8; }
+		.hierarchy-badge[data-level="accelerator"] { color: #047857; }
+		.hierarchy-badge[data-level="starter"] { color: #B45309; }
+		.hierarchy-badge[data-level="learner"] { color: #BE185D; }
+		.hierarchy-badge[data-level="zero"] { color: #991B1B; }
 
 		.hierarchy-badge .criteria {
 			font-size: 9px;
@@ -721,9 +728,23 @@
 
 		.hierarchy-badge.active {
 			background: rgba(9, 124, 128, 0.1);
-			color: var(--primary-1);
 			border-color: var(--primary-1);
+			animation: active-badge-pulse 1.5s infinite ease-in-out;
 		}
+		
+		@keyframes active-badge-pulse {
+			0% { box-shadow: 0 0 0 0 transparent; transform: scale(1); }
+			50% { box-shadow: 0 0 8px 1px currentColor; transform: scale(1.03); opacity: 0.85; }
+			100% { box-shadow: 0 0 0 0 transparent; transform: scale(1); }
+		}
+		
+		/* Active state backgrounds and borders */
+		.hierarchy-badge.active[data-level="pinnacle"] { background: #F5F3FF; border-color: #C4B5FD; }
+		.hierarchy-badge.active[data-level="master"] { background: #EFF6FF; border-color: #93C5FD; }
+		.hierarchy-badge.active[data-level="accelerator"] { background: #ECFDF5; border-color: #6EE7B7; }
+		.hierarchy-badge.active[data-level="starter"] { background: #FFFBEB; border-color: #FDE68A; }
+		.hierarchy-badge.active[data-level="learner"] { background: #FDF2F8; border-color: #F9A8D4; }
+		.hierarchy-badge.active[data-level="zero"] { background: #FEF2F2; border-color: #FECACA; }
 
 		/* Financial Table Styles */
 		.financial-table-container {
@@ -1534,27 +1555,27 @@
 							Accelerator</div>
 
 						<div class="category-hierarchy" id="category-hierarchy">
-							<div class="hierarchy-badge">
+							<div class="hierarchy-badge" data-level="pinnacle">
 								<span>Pinnacle</span>
 								<span class="criteria">>100%</span>
 							</div>
-							<div class="hierarchy-badge">
+							<div class="hierarchy-badge" data-level="master">
 								<span>Master</span>
 								<span class="criteria">80-100%</span>
 							</div>
-							<div class="hierarchy-badge active">
+							<div class="hierarchy-badge active" data-level="accelerator">
 								<span>Accelerator</span>
 								<span class="criteria">60-80%</span>
 							</div>
-							<div class="hierarchy-badge">
+							<div class="hierarchy-badge" data-level="starter">
 								<span>Starter</span>
 								<span class="criteria">40-60%</span>
 							</div>
-							<div class="hierarchy-badge">
+							<div class="hierarchy-badge" data-level="learner">
 								<span>Learner</span>
 								<span class="criteria">20-40%</span>
 							</div>
-							<div class="hierarchy-badge">
+							<div class="hierarchy-badge" data-level="zero">
 								<span>Zero</span>
 								<span class="criteria">0-20%</span>
 							</div>
@@ -1584,6 +1605,192 @@
 					</div>
 				</section>
 			</div>
+
+			<section class="staff-detail-section modern-table-card" style="margin-bottom: 20px; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); padding: 24px;">
+				<div style="margin-bottom: 20px;">
+					<h2 style="margin: 0; font-size: 20px; color: #1e293b; font-weight: 700;">Product Wise Target VS Collection</h2>
+				</div>
+				<div class="financial-table-container" style="overflow-x: auto;">
+					<table class="financial-table" style="width: 100%; border-collapse: collapse; text-align: center; border: 1px solid #e2e8f0; font-family: 'Inter', sans-serif;">
+						<thead>
+							<tr>
+								<th style="padding: 16px; border: 1px solid #e2e8f0; text-align: left; font-weight: 600; color: var(--primary-1); font-size: 13px; background: #fff; width: 16%;">PRODUCT</th>
+								<th id="th-casa" style="padding: 16px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary-1); font-size: 13px; background: #fff; width: 12%;">CASA</th>
+								<th id="th-dam" style="padding: 16px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary-1); font-size: 13px; background: #fff; width: 12%;">DAM</th>
+								<th id="th-dd" style="padding: 16px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary-1); font-size: 13px; background: #fff; width: 12%;">DD</th>
+								<th id="th-fd" style="padding: 16px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary-1); font-size: 13px; background: #fff; width: 12%;">FD</th>
+								<th id="th-rd" style="padding: 16px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary-1); font-size: 13px; background: #fff; width: 12%;">RD</th>
+								<th id="th-smbg" style="padding: 16px; border: 1px solid #e2e8f0; font-weight: 600; color: var(--primary-1); font-size: 13px; background: #fff; width: 12%;">SMBG</th>
+								<th id="th-total" style="padding: 16px; border: 1px solid #e2e8f0; font-weight: 600; color: #fff; background: var(--primary-2); font-size: 13px; width: 12%;">TOTAL TARGET (100%)</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td style="padding: 16px; border: 1px solid #e2e8f0; text-align: left; background-color: #fafaf9;">
+									<div style="display: flex; align-items: center; gap: 10px;">
+										<i class="fa fa-bullseye" style="color: var(--primary-1); font-size: 18px;"></i>
+										<div>
+											<div style="font-weight: 700; color: var(--primary-1); font-size: 14px;">TARGET</div>
+											<div style="font-size: 12px; color: #64748b;">Planned Amount</div>
+										</div>
+									</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="target-casa" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-casa" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="target-dam" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-dam" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="target-dd" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-dd" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="target-fd" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-fd" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="target-rd" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-rd" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="target-smbg" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-smbg" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="target-total" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-total" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
+								</td>
+							</tr>
+							<tr>
+								<td style="padding: 16px; border: 1px solid #e2e8f0; text-align: left; background-color: #fafaf9;">
+									<div style="display: flex; align-items: center; gap: 10px;">
+										<i class="fa fa-bar-chart" style="color: var(--primary-1); font-size: 18px;"></i>
+										<div>
+											<div style="font-weight: 700; color: var(--primary-1); font-size: 14px;">ACH%</div>
+											<div style="font-size: 12px; color: #64748b;">Achieved Amount</div>
+										</div>
+									</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="ach-casa" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="ach-pct-casa" style="font-size: 12px; font-weight: 600; color: #22c55e; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="ach-bar-casa" style="height: 100%; background: #22c55e; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="ach-dam" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="ach-pct-dam" style="font-size: 12px; font-weight: 600; color: #22c55e; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="ach-bar-dam" style="height: 100%; background: #22c55e; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="ach-dd" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="ach-pct-dd" style="font-size: 12px; font-weight: 600; color: #22c55e; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="ach-bar-dd" style="height: 100%; background: #22c55e; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="ach-fd" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="ach-pct-fd" style="font-size: 12px; font-weight: 600; color: #22c55e; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="ach-bar-fd" style="height: 100%; background: #22c55e; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="ach-rd" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="ach-pct-rd" style="font-size: 12px; font-weight: 600; color: #22c55e; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="ach-bar-rd" style="height: 100%; background: #22c55e; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="ach-smbg" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="ach-pct-smbg" style="font-size: 12px; font-weight: 600; color: #22c55e; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="ach-bar-smbg" style="height: 100%; background: #22c55e; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="ach-total" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="ach-pct-total" style="font-size: 12px; font-weight: 600; color: #22c55e; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="ach-bar-total" style="height: 100%; background: #22c55e; width: 0%;"></div></div>
+								</td>
+							</tr>
+							<tr>
+								<td style="padding: 16px; border: 1px solid #e2e8f0; text-align: left; background-color: #fafaf9;">
+									<div style="display: flex; align-items: center; gap: 10px;">
+										<i class="fa fa-refresh" style="color: var(--primary-1); font-size: 18px;"></i>
+										<div>
+											<div style="font-weight: 700; color: var(--primary-1); font-size: 13px;">REMAINING + SPILL OVER</div>
+											<div style="font-size: 12px; color: #64748b;">Balance / Over Achieved</div>
+										</div>
+									</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="rem-casa" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="rem-pct-casa" style="font-size: 12px; font-weight: 600; color: #ef4444; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="rem-bar-casa" style="height: 100%; background: #ef4444; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="rem-dam" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="rem-pct-dam" style="font-size: 12px; font-weight: 600; color: #ef4444; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="rem-bar-dam" style="height: 100%; background: #ef4444; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="rem-dd" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="rem-pct-dd" style="font-size: 12px; font-weight: 600; color: #ef4444; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="rem-bar-dd" style="height: 100%; background: #ef4444; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="rem-fd" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="rem-pct-fd" style="font-size: 12px; font-weight: 600; color: #ef4444; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="rem-bar-fd" style="height: 100%; background: #ef4444; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="rem-rd" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="rem-pct-rd" style="font-size: 12px; font-weight: 600; color: #ef4444; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="rem-bar-rd" style="height: 100%; background: #ef4444; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="rem-smbg" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="rem-pct-smbg" style="font-size: 12px; font-weight: 600; color: #ef4444; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="rem-bar-smbg" style="height: 100%; background: #ef4444; width: 0%;"></div></div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="rem-total" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="rem-pct-total" style="font-size: 12px; font-weight: 600; color: #ef4444; margin: 4px 0;">--</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="rem-bar-total" style="height: 100%; background: #ef4444; width: 0%;"></div></div>
+								</td>
+							</tr>
+							<tr>
+								<td style="padding: 16px; border: 1px solid #e2e8f0; text-align: left; background-color: #fafaf9;">
+									<div style="display: flex; align-items: center; gap: 10px;">
+										<div>
+											<div style="font-weight: 700; color: var(--primary-1); font-size: 13px;">ACHIEVEMENT STATUS</div>
+											<div style="font-size: 12px; color: #64748b;">vs Target</div>
+										</div>
+									</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="status-casa" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500;">--</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="status-dam" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500;">--</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="status-dd" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500;">--</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="status-fd" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500;">--</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="status-rd" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500;">--</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="status-smbg" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500;">--</div>
+								</td>
+								<td style="padding: 16px; border: 1px solid #e2e8f0;">
+									<div id="status-total" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500;">--</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</section>
 
 			<section class="staff-detail-section">
 				<h2>Deposit & Book Position</h2>
@@ -1722,7 +1929,8 @@
 						<thead>
 							<tr>
 								<th>Category</th>
-								<th class="amount-col">Account Count</th>
+								<th class="amount-col">Current Month Count</th>
+								<th class="amount-col">Total Account Count</th>
 								<th class="bar-col">Composition</th>
 							</tr>
 						</thead>
@@ -1730,6 +1938,11 @@
 							<tr class="total-row">
 								<td class="label-col">
 									<strong>Total Accounts</strong>
+								</td>
+								<td class="amount-col">
+									<div class="data-wrapper">
+										<span id="total-accounts-opened">--</span>
+									</div>
 								</td>
 								<td class="amount-col">
 									<div class="data-wrapper">
@@ -1742,6 +1955,9 @@
 								<td class="label-col">
 									<span class="acc-dot sa"></span>
 									<span>Savings Account (SA)</span>
+								</td>
+								<td class="amount-col">
+									<span id="sa-accounts-opened">--</span>
 								</td>
 								<td class="amount-col">
 									<span id="total-sa-no-of-customers">--</span>
@@ -1761,6 +1977,9 @@
 									<span>Current Account (CA)</span>
 								</td>
 								<td class="amount-col">
+									<span id="ca-accounts-opened">--</span>
+								</td>
+								<td class="amount-col">
 									<span id="total-ca-no-of-customers">--</span>
 								</td>
 								<td class="bar-col">
@@ -1776,6 +1995,9 @@
 								<td class="label-col">
 									<span class="acc-dot fd"></span>
 									<span>Fixed Deposit (FD)</span>
+								</td>
+								<td class="amount-col">
+									<span id="fd-accounts-opened">--</span>
 								</td>
 								<td class="amount-col">
 									<span id="total-fd-no-of-customers">--</span>
@@ -1795,7 +2017,10 @@
 									<span>Recurring Deposit (RD)</span>
 								</td>
 								<td class="amount-col">
-									<span id="total-rd-no-of_customers">--</span>
+									<span id="rd-accounts-opened">--</span>
+								</td>
+								<td class="amount-col">
+									<span id="total-rd-no-of-customers">--</span>
 								</td>
 								<td class="bar-col">
 									<div class="bar-wrapper">
@@ -1810,6 +2035,9 @@
 								<td class="label-col">
 									<span class="acc-dot dds"></span>
 									<span>Daily Deposit Scheme (DDS)</span>
+								</td>
+								<td class="amount-col">
+									<span id="dds-accounts-opened">--</span>
 								</td>
 								<td class="amount-col">
 									<span id="total-dds-no-of-customers">--</span>
@@ -1827,6 +2055,9 @@
 								<td class="label-col">
 									<span class="acc-dot smbg"></span>
 									<span>SMBG</span>
+								</td>
+								<td class="amount-col">
+									<span id="smbg-accounts-opened">--</span>
 								</td>
 								<td class="amount-col">
 									<span id="total-smbg-no-of-customers">--</span>
@@ -2467,6 +2698,9 @@
 							// Re-render
 							BranchManagerProfile.render();
 							BranchManagerProfile.renderManpowerDetails();
+							if(typeof BranchManagerProfile.renderProductCollections === 'function') {
+								BranchManagerProfile.renderProductCollections();
+							}
 						});
 					}
 
@@ -2701,6 +2935,27 @@
 					this.el.catAchievementVal.textContent = this.formatAmount(data.achievement);
 					this.el.catPercentageVal.textContent = data.percentage;
 
+					// Apply Color to performanceStatus and percentage
+					const categoryConfig = {
+						"Pinnacle":    { text: "#6D28D9", bg: "#F5F3FF", border: "#C4B5FD" }, // Purple
+						"Master":      { text: "#1D4ED8", bg: "#EFF6FF", border: "#93C5FD" }, // Blue
+						"Accelerator": { text: "#047857", bg: "#ECFDF5", border: "#6EE7B7" }, // Emerald/Teal
+						"Starter":     { text: "#B45309", bg: "#FFFBEB", border: "#FDE68A" }, // Amber
+						"Learner":     { text: "#BE185D", bg: "#FDF2F8", border: "#F9A8D4" }, // Magenta
+						"Zero Level":  { text: "#991B1B", bg: "#FEF2F2", border: "#FECACA" }, // Deep Red
+						"Zero":        { text: "#991B1B", bg: "#FEF2F2", border: "#FECACA" }
+					};
+					const config = categoryConfig[data.category] || { text: "var(--primary-1)", bg: "#fff", border: "#e2e8f0" };
+					if (this.el.performanceStatus) this.el.performanceStatus.style.color = config.text;
+					if (this.el.catPercentageVal) this.el.catPercentageVal.style.color = config.text;
+
+					const sectionEl = document.getElementById("category-card");
+					if (sectionEl) {
+						sectionEl.style.backgroundColor = config.bg;
+						sectionEl.style.borderColor = config.border;
+						sectionEl.style.transition = "all 0.3s ease";
+					}
+
 					// Update Hierarchy Badges
 					const badges = this.el.categoryHierarchy.querySelectorAll('.hierarchy-badge');
 					badges.forEach(b => b.classList.remove('active'));
@@ -2832,27 +3087,35 @@
 					updateComp('smbg-book', d.smbg_book, totalBookVal);
 
 					// --- COMPOSITION UPDATES (CUSTOMERS) ---
-					const totalCustVal = parseFloat(d.total_customers_id) || 0;
+					const totalCustVal = parseFloat(d.total_accounts_total) || 0;
 					this.el.totalCustomersId.textContent = this.formatIndianNumber(totalCustVal);
+					
+					const totalOpenedVal = parseFloat(d.total_accounts_opened) || 0;
+					const totalOpenedEl = document.getElementById("total-accounts-opened");
+					if (totalOpenedEl) totalOpenedEl.textContent = this.formatIndianNumber(totalOpenedVal);
 
-					const updateCustComp = (amountId, compPrefix, val, total) => {
-						const amountEl = document.getElementById(amountId);
+					const updateCustComp = (openedId, totalId, compPrefix, valOpened, valTotal, overallTotal) => {
+						const openedEl = document.getElementById(openedId);
+						const totalEl = document.getElementById(totalId);
 						const percEl = document.getElementById(compPrefix + '-perc');
 						const barEl = document.getElementById(compPrefix + '-bar');
-						const numVal = parseFloat(val) || 0;
-						const perc = total > 0 ? (numVal / total * 100) : 0;
+						
+						const numOpened = parseFloat(valOpened) || 0;
+						const numTotal = parseFloat(valTotal) || 0;
+						const perc = overallTotal > 0 ? (numTotal / overallTotal * 100) : 0;
 
-						if (amountEl) amountEl.textContent = this.formatIndianNumber(numVal);
+						if (openedEl) openedEl.textContent = this.formatIndianNumber(numOpened);
+						if (totalEl) totalEl.textContent = this.formatIndianNumber(numTotal);
 						if (percEl) percEl.textContent = perc.toFixed(1) + '%';
 						if (barEl) barEl.style.width = perc + '%';
 					};
 
-					updateCustComp('total-sa-no-of-customers', 'sa-cust', d.total_sa_no_of_customers, totalCustVal);
-					updateCustComp('total-ca-no-of-customers', 'ca-cust', d.total_ca_no_of_customers, totalCustVal);
-					updateCustComp('total-fd-no-of-customers', 'fd-cust', d.total_fd_no_of_customers, totalCustVal);
-					updateCustComp('total-rd-no-of_customers', 'rd-cust', d.total_rd_no_of_customers, totalCustVal);
-					updateCustComp('total-dds-no-of-customers', 'dds-cust', d.total_dds_no_of_customers, totalCustVal);
-					updateCustComp('total-smbg-no-of-customers', 'smbg-cust', d.total_smbg_no_of_customers, totalCustVal);
+					updateCustComp('sa-accounts-opened', 'total-sa-no-of-customers', 'sa-cust', d.sa_accounts_opened, d.sa_accounts_total, totalCustVal);
+					updateCustComp('ca-accounts-opened', 'total-ca-no-of-customers', 'ca-cust', d.ca_accounts_opened, d.ca_accounts_total, totalCustVal);
+					updateCustComp('fd-accounts-opened', 'total-fd-no-of-customers', 'fd-cust', d.fd_accounts_opened, d.fd_accounts_total, totalCustVal);
+					updateCustComp('rd-accounts-opened', 'total-rd-no-of-customers', 'rd-cust', d.rd_accounts_opened, d.rd_accounts_total, totalCustVal);
+					updateCustComp('dds-accounts-opened', 'total-dds-no-of-customers', 'dds-cust', d.dds_accounts_opened, d.dds_accounts_total, totalCustVal);
+					updateCustComp('smbg-accounts-opened', 'total-smbg-no-of-customers', 'smbg-cust', d.smbg_accounts_opened, d.smbg_accounts_total, totalCustVal);
 
 					// Populate Demand & Collection Performance
 					this.el.ddCollection.textContent = this.formatAmount(d.dds_collection);
@@ -3032,19 +3295,29 @@
 
 				async load(solId, branchEmailValue) {
 					try {
-						const r = await fetch(
-							`/api/method/custom_report.branch_v1.get_branch_profile_data?sol_id=${solId}`,
-						);
+						const [r, bookR] = await Promise.all([
+							fetch(`/api/method/custom_report.branch_v1.get_branch_profile_data?sol_id=${solId}`),
+							fetch(`/api/method/custom_report.branch_v1.get_book_position_details?sol_id=${solId}`)
+						]);
 						const j = await r.json();
+						const bookJ = await bookR.json();
 						const d = j.message || {};
+						const bookD = bookJ.message || {};
+
+						// Merge new book position data into rawData overriding old mappings
+						Object.assign(d, bookD);
+						
 						d._branch_email_value = branchEmailValue; // Store email in raw data
 						this.state.rawData = d;
 
 						this.render();
 						this.loadEmployeeDetails(solId);
 
+
 						// --- Fetch Performance Data ---
 						await this.loadPerformanceData(solId);
+						// --- Fetch Product Collections Data ---
+						await this.loadProductCollections(solId);
 						// ------------------------------
 					} catch (e) {
 						console.error("Profile Load Error:", e);
@@ -3073,12 +3346,157 @@
 					}
 				},
 
+				async loadProductCollections(solId) {
+					try {
+						const zoneElem = document.getElementById("branch-zone");
+						let zone = zoneElem ? zoneElem.textContent.trim() : "";
+						const fyElem = document.getElementById("fy-select");
+						let fy = fyElem ? fyElem.value : "2026-2027";
+						const res = await fetch(`/api/method/custom_report.custom_api.get_sol_product_wise_collection?sol_id=${solId}&zone=${zone}&financial_year=${fy}`);
+						const json = await res.json();
+						if (json.message) {
+							this.state.productCollectionsData = json.message;
+							this.renderProductCollections();
+						}
+					} catch(e) {
+						console.error("Product Collections Load Error:", e);
+					}
+				},
+
+				renderProductCollections() {
+					const data = this.state.productCollectionsData;
+					if(!data) return;
+
+					if (data.targets) {
+						const tg = data.targets;
+						const setTh = (id, label, pct) => {
+							const el = document.getElementById(id);
+							if(el) el.textContent = `${label} (${pct}%)`;
+						};
+						setTh("th-casa", "CASA", tg["CASA"]);
+						setTh("th-dam", "DAM", tg["DAM"]);
+						setTh("th-dd", "DD", tg["DD"]);
+						setTh("th-fd", "FD", tg["FD"]);
+						setTh("th-rd", "RD", tg["RD"]);
+						setTh("th-smbg", "SMBG", tg["SMBG"]);
+						setTh("th-total", "TOTAL TARGET", "100");
+					}
+
+					if (data.target_amounts && data.collections) {
+						const tAmt = data.target_amounts;
+						const cCols = data.collections;
+						const tg = data.targets || {};
+						
+						const products = [
+							{ key: "CASA", id: "casa", tgPct: tg["CASA"] || 0 },
+							{ key: "DAM", id: "dam", tgPct: tg["DAM"] || 0 },
+							{ key: "DD", id: "dd", tgPct: tg["DD"] || 0 },
+							{ key: "FD", id: "fd", tgPct: tg["FD"] || 0 },
+							{ key: "RD", id: "rd", tgPct: tg["RD"] || 0 },
+							{ key: "SMBG", id: "smbg", tgPct: tg["SMBG"] || 0 },
+							{ key: "TOTAL TARGET", id: "total", tgPct: 100 }
+						];
+
+						products.forEach(p => {
+							const targetVal = tAmt[p.key] || 0;
+							const achVal = cCols[p.key] || 0;
+							const remVal = targetVal - achVal;
+
+							// TARGET ROW
+							const elTarget = document.getElementById(`target-${p.id}`);
+							if (elTarget) elTarget.textContent = this.formatAmount(targetVal);
+							const elTargetBar = document.getElementById(`target-bar-${p.id}`);
+							if (elTargetBar) elTargetBar.style.width = `${Math.min(p.tgPct, 100)}%`;
+
+							// ACH ROW
+							const achPct = targetVal ? ((achVal / targetVal) * 100) : 0;
+							const elAch = document.getElementById(`ach-${p.id}`);
+							if (elAch) elAch.textContent = this.formatAmount(achVal);
+							const elAchPct = document.getElementById(`ach-pct-${p.id}`);
+							if (elAchPct) elAchPct.textContent = `${achPct.toFixed(2)}%`;
+							const elAchBar = document.getElementById(`ach-bar-${p.id}`);
+							if (elAchBar) elAchBar.style.width = `${Math.min(achPct, 100)}%`;
+
+							// REMAINING ROW
+							const remPct = targetVal ? ((remVal / targetVal) * 100) : 0;
+							const isOverAchieved = remVal < 0;
+							const displayRemVal = Math.abs(remVal);
+							
+							const elRem = document.getElementById(`rem-${p.id}`);
+							if (elRem) {
+								let formattedAmt = this.formatAmount(displayRemVal);
+								if (isOverAchieved && formattedAmt !== "--") {
+									formattedAmt = "+ " + formattedAmt;
+								}
+								elRem.textContent = formattedAmt;
+							}
+							
+							const elRemPct = document.getElementById(`rem-pct-${p.id}`);
+							const elRemBar = document.getElementById(`rem-bar-${p.id}`);
+							
+							const remColor = isOverAchieved ? "#9333ea" : "#ef4444";
+							
+							if (elRemPct) {
+								let displayPct = Math.abs(remPct).toFixed(2) + "%";
+								if (isOverAchieved) displayPct = "+" + displayPct;
+								elRemPct.textContent = displayPct;
+								elRemPct.style.color = remColor;
+							}
+							if (elRemBar) {
+								elRemBar.style.width = `${Math.min(Math.abs(remPct), 100)}%`;
+								elRemBar.style.background = remColor;
+							}
+
+							// STATUS ROW
+							const elStatus = document.getElementById(`status-${p.id}`);
+							if (elStatus) {
+								if (achPct >= 100) {
+									elStatus.innerHTML = `<i class="fa fa-arrow-circle-up"></i> Over Achieved`;
+									elStatus.style.color = "#9333ea";
+								} else if (achPct >= 50) {
+									elStatus.innerHTML = `<i class="fa fa-arrow-circle-up"></i> On Track`;
+									elStatus.style.color = "#22c55e";
+								} else {
+									elStatus.innerHTML = `<i class="fa fa-arrow-circle-down"></i> Below Target`;
+									elStatus.style.color = "#ef4444";
+								}
+							}
+
+							// HIGHLIGHT COLUMN IF OVER TARGET
+							const isTargetMet = achPct >= 100;
+							const highlightBg = isTargetMet ? "color-mix(in srgb, var(--primary-1) 8%, transparent)" : "";
+							const highlightThBg = isTargetMet && p.id !== 'total' ? "color-mix(in srgb, var(--primary-1) 12%, transparent)" : (p.id === 'total' ? 'var(--primary-2)' : '#fff');
+							
+							const elTh = document.getElementById(`th-${p.id}`);
+							if(elTh) elTh.style.backgroundColor = highlightThBg;
+							
+							[elTarget, elAch, elRem, elStatus].forEach(el => {
+								if (el && el.parentElement) {
+									el.parentElement.style.backgroundColor = highlightBg;
+									// Make border match the highlight to blend smoothly
+									if(isTargetMet) {
+										el.parentElement.style.borderColor = "color-mix(in srgb, var(--primary-1) 20%, transparent)";
+									} else {
+										el.parentElement.style.borderColor = "#e2e8f0";
+									}
+								}
+							});
+						});
+					}
+				},
+
 				clearCategoryUI() {
 					this.el.performanceStatus.textContent = "--";
 					this.el.catTargetVal.textContent = "--";
 					this.el.catAchievementVal.textContent = "--";
 					this.el.catPercentageVal.textContent = "0.00%";
 					
+					const sectionEl = document.getElementById("category-card");
+					if (sectionEl) {
+						sectionEl.style.backgroundColor = "#fff";
+						sectionEl.style.borderColor = "#e2e8f0";
+					}
+
 					const badges = this.el.categoryHierarchy.querySelectorAll('.hierarchy-badge');
 					badges.forEach(b => b.classList.remove('active'));
 				},

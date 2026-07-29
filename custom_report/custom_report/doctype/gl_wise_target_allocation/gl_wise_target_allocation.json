@@ -1,0 +1,117 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-07-28 12:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "zone",
+  "column_break_valo",
+  "casa",
+  "dam",
+  "dd",
+  "column_break_lohq",
+  "fd",
+  "rd",
+  "smbg",
+  "share"
+ ],
+ "fields": [
+  {
+   "columns": 2,
+   "fieldname": "zone",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Zone",
+   "options": "Zone",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_valo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "casa",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "CASA",
+   "precision": "2"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "dam",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "DAM",
+   "precision": "2"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "dd",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "DD",
+   "precision": "2"
+  },
+  {
+   "fieldname": "column_break_lohq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "fd",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "FD",
+   "precision": "2"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "rd",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "RD",
+   "precision": "2"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "smbg",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "SMBG",
+   "precision": "2"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "share",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "SHARE",
+   "precision": "2"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-07-28 17:23:05.870816",
+ "modified_by": "Administrator",
+ "module": "custom_report",
+ "name": "GL Wise Target Allocation",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
