@@ -101,6 +101,74 @@ def get_branch_profile_data(sol_id: str):
         as_dict=True,
     ) or {}
 
+@frappe.whitelist()
+def get_book_position_details(sol_id: str):
+    """
+    Fetch Book Position data from 'Book Position and Account Details' doctype.
+    Sums up closing_balance for specific group_name and group_subname.
+    """
+    if not sol_id:
+        return {}
+
+    # Get the latest date for this sol_id
+    latest_date = frappe.db.get_value(
+        "Book Position and Account Details",
+        {"sol_id": sol_id},
+        "date",
+        order_by="date desc"
+    )
+
+    result = {
+        "sa_book": 0.0,
+        "ca_book": 0.0,
+        "fd_book": 0.0,
+        "rd_book": 0.0,
+        "dds_book": 0.0,
+        "smbg_book": 0.0,
+        "total_book": 0.0
+    }
+
+    if not latest_date:
+        return result
+
+    data = frappe.db.get_list(
+        "Book Position and Account Details",
+        filters={"sol_id": sol_id, "date": latest_date},
+        fields=["group_name", "group_subname", "closing_balance"],
+    )
+
+    total_balance = 0.0
+    for row in data:
+        balance = flt(row.closing_balance)
+        g_name = (row.group_name or "").upper().strip()
+        g_subname = (row.group_subname or "").upper().strip()
+
+        if g_name == "CASA" and g_subname == "SA":
+            result["sa_book"] += balance
+        elif g_name == "CASA" and g_subname == "CA":
+            result["ca_book"] += balance
+        elif g_name == "FD":
+            result["fd_book"] += balance
+        elif g_name == "RD":
+            result["rd_book"] += balance
+        elif g_name == "DD":
+            result["dds_book"] += balance
+        elif g_name == "SMBG":
+            result["smbg_book"] += balance
+            
+        total_balance += balance
+
+    # Total Book should probably be sum of all categories, or sum of everything.
+    # The requirement is just showing these compositions of the total book.
+    # Let's sum all mapped ones or the total balance? Let's use the sum of mapped ones for composition 100%.
+    result["total_book"] = (
+        result["sa_book"] + result["ca_book"] + result["fd_book"] +
+        result["rd_book"] + result["dds_book"] + result["smbg_book"]
+    )
+    
+    return result
+
+
 
 # ============================================================================
 # PERFORMANCE DATA API (Note: Implementation moved to the bottom of the file)

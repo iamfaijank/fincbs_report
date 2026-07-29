@@ -182,6 +182,9 @@ scheduler_events = {
 		],
 		"15 8 * * *": [
 			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_casa_sync"
+		],
+		"30 8 * * *": [
+			"custom_report.custom_report.doctype.book_position_and_account_details.book_position_and_account_details.daily_sync_book_position"
 		]
 	}
 }

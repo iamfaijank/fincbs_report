@@ -3263,16 +3263,24 @@
 
 				async load(solId, branchEmailValue) {
 					try {
-						const r = await fetch(
-							`/api/method/custom_report.branch_v1.get_branch_profile_data?sol_id=${solId}`,
-						);
+						const [r, bookR] = await Promise.all([
+							fetch(`/api/method/custom_report.branch_v1.get_branch_profile_data?sol_id=${solId}`),
+							fetch(`/api/method/custom_report.branch_v1.get_book_position_details?sol_id=${solId}`)
+						]);
 						const j = await r.json();
+						const bookJ = await bookR.json();
 						const d = j.message || {};
+						const bookD = bookJ.message || {};
+
+						// Merge new book position data into rawData overriding old mappings
+						Object.assign(d, bookD);
+						
 						d._branch_email_value = branchEmailValue; // Store email in raw data
 						this.state.rawData = d;
 
 						this.render();
 						this.loadEmployeeDetails(solId);
+
 
 						// --- Fetch Performance Data ---
 						await this.loadPerformanceData(solId);
