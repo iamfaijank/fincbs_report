@@ -100,9 +100,11 @@ def daily_sync_book_position():
 
 @frappe.whitelist()
 def sync_data(sync_date):
-	# The user wants to sync for a given date
-	start_date = sync_date
+	from frappe.utils import get_first_day, getdate
+	
+	# The user wants to sync MTD up to the given date (T-1)
 	end_date = sync_date
+	start_date = get_first_day(getdate(sync_date))
 
 	query = """
 SELECT 
