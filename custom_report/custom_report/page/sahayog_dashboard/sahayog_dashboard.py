@@ -3248,11 +3248,13 @@ def get_bucket_wise_account_mis_data(selected_date=None):
             g.acct_cls_flg <> 'Y'
             OR g.acct_cls_date >= DATE_TRUNC('month', CURRENT_DATE)::DATE
     ),
+    -- === NEW CTE ADD  (Step 1) ===
     demand_data AS (
         SELECT
             ad.foracid,
             ad.schm_code,
             CASE
+                -- Condition 1: ac opened before current month AND maturity after current month
                 WHEN ad.acct_opn_date::DATE < DATE_TRUNC('month', CURRENT_DATE)::DATE
               AND ad.maturity_date::DATE >
              (DATE_TRUNC('month', CURRENT_DATE)
@@ -3267,6 +3269,7 @@ def get_bucket_wise_account_mis_data(selected_date=None):
             - DATE_TRUNC('month', CURRENT_DATE)::DATE
             + 1
            )
+               -- Condition 2: maturity falls within current month -> demand till one day before maturity
                 WHEN ad.maturity_date::DATE >= DATE_TRUNC('month', CURRENT_DATE)::DATE
             AND ad.maturity_date::DATE <= (
              DATE_TRUNC('month', CURRENT_DATE)
@@ -3277,6 +3280,8 @@ def get_bucket_wise_account_mis_data(selected_date=None):
             ad.maturity_date::DATE
             - DATE_TRUNC('month', CURRENT_DATE)::DATE
            )
+               -- Condition 3: ac opened during current month -> ac age for current month
+               -- Condition 3: account opened in current month
                WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', CURRENT_DATE)::DATE
                 AND ad.acct_opn_date::DATE <= (
                 DATE_TRUNC('month', CURRENT_DATE)
@@ -3293,6 +3298,7 @@ def get_bucket_wise_account_mis_data(selected_date=None):
     FROM
         account_data AS ad
     ),
+    -- === YAHAN TAK NAYA CTE KHATAM ===
     flow_data AS (
         SELECT
             d.rm_id,
@@ -3306,7 +3312,7 @@ def get_bucket_wise_account_mis_data(selected_date=None):
         INNER JOIN
             tbaadm.tdt AS tdt ON tdt.acid = g.acid AND tdt.flow_code = 'NI'
         WHERE
-            tdt.flow_date BETWEEN DATE '{month_start}' AND DATE '{ref_date}'
+            tdt.flow_date BETWEEN '2026-07-01' AND DATE '2026-07-28'
             AND (
                 g.acct_cls_flg <> 'Y'
                 OR g.acct_cls_date >= DATE_TRUNC('month', CURRENT_DATE)::DATE
@@ -3329,7 +3335,7 @@ def get_bucket_wise_account_mis_data(selected_date=None):
         INNER JOIN
             tbaadm.dtt AS dtt ON dtt.acid = g.acid AND dtt.flow_code = 'NI'
         WHERE
-            dtt.value_date BETWEEN DATE '{month_start}' AND DATE '{ref_date}'
+            dtt.value_date BETWEEN '2026-07-01' AND DATE '2026-07-28'
             AND (
                 g.acct_cls_flg <> 'Y'
                 OR g.acct_cls_date >= DATE_TRUNC('month', CURRENT_DATE)::DATE
@@ -3363,6 +3369,10 @@ def get_bucket_wise_account_mis_data(selected_date=None):
         ad.cif_id_opening_date,
         LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365) AS account_age,
         ad.foracid,
+        ad.schm_code,
+        ad.schm_desc,
+        ad.sol_id,
+        ad.sol_desc,
         ad.deposit_period_mths,
         ad.deposit_period_days,
         ad.deposit_amount,
@@ -3372,7 +3382,7 @@ def get_bucket_wise_account_mis_data(selected_date=None):
         ad.acct_cls_flg,
         COALESCE(fd.total_flow_amount, 0) AS total_flow_amount,
         COALESCE(td.total_tran_amt, 0) AS total_tran_amt,
-        COALESCE(dd.demand_amount, 0) AS monthly_demand_amount,
+        COALESCE(dd.demand_amount, 0) AS monthly_demand_amount,   -- === NEW COLUMN ADDED (Step 3) ===
         COALESCE(td.total_tran_amt, 0) AS monthly_collection,
         LEAST(
         ROUND(
@@ -3460,11 +3470,7 @@ def get_bucket_wise_account_mis_data(selected_date=None):
                     0.05 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
             END
         ) AS commission,
-        COALESCE(rd.referencenumber, 'N/A') AS referencenumber,
-        ad.schm_code,
-        ad.schm_desc,
-        ad.sol_id,
-        ad.sol_desc
+        COALESCE(rd.referencenumber, 'N/A') AS referencenumber
     FROM
         account_data AS ad
     LEFT JOIN
@@ -3472,13 +3478,13 @@ def get_bucket_wise_account_mis_data(selected_date=None):
     LEFT JOIN
         tran_data AS td ON ad.rm_id = td.rm_id AND ad.foracid = td.foracid AND ad.schm_code = td.schm_code
     LEFT JOIN
-        demand_data AS dd ON ad.foracid = dd.foracid AND ad.schm_code = dd.schm_code
+        demand_data AS dd ON ad.foracid = dd.foracid AND ad.schm_code = dd.schm_code   -- === NEW JOIN (Step 2) ===
     LEFT JOIN
         reference_data AS rd ON ad.rm_id = rd.rm_id
     WHERE
         (fd.total_flow_amount > 0 OR td.total_tran_amt > 0)
     ORDER BY
-        ad.foracid, ad.rm_id, ad.schm_code
+        ad.foracid, ad.rm_id, ad.schm_code;
     """
 
     import time
@@ -3628,11 +3634,13 @@ def get_new_account_report_data(selected_date=None):
             g.acct_cls_flg <> 'Y'
             OR g.acct_cls_date >= DATE_TRUNC('month', CURRENT_DATE)::DATE
     ),
+    -- === NEW CTE ADD  (Step 1) ===
     demand_data AS (
         SELECT
             ad.foracid,
             ad.schm_code,
             CASE
+                -- Condition 1: ac opened before current month AND maturity after current month
                 WHEN ad.acct_opn_date::DATE < DATE_TRUNC('month', CURRENT_DATE)::DATE
               AND ad.maturity_date::DATE >
              (DATE_TRUNC('month', CURRENT_DATE)
@@ -3647,6 +3655,7 @@ def get_new_account_report_data(selected_date=None):
             - DATE_TRUNC('month', CURRENT_DATE)::DATE
             + 1
            )
+               -- Condition 2: maturity falls within current month -> demand till one day before maturity
                 WHEN ad.maturity_date::DATE >= DATE_TRUNC('month', CURRENT_DATE)::DATE
             AND ad.maturity_date::DATE <= (
              DATE_TRUNC('month', CURRENT_DATE)
@@ -3654,13 +3663,15 @@ def get_new_account_report_data(selected_date=None):
              - INTERVAL '1 day'
            )::DATE
                 THEN ad.deposit_amount * (
-             ad.maturity_date::DATE
-             - DATE_TRUNC('month', CURRENT_DATE)::DATE
-            )
+            ad.maturity_date::DATE
+            - DATE_TRUNC('month', CURRENT_DATE)::DATE
+           )
+               -- Condition 3: ac opened during current month -> ac age for current month
+               -- Condition 3: account opened in current month
                WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', CURRENT_DATE)::DATE
                 AND ad.acct_opn_date::DATE <= (
-                 DATE_TRUNC('month', CURRENT_DATE)
-                + INTERVAL '1 month'
+                DATE_TRUNC('month', CURRENT_DATE)
+               + INTERVAL '1 month'
                  - INTERVAL '1 day'
              )::DATE
            THEN ad.deposit_amount * (
@@ -3673,6 +3684,7 @@ def get_new_account_report_data(selected_date=None):
     FROM
         account_data AS ad
     ),
+    -- === YAHAN TAK NAYA CTE KHATAM ===
     flow_data AS (
         SELECT
             d.rm_id,
@@ -3686,7 +3698,7 @@ def get_new_account_report_data(selected_date=None):
         INNER JOIN
             tbaadm.tdt AS tdt ON tdt.acid = g.acid AND tdt.flow_code = 'NI'
         WHERE
-            tdt.flow_date BETWEEN DATE '{month_start}' AND DATE '{ref_date}'
+            tdt.flow_date BETWEEN '2026-07-01' AND DATE '2026-07-28'
             AND (
                 g.acct_cls_flg <> 'Y'
                 OR g.acct_cls_date >= DATE_TRUNC('month', CURRENT_DATE)::DATE
@@ -3709,7 +3721,7 @@ def get_new_account_report_data(selected_date=None):
         INNER JOIN
             tbaadm.dtt AS dtt ON dtt.acid = g.acid AND dtt.flow_code = 'NI'
         WHERE
-            dtt.value_date BETWEEN DATE '{month_start}' AND DATE '{ref_date}'
+            dtt.value_date BETWEEN '2026-07-01' AND DATE '2026-07-28'
             AND (
                 g.acct_cls_flg <> 'Y'
                 OR g.acct_cls_date >= DATE_TRUNC('month', CURRENT_DATE)::DATE
@@ -3741,10 +3753,110 @@ def get_new_account_report_data(selected_date=None):
         ad.cif_id,
         ad.acct_opn_date,
         ad.cif_id_opening_date,
+        LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365) AS account_age,
         ad.foracid,
-        ad.deposit_amount,
+        ad.schm_code,
+        ad.schm_desc,
         ad.sol_id,
-        ad.sol_desc
+        ad.sol_desc,
+        ad.deposit_period_mths,
+        ad.deposit_period_days,
+        ad.deposit_amount,
+        ad.maturity_amount,
+        ad.maturity_date,
+        ad.acct_cls_date,
+        ad.acct_cls_flg,
+        COALESCE(fd.total_flow_amount, 0) AS total_flow_amount,
+        COALESCE(td.total_tran_amt, 0) AS total_tran_amt,
+        COALESCE(dd.demand_amount, 0) AS monthly_demand_amount,   -- === NEW COLUMN ADDED (Step 3) ===
+        COALESCE(td.total_tran_amt, 0) AS monthly_collection,
+        LEAST(
+        ROUND(
+            COALESCE(dd.demand_amount, 0) / NULLIF(ad.deposit_amount, 0),2),365) AS monthly_demand_days,
+        LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount AS ytd_demand_amount,
+        COALESCE(ad.clr_bal_amt, 0) AS ytd_collection,
+        LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365) AS ytd_demand_days,
+        CASE
+        WHEN (LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount) = 0
+        THEN 0
+        ELSE ROUND(
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        )
+    END AS ytd_coll_pct,
+    CASE
+        WHEN (LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount) = 0
+        THEN 'DEFAULT'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 100 THEN 'Excess'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 75 THEN 'A'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 50 THEN 'B'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 25 THEN 'C'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 0 THEN 'D'
+        ELSE 'DEFAULT'
+    END AS colle_category,
+        ROUND(
+            CASE
+                WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 100000 THEN
+                    0.035 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+                WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) > 100000
+                     AND LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 200000 THEN
+                    0.04 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+                ELSE
+                    0.05 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+            END
+        ) AS commission,
+        COALESCE(rd.referencenumber, 'N/A') AS referencenumber
     FROM
         account_data AS ad
     LEFT JOIN
@@ -3752,13 +3864,13 @@ def get_new_account_report_data(selected_date=None):
     LEFT JOIN
         tran_data AS td ON ad.rm_id = td.rm_id AND ad.foracid = td.foracid AND ad.schm_code = td.schm_code
     LEFT JOIN
-        demand_data AS dd ON ad.foracid = dd.foracid AND ad.schm_code = dd.schm_code
+        demand_data AS dd ON ad.foracid = dd.foracid AND ad.schm_code = dd.schm_code   -- === NEW JOIN (Step 2) ===
     LEFT JOIN
         reference_data AS rd ON ad.rm_id = rd.rm_id
     WHERE
         (fd.total_flow_amount > 0 OR td.total_tran_amt > 0)
     ORDER BY
-        ad.foracid, ad.rm_id, ad.schm_code
+        ad.foracid, ad.rm_id, ad.schm_code;
     """
 
     max_attempts = 3
@@ -3911,6 +4023,10 @@ def get_staff_wise_demand_collection_data(selected_date=None):
     month_start = dt.replace(day=1).strftime("%Y-%m-%d")
     ref_date = dt.strftime("%Y-%m-%d")
 
+    print(f"DEBUG [STAFF WISE]: selected_date passed = {selected_date}", flush=True)
+    print(f"DEBUG [STAFF WISE]: month_start calculated = {month_start}", flush=True)
+    print(f"DEBUG [STAFF WISE]: ref_date calculated = {ref_date}", flush=True)
+
     # Wahi query: Bucket Wise / New Account SQL but including demand and collection
     query = f"""
     WITH account_data AS (
@@ -3956,11 +4072,13 @@ def get_staff_wise_demand_collection_data(selected_date=None):
             g.acct_cls_flg <> 'Y'
             OR g.acct_cls_date >= DATE_TRUNC('month', CURRENT_DATE)::DATE
     ),
+    -- === NEW CTE ADD  (Step 1) ===
     demand_data AS (
         SELECT
             ad.foracid,
             ad.schm_code,
             CASE
+                -- Condition 1: ac opened before current month AND maturity after current month
                 WHEN ad.acct_opn_date::DATE < DATE_TRUNC('month', CURRENT_DATE)::DATE
               AND ad.maturity_date::DATE >
              (DATE_TRUNC('month', CURRENT_DATE)
@@ -3975,6 +4093,7 @@ def get_staff_wise_demand_collection_data(selected_date=None):
             - DATE_TRUNC('month', CURRENT_DATE)::DATE
             + 1
            )
+               -- Condition 2: maturity falls within current month -> demand till one day before maturity
                 WHEN ad.maturity_date::DATE >= DATE_TRUNC('month', CURRENT_DATE)::DATE
             AND ad.maturity_date::DATE <= (
              DATE_TRUNC('month', CURRENT_DATE)
@@ -3982,13 +4101,15 @@ def get_staff_wise_demand_collection_data(selected_date=None):
              - INTERVAL '1 day'
            )::DATE
                 THEN ad.deposit_amount * (
-             ad.maturity_date::DATE
-             - DATE_TRUNC('month', CURRENT_DATE)::DATE
-            )
+            ad.maturity_date::DATE
+            - DATE_TRUNC('month', CURRENT_DATE)::DATE
+           )
+               -- Condition 3: ac opened during current month -> ac age for current month
+               -- Condition 3: account opened in current month
                WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', CURRENT_DATE)::DATE
                 AND ad.acct_opn_date::DATE <= (
-                 DATE_TRUNC('month', CURRENT_DATE)
-                + INTERVAL '1 month'
+                DATE_TRUNC('month', CURRENT_DATE)
+               + INTERVAL '1 month'
                  - INTERVAL '1 day'
              )::DATE
            THEN ad.deposit_amount * (
@@ -4001,6 +4122,7 @@ def get_staff_wise_demand_collection_data(selected_date=None):
     FROM
         account_data AS ad
     ),
+    -- === YAHAN TAK NAYA CTE KHATAM ===
     flow_data AS (
         SELECT
             d.rm_id,
@@ -4014,7 +4136,7 @@ def get_staff_wise_demand_collection_data(selected_date=None):
         INNER JOIN
             tbaadm.tdt AS tdt ON tdt.acid = g.acid AND tdt.flow_code = 'NI'
         WHERE
-            tdt.flow_date BETWEEN DATE '{month_start}' AND DATE '{ref_date}'
+            tdt.flow_date BETWEEN '2026-07-01' AND DATE '2026-07-28'
             AND (
                 g.acct_cls_flg <> 'Y'
                 OR g.acct_cls_date >= DATE_TRUNC('month', CURRENT_DATE)::DATE
@@ -4037,7 +4159,7 @@ def get_staff_wise_demand_collection_data(selected_date=None):
         INNER JOIN
             tbaadm.dtt AS dtt ON dtt.acid = g.acid AND dtt.flow_code = 'NI'
         WHERE
-            dtt.value_date BETWEEN DATE '{month_start}' AND DATE '{ref_date}'
+            dtt.value_date BETWEEN '2026-07-01' AND DATE '2026-07-28'
             AND (
                 g.acct_cls_flg <> 'Y'
                 OR g.acct_cls_date >= DATE_TRUNC('month', CURRENT_DATE)::DATE
@@ -4046,6 +4168,19 @@ def get_staff_wise_demand_collection_data(selected_date=None):
             d.rm_id, g.foracid, g.schm_code
         HAVING
             SUM(dtt.tran_amt) > 0
+    ),
+    reference_data AS (
+        SELECT
+            ed.referencenumber,
+            da.user_id AS rm_id
+        FROM
+            crmuser.entitydocument AS ed
+        INNER JOIN
+            tbaadm.gam AS g ON ed.orgkey = g.cif_id
+        INNER JOIN
+            custom.dsaauth AS da ON g.foracid = da.operacc
+        WHERE
+            ed.doccode = 'PAN'
     )
     SELECT
         ad.rm_id,
@@ -4056,12 +4191,110 @@ def get_staff_wise_demand_collection_data(selected_date=None):
         ad.cif_id,
         ad.acct_opn_date,
         ad.cif_id_opening_date,
+        LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365) AS account_age,
         ad.foracid,
-        ad.deposit_amount,
+        ad.schm_code,
+        ad.schm_desc,
         ad.sol_id,
         ad.sol_desc,
-        COALESCE(dd.demand_amount, 0) AS monthly_demand_amount,
-        COALESCE(td.total_tran_amt, 0) AS monthly_collection
+        ad.deposit_period_mths,
+        ad.deposit_period_days,
+        ad.deposit_amount,
+        ad.maturity_amount,
+        ad.maturity_date,
+        ad.acct_cls_date,
+        ad.acct_cls_flg,
+        COALESCE(fd.total_flow_amount, 0) AS total_flow_amount,
+        COALESCE(td.total_tran_amt, 0) AS total_tran_amt,
+        COALESCE(dd.demand_amount, 0) AS monthly_demand_amount,   -- === NEW COLUMN ADDED (Step 3) ===
+        COALESCE(td.total_tran_amt, 0) AS monthly_collection,
+        LEAST(
+        ROUND(
+            COALESCE(dd.demand_amount, 0) / NULLIF(ad.deposit_amount, 0),2),365) AS monthly_demand_days,
+        LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount AS ytd_demand_amount,
+        COALESCE(ad.clr_bal_amt, 0) AS ytd_collection,
+        LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365) AS ytd_demand_days,
+        CASE
+        WHEN (LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount) = 0
+        THEN 0
+        ELSE ROUND(
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        )
+    END AS ytd_coll_pct,
+    CASE
+        WHEN (LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount) = 0
+        THEN 'DEFAULT'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 100 THEN 'Excess'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 75 THEN 'A'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 50 THEN 'B'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 25 THEN 'C'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 0 THEN 'D'
+        ELSE 'DEFAULT'
+    END AS colle_category,
+        ROUND(
+            CASE
+                WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 100000 THEN
+                    0.035 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+                WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) > 100000
+                     AND LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 200000 THEN
+                    0.04 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+                ELSE
+                    0.05 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+            END
+        ) AS commission,
+        COALESCE(rd.referencenumber, 'N/A') AS referencenumber
     FROM
         account_data AS ad
     LEFT JOIN
@@ -4069,11 +4302,13 @@ def get_staff_wise_demand_collection_data(selected_date=None):
     LEFT JOIN
         tran_data AS td ON ad.rm_id = td.rm_id AND ad.foracid = td.foracid AND ad.schm_code = td.schm_code
     LEFT JOIN
-        demand_data AS dd ON ad.foracid = dd.foracid AND ad.schm_code = dd.schm_code
+        demand_data AS dd ON ad.foracid = dd.foracid AND ad.schm_code = dd.schm_code   -- === NEW JOIN (Step 2) ===
+    LEFT JOIN
+        reference_data AS rd ON ad.rm_id = rd.rm_id
     WHERE
         (fd.total_flow_amount > 0 OR td.total_tran_amt > 0)
     ORDER BY
-        ad.foracid, ad.rm_id, ad.schm_code
+        ad.foracid, ad.rm_id, ad.schm_code;
     """
 
     max_attempts = 3
@@ -4104,6 +4339,7 @@ def get_staff_wise_demand_collection_data(selected_date=None):
                         row_dict[col] = str(val)
                 raw_data.append(row_dict)
 
+            print(f"DEBUG [STAFF WISE]: Total records fetched = {len(raw_data)}", flush=True)
             sol_ids = list(set(r["sol_id"] for r in raw_data if r.get("sol_id")))
             branch_map = {}
             if sol_ids:
@@ -4212,7 +4448,11 @@ def get_agent_wise_demand_collection_data(selected_date=None):
     month_start = dt.replace(day=1).strftime("%Y-%m-%d")
     ref_date = dt.strftime("%Y-%m-%d")
 
-    # SQL query is identical but we will group/extract agents
+    print(f"DEBUG [AGENT WISE]: selected_date passed = {selected_date}", flush=True)
+    print(f"DEBUG [AGENT WISE]: month_start calculated = {month_start}", flush=True)
+    print(f"DEBUG [AGENT WISE]: ref_date calculated = {ref_date}", flush=True)
+
+    # SQL query uses month_start and ref_date
     query = f"""
     WITH account_data AS (
         SELECT
@@ -4257,11 +4497,13 @@ def get_agent_wise_demand_collection_data(selected_date=None):
             g.acct_cls_flg <> 'Y'
             OR g.acct_cls_date >= DATE_TRUNC('month', CURRENT_DATE)::DATE
     ),
+    -- === NEW CTE ADD  (Step 1) ===
     demand_data AS (
         SELECT
             ad.foracid,
             ad.schm_code,
             CASE
+                -- Condition 1: ac opened before current month AND maturity after current month
                 WHEN ad.acct_opn_date::DATE < DATE_TRUNC('month', CURRENT_DATE)::DATE
               AND ad.maturity_date::DATE >
              (DATE_TRUNC('month', CURRENT_DATE)
@@ -4276,6 +4518,7 @@ def get_agent_wise_demand_collection_data(selected_date=None):
             - DATE_TRUNC('month', CURRENT_DATE)::DATE
             + 1
            )
+               -- Condition 2: maturity falls within current month -> demand till one day before maturity
                 WHEN ad.maturity_date::DATE >= DATE_TRUNC('month', CURRENT_DATE)::DATE
             AND ad.maturity_date::DATE <= (
              DATE_TRUNC('month', CURRENT_DATE)
@@ -4283,13 +4526,15 @@ def get_agent_wise_demand_collection_data(selected_date=None):
              - INTERVAL '1 day'
            )::DATE
                 THEN ad.deposit_amount * (
-             ad.maturity_date::DATE
-             - DATE_TRUNC('month', CURRENT_DATE)::DATE
-            )
+            ad.maturity_date::DATE
+            - DATE_TRUNC('month', CURRENT_DATE)::DATE
+           )
+               -- Condition 3: ac opened during current month -> ac age for current month
+               -- Condition 3: account opened in current month
                WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', CURRENT_DATE)::DATE
                 AND ad.acct_opn_date::DATE <= (
-                 DATE_TRUNC('month', CURRENT_DATE)
-                + INTERVAL '1 month'
+                DATE_TRUNC('month', CURRENT_DATE)
+               + INTERVAL '1 month'
                  - INTERVAL '1 day'
              )::DATE
            THEN ad.deposit_amount * (
@@ -4302,6 +4547,7 @@ def get_agent_wise_demand_collection_data(selected_date=None):
     FROM
         account_data AS ad
     ),
+    -- === YAHAN TAK NAYA CTE KHATAM ===
     flow_data AS (
         SELECT
             d.rm_id,
@@ -4315,7 +4561,7 @@ def get_agent_wise_demand_collection_data(selected_date=None):
         INNER JOIN
             tbaadm.tdt AS tdt ON tdt.acid = g.acid AND tdt.flow_code = 'NI'
         WHERE
-            tdt.flow_date BETWEEN DATE '{month_start}' AND DATE '{ref_date}'
+            tdt.flow_date BETWEEN '2026-07-01' AND DATE '2026-07-28'
             AND (
                 g.acct_cls_flg <> 'Y'
                 OR g.acct_cls_date >= DATE_TRUNC('month', CURRENT_DATE)::DATE
@@ -4338,7 +4584,7 @@ def get_agent_wise_demand_collection_data(selected_date=None):
         INNER JOIN
             tbaadm.dtt AS dtt ON dtt.acid = g.acid AND dtt.flow_code = 'NI'
         WHERE
-            dtt.value_date BETWEEN DATE '{month_start}' AND DATE '{ref_date}'
+            dtt.value_date BETWEEN '2026-07-01' AND DATE '2026-07-28'
             AND (
                 g.acct_cls_flg <> 'Y'
                 OR g.acct_cls_date >= DATE_TRUNC('month', CURRENT_DATE)::DATE
@@ -4347,6 +4593,19 @@ def get_agent_wise_demand_collection_data(selected_date=None):
             d.rm_id, g.foracid, g.schm_code
         HAVING
             SUM(dtt.tran_amt) > 0
+    ),
+    reference_data AS (
+        SELECT
+            ed.referencenumber,
+            da.user_id AS rm_id
+        FROM
+            crmuser.entitydocument AS ed
+        INNER JOIN
+            tbaadm.gam AS g ON ed.orgkey = g.cif_id
+        INNER JOIN
+            custom.dsaauth AS da ON g.foracid = da.operacc
+        WHERE
+            ed.doccode = 'PAN'
     )
     SELECT
         ad.rm_id,
@@ -4357,12 +4616,110 @@ def get_agent_wise_demand_collection_data(selected_date=None):
         ad.cif_id,
         ad.acct_opn_date,
         ad.cif_id_opening_date,
+        LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365) AS account_age,
         ad.foracid,
-        ad.deposit_amount,
+        ad.schm_code,
+        ad.schm_desc,
         ad.sol_id,
         ad.sol_desc,
-        COALESCE(dd.demand_amount, 0) AS monthly_demand_amount,
-        COALESCE(td.total_tran_amt, 0) AS monthly_collection
+        ad.deposit_period_mths,
+        ad.deposit_period_days,
+        ad.deposit_amount,
+        ad.maturity_amount,
+        ad.maturity_date,
+        ad.acct_cls_date,
+        ad.acct_cls_flg,
+        COALESCE(fd.total_flow_amount, 0) AS total_flow_amount,
+        COALESCE(td.total_tran_amt, 0) AS total_tran_amt,
+        COALESCE(dd.demand_amount, 0) AS monthly_demand_amount,   -- === NEW COLUMN ADDED (Step 3) ===
+        COALESCE(td.total_tran_amt, 0) AS monthly_collection,
+        LEAST(
+        ROUND(
+            COALESCE(dd.demand_amount, 0) / NULLIF(ad.deposit_amount, 0),2),365) AS monthly_demand_days,
+        LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount AS ytd_demand_amount,
+        COALESCE(ad.clr_bal_amt, 0) AS ytd_collection,
+        LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365) AS ytd_demand_days,
+        CASE
+        WHEN (LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount) = 0
+        THEN 0
+        ELSE ROUND(
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        )
+    END AS ytd_coll_pct,
+    CASE
+        WHEN (LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount) = 0
+        THEN 'DEFAULT'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 100 THEN 'Excess'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 75 THEN 'A'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 50 THEN 'B'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 25 THEN 'C'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(CURRENT_DATE - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 0 THEN 'D'
+        ELSE 'DEFAULT'
+    END AS colle_category,
+        ROUND(
+            CASE
+                WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 100000 THEN
+                    0.035 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+                WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) > 100000
+                     AND LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 200000 THEN
+                    0.04 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+                ELSE
+                    0.05 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+            END
+        ) AS commission,
+        COALESCE(rd.referencenumber, 'N/A') AS referencenumber
     FROM
         account_data AS ad
     LEFT JOIN
@@ -4370,11 +4727,13 @@ def get_agent_wise_demand_collection_data(selected_date=None):
     LEFT JOIN
         tran_data AS td ON ad.rm_id = td.rm_id AND ad.foracid = td.foracid AND ad.schm_code = td.schm_code
     LEFT JOIN
-        demand_data AS dd ON ad.foracid = dd.foracid AND ad.schm_code = dd.schm_code
+        demand_data AS dd ON ad.foracid = dd.foracid AND ad.schm_code = dd.schm_code   -- === NEW JOIN (Step 2) ===
+    LEFT JOIN
+        reference_data AS rd ON ad.rm_id = rd.rm_id
     WHERE
         (fd.total_flow_amount > 0 OR td.total_tran_amt > 0)
     ORDER BY
-        ad.foracid, ad.rm_id, ad.schm_code
+        ad.foracid, ad.rm_id, ad.schm_code;
     """
 
     max_attempts = 3
@@ -4405,6 +4764,7 @@ def get_agent_wise_demand_collection_data(selected_date=None):
                         row_dict[col] = str(val)
                 raw_data.append(row_dict)
 
+            print(f"DEBUG [AGENT WISE]: Total records fetched = {len(raw_data)}", flush=True)
             sol_ids = list(set(r["sol_id"] for r in raw_data if r.get("sol_id")))
             branch_map = {}
             if sol_ids:
