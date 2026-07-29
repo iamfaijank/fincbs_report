@@ -1204,11 +1204,26 @@ def build_agent_wise(selected_date=None):
 
 @frappe.whitelist()
 @sahayog_cache(ttl=86400)
-def get_rd_smbg_pending_table_data():
+def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
     from custom_report.db_connection import get_dr_connection
+    from datetime import datetime
     import json
 
-    query = """
+    if selected_date:
+        if isinstance(selected_date, str):
+            ref_date = selected_date
+        else:
+            ref_date = selected_date.strftime("%Y-%m-%d")
+    else:
+        ref_date = datetime.now().strftime("%Y-%m-%d")
+
+    sol_filter = ""
+    if sol_ids:
+        sol_list = [f"'{s.strip()}'" for s in sol_ids.split(",") if s.strip()]
+        if sol_list:
+            sol_filter = f" AND g.sol_id IN ({','.join(sol_list)})"
+
+    query = f"""
     WITH main_data AS (
         SELECT g.acid, g.sol_id, s.sol_desc, t.maturity_date, t.last_repayment_date,
                s.division_name, s.region_name, s.circle_office_name
@@ -1219,7 +1234,7 @@ def get_rd_smbg_pending_table_data():
             AND g.entity_cre_flg = 'Y'
             AND g.del_flg = 'N'
             AND g.acct_cls_flg = 'N'
-            AND t.maturity_date >= DATE '{ref_date}'
+            AND t.maturity_date >= DATE '{ref_date}'{sol_filter}
     ),
     tdt_summary AS (
         SELECT acid,
@@ -1509,6 +1524,9 @@ def get_daily_account_opening_data(selected_date=None):
         cursor.execute(query, (start_date_str, end_date_str))
         rows = cursor.fetchall()
         
+        if not rows:
+            frappe.throw(f"No Daily Account Opening data found for the selected date: {selected_date}. Please select a different date.")
+        
         # Look up zones / regions from local Sahayog Branch
         sol_ids_found = [str(r[2]).strip() for r in rows] if rows else []
         branch_map = {}
@@ -1626,6 +1644,7 @@ def get_ntb_evr_data(selected_date=None):
     report_end_str = str(report_end)
     opening_start_str = str(prev_month_start)
     opening_end_str = str(prev_month_end)
+    ref_date = report_end_str
 
     query = f"""
     WITH excluded_accts AS (
@@ -1752,6 +1771,9 @@ def get_ntb_evr_data(selected_date=None):
         cursor = conn.cursor()
         cursor.execute(query)
         rows = cursor.fetchall()
+        
+        if not rows:
+            frappe.throw(f"No NTB & EVR data found for the selected date: {selected_date}. Please select a different date.")
 
         branch_map = {}
         for row in rows:
@@ -1822,6 +1844,7 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
     report_end_str = str(report_end)
     opening_start_str = str(prev_month_start)
     opening_end_str = str(prev_month_end)
+    ref_date = report_end_str
 
     if dt.month >= 4:
         fy_start_year = dt.year
@@ -2077,6 +2100,7 @@ def get_product_wise_casa(selected_date=None):
     
     opening_start_str = prev_month_start.strftime("%Y-%m-%d")
     opening_end_str = prev_month_end.strftime("%Y-%m-%d")
+    ref_date = report_end_str
     
     # Financial year start (April 1st)
     if dt.month >= 4:
@@ -2981,7 +3005,6 @@ def get_gl_wise_ch_report_data(selected_date=None):
     if not selected_date:
         return {"product_wise": [], "all_products": []}
 
-    # Fetch raw product wise report data without joins
     raw_data_db = frappe.db.sql("""
         SELECT
             zone,
@@ -2994,6 +3017,9 @@ def get_gl_wise_ch_report_data(selected_date=None):
         WHERE date = %s
         GROUP BY zone, region, sol_id, product, scheme_code
     """, (selected_date,), as_dict=True)
+
+    if not raw_data_db:
+        frappe.throw(f"No data available in GL Wise CH Report for the selected date: {selected_date}. Please select a different date.")
 
     prod_map = get_products_map_cached()
     branches_map = get_sahayog_branches_cached()
@@ -5392,7 +5418,7 @@ def get_bucket_wise_account_mis_data(selected_date=None):
     if not selected_date:
         selected_date = str(datetime.date.today())
 
-    records = frappe.db.get_all("DD Tracker Report", filters={"date": selected_date}, fields=["sol_id", "regular_count", "sma0_count", "sma1_count", "sma2_count", "npa_count", "total_count"])
+    records = frappe.db.get_all("DD Tracker Report", filters={"date": selected_date}, fields=["sol_id", "colle_category", "sma0_count", "sma1_count", "sma2_count", "npa_count"])
     
     if not records:
         return {"summary": [], "total_records": 0}
@@ -5429,10 +5455,21 @@ def get_bucket_wise_account_mis_data(selected_date=None):
                 "grand_total": 0
             }
 
-        summary[key]["A"] += r.sma0_count or 0
-        summary[key]["B"] += r.sma1_count or 0
-        summary[key]["C"] += r.sma2_count or 0
-        summary[key]["D"] += r.npa_count or 0
+        cat = r.colle_category
+        if cat and cat in summary[key]:
+            summary[key][cat] += 1
+        else:
+            if r.sma0_count:
+                summary[key]["A"] += r.sma0_count
+            elif r.sma1_count:
+                summary[key]["B"] += r.sma1_count
+            elif r.sma2_count:
+                summary[key]["C"] += r.sma2_count
+            elif r.npa_count:
+                summary[key]["D"] += r.npa_count
+            else:
+                summary[key]["DEFAULT"] += 1
+
         summary[key]["grand_total"] += 1
         total_recs += 1
 

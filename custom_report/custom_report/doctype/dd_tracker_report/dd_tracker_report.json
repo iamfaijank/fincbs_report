@@ -23,7 +23,8 @@
   "monthly_demand",
   "monthly_collection",
   "agent_code",
-  "agent_name"
+  "agent_name",
+  "colle_category"
  ],
  "fields": [
   {
@@ -120,6 +121,11 @@
    "fieldname": "agent_name",
    "fieldtype": "Data",
    "label": "Agent Name"
+  },
+  {
+   "fieldname": "colle_category",
+   "fieldtype": "Data",
+   "label": "Collection Category"
   }
  ],
  "grid_page_length": 50,

@@ -56,7 +56,7 @@ def sync_dd_tracker_data(sync_date):
         "date", "sol_id", "agent_code", "agent_name", "auth_id", "auth_name",
         "monthly_demand", "monthly_collection", "account_number", "customer_name",
         "opening_date", "product", "amount", "regular_count", "sma0_count",
-        "sma1_count", "sma2_count", "npa_count", "total_count"
+        "sma1_count", "sma2_count", "npa_count", "total_count", "colle_category"
     ]
     
     values = []
@@ -64,6 +64,7 @@ def sync_dd_tracker_data(sync_date):
     
     if raw_data:
         for row in raw_data:
+            cat = row.get("colle_category") or "DEFAULT"
             values.append((
                 frappe.generate_hash(length=10),  # name
                 now_str,  # creation
@@ -84,12 +85,13 @@ def sync_dd_tracker_data(sync_date):
                 row.get("acct_opn_date"),
                 row.get("schm_code") or "",
                 row.get("deposit_amount") or 0.0,
-                1 if row.get("colle_category") == "Regular" else 0,
-                1 if row.get("colle_category") in ["A", "Excess"] else 0,
-                1 if row.get("colle_category") == "B" else 0,
-                1 if row.get("colle_category") == "C" else 0,
-                1 if row.get("colle_category") in ["D", "DEFAULT"] else 0,
-                1
+                1 if cat == "Regular" else 0,
+                1 if cat == "A" else 0,
+                1 if cat == "B" else 0,
+                1 if cat == "C" else 0,
+                1 if cat == "D" else 0,
+                1,
+                cat
             ))
             
     total_records = len(values)

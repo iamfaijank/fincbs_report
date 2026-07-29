@@ -1620,6 +1620,8 @@ class DrishtiDashboard {
 				tableData: [],
 				allProducts: [],
 				expandedZones: {},
+				expandedRegions: {},
+				expandedDistricts: {},
 				searchTerm: "",
 				selectedMisZones: [],
 				checkedRows: {},
@@ -1666,6 +1668,7 @@ class DrishtiDashboard {
 							}
 							container.find("#mis-loading").hide();
 							container.find("#mis-controls, #mis-table-container, #mis-zone-filter-row").show();
+							self.attachReportEventHandlers(container, dashboardInstance);
 						}
 					});
 					self.attachReportEventHandlers(container, dashboardInstance);
@@ -6522,8 +6525,8 @@ class DrishtiDashboard {
 				this.dateControl.set_value(null);
 				this.isRefreshingDate = false;
 			}
-			// Load data with today's date (default) - but don't show it in selector
-			this.loadDataWithDate(frappe.datetime.get_today());
+			// Load data with yesterday's date (default) - but don't show it in selector
+			this.loadDataWithDate(frappe.datetime.add_days(frappe.datetime.get_today(), -1));
 		}
 
 		this.updateUiFromState();
@@ -6538,7 +6541,7 @@ class DrishtiDashboard {
 			dateStr ||
 			this.state.selectedDate ||
 			this.getPreviousFinancialYearDefaultDate() ||
-			frappe.datetime.get_today();
+			frappe.datetime.add_days(frappe.datetime.get_today(), -1);
 
 		// Show loading skeleton in data container
 		const dataContainer = this.page.main.find("#data-container");
@@ -6702,7 +6705,7 @@ class DrishtiDashboard {
 		const apiDate =
 			this.state.selectedDate ||
 			this.getPreviousFinancialYearDefaultDate() ||
-			frappe.datetime.get_today();
+			frappe.datetime.add_days(frappe.datetime.get_today(), -1);
 
 		const reqArgs = {
 			financial_year: this.state.financialYear,
