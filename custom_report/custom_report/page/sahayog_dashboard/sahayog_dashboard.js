@@ -5840,7 +5840,7 @@ class DrishtiDashboard {
 		container.append(`
             <button class="filter-tag category-tag all-tag ${
 				allCategoriesActive ? "active" : ""
-			}" data-category="all">
+			}" data-category="all" style="--fill-pct: ${percentages["all"]}%; --fill-color: #cbd5e133; color: #475569;">
                 <span class="category-tag-content">
                     All
                     <span class="filter-tag-count">${allCategoriesCount}</span>
@@ -5858,7 +5858,7 @@ class DrishtiDashboard {
 			container.append(`
                 <button class="filter-tag category-tag ${isActive ? "active" : ""}" 
                         data-category="${category}" 
-                        style="border-left: 3px solid ${color}; color: ${color};">
+                        style="--fill-pct: ${pct}%; --fill-color: ${color}26; color: ${color};">
                     <span class="category-tag-content">
                         ${category}
                         <span class="filter-tag-count">${count}</span>
@@ -8295,7 +8295,7 @@ class DrishtiDashboard {
             <tr class="category-row-redesigned" data-category="${catName}" style="border-left: 5px solid ${
 				config.color
 			};">
-                <td class="cat-name-cell">
+                <td class="cat-name-cell" style="--fill-pct: ${percentage}%; --fill-color: ${config.color}26;">
                     <span class="category-toggle">${isExpanded ? "▼" : "▶"}</span>
                     <span class="cat-grade" style="background-color: ${config.color};">${
 						config.grade
@@ -9498,6 +9498,15 @@ class DrishtiDashboard {
                     gap: 6px !important;
                     font-size: 13px;
                     font-weight: 600;
+                    background-image: linear-gradient(to right, var(--fill-color, transparent) var(--fill-pct, 0%), #ffffff var(--fill-pct, 0%));
+                }
+
+                .category-tag:hover {
+                    background-image: linear-gradient(to right, var(--fill-color, transparent) var(--fill-pct, 0%), #f8fafc var(--fill-pct, 0%)) !important;
+                }
+
+                .category-tag.active {
+                    background-image: none !important;
                 }
 
                 .category-tag .filter-tag-count {
@@ -9562,10 +9571,6 @@ class DrishtiDashboard {
                     box-shadow: 0 4px 12px rgba(153, 27, 27, 0.25);
                 }
 
-                /* Ensure active category tag left border looks clean */
-                .category-tag.active {
-                    border-left-width: 1px !important;
-                }
 
                 /* Toggle Button Styles */
                 .btn-group .btn {
@@ -10116,12 +10121,17 @@ class DrishtiDashboard {
                 .popup-section.improved .diff-change { color: #10b981; }
                 .popup-section.declined .diff-change { color: #dc2626; }
 
-                /* Category Row Expansion & Drilldown */
                 .category-row-redesigned {
                     cursor: pointer;
                 }
                 .category-row-redesigned:hover {
                     background-color: #f8f9fa;
+                }
+                .category-row-redesigned .cat-name-cell {
+                    background-image: linear-gradient(to right, var(--fill-color, transparent) var(--fill-pct, 0%), #ffffff var(--fill-pct, 0%));
+                }
+                .category-row-redesigned:hover .cat-name-cell {
+                    background-image: linear-gradient(to right, var(--fill-color, transparent) var(--fill-pct, 0%), #f8f9fa var(--fill-pct, 0%)) !important;
                 }
                 .count-cell .drill-link {
                     color: #007bff;
