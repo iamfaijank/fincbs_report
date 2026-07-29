@@ -14,7 +14,7 @@ const casaAvgData = ref([
 </script>
 
 <template>
-  <div class="sb-card card-table overflow-x-auto">
+  <div class="sb-card card-table">
     <table class="w-full border-collapse text-sm whitespace-nowrap">
       <thead class="sticky top-0 z-10">
         <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">

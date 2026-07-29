@@ -96,7 +96,7 @@ function getZoneTotals(zoneData) {
   <div>
     <SummaryCardGroup :cards="summaryCards" :cols="4" />
 
-    <div class="sb-card card-table overflow-x-auto">
+    <div class="sb-card card-table">
       <table class="w-full border-collapse text-sm">
         <thead>
           <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">

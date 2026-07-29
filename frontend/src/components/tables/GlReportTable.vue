@@ -111,7 +111,7 @@ function getZoneTotals(zone) {
 </script>
 
 <template>
-  <div class="sb-card card-table overflow-x-auto">
+  <div class="sb-card card-table">
     <table class="w-full border-collapse text-sm">
       <thead>
         <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">

@@ -129,7 +129,7 @@ function formatNum(val, field) {
     <SummaryCardGroup :cards="summaryCards" :cols="5" />
 
     <div class="sb-card card-table">
-      <div class="overflow-x-auto">
+      <div>
         <table class="w-full">
           <thead>
             <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">

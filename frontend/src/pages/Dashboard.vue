@@ -66,7 +66,7 @@ const drishtiCards = [
       </div>
     </div>
 
-    <div class="flex-1 min-h-0 overflow-y-auto">
+    <div class="flex-1 min-h-0 overflow-auto">
       <ZoneWiseTable v-if="activeView === 'drishti' && activeTab === 'zone'" />
       <CategoryWiseTable v-if="activeView === 'drishti' && activeTab === 'category'" />
       <ProductWiseTable v-if="activeView === 'drishti' && activeTab === 'product'" />

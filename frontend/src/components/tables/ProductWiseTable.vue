@@ -53,7 +53,7 @@ const grandTotal = computed(() => {
 <template>
   <div class="sb-card card-table">
     <div v-if="loading" class="p-8 text-center text-sm text-[var(--text3)]">Loading...</div>
-    <div v-else class="overflow-x-auto">
+    <div v-else>
       <table class="w-full">
         <thead>
           <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
