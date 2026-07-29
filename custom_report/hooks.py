@@ -185,6 +185,9 @@ scheduler_events = {
 		],
 		"30 8 * * *": [
 			"custom_report.custom_report.doctype.book_position_and_account_details.book_position_and_account_details.daily_sync_book_position"
+		],
+		"40 8 * * *": [
+			"custom_report.custom_report.doctype.dd_tracker_report.dd_tracker_report.daily_sync_dd_tracker"
 		]
 	}
 }
