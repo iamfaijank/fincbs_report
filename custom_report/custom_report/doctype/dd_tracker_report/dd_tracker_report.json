@@ -1,0 +1,152 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-07-29 16:51:03.951344",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "date",
+  "account_number",
+  "customer_name",
+  "opening_date",
+  "product",
+  "amount",
+  "regular_count",
+  "sma0_count",
+  "sma1_count",
+  "sma2_count",
+  "npa_count",
+  "total_count",
+  "sol_id",
+  "auth_id",
+  "auth_name",
+  "monthly_demand",
+  "monthly_collection",
+  "agent_code",
+  "agent_name"
+ ],
+ "fields": [
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fieldname": "account_number",
+   "fieldtype": "Data",
+   "label": "Account Number"
+  },
+  {
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name"
+  },
+  {
+   "fieldname": "opening_date",
+   "fieldtype": "Date",
+   "label": "Opening Date"
+  },
+  {
+   "fieldname": "product",
+   "fieldtype": "Data",
+   "label": "Product"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount"
+  },
+  {
+   "fieldname": "regular_count",
+   "fieldtype": "Int",
+   "label": "Regular Count"
+  },
+  {
+   "fieldname": "sma0_count",
+   "fieldtype": "Int",
+   "label": "SMA0 Count"
+  },
+  {
+   "fieldname": "sma1_count",
+   "fieldtype": "Int",
+   "label": "SMA1 Count"
+  },
+  {
+   "fieldname": "sma2_count",
+   "fieldtype": "Int",
+   "label": "SMA2 Count"
+  },
+  {
+   "fieldname": "npa_count",
+   "fieldtype": "Int",
+   "label": "NPA Count"
+  },
+  {
+   "fieldname": "total_count",
+   "fieldtype": "Int",
+   "label": "Total Count"
+  },
+  {
+   "fieldname": "sol_id",
+   "fieldtype": "Data",
+   "label": "Sol ID"
+  },
+  {
+   "fieldname": "auth_id",
+   "fieldtype": "Data",
+   "label": "Auth ID"
+  },
+  {
+   "fieldname": "auth_name",
+   "fieldtype": "Data",
+   "label": "Auth Name"
+  },
+  {
+   "fieldname": "monthly_demand",
+   "fieldtype": "Data",
+   "label": "Monthly Demand"
+  },
+  {
+   "fieldname": "monthly_collection",
+   "fieldtype": "Data",
+   "label": "Monthly Collection"
+  },
+  {
+   "fieldname": "agent_code",
+   "fieldtype": "Data",
+   "label": "Agent Code"
+  },
+  {
+   "fieldname": "agent_name",
+   "fieldtype": "Data",
+   "label": "Agent Name"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-29 18:01:19.124492",
+ "modified_by": "Administrator",
+ "module": "custom_report",
+ "name": "DD Tracker Report",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
