@@ -52,6 +52,7 @@ const formattedDate = new Date().toLocaleDateString('en-US', {
 
       <div class="header-date">{{ formattedDate }}</div>
 
+      <!-- Visualize button (hidden for now)
       <button class="visualize-btn" title="Open analytics visualizations">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
@@ -60,6 +61,8 @@ const formattedDate = new Date().toLocaleDateString('en-US', {
         </svg>
         Visualize
       </button>
+      -->
+
       <a href="/app/sahayog-home" class="ml-2 flex h-7 w-7 items-center justify-center rounded-md text-[var(--text3)] transition hover:bg-[var(--bg2)] hover:text-[var(--text)]" title="Go to Home">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>

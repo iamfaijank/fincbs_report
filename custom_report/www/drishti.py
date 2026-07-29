@@ -65,14 +65,29 @@ def get_report_preference():
 
 @frappe.whitelist(methods=["POST"], allow_guest=True)
 def get_filter_options():
+	cache_key = "drishti_filter_options"
+	cached = frappe.cache().get_value(cache_key)
+	print(f"[Drishti] Cache check: {'HIT' if cached else 'MISS'} (key={cache_key})")
+	if cached:
+		return cached
+
+	print("[Drishti] Fetching filter options from DB...")
 	zones = frappe.get_all("Zone", fields=["name"], order_by="name asc")
 	regions = frappe.get_all("Region", fields=["name"], order_by="name asc")
-	districts = frappe.get_all("District", fields=["name"], order_by="name asc")
-	sol_ids = frappe.get_all("Sol ID", fields=["name"], order_by="name asc") if frappe.db.exists("DocType", "Sol ID") else []
 
-	return {
+	districts = []
+	branches = []
+	if frappe.db.exists("DocType", "Sahayog Branch"):
+		districts = frappe.get_all("Sahayog Branch", filters={"district": ["is", "set"]}, fields=["district"], group_by="district", order_by="district asc")
+		branches = frappe.get_all("Sahayog Branch", filters={"branch": ["is", "set"]}, fields=["branch", "name", "sol_id"], order_by="branch asc")
+
+	result = {
 		"zones": [z.name for z in zones],
 		"regions": [r.name for r in regions],
-		"districts": [d.name for d in districts],
-		"sol_ids": [s.name for s in sol_ids],
+		"districts": [d.district for d in districts],
+		"branches": [{"label": f"{b.branch} ({b.name})", "value": b.name} for b in branches],
 	}
+
+	frappe.cache().set_value(cache_key, result, expires_in_sec=30)
+	print(f"[Drishti] Cached filter options for 30s")
+	return result
