@@ -713,12 +713,12 @@
 		}
 		
 		/* Default Font Colors */
-		.hierarchy-badge[data-level="pinnacle"] { color: #0F766E; }
-		.hierarchy-badge[data-level="master"] { color: #15803D; }
-		.hierarchy-badge[data-level="accelerator"] { color: #65A30D; }
+		.hierarchy-badge[data-level="pinnacle"] { color: #6D28D9; }
+		.hierarchy-badge[data-level="master"] { color: #1D4ED8; }
+		.hierarchy-badge[data-level="accelerator"] { color: #047857; }
 		.hierarchy-badge[data-level="starter"] { color: #B45309; }
-		.hierarchy-badge[data-level="learner"] { color: #C2410C; }
-		.hierarchy-badge[data-level="zero"] { color: #B91C1C; }
+		.hierarchy-badge[data-level="learner"] { color: #BE185D; }
+		.hierarchy-badge[data-level="zero"] { color: #991B1B; }
 
 		.hierarchy-badge .criteria {
 			font-size: 9px;
@@ -739,11 +739,11 @@
 		}
 		
 		/* Active state backgrounds and borders */
-		.hierarchy-badge.active[data-level="pinnacle"] { background: #EAFBF3; border-color: #99F6E4; }
-		.hierarchy-badge.active[data-level="master"] { background: #EEF9F1; border-color: #BBF7D0; }
-		.hierarchy-badge.active[data-level="accelerator"] { background: #F5FAEA; border-color: #D9F99D; }
-		.hierarchy-badge.active[data-level="starter"] { background: #FFF8E8; border-color: #FDE68A; }
-		.hierarchy-badge.active[data-level="learner"] { background: #FFF3EB; border-color: #FED7AA; }
+		.hierarchy-badge.active[data-level="pinnacle"] { background: #F5F3FF; border-color: #C4B5FD; }
+		.hierarchy-badge.active[data-level="master"] { background: #EFF6FF; border-color: #93C5FD; }
+		.hierarchy-badge.active[data-level="accelerator"] { background: #ECFDF5; border-color: #6EE7B7; }
+		.hierarchy-badge.active[data-level="starter"] { background: #FFFBEB; border-color: #FDE68A; }
+		.hierarchy-badge.active[data-level="learner"] { background: #FDF2F8; border-color: #F9A8D4; }
 		.hierarchy-badge.active[data-level="zero"] { background: #FEF2F2; border-color: #FECACA; }
 
 		/* Financial Table Styles */
@@ -2911,15 +2911,15 @@
 					this.el.catAchievementVal.textContent = this.formatAmount(data.achievement);
 					this.el.catPercentageVal.textContent = data.percentage;
 
-					// Apply Color to performanceStatus, percentage and section background
+					// Apply Color to performanceStatus and percentage
 					const categoryConfig = {
-						"Pinnacle":    { text: "#0F766E", bg: "#EAFBF3", border: "#99F6E4" },
-						"Master":      { text: "#15803D", bg: "#EEF9F1", border: "#BBF7D0" },
-						"Accelerator": { text: "#65A30D", bg: "#F5FAEA", border: "#D9F99D" },
-						"Starter":     { text: "#B45309", bg: "#FFF8E8", border: "#FDE68A" },
-						"Learner":     { text: "#C2410C", bg: "#FFF3EB", border: "#FED7AA" },
-						"Zero Level":  { text: "#B91C1C", bg: "#FEF2F2", border: "#FECACA" },
-						"Zero":        { text: "#B91C1C", bg: "#FEF2F2", border: "#FECACA" }
+						"Pinnacle":    { text: "#6D28D9", bg: "#F5F3FF", border: "#C4B5FD" }, // Purple
+						"Master":      { text: "#1D4ED8", bg: "#EFF6FF", border: "#93C5FD" }, // Blue
+						"Accelerator": { text: "#047857", bg: "#ECFDF5", border: "#6EE7B7" }, // Emerald/Teal
+						"Starter":     { text: "#B45309", bg: "#FFFBEB", border: "#FDE68A" }, // Amber
+						"Learner":     { text: "#BE185D", bg: "#FDF2F8", border: "#F9A8D4" }, // Magenta
+						"Zero Level":  { text: "#991B1B", bg: "#FEF2F2", border: "#FECACA" }, // Deep Red
+						"Zero":        { text: "#991B1B", bg: "#FEF2F2", border: "#FECACA" }
 					};
 					const config = categoryConfig[data.category] || { text: "var(--primary-1)", bg: "#fff", border: "#e2e8f0" };
 					if (this.el.performanceStatus) this.el.performanceStatus.style.color = config.text;
