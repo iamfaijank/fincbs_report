@@ -3192,7 +3192,7 @@ def get_gl_wise_ch_report_data(selected_date=None):
   
 @frappe.whitelist()
 @sahayog_cache(ttl=86400)
-def get_bucket_wise_account_mis_data(selected_date=None):
+def get_bucket_wise_account_mis_data_old(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate
     import datetime
@@ -3576,7 +3576,7 @@ def get_bucket_wise_account_mis_data(selected_date=None):
 
 @frappe.whitelist()
 @sahayog_cache(ttl=86400)
-def get_new_account_report_data(selected_date=None):
+def get_new_account_report_data_old(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate
     import datetime
@@ -4010,7 +4010,7 @@ def get_new_account_report_data(selected_date=None):
 
 @frappe.whitelist()
 @sahayog_cache(ttl=86400)
-def get_staff_wise_demand_collection_data(selected_date=None):
+def get_staff_wise_demand_collection_data_old(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate
     import datetime
@@ -4435,7 +4435,7 @@ def get_staff_wise_demand_collection_data(selected_date=None):
 
 @frappe.whitelist()
 @sahayog_cache(ttl=86400)
-def get_agent_wise_demand_collection_data(selected_date=None):
+def get_agent_wise_demand_collection_data_old(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate
     import datetime
@@ -5248,3 +5248,293 @@ def get_raw_demand_collection_data(selected_date=None):
                 time.sleep(2)
             else:
                 return []
+
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_agent_wise_demand_collection_data(selected_date=None):
+    import datetime
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    records = frappe.db.get_all("DD Tracker Report", filters={"date": selected_date}, fields=["sol_id", "agent_code", "agent_name", "monthly_demand", "monthly_collection"])
+    
+    if not records:
+        return []
+
+    sol_ids = list(set(r.sol_id for r in records if r.sol_id))
+    branches_map = get_sahayog_branches_cached()
+    branch_map = {}
+    for sid in sol_ids:
+        b = branches_map.get(sid, {})
+        branch_map[sid] = {
+            "zone": b.get("zone", "Unknown"),
+            "region": b.get("region", "Unknown"),
+            "district": b.get("district", "Unknown"),
+            "branch_name": b.get("branch_name", sid)
+        }
+
+    summary = {}
+    for r in records:
+        sid = r.sol_id
+        if not sid:
+            continue
+        br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
+        rm_id = r.agent_code or "Unknown"
+        rm_name = r.agent_name or "Unknown"
+
+        key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{rm_id}||{rm_name}"
+        if key not in summary:
+            summary[key] = {
+                "zone": br["zone"],
+                "region": br["region"],
+                "district": br["district"],
+                "sol_id": sid,
+                "sol_desc": br["branch_name"],
+                "rm_id": rm_id,
+                "rm_name": rm_name,
+                "monthly_demand_amount": 0.0,
+                "monthly_collection": 0.0
+            }
+
+        summary[key]["monthly_demand_amount"] += float(r.monthly_demand or 0)
+        summary[key]["monthly_collection"] += float(r.monthly_collection or 0)
+
+    result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+    return result
+
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_staff_wise_demand_collection_data(selected_date=None):
+    import datetime
+    import re
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    records = frappe.db.get_all("DD Tracker Report", filters={"date": selected_date}, fields=["sol_id", "auth_id", "auth_name", "monthly_demand", "monthly_collection"])
+    
+    if not records:
+        return []
+
+    sol_ids = list(set(r.sol_id for r in records if r.sol_id))
+    branches_map = get_sahayog_branches_cached()
+    branch_map = {}
+    for sid in sol_ids:
+        b = branches_map.get(sid, {})
+        branch_map[sid] = {
+            "zone": b.get("zone", "Unknown"),
+            "region": b.get("region", "Unknown"),
+            "district": b.get("district", "Unknown"),
+            "branch_name": b.get("branch_name", sid)
+        }
+
+    emp_ids = set()
+    for r in records:
+        auth_id = r.auth_id
+        if auth_id and auth_id != "Unknown":
+            digits = re.findall(r'\d+', auth_id)
+            if digits:
+                try:
+                    emp_id = str(int(''.join(digits)))
+                    emp_ids.add(emp_id)
+                except ValueError:
+                    pass
+    
+    designation_map = {}
+    if emp_ids:
+        employees = frappe.get_all("Employee", filters={"name": ["in", list(emp_ids)]}, fields=["name", "designation"])
+        for emp in employees:
+            designation_map[emp.name] = emp.designation or ""
+
+    summary = {}
+    for r in records:
+        sid = r.sol_id
+        if not sid:
+            continue
+        br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
+        auth_id = r.auth_id or "Unknown"
+        auth_name = r.auth_name or "Unknown"
+
+        designation = ""
+        if auth_id and auth_id != "Unknown":
+            digits = re.findall(r'\d+', auth_id)
+            if digits:
+                try:
+                    emp_id = str(int(''.join(digits)))
+                    designation = designation_map.get(emp_id) or ""
+                except ValueError:
+                    pass
+
+        key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{auth_id}||{auth_name}||{designation}"
+        if key not in summary:
+            summary[key] = {
+                "zone": br["zone"],
+                "region": br["region"],
+                "district": br["district"],
+                "sol_id": sid,
+                "sol_desc": br["branch_name"],
+                "auth_id": auth_id,
+                "auth_name": auth_name,
+                "designation": designation,
+                "monthly_demand_amount": 0.0,
+                "monthly_collection": 0.0
+            }
+
+        summary[key]["monthly_demand_amount"] += float(r.monthly_demand or 0)
+        summary[key]["monthly_collection"] += float(r.monthly_collection or 0)
+
+    result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+    return result
+
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_bucket_wise_account_mis_data(selected_date=None):
+    import datetime
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    records = frappe.db.get_all("DD Tracker Report", filters={"date": selected_date}, fields=["sol_id", "regular_count", "sma0_count", "sma1_count", "sma2_count", "npa_count", "total_count"])
+    
+    if not records:
+        return {"summary": [], "total_records": 0}
+
+    sol_ids = list(set(r.sol_id for r in records if r.sol_id))
+    branches_map = get_sahayog_branches_cached()
+    branch_map = {}
+    for sid in sol_ids:
+        b = branches_map.get(sid, {})
+        branch_map[sid] = {
+            "zone": b.get("zone", "Unknown"),
+            "region": b.get("region", "Unknown"),
+            "district": b.get("district", "Unknown"),
+            "branch_name": b.get("branch_name", sid)
+        }
+
+    summary = {}
+    total_recs = 0
+    for r in records:
+        sid = r.sol_id
+        if not sid:
+            continue
+        br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
+        
+        key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}"
+        if key not in summary:
+            summary[key] = {
+                "zone": br["zone"],
+                "region": br["region"],
+                "district": br["district"],
+                "sol_id": sid,
+                "sol_desc": br["branch_name"],
+                "Excess": 0, "A": 0, "B": 0, "C": 0, "D": 0, "DEFAULT": 0,
+                "grand_total": 0
+            }
+
+        summary[key]["A"] += r.sma0_count or 0
+        summary[key]["B"] += r.sma1_count or 0
+        summary[key]["C"] += r.sma2_count or 0
+        summary[key]["D"] += r.npa_count or 0
+        summary[key]["grand_total"] += 1
+        total_recs += 1
+
+    result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+    return {"summary": result, "total_records": total_recs}
+
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_new_account_report_data(selected_date=None):
+    from frappe.utils import getdate
+    import datetime
+    import re
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    dt = getdate(selected_date)
+
+    records = frappe.db.get_all("DD Tracker Report", filters={"date": selected_date}, fields=["sol_id", "auth_id", "auth_name", "amount", "opening_date"])
+    
+    if not records:
+        return []
+
+    sol_ids = list(set(r.sol_id for r in records if r.sol_id))
+    branches_map = get_sahayog_branches_cached()
+    branch_map = {}
+    for sid in sol_ids:
+        b = branches_map.get(sid, {})
+        branch_map[sid] = {
+            "zone": b.get("zone", "Unknown"),
+            "region": b.get("region", "Unknown"),
+            "district": b.get("district", "Unknown"),
+            "branch_name": b.get("branch_name", sid)
+        }
+
+    emp_ids = set()
+    for r in records:
+        auth_id = r.auth_id
+        if auth_id and auth_id != "Unknown":
+            digits = re.findall(r'\d+', auth_id)
+            if digits:
+                try:
+                    emp_id = str(int(''.join(digits)))
+                    emp_ids.add(emp_id)
+                except ValueError:
+                    pass
+    
+    designation_map = {}
+    if emp_ids:
+        employees = frappe.get_all("Employee", filters={"name": ["in", list(emp_ids)]}, fields=["name", "designation"])
+        for emp in employees:
+            designation_map[emp.name] = emp.designation or ""
+
+    summary = {}
+    for r in records:
+        sid = r.sol_id
+        if not sid:
+            continue
+            
+        opn_dt_str = r.opening_date
+        is_new = False
+        if opn_dt_str:
+            try:
+                opn_dt = getdate(opn_dt_str)
+                if opn_dt.month == dt.month and opn_dt.year == dt.year:
+                    is_new = True
+            except Exception:
+                pass
+                
+        if not is_new:
+            continue
+            
+        br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
+        auth_id = r.auth_id or "Unknown"
+        auth_name = r.auth_name or "Unknown"
+
+        designation = ""
+        if auth_id and auth_id != "Unknown":
+            digits = re.findall(r'\d+', auth_id)
+            if digits:
+                try:
+                    emp_id = str(int(''.join(digits)))
+                    designation = designation_map.get(emp_id) or ""
+                except ValueError:
+                    pass
+
+        key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{auth_id}||{auth_name}||{designation}"
+        if key not in summary:
+            summary[key] = {
+                "zone": br["zone"],
+                "region": br["region"],
+                "district": br["district"],
+                "sol_id": sid,
+                "sol_desc": br["branch_name"],
+                "auth_id": auth_id,
+                "auth_name": auth_name,
+                "designation": designation,
+                "new_ac": 0,
+                "deposit_amount": 0.0
+            }
+
+        summary[key]["new_ac"] += 1
+        summary[key]["deposit_amount"] += float(r.amount or 0)
+
+    result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+    return result
