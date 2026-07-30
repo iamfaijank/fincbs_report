@@ -195,12 +195,37 @@ def get_book_position_details(sol_id: str):
         result["rd_accounts_opened"] + result["dds_accounts_opened"] + result["smbg_accounts_opened"] + result["dam_accounts_opened"]
     )
     
-    result["total_accounts_total"] = (
-        result["sa_accounts_total"] + result["ca_accounts_total"] + result["fd_accounts_total"] +
-        result["rd_accounts_total"] + result["dds_accounts_total"] + result["smbg_accounts_total"] + result["dam_accounts_total"]
+    # Fetch DDS Demand, Collection, and Demand vs Collection from 'DD Tracker Report' for this sol_id
+    dd_latest_date = frappe.db.get_value(
+        "DD Tracker Report",
+        {"sol_id": sol_id},
+        "date",
+        order_by="date desc"
     )
+    if not dd_latest_date:
+        dd_latest_date = frappe.db.get_value(
+            "DD Tracker Report",
+            {},
+            "date",
+            order_by="date desc"
+        )
 
-    
+    dds_demand = 0.0
+    dds_collection = 0.0
+    if dd_latest_date:
+        dd_records = frappe.db.get_all(
+            "DD Tracker Report",
+            filters={"sol_id": sol_id, "date": dd_latest_date},
+            fields=["monthly_demand", "monthly_collection"]
+        )
+        for r in dd_records:
+            dds_demand += flt(r.monthly_demand)
+            dds_collection += flt(r.monthly_collection)
+
+    result["dds_demand"] = dds_demand
+    result["dds_collection"] = dds_collection
+    result["dds_demand_vs_collection"] = (dds_collection / dds_demand * 100.0) if dds_demand > 0 else 0.0
+
     return result
 
 
