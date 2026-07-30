@@ -1028,6 +1028,10 @@
 			background: #ec4899;
 		}
 
+		.acc-dot.dam {
+			background: #06b6d4;
+		}
+
 		/* FY Filter Styles */
 		.fy-filter-wrapper {
 			display: flex;
@@ -1917,6 +1921,23 @@
 									</div>
 								</td>
 							</tr>
+							<tr class="sub-item">
+								<td class="label-col">
+									<span class="acc-dot dam"></span>
+									<span>DAM DUPPAT (DAM)</span>
+								</td>
+								<td class="amount-col">
+									<span id="dam-book">--</span>
+								</td>
+								<td class="bar-col">
+									<div class="bar-wrapper">
+										<div class="comp-bar-bg">
+											<div class="comp-bar-fill" id="dam-book-bar"></div>
+										</div>
+										<span class="perc-share" id="dam-book-perc">--</span>
+									</div>
+								</td>
+							</tr>
 						</tbody>
 					</table>
 				</div>
@@ -2068,6 +2089,26 @@
 											<div class="comp-bar-fill" id="smbg-cust-bar"></div>
 										</div>
 										<span class="perc-share" id="smbg-cust-perc">--</span>
+									</div>
+								</td>
+							</tr>
+							<tr class="sub-item">
+								<td class="label-col">
+									<span class="acc-dot dam"></span>
+									<span>DAM DUPPAT (DAM)</span>
+								</td>
+								<td class="amount-col">
+									<span id="dam-accounts-opened">--</span>
+								</td>
+								<td class="amount-col">
+									<span id="total-dam-no-of-customers">--</span>
+								</td>
+								<td class="bar-col">
+									<div class="bar-wrapper">
+										<div class="comp-bar-bg">
+											<div class="comp-bar-fill" id="dam-cust-bar"></div>
+										</div>
+										<span class="perc-share" id="dam-cust-perc">--</span>
 									</div>
 								</td>
 							</tr>
@@ -3085,6 +3126,7 @@
 					updateComp('rd-book', d.rd_book, totalBookVal);
 					updateComp('dds-book', d.dds_book, totalBookVal);
 					updateComp('smbg-book', d.smbg_book, totalBookVal);
+					updateComp('dam-book', d.dam_book, totalBookVal);
 
 					// --- COMPOSITION UPDATES (CUSTOMERS) ---
 					const totalCustVal = parseFloat(d.total_accounts_total) || 0;
@@ -3116,6 +3158,7 @@
 					updateCustComp('rd-accounts-opened', 'total-rd-no-of-customers', 'rd-cust', d.rd_accounts_opened, d.rd_accounts_total, totalCustVal);
 					updateCustComp('dds-accounts-opened', 'total-dds-no-of-customers', 'dds-cust', d.dds_accounts_opened, d.dds_accounts_total, totalCustVal);
 					updateCustComp('smbg-accounts-opened', 'total-smbg-no-of-customers', 'smbg-cust', d.smbg_accounts_opened, d.smbg_accounts_total, totalCustVal);
+					updateCustComp('dam-accounts-opened', 'total-dam-no-of-customers', 'dam-cust', d.dam_accounts_opened, d.dam_accounts_total || d.total_dam_no_of_customers, totalCustVal);
 
 					// Populate Demand & Collection Performance
 					this.el.ddCollection.textContent = this.formatAmount(d.dds_collection);

@@ -120,7 +120,7 @@ def get_book_position_details(sol_id: str):
 
     result = {
         "sa_book": 0.0, "ca_book": 0.0, "fd_book": 0.0,
-        "rd_book": 0.0, "dds_book": 0.0, "smbg_book": 0.0,
+        "rd_book": 0.0, "dds_book": 0.0, "smbg_book": 0.0, "dam_book": 0.0,
         "total_book": 0.0,
         
         "sa_accounts_opened": 0, "sa_accounts_total": 0,
@@ -129,6 +129,7 @@ def get_book_position_details(sol_id: str):
         "rd_accounts_opened": 0, "rd_accounts_total": 0,
         "dds_accounts_opened": 0, "dds_accounts_total": 0,
         "smbg_accounts_opened": 0, "smbg_accounts_total": 0,
+        "dam_accounts_opened": 0, "dam_accounts_total": 0,
         "total_accounts_opened": 0, "total_accounts_total": 0
     }
 
@@ -174,6 +175,10 @@ def get_book_position_details(sol_id: str):
             result["smbg_book"] += balance
             result["smbg_accounts_opened"] += opened
             result["smbg_accounts_total"] += total
+        elif g_name == "DAM":
+            result["dam_book"] += balance
+            result["dam_accounts_opened"] += opened
+            result["dam_accounts_total"] += total
             
         total_balance += balance
 
@@ -182,17 +187,17 @@ def get_book_position_details(sol_id: str):
     # Let's sum all mapped ones for composition 100%.
     result["total_book"] = (
         result["sa_book"] + result["ca_book"] + result["fd_book"] +
-        result["rd_book"] + result["dds_book"] + result["smbg_book"]
+        result["rd_book"] + result["dds_book"] + result["smbg_book"] + result["dam_book"]
     )
     
     result["total_accounts_opened"] = (
         result["sa_accounts_opened"] + result["ca_accounts_opened"] + result["fd_accounts_opened"] +
-        result["rd_accounts_opened"] + result["dds_accounts_opened"] + result["smbg_accounts_opened"]
+        result["rd_accounts_opened"] + result["dds_accounts_opened"] + result["smbg_accounts_opened"] + result["dam_accounts_opened"]
     )
     
     result["total_accounts_total"] = (
         result["sa_accounts_total"] + result["ca_accounts_total"] + result["fd_accounts_total"] +
-        result["rd_accounts_total"] + result["dds_accounts_total"] + result["smbg_accounts_total"]
+        result["rd_accounts_total"] + result["dds_accounts_total"] + result["smbg_accounts_total"] + result["dam_accounts_total"]
     )
 
     
