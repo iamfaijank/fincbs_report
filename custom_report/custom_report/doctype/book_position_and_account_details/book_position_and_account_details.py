@@ -85,6 +85,11 @@ def send_email_notification(status, sync_date, details_or_error=""):
 		frappe.log_error(f"Book Position Daily Sync Email Error: {e}", "Email Error")
 
 def daily_sync_book_position():
+	sync_enabled = frappe.db.get_single_value("Drishti Settings", "auto_sync") or frappe.db.get_single_value("Drishti Settings", "branch_category_report_sync")
+	if not sync_enabled:
+		frappe.logger("scheduler").info("Daily Book Position Sync: Sync is disabled in Drishti Settings. Skipping execution.")
+		return
+
 	# Sync data for yesterday (today - 1 day)
 	from frappe.utils import add_days, today
 	yesterday = add_days(today(), -1)
