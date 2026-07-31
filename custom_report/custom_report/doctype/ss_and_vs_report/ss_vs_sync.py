@@ -125,7 +125,7 @@ REPORT_CONFIG = {
 			"sol_id": "sol_id",
 			"sol_desc": "sol_description"
 		},
-		"unique_keys": ["date", "report_type", "foracid"]
+		"unique_keys": ["date", "report_type", "foracid", "rm_id", "scheme_code"]
 	},
 	"DD TDA": {
 		"query": """
@@ -260,7 +260,7 @@ REPORT_CONFIG = {
 			"sol_id": "sol_id",
 			"sol_desc": "sol_description"
 		},
-		"unique_keys": ["date", "report_type", "foracid"]
+		"unique_keys": ["date", "report_type", "foracid", "rm_id", "scheme_code"]
 	},
 	"RD": {
 		"query": """
@@ -377,8 +377,7 @@ REPORT_CONFIG = {
 				tran_data AS td ON ad.rm_id = td.rm_id AND ad.foracid = td.foracid AND ad.scheme_code = td.schm_code
 			LEFT JOIN 
 				reference_data AS rd ON ad.rm_id = rd.rm_id
-			WHERE 
-				(fd.total_flow_amount > 0 OR td.total_tran_amt > 0)
+			AND (fd.total_flow_amount > 0 OR td.total_tran_amt > 0)
 			ORDER BY 
 				ad.foracid, ad.rm_id, ad.scheme_code;
 		""",
@@ -395,7 +394,7 @@ REPORT_CONFIG = {
 			"sol_id": "sol_id",
 			"sol_desc": "sol_description"
 		},
-		"unique_keys": ["date", "report_type", "foracid"]
+		"unique_keys": ["date", "report_type", "foracid", "rm_id", "scheme_code"]
 	},
 	"SMBG": {
 		"query": """
@@ -525,7 +524,7 @@ REPORT_CONFIG = {
 			"sol_id": "sol_id",
 			"sol_desc": "sol_description"
 		},
-		"unique_keys": ["date", "report_type", "foracid"]
+		"unique_keys": ["date", "report_type", "foracid", "rm_id", "scheme_code"]
 	},
 	"FD 1": {
 		"query": """
@@ -661,7 +660,7 @@ REPORT_CONFIG = {
 			"sol_id": "sol_id",
 			"sol_desc": "sol_description"
 		},
-		"unique_keys": ["date", "report_type", "foracid"]
+		"unique_keys": ["date", "report_type", "foracid", "rm_id", "scheme_code"]
 	},
 	"DAM": {
 		"query": """
@@ -781,7 +780,7 @@ REPORT_CONFIG = {
 			"sol_id": "sol_id",
 			"sol_desc": "sol_description"
 		},
-		"unique_keys": ["date", "report_type", "foracid"]
+		"unique_keys": ["date", "report_type", "foracid", "rm_id", "scheme_code"]
 	},
 	"FD": {
 		"query": """
@@ -917,7 +916,7 @@ REPORT_CONFIG = {
 			"sol_id": "sol_id",
 			"sol_desc": "sol_description"
 		},
-		"unique_keys": ["date", "report_type", "foracid"]
+		"unique_keys": ["date", "report_type", "foracid", "rm_id", "scheme_code"]
 	},
 	"SHARE": {
 		"query": """
@@ -1040,7 +1039,7 @@ REPORT_CONFIG = {
 			"sol_id": "sol_id",
 			"sol_desc": "sol_description"
 		},
-		"unique_keys": ["date", "report_type", "foracid"]
+		"unique_keys": ["date", "report_type", "foracid", "rm_id", "scheme_code"]
 	}
 }
 
@@ -1048,17 +1047,119 @@ REPORT_CONFIG = {
 @frappe.whitelist()
 def sync_report(report_type: str, sync_date: str):
 	"""
-	Whitelisted API endpoint to trigger synchronization for a specific report and date.
+	Whitelisted API endpoint to trigger synchronization for a specific report or 'All Reports' and date.
+	Executes directly without using enqueue.
 	"""
 	if not report_type or not sync_date:
 		frappe.throw(_("Report Type and Date are required."))
 	
+	if report_type == "All Reports":
+		return sync_all_reports(sync_date)
+
 	if report_type not in REPORT_CONFIG:
 		frappe.throw(_("Invalid Report Type: {0}").format(report_type))
 
 	engine = SSandVSSyncEngine(report_type, sync_date)
 	result = engine.execute()
 	return result
+
+
+@frappe.whitelist()
+def sync_all_reports(sync_date: str = None):
+	"""
+	Directly synchronizes all 8 SS & VS report types sequentially without using enqueue.
+	"""
+	if not sync_date:
+		sync_date = frappe.utils.add_days(frappe.utils.nowdate(), -1)
+
+	total_summary = {
+		"processed": 0,
+		"inserted": 0,
+		"updated": 0,
+		"skipped": 0,
+		"failed": 0,
+		"details": {}
+	}
+
+	for report_type in REPORT_CONFIG.keys():
+		try:
+			engine = SSandVSSyncEngine(report_type, sync_date)
+			res = engine.execute()
+			total_summary["details"][report_type] = res
+			total_summary["processed"] += res.get("processed", 0)
+			total_summary["inserted"] += res.get("inserted", 0)
+			total_summary["updated"] += res.get("updated", 0)
+			total_summary["skipped"] += res.get("skipped", 0)
+			total_summary["failed"] += res.get("failed", 0)
+		except Exception as e:
+			frappe.log_error(
+				message=f"Failed direct sync of {report_type} on {sync_date}: {str(e)}",
+				title="SS & VS Direct All Sync Error"
+			)
+
+	return total_summary
+
+
+def daily_sync_all_ss_vs_reports():
+	"""
+	Scheduled cron function to directly sync all SS & VS reports for yesterday.
+	"""
+	yesterday = frappe.utils.add_days(frappe.utils.nowdate(), -1)
+	return sync_all_reports(sync_date=yesterday)
+
+
+def _sync_daily_t1_report(report_type: str):
+	"""
+	Helper method to calculate yesterday's date (T-1) and execute synchronization for the given report type.
+	"""
+	sync_enabled = frappe.db.get_single_value("Drishti Settings", "auto_sync")
+	if not sync_enabled:
+		frappe.logger("scheduler").info(f"SS & VS Daily Sync Cron ({report_type}): Sync is disabled in Drishti Settings. Skipping execution.")
+		return
+
+	yesterday = frappe.utils.add_days(frappe.utils.nowdate(), -1)
+	engine = SSandVSSyncEngine(report_type, yesterday)
+	return engine.execute()
+
+
+def sync_dd_sav_daily():
+	"""Cron scheduled at 07:00 AM IST daily - Syncs DD SAV report for T-1 (Yesterday) date."""
+	return _sync_daily_t1_report("DD SAV")
+
+
+def sync_dd_tda_daily():
+	"""Cron scheduled at 07:05 AM IST daily - Syncs DD TDA report for T-1 (Yesterday) date."""
+	return _sync_daily_t1_report("DD TDA")
+
+
+def sync_rd_daily():
+	"""Cron scheduled at 07:10 AM IST daily - Syncs RD report for T-1 (Yesterday) date."""
+	return _sync_daily_t1_report("RD")
+
+
+def sync_smbg_daily():
+	"""Cron scheduled at 07:15 AM IST daily - Syncs SMBG report for T-1 (Yesterday) date."""
+	return _sync_daily_t1_report("SMBG")
+
+
+def sync_fd_1_daily():
+	"""Cron scheduled at 07:20 AM IST daily - Syncs FD 1 report for T-1 (Yesterday) date."""
+	return _sync_daily_t1_report("FD 1")
+
+
+def sync_dam_daily():
+	"""Cron scheduled at 07:25 AM IST daily - Syncs DAM report for T-1 (Yesterday) date."""
+	return _sync_daily_t1_report("DAM")
+
+
+def sync_fd_daily():
+	"""Cron scheduled at 07:30 AM IST daily - Syncs FD report for T-1 (Yesterday) date."""
+	return _sync_daily_t1_report("FD")
+
+
+def sync_share_daily():
+	"""Cron scheduled at 07:35 AM IST daily - Syncs SHARE report for T-1 (Yesterday) date."""
+	return _sync_daily_t1_report("SHARE")
 
 
 class SSandVSSyncEngine:
@@ -1120,77 +1221,57 @@ class SSandVSSyncEngine:
 		if not rows:
 			return self.summary
 
-		# 3. Fetch existing records for cache lookups to optimize performance
-		existing_records = frappe.get_all(
-			"SS and VS Report",
-			filters={"date": self.sync_date, "report_type": self.report_type},
-			fields=["name"] + self.unique_keys
-		)
+		# 3. Purge existing records for this (date, report_type) to ensure a clean sync without skipped rows
+		frappe.db.delete("SS and VS Report", filters={"date": self.sync_date, "report_type": self.report_type})
 
-		existing_map = {}
-		for r in existing_records:
-			key_val = tuple(str(r.get(k)).strip() if r.get(k) is not None else "" for k in self.unique_keys)
-			existing_map[key_val] = r.name
+		# 4. Prepare all rows for bulk insertion
+		new_docs = []
+		now_time = frappe.utils.now()
+		user = frappe.session.user or "Administrator"
 
-		# 4. Iterate and Upsert in Batches
-		batch_size = 500
 		for i, row in enumerate(rows):
 			try:
 				# Map row columns to DocType fields
 				doc_data = {
-					"doctype": "SS and VS Report",
+					"name": frappe.generate_hash(length=10),
+					"owner": user,
+					"modified_by": user,
+					"creation": now_time,
+					"modified": now_time,
+					"docstatus": 0,
+					"idx": 0,
 					"report_type": self.report_type,
 					"date": self.sync_date
 				}
 				for sql_col, doctype_field in self.mapping.items():
 					if sql_col in row:
-						val = row[sql_col]
-						doc_data[doctype_field] = val
+						doc_data[doctype_field] = row[sql_col]
 
-				# Generate the key tuple to search cache
-				row_key = tuple(str(doc_data.get(k)).strip() if doc_data.get(k) is not None else "" for k in self.unique_keys)
-				existing_name = existing_map.get(row_key)
-
-				if existing_name:
-					# Check if there are differences before updating to optimize database hits
-					existing_doc = frappe.get_doc("SS and VS Report", existing_name)
-					has_diff = False
-					for key, val in doc_data.items():
-						if key != "doctype" and str(existing_doc.get(key)) != str(val):
-							has_diff = True
-							break
-
-					if has_diff:
-						# Update existing document using standard ORM fields method for efficiency
-						frappe.db.set_value(
-							"SS and VS Report",
-							existing_name,
-							{k: v for k, v in doc_data.items() if k != "doctype"},
-							update_modified=True
-						)
-						self.summary["updated"] += 1
-					else:
-						self.summary["skipped"] += 1
-				else:
-					# Insert new record
-					doc = frappe.get_doc(doc_data)
-					doc.insert(ignore_permissions=True)
-					self.summary["inserted"] += 1
-					# Add newly inserted key to map to prevent duplicates within the same run
-					existing_map[row_key] = doc.name
+				new_docs.append(doc_data)
 
 			except Exception as e:
 				self.summary["failed"] += 1
 				frappe.log_error(
-					message=f"Failed to sync row index {i} for {self.report_type}: {str(e)}\nRow details: {dict(row)}",
+					message=f"Failed to process row index {i} for {self.report_type}: {str(e)}\nRow details: {dict(row)}",
 					title="SS & VS Sync Row Error"
 				)
 
-			# Periodically commit to free up database locks and keep transaction small
-			if (i + 1) % batch_size == 0:
-				frappe.db.commit()
+		# 5. Bulk insert all records in a single SQL query
+		if new_docs:
+			insert_fields = ["name", "owner", "modified_by", "creation", "modified", "docstatus", "idx", "date", "report_type"]
+			for f in self.mapping.values():
+				if f not in insert_fields:
+					insert_fields.append(f)
 
-		# Final commit for remaining records
+			values_to_insert = [
+				tuple(d.get(f) for f in insert_fields)
+				for d in new_docs
+			]
+
+			frappe.db.bulk_insert("SS and VS Report", insert_fields, values_to_insert, ignore_duplicates=True)
+			self.summary["inserted"] = len(new_docs)
+
+		# Final commit
 		frappe.db.commit()
 
 		# Log execution summary
