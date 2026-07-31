@@ -1112,7 +1112,7 @@ def _sync_daily_t1_report(report_type: str):
 	"""
 	Helper method to calculate yesterday's date (T-1) and execute synchronization for the given report type.
 	"""
-	sync_enabled = frappe.db.get_single_value("Drishti Settings", "auto_sync") or frappe.db.get_single_value("Drishti Settings", "branch_category_report_sync")
+	sync_enabled = frappe.db.get_single_value("Drishti Settings", "auto_sync")
 	if not sync_enabled:
 		frappe.logger("scheduler").info(f"SS & VS Daily Sync Cron ({report_type}): Sync is disabled in Drishti Settings. Skipping execution.")
 		return

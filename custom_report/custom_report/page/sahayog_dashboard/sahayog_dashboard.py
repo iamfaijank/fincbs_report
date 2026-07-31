@@ -4900,7 +4900,7 @@ def clear_product_wise_report():
 
 
 def daily_tda_sync():
-    sync_enabled = frappe.db.get_single_value("Drishti Settings", "auto_sync") or frappe.db.get_single_value("Drishti Settings", "branch_category_report_sync")
+    sync_enabled = frappe.db.get_single_value("Drishti Settings", "auto_sync")
     if not sync_enabled:
         frappe.logger("scheduler").info("Daily TDA Sync: Sync is disabled in Drishti Settings. Skipping execution.")
         return
@@ -4927,7 +4927,7 @@ def daily_tda_sync():
 
 
 def daily_casa_sync():
-    sync_enabled = frappe.db.get_single_value("Drishti Settings", "auto_sync") or frappe.db.get_single_value("Drishti Settings", "branch_category_report_sync")
+    sync_enabled = frappe.db.get_single_value("Drishti Settings", "auto_sync")
     if not sync_enabled:
         frappe.logger("scheduler").info("Daily CASA Sync: Sync is disabled in Drishti Settings. Skipping execution.")
         return

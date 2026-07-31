@@ -12,7 +12,7 @@ class DDTrackerReport(Document):
 	pass
 
 def daily_sync_dd_tracker():
-    sync_enabled = frappe.db.get_single_value("Drishti Settings", "auto_sync") or frappe.db.get_single_value("Drishti Settings", "branch_category_report_sync")
+    sync_enabled = frappe.db.get_single_value("Drishti Settings", "auto_sync")
     if not sync_enabled:
         frappe.logger("scheduler").info("Daily DD Tracker Sync: Sync is disabled in Drishti Settings. Skipping execution.")
         return

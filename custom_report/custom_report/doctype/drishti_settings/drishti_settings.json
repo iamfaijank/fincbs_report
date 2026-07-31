@@ -5,8 +5,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "auto_sync",
-  "branch_category_report_sync"
+  "auto_sync"
  ],
  "fields": [
   {
@@ -15,13 +14,6 @@
    "fieldname": "auto_sync",
    "fieldtype": "Check",
    "label": "Auto Sync"
-  },
-  {
-   "default": "0",
-   "description": "if checked = will fetch Category Report Daily 8 AM",
-   "fieldname": "branch_category_report_sync",
-   "fieldtype": "Check",
-   "label": "Branch Category Report Sync"
   }
  ],
  "grid_page_length": 50,
