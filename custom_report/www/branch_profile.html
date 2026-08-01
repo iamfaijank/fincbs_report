@@ -1636,8 +1636,9 @@
 			</div>
 
 			<section class="staff-detail-section modern-table-card" style="margin-bottom: 20px; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); padding: 24px;">
-				<div style="margin-bottom: 20px;">
+				<div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
 					<h2 style="margin: 0; font-size: 20px; color: #1e293b; font-weight: 700;">Product Wise Target VS Collection</h2>
+					<span id="product-wise-date-badge" style="font-size: 12px; font-weight: 600; color: #475569; background: #f1f5f9; padding: 4px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">--</span>
 				</div>
 				<div class="financial-table-container" style="overflow-x: auto;">
 					<table class="financial-table" style="width: 100%; border-collapse: collapse; text-align: left; border: 1px solid #e2e8f0; font-family: 'Inter', sans-serif;">
@@ -3541,6 +3542,13 @@
 				renderProductCollections() {
 					const data = this.state.productCollectionsData;
 					if(!data) return;
+
+					if (data.report_date) {
+						const dateBadge = document.getElementById("product-wise-date-badge");
+						if (dateBadge) {
+							dateBadge.textContent = "As of: " + this.formatDate(data.report_date);
+						}
+					}
 
 					if (data.targets) {
 						const tg = data.targets;

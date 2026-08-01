@@ -1,28 +1,42 @@
 import frappe
+from frappe.utils import add_days, today, getdate
 
 @frappe.whitelist()
-def get_sol_product_wise_collection(sol_id, zone, financial_year="2026-2027"):
+def get_sol_product_wise_collection(sol_id, zone, financial_year="2026-2027", report_date=None):
     """
-    Fetch product wise collection (ACH) from 'Product Wise Report' doctype.
+    Fetch product wise collection (ACH) from 'Product Wise Report' doctype for today - 1 day.
     """
-    # Fetch the latest date available for this sol_id
-    latest_date_query = frappe.db.sql("""
-        SELECT MAX(date) as latest_date
-        FROM `tabProduct Wise Report`
-        WHERE sol_id = %s
-    """, (sol_id,), as_dict=True)
-    
-    latest_date = latest_date_query[0].get('latest_date') if latest_date_query else None
-
-    if latest_date:
-        data = frappe.db.sql("""
-            SELECT product, SUM(amount) as total_amount
-            FROM `tabProduct Wise Report`
-            WHERE sol_id = %s AND date = %s
-            GROUP BY product
-        """, (sol_id, latest_date), as_dict=True)
+    if not report_date:
+        target_date = add_days(today(), -1)
     else:
-        data = []
+        target_date = report_date
+
+    # Fetch data for today - 1 day (or latest date <= today - 1 day if exact date not present)
+    data = frappe.db.sql("""
+        SELECT product, SUM(amount) as total_amount
+        FROM `tabProduct Wise Report`
+        WHERE sol_id = %s AND date = %s
+        GROUP BY product
+    """, (sol_id, target_date), as_dict=True)
+    
+    actual_date = target_date
+    if not data:
+        latest_date_query = frappe.db.sql("""
+            SELECT MAX(date) as latest_date
+            FROM `tabProduct Wise Report`
+            WHERE sol_id = %s AND date <= %s
+        """, (sol_id, target_date), as_dict=True)
+        latest_date = latest_date_query[0].get('latest_date') if latest_date_query else None
+        if latest_date:
+            actual_date = latest_date
+            data = frappe.db.sql("""
+                SELECT product, SUM(amount) as total_amount
+                FROM `tabProduct Wise Report`
+                WHERE sol_id = %s AND date = %s
+                GROUP BY product
+            """, (sol_id, actual_date), as_dict=True)
+        else:
+            data = []
     
     collections = {
         "CASA": 0.0,
@@ -70,13 +84,13 @@ def get_sol_product_wise_collection(sol_id, zone, financial_year="2026-2027"):
 
     # Calculate overall target from Target Vs Achivement based on current date
     from datetime import date
-    today = date.today()
-    current_month = today.strftime('%b').upper()
+    today_dt = date.today()
+    current_month = today_dt.strftime('%b').upper()
     
-    if today.month >= 4:
-        fy = f"{today.year}-{today.year + 1}"
+    if today_dt.month >= 4:
+        fy = f"{today_dt.year}-{today_dt.year + 1}"
     else:
-        fy = f"{today.year - 1}-{today.year}"
+        fy = f"{today_dt.year - 1}-{today_dt.year}"
 
     target_vs_ach_data = frappe.db.sql("""
         SELECT target
@@ -102,6 +116,7 @@ def get_sol_product_wise_collection(sol_id, zone, financial_year="2026-2027"):
         "zone": zone,
         "financial_year": financial_year,
         "current_month": current_month,
+        "report_date": str(actual_date),
         "collections": collections,
         "targets": targets,
         "target_amounts": target_amounts
