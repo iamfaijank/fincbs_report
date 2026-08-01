@@ -1821,9 +1821,12 @@
 				</div>
 			</section>
 
-			<section class="staff-detail-section">
-				<h2>Deposit & Book Position</h2>
-				<div class="financial-table-container">
+			<section class="staff-detail-section" id="deposit-book-section">
+				<div class="collapsible-section-header" onclick="BranchManagerProfile.toggleDepositBookSection()" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; padding-bottom: 8px;">
+					<h2 style="margin: 0;">Deposit & Book Position</h2>
+					<span id="deposit-book-toggle-icon" style="font-size: 14px; font-weight: 700; color: #64748b; transition: transform 0.2s ease;">▼</span>
+				</div>
+				<div class="financial-table-container" id="deposit-book-content">
 					<table class="financial-table">
 						<thead>
 							<tr>
@@ -2941,6 +2944,20 @@
 					manpowerSortDir: 'desc',
 					attritionPeriod: '3',
 					attritionData: null
+				},
+
+				toggleDepositBookSection() {
+					const content = document.getElementById("deposit-book-content");
+					const icon = document.getElementById("deposit-book-toggle-icon");
+					if (content) {
+						if (content.style.display === "none") {
+							content.style.display = "block";
+							if (icon) icon.textContent = "▼";
+						} else {
+							content.style.display = "none";
+							if (icon) icon.textContent = "▶";
+						}
+					}
 				},
 
 				value(v) {
