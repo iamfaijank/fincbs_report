@@ -1597,7 +1597,7 @@
 						<div>
 							<div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">
 								Achievement</div>
-							<div id="cat-achievement-val" style="font-size: 15px; font-weight: 700; color: #10b981;">₹
+							<div id="cat-achievement-val" style="font-size: 15px; font-weight: 700; color: var(--primary-1);">₹
 								42,50,000</div>
 						</div>
 						<div>
@@ -2988,6 +2988,7 @@
 					};
 					const config = categoryConfig[data.category] || { text: "var(--primary-1)", bg: "#fff", border: "#e2e8f0" };
 					if (this.el.performanceStatus) this.el.performanceStatus.style.color = config.text;
+					if (this.el.catAchievementVal) this.el.catAchievementVal.style.color = config.text;
 					if (this.el.catPercentageVal) this.el.catPercentageVal.style.color = config.text;
 
 					const sectionEl = document.getElementById("category-card");
