@@ -195,6 +195,11 @@ def get_book_position_details(sol_id: str):
         result["rd_accounts_opened"] + result["dds_accounts_opened"] + result["smbg_accounts_opened"] + result["dam_accounts_opened"]
     )
     
+    result["total_accounts_total"] = (
+        result["sa_accounts_total"] + result["ca_accounts_total"] + result["fd_accounts_total"] +
+        result["rd_accounts_total"] + result["dds_accounts_total"] + result["smbg_accounts_total"] + result["dam_accounts_total"]
+    )
+    
     # Fetch DDS Demand, Collection, and Demand vs Collection from 'DD Tracker Report' for this sol_id
     dd_latest_date = frappe.db.get_value(
         "DD Tracker Report",
