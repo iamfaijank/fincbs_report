@@ -646,3 +646,75 @@ def get_performance_data(sol_id, date=None, fy=None):
             "status": "error", 
             "message": str(e)
         }
+
+
+@frappe.whitelist()
+def get_attrition_rate(sol_id: str, period: str = "3"):
+    """
+    Fetch Attrition Rate for a given branch (sol_id) for periods: 3, 6, 12 months.
+    Returns calculated rates and headcount breakdown for 3 Months, 6 Months, and 12 Months.
+    """
+    if not sol_id:
+        return {
+            "status": "error",
+            "message": "SOL ID is required",
+            "rates": {"3": 0.0, "6": 0.0, "12": 0.0},
+            "counts": {"3": {"left": 0, "headcount": 0}, "6": {"left": 0, "headcount": 0}, "12": {"left": 0, "headcount": 0}}
+        }
+
+    try:
+        from frappe.utils import add_months, today
+        current_today = today()
+
+        # Get current active employee count for this sol_id
+        active_count = frappe.db.count("Employee", filters={"sol_id": sol_id, "status": "Active"})
+        
+        # If active_count is 0, check staff_count in Branch Profile Data
+        if active_count == 0:
+            staff_count_str = frappe.db.get_value("Branch Profile Data", {"sol_id": sol_id}, "staff_count")
+            active_count = frappe.utils.cint(staff_count_str) or 0
+
+        rates = {}
+        counts = {}
+
+        for p_months in [3, 6, 12]:
+            start_date = add_months(current_today, -p_months)
+            
+            # Count employees relieved/left in period
+            left_count = frappe.db.sql("""
+                SELECT COUNT(*) FROM `tabEmployee`
+                WHERE sol_id = %s
+                  AND (
+                      (relieving_date IS NOT NULL AND relieving_date >= %s)
+                      OR (resignation_letter_date IS NOT NULL AND resignation_letter_date >= %s)
+                      OR (status != 'Active' AND status IS NOT NULL AND modified >= %s)
+                  )
+            """, (sol_id, start_date, start_date, start_date))[0][0] or 0
+
+            headcount = active_count + left_count
+            if headcount > 0:
+                rate = (left_count / headcount) * 100
+            else:
+                rate = 0.0
+
+            rates[str(p_months)] = round(rate, 1)
+            counts[str(p_months)] = {
+                "left": left_count,
+                "headcount": headcount,
+                "active": active_count
+            }
+
+        return {
+            "status": "success",
+            "sol_id": sol_id,
+            "selected_period": str(period),
+            "rates": rates,
+            "counts": counts
+        }
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Get Attrition Rate Error")
+        return {
+            "status": "error",
+            "rates": {"3": 0.0, "6": 0.0, "12": 0.0},
+            "counts": {"3": {"left": 0, "headcount": 0}, "6": {"left": 0, "headcount": 0}, "12": {"left": 0, "headcount": 0}}
+        }

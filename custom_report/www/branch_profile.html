@@ -1164,11 +1164,19 @@
 		}
 
 		.manpower-percentage {
-			font-size: 20px;
-			font-weight: 900;
-			color: #333333;
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			font-size: 12px;
+			font-weight: 800;
+			color: #ffffff;
+			text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+			z-index: 6;
+			pointer-events: none;
+			white-space: nowrap;
+			margin: 0;
 			text-align: center;
-			margin-top: 12px;
 		}
 
 		.gauge-labels {
@@ -1464,14 +1472,29 @@
 								<div id="bar-blue" class="bar-blue" style="width: 0%"></div>
 								<div id="bar-red" class="bar-red" style="width: 0%"></div>
 								<div id="budget-marker" class="budget-line" style="display:none"></div>
+								<div id="manpower-percentage" class="manpower-percentage">--%</div>
 							</div>
 							<div class="gauge-labels">
 								<div style="color: #097c80;">Budgeted Staff: <span id="budget-label-val">--</span></div>
 								<div style="color: #333333;">Total Staff: <span id="actual-label-val">--</span></div>
 							</div>
-							<div style="text-align: right; margin-top: 12px;">
-								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Staff %</div>
-								<div id="manpower-percentage" class="manpower-percentage" style="margin-top: 2px; text-align: right;">--%</div>
+						</div>
+
+						<!-- Attrition Rate Section -->
+						<div class="attrition-card-wrapper" style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed #cbd5e1;">
+							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Attrition Rate</div>
+								<div class="category-tabs" id="attrition-period-tabs" style="margin: 0; padding: 2px;">
+									<div class="category-tab active" data-period="3" style="padding: 3px 8px; font-size: 11px;">3 Months</div>
+									<div class="category-tab" data-period="6" style="padding: 3px 8px; font-size: 11px;">6 Months</div>
+									<div class="category-tab" data-period="12" style="padding: 3px 8px; font-size: 11px;">12 Months</div>
+								</div>
+							</div>
+							<div style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+								<div id="attrition-rate-val" style="font-size: 20px; font-weight: 800; color: #0f172a;">--%</div>
+								<div style="font-size: 11px; color: #64748b; font-weight: 600;">
+									<span id="attrition-count-val">--</span> Left / <span id="attrition-total-val">--</span> Headcount
+								</div>
 							</div>
 						</div>
 					</div>
@@ -2747,6 +2770,20 @@
 						});
 					}
 
+					/* --- Attrition Period Filter Logic --- */
+					const attritionPeriodTabs = document.getElementById('attrition-period-tabs');
+					if (attritionPeriodTabs) {
+						attritionPeriodTabs.addEventListener('click', (e) => {
+							const tab = e.target.closest('.category-tab');
+							if (tab && tab.dataset.period) {
+								attritionPeriodTabs.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+								tab.classList.add('active');
+								BranchManagerProfile.state.attritionPeriod = tab.dataset.period;
+								BranchManagerProfile.renderAttritionUI();
+							}
+						});
+					}
+
 					/* --- Manpower PIP Filter Logic --- */
 					const manpowerPipFilter = document.getElementById('manpower-pip-filter');
 					if (manpowerPipFilter) {
@@ -2878,6 +2915,13 @@
 					rdSmbgCollection: document.getElementById("rd-smbg-collection"),
 					rdSmbgPending: document.getElementById("rd-smbg-pending"),
 
+					// Attrition Rate Elements
+					attritionRateVal: document.getElementById("attrition-rate-val"),
+					attritionCountVal: document.getElementById("attrition-count-val"),
+					attritionTotalVal: document.getElementById("attrition-total-val"),
+					attritionPeriodTabs: document.getElementById("attrition-period-tabs"),
+					// -----------------------
+
 					// Productivity Details
 					totalProductivity: document.getElementById("total-productivity"),
 					bdoAndProductivity: document.getElementById("bdo-and-productivity"),
@@ -2894,7 +2938,9 @@
 					manpowerFilter: 'all',
 					manpowerSearchQuery: '',
 					manpowerSortCol: 'employee_number',
-					manpowerSortDir: 'desc'
+					manpowerSortDir: 'desc',
+					attritionPeriod: '3',
+					attritionData: null
 				},
 
 				value(v) {
@@ -3384,11 +3430,57 @@
 						await this.loadPerformanceData(solId);
 						// --- Fetch Product Collections Data ---
 						await this.loadProductCollections(solId);
+						// --- Fetch Attrition Data ---
+						await this.loadAttritionData(solId);
 						// ------------------------------
 					} catch (e) {
 						console.error("Profile Load Error:", e);
 						this.el.name.textContent = "Branch Manager data unavailable";
 					}
+				},
+
+				async loadAttritionData(solId) {
+					try {
+						const res = await fetch(`/api/method/custom_report.branch_v1.get_attrition_rate?sol_id=${solId}`);
+						const json = await res.json();
+						if (json.message && json.message.status === 'success') {
+							this.state.attritionData = json.message;
+							this.renderAttritionUI();
+						} else {
+							this.state.attritionData = null;
+							this.clearAttritionUI();
+						}
+					} catch (e) {
+						console.error("Attrition Load Error:", e);
+						this.state.attritionData = null;
+						this.clearAttritionUI();
+					}
+				},
+
+				renderAttritionUI() {
+					const data = this.state.attritionData;
+					const period = this.state.attritionPeriod || '3';
+					if (!data || !data.rates || data.rates[period] === undefined) {
+						if (this.el.attritionRateVal) this.el.attritionRateVal.textContent = "--%";
+						if (this.el.attritionCountVal) this.el.attritionCountVal.textContent = "--";
+						if (this.el.attritionTotalVal) this.el.attritionTotalVal.textContent = "--";
+						return;
+					}
+
+					const rate = data.rates[period];
+					const countObj = data.counts ? data.counts[period] : null;
+
+					if (this.el.attritionRateVal) this.el.attritionRateVal.textContent = rate + "%";
+					if (countObj) {
+						if (this.el.attritionCountVal) this.el.attritionCountVal.textContent = countObj.left || 0;
+						if (this.el.attritionTotalVal) this.el.attritionTotalVal.textContent = countObj.headcount || 0;
+					}
+				},
+
+				clearAttritionUI() {
+					if (this.el.attritionRateVal) this.el.attritionRateVal.textContent = "--%";
+					if (this.el.attritionCountVal) this.el.attritionCountVal.textContent = "--";
+					if (this.el.attritionTotalVal) this.el.attritionTotalVal.textContent = "--";
 				},
 
 				async loadPerformanceData(solId) {

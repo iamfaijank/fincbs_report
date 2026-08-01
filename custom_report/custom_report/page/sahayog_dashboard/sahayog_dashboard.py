@@ -1177,8 +1177,8 @@ def build_agent_wise(selected_date=None):
     result = []
     for key, data in agent_map.items():
         # Calculate shortfalls (target - achievement)
-        ss_shortfall = data["ss_target"] - data["ss_achievement"]
-        agent_shortfall = data["target"] - data["achievement"]
+        ss_shortfall = abs(data["ss_target"] - data["ss_achievement"])
+        agent_shortfall = abs(data["target"] - data["achievement"])
 
         # Format date as yyyy-mm-dd (strip time portion)
         date_str = str(data["date"])[:10] if data.get("date") else selected_date

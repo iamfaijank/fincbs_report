@@ -8039,8 +8039,10 @@ class DrishtiDashboard {
 				zoneInactive += parseFloat(r.inactive || 0);
 			});
 
-			const zoneSsShortfall = zoneSsTarget - zoneSsAch;
-			const zoneAgentShortfall = zoneTarget - zoneAch;
+			const zoneSsShortfallRaw = zoneSsTarget - zoneSsAch;
+			const zoneAgentShortfallRaw = zoneTarget - zoneAch;
+			const zoneSsShortfall = Math.abs(zoneSsShortfallRaw);
+			const zoneAgentShortfall = Math.abs(zoneAgentShortfallRaw);
 			const zonePercent = zoneTarget > 0 ? ((zoneAch / zoneTarget) * 100).toFixed(2) : 0;
 			const isExpanded = this.state.expandedZones[`agent_${zone}`] || false;
 			const zoneDate =
@@ -8060,12 +8062,12 @@ class DrishtiDashboard {
 					</td>
 					<td class="metric-cell amount-cell">${this.formatCurrency(zoneSsTarget)}</td>
 					<td class="metric-cell amount-cell">${this.formatCurrency(zoneSsAch)}</td>
-					<td class="metric-cell amount-cell" style="color: ${zoneSsShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneSsShortfall)}</td>
+					<td class="metric-cell amount-cell" style="color: ${zoneSsShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneSsShortfall)}</td>
 					<td class="metric-cell amount-cell">${this.formatNumber(zoneSsActive)}</td>
 					<td class="metric-cell amount-cell">${this.formatNumber(zoneSsInactive)}</td>
 					<td class="metric-cell amount-cell">${this.formatCurrency(zoneTarget)}</td>
 					<td class="metric-cell amount-cell">${this.formatCurrency(zoneAch)}</td>
-					<td class="metric-cell amount-cell" style="color: ${zoneAgentShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneAgentShortfall)}</td>
+					<td class="metric-cell amount-cell" style="color: ${zoneAgentShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneAgentShortfall)}</td>
 					<td class="metric-cell amount-cell">${this.formatNumber(zoneActive)}</td>
 					<td class="metric-cell amount-cell">${this.formatNumber(zoneInactive)}</td>
 					<td>
@@ -8098,8 +8100,10 @@ class DrishtiDashboard {
 				const rInactive = parseFloat(r.inactive || 0);
 				const rDate = r.date || zoneDate;
 
-				const rSsShortfall = rSsTarget - rSsAch;
-				const rAgentShortfall = rTarget - rAch;
+				const rSsShortfallRaw = rSsTarget - rSsAch;
+				const rAgentShortfallRaw = rTarget - rAch;
+				const rSsShortfall = Math.abs(rSsShortfallRaw);
+				const rAgentShortfall = Math.abs(rAgentShortfallRaw);
 				const rPercent = rTarget > 0 ? ((rAch / rTarget) * 100).toFixed(2) : 0;
 
 				html += `
@@ -8115,12 +8119,12 @@ class DrishtiDashboard {
 						</td>
 						<td class="metric-cell amount-cell">${this.formatCurrency(rSsTarget)}</td>
 						<td class="metric-cell amount-cell">${this.formatCurrency(rSsAch)}</td>
-						<td class="metric-cell amount-cell" style="color: ${rSsShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rSsShortfall)}</td>
+						<td class="metric-cell amount-cell" style="color: ${rSsShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rSsShortfall)}</td>
 						<td class="metric-cell amount-cell">${this.formatNumber(rSsActive)}</td>
 						<td class="metric-cell amount-cell">${this.formatNumber(rSsInactive)}</td>
 						<td class="metric-cell amount-cell">${this.formatCurrency(rTarget)}</td>
 						<td class="metric-cell amount-cell">${this.formatCurrency(rAch)}</td>
-						<td class="metric-cell amount-cell" style="color: ${rAgentShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rAgentShortfall)}</td>
+						<td class="metric-cell amount-cell" style="color: ${rAgentShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rAgentShortfall)}</td>
 						<td class="metric-cell amount-cell">${this.formatNumber(rActive)}</td>
 						<td class="metric-cell amount-cell">${this.formatNumber(rInactive)}</td>
 						<td>
@@ -9009,7 +9013,7 @@ class DrishtiDashboard {
 
 	formatCurrency(value) {
 		if (!value || value === 0) return "-";
-		const numValue = Math.round(value);
+		const numValue = Math.round(Math.abs(value));
 
 		if (this.state.formatMode === "words") {
 			if (numValue >= 1000000000) {
