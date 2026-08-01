@@ -2206,7 +2206,7 @@ balance_duration AS (
             gam.acct_cls_date IS NULL
             OR (
                 gam.acct_cls_date >= DATE '{report_start_str}'   ---REPORT MONTH START DATE
-                AND gam.acct_cls_date < DATE '{ref_date}'
+                AND gam.acct_cls_date < CURRENT_DATE
             )
         )
 ),
