@@ -1,5 +1,6 @@
 <script setup>
-import { ref, inject, computed, watch } from 'vue'
+import { ref, inject, computed, watch, onMounted } from 'vue'
+import { frappeRequest } from 'frappe-ui'
 import SummaryCardGroup from '@/components/cards/SummaryCardGroup.vue'
 import ZoneWiseTable from '@/components/tables/ZoneWiseTable.vue'
 import CategoryWiseTable from '@/components/tables/CategoryWiseTable.vue'
@@ -37,12 +38,63 @@ watch(activeView, () => {
   activeTab.value = tabs.value[0].id
 })
 
-const drishtiCards = [
-  { label: 'Total Branches', value: '229', tag: '+3.2%', tagColor: 'green' },
-  { label: 'Target (MTD)', value: '₹163 Cr', tag: 'Monthly', tagColor: 'amber' },
-  { label: 'Achievement', value: '₹91.4 Cr', tag: '57.9%', tagColor: 'red' },
-  { label: 'Active Zones', value: '6', tag: 'All live', tagColor: 'green' },
-]
+const zoneData = ref([])
+const months = ref([])
+
+onMounted(async () => {
+  try {
+    const data = await frappeRequest({
+      url: '/api/method/custom_report.www.drishti.get_zone_wise_data',
+      method: 'POST',
+    }) || {}
+    zoneData.value = data.zone_wise || []
+    months.value = data.months || []
+  } catch (e) {
+    console.error('Failed to load zone wise data', e)
+  }
+})
+
+const activeMonth = computed(() => {
+  if (months.value.length === 0) return null
+  return months.value[months.value.length - 1]
+})
+
+const summaryData = computed(() => {
+  const activeKey = activeMonth.value?.key
+  let totalBranches = 0
+  let totalTarget = 0
+  let totalAchievement = 0
+  const zones = new Set()
+
+  for (const row of zoneData.value) {
+    const zone = row.zone
+    if (zone === row.region) {
+      zones.add(zone)
+      const md = row.months?.[activeKey]
+      if (md) {
+        totalBranches += md.branches || 0
+        totalTarget += md.target || 0
+        totalAchievement += md.achievement || 0
+      }
+    }
+  }
+
+  const achPercent = totalTarget > 0 ? (totalAchievement / totalTarget * 100).toFixed(1) : '0'
+  return { totalBranches, totalTarget, totalAchievement, achPercent, zoneCount: zones.size }
+})
+
+function formatCr(val) {
+  if (val >= 10000000) return '₹' + (val / 10000000).toFixed(2) + ' Cr'
+  if (val >= 100000) return '₹' + (val / 100000).toFixed(2) + ' L'
+  return '₹' + val.toLocaleString()
+}
+
+const drishtiCards = computed(() => [
+  { label: 'Total Branches', value: String(summaryData.value.totalBranches), tag: activeMonth.value?.display || '—', tagColor: 'green' },
+  { label: 'Target (MTD)', value: formatCr(summaryData.value.totalTarget), tag: 'Monthly', tagColor: 'amber' },
+  { label: 'Achievement', value: formatCr(summaryData.value.totalAchievement), tag: summaryData.value.achPercent + '%', tagColor: 'red' },
+  { label: 'Active Zones', value: String(summaryData.value.zoneCount), tag: 'All live', tagColor: 'green' },
+])
 </script>
 
 <template>
@@ -67,7 +119,7 @@ const drishtiCards = [
     </div>
 
     <div class="flex-1 min-h-0 overflow-auto">
-      <ZoneWiseTable v-if="activeView === 'drishti' && activeTab === 'zone'" />
+      <ZoneWiseTable v-if="activeView === 'drishti' && activeTab === 'zone'" :zoneData="zoneData" :months="months" />
       <CategoryWiseTable v-if="activeView === 'drishti' && activeTab === 'category'" />
       <ProductWiseTable v-if="activeView === 'drishti' && activeTab === 'product'" />
       <AgentWiseTable v-if="activeView === 'drishti' && activeTab === 'agent'" />

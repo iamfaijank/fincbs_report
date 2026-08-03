@@ -1,33 +1,22 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { frappeRequest } from 'frappe-ui'
+import { computed } from 'vue'
 import { useNumberFormat } from '@/composables/useNumberFormat.js'
 import { useFilters } from '@/composables/useFilters.js'
 import { useExpandableSet } from '@/composables/useExpandableSet.js'
 import AchievementBadge from './AchievementBadge.vue'
 
 const { formatNumber } = useNumberFormat()
-const { isZoneSelected, isRegionSelected, zoneFilter, regionFilter } = useFilters()
+const { isZoneSelected, isRegionSelected } = useFilters()
 const { toggle, isExpanded } = useExpandableSet()
 
-const rawZoneWise = ref([])
-const months = ref([])
-const loading = ref(true)
-
-onMounted(async () => {
-  try {
-    const data = await frappeRequest({
-      url: '/api/method/custom_report.www.drishti.get_zone_wise_data',
-      method: 'POST',
-    }) || {}
-    rawZoneWise.value = data.zone_wise || []
-    months.value = data.months || []
-  } catch (e) {
-    console.error('Failed to load zone wise data', e)
-  } finally {
-    loading.value = false
-  }
+const props = defineProps({
+  zoneData: { type: Array, default: () => [] },
+  months: { type: Array, default: () => [] },
 })
+
+const rawZoneWise = computed(() => props.zoneData)
+const months = computed(() => props.months)
+const loading = computed(() => rawZoneWise.value.length === 0)
 
 const filteredTableData = computed(() => {
   const zoneMap = {}
