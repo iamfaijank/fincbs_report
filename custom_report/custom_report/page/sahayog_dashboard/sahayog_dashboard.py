@@ -154,6 +154,7 @@ def get_fy_months_with_dates(financial_year, view="Monthly", selected_date=None,
         ref_date = selected_date_obj if selected_date_obj else datetime.now()
         ref_month = ref_date.month
         ref_year = ref_date.year
+        found = False
         for m in all_months:
             if m[1] == ref_month and m[2] == ref_year:
                 if selected_date_obj and selected_date_obj.month == ref_month and selected_date_obj.year == ref_year:
@@ -161,11 +162,21 @@ def get_fy_months_with_dates(financial_year, view="Monthly", selected_date=None,
                         exists = frappe.db.exists("Branch Category Report", {"date": selected_date_obj})
                         if exists:
                             result_months.append((m[0], m[1], m[2], str(selected_date_obj)))
+                            found = True
                             break
+                if not found:
+                    last_date = get_last_available_date_for_month(m[1], m[2])
+                    if last_date:
+                        result_months.append((m[0], m[1], m[2], last_date))
+                        found = True
+                break
+        # Fallback: if current month has no data, walk backwards to find latest available month
+        if not found:
+            for m in reversed(all_months):
                 last_date = get_last_available_date_for_month(m[1], m[2])
                 if last_date:
                     result_months.append((m[0], m[1], m[2], last_date))
-                break
+                    break
     
     elif view in ("Quarterly", "Yearly"):
         for m in all_months:
