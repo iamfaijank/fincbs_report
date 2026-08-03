@@ -63,6 +63,17 @@ function getMonthData(row) {
   if (!activeMonth.value) return { branches: 0, target: 0, achievement: 0, percentage: 0 }
   return row.months?.[activeMonth.value.key] || { branches: 0, target: 0, achievement: 0, percentage: 0 }
 }
+
+const totals = computed(() => {
+  let branches = 0, target = 0, achievement = 0
+  filteredTableData.value.forEach(z => {
+    const md = getMonthData(z)
+    branches += md.branches || 0
+    target += md.target || 0
+    achievement += md.achievement || 0
+  })
+  return { branches, target, achievement, percentage: target > 0 ? (achievement / target * 100).toFixed(1) : 0 }
+})
 </script>
 
 <template>
@@ -156,6 +167,13 @@ function getMonthData(row) {
               </tr>
             </template>
           </template>
+          <tr class="border-t-2 border-[var(--border)] bg-[var(--bg2)] font-semibold">
+            <td class="border-r border-[var(--border)] px-5 py-3 text-sm text-[var(--text)]">Total</td>
+            <td class="border-r border-[var(--border)] px-5 py-3 text-sm text-[var(--text)]">{{ totals.branches }}</td>
+            <td v-if="activeMonth" class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(totals.target) }}</td>
+            <td v-if="activeMonth" class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(totals.achievement) }}</td>
+            <td v-if="activeMonth" class="px-5 py-3 text-center font-mono text-sm text-[var(--text)]">{{ totals.percentage }}%</td>
+          </tr>
         </tbody>
       </table>
     </div>
