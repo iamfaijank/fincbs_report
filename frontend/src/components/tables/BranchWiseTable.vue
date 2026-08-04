@@ -68,7 +68,7 @@ const totals = computed(() => {
       achievement += md.achievement || 0
     }
   })
-  return { target, achievement, percentage: target > 0 ? (achievement / target * 100).toFixed(1) : 0 }
+  return { target, achievement, percentage: target > 0 ? Math.round(achievement / target * 100) : 0 }
 })
 </script>
 

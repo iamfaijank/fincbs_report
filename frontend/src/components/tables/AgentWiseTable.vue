@@ -54,7 +54,7 @@ function getZoneTotals(zoneData) {
     t.active += r.active || 0
     t.inactive += r.inactive || 0
   })
-  t.achPercent = t.target > 0 ? ((t.achievement / t.target) * 100).toFixed(1) : 0
+  t.achPercent = t.target > 0 ? Math.round((t.achievement / t.target) * 100) : 0
   return t
 }
 </script>

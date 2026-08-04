@@ -79,7 +79,7 @@ const summaryData = computed(() => {
     }
   }
 
-  const achPercent = totalTarget > 0 ? (totalAchievement / totalTarget * 100).toFixed(1) : '0'
+  const achPercent = totalTarget > 0 ? Math.round(totalAchievement / totalTarget * 100) : 0
   return { totalBranches, totalTarget, totalAchievement, achPercent, zoneCount: zones.size }
 })
 
