@@ -59,6 +59,16 @@ const ringColor = computed(() => {
   return '#ef4444'
 })
 
+const topZone = computed(() => {
+  const sorted = [...zoneProgress.value].sort((a, b) => b.pct - a.pct)
+  return sorted[0] || null
+})
+
+const bottomZone = computed(() => {
+  const sorted = [...zoneProgress.value].sort((a, b) => a.pct - b.pct)
+  return sorted[0] || null
+})
+
 const textColor = (pct) => {
   if (pct >= 90) return 'text-green-600 dark:text-green-400'
   if (pct >= 75) return 'text-amber-600 dark:text-amber-400'
@@ -113,6 +123,23 @@ const textColor = (pct) => {
             <span class="text-[10px] font-medium text-[var(--text3)]">Gap</span>
             <span class="text-xs font-bold font-mono text-red-600 dark:text-red-400">{{ formatNumber(totals.target - totals.achievement) }}</span>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex-shrink-0 border-b border-[var(--border)] px-4 py-3 grid grid-cols-2 gap-2">
+      <div class="rounded-md bg-green-50 dark:bg-green-900/20 px-3 py-2">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-green-600 dark:text-green-400 mb-1">Top Zone</div>
+        <div v-if="topZone" class="flex items-baseline justify-between">
+          <span class="text-sm font-bold text-green-700 dark:text-green-300">{{ formatZone(topZone.zone) }}</span>
+          <span class="text-sm font-mono font-bold text-green-600 dark:text-green-400">{{ topZone.pct }}%</span>
+        </div>
+      </div>
+      <div class="rounded-md bg-red-50 dark:bg-red-900/20 px-3 py-2">
+        <div class="text-[10px] font-semibold uppercase tracking-wider text-red-600 dark:text-red-400 mb-1">Bottom Zone</div>
+        <div v-if="bottomZone" class="flex items-baseline justify-between">
+          <span class="text-sm font-bold text-red-700 dark:text-red-300">{{ formatZone(bottomZone.zone) }}</span>
+          <span class="text-sm font-mono font-bold text-red-600 dark:text-red-400">{{ bottomZone.pct }}%</span>
         </div>
       </div>
     </div>
