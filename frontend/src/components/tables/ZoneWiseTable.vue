@@ -4,6 +4,7 @@ import { useNumberFormat } from '@/composables/useNumberFormat.js'
 import { useFilters } from '@/composables/useFilters.js'
 import { useExpandableSet } from '@/composables/useExpandableSet.js'
 import AchievementBadge from './AchievementBadge.vue'
+import ProgressBar from './ProgressBar.vue'
 
 const { formatNumber } = useNumberFormat()
 const { isZoneSelected, isRegionSelected } = useFilters()
@@ -129,7 +130,7 @@ const totals = computed(() => {
                 {{ formatNumber(getMonthData(zoneData).achievement) }}
               </td>
               <td v-if="activeMonth" class="px-5 py-3 text-center font-mono text-sm text-[var(--text)]">
-                <AchievementBadge :value="getMonthData(zoneData).percentage" />
+                <ProgressBar :value="getMonthData(zoneData).percentage" />
               </td>
             </tr>
             <template v-if="isExpanded(zoneData.zone)">
@@ -151,7 +152,7 @@ const totals = computed(() => {
                   {{ formatNumber(getMonthData(region).achievement) }}
                 </td>
                 <td v-if="activeMonth" class="px-5 py-3 text-center font-mono text-sm text-[var(--text)]">
-                  <AchievementBadge :value="getMonthData(region).percentage" />
+                  <ProgressBar :value="getMonthData(region).percentage" />
                 </td>
               </tr>
             </template>
@@ -161,7 +162,7 @@ const totals = computed(() => {
             <td class="border-r border-[var(--border)] px-5 py-3 text-sm text-[var(--text)]">{{ totals.branches }}</td>
             <td v-if="activeMonth" class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(totals.target) }}</td>
             <td v-if="activeMonth" class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(totals.achievement) }}</td>
-            <td v-if="activeMonth" class="px-5 py-3 text-center font-mono text-sm text-[var(--text)]">{{ totals.percentage }}%</td>
+            <td v-if="activeMonth" class="px-5 py-3 text-center font-mono text-sm text-[var(--text)]"><ProgressBar :value="totals.percentage" /></td>
           </tr>
         </tbody>
       </table>
