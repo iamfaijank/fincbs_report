@@ -4,10 +4,12 @@ import { frappeRequest } from 'frappe-ui'
 import { useNumberFormat } from '@/composables/useNumberFormat.js'
 import { useFilters } from '@/composables/useFilters.js'
 import { useExpandableSet } from '@/composables/useExpandableSet.js'
+import { useNameFormat } from '@/composables/useNameFormat.js'
 
 const { formatNumber } = useNumberFormat()
 const { isZoneSelected, isRegionSelected } = useFilters()
 const { toggle: toggleZone, isExpanded: isZoneExpanded } = useExpandableSet()
+const { formatZone, formatRegion } = useNameFormat()
 
 const rawProductWise = ref([])
 const allProducts = ref([])
@@ -86,7 +88,7 @@ const grandTotal = computed(() => {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform" :class="isZoneExpanded(zoneData.name) ? 'rotate-90' : ''">
                     <polyline points="9 18 15 12 9 6"></polyline>
                   </svg>
-                  {{ zoneData.name }}
+                  {{ formatZone(zoneData.name) }}
                 </div>
               </td>
               <td class="border-r border-[var(--border)] px-4 py-3 text-center font-mono text-sm text-[var(--text)]">{{ zoneData.count }}</td>
@@ -108,7 +110,7 @@ const grandTotal = computed(() => {
                 class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
               >
                 <td class="border-r border-[var(--border)] px-4 py-3 pl-10 text-sm text-[var(--text2)]">
-                  {{ region.name }}
+                  {{ formatRegion(region.name) }}
                 </td>
                 <td class="border-r border-[var(--border)] px-4 py-3 text-center font-mono text-sm text-[var(--text)]">{{ region.count }}</td>
                 <td

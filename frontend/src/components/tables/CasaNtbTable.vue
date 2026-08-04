@@ -2,10 +2,12 @@
 import { ref, computed } from 'vue'
 import { useFilters } from '@/composables/useFilters.js'
 import { useExpandableSet } from '@/composables/useExpandableSet.js'
+import { useNameFormat } from '@/composables/useNameFormat.js'
 
 const { isZoneSelected, isRegionSelected, zoneFilter, regionFilter } = useFilters()
 const { toggle: toggleZone, isExpanded: isZoneExpanded } = useExpandableSet()
 const { toggle: toggleRegion, isExpanded: isRegionExpanded } = useExpandableSet()
+const { formatZone, formatRegion } = useNameFormat()
 
 const isFilterApplied = computed(() => zoneFilter.value.length > 0 || regionFilter.value.length > 0)
 
@@ -95,7 +97,7 @@ function getZoneTotals(zoneData) {
             <td class="border-r border-[var(--border)] px-4 py-2.5 text-center font-mono text-sm font-semibold text-[var(--text3)]">{{ zi + 1 }}</td>
             <td class="border-r border-[var(--border)] px-4 py-2.5 text-sm font-semibold text-[var(--text)]">
               <span class="mr-2 text-[var(--text3)]">{{ isZoneExpanded(zone.zone) ? '▼' : '▶' }}</span>
-              {{ zone.zone }}
+              {{ formatZone(zone.zone) }}
             </td>
             <td class="border-r border-[var(--border)] px-4 py-2.5 text-center font-mono text-sm font-semibold text-[var(--text)]">{{ getZoneTotals(zone).branches }}</td>
             <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm font-semibold text-[var(--text)]">{{ getZoneTotals(zone).ntb }}</td>
@@ -109,7 +111,7 @@ function getZoneTotals(zoneData) {
                 <td class="border-r border-[var(--border)] px-4 py-2.5 text-center font-mono text-sm text-[var(--text3)]">{{ zi + 1 }}.{{ ri + 1 }}</td>
                 <td class="border-r border-[var(--border)] px-4 py-2.5 pl-8 text-sm font-medium text-[var(--text)]">
                   <span class="mr-2 text-[var(--text3)]">{{ isRegionExpanded(zone.zone + '-' + region.region) ? '▼' : '▶' }}</span>
-                  {{ region.region }}
+                  {{ formatRegion(region.region) }}
                 </td>
                 <td class="border-r border-[var(--border)] px-4 py-2.5 text-center font-mono text-sm text-[var(--text)]">{{ getRegionTotals(region).branches }}</td>
                 <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ getRegionTotals(region).ntb }}</td>

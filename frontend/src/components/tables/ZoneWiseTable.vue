@@ -3,12 +3,14 @@ import { computed } from 'vue'
 import { useNumberFormat } from '@/composables/useNumberFormat.js'
 import { useFilters } from '@/composables/useFilters.js'
 import { useExpandableSet } from '@/composables/useExpandableSet.js'
+import { useNameFormat } from '@/composables/useNameFormat.js'
 import AchievementBadge from './AchievementBadge.vue'
 import ProgressBar from './ProgressBar.vue'
 
 const { formatNumber } = useNumberFormat()
 const { isZoneSelected, isRegionSelected } = useFilters()
 const { toggle, isExpanded } = useExpandableSet()
+const { formatZone, formatRegion } = useNameFormat()
 
 const props = defineProps({
   zoneData: { type: Array, default: () => [] },
@@ -117,7 +119,7 @@ const totals = computed(() => {
                   >
                     <polyline points="9 18 15 12 9 6"></polyline>
                   </svg>
-                  {{ zoneData.zone }}
+                  {{ formatZone(zoneData.zone) }}
                 </div>
               </td>
               <td class="border-r border-[var(--border)] px-5 py-3 text-sm text-[var(--text)]">
@@ -140,7 +142,7 @@ const totals = computed(() => {
                 class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
               >
                 <td class="border-r border-[var(--border)] px-5 py-3 pl-10 text-sm text-[var(--text3)]">
-                  {{ region.region }}
+                  {{ formatRegion(region.region) }}
                 </td>
                 <td class="border-r border-[var(--border)] px-5 py-3 text-sm text-[var(--text)]">
                   {{ getMonthData(region).branches }}

@@ -3,9 +3,11 @@ import { ref, computed, onMounted } from 'vue'
 import { frappeRequest } from 'frappe-ui'
 import { useExpandableSet } from '@/composables/useExpandableSet.js'
 import { useFilters } from '@/composables/useFilters.js'
+import { useNameFormat } from '@/composables/useNameFormat.js'
 
 const { toggle, isExpanded } = useExpandableSet()
 const { isZoneSelected, isRegionSelected } = useFilters()
+const { formatZone } = useNameFormat()
 
 const categoryWise = ref([])
 const months = ref([])
@@ -215,7 +217,7 @@ function getMovement(cat) {
                 class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
               >
                 <td class="border-r border-[var(--border)] px-5 py-3 pl-10 text-sm text-[var(--text3)]">
-                  {{ zi }}
+                  {{ formatZone(zi) }}
                 </td>
                 <td class="border-r border-[var(--border)] px-5 py-3 text-sm text-[var(--text3)]">
                   —

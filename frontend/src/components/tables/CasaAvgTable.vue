@@ -1,5 +1,8 @@
 <script setup>
 import { ref } from 'vue'
+import { useNameFormat } from '@/composables/useNameFormat.js'
+
+const { formatRegion } = useNameFormat()
 
 const casaAvgData = ref([
   { cifId: 'CIF001', acctName: 'Rajesh Kumar', foracid: '1234567890123', acctOpenDate: '2020-03-15', schema: 'SB', solId: 'SOL001', branch: 'ABD-1001', clsFlag: 'N', clsDate: '', cifOpenDate: '2019-01-10', cifStatus: 'Active', tranDateBal: 125000, clrBalAmt: 120000, depositAmt: 350000, totalWeightedBal: 475000, totalDays: 90, avgBalance: 5278, closingMab: 5100, openingMab: 4800, incMab: 300, status: 'Regular', solGlXfer: 'N', rmId: 'RM001', empName: 'Amit Sharma', division: 'Retail', region: 'R-1', circleOffice: 'Circle A' },
@@ -75,7 +78,7 @@ const casaAvgData = ref([
           <td class="border-r border-[var(--border)] px-4 py-3 font-mono text-sm text-[var(--text)]">{{ row.rmId }}</td>
           <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text)]">{{ row.empName }}</td>
           <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text)]">{{ row.division }}</td>
-          <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text)]">{{ row.region }}</td>
+          <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text)]">{{ formatRegion(row.region) }}</td>
           <td class="px-4 py-3 text-sm text-[var(--text)]">{{ row.circleOffice }}</td>
         </tr>
       </tbody>

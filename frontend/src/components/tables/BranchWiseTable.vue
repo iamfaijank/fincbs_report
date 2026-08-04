@@ -3,10 +3,12 @@ import { ref, computed, onMounted } from 'vue'
 import { frappeRequest } from 'frappe-ui'
 import { useNumberFormat } from '@/composables/useNumberFormat.js'
 import { useFilters } from '@/composables/useFilters.js'
+import { useNameFormat } from '@/composables/useNameFormat.js'
 import AchievementBadge from './AchievementBadge.vue'
 
 const { formatNumber } = useNumberFormat()
 const { isZoneSelected, isRegionSelected } = useFilters()
+const { formatZone, formatRegion } = useNameFormat()
 
 const branchWise = ref([])
 const months = ref([])
@@ -120,10 +122,10 @@ const totals = computed(() => {
               {{ row.branch }}
             </td>
             <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text2)]">
-              {{ row.zone }}
+              {{ formatZone(row.zone) }}
             </td>
             <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text2)]">
-              {{ row.region }}
+              {{ formatRegion(row.region) }}
             </td>
             <template v-if="activeMonth && getMonthData(row)">
               <td class="border-r border-[var(--border)] px-4 py-3 text-center">
