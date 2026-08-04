@@ -37,7 +37,7 @@ const filteredAgentData = computed(() => {
     }
     zoneMap[row.zone].regions.push(row)
   }
-  return Object.values(zoneMap)
+  return Object.values(zoneMap).sort((a, b) => a.zone.localeCompare(b.zone, undefined, { numeric: true }))
 })
 
 function getZoneTotals(zoneData) {
