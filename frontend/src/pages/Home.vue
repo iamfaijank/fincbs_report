@@ -1,12 +1,16 @@
 <script setup>
-import { ref, provide } from 'vue'
+import { ref, provide, watch } from 'vue'
 import { useSidebar } from '@/composables/useSidebar.js'
 
 const { toggleSidebar } = useSidebar()
 const searchQuery = ref('')
-const activeView = ref('drishti')
+const activeView = ref(sessionStorage.getItem('drishti-active-view') || 'drishti')
 
 provide('activeView', activeView)
+
+watch(activeView, (val) => {
+  sessionStorage.setItem('drishti-active-view', val)
+})
 
 const formattedDate = new Date().toLocaleDateString('en-US', {
   month: 'short',

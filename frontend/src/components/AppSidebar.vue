@@ -24,7 +24,7 @@ const financialYear = ref(`fy${fyStartYear}${fyStartYear + 1}`)
 const asOfDate = ref('')
 const asOfMonth = ref('6')
 const segmentSelect = ref('all')
-const isDark = ref(false)
+const isDark = ref(localStorage.getItem('theme') === 'dark')
 
 const categories = ref([
   { name: 'Pinnacle', range: '>100%', color: '#4fffb0', count: 42, enabled: true },

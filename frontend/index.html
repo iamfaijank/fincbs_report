@@ -14,6 +14,12 @@
 		<link rel="icon" type="image/png" href="/favicon.png" />
 	</head>
 	<body class="antialiased">
+		<script>
+			;(function() {
+				var saved = localStorage.getItem('theme');
+				if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+			})();
+		</script>
 		<div id="app"></div>
 		<div id="modals"></div>
 		<div id="popovers"></div>

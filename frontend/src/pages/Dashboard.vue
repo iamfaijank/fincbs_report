@@ -14,7 +14,9 @@ import CasaAvgTable from '@/components/tables/CasaAvgTable.vue'
 import GlReportTable from '@/components/tables/GlReportTable.vue'
 
 const activeView = inject('activeView')
-const activeTab = ref('zone')
+const allTabIds = ['zone','category','product','agent','branch','rd_smbg','daily_acct','casa_ntb','casa_avg','gl_report']
+const savedTab = sessionStorage.getItem('drishti-active-tab')
+const activeTab = ref(allTabIds.includes(savedTab) ? savedTab : 'zone')
 
 const drishtiTabs = [
   { id: 'zone', label: 'Zone Wise', color: '#065f46' },
@@ -34,8 +36,15 @@ const misTabs = [
 
 const tabs = computed(() => activeView.value === 'drishti' ? drishtiTabs : misTabs)
 
+watch(activeTab, (val) => {
+  sessionStorage.setItem('drishti-active-tab', val)
+})
+
 watch(activeView, () => {
-  activeTab.value = tabs.value[0].id
+  const currentTabIds = tabs.value.map(t => t.id)
+  if (!currentTabIds.includes(activeTab.value)) {
+    activeTab.value = tabs.value[0].id
+  }
 })
 
 const zoneData = ref([])
