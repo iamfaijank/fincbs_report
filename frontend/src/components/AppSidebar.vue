@@ -222,19 +222,20 @@ initFilters()
   >
     <div class="sidebar-inner">
       <!-- Logo -->
-      <div class="sidebar-logo" :class="{ 'logo-clickable': collapsed }" @click="collapsed ? toggleSidebar() : null" style="cursor: default;">
+      <div class="sidebar-logo" :class="{ 'logo-clickable': collapsed }" @click="collapsed ? toggleSidebar() : null" :style="{ cursor: collapsed ? 'pointer' : 'default' }">
         <img src="/fav-icon.png" alt="Drishti" class="logo-mark" />
         <div v-if="!collapsed">
           <div class="logo-text">DRISHTI</div>
           <div class="logo-sub">Performance Intelligence</div>
         </div>
-        <div style="flex:1" />
-        <button class="collapse-btn" @click.stop="toggleSidebar" :title="collapsed ? 'Expand' : 'Collapse'">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline v-if="!collapsed" points="11 17 6 12 11 7" />
-            <polyline v-else points="13 7 18 12 13 17" />
-          </svg>
-        </button>
+        <template v-if="!collapsed">
+          <div style="flex:1" />
+          <button class="collapse-btn" @click.stop="toggleSidebar" title="Collapse">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="11 17 6 12 11 7" />
+            </svg>
+          </button>
+        </template>
       </div>
 
       <template v-if="!collapsed">
