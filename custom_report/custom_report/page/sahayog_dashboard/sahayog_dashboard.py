@@ -530,17 +530,18 @@ def get_targets_map(financial_year, target_type, month_keys, allowed_sol_ids=Non
 
 
 def build_zone_wise(branch_data, targets_map, target_type):
-    zone_hierarchy = defaultdict(lambda: defaultdict(lambda: {"zone": "", "region": "", "months": {}}))
+    zone_hierarchy = defaultdict(lambda: defaultdict(lambda: {"zone": "", "region": "", "months": {}, "branch_details": defaultdict(lambda: {"zone": "", "region": "", "sol_id": "", "branch": "", "months": {}})}))
     
     for row in branch_data:
         zone = row.get("zone") or "Unknown"
         region = row.get("region") or "Unknown"
         sol_id = str(row.get("sol_id") or "")
+        branch_name = row.get("branch") or sol_id
         month_key = row.get("month_key")
         if not month_key: continue
         
         if region not in zone_hierarchy[zone]:
-            zone_hierarchy[zone][region] = {"zone": zone, "region": region, "months": {}}
+            zone_hierarchy[zone][region] = {"zone": zone, "region": region, "months": {}, "branch_details": defaultdict(lambda: {"zone": "", "region": "", "sol_id": "", "branch": "", "months": {}})}
         
         if month_key not in zone_hierarchy[zone][region]["months"]:
             zone_hierarchy[zone][region]["months"][month_key] = {"branches": set(), "target": 0.0, "achievement": 0.0}
@@ -552,6 +553,16 @@ def build_zone_wise(branch_data, targets_map, target_type):
         zrm["branches"].add(sol_id)
         zrm["target"] += tgt
         zrm["achievement"] += ach
+
+        branch = zone_hierarchy[zone][region]["branch_details"][sol_id]
+        branch["zone"] = zone
+        branch["region"] = region
+        branch["sol_id"] = sol_id
+        branch["branch"] = branch_name
+        if month_key not in branch["months"]:
+            branch["months"][month_key] = {"target": 0.0, "achievement": 0.0, "percentage": 0.0}
+        branch["months"][month_key]["target"] += tgt
+        branch["months"][month_key]["achievement"] += ach
     
     zone_wise = []
     def zone_sort_key(z):
@@ -585,7 +596,18 @@ def build_zone_wise(branch_data, targets_map, target_type):
         
         zone_wise.append(zone_total)
         for region in sorted(zone_hierarchy[zone].keys()):
-            zone_wise.append(zone_hierarchy[zone][region])
+            reg = zone_hierarchy[zone][region]
+            branches = []
+            for sol_id in sorted(reg["branch_details"].keys()):
+                bd = reg["branch_details"][sol_id]
+                for mk, mdata in bd["months"].items():
+                    tgt = mdata["target"]
+                    ach = mdata["achievement"]
+                    mdata["percentage"] = round((ach / tgt) * 100, 2) if tgt > 0 else 0.0
+                branches.append(bd)
+            reg["branches_list"] = branches
+            del reg["branch_details"]
+            zone_wise.append(reg)
     
     return zone_wise
 

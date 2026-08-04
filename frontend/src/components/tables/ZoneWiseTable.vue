@@ -4,12 +4,12 @@ import { useNumberFormat } from '@/composables/useNumberFormat.js'
 import { useFilters } from '@/composables/useFilters.js'
 import { useExpandableSet } from '@/composables/useExpandableSet.js'
 import { useNameFormat } from '@/composables/useNameFormat.js'
-import AchievementBadge from './AchievementBadge.vue'
 import ProgressBar from './ProgressBar.vue'
 
 const { formatNumber } = useNumberFormat()
 const { isZoneSelected, isRegionSelected } = useFilters()
-const { toggle, isExpanded } = useExpandableSet()
+const { toggle: toggleZone, isExpanded: isZoneExpanded } = useExpandableSet()
+const { toggle: toggleRegion, isExpanded: isRegionExpanded } = useExpandableSet()
 const { formatZone, formatRegion } = useNameFormat()
 
 const props = defineProps({
@@ -76,12 +76,12 @@ const totals = computed(() => {
         <thead>
           <tr class="border-b border-[var(--border)]">
             <th rowspan="2" class="border-r border-[var(--border)] bg-[var(--bg2)] px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-              Zone/Region
+              Zone / Region / Branch
             </th>
             <th rowspan="2" class="border-r border-[var(--border)] bg-[var(--bg2)] px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
               Branches
             </th>
-            <th colspan="3" v-if="activeMonth" class="border-b border-[var(--border)] bg-[var(--bg1)] px-5 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+            <th colspan="3" v-if="activeMonth" class="border-b border-r border-[var(--border)] bg-[var(--bg1)] px-5 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
               {{ activeMonth.display }}
             </th>
           </tr>
@@ -99,9 +99,10 @@ const totals = computed(() => {
         </thead>
         <tbody>
           <template v-for="zoneData in filteredTableData" :key="zoneData.zone">
+            <!-- Zone row -->
             <tr
               class="cursor-pointer border-b border-[var(--border)] bg-[var(--bg1)] font-semibold transition hover:bg-[var(--bg2)]"
-              @click="toggle(zoneData.zone)"
+              @click="toggleZone(zoneData.zone)"
             >
               <td class="border-r border-[var(--border)] px-5 py-3 text-sm text-[var(--text)]">
                 <div class="flex items-center gap-2">
@@ -115,7 +116,7 @@ const totals = computed(() => {
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     class="transition-transform"
-                    :class="isExpanded(zoneData.zone) ? 'rotate-90' : ''"
+                    :class="isZoneExpanded(zoneData.zone) ? 'rotate-90' : ''"
                   >
                     <polyline points="9 18 15 12 9 6"></polyline>
                   </svg>
@@ -135,30 +136,77 @@ const totals = computed(() => {
                 <ProgressBar :value="getMonthData(zoneData).percentage" />
               </td>
             </tr>
-            <template v-if="isExpanded(zoneData.zone)">
-              <tr
-                v-for="region in zoneData.regions"
-                :key="`${zoneData.zone}-${region.region}`"
-                class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
-              >
-                <td class="border-r border-[var(--border)] px-5 py-3 pl-10 text-sm text-[var(--text3)]">
-                  {{ formatRegion(region.region) }}
-                </td>
-                <td class="border-r border-[var(--border)] px-5 py-3 text-sm text-[var(--text)]">
-                  {{ getMonthData(region).branches }}
-                </td>
-                <td v-if="activeMonth" class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">
-                  {{ formatNumber(getMonthData(region).target) }}
-                </td>
-                <td v-if="activeMonth" class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">
-                  {{ formatNumber(getMonthData(region).achievement) }}
-                </td>
-                <td v-if="activeMonth" class="px-5 py-3 text-center font-mono text-sm text-[var(--text)]">
-                  <ProgressBar :value="getMonthData(region).percentage" />
-                </td>
-              </tr>
+
+            <!-- Region & Branch rows -->
+            <template v-if="isZoneExpanded(zoneData.zone)">
+              <template v-for="region in zoneData.regions" :key="`${zoneData.zone}-${region.region}`">
+                <!-- Region row -->
+                <tr
+                  class="cursor-pointer border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
+                  @click="toggleRegion(region.region)"
+                >
+                  <td class="border-r border-[var(--border)] px-5 py-3 pl-10 text-sm text-[var(--text3)]">
+                    <div class="flex items-center gap-2">
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="transition-transform flex-shrink-0"
+                        :class="isRegionExpanded(region.region) ? 'rotate-90' : ''"
+                      >
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                      </svg>
+                      {{ formatRegion(region.region) }}
+                    </div>
+                  </td>
+                  <td class="border-r border-[var(--border)] px-5 py-3 text-sm text-[var(--text)]">
+                    {{ getMonthData(region).branches }}
+                  </td>
+                  <td v-if="activeMonth" class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">
+                    {{ formatNumber(getMonthData(region).target) }}
+                  </td>
+                  <td v-if="activeMonth" class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">
+                    {{ formatNumber(getMonthData(region).achievement) }}
+                  </td>
+                  <td v-if="activeMonth" class="px-5 py-3 text-center font-mono text-sm text-[var(--text)]">
+                    <ProgressBar :value="getMonthData(region).percentage" />
+                  </td>
+                </tr>
+
+                <!-- SOL/Branch rows -->
+                <template v-if="isRegionExpanded(region.region)">
+                  <tr
+                    v-for="branch in (region.branches_list || [])"
+                    :key="`${region.region}-${branch.sol_id}`"
+                    class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
+                  >
+                    <td class="border-r border-[var(--border)] px-5 py-2 pl-16 text-xs text-[var(--text3)] font-mono">
+                      {{ branch.branch || branch.sol_id }}
+                    </td>
+                    <td class="border-r border-[var(--border)] px-5 py-2 text-xs text-[var(--text)]">
+                      1
+                    </td>
+                    <td v-if="activeMonth" class="border-r border-[var(--border)] px-5 py-2 text-right font-mono text-xs text-[var(--text)]">
+                      {{ formatNumber(branch.months?.[activeMonth.key]?.target || 0) }}
+                    </td>
+                    <td v-if="activeMonth" class="border-r border-[var(--border)] px-5 py-2 text-right font-mono text-xs text-[var(--text)]">
+                      {{ formatNumber(branch.months?.[activeMonth.key]?.achievement || 0) }}
+                    </td>
+                    <td v-if="activeMonth" class="px-5 py-2 text-center font-mono text-xs text-[var(--text)]">
+                      <ProgressBar :value="branch.months?.[activeMonth.key]?.percentage || 0" />
+                    </td>
+                  </tr>
+                </template>
+              </template>
             </template>
           </template>
+
+          <!-- Total row -->
           <tr class="border-t-2 border-[var(--border)] bg-[var(--bg2)] font-semibold">
             <td class="border-r border-[var(--border)] px-5 py-3 text-sm text-[var(--text)]">Total</td>
             <td class="border-r border-[var(--border)] px-5 py-3 text-sm text-[var(--text)]">{{ totals.branches }}</td>
