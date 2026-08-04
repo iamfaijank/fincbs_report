@@ -77,7 +77,7 @@ const textColor = (pct) => {
 </script>
 
 <template>
-  <div class="sb-card flex flex-col h-full">
+  <div class="sb-card flex flex-col h-full overflow-auto">
     <div class="flex-shrink-0 border-b border-[var(--border)] px-4 py-4">
       <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)] mb-3">Overall Achievement</div>
       <div class="flex items-center gap-3">

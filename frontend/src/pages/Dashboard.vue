@@ -13,6 +13,7 @@ import CasaNtbTable from '@/components/tables/CasaNtbTable.vue'
 import CasaAvgTable from '@/components/tables/CasaAvgTable.vue'
 import GlReportTable from '@/components/tables/GlReportTable.vue'
 import ZoneProgressCard from '@/components/tables/ZoneProgressCard.vue'
+import ZoneAchievementChart from '@/components/tables/ZoneAchievementChart.vue'
 
 const activeView = inject('activeView')
 const allTabIds = ['zone','category','product','agent','branch','rd_smbg','daily_acct','casa_ntb','casa_avg','gl_report']
@@ -130,10 +131,11 @@ const drishtiCards = computed(() => [
 
     <div class="flex-1 min-h-0 overflow-auto">
       <div v-if="activeView === 'drishti' && activeTab === 'zone'" class="flex gap-4 h-full">
-        <div class="flex-1 min-w-0">
+        <div class="flex-1 min-w-0 flex flex-col gap-4 h-full overflow-auto">
           <ZoneWiseTable :zoneData="zoneData" :months="months" />
+          <ZoneAchievementChart :zoneData="zoneData" :months="months" />
         </div>
-        <div class="flex-shrink-0 w-96">
+        <div class="flex-shrink-0 w-96 h-full">
           <ZoneProgressCard :zoneData="zoneData" :months="months" />
         </div>
       </div>
