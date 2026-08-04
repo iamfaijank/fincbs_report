@@ -54,7 +54,7 @@ function getZoneTotals(zoneData) {
     t.active += r.active || 0
     t.inactive += r.inactive || 0
   })
-  t.achPercent = t.ssTarget > 0 ? ((t.ssAchievement / t.ssTarget) * 100).toFixed(1) : 0
+  t.achPercent = t.target > 0 ? ((t.achievement / t.target) * 100).toFixed(1) : 0
   return t
 }
 </script>
@@ -141,7 +141,7 @@ function getZoneTotals(zoneData) {
                 <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(region.active) }}</td>
                 <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(region.inactive) }}</td>
                 <td class="px-4 py-3 text-center font-mono text-sm">
-                  <AchievementBadge :value="region.ss_target > 0 ? ((region.ss_achievement / region.ss_target) * 100).toFixed(1) : 0" />
+                  <AchievementBadge :value="region.target > 0 ? ((region.achievement / region.target) * 100).toFixed(1) : 0" />
                 </td>
               </tr>
             </template>
