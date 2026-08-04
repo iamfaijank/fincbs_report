@@ -138,7 +138,7 @@ const totals = computed(() => {
                 :key="`${zoneData.zone}-${region.region}`"
                 class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
               >
-                <td class="border-r border-[var(--border)] px-5 py-3 pl-6 text-sm text-[var(--text3)]">
+                <td class="border-r border-[var(--border)] px-5 py-3 pl-8 text-sm text-[var(--text3)]">
                   {{ region.region }}
                 </td>
                 <td class="border-r border-[var(--border)] px-5 py-3 text-sm text-[var(--text)]">

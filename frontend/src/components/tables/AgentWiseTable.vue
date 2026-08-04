@@ -127,7 +127,7 @@ function getZoneTotals(zoneData) {
                 :key="`${zoneData.zone}-${region.region}`"
                 class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
               >
-                <td class="border-r border-[var(--border)] px-4 py-3 pl-6 text-sm text-[var(--text2)]">
+                <td class="border-r border-[var(--border)] px-4 py-3 pl-8 text-sm text-[var(--text2)]">
                   {{ region.region }}
                 </td>
                 <td class="border-r border-[var(--border)] px-3 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(region.ss_target) }}</td>

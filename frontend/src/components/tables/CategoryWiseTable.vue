@@ -214,7 +214,7 @@ function getMovement(cat) {
                 :key="`${cat.category}-${zi}`"
                 class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
               >
-                <td class="border-r border-[var(--border)] px-5 py-3 pl-6 text-sm text-[var(--text3)]">
+                <td class="border-r border-[var(--border)] px-5 py-3 pl-8 text-sm text-[var(--text3)]">
                   {{ zi }}
                 </td>
                 <td class="border-r border-[var(--border)] px-5 py-3 text-sm text-[var(--text3)]">
