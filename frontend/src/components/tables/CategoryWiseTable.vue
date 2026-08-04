@@ -52,6 +52,16 @@ const totalBranchCount = computed(() => {
   }, 0)
 })
 
+const totalMovement = computed(() => {
+  let inc = 0, dec = 0
+  categoryWise.value.forEach(cat => {
+    const m = getMovement(cat)
+    inc += m.increased
+    dec += m.decreased
+  })
+  return { increased: inc, decreased: dec, total: inc - dec }
+})
+
 function getMovement(cat) {
   const md = getMonthData(cat)
   if (!md?.changes) return { increased: 0, decreased: 0, total: 0 }
@@ -238,8 +248,28 @@ function getMovement(cat) {
             <td class="border-r border-[var(--border)] px-5 py-3 text-center text-sm text-[var(--text3)]">
               —
             </td>
-            <td class="border-r border-[var(--border)] px-5 py-3 text-center text-sm text-[var(--text3)]">
-              —
+            <td class="border-r border-[var(--border)] px-5 py-3 text-center text-sm">
+              <span
+                class="inline-flex items-center gap-1 rounded px-2 py-0.5 font-mono text-xs font-medium"
+                :class="
+                  totalMovement.total > 0
+                    ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                    : totalMovement.total < 0
+                    ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                    : 'bg-gray-50 text-gray-600 dark:bg-gray-900/30 dark:text-gray-400'
+                "
+              >
+                <svg v-if="totalMovement.total > 0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="18 15 12 9 6 15"></polyline>
+                </svg>
+                <svg v-else-if="totalMovement.total < 0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+                <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                {{ totalMovement.total > 0 ? '+' : '' }}{{ totalMovement.total }}
+              </span>
             </td>
             <td class="px-5 py-3 text-center text-sm text-[var(--text3)]">
               —
