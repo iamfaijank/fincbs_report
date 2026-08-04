@@ -107,7 +107,7 @@ const grandTotal = computed(() => {
                 :key="`${zoneData.name}-${region.name}`"
                 class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
               >
-                <td class="border-r border-[var(--border)] px-4 py-3 pl-12 text-sm text-[var(--text2)]">
+                <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text2)]">
                   {{ region.name }}
                 </td>
                 <td class="border-r border-[var(--border)] px-4 py-3 text-center font-mono text-sm text-[var(--text)]">{{ region.count }}</td>
