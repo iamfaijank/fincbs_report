@@ -127,39 +127,22 @@ const textColor = (pct) => {
       </div>
     </div>
 
-    <div class="flex-shrink-0 border-b border-[var(--border)] px-4 py-3 grid grid-cols-2 gap-2">
-      <div class="rounded-md bg-green-50 dark:bg-green-900/20 px-3 py-2">
-        <div class="text-[10px] font-semibold uppercase tracking-wider text-green-600 dark:text-green-400 mb-1">Top Zone</div>
-        <div v-if="topZone" class="flex items-baseline justify-between">
-          <span class="text-sm font-bold text-green-700 dark:text-green-300">{{ formatZone(topZone.zone) }}</span>
-          <span class="text-sm font-mono font-bold text-green-600 dark:text-green-400">{{ topZone.pct }}%</span>
+    <div class="flex-shrink-0 border-b border-[var(--border)] px-4 py-3">
+      <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)] mb-2">Top & Bottom Zone</div>
+      <div class="grid grid-cols-2 gap-2">
+        <div class="rounded-md bg-green-50 dark:bg-green-900/20 px-3 py-2">
+          <div class="text-[10px] font-semibold uppercase tracking-wider text-green-600 dark:text-green-400 mb-1">Top Zone</div>
+          <div v-if="topZone" class="flex items-baseline justify-between">
+            <span class="text-sm font-bold text-green-700 dark:text-green-300">{{ formatZone(topZone.zone) }}</span>
+            <span class="text-sm font-mono font-bold text-green-600 dark:text-green-400">{{ topZone.pct }}%</span>
+          </div>
         </div>
-      </div>
-      <div class="rounded-md bg-red-50 dark:bg-red-900/20 px-3 py-2">
-        <div class="text-[10px] font-semibold uppercase tracking-wider text-red-600 dark:text-red-400 mb-1">Bottom Zone</div>
-        <div v-if="bottomZone" class="flex items-baseline justify-between">
-          <span class="text-sm font-bold text-red-700 dark:text-red-300">{{ formatZone(bottomZone.zone) }}</span>
-          <span class="text-sm font-mono font-bold text-red-600 dark:text-red-400">{{ bottomZone.pct }}%</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="flex-1 min-h-0 overflow-auto p-4 space-y-3">
-      <div v-for="z in zoneProgress" :key="z.zone" class="space-y-1.5">
-        <div class="flex items-center justify-between">
-          <span class="text-sm font-semibold text-[var(--text)]">{{ formatZone(z.zone) }}</span>
-          <span class="text-sm font-mono font-semibold" :class="textColor(z.pct)">{{ z.pct }}%</span>
-        </div>
-        <div class="relative h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-          <div
-            class="h-full rounded-full transition-all duration-700 ease-out"
-            :class="textColor(z.pct).replace('text-', 'bg-').replace('dark:text-', 'dark:bg-')"
-            :style="{ width: Math.min(z.pct, 100) + '%' }"
-          ></div>
-        </div>
-        <div class="flex justify-between text-[10px] text-[var(--text3)]">
-          <span>{{ formatNumber(z.achievement) }} / {{ formatNumber(z.target) }}</span>
-          <span>{{ z.branches }} branches</span>
+        <div class="rounded-md bg-red-50 dark:bg-red-900/20 px-3 py-2">
+          <div class="text-[10px] font-semibold uppercase tracking-wider text-red-600 dark:text-red-400 mb-1">Bottom Zone</div>
+          <div v-if="bottomZone" class="flex items-baseline justify-between">
+            <span class="text-sm font-bold text-red-700 dark:text-red-300">{{ formatZone(bottomZone.zone) }}</span>
+            <span class="text-sm font-mono font-bold text-red-600 dark:text-red-400">{{ bottomZone.pct }}%</span>
+          </div>
         </div>
       </div>
     </div>
