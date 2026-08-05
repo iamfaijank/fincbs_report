@@ -183,22 +183,69 @@ function scrollToManpowerDetails() {
           <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Agent Details</div>
         </div>
         <div class="px-4 py-4">
-          <div class="space-y-3">
-            <div class="flex justify-between items-center">
-              <span class="text-[11px] text-[var(--text3)]">Active SS Agent</span>
-              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.total_active_ss_agent || '—' }}</span>
+          <div class="space-y-4">
+            <!-- DDS Agents Row -->
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <div class="text-sm font-semibold text-[var(--text)] mb-1">DDS Agents</div>
+                <div class="text-[11px] text-[var(--text3)]">
+                  Active: {{ branchProfile?.total_active_dds_agent || 0 }} / Total: {{ branchProfile?.total_dds_agent || 0 }}
+                </div>
+              </div>
+              <div class="relative w-16 h-16">
+                <svg class="transform -rotate-90" width="64" height="64" viewBox="0 0 64 64">
+                  <!-- Background circle -->
+                  <circle cx="32" cy="32" r="28" fill="none" stroke="var(--gray-200)" stroke-width="6"></circle>
+                  <!-- Progress circle -->
+                  <circle 
+                    cx="32" cy="32" r="28" 
+                    fill="none" 
+                    stroke="#10b981" 
+                    stroke-width="6"
+                    stroke-linecap="round"
+                    :stroke-dasharray="176"
+                    :stroke-dashoffset="176 - (176 * ((branchProfile?.total_active_dds_agent || 0) / Math.max(branchProfile?.total_dds_agent || 1, 1)))"
+                    class="transition-all duration-300"
+                  ></circle>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <span class="text-xs font-bold text-[var(--text)]">
+                    {{ Math.round(((branchProfile?.total_active_dds_agent || 0) / Math.max(branchProfile?.total_dds_agent || 1, 1)) * 100) }}%
+                  </span>
+                </div>
+              </div>
             </div>
-            <div class="flex justify-between items-center">
-              <span class="text-[11px] text-[var(--text3)]">Total SS Agent</span>
-              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.total_ss_agent || '—' }}</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-[11px] text-[var(--text3)]">Active DDS Agent</span>
-              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.total_active_dds_agent || '—' }}</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-[11px] text-[var(--text3)]">Total DDS Agent</span>
-              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.total_dds_agent || '—' }}</span>
+
+            <!-- SS Agents Row -->
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <div class="text-sm font-semibold text-[var(--text)] mb-1">SS Agents</div>
+                <div class="text-[11px] text-[var(--text3)]">
+                  Active: {{ branchProfile?.total_active_ss_agent || 0 }} / Total: {{ branchProfile?.total_ss_agent || 0 }}
+                </div>
+              </div>
+              <div class="relative w-16 h-16">
+                <svg class="transform -rotate-90" width="64" height="64" viewBox="0 0 64 64">
+                  <!-- Background circle -->
+                  <circle cx="32" cy="32" r="28" fill="none" stroke="var(--gray-200)" stroke-width="6"></circle>
+                  <!-- Progress circle -->
+                  <circle 
+                    cx="32" cy="32" r="28" 
+                    fill="none" 
+                    stroke="#3b82f6" 
+                    stroke-width="6"
+                    stroke-linecap="round"
+                    :stroke-dasharray="176"
+                    :stroke-dashoffset="176 - (176 * ((branchProfile?.total_active_ss_agent || 0) / Math.max(branchProfile?.total_ss_agent || 1, 1)))"
+                    class="transition-all duration-300"
+                  ></circle>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <span class="text-xs font-bold text-[var(--text)]">
+                    {{ Math.round(((branchProfile?.total_active_ss_agent || 0) / Math.max(branchProfile?.total_ss_agent || 1, 1)) * 100) }}%
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
