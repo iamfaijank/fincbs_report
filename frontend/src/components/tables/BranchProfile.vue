@@ -36,7 +36,7 @@ const CATEGORY_COLORS = {
 </script>
 
 <template>
-  <div class="sb-card card-table h-full flex flex-col">
+  <div class="h-full flex flex-col">
     <!-- Header with Back Button -->
     <div class="px-5 py-3 border-b border-[var(--border)] flex items-center gap-3 flex-shrink-0">
       <button
