@@ -126,19 +126,26 @@ const CATEGORY_COLORS = {
           <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Manpower Status</div>
         </div>
         <div class="px-4 py-4">
+          <!-- BDO, BDE, RO Cards in a Row -->
+          <div class="grid grid-cols-3 gap-3 mb-4">
+            <!-- BDO Card -->
+            <div class="rounded border border-[var(--border)] bg-[var(--bg2)] p-3 text-center">
+              <div class="text-[10px] font-medium text-[var(--text3)] mb-1">BDO</div>
+              <div class="text-lg font-bold text-[var(--text)]">{{ branchProfile?.bdo || '—' }}</div>
+            </div>
+            <!-- BDE Card -->
+            <div class="rounded border border-[var(--border)] bg-[var(--bg2)] p-3 text-center">
+              <div class="text-[10px] font-medium text-[var(--text3)] mb-1">BDE</div>
+              <div class="text-lg font-bold text-[var(--text)]">{{ branchProfile?.bde || '—' }}</div>
+            </div>
+            <!-- RO Card -->
+            <div class="rounded border border-[var(--border)] bg-[var(--bg2)] p-3 text-center">
+              <div class="text-[10px] font-medium text-[var(--text3)] mb-1">RO</div>
+              <div class="text-lg font-bold text-[var(--text)]">{{ branchProfile?.ro || '—' }}</div>
+            </div>
+          </div>
+          <!-- Staff Count and Budget Staff -->
           <div class="space-y-3">
-            <div class="flex justify-between items-center">
-              <span class="text-[11px] text-[var(--text3)]">BDO</span>
-              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.bdo || '—' }}</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-[11px] text-[var(--text3)]">BDE</span>
-              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.bde || '—' }}</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-[11px] text-[var(--text3)]">RO</span>
-              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.ro || '—' }}</span>
-            </div>
             <div class="flex justify-between items-center">
               <span class="text-[11px] text-[var(--text3)]">Staff Count</span>
               <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.staff_count || '—' }}</span>
