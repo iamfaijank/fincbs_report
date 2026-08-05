@@ -57,34 +57,55 @@ const CATEGORY_COLORS = {
         <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Branch Information</div>
       </div>
       <div class="px-4 py-4">
-        <div class="grid grid-cols-2 gap-4">
-          <div class="flex gap-2">
-            <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Branch</span>
-            <span class="text-[11px] text-[var(--text)]">{{ branch.branch }}</span>
+        <!-- Branch Manager Row with Badge -->
+        <div class="flex items-center gap-3 mb-4 pl-0">
+          <span class="inline-flex items-center justify-center w-32 h-32 rounded bg-blue-100 text-blue-600 text-2xl font-bold dark:bg-blue-900/30 dark:text-blue-400">BM</span>
+          <span class="text-sm font-semibold text-[var(--text)]">Branch Manager</span>
+        </div>
+        <!-- Three Columns -->
+        <div class="grid grid-cols-3 gap-4">
+          <!-- Column 1: BM Details -->
+          <div>
+            <div class="space-y-3">
+              <div class="flex gap-2">
+                <span class="text-[11px] font-medium text-[var(--text3)] w-28 shrink-0">BM Date of Joining</span>
+                <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.bm_doj || '—' }}</span>
+              </div>
+              <div class="flex gap-2">
+                <span class="text-[11px] font-medium text-[var(--text3)] w-28 shrink-0">BM Vintage</span>
+                <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.bm_vintage || '—' }}</span>
+              </div>
+              <div class="flex gap-2">
+                <span class="text-[11px] font-medium text-[var(--text3)] w-28 shrink-0">BM Mobile</span>
+                <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.bm_mob_no || '—' }}</span>
+              </div>
+            </div>
           </div>
-          <div class="flex gap-2">
-            <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">SOL ID</span>
-            <span class="text-[11px] text-[var(--text)]">{{ branch.sol_id }}</span>
+          <!-- Column 2: Branch Details -->
+          <div class="space-y-3">
+            <div class="flex gap-2">
+              <span class="text-[11px] font-medium text-[var(--text3)] w-28 shrink-0">Branch Opening Date</span>
+              <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.branch_opening_date || '—' }}</span>
+            </div>
+            <div class="flex gap-2">
+              <span class="text-[11px] font-medium text-[var(--text3)] w-28 shrink-0">Branch Vintage</span>
+              <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.branch_vintage || '—' }}</span>
+            </div>
+            <div class="flex gap-2">
+              <span class="text-[11px] font-medium text-[var(--text3)] w-28 shrink-0">Branch Email</span>
+              <span class="text-[11px] text-[var(--text)]">{{ branch.email || branchProfile?.email || '—' }}</span>
+            </div>
           </div>
-          <div class="flex gap-2">
-            <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Zone</span>
-            <span class="text-[11px] text-[var(--text)]">{{ formatZone(branch.zone) }}</span>
-          </div>
-          <div class="flex gap-2">
-            <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Region</span>
-            <span class="text-[11px] text-[var(--text)]">{{ formatRegion(branch.region) }}</span>
-          </div>
-          <div class="flex gap-2">
-            <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">State</span>
-            <span class="text-[11px] text-[var(--text)]">{{ branch.state || '—' }}</span>
-          </div>
-          <div class="flex gap-2">
-            <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Email</span>
-            <span class="text-[11px] text-[var(--text)]">{{ branch.email || '—' }}</span>
-          </div>
-          <div class="flex gap-2 col-span-2">
-            <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Address</span>
-            <span class="text-[11px] text-[var(--text)]">{{ branch.address || '—' }}</span>
+          <!-- Column 3: Reporting Person -->
+          <div class="space-y-3">
+            <div class="flex gap-2">
+              <span class="text-[11px] font-medium text-[var(--text3)] w-28 shrink-0">Reporting Person</span>
+              <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.ch_name || '—' }}</span>
+            </div>
+            <div class="flex gap-2">
+              <span class="text-[11px] font-medium text-[var(--text3)] w-28 shrink-0">Reporting Person Mobile</span>
+              <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.ch_mob_no || '—' }}</span>
+            </div>
           </div>
         </div>
       </div>
