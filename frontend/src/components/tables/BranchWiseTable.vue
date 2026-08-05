@@ -5,6 +5,7 @@ import { useNumberFormat } from '@/composables/useNumberFormat.js'
 import { useFilters } from '@/composables/useFilters.js'
 import { useNameFormat } from '@/composables/useNameFormat.js'
 import AchievementBadge from './AchievementBadge.vue'
+import BranchProfile from './BranchProfile.vue'
 
 const props = defineProps({
   searchQuery: { type: String, default: '' },
@@ -17,6 +18,7 @@ const { formatZone, formatRegion } = useNameFormat()
 const branchWise = ref([])
 const months = ref([])
 const loading = ref(true)
+const selectedBranch = ref(null)
 
 const STATUS_META = {
   improved: { label: 'Improved', class: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400', icon: 'up' },
@@ -81,10 +83,24 @@ const totals = computed(() => {
   })
   return { target, achievement, percentage: target > 0 ? Math.round(achievement / target * 100) : 0 }
 })
+
+function selectBranch(row) {
+  selectedBranch.value = row
+}
+
+function goBack() {
+  selectedBranch.value = null
+}
 </script>
 
 <template>
-  <div class="sb-card card-table">
+  <BranchProfile
+    v-if="selectedBranch"
+    :branch="selectedBranch"
+    :months="months"
+    @back="goBack"
+  />
+  <div v-else class="sb-card card-table">
     <div v-if="loading" class="p-8 text-center text-sm text-[var(--text3)]">Loading...</div>
     <div v-else>
       <table class="w-full">
@@ -122,7 +138,8 @@ const totals = computed(() => {
           <tr
             v-for="row in filteredBranchData"
             :key="row.sol_id"
-            class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
+            class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)] cursor-pointer"
+            @click="selectBranch(row)"
           >
             <td class="border-r border-[var(--border)] px-4 py-3 text-center font-mono text-sm text-[var(--text3)]">
               {{ row.sr_no }}
