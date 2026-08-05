@@ -128,7 +128,7 @@ function goBack() {
 
 <template>
   <div class="flex flex-col h-full">
-    <div class="flex-shrink-0">
+    <div v-if="!selectedBranch" class="flex-shrink-0">
       <SummaryCardGroup v-if="activeView === 'drishti'" :cards="drishtiCards" :cols="4" />
 
       <div class="mb-4 flex gap-2">
@@ -169,16 +169,13 @@ function goBack() {
         <CasaAvgTable v-if="activeView === 'mis' && activeTab === 'casa_avg'" />
         <GlReportTable v-if="activeView === 'mis' && activeTab === 'gl_report'" />
       </template>
-    </div>
 
-    <Teleport to="body">
-      <div v-if="selectedBranch" class="fixed inset-0 z-50 bg-[var(--bg)]">
-        <BranchProfile
-          :branch="selectedBranch"
-          :months="months"
-          @back="goBack"
-        />
-      </div>
-    </Teleport>
+      <BranchProfile
+        v-else
+        :branch="selectedBranch"
+        :months="months"
+        @back="goBack"
+      />
+    </div>
   </div>
 </template>

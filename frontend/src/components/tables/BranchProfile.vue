@@ -33,9 +33,9 @@ const CATEGORY_COLORS = {
 </script>
 
 <template>
-  <div class="flex flex-col h-screen">
-    <!-- Header -->
-    <header class="flex items-center gap-3 px-5 py-3 border-b border-[var(--border)] bg-[var(--bg2)]">
+  <div class="sb-card card-table h-full flex flex-col">
+    <!-- Header with Back Button -->
+    <div class="px-5 py-3 border-b border-[var(--border)] flex items-center gap-3 flex-shrink-0">
       <button
         @click="emit('back')"
         class="flex items-center gap-1 text-sm text-[var(--text3)] hover:text-[var(--text)] transition"
@@ -46,10 +46,10 @@ const CATEGORY_COLORS = {
         Back
       </button>
       <span class="text-sm font-semibold text-[var(--text)]">{{ branch.branch }} ({{ branch.sol_id }})</span>
-    </header>
+    </div>
 
     <!-- Branch Info -->
-    <div class="px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)]">
+    <div class="px-5 py-4 border-b border-[var(--border)] bg-[var(--bg2)] flex-shrink-0">
       <div class="grid grid-cols-4 gap-4">
         <div>
           <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)] mb-1">Branch</div>
