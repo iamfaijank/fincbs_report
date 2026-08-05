@@ -206,6 +206,61 @@ const CATEGORY_COLORS = {
       </div>
     </div>
 
+    <!-- Deposit & Book Position Card -->
+    <div class="mx-5 mb-4 sb-card flex-shrink-0">
+      <div class="px-4 py-3 border-b border-[var(--border)]">
+        <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Deposit & Book Position</div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+              <th class="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Account Type</th>
+              <th class="px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Book Position</th>
+              <th class="px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Composition</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">Savings Account (SA)</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.sa_book || 0) }}</td>
+              <td class="px-4 py-3 text-right text-[11px] text-[var(--text)]">{{ branchProfile?.total_book ? Math.round((branchProfile?.sa_book || 0) / branchProfile.total_book * 100) : 0 }}%</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">Current Account (CA)</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.ca_book || 0) }}</td>
+              <td class="px-4 py-3 text-right text-[11px] text-[var(--text)]">{{ branchProfile?.total_book ? Math.round((branchProfile?.ca_book || 0) / branchProfile.total_book * 100) : 0 }}%</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">Fixed Deposit (FD)</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.fd_book || 0) }}</td>
+              <td class="px-4 py-3 text-right text-[11px] text-[var(--text)]">{{ branchProfile?.total_book ? Math.round((branchProfile?.fd_book || 0) / branchProfile.total_book * 100) : 0 }}%</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">Recurring Deposit (RD)</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.rd_book || 0) }}</td>
+              <td class="px-4 py-3 text-right text-[11px] text-[var(--text)]">{{ branchProfile?.total_book ? Math.round((branchProfile?.rd_book || 0) / branchProfile.total_book * 100) : 0 }}%</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">Daily Deposit Scheme (DDS)</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.dds_book || 0) }}</td>
+              <td class="px-4 py-3 text-right text-[11px] text-[var(--text)]">{{ branchProfile?.total_book ? Math.round((branchProfile?.dds_book || 0) / branchProfile.total_book * 100) : 0 }}%</td>
+            </tr>
+            <tr class="hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">SMBG</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.smbg_book || 0) }}</td>
+              <td class="px-4 py-3 text-right text-[11px] text-[var(--text)]">{{ branchProfile?.total_book ? Math.round((branchProfile?.smbg_book || 0) / branchProfile.total_book * 100) : 0 }}%</td>
+            </tr>
+            <tr class="border-t-2 border-[var(--border)] bg-[var(--bg2)] font-semibold">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">Total</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.total_book || 0) }}</td>
+              <td class="px-4 py-3 text-right text-[11px] text-[var(--text)]">100%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Monthly Data Table -->
     <div class="flex-1 overflow-auto">
       <table class="w-full">
