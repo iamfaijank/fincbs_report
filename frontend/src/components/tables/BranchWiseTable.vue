@@ -5,11 +5,12 @@ import { useNumberFormat } from '@/composables/useNumberFormat.js'
 import { useFilters } from '@/composables/useFilters.js'
 import { useNameFormat } from '@/composables/useNameFormat.js'
 import AchievementBadge from './AchievementBadge.vue'
-import BranchProfile from './BranchProfile.vue'
 
 const props = defineProps({
   searchQuery: { type: String, default: '' },
 })
+
+const emit = defineEmits(['select'])
 
 const { formatNumber } = useNumberFormat()
 const { isZoneSelected, isRegionSelected } = useFilters()
@@ -18,7 +19,6 @@ const { formatZone, formatRegion } = useNameFormat()
 const branchWise = ref([])
 const months = ref([])
 const loading = ref(true)
-const selectedBranch = ref(null)
 
 const STATUS_META = {
   improved: { label: 'Improved', class: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400', icon: 'up' },
@@ -85,22 +85,12 @@ const totals = computed(() => {
 })
 
 function selectBranch(row) {
-  selectedBranch.value = row
-}
-
-function goBack() {
-  selectedBranch.value = null
+  emit('select', row)
 }
 </script>
 
 <template>
-  <BranchProfile
-    v-if="selectedBranch"
-    :branch="selectedBranch"
-    :months="months"
-    @back="goBack"
-  />
-  <div v-else class="sb-card card-table">
+  <div class="sb-card card-table">
     <div v-if="loading" class="p-8 text-center text-sm text-[var(--text3)]">Loading...</div>
     <div v-else>
       <table class="w-full">

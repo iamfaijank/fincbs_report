@@ -33,9 +33,9 @@ const CATEGORY_COLORS = {
 </script>
 
 <template>
-  <div class="sb-card card-table">
-    <!-- Header with Back Button -->
-    <div class="px-5 py-3 border-b border-[var(--border)] flex items-center gap-3">
+  <div class="flex flex-col h-screen">
+    <!-- Header -->
+    <header class="flex items-center gap-3 px-5 py-3 border-b border-[var(--border)] bg-[var(--bg2)]">
       <button
         @click="emit('back')"
         class="flex items-center gap-1 text-sm text-[var(--text3)] hover:text-[var(--text)] transition"
@@ -46,10 +46,10 @@ const CATEGORY_COLORS = {
         Back
       </button>
       <span class="text-sm font-semibold text-[var(--text)]">{{ branch.branch }} ({{ branch.sol_id }})</span>
-    </div>
+    </header>
 
     <!-- Branch Info -->
-    <div class="px-5 py-4 border-b border-[var(--border)] bg-[var(--bg2)]">
+    <div class="px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)]">
       <div class="grid grid-cols-4 gap-4">
         <div>
           <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)] mb-1">Branch</div>
@@ -71,10 +71,10 @@ const CATEGORY_COLORS = {
     </div>
 
     <!-- Monthly Data Table -->
-    <div class="overflow-x-auto">
+    <div class="flex-1 overflow-auto">
       <table class="w-full">
-        <thead>
-          <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+        <thead class="sticky top-0 bg-[var(--bg2)]">
+          <tr class="border-b border-[var(--border)]">
             <th class="border-r border-[var(--border)] px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">
               Month
             </th>

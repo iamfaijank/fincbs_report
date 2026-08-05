@@ -14,6 +14,7 @@ import CasaAvgTable from '@/components/tables/CasaAvgTable.vue'
 import GlReportTable from '@/components/tables/GlReportTable.vue'
 import ZoneProgressCard from '@/components/tables/ZoneProgressCard.vue'
 import ZoneAchievementChart from '@/components/tables/ZoneAchievementChart.vue'
+import BranchProfile from '@/components/tables/BranchProfile.vue'
 
 const activeView = inject('activeView')
 const searchQuery = inject('searchQuery')
@@ -113,6 +114,16 @@ const drishtiCards = computed(() => [
   { label: 'Achievement', value: formatCr(summaryData.value.totalAchievement), tag: summaryData.value.achPercent + '%', tagColor: 'red' },
   { label: 'Active Zones', value: String(summaryData.value.zoneCount), tag: 'All live', tagColor: 'green' },
 ])
+
+const selectedBranch = ref(null)
+
+function selectBranch(branch) {
+  selectedBranch.value = branch
+}
+
+function goBack() {
+  selectedBranch.value = null
+}
 </script>
 
 <template>
@@ -137,25 +148,37 @@ const drishtiCards = computed(() => [
     </div>
 
     <div class="flex-1 min-h-0 overflow-auto">
-      <div v-if="activeView === 'drishti' && activeTab === 'zone'" class="flex gap-4 h-full">
-        <div class="flex-1 min-w-0 flex flex-col gap-4 h-full overflow-auto">
-          <ZoneWiseTable :zoneData="zoneData" :months="months" />
-          <ZoneAchievementChart :zoneData="zoneData" :months="months" />
+      <template v-if="!selectedBranch">
+        <div v-if="activeView === 'drishti' && activeTab === 'zone'" class="flex gap-4 h-full">
+          <div class="flex-1 min-w-0 flex flex-col gap-4 h-full overflow-auto">
+            <ZoneWiseTable :zoneData="zoneData" :months="months" />
+            <ZoneAchievementChart :zoneData="zoneData" :months="months" />
+          </div>
+          <div class="flex-shrink-0 w-96 h-full">
+            <ZoneProgressCard :zoneData="zoneData" :months="months" />
+          </div>
         </div>
-        <div class="flex-shrink-0 w-96 h-full">
-          <ZoneProgressCard :zoneData="zoneData" :months="months" />
-        </div>
-      </div>
-      <CategoryWiseTable v-if="activeView === 'drishti' && activeTab === 'category'" />
-      <ProductWiseTable v-if="activeView === 'drishti' && activeTab === 'product'" />
-      <AgentWiseTable v-if="activeView === 'drishti' && activeTab === 'agent'" />
-      <BranchWiseTable v-if="activeView === 'drishti' && activeTab === 'branch'" :searchQuery="searchQuery" />
+        <CategoryWiseTable v-if="activeView === 'drishti' && activeTab === 'category'" />
+        <ProductWiseTable v-if="activeView === 'drishti' && activeTab === 'product'" />
+        <AgentWiseTable v-if="activeView === 'drishti' && activeTab === 'agent'" />
+        <BranchWiseTable v-if="activeView === 'drishti' && activeTab === 'branch'" :searchQuery="searchQuery" @select="selectBranch" />
 
-      <RdSmbgPendingTable v-if="activeView === 'mis' && activeTab === 'rd_smbg'" />
-      <DailyAccountTable v-if="activeView === 'mis' && activeTab === 'daily_acct'" />
-      <CasaNtbTable v-if="activeView === 'mis' && activeTab === 'casa_ntb'" />
-      <CasaAvgTable v-if="activeView === 'mis' && activeTab === 'casa_avg'" />
-      <GlReportTable v-if="activeView === 'mis' && activeTab === 'gl_report'" />
+        <RdSmbgPendingTable v-if="activeView === 'mis' && activeTab === 'rd_smbg'" />
+        <DailyAccountTable v-if="activeView === 'mis' && activeTab === 'daily_acct'" />
+        <CasaNtbTable v-if="activeView === 'mis' && activeTab === 'casa_ntb'" />
+        <CasaAvgTable v-if="activeView === 'mis' && activeTab === 'casa_avg'" />
+        <GlReportTable v-if="activeView === 'mis' && activeTab === 'gl_report'" />
+      </template>
     </div>
+
+    <Teleport to="body">
+      <div v-if="selectedBranch" class="fixed inset-0 z-50 bg-[var(--bg)]">
+        <BranchProfile
+          :branch="selectedBranch"
+          :months="months"
+          @back="goBack"
+        />
+      </div>
+    </Teleport>
   </div>
 </template>
