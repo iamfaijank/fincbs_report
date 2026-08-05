@@ -820,12 +820,27 @@ def build_branch_wise(branch_data, targets_map, months, target_type):
     
     out = []
     for i, (sol_id, data) in enumerate(branch_map.items(), 1):
+        # Fetch additional branch details from Sahayog Branch doctype
+        branch_details = {}
+        if frappe.db.exists("DocType", "Sahayog Branch"):
+            branch_details = frappe.get_all(
+                "Sahayog Branch",
+                filters={"sol_id": sol_id},
+                fields=["state", "email", "branch_address"],
+                limit_page_length=1
+            )
+            if branch_details:
+                branch_details = branch_details[0]
+        
         out.append({
             "sr_no": i,
             "sol_id": sol_id,
             "branch": data["branch"],
             "zone": data["zone"],
             "region": data["region"],
+            "state": branch_details.get("state") or "",
+            "email": branch_details.get("email") or "",
+            "address": branch_details.get("branch_address") or "",
             "months": data["months"]
         })
 

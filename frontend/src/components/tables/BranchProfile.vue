@@ -70,6 +70,41 @@ const CATEGORY_COLORS = {
       </div>
     </div>
 
+    <!-- Branch Information Card -->
+    <div class="px-5 py-4 border-b border-[var(--border)] flex-shrink-0">
+      <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)] mb-3">Branch Information</div>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="flex gap-2">
+          <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Branch</span>
+          <span class="text-[11px] text-[var(--text)]">{{ branch.branch }}</span>
+        </div>
+        <div class="flex gap-2">
+          <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">SOL ID</span>
+          <span class="text-[11px] text-[var(--text)]">{{ branch.sol_id }}</span>
+        </div>
+        <div class="flex gap-2">
+          <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Zone</span>
+          <span class="text-[11px] text-[var(--text)]">{{ formatZone(branch.zone) }}</span>
+        </div>
+        <div class="flex gap-2">
+          <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Region</span>
+          <span class="text-[11px] text-[var(--text)]">{{ formatRegion(branch.region) }}</span>
+        </div>
+        <div class="flex gap-2">
+          <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">State</span>
+          <span class="text-[11px] text-[var(--text)]">{{ branch.state || '—' }}</span>
+        </div>
+        <div class="flex gap-2">
+          <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Email</span>
+          <span class="text-[11px] text-[var(--text)]">{{ branch.email || '—' }}</span>
+        </div>
+        <div class="flex gap-2 col-span-2">
+          <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Address</span>
+          <span class="text-[11px] text-[var(--text)]">{{ branch.address || '—' }}</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Monthly Data Table -->
     <div class="flex-1 overflow-auto">
       <table class="w-full">
