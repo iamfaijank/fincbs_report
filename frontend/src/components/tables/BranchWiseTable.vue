@@ -119,7 +119,7 @@ const totals = computed(() => {
               {{ row.sr_no }}
             </td>
             <td class="border-r border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--text)]">
-              {{ row.branch }}
+              {{ row.branch }} ({{ row.sol_id }})
             </td>
             <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text2)]">
               {{ formatZone(row.zone) }}
