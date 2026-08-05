@@ -6,12 +6,15 @@ import AchievementBadge from './AchievementBadge.vue'
 const props = defineProps({
   branch: { type: Object, required: true },
   months: { type: Array, default: () => [] },
+  branchProfile: { type: Object, default: () => ({}) },
 })
 
 const emit = defineEmits(['back'])
 
 const { formatNumber } = useNumberFormat()
 const { formatZone, formatRegion } = useNameFormat()
+
+const activeMonth = props.months.length > 0 ? props.months[props.months.length - 1] : null
 
 const STATUS_META = {
   improved: { label: 'Improved', class: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400', icon: 'up' },
@@ -71,36 +74,134 @@ const CATEGORY_COLORS = {
     </div>
 
     <!-- Branch Information Card -->
-    <div class="px-5 py-4 border-b border-[var(--border)] flex-shrink-0">
-      <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)] mb-3">Branch Information</div>
-      <div class="grid grid-cols-2 gap-4">
-        <div class="flex gap-2">
-          <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Branch</span>
-          <span class="text-[11px] text-[var(--text)]">{{ branch.branch }}</span>
+    <div class="mx-5 my-4 sb-card flex-shrink-0">
+      <div class="px-4 py-3 border-b border-[var(--border)]">
+        <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Branch Information</div>
+      </div>
+      <div class="px-4 py-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="flex gap-2">
+            <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Branch</span>
+            <span class="text-[11px] text-[var(--text)]">{{ branch.branch }}</span>
+          </div>
+          <div class="flex gap-2">
+            <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">SOL ID</span>
+            <span class="text-[11px] text-[var(--text)]">{{ branch.sol_id }}</span>
+          </div>
+          <div class="flex gap-2">
+            <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Zone</span>
+            <span class="text-[11px] text-[var(--text)]">{{ formatZone(branch.zone) }}</span>
+          </div>
+          <div class="flex gap-2">
+            <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Region</span>
+            <span class="text-[11px] text-[var(--text)]">{{ formatRegion(branch.region) }}</span>
+          </div>
+          <div class="flex gap-2">
+            <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">State</span>
+            <span class="text-[11px] text-[var(--text)]">{{ branch.state || '—' }}</span>
+          </div>
+          <div class="flex gap-2">
+            <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Email</span>
+            <span class="text-[11px] text-[var(--text)]">{{ branch.email || '—' }}</span>
+          </div>
+          <div class="flex gap-2 col-span-2">
+            <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Address</span>
+            <span class="text-[11px] text-[var(--text)]">{{ branch.address || '—' }}</span>
+          </div>
         </div>
-        <div class="flex gap-2">
-          <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">SOL ID</span>
-          <span class="text-[11px] text-[var(--text)]">{{ branch.sol_id }}</span>
+      </div>
+    </div>
+
+    <!-- Three Cards Row -->
+    <div class="mx-5 mb-4 grid grid-cols-3 gap-4 flex-shrink-0">
+      <!-- Manpower Status Card -->
+      <div class="sb-card">
+        <div class="px-4 py-3 border-b border-[var(--border)]">
+          <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Manpower Status</div>
         </div>
-        <div class="flex gap-2">
-          <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Zone</span>
-          <span class="text-[11px] text-[var(--text)]">{{ formatZone(branch.zone) }}</span>
+        <div class="px-4 py-4">
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-[11px] text-[var(--text3)]">BDO</span>
+              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.bdo || '—' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-[11px] text-[var(--text3)]">BDE</span>
+              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.bde || '—' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-[11px] text-[var(--text3)]">RO</span>
+              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.ro || '—' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-[11px] text-[var(--text3)]">Staff Count</span>
+              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.staff_count || '—' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-[11px] text-[var(--text3)]">Budget Staff</span>
+              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.total_no_of_budgeted_staff || '—' }}</span>
+            </div>
+          </div>
         </div>
-        <div class="flex gap-2">
-          <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Region</span>
-          <span class="text-[11px] text-[var(--text)]">{{ formatRegion(branch.region) }}</span>
+      </div>
+
+      <!-- Agent Details Card -->
+      <div class="sb-card">
+        <div class="px-4 py-3 border-b border-[var(--border)]">
+          <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Agent Details</div>
         </div>
-        <div class="flex gap-2">
-          <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">State</span>
-          <span class="text-[11px] text-[var(--text)]">{{ branch.state || '—' }}</span>
+        <div class="px-4 py-4">
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-[11px] text-[var(--text3)]">Active SS Agent</span>
+              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.total_active_ss_agent || '—' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-[11px] text-[var(--text3)]">Total SS Agent</span>
+              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.total_ss_agent || '—' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-[11px] text-[var(--text3)]">Active DDS Agent</span>
+              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.total_active_dds_agent || '—' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-[11px] text-[var(--text3)]">Total DDS Agent</span>
+              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.total_dds_agent || '—' }}</span>
+            </div>
+          </div>
         </div>
-        <div class="flex gap-2">
-          <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Email</span>
-          <span class="text-[11px] text-[var(--text)]">{{ branch.email || '—' }}</span>
+      </div>
+
+      <!-- Category Card -->
+      <div class="sb-card">
+        <div class="px-4 py-3 border-b border-[var(--border)]">
+          <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Category</div>
         </div>
-        <div class="flex gap-2 col-span-2">
-          <span class="text-[11px] font-medium text-[var(--text3)] w-20 shrink-0">Address</span>
-          <span class="text-[11px] text-[var(--text)]">{{ branch.address || '—' }}</span>
+        <div class="px-4 py-4">
+          <div class="flex items-center justify-center">
+            <span
+              v-if="activeMonth && branch.months?.[activeMonth.key]"
+              class="inline-block rounded px-3 py-1 text-sm font-medium"
+              :class="CATEGORY_COLORS[branch.months[activeMonth.key].category] || ''"
+            >
+              {{ branch.months[activeMonth.key].category }}
+            </span>
+            <span v-else class="text-[11px] text-[var(--text3)]">—</span>
+          </div>
+          <div class="mt-4 space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-[11px] text-[var(--text3)]">Target</span>
+              <span class="text-[11px] font-medium text-[var(--text)]">{{ formatNumber(branch.months?.[activeMonth?.key]?.target || 0) }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-[11px] text-[var(--text3)]">Achievement</span>
+              <span class="text-[11px] font-medium text-[var(--text)]">{{ formatNumber(branch.months?.[activeMonth?.key]?.achievement || 0) }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-[11px] text-[var(--text3)]">Ach %</span>
+              <span class="text-[11px] font-medium text-[var(--text)]">{{ branch.months?.[activeMonth?.key]?.percentage || 0 }}%</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

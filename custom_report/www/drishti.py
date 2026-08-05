@@ -198,3 +198,24 @@ def get_branch_wise_data(financial_year=None, view="Monthly", target_type="Month
   "branch_wise": result.get("branch_wise", []),
   "months": result.get("months", []),
  }
+
+
+@frappe.whitelist(methods=["POST"], allow_guest=True)
+def get_branch_profile(sol_id=None):
+ """Fetch branch profile data from Branch Profile Data doctype."""
+ if not sol_id:
+  frappe.throw("SOL ID is required")
+ 
+ if not frappe.db.exists("DocType", "Branch Profile Data"):
+  return {}
+ 
+ result = frappe.get_all(
+  "Branch Profile Data",
+  filters={"sol_id": sol_id},
+  fields=["*"],
+  limit_page_length=1
+ )
+ 
+ if result:
+  return result[0]
+ return {}

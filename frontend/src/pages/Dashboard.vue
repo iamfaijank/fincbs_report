@@ -116,13 +116,26 @@ const drishtiCards = computed(() => [
 ])
 
 const selectedBranch = ref(null)
+const branchProfile = ref(null)
 
-function selectBranch(branch) {
+async function selectBranch(branch) {
   selectedBranch.value = branch
+  try {
+    const data = await frappeRequest({
+      url: '/api/method/custom_report.www.drishti.get_branch_profile',
+      method: 'POST',
+      args: { sol_id: branch.sol_id },
+    }) || {}
+    branchProfile.value = data
+  } catch (e) {
+    console.error('Failed to load branch profile', e)
+    branchProfile.value = {}
+  }
 }
 
 function goBack() {
   selectedBranch.value = null
+  branchProfile.value = null
 }
 </script>
 
@@ -174,6 +187,7 @@ function goBack() {
         v-else
         :branch="selectedBranch"
         :months="months"
+        :branchProfile="branchProfile"
         @back="goBack"
       />
     </div>
