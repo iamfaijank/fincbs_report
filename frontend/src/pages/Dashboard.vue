@@ -16,6 +16,7 @@ import ZoneProgressCard from '@/components/tables/ZoneProgressCard.vue'
 import ZoneAchievementChart from '@/components/tables/ZoneAchievementChart.vue'
 
 const activeView = inject('activeView')
+const searchQuery = inject('searchQuery')
 const allTabIds = ['zone','category','product','agent','branch','rd_smbg','daily_acct','casa_ntb','casa_avg','gl_report']
 const savedTab = sessionStorage.getItem('drishti-active-tab')
 const activeTab = ref(allTabIds.includes(savedTab) ? savedTab : 'zone')
@@ -46,6 +47,12 @@ watch(activeView, () => {
   const currentTabIds = tabs.value.map(t => t.id)
   if (!currentTabIds.includes(activeTab.value)) {
     activeTab.value = tabs.value[0].id
+  }
+})
+
+watch(searchQuery, (val) => {
+  if (val && val.trim()) {
+    activeTab.value = 'branch'
   }
 })
 
@@ -142,7 +149,7 @@ const drishtiCards = computed(() => [
       <CategoryWiseTable v-if="activeView === 'drishti' && activeTab === 'category'" />
       <ProductWiseTable v-if="activeView === 'drishti' && activeTab === 'product'" />
       <AgentWiseTable v-if="activeView === 'drishti' && activeTab === 'agent'" />
-      <BranchWiseTable v-if="activeView === 'drishti' && activeTab === 'branch'" />
+      <BranchWiseTable v-if="activeView === 'drishti' && activeTab === 'branch'" :searchQuery="searchQuery" />
 
       <RdSmbgPendingTable v-if="activeView === 'mis' && activeTab === 'rd_smbg'" />
       <DailyAccountTable v-if="activeView === 'mis' && activeTab === 'daily_acct'" />

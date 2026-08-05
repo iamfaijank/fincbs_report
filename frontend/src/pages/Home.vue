@@ -7,6 +7,7 @@ const searchQuery = ref('')
 const activeView = ref(sessionStorage.getItem('drishti-active-view') || 'drishti')
 
 provide('activeView', activeView)
+provide('searchQuery', searchQuery)
 
 watch(activeView, (val) => {
   sessionStorage.setItem('drishti-active-view', val)

@@ -6,6 +6,10 @@ import { useFilters } from '@/composables/useFilters.js'
 import { useNameFormat } from '@/composables/useNameFormat.js'
 import AchievementBadge from './AchievementBadge.vue'
 
+const props = defineProps({
+  searchQuery: { type: String, default: '' },
+})
+
 const { formatNumber } = useNumberFormat()
 const { isZoneSelected, isRegionSelected } = useFilters()
 const { formatZone, formatRegion } = useNameFormat()
@@ -53,7 +57,12 @@ const activeMonth = computed(() => {
 })
 
 const filteredBranchData = computed(() => {
-  return branchWise.value.filter(b => isZoneSelected(b.zone) && isRegionSelected(b.region))
+  let data = branchWise.value.filter(b => isZoneSelected(b.zone) && isRegionSelected(b.region))
+  if (props.searchQuery && props.searchQuery.trim()) {
+    const q = props.searchQuery.trim().toLowerCase()
+    data = data.filter(b => b.branch.toLowerCase().includes(q) || b.sol_id.toLowerCase().includes(q))
+  }
+  return data
 })
 
 function getMonthData(branch) {
