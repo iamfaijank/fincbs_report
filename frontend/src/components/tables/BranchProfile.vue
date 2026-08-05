@@ -192,10 +192,10 @@ function scrollToManpowerDetails() {
                   Active: {{ branchProfile?.total_active_dds_agent || 0 }} / Total: {{ branchProfile?.total_dds_agent || 0 }}
                 </div>
               </div>
-              <div class="relative w-16 h-16">
+              <div class="relative w-16 h-16 flex-shrink-0">
                 <svg class="transform -rotate-90" width="64" height="64" viewBox="0 0 64 64">
                   <!-- Background circle -->
-                  <circle cx="32" cy="32" r="28" fill="none" stroke="var(--gray-200)" stroke-width="6"></circle>
+                  <circle cx="32" cy="32" r="28" fill="none" stroke="#e5e7eb" stroke-width="6"></circle>
                   <!-- Progress circle -->
                   <circle 
                     cx="32" cy="32" r="28" 
@@ -203,7 +203,7 @@ function scrollToManpowerDetails() {
                     stroke="#10b981" 
                     stroke-width="6"
                     stroke-linecap="round"
-                    :stroke-dasharray="176"
+                    stroke-dasharray="176"
                     :stroke-dashoffset="176 - (176 * ((branchProfile?.total_active_dds_agent || 0) / Math.max(branchProfile?.total_dds_agent || 1, 1)))"
                     class="transition-all duration-300"
                   ></circle>
@@ -224,10 +224,10 @@ function scrollToManpowerDetails() {
                   Active: {{ branchProfile?.total_active_ss_agent || 0 }} / Total: {{ branchProfile?.total_ss_agent || 0 }}
                 </div>
               </div>
-              <div class="relative w-16 h-16">
+              <div class="relative w-16 h-16 flex-shrink-0">
                 <svg class="transform -rotate-90" width="64" height="64" viewBox="0 0 64 64">
                   <!-- Background circle -->
-                  <circle cx="32" cy="32" r="28" fill="none" stroke="var(--gray-200)" stroke-width="6"></circle>
+                  <circle cx="32" cy="32" r="28" fill="none" stroke="#e5e7eb" stroke-width="6"></circle>
                   <!-- Progress circle -->
                   <circle 
                     cx="32" cy="32" r="28" 
@@ -235,7 +235,7 @@ function scrollToManpowerDetails() {
                     stroke="#3b82f6" 
                     stroke-width="6"
                     stroke-linecap="round"
-                    :stroke-dasharray="176"
+                    stroke-dasharray="176"
                     :stroke-dashoffset="176 - (176 * ((branchProfile?.total_active_ss_agent || 0) / Math.max(branchProfile?.total_ss_agent || 1, 1)))"
                     class="transition-all duration-300"
                   ></circle>
