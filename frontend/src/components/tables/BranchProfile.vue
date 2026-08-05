@@ -261,6 +261,191 @@ const CATEGORY_COLORS = {
       </div>
     </div>
 
+    <!-- Account Details Card -->
+    <div class="mx-5 mb-4 sb-card flex-shrink-0">
+      <div class="px-4 py-3 border-b border-[var(--border)]">
+        <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Account Details</div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+              <th class="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Category</th>
+              <th class="px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Account Count</th>
+              <th class="px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Composition</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">Savings Account (SA)</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.total_sa_no_of_customers || 0) }}</td>
+              <td class="px-4 py-3 text-right text-[11px] text-[var(--text)]">{{ branchProfile?.total_customers_id ? Math.round((branchProfile?.total_sa_no_of_customers || 0) / branchProfile.total_customers_id * 100) : 0 }}%</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">Current Account (CA)</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.total_ca_no_of_customers || 0) }}</td>
+              <td class="px-4 py-3 text-right text-[11px] text-[var(--text)]">{{ branchProfile?.total_customers_id ? Math.round((branchProfile?.total_ca_no_of_customers || 0) / branchProfile.total_customers_id * 100) : 0 }}%</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">Fixed Deposit (FD)</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.total_fd_no_of_customers || 0) }}</td>
+              <td class="px-4 py-3 text-right text-[11px] text-[var(--text)]">{{ branchProfile?.total_customers_id ? Math.round((branchProfile?.total_fd_no_of_customers || 0) / branchProfile.total_customers_id * 100) : 0 }}%</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">Recurring Deposit (RD)</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.total_rd_no_of_customers || 0) }}</td>
+              <td class="px-4 py-3 text-right text-[11px] text-[var(--text)]">{{ branchProfile?.total_customers_id ? Math.round((branchProfile?.total_rd_no_of_customers || 0) / branchProfile.total_customers_id * 100) : 0 }}%</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">Daily Deposit Scheme (DDS)</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.total_dds_no_of_customers || 0) }}</td>
+              <td class="px-4 py-3 text-right text-[11px] text-[var(--text)]">{{ branchProfile?.total_customers_id ? Math.round((branchProfile?.total_dds_no_of_customers || 0) / branchProfile.total_customers_id * 100) : 0 }}%</td>
+            </tr>
+            <tr class="hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">SMBG</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.total_smbg_no_of_customers || 0) }}</td>
+              <td class="px-4 py-3 text-right text-[11px] text-[var(--text)]">{{ branchProfile?.total_customers_id ? Math.round((branchProfile?.total_smbg_no_of_customers || 0) / branchProfile.total_customers_id * 100) : 0 }}%</td>
+            </tr>
+            <tr class="border-t-2 border-[var(--border)] bg-[var(--bg2)] font-semibold">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">Total</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.total_customers_id || 0) }}</td>
+              <td class="px-4 py-3 text-right text-[11px] text-[var(--text)]">100%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Demand & Collection Performance Card -->
+    <div class="mx-5 mb-4 sb-card flex-shrink-0">
+      <div class="px-4 py-3 border-b border-[var(--border)]">
+        <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Demand & Collection Performance</div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+              <th class="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Metric</th>
+              <th class="px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Performance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">DDS Demand</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.dds_demand || 0) }}</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">DDS Collection</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.dds_collection || 0) }}</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">DDS Demand vs Collection</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ branchProfile?.dds_demand_vs_collection || '—' }}</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">SMBG Demand</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.smbg_demand || 0) }}</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">SMBG Collection</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.smbg_collection || 0) }}</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">SMBG Demand vs Collection</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ branchProfile?.smbg_demand_vs_collection || '—' }}</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">RD Demand</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.rd_demand || 0) }}</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">RD Collection</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.rd_collection || 0) }}</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">RD SMBG Collection</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.rd_smbg_collection || 0) }}</td>
+            </tr>
+            <tr class="hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">RD SMBG Pending</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ formatNumber(branchProfile?.rd_smbg_pending || 0) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Productivity Details Card -->
+    <div class="mx-5 mb-4 sb-card flex-shrink-0">
+      <div class="px-4 py-3 border-b border-[var(--border)]">
+        <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Productivity Details</div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+              <th class="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Metric</th>
+              <th class="px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">Total Productivity</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ branchProfile?.total_productivity || '—' }}</td>
+            </tr>
+            <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">BDO Productivity</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ branchProfile?.bdo_productivity || '—' }}</td>
+            </tr>
+            <tr class="hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">BDE Productivity</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ branchProfile?.bde_productivity || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Manpower Details Card -->
+    <div class="mx-5 mb-4 sb-card flex-shrink-0">
+      <div class="px-4 py-3 border-b border-[var(--border)]">
+        <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Manpower Details</div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+              <th class="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Employee ID</th>
+              <th class="px-4 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Employee Name</th>
+              <th class="px-4 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Vintage</th>
+              <th class="px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Total Leads</th>
+              <th class="px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Total Converted</th>
+              <th class="px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Conversion Ratio</th>
+              <th class="px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Monthly Business</th>
+              <th class="px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Yearly Business</th>
+              <th class="px-4 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">PIP Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="!branchProfile?.manpower_details || branchProfile.manpower_details.length === 0">
+              <td colspan="9" class="px-4 py-3 text-center text-[11px] text-[var(--text3)]">No data available</td>
+            </tr>
+            <tr v-for="(emp, idx) in branchProfile?.manpower_details || []" :key="idx" class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
+              <td class="px-4 py-3 text-[11px] font-mono text-[var(--text)]">{{ emp.employee_id || '—' }}</td>
+              <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">{{ emp.employee_name || '—' }}</td>
+              <td class="px-4 py-3 text-center text-[11px] text-[var(--text)]">{{ emp.vintage || '—' }}</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ emp.total_leads || '—' }}</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ emp.total_converted || '—' }}</td>
+              <td class="px-4 py-3 text-right text-[11px] text-[var(--text)]">{{ emp.conversion_ratio || '—' }}</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ emp.monthly_business || '—' }}</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ emp.yearly_business || '—' }}</td>
+              <td class="px-4 py-3 text-center text-[11px] text-[var(--text)]">{{ emp.pip_status || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Monthly Data Table -->
     <div class="flex-1 overflow-auto">
       <table class="w-full">
