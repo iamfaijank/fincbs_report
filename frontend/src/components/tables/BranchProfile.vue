@@ -51,28 +51,6 @@ const CATEGORY_COLORS = {
       <span class="text-sm font-semibold text-[var(--text)]">{{ branch.branch }} ({{ branch.sol_id }})</span>
     </div>
 
-    <!-- Branch Info -->
-    <div class="px-5 py-4 border-b border-[var(--border)] bg-[var(--bg2)] flex-shrink-0">
-      <div class="grid grid-cols-4 gap-4">
-        <div>
-          <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)] mb-1">Branch</div>
-          <div class="text-sm font-semibold text-[var(--text)]">{{ branch.branch }}</div>
-        </div>
-        <div>
-          <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)] mb-1">SOL ID</div>
-          <div class="text-sm font-mono text-[var(--text)]">{{ branch.sol_id }}</div>
-        </div>
-        <div>
-          <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)] mb-1">Zone</div>
-          <div class="text-sm text-[var(--text2)]">{{ formatZone(branch.zone) }}</div>
-        </div>
-        <div>
-          <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)] mb-1">Region</div>
-          <div class="text-sm text-[var(--text2)]">{{ formatRegion(branch.region) }}</div>
-        </div>
-      </div>
-    </div>
-
     <!-- Branch Information Card -->
     <div class="mx-5 my-4 sb-card flex-shrink-0">
       <div class="px-4 py-3 border-b border-[var(--border)]">
