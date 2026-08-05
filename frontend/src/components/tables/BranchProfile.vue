@@ -33,6 +33,13 @@ const CATEGORY_COLORS = {
   Learner: 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
   'Zero Level': 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400',
 }
+
+function scrollToManpowerDetails() {
+  const element = document.getElementById('manpower-details')
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
 </script>
 
 <template>
@@ -153,9 +160,18 @@ const CATEGORY_COLORS = {
                 :style="{ width: Math.min(((branchProfile?.staff_count || 0) / (branchProfile?.total_no_of_budgeted_staff || 1)) * 100, 100) + '%' }"
               ></div>
             </div>
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center mb-2">
               <span class="text-[11px] font-medium text-[var(--text3)]">Budget Staff: {{ branchProfile?.total_no_of_budgeted_staff || '0' }}</span>
               <span class="text-[11px] font-medium text-[var(--text3)]">Staff Count: {{ branchProfile?.staff_count || '0' }}</span>
+            </div>
+            <div class="text-center">
+              <a 
+                href="#manpower-details" 
+                @click.prevent="scrollToManpowerDetails"
+                class="text-[11px] text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer underline"
+              >
+                View Detailed Manpower Table
+              </a>
             </div>
           </div>
         </div>
@@ -423,7 +439,7 @@ const CATEGORY_COLORS = {
     </div>
 
     <!-- Manpower Details Card -->
-    <div class="mx-5 mb-4 sb-card flex-shrink-0">
+    <div id="manpower-details" class="mx-5 mb-4 sb-card flex-shrink-0">
       <div class="px-4 py-3 border-b border-[var(--border)]">
         <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Manpower Details</div>
       </div>
