@@ -57,54 +57,61 @@ const CATEGORY_COLORS = {
         <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Branch Information</div>
       </div>
       <div class="px-4 py-4">
-        <!-- Branch Manager Row with Badge -->
-        <div class="flex items-center gap-3 mb-4 pl-0">
-          <span class="inline-flex items-center justify-center w-32 h-32 rounded bg-blue-100 text-blue-600 text-2xl font-bold dark:bg-blue-900/30 dark:text-blue-400">BM</span>
-          <span class="text-sm font-semibold text-[var(--text)]">Branch Manager</span>
-        </div>
-        <!-- Three Columns -->
-        <div class="grid grid-cols-3 gap-4">
-          <!-- Column 1: BM Details -->
-          <div>
-            <div class="space-y-3">
-              <div class="flex gap-2">
-                <span class="text-[11px] font-medium text-[var(--text3)] w-28 shrink-0">BM Date of Joining</span>
-                <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.bm_doj || '—' }}</span>
-              </div>
-              <div class="flex gap-2">
-                <span class="text-[11px] font-medium text-[var(--text3)] w-28 shrink-0">BM Vintage</span>
-                <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.bm_vintage || '—' }}</span>
-              </div>
-              <div class="flex gap-2">
-                <span class="text-[11px] font-medium text-[var(--text3)] w-28 shrink-0">BM Mobile</span>
-                <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.bm_mob_no || '—' }}</span>
-              </div>
-            </div>
+        <div class="flex gap-4">
+          <!-- Column 1: BM Badge -->
+          <div class="flex-shrink-0">
+            <span class="inline-flex items-center justify-center w-32 h-32 rounded bg-blue-100 text-blue-600 text-2xl font-bold dark:bg-blue-900/30 dark:text-blue-400">BM</span>
           </div>
-          <!-- Column 2: Branch Details -->
-          <div class="space-y-3">
-            <div class="flex gap-2">
-              <span class="text-[11px] font-medium text-[var(--text3)] w-28 shrink-0">Branch Opening Date</span>
-              <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.branch_opening_date || '—' }}</span>
+          <!-- Column 2: 2 Rows -->
+          <div class="flex-1 space-y-3">
+            <!-- Row 1: Branch Manager Name -->
+            <div>
+              <span class="text-sm font-semibold text-[var(--text)]">Branch Manager</span>
+              <span class="text-[11px] text-[var(--text3)] ml-2">{{ branchProfile?.bm_name || '—' }}</span>
             </div>
-            <div class="flex gap-2">
-              <span class="text-[11px] font-medium text-[var(--text3)] w-28 shrink-0">Branch Vintage</span>
-              <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.branch_vintage || '—' }}</span>
-            </div>
-            <div class="flex gap-2">
-              <span class="text-[11px] font-medium text-[var(--text3)] w-28 shrink-0">Branch Email</span>
-              <span class="text-[11px] text-[var(--text)]">{{ branch.email || branchProfile?.email || '—' }}</span>
-            </div>
-          </div>
-          <!-- Column 3: Reporting Person -->
-          <div class="space-y-3">
-            <div class="flex gap-2">
-              <span class="text-[11px] font-medium text-[var(--text3)] w-28 shrink-0">Reporting Person</span>
-              <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.ch_name || '—' }}</span>
-            </div>
-            <div class="flex gap-2">
-              <span class="text-[11px] font-medium text-[var(--text3)] w-28 shrink-0">Reporting Person Mobile</span>
-              <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.ch_mob_no || '—' }}</span>
+            <!-- Row 2: 3 Sub-columns -->
+            <div class="grid grid-cols-3 gap-4">
+              <!-- Sub-column 1: BM Details -->
+              <div class="space-y-3">
+                <div class="flex gap-2">
+                  <span class="text-[11px] font-medium text-[var(--text3)] w-24 shrink-0">BM DOJ</span>
+                  <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.bm_doj || '—' }}</span>
+                </div>
+                <div class="flex gap-2">
+                  <span class="text-[11px] font-medium text-[var(--text3)] w-24 shrink-0">BM Vintage</span>
+                  <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.bm_vintage || '—' }}</span>
+                </div>
+                <div class="flex gap-2">
+                  <span class="text-[11px] font-medium text-[var(--text3)] w-24 shrink-0">BM Mobile</span>
+                  <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.bm_mob_no || '—' }}</span>
+                </div>
+              </div>
+              <!-- Sub-column 2: Branch Details -->
+              <div class="space-y-3">
+                <div class="flex gap-2">
+                  <span class="text-[11px] font-medium text-[var(--text3)] w-24 shrink-0">Branch Opening</span>
+                  <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.branch_opening_date || '—' }}</span>
+                </div>
+                <div class="flex gap-2">
+                  <span class="text-[11px] font-medium text-[var(--text3)] w-24 shrink-0">Branch Vintage</span>
+                  <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.branch_vintage || '—' }}</span>
+                </div>
+                <div class="flex gap-2">
+                  <span class="text-[11px] font-medium text-[var(--text3)] w-24 shrink-0">Branch Email</span>
+                  <span class="text-[11px] text-[var(--text)]">{{ branch.email || branchProfile?.email || '—' }}</span>
+                </div>
+              </div>
+              <!-- Sub-column 3: Reporting Person -->
+              <div class="space-y-3">
+                <div class="flex gap-2">
+                  <span class="text-[11px] font-medium text-[var(--text3)] w-24 shrink-0">Reporting Person</span>
+                  <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.ch_name || '—' }}</span>
+                </div>
+                <div class="flex gap-2">
+                  <span class="text-[11px] font-medium text-[var(--text3)] w-24 shrink-0">RP Mobile</span>
+                  <span class="text-[11px] text-[var(--text)]">{{ branchProfile?.ch_mob_no || '—' }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

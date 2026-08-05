@@ -124,7 +124,7 @@ async function selectBranch(branch) {
     const data = await frappeRequest({
       url: '/api/method/custom_report.www.drishti.get_branch_profile',
       method: 'POST',
-      args: { sol_id: branch.sol_id },
+      params: { sol_id: branch.sol_id },
     }) || {}
     branchProfile.value = data
   } catch (e) {
