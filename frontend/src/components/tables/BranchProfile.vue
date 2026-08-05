@@ -144,15 +144,18 @@ const CATEGORY_COLORS = {
               <div class="text-lg font-bold text-[var(--text)]">{{ branchProfile?.ro || '—' }}</div>
             </div>
           </div>
-          <!-- Staff Count and Budget Staff -->
-          <div class="space-y-3">
-            <div class="flex justify-between items-center">
-              <span class="text-[11px] text-[var(--text3)]">Staff Count</span>
-              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.staff_count || '—' }}</span>
+          <!-- Staff Progress Bar -->
+          <div>
+            <div class="w-full bg-gray-200 rounded-full h-3 dark:bg-gray-700 mb-2">
+              <div 
+                class="h-3 rounded-full transition-all duration-300"
+                :class="(branchProfile?.staff_count || 0) >= (branchProfile?.total_no_of_budgeted_staff || 1) ? 'bg-green-500' : 'bg-amber-500'"
+                :style="{ width: Math.min(((branchProfile?.staff_count || 0) / (branchProfile?.total_no_of_budgeted_staff || 1)) * 100, 100) + '%' }"
+              ></div>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-[11px] text-[var(--text3)]">Budget Staff</span>
-              <span class="text-[11px] font-medium text-[var(--text)]">{{ branchProfile?.total_no_of_budgeted_staff || '—' }}</span>
+              <span class="text-[11px] font-medium text-[var(--text3)]">Budget Staff: {{ branchProfile?.total_no_of_budgeted_staff || '0' }}</span>
+              <span class="text-[11px] font-medium text-[var(--text3)]">Staff Count: {{ branchProfile?.staff_count || '0' }}</span>
             </div>
           </div>
         </div>
