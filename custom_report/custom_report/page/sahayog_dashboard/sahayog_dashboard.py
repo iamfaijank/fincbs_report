@@ -5588,12 +5588,32 @@ def get_new_account_report_data(selected_date=None):
     return result
 
 
+def resolve_ss_vs_date(target_date=None):
+    """Finds target_date or the latest available date on/before target_date with data in tabSS and VS Report."""
+    if not target_date:
+        target_date = frappe.utils.add_days(frappe.utils.nowdate(), -1)
+    
+    cnt = frappe.db.count("SS and VS Report", filters={"date": target_date})
+    if cnt > 0:
+        return str(target_date)
+        
+    res = frappe.db.sql("""
+        SELECT MAX(`date`)
+        FROM `tabSS and VS Report`
+        WHERE `date` <= %s
+    """, (target_date,))
+    
+    if res and res[0][0]:
+        return str(res[0][0])
+        
+    return str(target_date)
+
+
 @frappe.whitelist()
 @sahayog_cache(ttl=86400)
 def get_agent_wise_ss_vs_data(selected_date=None):
     """Fetches T-1 Agent Wise aggregated data from SS and VS Report using SQL GROUP BY to prevent memory overflow."""
-    if not selected_date:
-        selected_date = frappe.utils.add_days(frappe.utils.nowdate(), -1)
+    effective_date = resolve_ss_vs_date(selected_date)
     
     data = frappe.db.sql("""
         SELECT 
@@ -5605,18 +5625,16 @@ def get_agent_wise_ss_vs_data(selected_date=None):
         WHERE `date` = %s
         GROUP BY report_type
         ORDER BY total_commission DESC, total_records DESC
-    """, (selected_date,), as_dict=True)
+    """, (effective_date,), as_dict=True)
     
-    return data
+    return {"data": data, "actual_date": effective_date}
 
 
 @frappe.whitelist()
 @sahayog_cache(ttl=86400)
 def get_agent_wise_details(report_type, selected_date=None):
     """Fetches Agent Wise breakdown for a specific report_type aggregated by rm_id using SQL."""
-    if not selected_date or not report_type:
-        if not selected_date:
-            selected_date = frappe.utils.add_days(frappe.utils.nowdate(), -1)
+    effective_date = resolve_ss_vs_date(selected_date)
     
     data = frappe.db.sql("""
         SELECT 
@@ -5628,7 +5646,7 @@ def get_agent_wise_details(report_type, selected_date=None):
         WHERE `date` = %s AND report_type = %s
         GROUP BY rm_id
         ORDER BY total_commission DESC, record_count DESC
-    """, (selected_date, report_type), as_dict=True)
+    """, (effective_date, report_type), as_dict=True)
     
     return data
 
@@ -5637,9 +5655,7 @@ def get_agent_wise_details(report_type, selected_date=None):
 @sahayog_cache(ttl=86400)
 def get_agent_customer_details(report_type, rm_id, selected_date=None):
     """Fetches customer accounts for a specific agent (rm_id) and report_type."""
-    if not selected_date or not report_type or not rm_id:
-        if not selected_date:
-            selected_date = frappe.utils.add_days(frappe.utils.nowdate(), -1)
+    effective_date = resolve_ss_vs_date(selected_date)
     
     data = frappe.db.sql("""
         SELECT 
@@ -5650,7 +5666,7 @@ def get_agent_customer_details(report_type, rm_id, selected_date=None):
         FROM `tabSS and VS Report`
         WHERE `date` = %s AND report_type = %s AND rm_id = %s
         ORDER BY CAST(COALESCE(NULLIF(commission, ''), '0') AS DECIMAL(18,2)) DESC, foracid
-    """, (selected_date, report_type, rm_id), as_dict=True)
+    """, (effective_date, report_type, rm_id), as_dict=True)
     
     return data
 
@@ -5659,8 +5675,7 @@ def get_agent_customer_details(report_type, rm_id, selected_date=None):
 @sahayog_cache(ttl=86400)
 def get_rm_wise_ss_vs_data(selected_date=None):
     """Fetches top-level RM Wise breakdown aggregated by rm_id using raw SQL for T-1."""
-    if not selected_date:
-        selected_date = frappe.utils.add_days(frappe.utils.nowdate(), -1)
+    effective_date = resolve_ss_vs_date(selected_date)
     
     data = frappe.db.sql("""
         SELECT 
@@ -5673,18 +5688,16 @@ def get_rm_wise_ss_vs_data(selected_date=None):
         WHERE `date` = %s
         GROUP BY rm_id
         ORDER BY total_commission DESC, total_records DESC
-    """, (selected_date,), as_dict=True)
+    """, (effective_date,), as_dict=True)
     
-    return data
+    return {"data": data, "actual_date": effective_date}
 
 
 @frappe.whitelist()
 @sahayog_cache(ttl=86400)
 def get_rm_wise_category_breakdown(rm_id, selected_date=None):
     """Fetches Report Type category breakdown for a specific rm_id using SQL."""
-    if not selected_date or not rm_id:
-        if not selected_date:
-            selected_date = frappe.utils.add_days(frappe.utils.nowdate(), -1)
+    effective_date = resolve_ss_vs_date(selected_date)
     
     data = frappe.db.sql("""
         SELECT 
@@ -5695,6 +5708,6 @@ def get_rm_wise_category_breakdown(rm_id, selected_date=None):
         WHERE `date` = %s AND rm_id = %s
         GROUP BY report_type
         ORDER BY total_commission DESC, record_count DESC
-    """, (selected_date, rm_id), as_dict=True)
+    """, (effective_date, rm_id), as_dict=True)
     
     return data

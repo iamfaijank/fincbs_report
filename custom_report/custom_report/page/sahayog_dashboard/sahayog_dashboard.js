@@ -4370,7 +4370,14 @@ class DrishtiDashboard {
 						},
 						callback: function (r) {
 							if (dashboardInstance._misRenderSeq !== seq) return;
-							self.tableData = r.message || [];
+							const msg = r.message;
+							if (msg && msg.data) {
+								self.tableData = msg.data;
+								self.actualDate = msg.actual_date;
+							} else {
+								self.tableData = Array.isArray(msg) ? msg : [];
+								self.actualDate = t1_date;
+							}
 							self.renderAgentWiseTable(container.find("#mis-table-container"), dashboardInstance);
 							container.find("#mis-loading").hide();
 							container.find("#mis-controls, #mis-table-container").show();
@@ -4457,7 +4464,16 @@ class DrishtiDashboard {
 							</table>
 						</div>
 					`;
-					tableContainer.html(tableHtml);
+					let noticeHtml = "";
+					const reqDate = dashboardInstance.state.selectedDate || frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+					if (self.actualDate && self.actualDate !== reqDate) {
+						noticeHtml = `
+							<div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 8px 14px; font-size: 12px; color: #1e40af; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+								<span>ℹ Data for <strong>${reqDate}</strong> was not found in SS & VS Report. Displaying latest available records from <strong>${self.actualDate}</strong>.</span>
+							</div>
+						`;
+					}
+					tableContainer.html(noticeHtml + tableHtml);
 
 					// Render details for already expanded types
 					Object.keys(self.expandedTypes).forEach(rType => {
@@ -4755,7 +4771,14 @@ class DrishtiDashboard {
 						},
 						callback: function (r) {
 							if (dashboardInstance._misRenderSeq !== seq) return;
-							self.tableData = r.message || [];
+							const msg = r.message;
+							if (msg && msg.data) {
+								self.tableData = msg.data;
+								self.actualDate = msg.actual_date;
+							} else {
+								self.tableData = Array.isArray(msg) ? msg : [];
+								self.actualDate = t1_date;
+							}
 							self.renderRmWiseTable(container.find("#mis-table-container"), dashboardInstance);
 							container.find("#mis-loading").hide();
 							container.find("#mis-controls, #mis-table-container").show();
@@ -4850,7 +4873,16 @@ class DrishtiDashboard {
 						</div>
 					`;
 
-					tableContainer.html(tableHtml);
+					let noticeHtml = "";
+					const reqDate = dashboardInstance.state.selectedDate || frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+					if (self.actualDate && self.actualDate !== reqDate) {
+						noticeHtml = `
+							<div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 8px 14px; font-size: 12px; color: #1e40af; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+								<span>ℹ Data for <strong>${reqDate}</strong> was not found in SS & VS Report. Displaying latest available records from <strong>${self.actualDate}</strong>.</span>
+							</div>
+						`;
+					}
+					tableContainer.html(noticeHtml + tableHtml);
 
 					// Render category details for expanded RMs
 					Object.keys(self.expandedRms).forEach(rmId => {
@@ -5067,7 +5099,42 @@ class DrishtiDashboard {
 		this.init();
 	}
 
+	checkUserDesignation() {
+		const currentUser = frappe.session.user;
+		frappe.db.get_value("Employee", { user_id: currentUser }, ["name", "employee_name", "designation"])
+			.then(r => {
+				const emp = r && r.message ? r.message : null;
+				const designation = emp ? (emp.designation || "") : "";
+				const isBranchManager = designation.toLowerCase().includes("branch manager");
+
+				console.log("[Sahayog Dashboard] Logged in User:", currentUser);
+				console.log("[Sahayog Dashboard] Employee Designation:", designation);
+				console.log("[Sahayog Dashboard] Is Branch Manager?:", isBranchManager);
+
+				this.isBranchManager = isBranchManager;
+				if (isBranchManager) {
+					this.applyBranchManagerRestrictions();
+				}
+			})
+			.catch(err => {
+				console.error("[Sahayog Dashboard] Error checking employee designation:", err);
+			});
+	}
+
+	applyBranchManagerRestrictions() {
+		if (this.isBranchManager) {
+			this.page.main
+				.find('.tab-btn[data-tab="zone"], .tab-btn[data-tab="category"], .tab-btn[data-tab="product"], .tab-btn[data-tab="agent"]')
+				.hide();
+
+			if (["zone", "category", "product", "agent"].includes(this.state.activeTab)) {
+				this.switchTab("branch");
+			}
+		}
+	}
+
 	init() {
+		this.checkUserDesignation();
 		this.setupLegacyStyles();
 		this.setupStyles();
 		this.setupBranchProfilePopup();
@@ -6307,6 +6374,7 @@ class DrishtiDashboard {
 
 		// Update filter tags for zones and categories
 		this.updateFilterTagsUI();
+		this.applyBranchManagerRestrictions();
 	}
 
 	repopulateHeaderFilters() {
@@ -7039,6 +7107,7 @@ class DrishtiDashboard {
 
 		$(html).appendTo(this.drishti_container);
 		this.attachTabEvents();
+		this.applyBranchManagerRestrictions();
 	}
 
 	attachTabEvents() {
@@ -7326,6 +7395,10 @@ class DrishtiDashboard {
 	}
 
 	switchTab(tabId) {
+		if (this.isBranchManager && ["zone", "category", "product", "agent"].includes(tabId)) {
+			tabId = "branch";
+		}
+
 		// Save current tab's date before switching
 		if (this.state.activeTab && this.tabDates.hasOwnProperty(this.state.activeTab)) {
 			this.tabDates[this.state.activeTab] = this.state.selectedDate;
