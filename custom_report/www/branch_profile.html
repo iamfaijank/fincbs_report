@@ -1177,6 +1177,12 @@
 			white-space: nowrap;
 			margin: 0;
 			text-align: center;
+			transition: color 0.3s ease, text-shadow 0.3s ease;
+		}
+
+		.manpower-percentage.dark-text {
+			color: #0f172a;
+			text-shadow: none;
 		}
 
 		.gauge-labels {
@@ -1472,7 +1478,7 @@
 								<div id="bar-blue" class="bar-blue" style="width: 0%"></div>
 								<div id="bar-red" class="bar-red" style="width: 0%"></div>
 								<div id="budget-marker" class="budget-line" style="display:none"></div>
-								<div id="manpower-percentage" class="manpower-percentage">--%</div>
+								<div id="manpower-percentage" class="manpower-percentage dark-text">--%</div>
 							</div>
 							<div class="gauge-labels">
 								<div style="color: #097c80;">Budgeted Staff: <span id="budget-label-val">--</span></div>
@@ -3131,6 +3137,8 @@
 					const mpPerc = budget > 0 ? (actual / budget * 100) : 0;
 					this.el.manpowerPercentage.textContent = Math.round(mpPerc) + "%";
 
+					let totalFillPercent = 0;
+
 					if (actual > budget) {
 						const excess = actual - budget;
 						this.el.staffStatusBadge.className = "status-badge overstaffed";
@@ -3139,6 +3147,7 @@
 						// Calculate widths relative to the 'Actual' total
 						const blueWidth = (budget / actual) * 100;
 						const redWidth = (excess / actual) * 100;
+						totalFillPercent = blueWidth + redWidth;
 
 						this.el.excessTag.style.display = "block";
 						this.el.excessTag.style.left = blueWidth + "%";
@@ -3155,9 +3164,17 @@
 
 						// Normal progress relative to Budget
 						const fillPercent = budget > 0 ? (actual / budget) * 100 : 0;
+						totalFillPercent = fillPercent;
 						this.el.barBlue.style.width = fillPercent + "%";
 						this.el.barRed.style.width = "0%";
 						this.el.budgetMarker.style.display = "none";
+					}
+
+					// Toggle dark text for low fill percentages (<45%) where background behind center text is light grey
+					if (totalFillPercent < 45) {
+						this.el.manpowerPercentage.classList.add("dark-text");
+					} else {
+						this.el.manpowerPercentage.classList.remove("dark-text");
 					}
 
 					// Update DDS and SS agent spinners
