@@ -2011,7 +2011,8 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
     ORDER BY s.circle_office_name, s.region_name, wb.sol_id
     """
 
-    count_query = f"SELECT COUNT(*) FROM ({query}) sub"
+    base_query_no_order = query.split("ORDER BY")[0]
+    count_query = f"SELECT COUNT(*) FROM ({base_query_no_order}) sub"
     paginated_query = f"{query} LIMIT {limit} OFFSET {offset}"
 
     conn = get_dr_connection()

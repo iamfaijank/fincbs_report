@@ -1264,6 +1264,7 @@ class DrishtiDashboard {
 				totalPages: 0,
 				totalRows: 0,
 				cachedPages: {},
+				cacheDate: null,
 				searchTerm: "",
 				_bgRunning: false,
 				_renderSeq: 0,
@@ -1278,19 +1279,16 @@ class DrishtiDashboard {
 
 					const columns = [
 						{ key: "cif_id", label: "CIF ID", w: "100px", sticky: 1 },
-						{ key: "acct_name", label: "Acct Name", w: "150px", sticky: 2 },
+						{ key: "acct_name", label: "Acct Name", w: "160px", sticky: 2 },
 						{ key: "foracid", label: "Foracid", w: "120px", sticky: 3 },
 						{ key: "acct_opn_date", label: "Acct Open Date", w: "100px" },
 						{ key: "schm_code", label: "Schema", w: "80px" },
 						{ key: "sol_id", label: "SOL ID", w: "80px" },
 						{ key: "sol_desc", label: "Branch", w: "140px" },
-						{ key: "acct_cls_flg", label: "Cls Flag", w: "70px" },
-						{ key: "acct_cls_date", label: "Cls Date", w: "100px" },
 						{ key: "cif_id_opening_date", label: "CIF Open Date", w: "100px" },
 						{ key: "cif_status", label: "CIF Status", w: "80px" },
 						{ key: "tran_date_bal", label: "Tran Date Bal", w: "110px", fmt: fmtAmt },
 						{ key: "clr_bal_amt", label: "CLR Bal Amt", w: "110px", fmt: fmtAmt },
-						{ key: "deposit_amount", label: "Deposit Amt", w: "110px", fmt: fmtAmt },
 						{ key: "total_weighted_balance", label: "Total Weighted Bal", w: "130px", fmt: fmtAmt },
 						{ key: "total_days", label: "Total Days", w: "80px" },
 						{ key: "average_balance", label: "Avg Balance", w: "110px", fmt: fmtAmt },
@@ -1298,19 +1296,20 @@ class DrishtiDashboard {
 						{ key: "opening_mab", label: "Opening MAB", w: "110px", fmt: fmtAmt },
 						{ key: "inc_mab", label: "Inc MAB", w: "100px", fmt: fmtAmt },
 						{ key: "status", label: "Status", w: "70px" },
-						{ key: "sol_gl_transferred_flag", label: "SOL/GL Xfer", w: "80px" },
 						{ key: "rm_id", label: "RM ID", w: "80px" },
 						{ key: "emp_name", label: "Emp Name", w: "120px" },
 						{ key: "division_name", label: "Division", w: "100px" },
 						{ key: "region_name", label: "Region", w: "100px" },
-						{ key: "circle_office_name", label: "Circle Office", w: "110px" },
+						{ key: "circle_office_name", label: "ZONE", w: "110px" },
 					];
 
 					container.html(`
 						<style>
 							#cavg-scroll { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
 							#cavg-table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; white-space: nowrap; }
-							#cavg-table thead th { position: sticky; top: 0; z-index: 2; background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #fff; padding: 8px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; border-bottom: 1px solid #cbd5e1; }
+							#cavg-table thead th { position: sticky; top: 0; z-index: 2; background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #fff; padding: 8px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; border-bottom: 1px solid #cbd5e1; box-sizing: border-box; }
+							.cavg-resizer { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; user-select: none; z-index: 10; }
+							.cavg-resizer:hover, .cavg-resizer.resizing { background: #86efac; opacity: 0.9; }
 							#cavg-table thead th.cavg-sticky { position: sticky; z-index: 3; background: #346569; overflow: hidden; }
 							#cavg-table tbody td { padding: 7px 10px; font-size: 12px; color: #334155; border-bottom: 1px solid #e2e8f0; }
 							#cavg-table tbody td.cavg-sticky { position: sticky; z-index: 1; overflow: hidden; }
@@ -1343,10 +1342,49 @@ class DrishtiDashboard {
 							const val = r[c.key];
 							const display = c.fmt ? c.fmt(val) : (val !== null && val !== undefined ? val : "-");
 							const stickyClass = c.sticky ? ` cavg-sticky cavg-sticky-${c.sticky}` : "";
-							const wStyle = c.sticky ? ` style="width:${c.w};"` : "";
-							html += `<td class="${stickyClass}"${wStyle}>${display}</td>`;
+							const wStyle = c.sticky
+								? ` style="width:${c.w}; min-width:${c.w}; max-width:${c.w}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"`
+								: "";
+							const titleAttr = (c.key === "acct_name" || c.key === "cif_id" || c.key === "foracid")
+								? ` title="${frappe.utils.escape_html(String(display))}"`
+								: "";
+							html += `<td class="${stickyClass}"${wStyle}${titleAttr}>${display}</td>`;
 						});
 						return html + "</tr>";
+					};
+
+					const initColumnResizers = () => {
+						container.off("mousedown", ".cavg-resizer").on("mousedown", ".cavg-resizer", function (e) {
+							e.preventDefault();
+							e.stopPropagation();
+							const $resizer = $(this);
+							const $th = $resizer.closest("th");
+							const startX = e.pageX;
+							const startWidth = $th.outerWidth();
+							const colIdx = $th.index();
+							const $table = container.find("#cavg-table");
+							$resizer.addClass("resizing");
+							$("body").css("cursor", "col-resize");
+
+							$(document).on("mousemove.cavgResize", function (evt) {
+								const diff = evt.pageX - startX;
+								const newWidth = Math.max(40, startWidth + diff);
+								$th.css({ "width": newWidth + "px", "min-width": newWidth + "px", "max-width": newWidth + "px" });
+								$table.find(`tbody tr td:nth-child(${colIdx + 1})`).css({ "width": newWidth + "px", "min-width": newWidth + "px", "max-width": newWidth + "px" });
+								if (!self._stickyThrottle) {
+									self._stickyThrottle = requestAnimationFrame(() => {
+										applyStickyLeft();
+										self._stickyThrottle = null;
+									});
+								}
+							});
+
+							$(document).on("mouseup.cavgResize", function () {
+								$(document).off("mousemove.cavgResize mouseup.cavgResize");
+								$resizer.removeClass("resizing");
+								$("body").css("cursor", "");
+							});
+						});
 					};
 
 					const initTable = () => {
@@ -1356,14 +1394,18 @@ class DrishtiDashboard {
 									<thead><tr>
 										${columns.map(c => {
 											const stickyClass = c.sticky ? ` cavg-sticky cavg-sticky-${c.sticky}` : "";
-											const wStyle = c.sticky ? `width: ${c.w};` : `min-width: ${c.w};`;
-											return `<th class="${stickyClass}" style="${wStyle}">${c.label}</th>`;
+											const wStyle = c.sticky ? `width: ${c.w}; min-width: ${c.w}; max-width: ${c.w}; overflow:hidden; text-overflow:ellipsis;` : `min-width: ${c.w};`;
+											return `<th class="${stickyClass}" style="${wStyle}">
+												<span>${c.label}</span>
+												<div class="cavg-resizer"></div>
+											</th>`;
 										}).join("")}
 									</tr></thead>
 									<tbody id="cavg-tbody"></tbody>
 								</table>
 							</div>
 						`);
+						initColumnResizers();
 					};
 
 					const applyStickyLeft = () => {
@@ -1401,15 +1443,60 @@ class DrishtiDashboard {
 						styleEl.textContent = css;
 					};
 
+					let _renderChunkRaf = null;
 					const appendRows = (data) => {
 						const $tbody = container.find("#cavg-tbody");
-						data.forEach(r => { $tbody.append(buildRowHtml(r)); });
+						if (_renderChunkRaf) cancelAnimationFrame(_renderChunkRaf);
+
+						if (!data || data.length === 0) {
+							$tbody.html('<tr><td colspan="23" style="text-align:center; padding: 20px; color: #64748b;">No matching records found</td></tr>');
+							return;
+						}
+
+						// 1. Instantly render the first 100 rows (takes ~2-5ms)
+						const firstBatch = data.slice(0, 100);
+						$tbody.html(firstBatch.map(r => buildRowHtml(r)).join(""));
+
+						// 2. Stream remaining rows in non-blocking chunks using requestAnimationFrame
+						if (data.length > 100) {
+							let offset = 100;
+							const chunkSize = 200;
+							const renderChunk = () => {
+								if (offset >= data.length) return;
+								const chunk = data.slice(offset, offset + chunkSize);
+								$tbody.append(chunk.map(r => buildRowHtml(r)).join(""));
+								offset += chunkSize;
+								if (offset < data.length) {
+									_renderChunkRaf = requestAnimationFrame(renderChunk);
+								}
+							};
+							_renderChunkRaf = requestAnimationFrame(renderChunk);
+						}
 					};
 
 					const updateCount = () => {
-						const loaded = Object.keys(self.cachedPages).length * self.pageSize;
+						let totalLoaded = 0;
+						Object.keys(self.cachedPages).forEach(p => {
+							if (self.cachedPages[p] && Array.isArray(self.cachedPages[p])) {
+								totalLoaded += self.cachedPages[p].length;
+							}
+						});
+
+
+
+						if (self.searchTerm) {
+							const pageData = self.cachedPages[self.currentPage] || [];
+							const filteredCount = pageData.filter(r =>
+								Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm))
+							).length;
+							container.find("#cavg-count").text(`${filteredCount.toLocaleString()} matching records (Page ${self.currentPage})`);
+							return;
+						}
+
 						if (self.totalRows > 0) {
-							container.find("#cavg-count").text(`${Math.min(loaded, self.totalRows).toLocaleString()} / ${self.totalRows.toLocaleString()} records loaded`);
+							container.find("#cavg-count").text(`${Math.min(totalLoaded, self.totalRows).toLocaleString()} / ${self.totalRows.toLocaleString()} records loaded`);
+						} else if (totalLoaded > 0) {
+							container.find("#cavg-count").text(`${totalLoaded.toLocaleString()} records loaded`);
 						} else {
 							container.find("#cavg-count").text("0 records");
 						}
@@ -1417,23 +1504,30 @@ class DrishtiDashboard {
 
 					const renderPaginationBar = () => {
 						const $bar = container.find("#cavg-pagination");
-						if (self.totalPages <= 1) { $bar.hide(); return; }
+
+						if (self.totalRows > 0) {
+							self.totalPages = Math.ceil(self.totalRows / self.pageSize);
+						}
+						const hasFullPage = self.cachedPages[self.currentPage] && self.cachedPages[self.currentPage].length >= self.pageSize;
+						const effectiveTotalPages = Math.max(self.totalPages || 1, hasFullPage ? self.currentPage + 1 : 1);
+
+						if (effectiveTotalPages <= 1) { $bar.hide(); return; }
 						$bar.show();
 
 						let html = "";
 						html += `<button class="cavg-page-btn" id="cavg-prev" ${self.currentPage <= 1 ? 'disabled' : ''}>◀ Prev</button>`;
 
 						const pages = [];
-						if (self.totalPages <= 7) {
-							for (let i = 1; i <= self.totalPages; i++) pages.push(i);
+						if (effectiveTotalPages <= 7) {
+							for (let i = 1; i <= effectiveTotalPages; i++) pages.push(i);
 						} else {
 							pages.push(1);
 							if (self.currentPage > 3) pages.push("...");
 							const start = Math.max(2, self.currentPage - 1);
-							const end = Math.min(self.totalPages - 1, self.currentPage + 1);
+							const end = Math.min(effectiveTotalPages - 1, self.currentPage + 1);
 							for (let i = start; i <= end; i++) pages.push(i);
-							if (self.currentPage < self.totalPages - 2) pages.push("...");
-							pages.push(self.totalPages);
+							if (self.currentPage < effectiveTotalPages - 2) pages.push("...");
+							pages.push(effectiveTotalPages);
 						}
 
 						pages.forEach(p => {
@@ -1446,7 +1540,7 @@ class DrishtiDashboard {
 							}
 						});
 
-						html += `<button class="cavg-page-btn" id="cavg-next" ${self.currentPage >= self.totalPages ? 'disabled' : ''}>Next ▶</button>`;
+						html += `<button class="cavg-page-btn" id="cavg-next" ${self.currentPage >= effectiveTotalPages ? 'disabled' : ''}>Next ▶</button>`;
 						$bar.html(html);
 					};
 
@@ -1462,15 +1556,55 @@ class DrishtiDashboard {
 						renderPaginationBar();
 					};
 
+					// Invalidate cache if date changed
+					if (self.cacheDate && self.cacheDate !== dashboardInstance.state.selectedDate) {
+						self.cachedPages = {};
+						self.cacheDate = null;
+						self.currentPage = 1;
+						self.totalRows = 0;
+						self.totalPages = 0;
+						self._bgRunning = false;
+					}
+
 					const fetchPageAjax = (pageNum) => {
 						return new Promise((resolve) => {
-							if (self.cachedPages[pageNum]) { resolve(true); return; }
+							const selDate = dashboardInstance.state.selectedDate;
+
+							// Check memory cache
+							if (self.cachedPages[pageNum] && self.cacheDate === selDate) {
+								resolve(true);
+								return;
+							}
+
+							// Check sessionStorage cache fallback
+							const ssKey = `sahayog_cavg_p_${selDate}_${pageNum}`;
+							const metaKey = `sahayog_cavg_meta_${selDate}`;
+							try {
+								const sData = sessionStorage.getItem(ssKey);
+								const sMeta = sessionStorage.getItem(metaKey);
+								if (sData && sMeta) {
+									const metaObj = JSON.parse(sMeta);
+									if (metaObj.totalRows > self.pageSize) {
+										self.totalRows = metaObj.totalRows;
+										self.totalPages = metaObj.totalPages || Math.ceil(self.totalRows / self.pageSize);
+									}
+									self.cachedPages[pageNum] = JSON.parse(sData);
+									self.cacheDate = selDate;
+									if (self.totalRows > self.pageSize) {
+										resolve(true);
+										return;
+									}
+								}
+							} catch (e) {
+								console.warn("sessionStorage read error", e);
+							}
+
 							const offset = (pageNum - 1) * self.pageSize;
 							$.ajax({
 								url: "/api/method/custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_cust_wise_avg_balance",
 								type: "POST",
 								data: {
-									selected_date: dashboardInstance.state.selectedDate,
+									selected_date: selDate,
 									limit: self.pageSize,
 									offset: offset,
 								},
@@ -1481,6 +1615,17 @@ class DrishtiDashboard {
 										self.totalRows = r.message.total_rows || 0;
 										self.totalPages = Math.ceil(self.totalRows / self.pageSize) || 1;
 										self.cachedPages[pageNum] = r.message.data;
+										self.cacheDate = selDate;
+
+										try {
+											sessionStorage.setItem(ssKey, JSON.stringify(r.message.data));
+											sessionStorage.setItem(metaKey, JSON.stringify({
+												totalRows: self.totalRows,
+												totalPages: self.totalPages
+											}));
+										} catch (e) {
+											console.warn("sessionStorage write error", e);
+										}
 										resolve(true);
 									} else {
 										resolve(false);
@@ -1560,9 +1705,21 @@ class DrishtiDashboard {
 						self.totalRows = 0;
 						self.totalPages = 0;
 						self.cachedPages = {};
+						self.cacheDate = null;
 						self.searchTerm = "";
 						self._bgRunning = false;
 						self._renderSeq++;
+
+						try {
+							const selDate = dashboardInstance.state.selectedDate;
+							const prefix = `sahayog_cavg_p_${selDate}_`;
+							const metaKey = `sahayog_cavg_meta_${selDate}`;
+							sessionStorage.removeItem(metaKey);
+							Object.keys(sessionStorage).forEach(k => {
+								if (k && k.startsWith(prefix)) sessionStorage.removeItem(k);
+							});
+						} catch (e) {}
+
 						container.find("#cavg-search").val("");
 						container.find("#cavg-table-container").hide().empty();
 						container.find("#cavg-pagination").hide().html("");
@@ -1599,7 +1756,7 @@ class DrishtiDashboard {
 						if (next <= self.totalPages && !self.cachedPages[next]) preloadPage(next);
 					});
 
-					if (Object.keys(self.cachedPages).length > 0) {
+					if (Object.keys(self.cachedPages).length > 0 && self.cacheDate === dashboardInstance.state.selectedDate) {
 						container.find("#cavg-loading").hide();
 						container.find("#cavg-table-container").show();
 						renderPage();
@@ -1612,6 +1769,7 @@ class DrishtiDashboard {
 							startBgFetch(2);
 						});
 					}
+
 				},
 			},
 			{
@@ -7414,13 +7572,16 @@ class DrishtiDashboard {
 			if (activeReportId) {
 				const report = this.misReportsList.find(r => r.id === activeReportId);
 				if (report) {
-					report.tableData = [];
-					if (report.cachedPages !== undefined) {
-						report.cachedPages = {};
-						report.currentPage = 1;
-						report.totalRows = 0;
-						report.totalPages = 0;
-						report._bgRunning = false;
+					if (report.cacheDate !== this.state.selectedDate) {
+						report.tableData = [];
+						if (report.cachedPages !== undefined) {
+							report.cachedPages = {};
+							report.cacheDate = null;
+							report.currentPage = 1;
+							report.totalRows = 0;
+							report.totalPages = 0;
+							report._bgRunning = false;
+						}
 					}
 				}
 				this.renderMisReport(activeReportId);
