@@ -124,7 +124,7 @@
 		</aside>
 		<div class="main-content">
 			<div class="main-header">
-				<h1>RD &amp; SMBG Pending</h1>
+				<h1 id="main-header-title">RD &amp; SMBG Pending</h1>
 			</div>
 			<div class="main-body" id="tab-content-rd_smbg_pending">
 				<div class="controls-bar">
@@ -144,6 +144,87 @@
 					<div class="loading-text">Fetching latest RD &amp; SMBG data...</div>
 				</div>
 				<div id="table-container" style="display: none;"></div>
+			</div>
+
+			<!-- DD Tracker Reports Content Sections -->
+			<div class="main-body" id="tab-content-dd-bucket_wise" style="display: none;">
+				<div class="controls-bar">
+					<input type="text" id="search-input-bucket" placeholder="Search branch or SOL ID..." />
+					<button class="btn btn-secondary" id="expand-toggle-bucket">&#9660; Expand All</button>
+					<button class="btn btn-secondary" id="refetch-btn-bucket">&#10227; Refetch</button>
+					<div class="format-toggle">
+						<button class="btn active" data-format="number">Numbers</button>
+						<button class="btn" data-format="words">Words</button>
+					</div>
+					<div class="records-count" id="records-count-bucket"></div>
+				</div>
+				<div class="zone-filter-row" id="zone-filter-row-bucket"></div>
+				<div class="kpi-container" id="kpi-container-bucket"></div>
+				<div id="loading-bucket" class="loading-container">
+					<div class="spinner"></div>
+					<div class="loading-text">Fetching Bucket Wise Account MIS data...</div>
+				</div>
+				<div id="table-container-bucket" style="display: none;"></div>
+			</div>
+
+			<div class="main-body" id="tab-content-dd-new_account" style="display: none;">
+				<div class="controls-bar">
+					<input type="text" id="search-input-new" placeholder="Search branch or SOL ID..." />
+					<button class="btn btn-secondary" id="expand-toggle-new">&#9660; Expand All</button>
+					<button class="btn btn-secondary" id="refetch-btn-new">&#10227; Refetch</button>
+					<div class="format-toggle">
+						<button class="btn active" data-format="number">Numbers</button>
+						<button class="btn" data-format="words">Words</button>
+					</div>
+					<div class="records-count" id="records-count-new"></div>
+				</div>
+				<div class="zone-filter-row" id="zone-filter-row-new"></div>
+				<div class="kpi-container" id="kpi-container-new"></div>
+				<div id="loading-new" class="loading-container">
+					<div class="spinner"></div>
+					<div class="loading-text">Fetching New Account Report data...</div>
+				</div>
+				<div id="table-container-new" style="display: none;"></div>
+			</div>
+
+			<div class="main-body" id="tab-content-dd-staff_demand_collection" style="display: none;">
+				<div class="controls-bar">
+					<input type="text" id="search-input-staff" placeholder="Search branch, staff name..." />
+					<button class="btn btn-secondary" id="expand-toggle-staff">&#9660; Expand All</button>
+					<button class="btn btn-secondary" id="refetch-btn-staff">&#10227; Refetch</button>
+					<div class="format-toggle">
+						<button class="btn active" data-format="number">Numbers</button>
+						<button class="btn" data-format="words">Words</button>
+					</div>
+					<div class="records-count" id="records-count-staff"></div>
+				</div>
+				<div class="zone-filter-row" id="zone-filter-row-staff"></div>
+				<div class="kpi-container" id="kpi-container-staff"></div>
+				<div id="loading-staff" class="loading-container">
+					<div class="spinner"></div>
+					<div class="loading-text">Fetching Staff Wise Demand Vs Collection data...</div>
+				</div>
+				<div id="table-container-staff" style="display: none;"></div>
+			</div>
+
+			<div class="main-body" id="tab-content-dd-agent_demand_collection" style="display: none;">
+				<div class="controls-bar">
+					<input type="text" id="search-input-agent" placeholder="Search branch, agent, authorizer..." />
+					<button class="btn btn-secondary" id="expand-toggle-agent">&#9660; Expand All</button>
+					<button class="btn btn-secondary" id="refetch-btn-agent">&#10227; Refetch</button>
+					<div class="format-toggle">
+						<button class="btn active" data-format="number">Numbers</button>
+						<button class="btn" data-format="words">Words</button>
+					</div>
+					<div class="records-count" id="records-count-agent"></div>
+				</div>
+				<div class="zone-filter-row" id="zone-filter-row-agent"></div>
+				<div class="kpi-container" id="kpi-container-agent"></div>
+				<div id="loading-agent" class="loading-container">
+					<div class="spinner"></div>
+					<div class="loading-text">Fetching Agent Wise Demand Vs Collection data...</div>
+				</div>
+				<div id="table-container-agent" style="display: none;"></div>
 			</div>
 		</div>
 
@@ -554,10 +635,14 @@
 					// Hide all tab contents
 					document.querySelectorAll('[id^="tab-content-"]').forEach(tc => tc.style.display = 'none');
 					
-					// Show selected tab
+					// Show selected tab and update header
 					const contentEl = document.getElementById('tab-content-' + tab);
 					if (contentEl) {
 						contentEl.style.display = 'block';
+						// Update header title
+						if (tab === 'rd_smbg_pending') {
+							document.getElementById('main-header-title').textContent = 'RD & SMBG Pending';
+						}
 					}
 				});
 			});
@@ -567,6 +652,7 @@
 				item.addEventListener('click', function(e) {
 					e.stopPropagation();
 					const subtab = this.dataset.subtab;
+					const reportName = this.textContent;
 					
 					// Update active states
 					document.querySelectorAll('.sidebar-nav-item').forEach(i => i.classList.remove('active'));
@@ -576,13 +662,17 @@
 					// Hide all tab contents
 					document.querySelectorAll('[id^="tab-content-"]').forEach(tc => tc.style.display = 'none');
 					
+					// Update header title
+					document.getElementById('main-header-title').textContent = reportName;
+					
 					// Show selected subtab content
 					const contentEl = document.getElementById('tab-content-dd-' + subtab);
 					if (contentEl) {
 						contentEl.style.display = 'block';
+						// TODO: Load data for this report if not already loaded
 					} else {
 						// Placeholder for not yet implemented subtabs
-						alert('This report is under development: ' + this.textContent);
+						alert('This report is under development: ' + reportName);
 					}
 				});
 			});
