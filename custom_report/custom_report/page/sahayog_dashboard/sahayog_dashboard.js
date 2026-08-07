@@ -6828,11 +6828,11 @@ class DrishtiDashboard {
 			container.append(`
                 <button class="filter-tag category-tag ${isActive ? "active" : ""}" 
                         data-category="${category}" 
-                        style="--fill-pct: ${pct}%; --fill-color: ${color}26; color: ${color};">
+                        style="--fill-pct: ${pct}%; --fill-color: ${color}26; color: ${color}; border-color: ${color}40;">
                     <span class="category-tag-content">
                         ${category}
-                        <span class="filter-tag-count">${count}</span>
-                        <span class="category-tag-pct">${pct}%</span>
+                        <span class="filter-tag-count" style="color: ${color}; border-color: ${color}50; background-color: ${color}12;">${count}</span>
+                        <span class="category-tag-pct" style="color: ${color};">${pct}%</span>
                     </span>
                 </button>
             `);
@@ -10494,18 +10494,28 @@ class DrishtiDashboard {
                 .category-tag .filter-tag-count {
                     padding: 3px 8px;
                     font-size: 10px;
+                    font-weight: 700;
+                    border: 1px solid currentColor;
+                    border-radius: 9999px;
+                    transition: all 0.2s ease;
                 }
 
                 .category-tag-pct {
                     font-size: 11px;
                     font-weight: 700;
-                    color: #64748b;
+                    color: inherit;
                     line-height: 1;
                     margin-left: auto;
                 }
 
                 .category-tag.active .category-tag-pct {
-                    color: rgba(255, 255, 255, 0.85) !important;
+                    color: #ffffff !important;
+                }
+
+                .category-tag.active .filter-tag-count {
+                    background-color: rgba(255, 255, 255, 0.25) !important;
+                    color: #ffffff !important;
+                    border-color: rgba(255, 255, 255, 0.4) !important;
                 }
 
                 .category-tag-content {
