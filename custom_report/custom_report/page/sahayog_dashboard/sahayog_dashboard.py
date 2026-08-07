@@ -731,15 +731,7 @@ def build_zone_wise(branch_data, targets_map, target_type, district_map=None):
         zrm["target"] += tgt
         zrm["achievement"] += ach
 
-        branch = zone_hierarchy[zone][region]["branch_details"][sol_id]
-        branch["zone"] = zone
-        branch["region"] = region
-        branch["sol_id"] = sol_id
-        branch["branch"] = branch_name
-        if month_key not in branch["months"]:
-            branch["months"][month_key] = {"target": 0.0, "achievement": 0.0, "percentage": 0.0}
-        branch["months"][month_key]["target"] += tgt
-        branch["months"][month_key]["achievement"] += ach
+
     
     zone_wise = []
     def zone_sort_key(z):
