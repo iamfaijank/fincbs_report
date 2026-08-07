@@ -101,6 +101,139 @@ def get_branch_profile_data(sol_id: str):
         as_dict=True,
     ) or {}
 
+@frappe.whitelist()
+def get_book_position_details(sol_id: str):
+    """
+    Fetch Book Position data from 'Book Position and Account Details' doctype.
+    Sums up closing_balance for specific group_name and group_subname.
+    """
+    if not sol_id:
+        return {}
+
+    # Get the latest date for this sol_id
+    latest_date = frappe.db.get_value(
+        "Book Position and Account Details",
+        {"sol_id": sol_id},
+        "date",
+        order_by="date desc"
+    )
+
+    result = {
+        "sa_book": 0.0, "ca_book": 0.0, "fd_book": 0.0,
+        "rd_book": 0.0, "dds_book": 0.0, "smbg_book": 0.0, "dam_book": 0.0,
+        "total_book": 0.0,
+        
+        "sa_accounts_opened": 0, "sa_accounts_total": 0,
+        "ca_accounts_opened": 0, "ca_accounts_total": 0,
+        "fd_accounts_opened": 0, "fd_accounts_total": 0,
+        "rd_accounts_opened": 0, "rd_accounts_total": 0,
+        "dds_accounts_opened": 0, "dds_accounts_total": 0,
+        "smbg_accounts_opened": 0, "smbg_accounts_total": 0,
+        "dam_accounts_opened": 0, "dam_accounts_total": 0,
+        "total_accounts_opened": 0, "total_accounts_total": 0
+    }
+
+    if not latest_date:
+        return result
+
+    data = frappe.db.get_list(
+        "Book Position and Account Details",
+        filters={"sol_id": sol_id, "date": latest_date},
+        fields=["group_name", "group_subname", "closing_balance", "account_opened", "closing_no_of_accounts"],
+    )
+
+    total_balance = 0.0
+    for row in data:
+        balance = flt(row.closing_balance)
+        opened = frappe.utils.cint(row.account_opened)
+        total = frappe.utils.cint(row.closing_no_of_accounts)
+        
+        g_name = (row.group_name or "").upper().strip()
+        g_subname = (row.group_subname or "").upper().strip()
+
+        if g_name == "CASA" and g_subname == "SA":
+            result["sa_book"] += balance
+            result["sa_accounts_opened"] += opened
+            result["sa_accounts_total"] += total
+        elif g_name == "CASA" and g_subname == "CA":
+            result["ca_book"] += balance
+            result["ca_accounts_opened"] += opened
+            result["ca_accounts_total"] += total
+        elif g_name == "FD":
+            result["fd_book"] += balance
+            result["fd_accounts_opened"] += opened
+            result["fd_accounts_total"] += total
+        elif g_name == "RD":
+            result["rd_book"] += balance
+            result["rd_accounts_opened"] += opened
+            result["rd_accounts_total"] += total
+        elif g_name == "DD":
+            result["dds_book"] += balance
+            result["dds_accounts_opened"] += opened
+            result["dds_accounts_total"] += total
+        elif g_name == "SMBG":
+            result["smbg_book"] += balance
+            result["smbg_accounts_opened"] += opened
+            result["smbg_accounts_total"] += total
+        elif g_name == "DAM":
+            result["dam_book"] += balance
+            result["dam_accounts_opened"] += opened
+            result["dam_accounts_total"] += total
+            
+        total_balance += balance
+
+    # Total Book should probably be sum of all categories, or sum of everything.
+    # The requirement is just showing these compositions of the total book.
+    # Let's sum all mapped ones for composition 100%.
+    result["total_book"] = (
+        result["sa_book"] + result["ca_book"] + result["fd_book"] +
+        result["rd_book"] + result["dds_book"] + result["smbg_book"] + result["dam_book"]
+    )
+    
+    result["total_accounts_opened"] = (
+        result["sa_accounts_opened"] + result["ca_accounts_opened"] + result["fd_accounts_opened"] +
+        result["rd_accounts_opened"] + result["dds_accounts_opened"] + result["smbg_accounts_opened"] + result["dam_accounts_opened"]
+    )
+    
+    result["total_accounts_total"] = (
+        result["sa_accounts_total"] + result["ca_accounts_total"] + result["fd_accounts_total"] +
+        result["rd_accounts_total"] + result["dds_accounts_total"] + result["smbg_accounts_total"] + result["dam_accounts_total"]
+    )
+    
+    # Fetch DDS Demand, Collection, and Demand vs Collection from 'DD Tracker Report' for this sol_id
+    dd_latest_date = frappe.db.get_value(
+        "DD Tracker Report",
+        {"sol_id": sol_id},
+        "date",
+        order_by="date desc"
+    )
+    if not dd_latest_date:
+        dd_latest_date = frappe.db.get_value(
+            "DD Tracker Report",
+            {},
+            "date",
+            order_by="date desc"
+        )
+
+    dds_demand = 0.0
+    dds_collection = 0.0
+    if dd_latest_date:
+        dd_records = frappe.db.get_all(
+            "DD Tracker Report",
+            filters={"sol_id": sol_id, "date": dd_latest_date},
+            fields=["monthly_demand", "monthly_collection"]
+        )
+        for r in dd_records:
+            dds_demand += flt(r.monthly_demand)
+            dds_collection += flt(r.monthly_collection)
+
+    result["dds_demand"] = dds_demand
+    result["dds_collection"] = dds_collection
+    result["dds_demand_vs_collection"] = (dds_collection / dds_demand * 100.0) if dds_demand > 0 else 0.0
+
+    return result
+
+
 
 # ============================================================================
 # PERFORMANCE DATA API (Note: Implementation moved to the bottom of the file)
@@ -512,4 +645,76 @@ def get_performance_data(sol_id, date=None, fy=None):
         return {
             "status": "error", 
             "message": str(e)
+        }
+
+
+@frappe.whitelist()
+def get_attrition_rate(sol_id: str, period: str = "3"):
+    """
+    Fetch Attrition Rate for a given branch (sol_id) for periods: 3, 6, 12 months.
+    Returns calculated rates and headcount breakdown for 3 Months, 6 Months, and 12 Months.
+    """
+    if not sol_id:
+        return {
+            "status": "error",
+            "message": "SOL ID is required",
+            "rates": {"3": 0.0, "6": 0.0, "12": 0.0},
+            "counts": {"3": {"left": 0, "headcount": 0}, "6": {"left": 0, "headcount": 0}, "12": {"left": 0, "headcount": 0}}
+        }
+
+    try:
+        from frappe.utils import add_months, today
+        current_today = today()
+
+        # Get current active employee count for this sol_id
+        active_count = frappe.db.count("Employee", filters={"sol_id": sol_id, "status": "Active"})
+        
+        # If active_count is 0, check staff_count in Branch Profile Data
+        if active_count == 0:
+            staff_count_str = frappe.db.get_value("Branch Profile Data", {"sol_id": sol_id}, "staff_count")
+            active_count = frappe.utils.cint(staff_count_str) or 0
+
+        rates = {}
+        counts = {}
+
+        for p_months in [3, 6, 12]:
+            start_date = add_months(current_today, -p_months)
+            
+            # Count employees relieved/left in period
+            left_count = frappe.db.sql("""
+                SELECT COUNT(*) FROM `tabEmployee`
+                WHERE sol_id = %s
+                  AND (
+                      (relieving_date IS NOT NULL AND relieving_date >= %s)
+                      OR (resignation_letter_date IS NOT NULL AND resignation_letter_date >= %s)
+                      OR (status != 'Active' AND status IS NOT NULL AND modified >= %s)
+                  )
+            """, (sol_id, start_date, start_date, start_date))[0][0] or 0
+
+            headcount = active_count + left_count
+            if headcount > 0:
+                rate = (left_count / headcount) * 100
+            else:
+                rate = 0.0
+
+            rates[str(p_months)] = round(rate, 1)
+            counts[str(p_months)] = {
+                "left": left_count,
+                "headcount": headcount,
+                "active": active_count
+            }
+
+        return {
+            "status": "success",
+            "sol_id": sol_id,
+            "selected_period": str(period),
+            "rates": rates,
+            "counts": counts
+        }
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Get Attrition Rate Error")
+        return {
+            "status": "error",
+            "rates": {"3": 0.0, "6": 0.0, "12": 0.0},
+            "counts": {"3": {"left": 0, "headcount": 0}, "6": {"left": 0, "headcount": 0}, "12": {"left": 0, "headcount": 0}}
         }

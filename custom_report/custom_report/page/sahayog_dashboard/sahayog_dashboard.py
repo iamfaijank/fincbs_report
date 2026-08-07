@@ -14,9 +14,160 @@ from collections import defaultdict
 from datetime import datetime
 
 
+def sahayog_cache(ttl=86400):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            import json
+            import hashlib
+            import inspect
+
+            # Filter args and kwargs based on target function's signature
+            sig = inspect.signature(func)
+            has_kwargs = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+            has_args = any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in sig.parameters.values())
+            
+            if has_kwargs:
+                filtered_kwargs = kwargs
+            else:
+                filtered_kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
+                
+            if has_args:
+                filtered_args = args
+            else:
+                pos_params = [p for p in sig.parameters.values() if p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)]
+                filtered_args = args[:len(pos_params)]
+
+            # Generate deterministic cache key based on function name and filtered arguments
+            args_str = f"{filtered_args}_{json.dumps(filtered_kwargs, sort_keys=True, default=str)}"
+            key_hash = hashlib.md5(args_str.encode('utf-8')).hexdigest()
+            cache_key = f"sahayog_cache|{func.__name__}|{key_hash}"
+            
+            cached_data = frappe.cache.get_value(cache_key)
+            if cached_data is not None:
+                return cached_data
+                
+            result = func(*filtered_args, **filtered_kwargs)
+            
+            # ONLY cache if result is truthy (non-empty list, non-empty dict, non-None)
+            if result:
+                frappe.cache.set_value(cache_key, result, expires_in_sec=ttl)
+            return result
+            
+        def clear_cache():
+            frappe.cache.delete_keys(f"sahayog_cache|{func.__name__}|*")
+            
+        wrapper.clear_cache = clear_cache
+        wrapper.__name__ = func.__name__
+        wrapper.__doc__ = func.__doc__
+        return wrapper
+    return decorator
+
+
 CATEGORY_ORDER = ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Zero Level"]
 
 
+def get_products_cached():
+    """Fetches all Product records and caches them in Redis."""
+    cache_key = "sahayog_products_list"
+    cached_data = frappe.cache.get_value(cache_key)
+    if cached_data:
+        return cached_data
+    products = frappe.get_all(
+        "Product",
+        fields=["name", "product_name", "group_name", "group_subname", "product_type"]
+    )
+    frappe.cache.set_value(cache_key, products, expires_in_sec=86400)
+    return products
+
+
+def get_product_group_map_cached():
+    """Fetches name to group_name mapping for Products and caches them in Redis."""
+    cache_key = "sahayog_product_group_map"
+    cached_data = frappe.cache.get_value(cache_key)
+    if cached_data:
+        return cached_data
+    products = frappe.get_all("Product", fields=["name", "group_name"])
+    group_map = {p.name: p.group_name for p in products}
+    frappe.cache.set_value(cache_key, group_map, expires_in_sec=86400)
+    return group_map
+
+
+def get_products_map_cached():
+    """Returns a map of product name to product doc fields."""
+    cache_key = "sahayog_products_map"
+    cached_data = frappe.cache.get_value(cache_key)
+    if cached_data:
+        return cached_data
+    products = frappe.get_all(
+        "Product",
+        fields=["name", "product_name", "group_name", "group_subname", "group_subname_category", "product_type"]
+    )
+    prod_map = {p.name: p for p in products}
+    frappe.cache.set_value(cache_key, prod_map, expires_in_sec=86400)
+    return prod_map
+
+
+def clear_products_cache(doc=None, method=None):
+    """Clears product-related caches from Redis."""
+    frappe.cache.delete_value("sahayog_products_list")
+    frappe.cache.delete_value("sahayog_product_group_map")
+    frappe.cache.delete_value("sahayog_products_map")
+
+
+def get_sahayog_branches_cached():
+    """
+    Fetches all Sahayog Branch records, caches them in Redis (using frappe.cache),
+    and returns a dictionary mapped by sol_id (name).
+    """
+    cache_key = "sahayog_branches_map"
+    cached_data = frappe.cache.get_value(cache_key)
+    
+    if cached_data:
+        return cached_data
+        
+    branches = frappe.get_all(
+        "Sahayog Branch",
+        fields=["name as sol_id", "branch as branch_name", "zone", "region", "district"]
+    )
+    
+    branches_map = {}
+    for b in branches:
+        sol_id = str(b.sol_id or "")
+        branches_map[sol_id] = {
+            "sol_id": sol_id,
+            "branch_name": b.branch_name or "",
+            "zone": b.zone or "",
+            "region": b.region or "",
+            "district": b.district or ""
+        }
+        
+    # Cache for 24 hours
+    frappe.cache.set_value(cache_key, branches_map, expires_in_sec=86400)
+    return branches_map
+
+
+def clear_sahayog_branches_cache(doc=None, method=None):
+    """Clears the cached Sahayog Branch map from Redis."""
+    frappe.cache.delete_value("sahayog_branches_map")
+
+
+def clear_user_permissions_cache(doc=None, method=None):
+    """Clears the cached report permissions from Redis."""
+    get_user_report_permissions.clear_cache()
+
+
+def clear_targets_cache(doc=None, method=None):
+    """Clears the cached targets map from Redis."""
+    frappe.cache.delete_keys("targets_map|*")
+
+
+def clear_branch_category_report_cache(doc=None, method=None):
+    """Clears cache related to Branch Category Report."""
+    get_last_available_date_for_month.clear_cache()
+    get_previous_available_date.clear_cache()
+
+
+@sahayog_cache(ttl=86400)
 def get_user_report_permissions(user):
     """
     Fetches permissions from 'Report Preference' for the current user.
@@ -57,12 +208,12 @@ def get_user_report_permissions(user):
 
     # Fetch branch names from Sahayog Branch for permitted sol_ids
     if permissions["sol_ids"]:
-        branches = frappe.get_all(
-            "Sahayog Branch",
-            filters={"name": ["in", permissions["sol_ids"]]},
-            fields=["name as sol_id", "branch as branch_name"]
-        )
-        permissions["sol_data"] = branches
+        branches_map = get_sahayog_branches_cached()
+        permissions["sol_data"] = [
+            {"sol_id": sid, "branch_name": branches_map[sid]["branch_name"]}
+            for sid in permissions["sol_ids"]
+            if sid in branches_map
+        ]
     
     return permissions
 
@@ -77,6 +228,7 @@ def calculate_category(achievement_pct):
     else: return "Zero Level"
 
 
+@sahayog_cache(ttl=86400)
 def get_last_available_date_for_month(month_num, year):
     dates = frappe.db.sql("""
         SELECT DISTINCT date 
@@ -92,6 +244,7 @@ def get_last_available_date_for_month(month_num, year):
     return None
 
 
+@sahayog_cache(ttl=86400)
 def get_previous_available_date(current_date):
     dates = frappe.db.sql("""
         SELECT DISTINCT date 
@@ -393,26 +546,23 @@ def get_sahayog_dashboard(
         
         # Priority 2: Zone & Region (if no specific SOL IDs provided)
         else:
+            branches_map = get_sahayog_branches_cached()
             # 🛡️ Numeric Matching Logic for Zones
             if perms["zone_ids"]:
+                all_zones = set(b["zone"] for b in branches_map.values() if b["zone"])
                 if len(perms["zone_ids"]) > 1:
-                    regex_pattern = f"({'|'.join(perms['zone_ids'])})"
-                    matched_zones = frappe.db.sql("""
-                        SELECT DISTINCT zone FROM `tabSahayog Branch` 
-                        WHERE zone REGEXP %s
-                    """, (regex_pattern,), pluck=True)
+                    zone_pattern = re.compile(f"({'|'.join(re.escape(zid) for zid in perms['zone_ids'])})")
+                    matched_zones = [z for z in all_zones if zone_pattern.search(z)]
                     combined_filters["zone"] = ["in", matched_zones] if matched_zones else ["in", ["_NONE_"]]
                 else:
                     combined_filters["zone"] = ["like", f"%{perms['zone_ids'][0]}"]
             
             # 🛡️ Numeric Matching Logic for Regions
             if not perms["all_regions"] and perms["region_ids"]:
+                all_regions = set(b["region"] for b in branches_map.values() if b["region"])
                 if len(perms["region_ids"]) > 1:
-                    regex_pattern = f"({'|'.join(perms['region_ids'])})"
-                    matched_regions = frappe.db.sql("""
-                        SELECT DISTINCT region FROM `tabSahayog Branch` 
-                        WHERE region REGEXP %s
-                    """, (regex_pattern,), pluck=True)
+                    region_pattern = re.compile(f"({'|'.join(re.escape(rid) for rid in perms['region_ids'])})")
+                    matched_regions = [r for r in all_regions if region_pattern.search(r)]
                     combined_filters["region"] = ["in", matched_regions] if matched_regions else ["in", ["_NONE_"]]
                 else:
                     combined_filters["region"] = ["like", f"%{perms['region_ids'][0]}"]
@@ -447,6 +597,10 @@ def get_sahayog_dashboard(
         
     targets_map = get_targets_map(financial_year, target_type, month_keys, allowed_sol_ids)
     
+    # Build sol_id -> district mapping from Sahayog Branch
+    branches_map = get_sahayog_branches_cached()
+    district_map = {sid: b["district"] or "Unknown District" for sid, b in branches_map.items()}
+    
     all_branch_data = []
     for month_key, month_num, year, eff_date in months:
         branch_filters = {"date": eff_date}
@@ -462,10 +616,10 @@ def get_sahayog_dashboard(
             rec["month_key"] = month_key
         all_branch_data.extend(month_data)
     
-    zone_wise = build_zone_wise(all_branch_data, targets_map, target_type)
+    zone_wise = build_zone_wise(all_branch_data, targets_map, target_type, district_map)
     product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type, selected_date)
     category_wise = build_category_wise(all_branch_data, targets_map, months, target_type)
-    branch_wise = build_branch_wise(all_branch_data, targets_map, months, target_type)
+    branch_wise = build_branch_wise(all_branch_data, targets_map, months, target_type, district_map)
     agent_wise = build_agent_wise(selected_date)
 
     return {
@@ -485,6 +639,20 @@ def get_sahayog_dashboard(
 
 
 def get_targets_map(financial_year, target_type, month_keys, allowed_sol_ids=None):
+    # Convert lists/tuples to sorted tuples for deterministic cache key
+    m_keys_tuple = tuple(sorted(month_keys)) if month_keys else ()
+    sol_ids_tuple = tuple(sorted(allowed_sol_ids)) if allowed_sol_ids else ()
+    
+    cache_key = f"targets_map|{financial_year}|{target_type}|{m_keys_tuple}|{sol_ids_tuple}"
+    cached_data = frappe.cache.get_value(cache_key)
+    
+    if cached_data:
+        reconstructed = defaultdict(lambda: defaultdict(float))
+        for sol_id, months in cached_data.items():
+            for m_key, val in months.items():
+                reconstructed[sol_id][m_key] = val
+        return reconstructed
+
     targets_map = defaultdict(lambda: defaultdict(float))
     
     base_filters = {"financial_year": financial_year}
@@ -525,31 +693,40 @@ def get_targets_map(financial_year, target_type, month_keys, allowed_sol_ids=Non
             val = float(t.target or 0)
             for mk in month_keys:
                 targets_map[sol_id][mk] = val
+                
+    # Store standard dict in Redis (so lambda doesn't break pickling)
+    standard_targets_map = {}
+    for sol_id, months in targets_map.items():
+        standard_targets_map[sol_id] = dict(months)
+    frappe.cache.set_value(cache_key, standard_targets_map, expires_in_sec=86400)
     
     return targets_map
 
 
-def build_zone_wise(branch_data, targets_map, target_type):
-    zone_hierarchy = defaultdict(lambda: defaultdict(lambda: {"zone": "", "region": "", "months": {}, "branch_details": defaultdict(lambda: {"zone": "", "region": "", "sol_id": "", "branch": "", "months": {}})}))
+def build_zone_wise(branch_data, targets_map, target_type, district_map=None):
+    if district_map is None:
+        district_map = {}
+    zone_hierarchy = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: {"zone": "", "region": "", "district": "", "months": {}})))
     
     for row in branch_data:
         zone = row.get("zone") or "Unknown"
         region = row.get("region") or "Unknown"
         sol_id = str(row.get("sol_id") or "")
-        branch_name = row.get("branch") or sol_id
+        district = district_map.get(sol_id, "Unknown District")
         month_key = row.get("month_key")
         if not month_key: continue
         
-        if region not in zone_hierarchy[zone]:
-            zone_hierarchy[zone][region] = {"zone": zone, "region": region, "months": {}, "branch_details": defaultdict(lambda: {"zone": "", "region": "", "sol_id": "", "branch": "", "months": {}})}
+        if district not in zone_hierarchy[zone][region]:
+            zone_hierarchy[zone][region][district] = {"zone": zone, "region": region, "district": district, "months": {}}
         
-        if month_key not in zone_hierarchy[zone][region]["months"]:
-            zone_hierarchy[zone][region]["months"][month_key] = {"branches": set(), "target": 0.0, "achievement": 0.0}
+        zrd = zone_hierarchy[zone][region][district]["months"]
+        if month_key not in zrd:
+            zrd[month_key] = {"branches": set(), "target": 0.0, "achievement": 0.0}
         
         ach = float(row.get("achievement") or 0) if target_type == "Monthly" else float(row.get("yearly_achievement") or 0)
         tgt = targets_map[sol_id][month_key]
         
-        zrm = zone_hierarchy[zone][region]["months"][month_key]
+        zrm = zrd[month_key]
         zrm["branches"].add(sol_id)
         zrm["target"] += tgt
         zrm["achievement"] += ach
@@ -572,129 +749,239 @@ def build_zone_wise(branch_data, targets_map, target_type):
         return (2, z)
     
     for zone in sorted(zone_hierarchy.keys(), key=zone_sort_key):
-        zone_total = {"zone": zone, "region": zone, "months": {}}
+        zone_total = {"zone": zone, "region": zone, "months": {}, "isZoneTotal": True}
         
         for region in sorted(zone_hierarchy[zone].keys()):
-            reg = zone_hierarchy[zone][region]
-            for mk, mdata in reg["months"].items():
-                branch_count = len(mdata["branches"])
-                target = mdata["target"]
-                ach = mdata["achievement"]
-                pct = round((ach / target) * 100, 2) if target > 0 else 0.0
-                mdata["branches"] = branch_count
-                mdata["percentage"] = pct
-                
-                if mk not in zone_total["months"]:
-                    zone_total["months"][mk] = {"branches": 0, "target": 0.0, "achievement": 0.0, "percentage": 0.0}
-                ztm = zone_total["months"][mk]
-                ztm["branches"] += branch_count
-                ztm["target"] += target
-                ztm["achievement"] += ach
-        
-        for mk, mdata in zone_total["months"].items():
-            mdata["percentage"] = round((mdata["achievement"] / mdata["target"]) * 100, 2) if mdata["target"] > 0 else 0.0
+            region_total = {"zone": zone, "region": region, "months": {}, "isZoneTotal": False, "isRegionTotal": True}
+            
+            for district in sorted(zone_hierarchy[zone][region].keys()):
+                dist = zone_hierarchy[zone][region][district]
+                for mk, mdata in dist["months"].items():
+                    branch_count = len(mdata["branches"])
+                    target = mdata["target"]
+                    ach = mdata["achievement"]
+                    pct = round((ach / target) * 100, 2) if target > 0 else 0.0
+                    mdata["branches"] = branch_count
+                    mdata["percentage"] = pct
+                    
+                    if mk not in zone_total["months"]:
+                        zone_total["months"][mk] = {"branches": 0, "target": 0.0, "achievement": 0.0, "percentage": 0.0}
+                    ztm = zone_total["months"][mk]
+                    ztm["branches"] += branch_count
+                    ztm["target"] += target
+                    ztm["achievement"] += ach
+                    
+                    if mk not in region_total["months"]:
+                        region_total["months"][mk] = {"branches": 0, "target": 0.0, "achievement": 0.0, "percentage": 0.0}
+                    rtm = region_total["months"][mk]
+                    rtm["branches"] += branch_count
+                    rtm["target"] += target
+                    rtm["achievement"] += ach
+            
+            for mk, mdata in region_total["months"].items():
+                mdata["percentage"] = round((mdata["achievement"] / mdata["target"]) * 100, 2) if mdata["target"] > 0 else 0.0
+            
+            for mk, mdata in zone_total["months"].items():
+                mdata["percentage"] = round((mdata["achievement"] / mdata["target"]) * 100, 2) if mdata["target"] > 0 else 0.0
         
         zone_wise.append(zone_total)
         for region in sorted(zone_hierarchy[zone].keys()):
-            reg = zone_hierarchy[zone][region]
-            branches = []
-            for sol_id in sorted(reg["branch_details"].keys()):
-                bd = reg["branch_details"][sol_id]
-                for mk, mdata in bd["months"].items():
-                    tgt = mdata["target"]
-                    ach = mdata["achievement"]
-                    mdata["percentage"] = round((ach / tgt) * 100, 2) if tgt > 0 else 0.0
-                branches.append(bd)
-            reg["branches_list"] = branches
-            del reg["branch_details"]
-            zone_wise.append(reg)
+            # Add region aggregate row first
+            region_total = {"zone": zone, "region": region, "months": {}, "isZoneTotal": False, "isRegionTotal": True}
+            for district in sorted(zone_hierarchy[zone][region].keys()):
+                dist = zone_hierarchy[zone][region][district]
+                for mk, mdata in dist["months"].items():
+                    pct = round((mdata["achievement"] / mdata["target"]) * 100, 2) if mdata["target"] > 0 else 0.0
+                    mdata["percentage"] = pct
+                    
+                    if mk not in region_total["months"]:
+                        region_total["months"][mk] = {"branches": 0, "target": 0.0, "achievement": 0.0, "percentage": 0.0}
+                    rtm = region_total["months"][mk]
+                    rtm["branches"] += mdata["branches"]
+                    rtm["target"] += mdata["target"]
+                    rtm["achievement"] += mdata["achievement"]
+            
+            for mk, mdata in region_total["months"].items():
+                mdata["percentage"] = round((mdata["achievement"] / mdata["target"]) * 100, 2) if mdata["target"] > 0 else 0.0
+            
+            zone_wise.append(region_total)
+            for district in sorted(zone_hierarchy[zone][region].keys()):
+                zone_wise.append(zone_hierarchy[zone][region][district])
     
     return zone_wise
 
 
 def build_product_wise(branch_data, targets_map, target_type, selected_date=None):
-    # Determine the effective date: use selected_date or default to the last available date
     if not selected_date:
         selected_date = frappe.db.get_value("Product Wise Report", {}, "date", order_by="date desc")
 
     if not selected_date:
         return [], []
 
-    # 1. Server-side query with GROUP BY for performance - Filtered by date
-    data = frappe.db.sql("""
+    raw_data_db = frappe.db.sql("""
         SELECT
             zone,
             region,
-            COUNT(*) as record_count,
-            SUM(amount) as total_amount
-        FROM `tabProduct Wise Report`
-        WHERE zone IS NOT NULL AND region IS NOT NULL AND zone != '' AND region != ''
-        AND date = %s
-        GROUP BY zone, region
-        ORDER BY zone, region
-    """, (selected_date,), as_dict=True)
-
-    # Fetch individual product details for each zone/region - Filtered by date
-    product_details = frappe.db.sql("""
-        SELECT
-            zone,
-            region,
+            sol_id,
             product,
             SUM(amount) as amount
         FROM `tabProduct Wise Report`
-        WHERE zone IS NOT NULL AND region IS NOT NULL AND zone != '' AND region != ''
-        AND date = %s
-        GROUP BY zone, region, product
-        ORDER BY zone, region, amount DESC
+        WHERE date = %s
+        GROUP BY zone, region, sol_id, product
     """, (selected_date,), as_dict=True)
 
-    if not data:
+    branches_map = get_sahayog_branches_cached()
+    raw_data = []
+    
+    # We want to group by the resolved values to combine amounts if multiple rows map to the same values
+    grouped_map = defaultdict(float)
+    
+    for row in raw_data_db:
+        sid = str(row.sol_id or "").strip()
+        b = branches_map.get(sid, {})
+        
+        zone = b.get("zone") or row.zone or ""
+        region = b.get("region") or row.region or ""
+        district = b.get("district") or "Unknown District"
+        branch_name = b.get("branch_name") or ""
+        
+        if not zone or not region:
+            continue
+            
+        key = (zone, region, district, sid, branch_name, row.product)
+        grouped_map[key] += float(row.amount or 0)
+        
+    for key, amount in grouped_map.items():
+        zone, region, district, sid, branch_name, product = key
+        raw_data.append(frappe._dict({
+            "zone": zone,
+            "region": region,
+            "district": district,
+            "sol_id": sid,
+            "branch_name": branch_name,
+            "product": product,
+            "amount": amount
+        }))
+        
+    raw_data.sort(key=lambda x: (x.zone, x.region, x.district, x.sol_id))
+
+    if not raw_data:
         return [], []
 
-    # Get all unique products for dynamic column generation
-    all_products = sorted(set(row.product for row in product_details))
+    all_products = sorted(set(row.product for row in raw_data))
 
-    # Build a lookup for product details: {(zone, region): {product: amount, ...}}
-    product_lookup = defaultdict(dict)
-    for row in product_details:
-        key = (row.zone, row.region)
-        product_lookup[key][row.product] = row.amount
+    hierarchy = {}
+    for row in raw_data:
+        z = row.zone
+        r = row.region
+        d = row.district
+        s = row.sol_id
+        bname = row.branch_name
+        prod = row.product
+        amt = row.amount or 0.0
 
-    # Calculate zone-wise product totals
-    zone_product_totals = defaultdict(lambda: defaultdict(float))
-    for row in product_details:
-        zone_product_totals[row.zone][row.product] += row.amount
+        if z not in hierarchy:
+            hierarchy[z] = {}
+        if r not in hierarchy[z]:
+            hierarchy[z][r] = {}
+        if d not in hierarchy[z][r]:
+            hierarchy[z][r][d] = {}
+        if s not in hierarchy[z][r][d]:
+            hierarchy[z][r][d][s] = {
+                "branch_name": bname,
+                "products": defaultdict(float),
+                "total_amount": 0.0
+            }
+        hierarchy[z][r][d][s]["products"][prod] += amt
+        hierarchy[z][r][d][s]["total_amount"] += amt
 
-    # 2. Process into a hierarchical structure for the frontend
-    zone_summary = defaultdict(lambda: {'count': 0, 'amount': 0.0})
-    for row in data:
-        zone_summary[row.zone]['count'] += row.record_count
-        zone_summary[row.zone]['amount'] += (row.total_amount or 0)
-
-    # 3. Build the final flat list with parent (Zone) and child (Region) rows
     result = []
-    for zone, summary in sorted(zone_summary.items()):
-        # Add Zone Group Row with product totals
-        result.append({
-            "name": zone,
-            "parent": None,
-            "count": summary['count'],
-            "amount": summary['amount'],
-            "is_group": True,
-            "products": dict(zone_product_totals.get(zone, {}))  # Product-wise totals for zone
-        })
-        # Add corresponding Region Rows
-        for row in data:
-            if row.zone == zone:
-                result.append({
-                    "name": row.region,
-                    "parent": zone,
-                    "count": row.record_count,
-                    "amount": row.total_amount or 0,
-                    "is_group": False,
-                    "products": product_lookup.get((zone, row.region), {})
+    for zone in sorted(hierarchy.keys()):
+        zone_products = defaultdict(float)
+        zone_amount = 0.0
+        zone_rows = []
+
+        for region in sorted(hierarchy[zone].keys()):
+            region_products = defaultdict(float)
+            region_amount = 0.0
+            region_rows = []
+
+            for district in sorted(hierarchy[zone][region].keys()):
+                district_products = defaultdict(float)
+                district_amount = 0.0
+                district_rows = []
+
+                for sol_id in sorted(hierarchy[zone][region][district].keys()):
+                    sol_info = hierarchy[zone][region][district][sol_id]
+                    sol_amt = sol_info["total_amount"]
+                    sol_prods = sol_info["products"]
+
+                    district_amount += sol_amt
+                    for prod, amt in sol_prods.items():
+                        district_products[prod] += amt
+
+                    sol_display_name = f"{sol_id} - {sol_info['branch_name']}" if sol_info['branch_name'] else sol_id
+                    district_rows.append({
+                        "type": "sol",
+                        "name": sol_display_name,
+                        "path": f"{zone}/{region}/{district}/{sol_id}",
+                        "parent_district": f"{zone}/{region}/{district}",
+                        "parent_region": f"{zone}/{region}",
+                        "parent_zone": zone,
+                        "amount": sol_amt,
+                        "products": dict(sol_prods),
+                        "is_group": False
+                    })
+
+                region_amount += district_amount
+                for prod, amt in district_products.items():
+                    region_products[prod] += amt
+
+                region_rows.append({
+                    "type": "district",
+                    "name": district,
+                    "path": f"{zone}/{region}/{district}",
+                    "parent_region": f"{zone}/{region}",
+                    "parent_zone": zone,
+                    "amount": district_amount,
+                    "products": dict(district_products),
+                    "is_group": True,
+                    "children": district_rows
                 })
-    
+
+            zone_amount += region_amount
+            for prod, amt in region_products.items():
+                zone_products[prod] += amt
+
+            zone_rows.append({
+                "type": "region",
+                "name": region,
+                "path": f"{zone}/{region}",
+                "parent_zone": zone,
+                "amount": region_amount,
+                "products": dict(region_products),
+                "is_group": True,
+                "children": region_rows
+            })
+
+        result.append({
+            "type": "zone",
+            "name": zone,
+            "path": zone,
+            "parent_zone": None,
+            "amount": zone_amount,
+            "products": dict(zone_products),
+            "is_group": True
+        })
+
+        for r_row in zone_rows:
+            d_rows = r_row.pop("children")
+            result.append(r_row)
+            for d_row in d_rows:
+                s_rows = d_row.pop("children")
+                result.append(d_row)
+                result.extend(s_rows)
+
     return result, all_products
 
 
@@ -758,8 +1045,10 @@ def build_category_wise(branch_data, targets_map, months, target_type):
     return out
 
 
-def build_branch_wise(branch_data, targets_map, months, target_type):
-    branch_map = defaultdict(lambda: {"branch": "", "zone": "", "region": "", "months": {}})
+def build_branch_wise(branch_data, targets_map, months, target_type, district_map=None):
+    if district_map is None:
+        district_map = {}
+    branch_map = defaultdict(lambda: {"branch": "", "zone": "", "region": "", "district": "", "months": {}})
     
     for month_key, month_num, year, current_date in months:
         previous_date = get_previous_available_date(current_date)
@@ -782,6 +1071,7 @@ def build_branch_wise(branch_data, targets_map, months, target_type):
             branch_map[sol_id]["branch"] = branch
             branch_map[sol_id]["zone"] = zone
             branch_map[sol_id]["region"] = region
+            branch_map[sol_id]["district"] = district_map.get(sol_id, "Unknown District")
             
             month_data = {
                 "category": cat,
@@ -838,9 +1128,7 @@ def build_branch_wise(branch_data, targets_map, months, target_type):
             "branch": data["branch"],
             "zone": data["zone"],
             "region": data["region"],
-            "state": branch_details.get("state") or "",
-            "email": branch_details.get("email") or "",
-            "address": branch_details.get("branch_address") or "",
+            "district": data["district"],
             "months": data["months"]
         })
 
@@ -929,8 +1217,8 @@ def build_agent_wise(selected_date=None):
     result = []
     for key, data in agent_map.items():
         # Calculate shortfalls (target - achievement)
-        ss_shortfall = data["ss_target"] - data["ss_achievement"]
-        agent_shortfall = data["target"] - data["achievement"]
+        ss_shortfall = abs(data["ss_target"] - data["ss_achievement"])
+        agent_shortfall = abs(data["target"] - data["achievement"])
 
         # Format date as yyyy-mm-dd (strip time portion)
         date_str = str(data["date"])[:10] if data.get("date") else selected_date
@@ -955,11 +1243,27 @@ def build_agent_wise(selected_date=None):
 
 
 @frappe.whitelist()
-def get_rd_smbg_pending_table_data():
+@sahayog_cache(ttl=86400)
+def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
     from custom_report.db_connection import get_dr_connection
+    from datetime import datetime
     import json
 
-    query = """
+    if selected_date:
+        if isinstance(selected_date, str):
+            ref_date = selected_date
+        else:
+            ref_date = selected_date.strftime("%Y-%m-%d")
+    else:
+        ref_date = datetime.now().strftime("%Y-%m-%d")
+
+    sol_filter = ""
+    if sol_ids:
+        sol_list = [f"'{s.strip()}'" for s in sol_ids.split(",") if s.strip()]
+        if sol_list:
+            sol_filter = f" AND g.sol_id IN ({','.join(sol_list)})"
+
+    query = f"""
     WITH main_data AS (
         SELECT g.acid, g.sol_id, s.sol_desc, t.maturity_date, t.last_repayment_date,
                s.division_name, s.region_name, s.circle_office_name
@@ -970,7 +1274,7 @@ def get_rd_smbg_pending_table_data():
             AND g.entity_cre_flg = 'Y'
             AND g.del_flg = 'N'
             AND g.acct_cls_flg = 'N'
-            AND t.maturity_date >= CURRENT_DATE
+            AND t.maturity_date >= DATE '{ref_date}'{sol_filter}
     ),
     tdt_summary AS (
         SELECT acid,
@@ -980,7 +1284,7 @@ def get_rd_smbg_pending_table_data():
         FROM tbaadm.tdt
         WHERE flow_code = 'NI'
             AND (flow_amt > 0 OR tran_amt > 0)
-            AND flow_date <= CURRENT_DATE
+            AND flow_date <= DATE '{ref_date}'
         GROUP BY acid
     )
     SELECT m.sol_id, m.sol_desc, m.division_name, m.region_name, m.circle_office_name,
@@ -993,7 +1297,7 @@ def get_rd_smbg_pending_table_data():
     LEFT JOIN tdt_summary t ON m.acid = t.acid
     WHERE NOT (
         COALESCE(t.pending_instalments, 0) > 24
-        AND m.last_repayment_date < (CURRENT_DATE - INTERVAL '1 year')
+        AND m.last_repayment_date < (DATE '{ref_date}' - INTERVAL '1 year')
     )
     GROUP BY m.sol_id, m.sol_desc, m.division_name, m.region_name, m.circle_office_name
     ORDER BY m.sol_id
@@ -1012,18 +1316,16 @@ def get_rd_smbg_pending_table_data():
         sol_ids_found = [str(r[0]) for r in rows] if rows else []
         branch_map = {}
         if sol_ids_found:
-            sb_data = frappe.get_all(
-                "Sahayog Branch",
-                filters={"name": ["in", sol_ids_found]},
-                fields=["name as sol_id", "zone", "region", "district", "branch"]
-            )
-            for b in sb_data:
-                branch_map[b.sol_id] = {
-                    "zone": b.zone or "",
-                    "region": b.region or "",
-                    "district": b.district or "",
-                    "branch_name": b.branch or ""
-                }
+            branches_map = get_sahayog_branches_cached()
+            for sid in sol_ids_found:
+                if sid in branches_map:
+                    b = branches_map[sid]
+                    branch_map[sid] = {
+                        "zone": b.get("zone") or "",
+                        "region": b.get("region") or "",
+                        "district": b.get("district") or "",
+                        "branch_name": b.get("branch_name") or ""
+                    }
 
         result = []
         for row in rows:
@@ -1062,41 +1364,41 @@ def get_mis_filter_options():
     regions = []
     districts = []
 
+    branches_map = get_sahayog_branches_cached()
+    all_zones = sorted(list(set(b["zone"] for b in branches_map.values() if b["zone"])))
+    all_regions = sorted(list(set(b["region"] for b in branches_map.values() if b["region"])))
+    all_districts = sorted(list(set(b["district"] for b in branches_map.values() if b["district"])))
+
     # Apply same permission logic as Drishti (get_sahayog_dashboard)
     if perms.get("is_restricted"):
         allowed_zones = perms.get("zones", [])
         allowed_regions = perms.get("regions", [])
         # If zone permissions exist, use zones as primary filter — ignore sol_ids for data scope
         if allowed_zones:
-            zones = [r[0] for r in frappe.db.sql("SELECT DISTINCT zone FROM `tabSahayog Branch` WHERE zone IS NOT NULL AND zone != ''")]
             # Normalize: uppercase, remove spaces/dashes/hyphens for matching
             allowed_norm = [re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones]
-            zones = [z for z in zones if re.sub(r"[\s\-]+", "", z or "").upper() in allowed_norm]
-            regions = [r[0] for r in frappe.db.sql("SELECT DISTINCT region FROM `tabSahayog Branch` WHERE region IS NOT NULL AND region != ''")]
+            zones = [z for z in all_zones if re.sub(r"[\s\-]+", "", z or "").upper() in allowed_norm]
+            regions = all_regions
             if allowed_regions:
                 allowed_reg_norm = [re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions]
-                regions = [r for r in regions if re.sub(r"[\s\-]+", "", r or "").upper() in allowed_reg_norm]
-            districts = [r[0] for r in frappe.db.sql("SELECT DISTINCT district FROM `tabSahayog Branch` WHERE district IS NOT NULL AND district != ''")]
+                regions = [r for r in all_regions if re.sub(r"[\s\-]+", "", r or "").upper() in allowed_reg_norm]
+            districts = all_districts
         elif perms["sol_ids"]:
             # No zone permissions — restrict by sol_ids
-            branch_data = frappe.get_all(
-                "Sahayog Branch",
-                filters={"name": ["in", perms["sol_ids"]]},
-                fields=["zone", "region", "district"]
-            )
-            zones = sorted(set(b.zone for b in branch_data if b.zone))
-            regions = sorted(set(b.region for b in branch_data if b.region))
-            districts = sorted(set(b.district for b in branch_data if b.district))
+            sol_branches = [branches_map[sid] for sid in perms["sol_ids"] if sid in branches_map]
+            zones = sorted(list(set(b["zone"] for b in sol_branches if b["zone"])))
+            regions = sorted(list(set(b["region"] for b in sol_branches if b["region"])))
+            districts = sorted(list(set(b["district"] for b in sol_branches if b["district"])))
         else:
-            zones = [r[0] for r in frappe.db.sql("SELECT DISTINCT zone FROM `tabSahayog Branch` WHERE zone IS NOT NULL AND zone != ''")]
-            regions = [r[0] for r in frappe.db.sql("SELECT DISTINCT region FROM `tabSahayog Branch` WHERE region IS NOT NULL AND region != ''")]
-            districts = [r[0] for r in frappe.db.sql("SELECT DISTINCT district FROM `tabSahayog Branch` WHERE district IS NOT NULL AND district != ''")]
+            zones = all_zones
+            regions = all_regions
+            districts = all_districts
 
     else:
         # No restrictions — show all
-        zones = [r[0] for r in frappe.db.sql("SELECT DISTINCT zone FROM `tabSahayog Branch` WHERE zone IS NOT NULL AND zone != ''")]
-        regions = [r[0] for r in frappe.db.sql("SELECT DISTINCT region FROM `tabSahayog Branch` WHERE region IS NOT NULL AND region != ''")]
-        districts = [r[0] for r in frappe.db.sql("SELECT DISTINCT district FROM `tabSahayog Branch` WHERE district IS NOT NULL AND district != ''")]
+        zones = all_zones
+        regions = all_regions
+        districts = all_districts
 
     fixed_sol_id = None
     allowed_sol_ids = perms.get("sol_ids", [])
@@ -1119,19 +1421,18 @@ def get_mis_filter_options():
     
     # Build sol_data: branch names from Sahayog Branch
     sol_data = perms.get("sol_data", [])
-    if not sol_data and allowed_sol_ids:
-        sol_data = frappe.get_all(
-            "Sahayog Branch",
-            filters={"name": ["in", allowed_sol_ids]},
-            fields=["name as sol_id", "branch as branch_name"],
-            order_by="name asc"
-        )
-    elif not sol_data:
-        sol_data = frappe.get_all(
-            "Sahayog Branch",
-            fields=["name as sol_id", "branch as branch_name"],
-            order_by="name asc"
-        )
+    if not sol_data:
+        if allowed_sol_ids:
+            sol_data = [
+                {"sol_id": sid, "branch_name": branches_map[sid]["branch_name"]}
+                for sid in sorted(allowed_sol_ids)
+                if sid in branches_map
+            ]
+        else:
+            sol_data = [
+                {"sol_id": sid, "branch_name": branches_map[sid]["branch_name"]}
+                for sid in sorted(branches_map.keys())
+            ]
     
     return {
         "zones": sorted(zones),
@@ -1149,6 +1450,7 @@ def get_mis_filter_options():
 
 
 @frappe.whitelist()
+@sahayog_cache(ttl=86400)
 def get_daily_account_opening_data(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate
@@ -1172,10 +1474,7 @@ def get_daily_account_opening_data(selected_date=None):
 
     # Fetch local Product mapping to categorize scheme codes
     try:
-        products = frappe.get_all(
-            "Product",
-            fields=["name", "product_name", "group_name", "group_subname", "product_type"]
-        )
+        products = get_products_cached()
     except Exception:
         products = []
 
@@ -1185,37 +1484,26 @@ def get_daily_account_opening_data(selected_date=None):
         gname = (p.group_name or "").upper()
         gsub = (p.group_subname or "").upper()
         
-        category = "FD"  # Default fallback
-        
-        # Check group_subname first (if SA, CA, TASC)
-        if gsub == "SA":
-            category = "SA"
-        elif gsub == "CA":
-            category = "CA"
-        elif gsub == "TASC":
-            category = "TASC"
-        # Or if group_name is CASA, map strictly based on group_subname
-        elif gname == "CASA":
+        category = None
+
+        if gname == "CASA":
             if gsub == "SA":
                 category = "SA"
             elif gsub == "CA":
                 category = "CA"
             elif gsub == "TASC":
                 category = "TASC"
-            else:
-                category = "FD"
         elif gname == "RD":
             category = "RD"
         elif gname == "SMBG":
             category = "SMBG"
         elif gname == "DD":
             category = "DD"
-        elif gname in ("FD", "DAM"):
+        elif gname == "FD":
             category = "FD"
-        else:
-            category = "FD"
-                
-        product_map[code] = category
+
+        if category:
+            product_map[code] = category
 
     query = """
     WITH base_schemes AS (
@@ -1276,22 +1564,23 @@ def get_daily_account_opening_data(selected_date=None):
         cursor.execute(query, (start_date_str, end_date_str))
         rows = cursor.fetchall()
         
+        if not rows:
+            frappe.throw(f"No Daily Account Opening data found for the selected date: {selected_date}. Please select a different date.")
+        
         # Look up zones / regions from local Sahayog Branch
         sol_ids_found = [str(r[2]).strip() for r in rows] if rows else []
         branch_map = {}
         if sol_ids_found:
-            sb_data = frappe.get_all(
-                "Sahayog Branch",
-                filters={"name": ["in", sol_ids_found]},
-                fields=["name as sol_id", "zone", "region", "district", "branch"]
-            )
-            for b in sb_data:
-                branch_map[b.sol_id.strip()] = {
-                    "zone": b.zone or "",
-                    "region": b.region or "",
-                    "district": b.district or "",
-                    "branch_name": b.branch or ""
-                }
+            branches_map = get_sahayog_branches_cached()
+            for sid in sol_ids_found:
+                if sid in branches_map:
+                    b = branches_map[sid]
+                    branch_map[sid] = {
+                        "zone": b.get("zone") or "",
+                        "region": b.get("region") or "",
+                        "district": b.get("district") or "",
+                        "branch_name": b.get("branch_name") or ""
+                    }
 
         # Group and aggregate raw records by branch
         branch_aggregates = {}
@@ -1325,7 +1614,6 @@ def get_daily_account_opening_data(selected_date=None):
                 
             cat = product_map.get(schm_code)
             if not cat:
-                # Fallback if scheme code not in local Product doctype
                 code_upper = schm_code.upper()
                 if code_upper.startswith("SB"):
                     cat = "SA"
@@ -1335,25 +1623,28 @@ def get_daily_account_opening_data(selected_date=None):
                     cat = "RD"
                 elif code_upper.startswith("DD"):
                     cat = "DD"
-                else:
-                    cat = "FD"
                     
             if cat == "CA":
                 branch_aggregates[sid]["ca"] += count
+                branch_aggregates[sid]["total"] += count
             elif cat == "SA":
                 branch_aggregates[sid]["sa"] += count
+                branch_aggregates[sid]["total"] += count
             elif cat == "TASC":
                 branch_aggregates[sid]["tasc"] += count
+                branch_aggregates[sid]["total"] += count
             elif cat == "RD":
                 branch_aggregates[sid]["rd"] += count
+                branch_aggregates[sid]["total"] += count
             elif cat == "SMBG":
                 branch_aggregates[sid]["smbg"] += count
+                branch_aggregates[sid]["total"] += count
             elif cat == "DD":
                 branch_aggregates[sid]["dd"] += count
+                branch_aggregates[sid]["total"] += count
             elif cat == "FD":
                 branch_aggregates[sid]["fd"] += count
-                
-            branch_aggregates[sid]["total"] += count
+                branch_aggregates[sid]["total"] += count
             
         return list(branch_aggregates.values())
         
@@ -1368,6 +1659,7 @@ def get_daily_account_opening_data(selected_date=None):
 
 
 @frappe.whitelist()
+@sahayog_cache(ttl=86400)
 def get_ntb_evr_data(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate, get_last_day, add_months
@@ -1392,6 +1684,7 @@ def get_ntb_evr_data(selected_date=None):
     report_end_str = str(report_end)
     opening_start_str = str(prev_month_start)
     opening_end_str = str(prev_month_end)
+    ref_date = report_end_str
 
     query = f"""
     WITH excluded_accts AS (
@@ -1437,7 +1730,7 @@ def get_ntb_evr_data(selected_date=None):
           AND NOT EXISTS (SELECT 1 FROM excluded_accts x WHERE x.account_number = gam.foracid)
           AND eab.eod_date <= DATE '{report_end_str}'
           AND (CASE WHEN eab.end_eod_date = DATE '2099-12-31' THEN DATE '{report_end_str}' ELSE eab.end_eod_date END) >= DATE '{report_start_str}'
-          AND (gam.acct_cls_date IS NULL OR (gam.acct_cls_date >= DATE '{report_start_str}' AND gam.acct_cls_date < CURRENT_DATE))
+          AND (gam.acct_cls_date IS NULL OR (gam.acct_cls_date >= DATE '{report_start_str}' AND gam.acct_cls_date < DATE '{ref_date}'))
     ),
     weighted_balances AS (
         SELECT bd.*, t.deposit_amount, (bd.balance * bd.active_days) AS weighted_balance
@@ -1518,6 +1811,9 @@ def get_ntb_evr_data(selected_date=None):
         cursor = conn.cursor()
         cursor.execute(query)
         rows = cursor.fetchall()
+        
+        if not rows:
+            frappe.throw(f"No NTB & EVR data found for the selected date: {selected_date}. Please select a different date.")
 
         branch_map = {}
         for row in rows:
@@ -1566,6 +1862,7 @@ def get_ntb_evr_data(selected_date=None):
 
 
 @frappe.whitelist()
+@sahayog_cache(ttl=86400)
 def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate, add_months
@@ -1587,6 +1884,7 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
     report_end_str = str(report_end)
     opening_start_str = str(prev_month_start)
     opening_end_str = str(prev_month_end)
+    ref_date = report_end_str
 
     if dt.month >= 4:
         fy_start_year = dt.year
@@ -1638,7 +1936,7 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
           AND NOT EXISTS (SELECT 1 FROM excluded_accts x WHERE x.account_number = gam.foracid)
           AND eab.eod_date <= DATE '{report_end_str}'
           AND (CASE WHEN eab.end_eod_date = DATE '2099-12-31' THEN DATE '{report_end_str}' ELSE eab.end_eod_date END) >= DATE '{report_start_str}'
-          AND (gam.acct_cls_date IS NULL OR (gam.acct_cls_date >= DATE '{report_start_str}' AND gam.acct_cls_date < CURRENT_DATE))
+          AND (gam.acct_cls_date IS NULL OR (gam.acct_cls_date >= DATE '{report_start_str}' AND gam.acct_cls_date < DATE '{ref_date}'))
     ),
     weighted_balances AS (
         SELECT bd.*, t.deposit_amount, (bd.balance * bd.active_days) AS weighted_balance
@@ -1753,7 +2051,8 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
     ORDER BY s.circle_office_name, s.region_name, wb.sol_id
     """
 
-    count_query = f"SELECT COUNT(*) FROM ({query}) sub"
+    base_query_no_order = query.split("ORDER BY")[0]
+    count_query = f"SELECT COUNT(*) FROM ({base_query_no_order}) sub"
     paginated_query = f"{query} LIMIT {limit} OFFSET {offset}"
 
     conn = get_dr_connection()
@@ -1815,6 +2114,7 @@ def clean_zone_region(value, prefix):
 
 
 @frappe.whitelist()
+@sahayog_cache(ttl=86400)
 def get_product_wise_casa(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate
@@ -1841,6 +2141,7 @@ def get_product_wise_casa(selected_date=None):
     
     opening_start_str = prev_month_start.strftime("%Y-%m-%d")
     opening_end_str = prev_month_end.strftime("%Y-%m-%d")
+    ref_date = report_end_str
     
     # Financial year start (April 1st)
     if dt.month >= 4:
@@ -2134,7 +2435,7 @@ GROUP BY
         bulk_data = []
         
         # Pre-fetch product group_name mappings from DB to emulate Fetch From
-        product_map = {p.name: p.group_name for p in frappe.get_all("Product", fields=["name", "group_name"])}
+        product_map = get_product_group_map_cached()
 
         for row in rows:
             sol_id = str(row[1]).strip()
@@ -2196,6 +2497,7 @@ GROUP BY
 
 
 @frappe.whitelist()
+@sahayog_cache(ttl=86400)
 def get_product_wise_tda(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate, now_datetime
@@ -2672,7 +2974,7 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
         bulk_data = []
         
         # Pre-fetch product group_name mappings from DB to emulate Fetch From
-        product_map = {p.name: p.group_name for p in frappe.get_all("Product", fields=["name", "group_name"])}
+        product_map = get_product_group_map_cached()
 
         for row in rows:
             sol_id = str(row[0]).strip()
@@ -2730,7 +3032,1903 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
             conn.close()
         except Exception:
             pass
+
+@frappe.whitelist(allow_guest=True)
+@sahayog_cache(ttl=86400)
+def get_gl_wise_ch_report_data(selected_date=None):
+    """
+    Returns the GL Wise CH Report data with hierarchical grouping:
+    Zone -> Region -> District -> Sol (Branch Sol ID)
+    """
+    if not selected_date:
+        selected_date = frappe.db.get_value("Product Wise Report", {}, "date", order_by="date desc")
+
+    if not selected_date:
+        return {"product_wise": [], "all_products": []}
+
+    raw_data_db = frappe.db.sql("""
+        SELECT
+            zone,
+            region,
+            sol_id,
+            product,
+            scheme_code,
+            SUM(amount) as amount
+        FROM `tabProduct Wise Report`
+        WHERE date = %s
+        GROUP BY zone, region, sol_id, product, scheme_code
+    """, (selected_date,), as_dict=True)
+
+    if not raw_data_db:
+        frappe.throw(f"No data available in GL Wise CH Report for the selected date: {selected_date}. Please select a different date.")
+
+    prod_map = get_products_map_cached()
+    branches_map = get_sahayog_branches_cached()
+    
+    raw_data = []
+    grouped_map = defaultdict(float)
+    
+    for row in raw_data_db:
+        sid = str(row.sol_id or "").strip()
+        b = branches_map.get(sid, {})
+        
+        zone = b.get("zone") or row.zone or ""
+        region = b.get("region") or row.region or ""
+        district = b.get("district") or "Unknown District"
+        branch_name = b.get("branch_name") or ""
+        
+        if not zone or not region:
+            continue
+            
+        pr = prod_map.get(row.scheme_code)
+        
+        product = row.product
+        if pr:
+            group_name = pr.group_name
+            group_subname = pr.group_subname
+            group_subname_category = pr.group_subname_category
+            
+            if row.product == 'RD' and group_subname == 'JLL RD' and not group_subname_category:
+                product = 'JLL RD'
+            elif row.product == 'RD' and not group_subname and not group_subname_category:
+                product = 'RD'
+            elif row.product == 'SMBG' and group_subname == 'SKBG' and not group_subname_category:
+                product = 'SKBG'
+            elif row.product == 'SMBG' and not group_subname and not group_subname_category:
+                product = 'SMBG'
+            elif group_name == 'CASA' and group_subname == 'TASC' and group_subname_category == 'TASKSILVER':
+                product = 'TASKSILVER'
+            elif group_name == 'CASA' and group_subname == 'TASC' and group_subname_category == 'TASKWEALTH':
+                product = 'TASKWEALTH'
+            elif group_name == 'CASA' and group_subname == 'SA' and group_subname_category == 'SAVSIL':
+                product = 'SAVSIL'
+            elif group_name == 'CASA' and group_subname == 'CA' and group_subname_category == 'CUGOLD':
+                product = 'CUGOLD'
+            elif group_name == 'CASA' and group_subname == 'CA' and group_subname_category == 'CUWEALTH':
+                product = 'CUWEALTH'
+                
+        key = (zone, region, district, sid, branch_name, product)
+        grouped_map[key] += float(row.amount or 0)
+        
+    for key, amount in grouped_map.items():
+        zone, region, district, sid, branch_name, product = key
+        raw_data.append(frappe._dict({
+            "zone": zone,
+            "region": region,
+            "district": district,
+            "sol_id": sid,
+            "branch_name": branch_name,
+            "product": product,
+            "amount": amount
+        }))
+        
+    raw_data.sort(key=lambda x: (x.zone, x.region, x.district, x.sol_id))
+
+    if not raw_data:
+        return {"product_wise": [], "all_products": []}
+
+    # Get all unique products for dynamic column generation
+    all_products = sorted(list(set(row.product for row in raw_data)))
+
+    # Build nested hierarchy dictionary: zone -> region -> district -> sol_id
+    hierarchy = {}
+    for row in raw_data:
+        z = row.zone
+        r = row.region
+        d = row.district
+        s = row.sol_id
+        bname = row.branch_name
+        prod = row.product
+        amt = row.amount or 0.0
+
+        if z not in hierarchy:
+            hierarchy[z] = {}
+        if r not in hierarchy[z]:
+            hierarchy[z][r] = {}
+        if d not in hierarchy[z][r]:
+            hierarchy[z][r][d] = {}
+        if s not in hierarchy[z][r][d]:
+            hierarchy[z][r][d][s] = {
+                "branch_name": bname,
+                "products": defaultdict(float),
+                "total_amount": 0.0
+            }
+        
+        hierarchy[z][r][d][s]["products"][prod] += amt
+        hierarchy[z][r][d][s]["total_amount"] += amt
+
+    # Process into a flat list with clear parents for UI rendering
+    result = []
+    
+    for zone in sorted(hierarchy.keys()):
+        zone_products = defaultdict(float)
+        zone_amount = 0.0
+        zone_rows = []
+
+        for region in sorted(hierarchy[zone].keys()):
+            region_products = defaultdict(float)
+            region_amount = 0.0
+            region_rows = []
+
+            for district in sorted(hierarchy[zone][region].keys()):
+                district_products = defaultdict(float)
+                district_amount = 0.0
+                district_rows = []
+
+                for sol_id in sorted(hierarchy[zone][region][district].keys()):
+                    sol_info = hierarchy[zone][region][district][sol_id]
+                    sol_amt = sol_info["total_amount"]
+                    sol_prods = sol_info["products"]
+
+                    # Accumulate for District
+                    district_amount += sol_amt
+                    for prod, amt in sol_prods.items():
+                        district_products[prod] += amt
+
+                    sol_display_name = f"{sol_id} - {sol_info['branch_name']}" if sol_info['branch_name'] else sol_id
+                    district_rows.append({
+                        "type": "sol",
+                        "name": sol_display_name,
+                        "path": f"{zone}/{region}/{district}/{sol_id}",
+                        "parent_district": f"{zone}/{region}/{district}",
+                        "parent_region": f"{zone}/{region}",
+                        "parent_zone": zone,
+                        "amount": sol_amt,
+                        "products": dict(sol_prods),
+                        "is_group": False
+                    })
+
+                # Accumulate for Region
+                region_amount += district_amount
+                for prod, amt in district_products.items():
+                    region_products[prod] += amt
+
+                region_rows.append({
+                    "type": "district",
+                    "name": district,
+                    "path": f"{zone}/{region}/{district}",
+                    "parent_region": f"{zone}/{region}",
+                    "parent_zone": zone,
+                    "amount": district_amount,
+                    "products": dict(district_products),
+                    "is_group": True,
+                    "children": district_rows
+                })
+
+            # Accumulate for Zone
+            zone_amount += region_amount
+            for prod, amt in region_products.items():
+                zone_products[prod] += amt
+
+            zone_rows.append({
+                "type": "region",
+                "name": region,
+                "path": f"{zone}/{region}",
+                "parent_zone": zone,
+                "amount": region_amount,
+                "products": dict(region_products),
+                "is_group": True,
+                "children": region_rows
+            })
+
+        # Add Zone Group Row
+        result.append({
+            "type": "zone",
+            "name": zone,
+            "path": zone,
+            "parent_zone": None,
+            "amount": zone_amount,
+            "products": dict(zone_products),
+            "is_group": True
+        })
+
+        # Flatten the structure
+        for r_row in zone_rows:
+            d_rows = r_row.pop("children")
+            result.append(r_row)
+            for d_row in d_rows:
+                s_rows = d_row.pop("children")
+                result.append(d_row)
+                result.extend(s_rows)
+
+    return {
+        "product_wise": result,
+        "all_products": all_products
+    }
+
   
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_bucket_wise_account_mis_data_old(selected_date=None):
+    from custom_report.db_connection import get_dr_connection
+    from frappe.utils import getdate
+    import datetime
+
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    dt = getdate(selected_date)
+    month_start = dt.replace(day=1).strftime("%Y-%m-%d")
+    ref_date = dt.strftime("%Y-%m-%d")
+
+    query = f"""
+    WITH account_data AS (
+        SELECT
+            d.rm_id,
+            g2.emp_name AS rm_name,
+            d2.operacc,
+            d2.auth_id,
+            d2.auth_role_id,
+            g.cif_id,
+            g.acct_opn_date,
+            a2.relationshipopeningdate AS cif_id_opening_date,
+            g.foracid,
+            g.clr_bal_amt,
+            tam.deposit_period_mths,
+            tam.deposit_period_days,
+            tam.deposit_amount,
+            tam.maturity_amount,
+            tam.maturity_date,
+            g.sol_id,
+            sol.sol_desc,
+            g.schm_code,
+            gsp.schm_desc,
+            g.acct_cls_date,
+            g.acct_cls_flg
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        LEFT JOIN
+            crmuser.accounts AS a2 ON g.cif_id = a2.orgkey
+        LEFT JOIN
+            tbaadm.sol AS sol ON g.sol_id = sol.sol_id
+        LEFT JOIN
+            tbaadm.gsp AS gsp ON g.schm_code = gsp.schm_code
+        LEFT JOIN
+            custom.dsaauth AS d2 ON d.rm_id = d2.user_id
+        LEFT JOIN
+            tbaadm.get AS g2 ON d2.user_id = g2.emp_id
+        LEFT JOIN
+            tbaadm.tam AS tam ON g.acid = tam.acid    
+        WHERE
+            g.acct_cls_flg <> 'Y'
+            OR g.acct_cls_date >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+    ),
+    -- === NEW CTE ADD  (Step 1) ===
+    demand_data AS (
+        SELECT
+            ad.foracid,
+            ad.schm_code,
+            CASE
+                -- Condition 1: ac opened before current month AND maturity after current month
+                WHEN ad.acct_opn_date::DATE < DATE_TRUNC('month', DATE '{ref_date}')::DATE
+              AND ad.maturity_date::DATE >
+             (DATE_TRUNC('month', DATE '{ref_date}')
+              + INTERVAL '1 month'
+              - INTERVAL '1 day')::DATE
+               THEN ad.deposit_amount * (
+            (
+              DATE_TRUNC('month', DATE '{ref_date}')
+              + INTERVAL '1 month'
+              - INTERVAL '1 day'
+            )::DATE
+            - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            + 1
+           )
+               -- Condition 2: maturity falls within current month -> demand till one day before maturity
+                WHEN ad.maturity_date::DATE >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            AND ad.maturity_date::DATE <= (
+             DATE_TRUNC('month', DATE '{ref_date}')
+             + INTERVAL '1 month'
+             - INTERVAL '1 day'
+           )::DATE
+                THEN ad.deposit_amount * (
+            ad.maturity_date::DATE
+            - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+           )
+               -- Condition 3: ac opened during current month -> ac age for current month
+               -- Condition 3: account opened in current month
+               WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+                AND ad.acct_opn_date::DATE <= (
+                DATE_TRUNC('month', DATE '{ref_date}')
+               + INTERVAL '1 month'
+                 - INTERVAL '1 day'
+             )::DATE
+           THEN ad.deposit_amount * (
+        ad.acct_opn_date::DATE
+        - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+        + 1
+    )
+    ELSE 0
+    END AS demand_amount
+    FROM
+        account_data AS ad
+    ),
+    -- === YAHAN TAK NAYA CTE KHATAM ===
+    flow_data AS (
+        SELECT
+            d.rm_id,
+            g.foracid,
+            g.schm_code,
+            SUM(tdt.flow_amt) AS total_flow_amount
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        INNER JOIN
+            tbaadm.tdt AS tdt ON tdt.acid = g.acid AND tdt.flow_code = 'NI'
+        WHERE
+            tdt.flow_date BETWEEN '{month_start}' AND DATE '{ref_date}'
+            AND (
+                g.acct_cls_flg <> 'Y'
+                OR g.acct_cls_date >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            )
+        GROUP BY
+            d.rm_id, g.foracid, g.schm_code
+        HAVING
+            SUM(tdt.flow_amt) > 0
+    ),
+    tran_data AS (
+        SELECT
+            d.rm_id,
+            g.foracid,
+            g.schm_code,
+            SUM(dtt.tran_amt) AS total_tran_amt
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        INNER JOIN
+            tbaadm.dtt AS dtt ON dtt.acid = g.acid AND dtt.flow_code = 'NI'
+        WHERE
+            dtt.value_date BETWEEN '{month_start}' AND DATE '{ref_date}'
+            AND (
+                g.acct_cls_flg <> 'Y'
+                OR g.acct_cls_date >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            )
+        GROUP BY
+            d.rm_id, g.foracid, g.schm_code
+        HAVING
+            SUM(dtt.tran_amt) > 0
+    ),
+    reference_data AS (
+        SELECT
+            ed.referencenumber,
+            da.user_id AS rm_id
+        FROM
+            crmuser.entitydocument AS ed
+        INNER JOIN
+            tbaadm.gam AS g ON ed.orgkey = g.cif_id
+        INNER JOIN
+            custom.dsaauth AS da ON g.foracid = da.operacc
+        WHERE
+            ed.doccode = 'PAN'
+    )
+    SELECT
+        ad.rm_id,
+        ad.rm_name,
+        ad.operacc,
+        ad.auth_id,
+        ad.auth_role_id AS auth_name,
+        ad.cif_id,
+        ad.acct_opn_date,
+        ad.cif_id_opening_date,
+        LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) AS account_age,
+        ad.foracid,
+        ad.schm_code,
+        ad.schm_desc,
+        ad.sol_id,
+        ad.sol_desc,
+        ad.deposit_period_mths,
+        ad.deposit_period_days,
+        ad.deposit_amount,
+        ad.maturity_amount,
+        ad.maturity_date,
+        ad.acct_cls_date,
+        ad.acct_cls_flg,
+        COALESCE(fd.total_flow_amount, 0) AS total_flow_amount,
+        COALESCE(td.total_tran_amt, 0) AS total_tran_amt,
+        COALESCE(dd.demand_amount, 0) AS monthly_demand_amount,   -- === NEW COLUMN ADDED (Step 3) ===
+        COALESCE(td.total_tran_amt, 0) AS monthly_collection,
+        LEAST(
+        ROUND(
+            COALESCE(dd.demand_amount, 0) / NULLIF(ad.deposit_amount, 0),2),365) AS monthly_demand_days,
+        LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount AS ytd_demand_amount,
+        COALESCE(ad.clr_bal_amt, 0) AS ytd_collection,
+        LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) AS ytd_demand_days,
+        CASE
+        WHEN (LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount) = 0
+        THEN 0
+        ELSE ROUND(
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        )
+    END AS ytd_coll_pct,
+    CASE
+        WHEN (LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount) = 0
+        THEN 'DEFAULT'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 100 THEN 'Excess'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 75 THEN 'A'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 50 THEN 'B'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 25 THEN 'C'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 0 THEN 'D'
+        ELSE 'DEFAULT'
+    END AS colle_category,
+        ROUND(
+            CASE
+                WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 100000 THEN
+                    0.035 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+                WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) > 100000
+                     AND LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 200000 THEN
+                    0.04 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+                ELSE
+                    0.05 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+            END
+        ) AS commission,
+        COALESCE(rd.referencenumber, 'N/A') AS referencenumber
+    FROM
+        account_data AS ad
+    LEFT JOIN
+        flow_data AS fd ON ad.rm_id = fd.rm_id AND ad.foracid = fd.foracid AND ad.schm_code = fd.schm_code
+    LEFT JOIN
+        tran_data AS td ON ad.rm_id = td.rm_id AND ad.foracid = td.foracid AND ad.schm_code = td.schm_code
+    LEFT JOIN
+        demand_data AS dd ON ad.foracid = dd.foracid AND ad.schm_code = dd.schm_code   -- === NEW JOIN (Step 2) ===
+    LEFT JOIN
+        reference_data AS rd ON ad.rm_id = rd.rm_id
+    WHERE
+        (fd.total_flow_amount > 0 OR td.total_tran_amt > 0)
+    ORDER BY
+        ad.foracid, ad.rm_id, ad.schm_code;
+    """
+
+    import time
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        conn = get_dr_connection()
+        if not conn:
+            frappe.log_error("Failed to connect to DR database", "Bucket Wise Account MIS API")
+            return []
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SET statement_timeout TO '180000'")
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            headers = [desc[0] for desc in cursor.description]
+
+            raw_data = []
+            for row in rows:
+                row_dict = {}
+                for i, val in enumerate(row):
+                    col = headers[i]
+                    if val is None:
+                        row_dict[col] = None
+                    elif isinstance(val, (int, float)):
+                        row_dict[col] = val
+                    elif hasattr(val, 'isoformat'):
+                        row_dict[col] = str(val)[:10]
+                    else:
+                        row_dict[col] = str(val)
+                raw_data.append(row_dict)
+
+            sol_ids = list(set(r["sol_id"] for r in raw_data if r.get("sol_id")))
+            branch_map = {}
+            if sol_ids:
+                branches_map = get_sahayog_branches_cached()
+                for sid in sol_ids:
+                    if sid in branches_map:
+                        b = branches_map[sid]
+                        branch_map[sid] = {
+                            "zone": b.get("zone") or "Unknown",
+                            "region": b.get("region") or "Unknown",
+                            "district": b.get("district") or "Unknown",
+                            "branch_name": b.get("branch_name") or sid
+                        }
+                    else:
+                        branch_map[sid] = {
+                            "zone": "Unknown",
+                            "region": "Unknown",
+                            "district": "Unknown",
+                            "branch_name": sid
+                        }
+
+            summary = {}
+            for r in raw_data:
+                sid = r.get("sol_id")
+                if not sid:
+                    continue
+                br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
+                key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}"
+                if key not in summary:
+                    summary[key] = {
+                        "zone": br["zone"],
+                        "region": br["region"],
+                        "district": br["district"],
+                        "sol_id": sid,
+                        "sol_desc": br["branch_name"],
+                        "A": 0, "B": 0, "C": 0, "D": 0, "DEFAULT": 0, "Excess": 0,
+                        "grand_total": 0
+                    }
+                cat = r.get("colle_category", "DEFAULT")
+                if cat in summary[key]:
+                    summary[key][cat] += 1
+                summary[key]["grand_total"] += 1
+
+            result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+
+            return {
+                "summary": result,
+                "total_records": len(raw_data)
+            }
+        except Exception as e:
+            frappe.log_error(f"Error executing Bucket Wise Account MIS query (attempt {attempt+1}): {str(e)}", "Bucket Wise Account MIS API")
+            conn.close()
+            if attempt < max_attempts - 1:
+                time.sleep(2)
+            else:
+                return []
+
+
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_new_account_report_data_old(selected_date=None):
+    from custom_report.db_connection import get_dr_connection
+    from frappe.utils import getdate
+    import datetime
+    import time
+
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    dt = getdate(selected_date)
+    month_start = dt.replace(day=1).strftime("%Y-%m-%d")
+    ref_date = dt.strftime("%Y-%m-%d")
+
+    # Use the same backend query
+    query = f"""
+    WITH account_data AS (
+        SELECT
+            d.rm_id,
+            g2.emp_name AS rm_name,
+            d2.operacc,
+            d2.auth_id,
+            d2.auth_role_id,
+            g.cif_id,
+            g.acct_opn_date,
+            a2.relationshipopeningdate AS cif_id_opening_date,
+            g.foracid,
+            g.clr_bal_amt,
+            tam.deposit_period_mths,
+            tam.deposit_period_days,
+            tam.deposit_amount,
+            tam.maturity_amount,
+            tam.maturity_date,
+            g.sol_id,
+            sol.sol_desc,
+            g.schm_code,
+            gsp.schm_desc,
+            g.acct_cls_date,
+            g.acct_cls_flg
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        LEFT JOIN
+            crmuser.accounts AS a2 ON g.cif_id = a2.orgkey
+        LEFT JOIN
+            tbaadm.sol AS sol ON g.sol_id = sol.sol_id
+        LEFT JOIN
+            tbaadm.gsp AS gsp ON g.schm_code = gsp.schm_code
+        LEFT JOIN
+            custom.dsaauth AS d2 ON d.rm_id = d2.user_id
+        LEFT JOIN
+            tbaadm.get AS g2 ON d2.user_id = g2.emp_id
+        LEFT JOIN
+            tbaadm.tam AS tam ON g.acid = tam.acid    
+        WHERE
+            g.acct_cls_flg <> 'Y'
+            OR g.acct_cls_date >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+    ),
+    -- === NEW CTE ADD  (Step 1) ===
+    demand_data AS (
+        SELECT
+            ad.foracid,
+            ad.schm_code,
+            CASE
+                -- Condition 1: ac opened before current month AND maturity after current month
+                WHEN ad.acct_opn_date::DATE < DATE_TRUNC('month', DATE '{ref_date}')::DATE
+              AND ad.maturity_date::DATE >
+             (DATE_TRUNC('month', DATE '{ref_date}')
+              + INTERVAL '1 month'
+              - INTERVAL '1 day')::DATE
+               THEN ad.deposit_amount * (
+            (
+              DATE_TRUNC('month', DATE '{ref_date}')
+              + INTERVAL '1 month'
+              - INTERVAL '1 day'
+            )::DATE
+            - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            + 1
+           )
+               -- Condition 2: maturity falls within current month -> demand till one day before maturity
+                WHEN ad.maturity_date::DATE >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            AND ad.maturity_date::DATE <= (
+             DATE_TRUNC('month', DATE '{ref_date}')
+             + INTERVAL '1 month'
+             - INTERVAL '1 day'
+           )::DATE
+                THEN ad.deposit_amount * (
+            ad.maturity_date::DATE
+            - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+           )
+               -- Condition 3: ac opened during current month -> ac age for current month
+               -- Condition 3: account opened in current month
+               WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+                AND ad.acct_opn_date::DATE <= (
+                DATE_TRUNC('month', DATE '{ref_date}')
+               + INTERVAL '1 month'
+                 - INTERVAL '1 day'
+             )::DATE
+           THEN ad.deposit_amount * (
+        ad.acct_opn_date::DATE
+        - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+        + 1
+    )
+    ELSE 0
+    END AS demand_amount
+    FROM
+        account_data AS ad
+    ),
+    -- === YAHAN TAK NAYA CTE KHATAM ===
+    flow_data AS (
+        SELECT
+            d.rm_id,
+            g.foracid,
+            g.schm_code,
+            SUM(tdt.flow_amt) AS total_flow_amount
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        INNER JOIN
+            tbaadm.tdt AS tdt ON tdt.acid = g.acid AND tdt.flow_code = 'NI'
+        WHERE
+            tdt.flow_date BETWEEN '{month_start}' AND DATE '{ref_date}'
+            AND (
+                g.acct_cls_flg <> 'Y'
+                OR g.acct_cls_date >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            )
+        GROUP BY
+            d.rm_id, g.foracid, g.schm_code
+        HAVING
+            SUM(tdt.flow_amt) > 0
+    ),
+    tran_data AS (
+        SELECT
+            d.rm_id,
+            g.foracid,
+            g.schm_code,
+            SUM(dtt.tran_amt) AS total_tran_amt
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        INNER JOIN
+            tbaadm.dtt AS dtt ON dtt.acid = g.acid AND dtt.flow_code = 'NI'
+        WHERE
+            dtt.value_date BETWEEN '{month_start}' AND DATE '{ref_date}'
+            AND (
+                g.acct_cls_flg <> 'Y'
+                OR g.acct_cls_date >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            )
+        GROUP BY
+            d.rm_id, g.foracid, g.schm_code
+        HAVING
+            SUM(dtt.tran_amt) > 0
+    ),
+    reference_data AS (
+        SELECT
+            ed.referencenumber,
+            da.user_id AS rm_id
+        FROM
+            crmuser.entitydocument AS ed
+        INNER JOIN
+            tbaadm.gam AS g ON ed.orgkey = g.cif_id
+        INNER JOIN
+            custom.dsaauth AS da ON g.foracid = da.operacc
+        WHERE
+            ed.doccode = 'PAN'
+    )
+    SELECT
+        ad.rm_id,
+        ad.rm_name,
+        ad.operacc,
+        ad.auth_id,
+        ad.auth_role_id AS auth_name,
+        ad.cif_id,
+        ad.acct_opn_date,
+        ad.cif_id_opening_date,
+        LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) AS account_age,
+        ad.foracid,
+        ad.schm_code,
+        ad.schm_desc,
+        ad.sol_id,
+        ad.sol_desc,
+        ad.deposit_period_mths,
+        ad.deposit_period_days,
+        ad.deposit_amount,
+        ad.maturity_amount,
+        ad.maturity_date,
+        ad.acct_cls_date,
+        ad.acct_cls_flg,
+        COALESCE(fd.total_flow_amount, 0) AS total_flow_amount,
+        COALESCE(td.total_tran_amt, 0) AS total_tran_amt,
+        COALESCE(dd.demand_amount, 0) AS monthly_demand_amount,   -- === NEW COLUMN ADDED (Step 3) ===
+        COALESCE(td.total_tran_amt, 0) AS monthly_collection,
+        LEAST(
+        ROUND(
+            COALESCE(dd.demand_amount, 0) / NULLIF(ad.deposit_amount, 0),2),365) AS monthly_demand_days,
+        LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount AS ytd_demand_amount,
+        COALESCE(ad.clr_bal_amt, 0) AS ytd_collection,
+        LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) AS ytd_demand_days,
+        CASE
+        WHEN (LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount) = 0
+        THEN 0
+        ELSE ROUND(
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        )
+    END AS ytd_coll_pct,
+    CASE
+        WHEN (LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount) = 0
+        THEN 'DEFAULT'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 100 THEN 'Excess'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 75 THEN 'A'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 50 THEN 'B'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 25 THEN 'C'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 0 THEN 'D'
+        ELSE 'DEFAULT'
+    END AS colle_category,
+        ROUND(
+            CASE
+                WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 100000 THEN
+                    0.035 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+                WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) > 100000
+                     AND LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 200000 THEN
+                    0.04 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+                ELSE
+                    0.05 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+            END
+        ) AS commission,
+        COALESCE(rd.referencenumber, 'N/A') AS referencenumber
+    FROM
+        account_data AS ad
+    LEFT JOIN
+        flow_data AS fd ON ad.rm_id = fd.rm_id AND ad.foracid = fd.foracid AND ad.schm_code = fd.schm_code
+    LEFT JOIN
+        tran_data AS td ON ad.rm_id = td.rm_id AND ad.foracid = td.foracid AND ad.schm_code = td.schm_code
+    LEFT JOIN
+        demand_data AS dd ON ad.foracid = dd.foracid AND ad.schm_code = dd.schm_code   -- === NEW JOIN (Step 2) ===
+    LEFT JOIN
+        reference_data AS rd ON ad.rm_id = rd.rm_id
+    WHERE
+        (fd.total_flow_amount > 0 OR td.total_tran_amt > 0)
+    ORDER BY
+        ad.foracid, ad.rm_id, ad.schm_code;
+    """
+
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        conn = get_dr_connection()
+        if not conn:
+            frappe.log_error("Failed to connect to DR database", "New Account Report API")
+            return []
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SET statement_timeout TO '180000'")
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            headers = [desc[0] for desc in cursor.description]
+
+            raw_data = []
+            for row in rows:
+                row_dict = {}
+                for i, val in enumerate(row):
+                    col = headers[i]
+                    if val is None:
+                        row_dict[col] = None
+                    elif isinstance(val, (int, float)):
+                        row_dict[col] = val
+                    elif hasattr(val, 'isoformat'):
+                        row_dict[col] = str(val)[:10]
+                    else:
+                        row_dict[col] = str(val)
+                raw_data.append(row_dict)
+
+            sol_ids = list(set(r["sol_id"] for r in raw_data if r.get("sol_id")))
+            branch_map = {}
+            if sol_ids:
+                branches_map = get_sahayog_branches_cached()
+                for sid in sol_ids:
+                    if sid in branches_map:
+                        b = branches_map[sid]
+                        branch_map[sid] = {
+                            "zone": b.get("zone") or "Unknown",
+                            "region": b.get("region") or "Unknown",
+                            "district": b.get("district") or "Unknown",
+                            "branch_name": b.get("branch_name") or sid
+                        }
+                    else:
+                        branch_map[sid] = {
+                            "zone": "Unknown",
+                            "region": "Unknown",
+                            "district": "Unknown",
+                            "branch_name": sid
+                        }
+
+            # Fetch designations for all unique employee IDs in bulk
+            emp_ids = set()
+            for r in raw_data:
+                auth_id = r.get("auth_id")
+                if auth_id and auth_id != "Unknown":
+                    digits = re.findall(r'\d+', auth_id)
+                    if digits:
+                        try:
+                            emp_id = str(int(''.join(digits)))
+                            emp_ids.add(emp_id)
+                        except ValueError:
+                            pass
+            
+            designation_map = {}
+            if emp_ids:
+                employees = frappe.get_all(
+                    "Employee",
+                    filters={"name": ["in", list(emp_ids)]},
+                    fields=["name", "designation"]
+                )
+                for emp in employees:
+                    designation_map[emp.name] = emp.designation or ""
+
+            summary = {}
+            for r in raw_data:
+                sid = r.get("sol_id")
+                if not sid:
+                    continue
+
+                # Check if account opening date is in the current month
+                acct_opn_date_str = r.get("acct_opn_date")
+                is_new = False
+                if acct_opn_date_str:
+                    try:
+                        opn_dt = getdate(acct_opn_date_str)
+                        if opn_dt.month == dt.month and opn_dt.year == dt.year:
+                            is_new = True
+                    except Exception:
+                        pass
+
+                if not is_new:
+                    continue
+
+                br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
+                auth_id = r.get("auth_id") or "Unknown"
+                auth_name = r.get("auth_name") or "Unknown"
+
+                designation = ""
+                if auth_id and auth_id != "Unknown":
+                    digits = re.findall(r'\d+', auth_id)
+                    if digits:
+                        try:
+                            emp_id = str(int(''.join(digits)))
+                            designation = designation_map.get(emp_id) or ""
+                        except ValueError:
+                            pass
+
+                key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{auth_id}||{auth_name}||{designation}"
+                if key not in summary:
+                    summary[key] = {
+                        "zone": br["zone"],
+                        "region": br["region"],
+                        "district": br["district"],
+                        "sol_id": sid,
+                        "sol_desc": br["branch_name"],
+                        "auth_id": auth_id,
+                        "auth_name": auth_name,
+                        "designation": designation,
+                        "new_ac": 0,
+                        "deposit_amount": 0.0
+                    }
+
+                summary[key]["new_ac"] += 1
+                summary[key]["deposit_amount"] += float(r.get("deposit_amount") or 0)
+
+            result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+            return result
+        except Exception as e:
+            frappe.log_error(f"Error executing New Account Report query (attempt {attempt+1}): {str(e)}", "New Account Report API")
+            conn.close()
+            if attempt < max_attempts - 1:
+                time.sleep(2)
+            else:
+                return []
+
+
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_staff_wise_demand_collection_data_old(selected_date=None):
+    from custom_report.db_connection import get_dr_connection
+    from frappe.utils import getdate
+    import datetime
+    import time
+
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    dt = getdate(selected_date)
+    month_start = dt.replace(day=1).strftime("%Y-%m-%d")
+    ref_date = dt.strftime("%Y-%m-%d")
+
+    print(f"DEBUG [STAFF WISE]: selected_date passed = {selected_date}", flush=True)
+    print(f"DEBUG [STAFF WISE]: month_start calculated = {month_start}", flush=True)
+    print(f"DEBUG [STAFF WISE]: ref_date calculated = {ref_date}", flush=True)
+
+    # Wahi query: Bucket Wise / New Account SQL but including demand and collection
+    query = f"""
+    WITH account_data AS (
+        SELECT
+            d.rm_id,
+            g2.emp_name AS rm_name,
+            d2.operacc,
+            d2.auth_id,
+            d2.auth_role_id,
+            g.cif_id,
+            g.acct_opn_date,
+            a2.relationshipopeningdate AS cif_id_opening_date,
+            g.foracid,
+            g.clr_bal_amt,
+            tam.deposit_period_mths,
+            tam.deposit_period_days,
+            tam.deposit_amount,
+            tam.maturity_amount,
+            tam.maturity_date,
+            g.sol_id,
+            sol.sol_desc,
+            g.schm_code,
+            gsp.schm_desc,
+            g.acct_cls_date,
+            g.acct_cls_flg
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        LEFT JOIN
+            crmuser.accounts AS a2 ON g.cif_id = a2.orgkey
+        LEFT JOIN
+            tbaadm.sol AS sol ON g.sol_id = sol.sol_id
+        LEFT JOIN
+            tbaadm.gsp AS gsp ON g.schm_code = gsp.schm_code
+        LEFT JOIN
+            custom.dsaauth AS d2 ON d.rm_id = d2.user_id
+        LEFT JOIN
+            tbaadm.get AS g2 ON d2.user_id = g2.emp_id
+        LEFT JOIN
+            tbaadm.tam AS tam ON g.acid = tam.acid    
+        WHERE
+            g.acct_cls_flg <> 'Y'
+            OR g.acct_cls_date >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+    ),
+    -- === NEW CTE ADD  (Step 1) ===
+    demand_data AS (
+        SELECT
+            ad.foracid,
+            ad.schm_code,
+            CASE
+                -- Condition 1: ac opened before current month AND maturity after current month
+                WHEN ad.acct_opn_date::DATE < DATE_TRUNC('month', DATE '{ref_date}')::DATE
+              AND ad.maturity_date::DATE >
+             (DATE_TRUNC('month', DATE '{ref_date}')
+              + INTERVAL '1 month'
+              - INTERVAL '1 day')::DATE
+               THEN ad.deposit_amount * (
+            (
+              DATE_TRUNC('month', DATE '{ref_date}')
+              + INTERVAL '1 month'
+              - INTERVAL '1 day'
+            )::DATE
+            - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            + 1
+           )
+               -- Condition 2: maturity falls within current month -> demand till one day before maturity
+                WHEN ad.maturity_date::DATE >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            AND ad.maturity_date::DATE <= (
+             DATE_TRUNC('month', DATE '{ref_date}')
+             + INTERVAL '1 month'
+             - INTERVAL '1 day'
+           )::DATE
+                THEN ad.deposit_amount * (
+            ad.maturity_date::DATE
+            - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+           )
+               -- Condition 3: ac opened during current month -> ac age for current month
+               -- Condition 3: account opened in current month
+               WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+                AND ad.acct_opn_date::DATE <= (
+                DATE_TRUNC('month', DATE '{ref_date}')
+               + INTERVAL '1 month'
+                 - INTERVAL '1 day'
+             )::DATE
+           THEN ad.deposit_amount * (
+        ad.acct_opn_date::DATE
+        - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+        + 1
+    )
+    ELSE 0
+    END AS demand_amount
+    FROM
+        account_data AS ad
+    ),
+    -- === YAHAN TAK NAYA CTE KHATAM ===
+    flow_data AS (
+        SELECT
+            d.rm_id,
+            g.foracid,
+            g.schm_code,
+            SUM(tdt.flow_amt) AS total_flow_amount
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        INNER JOIN
+            tbaadm.tdt AS tdt ON tdt.acid = g.acid AND tdt.flow_code = 'NI'
+        WHERE
+            tdt.flow_date BETWEEN '{month_start}' AND DATE '{ref_date}'
+            AND (
+                g.acct_cls_flg <> 'Y'
+                OR g.acct_cls_date >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            )
+        GROUP BY
+            d.rm_id, g.foracid, g.schm_code
+        HAVING
+            SUM(tdt.flow_amt) > 0
+    ),
+    tran_data AS (
+        SELECT
+            d.rm_id,
+            g.foracid,
+            g.schm_code,
+            SUM(dtt.tran_amt) AS total_tran_amt
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        INNER JOIN
+            tbaadm.dtt AS dtt ON dtt.acid = g.acid AND dtt.flow_code = 'NI'
+        WHERE
+            dtt.value_date BETWEEN '{month_start}' AND DATE '{ref_date}'
+            AND (
+                g.acct_cls_flg <> 'Y'
+                OR g.acct_cls_date >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            )
+        GROUP BY
+            d.rm_id, g.foracid, g.schm_code
+        HAVING
+            SUM(dtt.tran_amt) > 0
+    ),
+    reference_data AS (
+        SELECT
+            ed.referencenumber,
+            da.user_id AS rm_id
+        FROM
+            crmuser.entitydocument AS ed
+        INNER JOIN
+            tbaadm.gam AS g ON ed.orgkey = g.cif_id
+        INNER JOIN
+            custom.dsaauth AS da ON g.foracid = da.operacc
+        WHERE
+            ed.doccode = 'PAN'
+    )
+    SELECT
+        ad.rm_id,
+        ad.rm_name,
+        ad.operacc,
+        ad.auth_id,
+        ad.auth_role_id AS auth_name,
+        ad.cif_id,
+        ad.acct_opn_date,
+        ad.cif_id_opening_date,
+        LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) AS account_age,
+        ad.foracid,
+        ad.schm_code,
+        ad.schm_desc,
+        ad.sol_id,
+        ad.sol_desc,
+        ad.deposit_period_mths,
+        ad.deposit_period_days,
+        ad.deposit_amount,
+        ad.maturity_amount,
+        ad.maturity_date,
+        ad.acct_cls_date,
+        ad.acct_cls_flg,
+        COALESCE(fd.total_flow_amount, 0) AS total_flow_amount,
+        COALESCE(td.total_tran_amt, 0) AS total_tran_amt,
+        COALESCE(dd.demand_amount, 0) AS monthly_demand_amount,   -- === NEW COLUMN ADDED (Step 3) ===
+        COALESCE(td.total_tran_amt, 0) AS monthly_collection,
+        LEAST(
+        ROUND(
+            COALESCE(dd.demand_amount, 0) / NULLIF(ad.deposit_amount, 0),2),365) AS monthly_demand_days,
+        LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount AS ytd_demand_amount,
+        COALESCE(ad.clr_bal_amt, 0) AS ytd_collection,
+        LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) AS ytd_demand_days,
+        CASE
+        WHEN (LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount) = 0
+        THEN 0
+        ELSE ROUND(
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        )
+    END AS ytd_coll_pct,
+    CASE
+        WHEN (LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount) = 0
+        THEN 'DEFAULT'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 100 THEN 'Excess'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 75 THEN 'A'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 50 THEN 'B'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 25 THEN 'C'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 0 THEN 'D'
+        ELSE 'DEFAULT'
+    END AS colle_category,
+        ROUND(
+            CASE
+                WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 100000 THEN
+                    0.035 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+                WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) > 100000
+                     AND LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 200000 THEN
+                    0.04 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+                ELSE
+                    0.05 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+            END
+        ) AS commission,
+        COALESCE(rd.referencenumber, 'N/A') AS referencenumber
+    FROM
+        account_data AS ad
+    LEFT JOIN
+        flow_data AS fd ON ad.rm_id = fd.rm_id AND ad.foracid = fd.foracid AND ad.schm_code = fd.schm_code
+    LEFT JOIN
+        tran_data AS td ON ad.rm_id = td.rm_id AND ad.foracid = td.foracid AND ad.schm_code = td.schm_code
+    LEFT JOIN
+        demand_data AS dd ON ad.foracid = dd.foracid AND ad.schm_code = dd.schm_code   -- === NEW JOIN (Step 2) ===
+    LEFT JOIN
+        reference_data AS rd ON ad.rm_id = rd.rm_id
+    WHERE
+        (fd.total_flow_amount > 0 OR td.total_tran_amt > 0)
+    ORDER BY
+        ad.foracid, ad.rm_id, ad.schm_code;
+    """
+
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        conn = get_dr_connection()
+        if not conn:
+            frappe.log_error("Failed to connect to DR database", "Staff Demand Collection API")
+            return []
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SET statement_timeout TO '180000'")
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            headers = [desc[0] for desc in cursor.description]
+
+            raw_data = []
+            for row in rows:
+                row_dict = {}
+                for i, val in enumerate(row):
+                    col = headers[i]
+                    if val is None:
+                        row_dict[col] = None
+                    elif isinstance(val, (int, float)):
+                        row_dict[col] = val
+                    elif hasattr(val, 'isoformat'):
+                        row_dict[col] = str(val)[:10]
+                    else:
+                        row_dict[col] = str(val)
+                raw_data.append(row_dict)
+
+            print(f"DEBUG [STAFF WISE]: Total records fetched = {len(raw_data)}", flush=True)
+            sol_ids = list(set(r["sol_id"] for r in raw_data if r.get("sol_id")))
+            branch_map = {}
+            if sol_ids:
+                branches_map = get_sahayog_branches_cached()
+                for sid in sol_ids:
+                    if sid in branches_map:
+                        b = branches_map[sid]
+                        branch_map[sid] = {
+                            "zone": b.get("zone") or "Unknown",
+                            "region": b.get("region") or "Unknown",
+                            "district": b.get("district") or "Unknown",
+                            "branch_name": b.get("branch_name") or sid
+                        }
+                    else:
+                        branch_map[sid] = {
+                            "zone": "Unknown",
+                            "region": "Unknown",
+                            "district": "Unknown",
+                            "branch_name": sid
+                        }
+
+            # Fetch designations for all unique employee IDs in bulk
+            emp_ids = set()
+            for r in raw_data:
+                auth_id = r.get("auth_id")
+                if auth_id and auth_id != "Unknown":
+                    digits = re.findall(r'\d+', auth_id)
+                    if digits:
+                        try:
+                            emp_id = str(int(''.join(digits)))
+                            emp_ids.add(emp_id)
+                        except ValueError:
+                            pass
+            
+            designation_map = {}
+            if emp_ids:
+                employees = frappe.get_all(
+                    "Employee",
+                    filters={"name": ["in", list(emp_ids)]},
+                    fields=["name", "designation"]
+                )
+                for emp in employees:
+                    designation_map[emp.name] = emp.designation or ""
+
+            summary = {}
+            for r in raw_data:
+                sid = r.get("sol_id")
+                if not sid:
+                    continue
+
+                br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
+                auth_id = r.get("auth_id") or "Unknown"
+                auth_name = r.get("auth_name") or "Unknown"
+
+                designation = ""
+                if auth_id and auth_id != "Unknown":
+                    digits = re.findall(r'\d+', auth_id)
+                    if digits:
+                        try:
+                            emp_id = str(int(''.join(digits)))
+                            designation = designation_map.get(emp_id) or ""
+                        except ValueError:
+                            pass
+
+                key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{auth_id}||{auth_name}||{designation}"
+                if key not in summary:
+                    summary[key] = {
+                        "zone": br["zone"],
+                        "region": br["region"],
+                        "district": br["district"],
+                        "sol_id": sid,
+                        "sol_desc": br["branch_name"],
+                        "auth_id": auth_id,
+                        "auth_name": auth_name,
+                        "designation": designation,
+                        "monthly_demand_amount": 0.0,
+                        "monthly_collection": 0.0
+                    }
+
+                summary[key]["monthly_demand_amount"] += float(r.get("monthly_demand_amount") or 0)
+                summary[key]["monthly_collection"] += float(r.get("monthly_collection") or 0)
+
+            result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+            return result
+        except Exception as e:
+            frappe.log_error(f"Error executing Staff Demand Collection query (attempt {attempt+1}): {str(e)}", "Staff Demand Collection API")
+            conn.close()
+            if attempt < max_attempts - 1:
+                time.sleep(2)
+            else:
+                return []
+
+
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_agent_wise_demand_collection_data_old(selected_date=None):
+    from custom_report.db_connection import get_dr_connection
+    from frappe.utils import getdate
+    import datetime
+    import time
+
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    dt = getdate(selected_date)
+    month_start = dt.replace(day=1).strftime("%Y-%m-%d")
+    ref_date = dt.strftime("%Y-%m-%d")
+
+    print(f"DEBUG [AGENT WISE]: selected_date passed = {selected_date}", flush=True)
+    print(f"DEBUG [AGENT WISE]: month_start calculated = {month_start}", flush=True)
+    print(f"DEBUG [AGENT WISE]: ref_date calculated = {ref_date}", flush=True)
+
+    # SQL query uses month_start and ref_date
+    query = f"""
+    WITH account_data AS (
+        SELECT
+            d.rm_id,
+            g2.emp_name AS rm_name,
+            d2.operacc,
+            d2.auth_id,
+            d2.auth_role_id,
+            g.cif_id,
+            g.acct_opn_date,
+            a2.relationshipopeningdate AS cif_id_opening_date,
+            g.foracid,
+            g.clr_bal_amt,
+            tam.deposit_period_mths,
+            tam.deposit_period_days,
+            tam.deposit_amount,
+            tam.maturity_amount,
+            tam.maturity_date,
+            g.sol_id,
+            sol.sol_desc,
+            g.schm_code,
+            gsp.schm_desc,
+            g.acct_cls_date,
+            g.acct_cls_flg
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        LEFT JOIN
+            crmuser.accounts AS a2 ON g.cif_id = a2.orgkey
+        LEFT JOIN
+            tbaadm.sol AS sol ON g.sol_id = sol.sol_id
+        LEFT JOIN
+            tbaadm.gsp AS gsp ON g.schm_code = gsp.schm_code
+        LEFT JOIN
+            custom.dsaauth AS d2 ON d.rm_id = d2.user_id
+        LEFT JOIN
+            tbaadm.get AS g2 ON d2.user_id = g2.emp_id
+        LEFT JOIN
+            tbaadm.tam AS tam ON g.acid = tam.acid    
+        WHERE
+            g.acct_cls_flg <> 'Y'
+            OR g.acct_cls_date >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+    ),
+    -- === NEW CTE ADD  (Step 1) ===
+    demand_data AS (
+        SELECT
+            ad.foracid,
+            ad.schm_code,
+            CASE
+                -- Condition 1: ac opened before current month AND maturity after current month
+                WHEN ad.acct_opn_date::DATE < DATE_TRUNC('month', DATE '{ref_date}')::DATE
+              AND ad.maturity_date::DATE >
+             (DATE_TRUNC('month', DATE '{ref_date}')
+              + INTERVAL '1 month'
+              - INTERVAL '1 day')::DATE
+               THEN ad.deposit_amount * (
+            (
+              DATE_TRUNC('month', DATE '{ref_date}')
+              + INTERVAL '1 month'
+              - INTERVAL '1 day'
+            )::DATE
+            - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            + 1
+           )
+               -- Condition 2: maturity falls within current month -> demand till one day before maturity
+                WHEN ad.maturity_date::DATE >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            AND ad.maturity_date::DATE <= (
+             DATE_TRUNC('month', DATE '{ref_date}')
+             + INTERVAL '1 month'
+             - INTERVAL '1 day'
+           )::DATE
+                THEN ad.deposit_amount * (
+            ad.maturity_date::DATE
+            - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+           )
+               -- Condition 3: ac opened during current month -> ac age for current month
+               -- Condition 3: account opened in current month
+               WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+                AND ad.acct_opn_date::DATE <= (
+                DATE_TRUNC('month', DATE '{ref_date}')
+               + INTERVAL '1 month'
+                 - INTERVAL '1 day'
+             )::DATE
+           THEN ad.deposit_amount * (
+        ad.acct_opn_date::DATE
+        - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+        + 1
+    )
+    ELSE 0
+    END AS demand_amount
+    FROM
+        account_data AS ad
+    ),
+    -- === YAHAN TAK NAYA CTE KHATAM ===
+    flow_data AS (
+        SELECT
+            d.rm_id,
+            g.foracid,
+            g.schm_code,
+            SUM(tdt.flow_amt) AS total_flow_amount
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        INNER JOIN
+            tbaadm.tdt AS tdt ON tdt.acid = g.acid AND tdt.flow_code = 'NI'
+        WHERE
+            tdt.flow_date BETWEEN '{month_start}' AND DATE '{ref_date}'
+            AND (
+                g.acct_cls_flg <> 'Y'
+                OR g.acct_cls_date >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            )
+        GROUP BY
+            d.rm_id, g.foracid, g.schm_code
+        HAVING
+            SUM(tdt.flow_amt) > 0
+    ),
+    tran_data AS (
+        SELECT
+            d.rm_id,
+            g.foracid,
+            g.schm_code,
+            SUM(dtt.tran_amt) AS total_tran_amt
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        INNER JOIN
+            tbaadm.dtt AS dtt ON dtt.acid = g.acid AND dtt.flow_code = 'NI'
+        WHERE
+            dtt.value_date BETWEEN '{month_start}' AND DATE '{ref_date}'
+            AND (
+                g.acct_cls_flg <> 'Y'
+                OR g.acct_cls_date >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            )
+        GROUP BY
+            d.rm_id, g.foracid, g.schm_code
+        HAVING
+            SUM(dtt.tran_amt) > 0
+    ),
+    reference_data AS (
+        SELECT
+            ed.referencenumber,
+            da.user_id AS rm_id
+        FROM
+            crmuser.entitydocument AS ed
+        INNER JOIN
+            tbaadm.gam AS g ON ed.orgkey = g.cif_id
+        INNER JOIN
+            custom.dsaauth AS da ON g.foracid = da.operacc
+        WHERE
+            ed.doccode = 'PAN'
+    )
+    SELECT
+        ad.rm_id,
+        ad.rm_name,
+        ad.operacc,
+        ad.auth_id,
+        ad.auth_role_id AS auth_name,
+        ad.cif_id,
+        ad.acct_opn_date,
+        ad.cif_id_opening_date,
+        LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) AS account_age,
+        ad.foracid,
+        ad.schm_code,
+        ad.schm_desc,
+        ad.sol_id,
+        ad.sol_desc,
+        ad.deposit_period_mths,
+        ad.deposit_period_days,
+        ad.deposit_amount,
+        ad.maturity_amount,
+        ad.maturity_date,
+        ad.acct_cls_date,
+        ad.acct_cls_flg,
+        COALESCE(fd.total_flow_amount, 0) AS total_flow_amount,
+        COALESCE(td.total_tran_amt, 0) AS total_tran_amt,
+        COALESCE(dd.demand_amount, 0) AS monthly_demand_amount,   -- === NEW COLUMN ADDED (Step 3) ===
+        COALESCE(td.total_tran_amt, 0) AS monthly_collection,
+        LEAST(
+        ROUND(
+            COALESCE(dd.demand_amount, 0) / NULLIF(ad.deposit_amount, 0),2),365) AS monthly_demand_days,
+        LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount AS ytd_demand_amount,
+        COALESCE(ad.clr_bal_amt, 0) AS ytd_collection,
+        LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) AS ytd_demand_days,
+        CASE
+        WHEN (LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount) = 0
+        THEN 0
+        ELSE ROUND(
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        )
+    END AS ytd_coll_pct,
+    CASE
+        WHEN (LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount) = 0
+        THEN 'DEFAULT'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 100 THEN 'Excess'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 75 THEN 'A'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 50 THEN 'B'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 25 THEN 'C'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 0 THEN 'D'
+        ELSE 'DEFAULT'
+    END AS colle_category,
+        ROUND(
+            CASE
+                WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 100000 THEN
+                    0.035 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+                WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) > 100000
+                     AND LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 200000 THEN
+                    0.04 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+                ELSE
+                    0.05 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+            END
+        ) AS commission,
+        COALESCE(rd.referencenumber, 'N/A') AS referencenumber
+    FROM
+        account_data AS ad
+    LEFT JOIN
+        flow_data AS fd ON ad.rm_id = fd.rm_id AND ad.foracid = fd.foracid AND ad.schm_code = fd.schm_code
+    LEFT JOIN
+        tran_data AS td ON ad.rm_id = td.rm_id AND ad.foracid = td.foracid AND ad.schm_code = td.schm_code
+    LEFT JOIN
+        demand_data AS dd ON ad.foracid = dd.foracid AND ad.schm_code = dd.schm_code   -- === NEW JOIN (Step 2) ===
+    LEFT JOIN
+        reference_data AS rd ON ad.rm_id = rd.rm_id
+    WHERE
+        (fd.total_flow_amount > 0 OR td.total_tran_amt > 0)
+    ORDER BY
+        ad.foracid, ad.rm_id, ad.schm_code;
+    """
+
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        conn = get_dr_connection()
+        if not conn:
+            frappe.log_error("Failed to connect to DR database", "Agent Demand Collection API")
+            return []
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SET statement_timeout TO '180000'")
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            headers = [desc[0] for desc in cursor.description]
+
+            raw_data = []
+            for row in rows:
+                row_dict = {}
+                for i, val in enumerate(row):
+                    col = headers[i]
+                    if val is None:
+                        row_dict[col] = None
+                    elif isinstance(val, (int, float)):
+                        row_dict[col] = val
+                    elif hasattr(val, 'isoformat'):
+                        row_dict[col] = str(val)[:10]
+                    else:
+                        row_dict[col] = str(val)
+                raw_data.append(row_dict)
+
+            print(f"DEBUG [AGENT WISE]: Total records fetched = {len(raw_data)}", flush=True)
+            sol_ids = list(set(r["sol_id"] for r in raw_data if r.get("sol_id")))
+            branch_map = {}
+            if sol_ids:
+                branches_map = get_sahayog_branches_cached()
+                for sid in sol_ids:
+                    if sid in branches_map:
+                        b = branches_map[sid]
+                        branch_map[sid] = {
+                            "zone": b.get("zone") or "Unknown",
+                            "region": b.get("region") or "Unknown",
+                            "district": b.get("district") or "Unknown",
+                            "branch_name": b.get("branch_name") or sid
+                        }
+                    else:
+                        branch_map[sid] = {
+                            "zone": "Unknown",
+                            "region": "Unknown",
+                            "district": "Unknown",
+                            "branch_name": sid
+                        }
+
+            # Fetch designations for all unique employee IDs in bulk
+            emp_ids = set()
+            for r in raw_data:
+                auth_id = r.get("auth_id")
+                if auth_id and auth_id != "Unknown":
+                    digits = re.findall(r'\d+', auth_id)
+                    if digits:
+                        try:
+                            emp_id = str(int(''.join(digits)))
+                            emp_ids.add(emp_id)
+                        except ValueError:
+                            pass
+            
+            designation_map = {}
+            if emp_ids:
+                employees = frappe.get_all(
+                    "Employee",
+                    filters={"name": ["in", list(emp_ids)]},
+                    fields=["name", "designation"]
+                )
+                for emp in employees:
+                    designation_map[emp.name] = emp.designation or ""
+
+            summary = {}
+            for r in raw_data:
+                sid = r.get("sol_id")
+                if not sid:
+                    continue
+
+                br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
+                rm_id = r.get("rm_id") or "Unknown"
+                rm_name = r.get("rm_name") or "Unknown"
+                auth_id = r.get("auth_id") or "Unknown"
+                auth_name = r.get("auth_name") or "Unknown"
+
+                designation = ""
+                if auth_id and auth_id != "Unknown":
+                    digits = re.findall(r'\d+', auth_id)
+                    if digits:
+                        try:
+                            emp_id = str(int(''.join(digits)))
+                            designation = designation_map.get(emp_id) or ""
+                        except ValueError:
+                            pass
+
+                key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{rm_id}||{rm_name}||{auth_id}||{auth_name}||{designation}"
+                if key not in summary:
+                    summary[key] = {
+                        "zone": br["zone"],
+                        "region": br["region"],
+                        "district": br["district"],
+                        "sol_id": sid,
+                        "sol_desc": br["branch_name"],
+                        "rm_id": rm_id,
+                        "rm_name": rm_name,
+                        "auth_id": auth_id,
+                        "auth_name": auth_name,
+                        "designation": designation,
+                        "monthly_demand_amount": 0.0,
+                        "monthly_collection": 0.0
+                    }
+
+                summary[key]["monthly_demand_amount"] += float(r.get("monthly_demand_amount") or 0)
+                summary[key]["monthly_collection"] += float(r.get("monthly_collection") or 0)
+
+            result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+            return result
+        except Exception as e:
+            frappe.log_error(f"Error executing Agent Demand Collection query (attempt {attempt+1}): {str(e)}", "Agent Demand Collection API")
+            conn.close()
+            if attempt < max_attempts - 1:
+                time.sleep(2)
+            else:
+                return []
+
+
 @frappe.whitelist()
 def clear_product_wise_report():
     try:
@@ -2743,6 +4941,11 @@ def clear_product_wise_report():
 
 
 def daily_tda_sync():
+    sync_enabled = frappe.db.get_single_value("Drishti Settings", "auto_sync")
+    if not sync_enabled:
+        frappe.logger("scheduler").info("Daily TDA Sync: Sync is disabled in Drishti Settings. Skipping execution.")
+        return
+
     import datetime
     yesterday = datetime.date.today() - datetime.timedelta(days=1)
     date_str = yesterday.strftime("%Y-%m-%d")
@@ -2765,6 +4968,11 @@ def daily_tda_sync():
 
 
 def daily_casa_sync():
+    sync_enabled = frappe.db.get_single_value("Drishti Settings", "auto_sync")
+    if not sync_enabled:
+        frappe.logger("scheduler").info("Daily CASA Sync: Sync is disabled in Drishti Settings. Skipping execution.")
+        return
+
     import datetime
     yesterday = datetime.date.today() - datetime.timedelta(days=1)
     date_str = yesterday.strftime("%Y-%m-%d")
@@ -2784,3 +4992,762 @@ def daily_casa_sync():
         message=message,
         delayed=False
     )
+
+@frappe.whitelist()
+def get_raw_demand_collection_data(selected_date=None):
+    from custom_report.db_connection import get_dr_connection
+    from frappe.utils import getdate
+    import datetime
+    import time
+    
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    dt = getdate(selected_date)
+    month_start = dt.replace(day=1).strftime("%Y-%m-%d")
+    ref_date = dt.strftime("%Y-%m-%d")
+
+    query = f"""
+    WITH account_data AS (
+        SELECT
+            d.rm_id,
+            g2.emp_name AS rm_name,
+            d2.operacc,
+            d2.auth_id,
+            d2.auth_role_id,
+            g.cif_id,
+            g.acct_opn_date,
+            a2.relationshipopeningdate AS cif_id_opening_date,
+            g.foracid,
+            g.clr_bal_amt,
+            tam.deposit_period_mths,
+            tam.deposit_period_days,
+            tam.deposit_amount,
+            tam.maturity_amount,
+            tam.maturity_date,
+            g.sol_id,
+            sol.sol_desc,
+            g.schm_code,
+            gsp.schm_desc,
+            g.acct_cls_date,
+            g.acct_cls_flg
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        LEFT JOIN
+            crmuser.accounts AS a2 ON g.cif_id = a2.orgkey
+        LEFT JOIN
+            tbaadm.sol AS sol ON g.sol_id = sol.sol_id
+        LEFT JOIN
+            tbaadm.gsp AS gsp ON g.schm_code = gsp.schm_code
+        LEFT JOIN
+            custom.dsaauth AS d2 ON d.rm_id = d2.user_id
+        LEFT JOIN
+            tbaadm.get AS g2 ON d2.user_id = g2.emp_id
+        LEFT JOIN
+            tbaadm.tam AS tam ON g.acid = tam.acid    
+        WHERE
+            g.acct_cls_flg <> 'Y'
+            OR g.acct_cls_date >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+    ),
+    -- === NEW CTE ADD  (Step 1) ===
+    demand_data AS (
+        SELECT
+            ad.foracid,
+            ad.schm_code,
+            CASE
+                -- Condition 1: ac opened before current month AND maturity after current month
+                WHEN ad.acct_opn_date::DATE < DATE_TRUNC('month', DATE '{ref_date}')::DATE
+              AND ad.maturity_date::DATE >
+             (DATE_TRUNC('month', DATE '{ref_date}')
+              + INTERVAL '1 month'
+              - INTERVAL '1 day')::DATE
+               THEN ad.deposit_amount * (
+            (
+              DATE_TRUNC('month', DATE '{ref_date}')
+              + INTERVAL '1 month'
+              - INTERVAL '1 day'
+            )::DATE
+            - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            + 1
+           )
+               -- Condition 2: maturity falls within current month -> demand till one day before maturity
+                WHEN ad.maturity_date::DATE >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            AND ad.maturity_date::DATE <= (
+             DATE_TRUNC('month', DATE '{ref_date}')
+             + INTERVAL '1 month'
+             - INTERVAL '1 day'
+           )::DATE
+                THEN ad.deposit_amount * (
+            ad.maturity_date::DATE
+            - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+           )
+               -- Condition 3: ac opened during current month -> ac age for current month
+               -- Condition 3: account opened in current month
+               WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+                AND ad.acct_opn_date::DATE <= (
+                DATE_TRUNC('month', DATE '{ref_date}')
+               + INTERVAL '1 month'
+                 - INTERVAL '1 day'
+             )::DATE
+           THEN ad.deposit_amount * (
+        ad.acct_opn_date::DATE
+        - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+        + 1
+    )
+    ELSE 0
+    END AS demand_amount
+    FROM
+        account_data AS ad
+    ),
+    -- === YAHAN TAK NAYA CTE KHATAM ===
+    flow_data AS (
+        SELECT
+            d.rm_id,
+            g.foracid,
+            g.schm_code,
+            SUM(tdt.flow_amt) AS total_flow_amount
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        INNER JOIN
+            tbaadm.tdt AS tdt ON tdt.acid = g.acid AND tdt.flow_code = 'NI'
+        WHERE
+            tdt.flow_date BETWEEN '{month_start}' AND DATE '{ref_date}'
+            AND (
+                g.acct_cls_flg <> 'Y'
+                OR g.acct_cls_date >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            )
+        GROUP BY
+            d.rm_id, g.foracid, g.schm_code
+        HAVING
+            SUM(tdt.flow_amt) > 0
+    ),
+    tran_data AS (
+        SELECT
+            d.rm_id,
+            g.foracid,
+            g.schm_code,
+            SUM(dtt.tran_amt) AS total_tran_amt
+        FROM
+            custom.dsamap AS d
+        INNER JOIN
+            tbaadm.gam AS g ON g.foracid = d.account_number AND g.schm_code = '2004'
+        INNER JOIN
+            tbaadm.dtt AS dtt ON dtt.acid = g.acid AND dtt.flow_code = 'NI'
+        WHERE
+            dtt.value_date BETWEEN '{month_start}' AND DATE '{ref_date}'
+            AND (
+                g.acct_cls_flg <> 'Y'
+                OR g.acct_cls_date >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
+            )
+        GROUP BY
+            d.rm_id, g.foracid, g.schm_code
+        HAVING
+            SUM(dtt.tran_amt) > 0
+    ),
+    reference_data AS (
+        SELECT
+            ed.referencenumber,
+            da.user_id AS rm_id
+        FROM
+            crmuser.entitydocument AS ed
+        INNER JOIN
+            tbaadm.gam AS g ON ed.orgkey = g.cif_id
+        INNER JOIN
+            custom.dsaauth AS da ON g.foracid = da.operacc
+        WHERE
+            ed.doccode = 'PAN'
+    )
+    SELECT
+        ad.rm_id,
+        ad.rm_name,
+        ad.operacc,
+        ad.auth_id,
+        ad.auth_role_id AS auth_name,
+        ad.cif_id,
+        ad.acct_opn_date,
+        ad.cif_id_opening_date,
+        LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) AS account_age,
+        ad.foracid,
+        ad.schm_code,
+        ad.schm_desc,
+        ad.sol_id,
+        ad.sol_desc,
+        ad.deposit_period_mths,
+        ad.deposit_period_days,
+        ad.deposit_amount,
+        ad.maturity_amount,
+        ad.maturity_date,
+        ad.acct_cls_date,
+        ad.acct_cls_flg,
+        COALESCE(fd.total_flow_amount, 0) AS total_flow_amount,
+        COALESCE(td.total_tran_amt, 0) AS total_tran_amt,
+        COALESCE(dd.demand_amount, 0) AS monthly_demand_amount,   -- === NEW COLUMN ADDED (Step 3) ===
+        COALESCE(td.total_tran_amt, 0) AS monthly_collection,
+        LEAST(
+        ROUND(
+            COALESCE(dd.demand_amount, 0) / NULLIF(ad.deposit_amount, 0),2),365) AS monthly_demand_days,
+        LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount AS ytd_demand_amount,
+        COALESCE(ad.clr_bal_amt, 0) AS ytd_collection,
+        LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) AS ytd_demand_days,
+        CASE
+        WHEN (LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount) = 0
+        THEN 0
+        ELSE ROUND(
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        )
+    END AS ytd_coll_pct,
+    CASE
+        WHEN (LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365) * ad.deposit_amount) = 0
+        THEN 'DEFAULT'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 100 THEN 'Excess'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 75 THEN 'A'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 50 THEN 'B'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 25 THEN 'C'
+        WHEN (
+            (
+                COALESCE(ad.clr_bal_amt,0)::NUMERIC
+                /
+                (
+                    LEAST(GREATEST(DATE '{ref_date}' - ad.acct_opn_date::DATE,0),365)
+                    * ad.deposit_amount
+                )
+            ) * 100
+        ) > 0 THEN 'D'
+        ELSE 'DEFAULT'
+    END AS colle_category,
+        ROUND(
+            CASE
+                WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 100000 THEN
+                    0.035 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+                WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) > 100000
+                     AND LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 200000 THEN
+                    0.04 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+                ELSE
+                    0.05 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+            END
+        ) AS commission,
+        COALESCE(rd.referencenumber, 'N/A') AS referencenumber
+    FROM
+        account_data AS ad
+    LEFT JOIN
+        flow_data AS fd ON ad.rm_id = fd.rm_id AND ad.foracid = fd.foracid AND ad.schm_code = fd.schm_code
+    LEFT JOIN
+        tran_data AS td ON ad.rm_id = td.rm_id AND ad.foracid = td.foracid AND ad.schm_code = td.schm_code
+    LEFT JOIN
+        demand_data AS dd ON ad.foracid = dd.foracid AND ad.schm_code = dd.schm_code   -- === NEW JOIN (Step 2) ===
+    LEFT JOIN
+        reference_data AS rd ON ad.rm_id = rd.rm_id
+    WHERE
+        (fd.total_flow_amount > 0 OR td.total_tran_amt > 0)
+    ORDER BY
+        ad.foracid, ad.rm_id, ad.schm_code;
+    """
+    
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        conn = get_dr_connection()
+        if not conn:
+            return []
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SET statement_timeout TO '180000'")
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            headers = [desc[0] for desc in cursor.description]
+
+            raw_data = []
+            for row in rows:
+                row_dict = {}
+                for i, val in enumerate(row):
+                    col = headers[i]
+                    if val is None:
+                        row_dict[col] = None
+                    elif isinstance(val, (int, float)):
+                        row_dict[col] = val
+                    elif hasattr(val, 'isoformat'):
+                        row_dict[col] = str(val)[:10]
+                    else:
+                        row_dict[col] = str(val)
+                raw_data.append(row_dict)
+
+            return raw_data
+        except Exception as e:
+            frappe.log_error(f"Error executing raw demand collection (attempt {attempt+1}): {str(e)}")
+            conn.close()
+            if attempt < max_attempts - 1:
+                time.sleep(2)
+            else:
+                return []
+
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_agent_wise_demand_collection_data(selected_date=None):
+    import datetime
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    records = frappe.db.get_all("DD Tracker Report", filters={"date": selected_date}, fields=["sol_id", "agent_code", "agent_name", "monthly_demand", "monthly_collection"])
+    
+    if not records:
+        return []
+
+    sol_ids = list(set(r.sol_id for r in records if r.sol_id))
+    branches_map = get_sahayog_branches_cached()
+    branch_map = {}
+    for sid in sol_ids:
+        b = branches_map.get(sid, {})
+        branch_map[sid] = {
+            "zone": b.get("zone", "Unknown"),
+            "region": b.get("region", "Unknown"),
+            "district": b.get("district", "Unknown"),
+            "branch_name": b.get("branch_name", sid)
+        }
+
+    summary = {}
+    for r in records:
+        sid = r.sol_id
+        if not sid:
+            continue
+        br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
+        rm_id = r.agent_code or "Unknown"
+        rm_name = r.agent_name or "Unknown"
+
+        key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{rm_id}||{rm_name}"
+        if key not in summary:
+            summary[key] = {
+                "zone": br["zone"],
+                "region": br["region"],
+                "district": br["district"],
+                "sol_id": sid,
+                "sol_desc": br["branch_name"],
+                "rm_id": rm_id,
+                "rm_name": rm_name,
+                "monthly_demand_amount": 0.0,
+                "monthly_collection": 0.0
+            }
+
+        summary[key]["monthly_demand_amount"] += float(r.monthly_demand or 0)
+        summary[key]["monthly_collection"] += float(r.monthly_collection or 0)
+
+    result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+    return result
+
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_staff_wise_demand_collection_data(selected_date=None):
+    import datetime
+    import re
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    records = frappe.db.get_all("DD Tracker Report", filters={"date": selected_date}, fields=["sol_id", "auth_id", "auth_name", "monthly_demand", "monthly_collection"])
+    
+    if not records:
+        return []
+
+    sol_ids = list(set(r.sol_id for r in records if r.sol_id))
+    branches_map = get_sahayog_branches_cached()
+    branch_map = {}
+    for sid in sol_ids:
+        b = branches_map.get(sid, {})
+        branch_map[sid] = {
+            "zone": b.get("zone", "Unknown"),
+            "region": b.get("region", "Unknown"),
+            "district": b.get("district", "Unknown"),
+            "branch_name": b.get("branch_name", sid)
+        }
+
+    emp_ids = set()
+    for r in records:
+        auth_id = r.auth_id
+        if auth_id and auth_id != "Unknown":
+            digits = re.findall(r'\d+', auth_id)
+            if digits:
+                try:
+                    emp_id = str(int(''.join(digits)))
+                    emp_ids.add(emp_id)
+                except ValueError:
+                    pass
+    
+    designation_map = {}
+    if emp_ids:
+        employees = frappe.get_all("Employee", filters={"name": ["in", list(emp_ids)]}, fields=["name", "designation"])
+        for emp in employees:
+            designation_map[emp.name] = emp.designation or ""
+
+    summary = {}
+    for r in records:
+        sid = r.sol_id
+        if not sid:
+            continue
+        br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
+        auth_id = r.auth_id or "Unknown"
+        auth_name = r.auth_name or "Unknown"
+
+        designation = ""
+        if auth_id and auth_id != "Unknown":
+            digits = re.findall(r'\d+', auth_id)
+            if digits:
+                try:
+                    emp_id = str(int(''.join(digits)))
+                    designation = designation_map.get(emp_id) or ""
+                except ValueError:
+                    pass
+
+        key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{auth_id}||{auth_name}||{designation}"
+        if key not in summary:
+            summary[key] = {
+                "zone": br["zone"],
+                "region": br["region"],
+                "district": br["district"],
+                "sol_id": sid,
+                "sol_desc": br["branch_name"],
+                "auth_id": auth_id,
+                "auth_name": auth_name,
+                "designation": designation,
+                "monthly_demand_amount": 0.0,
+                "monthly_collection": 0.0
+            }
+
+        summary[key]["monthly_demand_amount"] += float(r.monthly_demand or 0)
+        summary[key]["monthly_collection"] += float(r.monthly_collection or 0)
+
+    result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+    return result
+
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_bucket_wise_account_mis_data(selected_date=None):
+    import datetime
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    records = frappe.db.get_all("DD Tracker Report", filters={"date": selected_date}, fields=["sol_id", "colle_category", "sma0_count", "sma1_count", "sma2_count", "npa_count"])
+    
+    if not records:
+        return {"summary": [], "total_records": 0}
+
+    sol_ids = list(set(r.sol_id for r in records if r.sol_id))
+    branches_map = get_sahayog_branches_cached()
+    branch_map = {}
+    for sid in sol_ids:
+        b = branches_map.get(sid, {})
+        branch_map[sid] = {
+            "zone": b.get("zone", "Unknown"),
+            "region": b.get("region", "Unknown"),
+            "district": b.get("district", "Unknown"),
+            "branch_name": b.get("branch_name", sid)
+        }
+
+    summary = {}
+    total_recs = 0
+    for r in records:
+        sid = r.sol_id
+        if not sid:
+            continue
+        br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
+        
+        key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}"
+        if key not in summary:
+            summary[key] = {
+                "zone": br["zone"],
+                "region": br["region"],
+                "district": br["district"],
+                "sol_id": sid,
+                "sol_desc": br["branch_name"],
+                "Excess": 0, "A": 0, "B": 0, "C": 0, "D": 0, "DEFAULT": 0,
+                "grand_total": 0
+            }
+
+        cat = r.colle_category
+        if cat and cat in summary[key]:
+            summary[key][cat] += 1
+        else:
+            if r.sma0_count:
+                summary[key]["A"] += r.sma0_count
+            elif r.sma1_count:
+                summary[key]["B"] += r.sma1_count
+            elif r.sma2_count:
+                summary[key]["C"] += r.sma2_count
+            elif r.npa_count:
+                summary[key]["D"] += r.npa_count
+            else:
+                summary[key]["DEFAULT"] += 1
+
+        summary[key]["grand_total"] += 1
+        total_recs += 1
+
+    result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+    return {"summary": result, "total_records": total_recs}
+
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_new_account_report_data(selected_date=None):
+    from frappe.utils import getdate
+    import datetime
+    import re
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    dt = getdate(selected_date)
+
+    records = frappe.db.get_all("DD Tracker Report", filters={"date": selected_date}, fields=["sol_id", "auth_id", "auth_name", "amount", "opening_date"])
+    
+    if not records:
+        return []
+
+    sol_ids = list(set(r.sol_id for r in records if r.sol_id))
+    branches_map = get_sahayog_branches_cached()
+    branch_map = {}
+    for sid in sol_ids:
+        b = branches_map.get(sid, {})
+        branch_map[sid] = {
+            "zone": b.get("zone", "Unknown"),
+            "region": b.get("region", "Unknown"),
+            "district": b.get("district", "Unknown"),
+            "branch_name": b.get("branch_name", sid)
+        }
+
+    emp_ids = set()
+    for r in records:
+        auth_id = r.auth_id
+        if auth_id and auth_id != "Unknown":
+            digits = re.findall(r'\d+', auth_id)
+            if digits:
+                try:
+                    emp_id = str(int(''.join(digits)))
+                    emp_ids.add(emp_id)
+                except ValueError:
+                    pass
+    
+    designation_map = {}
+    if emp_ids:
+        employees = frappe.get_all("Employee", filters={"name": ["in", list(emp_ids)]}, fields=["name", "designation"])
+        for emp in employees:
+            designation_map[emp.name] = emp.designation or ""
+
+    summary = {}
+    for r in records:
+        sid = r.sol_id
+        if not sid:
+            continue
+            
+        opn_dt_str = r.opening_date
+        is_new = False
+        if opn_dt_str:
+            try:
+                opn_dt = getdate(opn_dt_str)
+                if opn_dt.month == dt.month and opn_dt.year == dt.year:
+                    is_new = True
+            except Exception:
+                pass
+                
+        if not is_new:
+            continue
+            
+        br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
+        auth_id = r.auth_id or "Unknown"
+        auth_name = r.auth_name or "Unknown"
+
+        designation = ""
+        if auth_id and auth_id != "Unknown":
+            digits = re.findall(r'\d+', auth_id)
+            if digits:
+                try:
+                    emp_id = str(int(''.join(digits)))
+                    designation = designation_map.get(emp_id) or ""
+                except ValueError:
+                    pass
+
+        key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{auth_id}||{auth_name}||{designation}"
+        if key not in summary:
+            summary[key] = {
+                "zone": br["zone"],
+                "region": br["region"],
+                "district": br["district"],
+                "sol_id": sid,
+                "sol_desc": br["branch_name"],
+                "auth_id": auth_id,
+                "auth_name": auth_name,
+                "designation": designation,
+                "new_ac": 0,
+                "deposit_amount": 0.0
+            }
+
+        summary[key]["new_ac"] += 1
+        summary[key]["deposit_amount"] += float(r.amount or 0)
+
+    result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+    return result
+
+
+def resolve_ss_vs_date(target_date=None):
+    """Finds target_date or the latest available date on/before target_date with data in tabSS and VS Report."""
+    if not target_date:
+        target_date = frappe.utils.add_days(frappe.utils.nowdate(), -1)
+    
+    cnt = frappe.db.count("SS and VS Report", filters={"date": target_date})
+    if cnt > 0:
+        return str(target_date)
+        
+    res = frappe.db.sql("""
+        SELECT MAX(`date`)
+        FROM `tabSS and VS Report`
+        WHERE `date` <= %s
+    """, (target_date,))
+    
+    if res and res[0][0]:
+        return str(res[0][0])
+        
+    return str(target_date)
+
+
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_agent_wise_ss_vs_data(selected_date=None):
+    """Fetches T-1 Agent Wise aggregated data from SS and VS Report using SQL GROUP BY to prevent memory overflow."""
+    effective_date = resolve_ss_vs_date(selected_date)
+    
+    data = frappe.db.sql("""
+        SELECT 
+            report_type,
+            COUNT(DISTINCT rm_id) AS total_agents,
+            COUNT(rm_id) AS total_records,
+            SUM(CAST(COALESCE(NULLIF(commission, ''), '0') AS DECIMAL(18,2))) AS total_commission
+        FROM `tabSS and VS Report`
+        WHERE `date` = %s
+        GROUP BY report_type
+        ORDER BY total_commission DESC, total_records DESC
+    """, (effective_date,), as_dict=True)
+    
+    return {"data": data, "actual_date": effective_date}
+
+
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_agent_wise_details(report_type, selected_date=None):
+    """Fetches Agent Wise breakdown for a specific report_type aggregated by rm_id using SQL."""
+    effective_date = resolve_ss_vs_date(selected_date)
+    
+    data = frappe.db.sql("""
+        SELECT 
+            rm_id,
+            MAX(rm_name) AS rm_name,
+            COUNT(name) AS record_count,
+            SUM(CAST(COALESCE(NULLIF(commission, ''), '0') AS DECIMAL(18,2))) AS total_commission
+        FROM `tabSS and VS Report`
+        WHERE `date` = %s AND report_type = %s
+        GROUP BY rm_id
+        ORDER BY total_commission DESC, record_count DESC
+    """, (effective_date, report_type), as_dict=True)
+    
+    return data
+
+
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_agent_customer_details(report_type, rm_id, selected_date=None):
+    """Fetches customer accounts for a specific agent (rm_id) and report_type."""
+    effective_date = resolve_ss_vs_date(selected_date)
+    
+    data = frappe.db.sql("""
+        SELECT 
+            foracid,
+            acct_name,
+            operative_account_number,
+            commission
+        FROM `tabSS and VS Report`
+        WHERE `date` = %s AND report_type = %s AND rm_id = %s
+        ORDER BY CAST(COALESCE(NULLIF(commission, ''), '0') AS DECIMAL(18,2)) DESC, foracid
+    """, (effective_date, report_type, rm_id), as_dict=True)
+    
+    return data
+
+
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_rm_wise_ss_vs_data(selected_date=None):
+    """Fetches top-level RM Wise breakdown aggregated by rm_id using raw SQL for T-1."""
+    effective_date = resolve_ss_vs_date(selected_date)
+    
+    data = frappe.db.sql("""
+        SELECT 
+            rm_id,
+            MAX(rm_name) AS rm_name,
+            COUNT(name) AS total_records,
+            COUNT(DISTINCT report_type) AS total_report_types,
+            SUM(CAST(COALESCE(NULLIF(commission, ''), '0') AS DECIMAL(18,2))) AS total_commission
+        FROM `tabSS and VS Report`
+        WHERE `date` = %s
+        GROUP BY rm_id
+        ORDER BY total_commission DESC, total_records DESC
+    """, (effective_date,), as_dict=True)
+    
+    return {"data": data, "actual_date": effective_date}
+
+
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_rm_wise_category_breakdown(rm_id, selected_date=None):
+    """Fetches Report Type category breakdown for a specific rm_id using SQL."""
+    effective_date = resolve_ss_vs_date(selected_date)
+    
+    data = frappe.db.sql("""
+        SELECT 
+            report_type,
+            COUNT(name) AS record_count,
+            SUM(CAST(COALESCE(NULLIF(commission, ''), '0') AS DECIMAL(18,2))) AS total_commission
+        FROM `tabSS and VS Report`
+        WHERE `date` = %s AND rm_id = %s
+        GROUP BY report_type
+        ORDER BY total_commission DESC, record_count DESC
+    """, (effective_date, rm_id), as_dict=True)
+    
+    return data

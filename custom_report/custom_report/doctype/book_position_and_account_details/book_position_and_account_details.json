@@ -1,0 +1,136 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-07-29 13:29:00.460552",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "date",
+  "sol_id",
+  "scheme_code",
+  "account_closed",
+  "opening_no_of_accounts",
+  "opening_balance",
+  "column_break_amxz",
+  "group_name",
+  "group_subname",
+  "scheme_description",
+  "account_opened",
+  "closing_no_of_accounts",
+  "closing_balance"
+ ],
+ "fields": [
+  {
+   "fieldname": "sol_id",
+   "fieldtype": "Data",
+   "label": "Sol ID",
+   "search_index": 1
+  },
+  {
+   "fieldname": "scheme_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Scheme Code",
+   "options": "Product",
+   "search_index": 1
+  },
+  {
+   "fieldname": "scheme_description",
+   "fieldtype": "Data",
+   "label": "Scheme Description",
+   "search_index": 1
+  },
+  {
+   "fieldname": "account_opened",
+   "fieldtype": "Data",
+   "label": "Account Opened",
+   "search_index": 1
+  },
+  {
+   "fieldname": "account_closed",
+   "fieldtype": "Data",
+   "label": "Account Closed",
+   "search_index": 1
+  },
+  {
+   "fieldname": "opening_no_of_accounts",
+   "fieldtype": "Data",
+   "label": "Opening No of Accounts",
+   "search_index": 1
+  },
+  {
+   "fieldname": "closing_no_of_accounts",
+   "fieldtype": "Data",
+   "label": "Closing No of Accounts",
+   "search_index": 1
+  },
+  {
+   "fieldname": "opening_balance",
+   "fieldtype": "Data",
+   "label": "Opening Balance",
+   "search_index": 1
+  },
+  {
+   "fieldname": "closing_balance",
+   "fieldtype": "Data",
+   "label": "Closing Balance",
+   "search_index": 1
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "description": "1st Level",
+   "fetch_from": "scheme_code.group_name",
+   "fieldname": "group_name",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Group Name",
+   "options": "\nCASA\nDAM\nFD\nRD\nDD\nSMBG\nSHARE"
+  },
+  {
+   "fieldname": "column_break_amxz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "2nd Level",
+   "fetch_from": "scheme_code.group_subname",
+   "fieldname": "group_subname",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Group Subname",
+   "options": "\nSA\nCA\nTASC\nJLL RD\nSKBG\nSA\nCA\nTASC\nJLL RD\nSKBG"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-29 15:17:28.907672",
+ "modified_by": "Administrator",
+ "module": "custom_report",
+ "name": "Book Position and Account Details",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

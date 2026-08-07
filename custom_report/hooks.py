@@ -147,27 +147,87 @@ website_route_rules = [
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"Sahayog Branch": {
+		"on_update": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_sahayog_branches_cache",
+		"on_trash": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_sahayog_branches_cache"
+	},
+	"Product": {
+		"on_update": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_products_cache",
+		"on_trash": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_products_cache"
+	},
+	"Report Preference": {
+		"on_update": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_user_permissions_cache",
+		"on_trash": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_user_permissions_cache"
+	},
+	"Target Vs Achivement": {
+		"on_update": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_targets_cache",
+		"on_trash": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_targets_cache"
+	},
+	"Branch Category Report": {
+		"on_update": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_branch_category_report_cache",
+		"on_trash": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_branch_category_report_cache"
+	}
+}
 
 # Scheduled Tasks
 # ---------------
 
 scheduler_events = {
 	"cron": {
+		# Daily T-1 (Yesterday) SS & VS Report Synchronizations starting at 07:00 AM IST with 5-minute intervals
+		"0 7 * * *": [
+			# 07:00 AM IST - Sync DD SAV Report for T-1 (Yesterday) date
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_dd_sav_daily"
+		],
+		"5 7 * * *": [
+			# 07:05 AM IST - Sync DD TDA Report for T-1 (Yesterday) date
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_dd_tda_daily"
+		],
+		"10 7 * * *": [
+			# 07:10 AM IST - Sync RD Report for T-1 (Yesterday) date
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_rd_daily"
+		],
+		"15 7 * * *": [
+			# 07:15 AM IST - Sync SMBG Report for T-1 (Yesterday) date
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_smbg_daily"
+		],
+		"20 7 * * *": [
+			# 07:20 AM IST - Sync FD 1 Report for T-1 (Yesterday) date
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_fd_1_daily"
+		],
+		"25 7 * * *": [
+			# 07:25 AM IST - Sync DAM Report for T-1 (Yesterday) date
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_dam_daily"
+		],
+		"30 7 * * *": [
+			# 07:30 AM IST - Sync FD Report for T-1 (Yesterday) date
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_fd_daily"
+		],
+		"35 7 * * *": [
+			# 07:35 AM IST - Sync SHARE Report for T-1 (Yesterday) date
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_share_daily"
+		],
+		# Daily Sahayog Dashboard and Financial Tracker Synchronizations starting at 08:00 AM IST
 		"0 8 * * *": [
+			# 08:00 AM IST - Daily Sahayog Dashboard Achievement Sync
 			"custom_report.custom_report.page.sahayog_dashboard.achievement.daily_sync_cron"
 		],
 		"10 8 * * *": [
+			# 08:10 AM IST - Daily Sahayog Dashboard TDA Sync
 			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_tda_sync"
 		],
 		"15 8 * * *": [
+			# 08:15 AM IST - Daily Sahayog Dashboard CASA Sync
 			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_casa_sync"
+		],
+		"30 8 * * *": [
+			# 08:30 AM IST - Daily Book Position and Account Details Sync
+			"custom_report.custom_report.doctype.book_position_and_account_details.book_position_and_account_details.daily_sync_book_position"
+		],
+		"40 8 * * *": [
+			# 08:40 AM IST - Daily DD Tracker Report Sync
+			"custom_report.custom_report.doctype.dd_tracker_report.dd_tracker_report.daily_sync_dd_tracker"
 		]
 	}
 }

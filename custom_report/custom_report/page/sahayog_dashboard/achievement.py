@@ -535,11 +535,6 @@ def generate_and_save_branch_category_report(input_date):
     dates = date_control(input_date_str)
     processed_date = dates["current_date"]
     
-    # Sunday validation (exclude Sundays)
-    if processed_date.weekday() == 6:  # 6 is Sunday in Python
-        frappe.msgprint(f"Date {processed_date} is a Sunday. Sundays are excluded from data sync.")
-        return []
-        
     # 2. Check if records already exist for this processed date
     if frappe.db.exists("Branch Category Report", {"date": processed_date}):
         frappe.msgprint(f"Branch Category Report records already exist for date {processed_date}. Skipping insert.")
@@ -735,12 +730,11 @@ def daily_sync_cron():
     """
     Cron job triggered daily at 8:00 AM.
     Syncs the achievement data for yesterday if enabled in Drishti Settings.
-    If yesterday was Sunday (Today is Monday), it skips execution.
     """
     from frappe.utils import getdate, today, add_days
     
     # 1. Check if sync is enabled in Drishti Settings
-    sync_enabled = frappe.db.get_single_value("Drishti Settings", "branch_category_report_sync")
+    sync_enabled = frappe.db.get_single_value("Drishti Settings", "auto_sync")
     if not sync_enabled:
         frappe.logger("scheduler").info("Daily Sync Cron: Sync is disabled in Drishti Settings. Skipping execution.")
         return
@@ -748,16 +742,6 @@ def daily_sync_cron():
     today_date = getdate(today())
     yesterday = add_days(today_date, -1)
     
-    # 0 = Monday, ..., 6 = Sunday
-    if yesterday.weekday() == 6:
-        # Yesterday was Sunday (meaning today is Monday).
-        # Saturday's data was already synced on Sunday morning.
-        # So we skip syncing Sunday's data.
-        msg = f"Skipping sync for Sunday ({yesterday.strftime('%d-%m-%Y')}) on Monday morning as Saturday data was already synced."
-        frappe.logger("scheduler").info(f"Daily Sync Cron: {msg}")
-        send_sync_status_email(yesterday, "Skipped", msg)
-        return
-        
     frappe.logger("scheduler").info(f"Daily Sync Cron: Triggering sync for {yesterday} at 8:00 AM.")
     
     try:

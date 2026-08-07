@@ -176,10 +176,15 @@ class DrishtiDashboard {
 			selectedCategories: [],
 			selectedZones: [],
 			selectedRegions: [],
+			selectedDistricts: [],
 			branchSearchTerm: "",
 			selectedMonth: null,
 			drillDownActive: false,
 			expandedZones: {}, // Track expanded/collapsed zones
+			expandedZoneRegions: {}, // Track expanded/collapsed regions in zone table
+			checkedZoneRows: {}, // Track checked rows in zone table
+			expandedProductRows: {},
+			checkedProductRows: {},
 			selectedSegment: "all",
 			dashboardMode: "drishti",
 			selectedMisReport: "rd_smbg_pending",
@@ -197,6 +202,7 @@ class DrishtiDashboard {
 			categories: ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Zero Level"],
 			zones: [],
 			regions: [],
+			districts: [],
 		};
 		this.categoryCounts = {};
 		this.zoneCounts = {};
@@ -549,7 +555,9 @@ class DrishtiDashboard {
 					const zoneData = self.aggregateByZone();
 					const totalFilteredBranches = zoneData.reduce((s, z) => s + z.data.branches.length, 0);
 					const totalAllBranches = (self.tableData || []).length;
-					tableContainer.parent().find("#mis-records-count").text(totalFilteredBranches + " / " + totalAllBranches + " branches" + (self.searchTerm ? " (filtered)" : ""));
+					const $badge = tableContainer.parent().find("#mis-records-count");
+					$badge.text(totalFilteredBranches + " / " + totalAllBranches + " branches" + (self.searchTerm ? " (filtered)" : ""));
+					if (totalFilteredBranches === totalAllBranches && !self.searchTerm) $badge.hide(); else $badge.show();
 					if (!zoneData || zoneData.length === 0) {
 						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600; font-family: \'Inter\', sans-serif;">No data to display.</div>');
 						return;
@@ -691,6 +699,12 @@ class DrishtiDashboard {
 				},
 			},
 			{
+				id: "daily_ch_report",
+				name: "Daily CH Report",
+				type: "group",
+				children: ["daily_account_opening", "gl_wise_ch_report"]
+			},
+			{
 				id: "daily_account_opening",
 				name: "Daily Account Opening",
 				tableData: [],
@@ -718,10 +732,7 @@ class DrishtiDashboard {
 							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="mis-records-count"></div>
 						</div>
 						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
-							<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-								<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important; animation: spinner-border .75s linear infinite;"></div>
-								<span style="font-weight: 600; color: #417d81; font-size: 13px;">Fetching latest Daily Account Opening data...</span>
-							</div>
+							${dashboardInstance.buildMisSkeletonTable("Fetching latest Daily Account Opening data...")}
 						</div>
 						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<div id="mis-kpi-container" ${self.tableData && self.tableData.length ? "" : 'style="display: none;"'}></div>
@@ -796,7 +807,9 @@ class DrishtiDashboard {
 					const zoneData = self.aggregateByZone();
 					const totalFilteredBranches = zoneData.reduce((s, z) => s + z.data.branches.length, 0);
 					const totalAllBranches = [...new Set((self.tableData || []).map(r => r.sol_id))].length;
-					tableContainer.parent().find("#mis-records-count").text(totalFilteredBranches + " / " + totalAllBranches + " branches" + (self.searchTerm ? " (filtered)" : ""));
+					const $badge = tableContainer.parent().find("#mis-records-count");
+					$badge.text(totalFilteredBranches + " / " + totalAllBranches + " branches" + (self.searchTerm ? " (filtered)" : ""));
+					if (totalFilteredBranches === totalAllBranches && !self.searchTerm) $badge.hide(); else $badge.show();
 					if (!zoneData || zoneData.length === 0) {
 						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">No data to display.</div>');
 						return;
@@ -1034,6 +1047,12 @@ class DrishtiDashboard {
 				},
 			},
 			{
+				id: "casa_daily_report",
+				name: "CASA Daily Report",
+				type: "group",
+				children: ["ntb_evr", "cust_wise_avg_bal"]
+			},
+			{
 				id: "ntb_evr",
 				name: "CASA NTB & EVR",
 				tableData: [],
@@ -1053,9 +1072,8 @@ class DrishtiDashboard {
 							#ntb-evr-table tfoot td { padding: 10px 14px; font-size: 14px; font-weight: 700; color: #ffffff; background: #1e293b; }
 							#ntb-evr-scroll { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
 						</style>
-						<div id="ntb-evr-loading" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-							<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important; animation: spinner-border .75s linear infinite;"></div>
-							<span style="font-weight: 600; color: #417d81; font-size: 13px;">Fetching CASA NTB & EVR data...</span>
+						<div id="ntb-evr-loading" style="width: 100%; margin-top: 10px;">
+							${dashboardInstance.buildMisSkeletonTable("Fetching CASA NTB & EVR data...")}
 						</div>
 						<div id="ntb-evr-table-container"></div>
 					`);
@@ -1246,6 +1264,7 @@ class DrishtiDashboard {
 				totalPages: 0,
 				totalRows: 0,
 				cachedPages: {},
+				cacheDate: null,
 				searchTerm: "",
 				_bgRunning: false,
 				_renderSeq: 0,
@@ -1260,19 +1279,16 @@ class DrishtiDashboard {
 
 					const columns = [
 						{ key: "cif_id", label: "CIF ID", w: "100px", sticky: 1 },
-						{ key: "acct_name", label: "Acct Name", w: "150px", sticky: 2 },
+						{ key: "acct_name", label: "Acct Name", w: "160px", sticky: 2 },
 						{ key: "foracid", label: "Foracid", w: "120px", sticky: 3 },
 						{ key: "acct_opn_date", label: "Acct Open Date", w: "100px" },
 						{ key: "schm_code", label: "Schema", w: "80px" },
 						{ key: "sol_id", label: "SOL ID", w: "80px" },
 						{ key: "sol_desc", label: "Branch", w: "140px" },
-						{ key: "acct_cls_flg", label: "Cls Flag", w: "70px" },
-						{ key: "acct_cls_date", label: "Cls Date", w: "100px" },
 						{ key: "cif_id_opening_date", label: "CIF Open Date", w: "100px" },
 						{ key: "cif_status", label: "CIF Status", w: "80px" },
 						{ key: "tran_date_bal", label: "Tran Date Bal", w: "110px", fmt: fmtAmt },
 						{ key: "clr_bal_amt", label: "CLR Bal Amt", w: "110px", fmt: fmtAmt },
-						{ key: "deposit_amount", label: "Deposit Amt", w: "110px", fmt: fmtAmt },
 						{ key: "total_weighted_balance", label: "Total Weighted Bal", w: "130px", fmt: fmtAmt },
 						{ key: "total_days", label: "Total Days", w: "80px" },
 						{ key: "average_balance", label: "Avg Balance", w: "110px", fmt: fmtAmt },
@@ -1280,19 +1296,20 @@ class DrishtiDashboard {
 						{ key: "opening_mab", label: "Opening MAB", w: "110px", fmt: fmtAmt },
 						{ key: "inc_mab", label: "Inc MAB", w: "100px", fmt: fmtAmt },
 						{ key: "status", label: "Status", w: "70px" },
-						{ key: "sol_gl_transferred_flag", label: "SOL/GL Xfer", w: "80px" },
 						{ key: "rm_id", label: "RM ID", w: "80px" },
 						{ key: "emp_name", label: "Emp Name", w: "120px" },
 						{ key: "division_name", label: "Division", w: "100px" },
 						{ key: "region_name", label: "Region", w: "100px" },
-						{ key: "circle_office_name", label: "Circle Office", w: "110px" },
+						{ key: "circle_office_name", label: "ZONE", w: "110px" },
 					];
 
 					container.html(`
 						<style>
 							#cavg-scroll { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
 							#cavg-table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; white-space: nowrap; }
-							#cavg-table thead th { position: sticky; top: 0; z-index: 2; background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #fff; padding: 8px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; border-bottom: 1px solid #cbd5e1; }
+							#cavg-table thead th { position: sticky; top: 0; z-index: 2; background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #fff; padding: 8px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; border-bottom: 1px solid #cbd5e1; box-sizing: border-box; }
+							.cavg-resizer { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; user-select: none; z-index: 10; }
+							.cavg-resizer:hover, .cavg-resizer.resizing { background: #86efac; opacity: 0.9; }
 							#cavg-table thead th.cavg-sticky { position: sticky; z-index: 3; background: #346569; overflow: hidden; }
 							#cavg-table tbody td { padding: 7px 10px; font-size: 12px; color: #334155; border-bottom: 1px solid #e2e8f0; }
 							#cavg-table tbody td.cavg-sticky { position: sticky; z-index: 1; overflow: hidden; }
@@ -1312,11 +1329,8 @@ class DrishtiDashboard {
 							<button type="button" id="cavg-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px; margin-left: auto;" id="cavg-count"></div>
 						</div>
-						<div id="cavg-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif;">
-							<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-								<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important;"></div>
-								<span id="cavg-loading-text" style="font-weight: 600; color: #417d81; font-size: 13px;">Loading page 1...</span>
-							</div>
+						<div id="cavg-loading" style="width: 100%; margin-top: 10px;">
+							${dashboardInstance.buildMisSkeletonTable("Loading page 1...")}
 						</div>
 						<div id="cavg-table-container" style="display: none;"></div>
 						<div id="cavg-pagination" style="display: none; align-items: center; gap: 6px; margin-top: 12px; font-family: 'Inter', sans-serif; flex-wrap: wrap;"></div>
@@ -1328,10 +1342,49 @@ class DrishtiDashboard {
 							const val = r[c.key];
 							const display = c.fmt ? c.fmt(val) : (val !== null && val !== undefined ? val : "-");
 							const stickyClass = c.sticky ? ` cavg-sticky cavg-sticky-${c.sticky}` : "";
-							const wStyle = c.sticky ? ` style="width:${c.w};"` : "";
-							html += `<td class="${stickyClass}"${wStyle}>${display}</td>`;
+							const wStyle = c.sticky
+								? ` style="width:${c.w}; min-width:${c.w}; max-width:${c.w}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"`
+								: "";
+							const titleAttr = (c.key === "acct_name" || c.key === "cif_id" || c.key === "foracid")
+								? ` title="${frappe.utils.escape_html(String(display))}"`
+								: "";
+							html += `<td class="${stickyClass}"${wStyle}${titleAttr}>${display}</td>`;
 						});
 						return html + "</tr>";
+					};
+
+					const initColumnResizers = () => {
+						container.off("mousedown", ".cavg-resizer").on("mousedown", ".cavg-resizer", function (e) {
+							e.preventDefault();
+							e.stopPropagation();
+							const $resizer = $(this);
+							const $th = $resizer.closest("th");
+							const startX = e.pageX;
+							const startWidth = $th.outerWidth();
+							const colIdx = $th.index();
+							const $table = container.find("#cavg-table");
+							$resizer.addClass("resizing");
+							$("body").css("cursor", "col-resize");
+
+							$(document).on("mousemove.cavgResize", function (evt) {
+								const diff = evt.pageX - startX;
+								const newWidth = Math.max(40, startWidth + diff);
+								$th.css({ "width": newWidth + "px", "min-width": newWidth + "px", "max-width": newWidth + "px" });
+								$table.find(`tbody tr td:nth-child(${colIdx + 1})`).css({ "width": newWidth + "px", "min-width": newWidth + "px", "max-width": newWidth + "px" });
+								if (!self._stickyThrottle) {
+									self._stickyThrottle = requestAnimationFrame(() => {
+										applyStickyLeft();
+										self._stickyThrottle = null;
+									});
+								}
+							});
+
+							$(document).on("mouseup.cavgResize", function () {
+								$(document).off("mousemove.cavgResize mouseup.cavgResize");
+								$resizer.removeClass("resizing");
+								$("body").css("cursor", "");
+							});
+						});
 					};
 
 					const initTable = () => {
@@ -1341,14 +1394,18 @@ class DrishtiDashboard {
 									<thead><tr>
 										${columns.map(c => {
 											const stickyClass = c.sticky ? ` cavg-sticky cavg-sticky-${c.sticky}` : "";
-											const wStyle = c.sticky ? `width: ${c.w};` : `min-width: ${c.w};`;
-											return `<th class="${stickyClass}" style="${wStyle}">${c.label}</th>`;
+											const wStyle = c.sticky ? `width: ${c.w}; min-width: ${c.w}; max-width: ${c.w}; overflow:hidden; text-overflow:ellipsis;` : `min-width: ${c.w};`;
+											return `<th class="${stickyClass}" style="${wStyle}">
+												<span>${c.label}</span>
+												<div class="cavg-resizer"></div>
+											</th>`;
 										}).join("")}
 									</tr></thead>
 									<tbody id="cavg-tbody"></tbody>
 								</table>
 							</div>
 						`);
+						initColumnResizers();
 					};
 
 					const applyStickyLeft = () => {
@@ -1386,15 +1443,60 @@ class DrishtiDashboard {
 						styleEl.textContent = css;
 					};
 
+					let _renderChunkRaf = null;
 					const appendRows = (data) => {
 						const $tbody = container.find("#cavg-tbody");
-						data.forEach(r => { $tbody.append(buildRowHtml(r)); });
+						if (_renderChunkRaf) cancelAnimationFrame(_renderChunkRaf);
+
+						if (!data || data.length === 0) {
+							$tbody.html('<tr><td colspan="23" style="text-align:center; padding: 20px; color: #64748b;">No matching records found</td></tr>');
+							return;
+						}
+
+						// 1. Instantly render the first 100 rows (takes ~2-5ms)
+						const firstBatch = data.slice(0, 100);
+						$tbody.html(firstBatch.map(r => buildRowHtml(r)).join(""));
+
+						// 2. Stream remaining rows in non-blocking chunks using requestAnimationFrame
+						if (data.length > 100) {
+							let offset = 100;
+							const chunkSize = 200;
+							const renderChunk = () => {
+								if (offset >= data.length) return;
+								const chunk = data.slice(offset, offset + chunkSize);
+								$tbody.append(chunk.map(r => buildRowHtml(r)).join(""));
+								offset += chunkSize;
+								if (offset < data.length) {
+									_renderChunkRaf = requestAnimationFrame(renderChunk);
+								}
+							};
+							_renderChunkRaf = requestAnimationFrame(renderChunk);
+						}
 					};
 
 					const updateCount = () => {
-						const loaded = Object.keys(self.cachedPages).length * self.pageSize;
+						let totalLoaded = 0;
+						Object.keys(self.cachedPages).forEach(p => {
+							if (self.cachedPages[p] && Array.isArray(self.cachedPages[p])) {
+								totalLoaded += self.cachedPages[p].length;
+							}
+						});
+
+
+
+						if (self.searchTerm) {
+							const pageData = self.cachedPages[self.currentPage] || [];
+							const filteredCount = pageData.filter(r =>
+								Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm))
+							).length;
+							container.find("#cavg-count").text(`${filteredCount.toLocaleString()} matching records (Page ${self.currentPage})`);
+							return;
+						}
+
 						if (self.totalRows > 0) {
-							container.find("#cavg-count").text(`${Math.min(loaded, self.totalRows).toLocaleString()} / ${self.totalRows.toLocaleString()} records loaded`);
+							container.find("#cavg-count").text(`${Math.min(totalLoaded, self.totalRows).toLocaleString()} / ${self.totalRows.toLocaleString()} records loaded`);
+						} else if (totalLoaded > 0) {
+							container.find("#cavg-count").text(`${totalLoaded.toLocaleString()} records loaded`);
 						} else {
 							container.find("#cavg-count").text("0 records");
 						}
@@ -1402,23 +1504,30 @@ class DrishtiDashboard {
 
 					const renderPaginationBar = () => {
 						const $bar = container.find("#cavg-pagination");
-						if (self.totalPages <= 1) { $bar.hide(); return; }
+
+						if (self.totalRows > 0) {
+							self.totalPages = Math.ceil(self.totalRows / self.pageSize);
+						}
+						const hasFullPage = self.cachedPages[self.currentPage] && self.cachedPages[self.currentPage].length >= self.pageSize;
+						const effectiveTotalPages = Math.max(self.totalPages || 1, hasFullPage ? self.currentPage + 1 : 1);
+
+						if (effectiveTotalPages <= 1) { $bar.hide(); return; }
 						$bar.show();
 
 						let html = "";
 						html += `<button class="cavg-page-btn" id="cavg-prev" ${self.currentPage <= 1 ? 'disabled' : ''}>◀ Prev</button>`;
 
 						const pages = [];
-						if (self.totalPages <= 7) {
-							for (let i = 1; i <= self.totalPages; i++) pages.push(i);
+						if (effectiveTotalPages <= 7) {
+							for (let i = 1; i <= effectiveTotalPages; i++) pages.push(i);
 						} else {
 							pages.push(1);
 							if (self.currentPage > 3) pages.push("...");
 							const start = Math.max(2, self.currentPage - 1);
-							const end = Math.min(self.totalPages - 1, self.currentPage + 1);
+							const end = Math.min(effectiveTotalPages - 1, self.currentPage + 1);
 							for (let i = start; i <= end; i++) pages.push(i);
-							if (self.currentPage < self.totalPages - 2) pages.push("...");
-							pages.push(self.totalPages);
+							if (self.currentPage < effectiveTotalPages - 2) pages.push("...");
+							pages.push(effectiveTotalPages);
 						}
 
 						pages.forEach(p => {
@@ -1431,7 +1540,7 @@ class DrishtiDashboard {
 							}
 						});
 
-						html += `<button class="cavg-page-btn" id="cavg-next" ${self.currentPage >= self.totalPages ? 'disabled' : ''}>Next ▶</button>`;
+						html += `<button class="cavg-page-btn" id="cavg-next" ${self.currentPage >= effectiveTotalPages ? 'disabled' : ''}>Next ▶</button>`;
 						$bar.html(html);
 					};
 
@@ -1447,15 +1556,55 @@ class DrishtiDashboard {
 						renderPaginationBar();
 					};
 
+					// Invalidate cache if date changed
+					if (self.cacheDate && self.cacheDate !== dashboardInstance.state.selectedDate) {
+						self.cachedPages = {};
+						self.cacheDate = null;
+						self.currentPage = 1;
+						self.totalRows = 0;
+						self.totalPages = 0;
+						self._bgRunning = false;
+					}
+
 					const fetchPageAjax = (pageNum) => {
 						return new Promise((resolve) => {
-							if (self.cachedPages[pageNum]) { resolve(true); return; }
+							const selDate = dashboardInstance.state.selectedDate;
+
+							// Check memory cache
+							if (self.cachedPages[pageNum] && self.cacheDate === selDate) {
+								resolve(true);
+								return;
+							}
+
+							// Check sessionStorage cache fallback
+							const ssKey = `sahayog_cavg_p_${selDate}_${pageNum}`;
+							const metaKey = `sahayog_cavg_meta_${selDate}`;
+							try {
+								const sData = sessionStorage.getItem(ssKey);
+								const sMeta = sessionStorage.getItem(metaKey);
+								if (sData && sMeta) {
+									const metaObj = JSON.parse(sMeta);
+									if (metaObj.totalRows > self.pageSize) {
+										self.totalRows = metaObj.totalRows;
+										self.totalPages = metaObj.totalPages || Math.ceil(self.totalRows / self.pageSize);
+									}
+									self.cachedPages[pageNum] = JSON.parse(sData);
+									self.cacheDate = selDate;
+									if (self.totalRows > self.pageSize) {
+										resolve(true);
+										return;
+									}
+								}
+							} catch (e) {
+								console.warn("sessionStorage read error", e);
+							}
+
 							const offset = (pageNum - 1) * self.pageSize;
 							$.ajax({
 								url: "/api/method/custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_cust_wise_avg_balance",
 								type: "POST",
 								data: {
-									selected_date: dashboardInstance.state.selectedDate,
+									selected_date: selDate,
 									limit: self.pageSize,
 									offset: offset,
 								},
@@ -1466,6 +1615,17 @@ class DrishtiDashboard {
 										self.totalRows = r.message.total_rows || 0;
 										self.totalPages = Math.ceil(self.totalRows / self.pageSize) || 1;
 										self.cachedPages[pageNum] = r.message.data;
+										self.cacheDate = selDate;
+
+										try {
+											sessionStorage.setItem(ssKey, JSON.stringify(r.message.data));
+											sessionStorage.setItem(metaKey, JSON.stringify({
+												totalRows: self.totalRows,
+												totalPages: self.totalPages
+											}));
+										} catch (e) {
+											console.warn("sessionStorage write error", e);
+										}
 										resolve(true);
 									} else {
 										resolve(false);
@@ -1522,7 +1682,6 @@ class DrishtiDashboard {
 							return;
 						}
 						container.find("#cavg-loading").show();
-						container.find("#cavg-loading-text").text(`Loading page ${pageNum}...`);
 						fetchPageAjax(pageNum).then(() => {
 							container.find("#cavg-loading").hide();
 							container.find("#cavg-table-container").show();
@@ -1546,14 +1705,25 @@ class DrishtiDashboard {
 						self.totalRows = 0;
 						self.totalPages = 0;
 						self.cachedPages = {};
+						self.cacheDate = null;
 						self.searchTerm = "";
 						self._bgRunning = false;
 						self._renderSeq++;
+
+						try {
+							const selDate = dashboardInstance.state.selectedDate;
+							const prefix = `sahayog_cavg_p_${selDate}_`;
+							const metaKey = `sahayog_cavg_meta_${selDate}`;
+							sessionStorage.removeItem(metaKey);
+							Object.keys(sessionStorage).forEach(k => {
+								if (k && k.startsWith(prefix)) sessionStorage.removeItem(k);
+							});
+						} catch (e) {}
+
 						container.find("#cavg-search").val("");
 						container.find("#cavg-table-container").hide().empty();
 						container.find("#cavg-pagination").hide().html("");
 						container.find("#cavg-loading").show();
-						container.find("#cavg-loading-text").text("Loading page 1...");
 						fetchPageAjax(1).then(() => {
 							container.find("#cavg-loading").hide();
 							container.find("#cavg-table-container").show();
@@ -1586,7 +1756,7 @@ class DrishtiDashboard {
 						if (next <= self.totalPages && !self.cachedPages[next]) preloadPage(next);
 					});
 
-					if (Object.keys(self.cachedPages).length > 0) {
+					if (Object.keys(self.cachedPages).length > 0 && self.cacheDate === dashboardInstance.state.selectedDate) {
 						container.find("#cavg-loading").hide();
 						container.find("#cavg-table-container").show();
 						renderPage();
@@ -1599,14 +1769,3372 @@ class DrishtiDashboard {
 							startBgFetch(2);
 						});
 					}
+
 				},
+			},
+			{
+				id: "gl_wise_ch_report",
+				name: "GL Wise CH Report",
+				tableData: [],
+				allProducts: [],
+				expandedZones: {},
+				expandedRegions: {},
+				expandedDistricts: {},
+				searchTerm: "",
+				selectedMisZones: [],
+				checkedRows: {},
+				render: function (container, dashboardInstance, seq) {
+					const self = this;
+					container.html(`
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="text" id="mis-search" placeholder="Search branch or SOL ID..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
+								<div class="btn-group mis-format-toggle" role="group">
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+								</div>
+							</div>
+						</div>
+						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
+							${dashboardInstance.buildMisSkeletonTable("Fetching latest GL Wise CH Report data...")}
+						</div>
+						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
+						<div id="mis-table-container" ${self.tableData && self.tableData.length > 0 ? "" : 'style="display: none;"'}></div>
+					`);
+
+					if (self.tableData && self.tableData.length > 0) {
+						self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderZoneFilterTags(container, dashboardInstance);
+						container.find("#mis-controls, #mis-table-container, #mis-zone-filter-row").show();
+						container.find("#mis-loading").hide();
+						self.attachReportEventHandlers(container, dashboardInstance);
+						return;
+					}
+
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_gl_wise_ch_report_data",
+						args: { selected_date: dashboardInstance.state.selectedDate },
+						callback: function (r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
+							if (r.message) {
+								self.tableData = r.message.product_wise || [];
+								self.allProducts = r.message.all_products || [];
+								self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderZoneFilterTags(container, dashboardInstance);
+							}
+							container.find("#mis-loading").hide();
+							container.find("#mis-controls, #mis-table-container, #mis-zone-filter-row").show();
+							self.attachReportEventHandlers(container, dashboardInstance);
+						}
+					});
+					self.attachReportEventHandlers(container, dashboardInstance);
+				},
+				attachReportEventHandlers: function (container, dashboardInstance) {
+					const self = this;
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
+						const format = $(this).data("format");
+						dashboardInstance.state.formatMode = format;
+						container.find(".mis-format-btn").each(function () {
+							const btn = $(this);
+							const isActive = btn.data("format") === format;
+							btn.css("background", isActive ? "#417d81" : "#e2e8f0");
+							btn.css("color", isActive ? "white" : "#475569");
+						});
+						if (self.tableData && self.tableData.length > 0) {
+							self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
+						}
+					});
+					let searchTimeout;
+					container.off("input", "#mis-search").on("input", "#mis-search", function () {
+						clearTimeout(searchTimeout);
+						searchTimeout = setTimeout(() => {
+							self.searchTerm = $(this).val().toLowerCase().trim();
+							if (self.tableData) {
+								self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
+							}
+						}, 300);
+					});
+					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function () {
+						self.tableData = [];
+						self.allProducts = [];
+						self.expandedZones = {};
+						self.selectedMisZones = [];
+						self.searchTerm = "";
+						self.checkedRows = {};
+						dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
+						self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
+					});
+				},
+				renderGLWiseTable: function (tableContainer, dashboardInstance) {
+					const self = this;
+					let productData = self.tableData;
+					if (!productData || productData.length === 0) {
+						tableContainer.html(`
+							<div style="text-align: center; padding: 50px; color: #778da9; font-size: 16px;">
+								<div style="font-size: 48px; margin-bottom: 15px;">📭</div>
+								<div style="font-weight: 600; margin-bottom: 8px;">No data available</div>
+							</div>
+						`);
+						return;
+					}
+					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+						productData = productData.filter(item =>
+							(item.type === "zone" && self.selectedMisZones.includes(item.name)) ||
+							(item.type !== "zone" && self.selectedMisZones.includes(item.parent_zone))
+						);
+					}
+					if (self.searchTerm) {
+						const terms = self.searchTerm.split(",").map(s => s.trim()).filter(Boolean);
+						productData = productData.filter(item => {
+							if (item.type !== "sol") return true;
+							const name = (item.name || "").toLowerCase();
+							return terms.some(t => name.includes(t));
+						});
+					}
+					if (!productData || productData.length === 0) {
+						tableContainer.html(`
+							<div style="text-align: center; padding: 50px; color: #778da9; font-size: 16px;">
+								<div style="font-size: 48px; margin-bottom: 15px;">📭</div>
+								<div style="font-weight: 600; margin-bottom: 8px;">No data available</div>
+							</div>
+						`);
+						return;
+					}
+
+				const allProducts = self.allProducts.filter(p => p !== "TDA" && p !== "SHARE" && p !== "JLL RD" && p !== "SKBG" && p !== "TASKSILVER" && p !== "TASKWEALTH" && p !== "SAVSIL" && p !== "CUGOLD" && p !== "CUWEALTH");
+				if (self.allProducts.includes("SHARE")) {
+					allProducts.push("SHARE");
+				}
+				if (self.allProducts.includes("JLL RD")) {
+					const rdIdx = allProducts.indexOf("RD");
+					if (rdIdx !== -1) {
+						allProducts.splice(rdIdx + 1, 0, "JLL RD");
+					} else {
+						allProducts.push("JLL RD");
+					}
+				}
+				if (self.allProducts.includes("SKBG")) {
+					const smbgIdx = allProducts.indexOf("SMBG");
+					if (smbgIdx !== -1) {
+						allProducts.splice(smbgIdx + 1, 0, "SKBG");
+					} else {
+						allProducts.push("SKBG");
+					}
+				}
+				if (self.allProducts.includes("TASKSILVER") || self.allProducts.includes("TASKWEALTH") || self.allProducts.includes("SAVSIL") || self.allProducts.includes("CUGOLD") || self.allProducts.includes("CUWEALTH")) {
+					const skbgIdx = allProducts.indexOf("SKBG");
+					const newCols = ["TASKSILVER", "TASKWEALTH", "SAVSIL", "CUGOLD", "CUWEALTH"].filter(c => self.allProducts.includes(c));
+					if (skbgIdx !== -1) {
+						allProducts.splice(skbgIdx + 1, 0, ...newCols);
+					} else {
+						newCols.forEach(c => allProducts.push(c));
+					}
+				}
+
+					// Build dynamic header with product columns
+					let headerHtml = `
+						<style>
+							.gl-wise-table tbody tr:not(.grand-total-row):hover { background-color: #e8f4f8 !important; cursor: pointer; }
+							.gl-wise-table tbody tr.checked-row { background-color: #c8e6c9 !important; }
+							.gl-wise-table tbody tr.checked-row:hover { background-color: #a5d6a7 !important; }
+							.gl-wise-table .row-checkbox { width: 32px; text-align: center; vertical-align: middle; }
+							.gl-wise-table .row-checkbox input { cursor: pointer; width: 15px; height: 15px; accent-color: #417d81; }
+							.gl-wise-scroll { overflow-x: auto; max-height: 550px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
+						</style>
+						<div class="gl-wise-scroll">
+						<table class="table table-bordered gl-wise-table">
+							<thead>
+								<tr class="zone-table-header">
+									<th rowspan="2" style="width:32px;" class="row-checkbox"></th>
+									<th rowspan="2" style="width:60px;">SR</th>
+									<th rowspan="2" style="text-align: left;">Z/R/DIS/SOL</th>
+					`;
+
+					allProducts.forEach((product) => {
+						headerHtml += `<th>${product}</th>`;
+					});
+
+					headerHtml += `
+									<th rowspan="2" style="width:140px;">ACHIEVEMENT</th>
+								</tr>
+							</thead>
+							<tbody>
+					`;
+
+					let html = headerHtml;
+
+					let sr = 1;
+					let zoneTotalAmount = 0;
+					let productTotals = {};
+
+					// Initialize product totals
+					allProducts.forEach((product) => {
+						productTotals[product] = 0;
+					});
+
+					productData.forEach((item) => {
+						const products = item.products || {};
+
+						if (item.type === "zone") {
+							const isExpanded = self.expandedZones[item.path] || false;
+
+							const checked = self.checkedRows[item.path] ? ' checked' : '';
+							html += `
+								<tr class="zone-total-row gl-total-row${checked ? ' checked-row' : ''}" data-path="${item.path}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">
+									<td class="row-checkbox"><input type="checkbox" class="gl-row-checkbox" data-path="${item.path}"${checked}></td>
+									<td>${sr++}</td>
+									<td style="padding-left: 8px; text-align: left;">
+										<span class="gl-toggle" style="margin-right: 6px; display: inline-block; width: 12px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
+										<strong>${item.name}</strong>
+									</td>
+							`;
+
+							// Add a column for each product (zone totals) and accumulate totals
+							allProducts.forEach((product) => {
+								const amount = products[product] || 0;
+								productTotals[product] += amount;
+								html += `<td>${dashboardInstance.formatCurrency(amount)}</td>`;
+							});
+
+							html += `
+									<td>${dashboardInstance.formatCurrency(item.amount)}</td>
+								</tr>
+							`;
+
+							zoneTotalAmount += item.amount;
+						} else if (item.type === "region") {
+							const isZoneExpanded = self.expandedZones[item.parent_zone] || false;
+							const isExpanded = self.expandedZones[item.path] || false;
+
+							const checked = self.checkedRows[item.path] ? ' checked' : '';
+							html += `
+								<tr class="region-total-row gl-total-row${checked ? ' checked-row' : ''}" data-path="${item.path}" style="display: ${isZoneExpanded ? "table-row" : "none"}; background-color: #f8fafc; font-weight: bold; cursor: pointer; border-left: 4px solid #417d81;">
+									<td class="row-checkbox"><input type="checkbox" class="gl-row-checkbox" data-path="${item.path}"${checked}></td>
+									<td></td>
+									<td style="padding-left: 8px; color: #097c80; text-align: left;">
+										<span class="gl-toggle" style="margin-right: 6px; display: inline-block; width: 12px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
+										<strong>${item.name}</strong>
+									</td>
+							`;
+
+							// Add a column for each product
+							allProducts.forEach((product) => {
+								const amount = products[product] || 0;
+								html += `<td>${dashboardInstance.formatCurrency(amount)}</td>`;
+							});
+
+							html += `
+									<td>${dashboardInstance.formatCurrency(item.amount)}</td>
+								</tr>
+							`;
+						} else if (item.type === "district") {
+							const isZoneExpanded = self.expandedZones[item.parent_zone] || false;
+							const isRegionExpanded = self.expandedZones[item.parent_region] || false;
+							const isExpanded = self.expandedZones[item.path] || false;
+							const isVisible = isZoneExpanded && isRegionExpanded;
+
+							const checked = self.checkedRows[item.path] ? ' checked' : '';
+							html += `
+								<tr class="district-total-row gl-total-row${checked ? ' checked-row' : ''}" data-path="${item.path}" style="display: ${isVisible ? "table-row" : "none"}; background-color: #fafafa; font-weight: bold; cursor: pointer; border-left: 6px solid #64748b;">
+									<td class="row-checkbox"><input type="checkbox" class="gl-row-checkbox" data-path="${item.path}"${checked}></td>
+									<td></td>
+									<td style="padding-left: 8px; color: #1e293b; text-align: left;">
+										<span class="gl-toggle" style="margin-right: 6px; display: inline-block; width: 12px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
+										<strong>${item.name}</strong>
+									</td>
+							`;
+
+							// Add a column for each product
+							allProducts.forEach((product) => {
+								const amount = products[product] || 0;
+								html += `<td>${dashboardInstance.formatCurrency(amount)}</td>`;
+							});
+
+							html += `
+									<td>${dashboardInstance.formatCurrency(item.amount)}</td>
+								</tr>
+							`;
+						} else if (item.type === "sol") {
+							const isZoneExpanded = self.expandedZones[item.parent_zone] || false;
+							const isRegionExpanded = self.expandedZones[item.parent_region] || false;
+							const isDistrictExpanded = self.expandedZones[item.parent_district] || false;
+							const isVisible = isZoneExpanded && isRegionExpanded && isDistrictExpanded;
+
+							const checked = self.checkedRows[item.path] ? ' checked' : '';
+							html += `
+								<tr class="sol-detail-row${checked ? ' checked-row' : ''}" style="display: ${isVisible ? "table-row" : "none"}; background: #ffffff; border-left: 8px solid #cbd5e1;">
+									<td class="row-checkbox"><input type="checkbox" class="gl-row-checkbox" data-path="${item.path}"${checked}></td>
+									<td></td>
+									<td style="padding-left: 8px; color: #475569; font-weight: normal; text-align: left;">
+										${item.name}
+									</td>
+							`;
+
+							// Add a column for each product
+							allProducts.forEach((product) => {
+								const amount = products[product] || 0;
+								html += `<td>${dashboardInstance.formatCurrency(amount)}</td>`;
+							});
+
+							html += `
+									<td>${dashboardInstance.formatCurrency(item.amount)}</td>
+								</tr>
+							`;
+						}
+					});
+
+					// Grand Total Row
+					html += `
+						</tbody>
+						<tfoot style="background-color: #264a4d; color: #ffffff; font-weight: bold; border-top: 2px solid #3d7579;">
+							<tr style="height: 40px;">
+								<td></td>
+								<td colspan="2" style="text-align: left; padding-left: 12px; text-transform: uppercase; letter-spacing: 1px;">TOTAL</td>
+					`;
+
+					// Add product-wise totals for each product column
+					allProducts.forEach((product) => {
+						html += `<td>${dashboardInstance.formatCurrency(productTotals[product])}</td>`;
+					});
+
+					html += `
+								<td>${dashboardInstance.formatCurrency(zoneTotalAmount)}</td>
+							</tr>
+						</tfoot>
+					</table>
+					</div>`;
+
+					tableContainer.html(html);
+
+					// Attach Checkbox Handlers
+					tableContainer.find(".gl-row-checkbox").off("change").on("change", function (e) {
+						e.stopPropagation();
+						const path = $(this).data("path");
+						const checked = $(this).prop("checked");
+						if (checked) {
+							self.checkedRows[path] = true;
+							$(this).closest("tr").addClass("checked-row");
+						} else {
+							delete self.checkedRows[path];
+							$(this).closest("tr").removeClass("checked-row");
+						}
+					});
+					// Attach Expand/Collapse Handlers (skip if checkbox clicked)
+					tableContainer.find(".gl-total-row").off("click").on("click", function (e) {
+						if ($(e.target).is("input[type=checkbox]")) return;
+						const path = $(this).data("path");
+						self.expandedZones[path] = !self.expandedZones[path];
+						self.renderGLWiseTable(tableContainer, dashboardInstance);
+					});
+				},
+				renderZoneFilterTags: function (container, dashboardInstance) {
+					const self = this;
+					if (!self.tableData || self.tableData.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					let zones = [...new Set(self.tableData.filter(r => r.type === "zone").map(r => r.name).filter(Boolean))].sort();
+					if (zones.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					const allSelected = self.selectedMisZones.length === 0;
+					let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
+					html += `<button class="mis-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
+					zones.forEach(zone => {
+						const active = self.selectedMisZones.includes(zone);
+						html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
+					});
+					const $row = container.find("#mis-zone-filter-row");
+					$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
+					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
+						const zone = $(this).data("zone");
+						if (zone === "all") {
+							self.selectedMisZones = [];
+						} else {
+							const idx = self.selectedMisZones.indexOf(zone);
+							if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); }
+						}
+						self.renderZoneFilterTags(container, dashboardInstance);
+						self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
+					});
+				}
+			},
+			// ── DD Tracker Report (Dropdown Group) ──
+			{
+				id: "dd_tracker_report_group",
+				name: "DD Tracker Report",
+				type: "group",
+				children: ["bucket_wise_account_mis", "new_account_report", "staff_wise_demand_collection", "agent_wise_demand_collection"]
+			},
+			{	id: "bucket_wise_account_mis",
+				name: "Bucket Wise Account MIS",
+				tableData: [],
+				expandedZones: {},
+				expandedRegions: {},
+				expandedDistricts: {},
+				checkedRows: {},
+				searchTerm: "",
+				allExpanded: false,
+				selectedMisZones: [],
+				render: function(container, dashboardInstance, seq) {
+					const self = this;
+					container.html(`
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="text" id="mis-search" placeholder="Search branch, SOL ID or district..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
+							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
+								<div class="btn-group mis-format-toggle" role="group">
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+								</div>
+							</div>
+							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="mis-records-count"></div>
+						</div>
+						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
+							${dashboardInstance.buildMisSkeletonTable("Loading Bucket Wise Account MIS...")}
+						</div>
+						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
+						<div id="mis-kpi-container" ${self.tableData && self.tableData.length ? "" : 'style="display: none;"'}></div>
+						<div id="mis-table-container" ${self.tableData ? "" : 'style="display: none;"'}></div>
+					`);
+
+					if (self.tableData && self.tableData.length > 0) {
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+						container.find("#mis-records-count").text(`${self.tableData.length} records`);
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderZoneFilterTags(container, dashboardInstance);
+						container.find("#mis-controls, #mis-table-container, #mis-kpi-container").show();
+						container.find("#mis-loading").hide();
+						self.attachReportEventHandlers(container, dashboardInstance);
+						return;
+					}
+
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_bucket_wise_account_mis_data",
+						args: { selected_date: dashboardInstance.state.selectedDate },
+						callback: function(r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
+							if (r.message && r.message.summary) {
+								self.tableData = r.message.summary;
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+								container.find("#mis-records-count").text(`${r.message.summary.length} records`);
+								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderZoneFilterTags(container, dashboardInstance);
+							}
+							container.find("#mis-loading").hide();
+							container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+						}
+					});
+					self.attachReportEventHandlers(container, dashboardInstance);
+				},
+				attachReportEventHandlers: function(container, dashboardInstance) {
+					const self = this;
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
+						const format = $(this).data("format");
+						dashboardInstance.state.formatMode = format;
+						container.find(".mis-format-btn").each(function () {
+							const btn = $(this);
+							const isActive = btn.data("format") === format;
+							btn.css("background", isActive ? "#417d81" : "#e2e8f0");
+							btn.css("color", isActive ? "white" : "#475569");
+						});
+						if (self.tableData && self.tableData.length > 0) {
+							self.switchFormat(format, container, dashboardInstance);
+						}
+					});
+					let searchTimeout;
+					container.off("input", "#mis-search").on("input", "#mis-search", function () {
+						clearTimeout(searchTimeout);
+						searchTimeout = setTimeout(() => {
+							self.searchTerm = $(this).val().toLowerCase().trim();
+							if (self.tableData) {
+								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+							}
+						}, 300);
+					});
+					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function () {
+						self.allExpanded = !self.allExpanded;
+						const expand = self.allExpanded;
+						if (!self.tableData) return;
+						const zoneData = self.aggregateByZone();
+						zoneData.forEach(z => {
+							self.expandedZones[z.zone] = expand;
+							z.regions.forEach(r => {
+								self.expandedRegions[z.zone + "::" + r.region] = expand;
+								r.districts.forEach(d => {
+									self.expandedDistricts[z.zone + "::" + r.region + "::" + d.district] = expand;
+								});
+							});
+						});
+						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+					});
+					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function () {
+						self.refetchData(container, dashboardInstance);
+					});
+				},
+				renderKPI: function(container, dashboardInstance) {
+					const self = this;
+					const data = self.tableData || [];
+					const totalAccounts = data.reduce((s, r) => s + (r.grand_total || 0), 0);
+					const excessCount = data.reduce((s, r) => s + (r.Excess || 0), 0);
+					const aCount = data.reduce((s, r) => s + (r.A || 0), 0);
+					const bCount = data.reduce((s, r) => s + (r.B || 0), 0);
+					const cCount = data.reduce((s, r) => s + (r.C || 0), 0);
+					const dCount = data.reduce((s, r) => s + (r.D || 0), 0);
+					const defaultCount = data.reduce((s, r) => s + (r.DEFAULT || 0), 0);
+
+					const fmtCount = (val) => {
+						if (!val && val !== 0) return "0";
+						const format = dashboardInstance.state.formatMode || "number";
+						if (format === "words") {
+							if (val >= 10000000) return (val / 10000000).toFixed(2) + " Cr";
+							if (val >= 100000) return (val / 100000).toFixed(2) + " L";
+							if (val >= 1000) return (val / 1000).toFixed(2) + " K";
+						}
+						return new Intl.NumberFormat("en-IN").format(val);
+					};
+
+					const kpiCards = [
+						{ label: "Total Accounts", value: fmtCount(totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
+						{ label: "Cat A (75%+)", value: fmtCount(aCount), color: "#06b6d4", bg: "#ecfeff", icon: "🟢" },
+						{ label: "Cat B (50%+)", value: fmtCount(bCount), color: "#f59e0b", bg: "#fffbeb", icon: "🟡" },
+						{ label: "Cat C (25%+)", value: fmtCount(cCount), color: "#f97316", bg: "#fff7ed", icon: "🟠" },
+						{ label: "Cat D (<25%)", value: fmtCount(dCount), color: "#ef4444", bg: "#fef2f2", icon: "🔴" },
+						{ label: "Default", value: fmtCount(defaultCount), color: "#64748b", bg: "#f8fafc", icon: "⏳" },
+						{ label: "Excess (>100%)", value: fmtCount(excessCount), color: "#10b981", bg: "#ecfdf5", icon: "📈" }
+					];
+					container.html(`
+						<style>
+							#mis-kpi-container { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+							#mis-kpi-container .kpi-card { flex: 1 1 180px; min-width: 150px; border-radius: 10px; padding: 16px 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); box-sizing: border-box; min-height: 100px; }
+							#mis-kpi-container .kpi-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+							#mis-kpi-container .kpi-icon { font-size: 20px; flex-shrink: 0; line-height: 1; }
+							#mis-kpi-container .kpi-label { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Inter', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+							#mis-kpi-container .kpi-value { font-size: clamp(18px, 2.2vw, 24px); font-weight: 800; font-family: 'Inter', sans-serif; line-height: 1.2; word-break: break-word; }
+							@media (max-width: 768px) { #mis-kpi-container .kpi-card { flex: 1 1 140px; min-width: 120px; padding: 12px 14px; min-height: 80px; } #mis-kpi-container .kpi-value { font-size: 16px; } }
+							@media (max-width: 480px) { #mis-kpi-container .kpi-card { flex: 1 1 100%; min-width: unset; } }
+						</style>
+						${kpiCards.map(card => `<div class="kpi-card" style="background: ${card.bg}; border-left: 4px solid ${card.color};"><div class="kpi-card-header"><span class="kpi-icon">${card.icon}</span><span class="kpi-label">${card.label}</span></div><div class="kpi-value" style="color: ${card.color};">${card.value}</div></div>`).join('')}
+					`);
+				},
+				refetchData: function(container, dashboardInstance) {
+					const self = this;
+					self.tableData = [];
+					self.expandedZones = {};
+					self.expandedRegions = {};
+					self.expandedDistricts = {};
+					self.checkedRows = {};
+					self.searchTerm = "";
+					self.allExpanded = false;
+					self.selectedMisZones = [];
+					dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
+					self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
+				},
+				switchFormat: function(format, container, dashboardInstance) {
+					const self = this;
+					if (self.tableData && self.tableData.length > 0) {
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+					}
+					self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+				},
+				renderMisTable: function(tableContainer, dashboardInstance) {
+					const self = this;
+					self.renderAnalysisTable(tableContainer, dashboardInstance);
+				},
+				renderZoneFilterTags: function(container, dashboardInstance) {
+					const self = this;
+					if (!self.tableData || self.tableData.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					let zones = [...new Set(self.tableData.map(r => r.zone).filter(Boolean))].sort();
+					if (zones.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					const allSelected = self.selectedMisZones.length === 0;
+					let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
+					html += `<button class="mis-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
+					zones.forEach(zone => {
+						const active = self.selectedMisZones.includes(zone);
+						html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
+					});
+					const $row = container.find("#mis-zone-filter-row");
+					$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
+					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
+						const zone = $(this).data("zone");
+						if (zone === "all") {
+							self.selectedMisZones = [];
+						} else {
+							const idx = self.selectedMisZones.indexOf(zone);
+							if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); }
+						}
+						self.renderZoneFilterTags(container, dashboardInstance);
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+					});
+				},
+				aggregateByZone: function() {
+					const self = this;
+					let data = self.tableData || [];
+					const term = (self.searchTerm || "").trim();
+					if (term) {
+						const terms = term.split(",").map(t => t.trim().toLowerCase()).filter(t => t);
+						data = data.filter(row => {
+							const br = (row.sol_desc || row.sol_id || "").toLowerCase();
+							const id = (row.sol_id || "").toLowerCase();
+							const dt = (row.district || "").toLowerCase();
+							return terms.some(t => br.includes(t) || id.includes(t) || dt.includes(t));
+						});
+					}
+					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+						data = data.filter(row => self.selectedMisZones.includes(row.zone));
+					}
+					const zoneMap = {};
+					data.forEach(row => {
+						const zone = row.zone || "Unknown";
+						const region = row.region || "Unknown";
+						const district = row.district || "Unknown";
+
+						if (!zoneMap[zone]) {
+							zoneMap[zone] = { 
+								zone, 
+								regions: {}, 
+								branches: [], 
+								A: 0, B: 0, C: 0, D: 0, DEFAULT: 0, Excess: 0, grand_total: 0 
+							};
+						}
+						if (!zoneMap[zone].regions[region]) {
+							zoneMap[zone].regions[region] = { 
+								region, 
+								districts: {}, 
+								branches: [], 
+								A: 0, B: 0, C: 0, D: 0, DEFAULT: 0, Excess: 0, grand_total: 0 
+							};
+						}
+						if (!zoneMap[zone].regions[region].districts[district]) {
+							zoneMap[zone].regions[region].districts[district] = {
+								district,
+								branches: [],
+								A: 0, B: 0, C: 0, D: 0, DEFAULT: 0, Excess: 0, grand_total: 0 
+							};
+						}
+
+						zoneMap[zone].branches.push(row);
+						zoneMap[zone].regions[region].branches.push(row);
+						zoneMap[zone].regions[region].districts[district].branches.push(row);
+						
+						// Aggregate metrics
+						["A", "B", "C", "D", "DEFAULT", "Excess", "grand_total"].forEach(k => {
+							zoneMap[zone][k] += (row[k] || 0);
+							zoneMap[zone].regions[region][k] += (row[k] || 0);
+							zoneMap[zone].regions[region].districts[district][k] += (row[k] || 0);
+						});
+					});
+					const sortedZones = Object.keys(zoneMap).sort();
+					const result = [];
+					sortedZones.forEach(zoneName => {
+						const zd = zoneMap[zoneName];
+						const sortedRegions = Object.keys(zd.regions).sort();
+						const regions = sortedRegions.map(rn => {
+							const rd = zd.regions[rn];
+							const sortedDistricts = Object.keys(rd.districts).sort();
+							const districts = sortedDistricts.map(dn => rd.districts[dn]);
+							return { region: rn, data: rd, districts: districts };
+						});
+						result.push({ zone: zoneName, data: zd, regions: regions });
+					});
+					return result;
+				},
+				renderAnalysisTable: function(tableContainer, dashboardInstance) {
+					const self = this;
+					const format = dashboardInstance.state.formatMode || "number";
+					const fmtCount = (val) => {
+						if (!val && val !== 0) return "0";
+						if (format === "words") {
+							if (val >= 10000000) return (val / 10000000).toFixed(2) + " Cr";
+							if (val >= 100000) return (val / 100000).toFixed(2) + " L";
+							if (val >= 1000) return (val / 1000).toFixed(2) + " K";
+						}
+						return new Intl.NumberFormat("en-IN").format(val);
+					};
+
+					const zoneData = self.aggregateByZone();
+					const totalFilteredBranches = zoneData.reduce((s, z) => s + z.data.branches.length, 0);
+					const totalAllBranches = (self.tableData || []).length;
+					const $badge = tableContainer.parent().find("#mis-records-count");
+					$badge.text(totalFilteredBranches + " / " + totalAllBranches + " branches" + (self.searchTerm ? " (filtered)" : ""));
+					if (totalFilteredBranches === totalAllBranches && !self.searchTerm) $badge.hide(); else $badge.show();
+
+					if (!zoneData || zoneData.length === 0) {
+						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600; font-family: \'Inter\', sans-serif;">No data to display.</div>');
+						return;
+					}
+
+					const grandTotal = { A: 0, B: 0, C: 0, D: 0, DEFAULT: 0, Excess: 0, grand_total: 0 };
+					zoneData.forEach(z => {
+						["A", "B", "C", "D", "DEFAULT", "Excess", "grand_total"].forEach(k => {
+							grandTotal[k] += z.data[k];
+						});
+					});
+
+					const buckets = ["A", "B", "C", "D", "DEFAULT", "Excess"];
+
+					let sr = 0;
+					let rowsHtml = "";
+					zoneData.forEach(z => {
+						sr++;
+						const zoneExpanded = self.expandedZones[z.zone];
+						const zoneRow = z.data;
+						const zoneChecked = self.checkedRows["zone::" + z.zone];
+						
+						rowsHtml += `<tr class="mis-zone-row${zoneChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-check-id="zone::${z.zone}" style="cursor: pointer; background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; width: 30px; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="zone::${z.zone}" ${zoneChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; width: 40px; font-size: 14px;">${sr}</td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;"><span class="mis-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>${z.zone}</td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px;">${zoneRow.branches.length}</td>
+							${buckets.map(b => `<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; font-size: 14px;">${fmtCount(zoneRow[b])}</td>`).join('')}
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; font-size: 14px; background: #e2e8f0;">${fmtCount(zoneRow.grand_total)}</td>
+						</tr>`;
+
+						z.regions.forEach(regionObj => {
+							const region = regionObj.region;
+							const regionRow = regionObj.data;
+							const regionKey = z.zone + "::" + region;
+							const regionExpanded = self.expandedRegions[regionKey];
+							const regionChecked = self.checkedRows[regionKey];
+							
+							rowsHtml += `<tr class="mis-region-row${regionChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-check-id="${regionKey}" style="display: ${zoneExpanded ? "table-row" : "none"}; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+								<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${regionKey}" ${regionChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+								<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 24px; font-weight: 600;"><span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${region}</td>
+								<td style="padding: 8px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${regionRow.branches.length}</td>
+								${buckets.map(b => `<td style="padding: 8px 14px; color: #334155; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(regionRow[b])}</td>`).join('')}
+								<td style="padding: 8px 14px; color: #334155; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 700; background: #f1f5f9;">${fmtCount(regionRow.grand_total)}</td>
+							</tr>`;
+
+							regionObj.districts.forEach(districtObj => {
+								const district = districtObj.district;
+								const districtKey = z.zone + "::" + region + "::" + district;
+								const districtExpanded = self.expandedDistricts[districtKey];
+								const districtChecked = self.checkedRows[districtKey];
+								const showDistrict = zoneExpanded && regionExpanded;
+
+								rowsHtml += `<tr class="mis-district-row${districtChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${districtKey}" style="display: ${showDistrict ? "table-row" : "none"}; cursor: pointer; background: #fafaf9; border-bottom: 1px solid #e7e5e4;">
+									<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${districtKey}" ${districtChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+									<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}</td>
+									<td style="padding: 8px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${districtObj.branches.length}</td>
+									${buckets.map(b => `<td style="padding: 8px 14px; color: #44403c; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(districtObj[b])}</td>`).join('')}
+									<td style="padding: 8px 14px; color: #44403c; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 700; background: #f5f5f4;">${fmtCount(districtObj.grand_total)}</td>
+								</tr>`;
+
+								districtObj.branches.forEach((branch, bi) => {
+									const showBranch = zoneExpanded && regionExpanded && districtExpanded;
+									const branchBg = bi % 2 === 0 ? "#ffffff" : "#f1f5f9";
+									const solId = branch.sol_id || "branch_" + bi;
+									const branchChecked = self.checkedRows[solId];
+									
+									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${solId}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0;">
+										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${solId}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 500;">${branch.sol_id} - ${branch.sol_desc || branch.branch_name}</td>
+										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
+										${buckets.map(b => `<td style="padding: 6px 14px; color: #475569; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(branch[b])}</td>`).join('')}
+										<td style="padding: 6px 14px; color: #475569; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 700; background: #f8fafc;">${fmtCount(branch.grand_total)}</td>
+									</tr>`;
+								});
+							});
+						});
+					});
+
+					const tableHtml = `
+						<style>
+							#mis-analysis-table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; }
+							#mis-analysis-table thead { position: sticky; top: 0; z-index: 2; }
+							#mis-analysis-table tfoot { position: sticky; bottom: 0; z-index: 2; }
+							#mis-analysis-table tfoot tr { box-shadow: 0 -2px 6px rgba(0,0,0,0.1); }
+							#mis-analysis-table tbody tr { transition: background-color 0.2s ease; border-bottom: 1px solid #e2e8f0; }
+							#mis-analysis-table tbody tr:hover { background: #dcfce7 !important; }
+							#mis-analysis-table tbody tr.mis-row-checked { background: #bbf7d0 !important; }
+							#mis-analysis-table tbody tr.mis-zone-row.mis-row-checked,
+							#mis-analysis-table tbody tr.mis-region-row.mis-row-checked,
+							#mis-analysis-table tbody tr.mis-district-row.mis-row-checked,
+							#mis-analysis-table tbody tr.mis-branch-row.mis-row-checked { background: #86efac !important; }
+							#mis-scroll-area { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
+						</style>
+						<div id="mis-scroll-area">
+							<table id="mis-analysis-table">
+								<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / District / Branch</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">Branches</th>
+									${buckets.map(b => `<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">${b}</th>`).join('')}
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">Grand Total</th>
+								</tr></thead>
+								<tbody>${rowsHtml}</tbody>
+								<tfoot><tr style="background: #1e293b; color: #ffffff; font-weight: 700;">
+									<td style="padding: 10px 12px; text-align: center;"></td>
+									<td style="padding: 10px 12px; text-align: center;"></td>
+									<td style="padding: 10px 12px; text-align: left; white-space: nowrap; font-size: 14px;">TOTAL</td>
+									<td style="padding: 10px 12px; text-align: center; white-space: nowrap; font-size: 14px;">${zoneData.reduce((s, z) => s + z.data.branches.length, 0)}</td>
+									${buckets.map(b => `<td style="padding: 10px 12px; text-align: center; white-space: nowrap; font-size: 14px;">${fmtCount(grandTotal[b])}</td>`).join('')}
+									<td style="padding: 10px 12px; text-align: center; white-space: nowrap; font-size: 14px;">${fmtCount(grandTotal.grand_total)}</td>
+								</tr></tfoot>
+							</table>
+						</div>`;
+					tableContainer.html(tableHtml);
+
+					tableContainer.off("click", ".mis-zone-row").on("click", ".mis-zone-row", function (e) {
+						if ($(e.target).closest(".mis-region-toggle, .mis-region-row, input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						self.expandedZones[zone] = !self.expandedZones[zone];
+						const show = self.expandedZones[zone];
+						const $regionRows = tableContainer.find(`.mis-region-row[data-zone="${zone}"]`);
+						const $districtRows = tableContainer.find(`.mis-district-row[data-zone="${zone}"]`);
+						const $branchRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"]`);
+						if (show) {
+							$regionRows.stop(true, true).slideDown(200);
+							$regionRows.each(function () {
+								const r = $(this).data("region");
+								const rKey = zone + "::" + r;
+								if (self.expandedRegions[rKey]) {
+									tableContainer.find(`.mis-district-row[data-zone="${zone}"][data-region="${r}"]`).stop(true, true).slideDown(200);
+									$districtRows.each(function () {
+										const d = $(this).data("district");
+										const dKey = zone + "::" + r + "::" + d;
+										if (self.expandedDistricts[dKey]) {
+											tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${r}"][data-district="${d}"]`).stop(true, true).slideDown(200);
+										}
+									});
+								}
+							});
+						} else {
+							$branchRows.stop(true, true).slideUp(150);
+							$districtRows.stop(true, true).slideUp(150);
+							$regionRows.stop(true, true).slideUp(200);
+						}
+						$(this).find(".mis-zone-toggle").text(show ? "▼" : "▶");
+					});
+
+					tableContainer.off("click", ".mis-region-row").on("click", ".mis-region-row", function (e) {
+						if ($(e.target).closest(".mis-district-toggle, .mis-district-row, input[type=checkbox]").length) return;
+						e.stopPropagation();
+						const zone = $(this).data("zone");
+						const region = $(this).data("region");
+						const regionKey = zone + "::" + region;
+						self.expandedRegions[regionKey] = !self.expandedRegions[regionKey];
+						const show = self.expandedRegions[regionKey];
+						const $districtRows = tableContainer.find(`.mis-district-row[data-zone="${zone}"][data-region="${region}"]`);
+						const $branchRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"]`);
+						if (show) {
+							$districtRows.stop(true, true).slideDown(200);
+							$districtRows.each(function () {
+								const d = $(this).data("district");
+								const dKey = zone + "::" + region + "::" + d;
+								if (self.expandedDistricts[dKey]) {
+									tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"][data-district="${d}"]`).stop(true, true).slideDown(200);
+								}
+							});
+						} else {
+							$branchRows.stop(true, true).slideUp(150);
+							$districtRows.stop(true, true).slideUp(200);
+						}
+						$(this).find(".mis-region-toggle").text(show ? "▼" : "▶");
+					});
+
+					tableContainer.off("click", ".mis-district-row").on("click", ".mis-district-row", function (e) {
+						if ($(e.target).is("input[type=checkbox]")) return;
+						e.stopPropagation();
+						const zone = $(this).data("zone");
+						const region = $(this).data("region");
+						const district = $(this).data("district");
+						const districtKey = zone + "::" + region + "::" + district;
+						self.expandedDistricts[districtKey] = !self.expandedDistricts[districtKey];
+						const show = self.expandedDistricts[districtKey];
+						const $branchRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"][data-district="${district}"]`);
+						if (show) { 
+							$branchRows.stop(true, true).slideDown(200); 
+						} else { 
+							$branchRows.stop(true, true).slideUp(150); 
+						}
+						$(this).find(".mis-district-toggle").text(show ? "▼" : "▶");
+					});
+
+					tableContainer.off("change", ".mis-row-check").on("change", ".mis-row-check", function () {
+						const checkId = $(this).data("check-id");
+						const checked = $(this).prop("checked");
+						self.checkedRows[checkId] = checked;
+						$(this).closest("tr").toggleClass("mis-row-checked", checked);
+					});
+
+					tableContainer.off("change", ".mis-check-all").on("change", ".mis-check-all", function () {
+						const checked = $(this).prop("checked");
+						tableContainer.find(".mis-row-check").each(function () {
+							$(this).prop("checked", checked).trigger("change");
+						});
+					});
+				},
+			},
+			{	id: "new_account_report",
+				name: "New Account Report",
+				tableData: [],
+				expandedZones: {},
+				expandedRegions: {},
+				expandedDistricts: {},
+				expandedBranches: {},
+				checkedRows: {},
+				searchTerm: "",
+				allExpanded: false,
+				selectedMisZones: [],
+				render: function(container, dashboardInstance, seq) {
+					const self = this;
+					container.html(`
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="text" id="mis-search" placeholder="Search branch, SOL ID, district or authorizer..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
+							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
+								<div class="btn-group mis-format-toggle" role="group">
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+								</div>
+							</div>
+							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="mis-records-count"></div>
+						</div>
+						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
+							${dashboardInstance.buildMisSkeletonTable("Loading New Account Report...")}
+						</div>
+						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
+						<div id="mis-kpi-container" ${self.tableData && self.tableData.length ? "" : 'style="display: none;"'}></div>
+						<div id="mis-table-container" ${self.tableData ? "" : 'style="display: none;"'}></div>
+					`);
+
+					if (self.tableData && self.tableData.length > 0) {
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+						container.find("#mis-records-count").text(`${self.tableData.length} records`);
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderZoneFilterTags(container, dashboardInstance);
+						container.find("#mis-controls, #mis-table-container, #mis-kpi-container").show();
+						container.find("#mis-loading").hide();
+						self.attachReportEventHandlers(container, dashboardInstance);
+						return;
+					}
+
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_new_account_report_data",
+						args: { selected_date: dashboardInstance.state.selectedDate },
+						callback: function(r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
+							container.find("#mis-loading").hide();
+							if (r.message && r.message.length) {
+								self.tableData = r.message;
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+								container.find("#mis-records-count").text(`${r.message.length} records`);
+								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderZoneFilterTags(container, dashboardInstance);
+							}
+							container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+						}
+					});
+					self.attachReportEventHandlers(container, dashboardInstance);
+				},
+				attachReportEventHandlers: function(container, dashboardInstance) {
+					const self = this;
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
+						const format = $(this).data("format");
+						dashboardInstance.state.formatMode = format;
+						container.find(".mis-format-btn").each(function () {
+							const btn = $(this);
+							const isActive = btn.data("format") === format;
+							btn.css("background", isActive ? "#417d81" : "#e2e8f0");
+							btn.css("color", isActive ? "white" : "#475569");
+						});
+						if (self.tableData && self.tableData.length > 0) {
+							self.switchFormat(format, container, dashboardInstance);
+						}
+					});
+					let searchTimeout;
+					container.off("input", "#mis-search").on("input", "#mis-search", function () {
+						clearTimeout(searchTimeout);
+						searchTimeout = setTimeout(() => {
+							self.searchTerm = $(this).val().toLowerCase().trim();
+							if (self.tableData) {
+								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+							}
+						}, 300);
+					});
+					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function () {
+						self.allExpanded = !self.allExpanded;
+						const expand = self.allExpanded;
+						if (!self.tableData) return;
+						const zoneData = self.aggregateByZone();
+						zoneData.forEach(z => {
+							self.expandedZones[z.zone] = expand;
+							z.regions.forEach(r => {
+								self.expandedRegions[z.zone + "::" + r.region] = expand;
+								r.districts.forEach(d => {
+									self.expandedDistricts[z.zone + "::" + r.region + "::" + d.district] = expand;
+									d.branches.forEach(b => {
+										self.expandedBranches[z.zone + "::" + r.region + "::" + d.district + "::" + b.sol_id] = expand;
+									});
+								});
+							});
+						});
+						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+					});
+					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function () {
+						self.refetchData(container, dashboardInstance);
+					});
+				},
+				renderKPI: function(container, dashboardInstance) {
+					const self = this;
+					const data = self.tableData || [];
+					const totalNewAccounts = data.reduce((s, r) => s + (parseInt(r.new_ac) || 0), 0);
+					const totalDepositAmount = data.reduce((s, r) => s + (parseFloat(r.deposit_amount) || 0.0), 0.0);
+					const avgDeposit = totalNewAccounts > 0 ? (totalDepositAmount / totalNewAccounts) : 0.0;
+					const activeBranches = [...new Set(data.map(r => r.sol_id).filter(Boolean))].length;
+					const activeAuthorizers = [...new Set(data.map(r => r.auth_id).filter(Boolean))].length;
+
+					const fmtCount = (val) => {
+						if (!val && val !== 0) return "0";
+						const format = dashboardInstance.state.formatMode || "number";
+						if (format === "words") {
+							if (val >= 10000000) return (val / 10000000).toFixed(2) + " Cr";
+							if (val >= 100000) return (val / 100000).toFixed(2) + " L";
+							if (val >= 1000) return (val / 1000).toFixed(2) + " K";
+						}
+						return new Intl.NumberFormat("en-IN").format(val);
+					};
+
+					const fmtAmt = (val) => {
+						if (val === null || val === undefined) return "-";
+						const n = parseFloat(val);
+						if (isNaN(n)) return val;
+						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+					};
+
+					const kpiCards = [
+						{ label: "New Accounts", value: fmtCount(totalNewAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
+						{ label: "Total Deposit Amt", value: fmtAmt(totalDepositAmount), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
+						{ label: "Avg Deposit/Ac", value: fmtAmt(avgDeposit), color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
+						{ label: "Active Branches", value: fmtCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
+						{ label: "Active Authorizers", value: fmtCount(activeAuthorizers), color: "#f97316", bg: "#fff7ed", icon: "👥" }
+					];
+
+					container.html(`
+						<style>
+							#new-ac-kpi-container { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+							#new-ac-kpi-container .kpi-card { flex: 1 1 180px; min-width: 150px; border-radius: 10px; padding: 16px 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); box-sizing: border-box; min-height: 100px; }
+							#new-ac-kpi-container .kpi-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+							#new-ac-kpi-container .kpi-icon { font-size: 20px; flex-shrink: 0; line-height: 1; }
+							#new-ac-kpi-container .kpi-label { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Inter', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+							#new-ac-kpi-container .kpi-value { font-size: clamp(18px, 2.2vw, 24px); font-weight: 800; font-family: 'Inter', sans-serif; line-height: 1.2; word-break: break-word; }
+							@media (max-width: 768px) { #new-ac-kpi-container .kpi-card { flex: 1 1 140px; min-width: 120px; padding: 12px 14px; min-height: 80px; } #new-ac-kpi-container .kpi-value { font-size: 16px; } }
+							@media (max-width: 480px) { #new-ac-kpi-container .kpi-card { flex: 1 1 100%; min-width: unset; } }
+						</style>
+						<div id="new-ac-kpi-container">
+							${kpiCards.map(card => `<div class="kpi-card" style="background: ${card.bg}; border-left: 4px solid ${card.color};"><div class="kpi-card-header"><span class="kpi-icon">${card.icon}</span><span class="kpi-label">${card.label}</span></div><div class="kpi-value" style="color: ${card.color};">${card.value}</div></div>`).join('')}
+						</div>
+					`);
+				},
+				refetchData: function(container, dashboardInstance) {
+					const self = this;
+					self.tableData = [];
+					self.expandedZones = {};
+					self.expandedRegions = {};
+					self.expandedDistricts = {};
+					self.expandedBranches = {};
+					self.checkedRows = {};
+					self.searchTerm = "";
+					self.allExpanded = false;
+					self.selectedMisZones = [];
+					dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
+					self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
+				},
+				switchFormat: function(format, container, dashboardInstance) {
+					const self = this;
+					if (self.tableData && self.tableData.length > 0) {
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+					}
+					self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+				},
+				renderZoneFilterTags: function(container, dashboardInstance) {
+					const self = this;
+					if (!self.tableData || self.tableData.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					let zones = [...new Set(self.tableData.map(r => r.zone).filter(Boolean))].sort();
+					if (zones.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					const allSelected = self.selectedMisZones.length === 0;
+					let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
+					html += `<button class="mis-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
+					zones.forEach(zone => {
+						const active = self.selectedMisZones.includes(zone);
+						html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
+					});
+					const $row = container.find("#mis-zone-filter-row");
+					$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
+					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
+						const zone = $(this).data("zone");
+						if (zone === "all") {
+							self.selectedMisZones = [];
+						} else {
+							const idx = self.selectedMisZones.indexOf(zone);
+							if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); }
+						}
+						self.renderZoneFilterTags(container, dashboardInstance);
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+					});
+				},
+				aggregateByZone: function() {
+					const self = this;
+					let data = self.tableData || [];
+					const term = (self.searchTerm || "").trim().toLowerCase();
+					if (term) {
+						data = data.filter(row => {
+							const zone = (row.zone || "").toLowerCase();
+							const region = (row.region || "").toLowerCase();
+							const district = (row.district || "").toLowerCase();
+							const sol = (row.sol_desc || row.sol_id || "").toLowerCase();
+							const solId = (row.sol_id || "").toLowerCase();
+							const authId = (row.auth_id || "").toLowerCase();
+							const authName = (row.auth_name || "").toLowerCase();
+							const designation = (row.designation || "").toLowerCase();
+							return zone.includes(term) || region.includes(term) || district.includes(term) || sol.includes(term) || solId.includes(term) || authId.includes(term) || authName.includes(term) || designation.includes(term);
+						});
+					}
+					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+						data = data.filter(row => self.selectedMisZones.includes(row.zone));
+					}
+					const zoneMap = {};
+					data.forEach(row => {
+						const zone = row.zone || "Unknown";
+						const region = row.region || "Unknown";
+						const district = row.district || "Unknown";
+						const solId = row.sol_id || "Unknown";
+						const solDesc = row.sol_desc || row.sol_id || "Unknown";
+						
+						if (!zoneMap[zone]) {
+							zoneMap[zone] = { zone, regions: {}, new_ac: 0, deposit_amount: 0.0, branches_count: new Set() };
+						}
+						if (!zoneMap[zone].regions[region]) {
+							zoneMap[zone].regions[region] = { region, districts: {}, new_ac: 0, deposit_amount: 0.0, branches_count: new Set() };
+						}
+						if (!zoneMap[zone].regions[region].districts[district]) {
+							zoneMap[zone].regions[region].districts[district] = { district, branches: {}, new_ac: 0, deposit_amount: 0.0 };
+						}
+						if (!zoneMap[zone].regions[region].districts[district].branches[solId]) {
+							zoneMap[zone].regions[region].districts[district].branches[solId] = { 
+								sol_id: solId, 
+								sol_desc: solDesc, 
+								authorizers: [], 
+								new_ac: 0, 
+								deposit_amount: 0.0 
+							};
+						}
+						
+						const branchObj = zoneMap[zone].regions[region].districts[district].branches[solId];
+						branchObj.authorizers.push(row);
+						
+						const new_ac = parseInt(row.new_ac || 0);
+						const dep_amt = parseFloat(row.deposit_amount || 0);
+						
+						branchObj.new_ac += new_ac;
+						branchObj.deposit_amount += dep_amt;
+						
+						zoneMap[zone].regions[region].districts[district].new_ac += new_ac;
+						zoneMap[zone].regions[region].districts[district].deposit_amount += dep_amt;
+						
+						zoneMap[zone].regions[region].new_ac += new_ac;
+						zoneMap[zone].regions[region].deposit_amount += dep_amt;
+						zoneMap[zone].regions[region].branches_count.add(solId);
+						
+						zoneMap[zone].new_ac += new_ac;
+						zoneMap[zone].deposit_amount += dep_amt;
+						zoneMap[zone].branches_count.add(solId);
+					});
+					
+					const sortedZones = Object.keys(zoneMap).sort();
+					const result = [];
+					sortedZones.forEach(zoneName => {
+						const zd = zoneMap[zoneName];
+						const sortedRegions = Object.keys(zd.regions).sort();
+						const regions = sortedRegions.map(rn => {
+							const rd = zd.regions[rn];
+							const sortedDistricts = Object.keys(rd.districts).sort();
+							const districts = sortedDistricts.map(dn => {
+								const dd = rd.districts[dn];
+								const sortedBranches = Object.keys(dd.branches).sort();
+								const branches = sortedBranches.map(bn => dd.branches[bn]);
+								return { district: dn, data: dd, branches: branches };
+							});
+							return { region: rn, data: rd, districts: districts };
+						});
+						result.push({ zone: zoneName, data: zd, regions: regions });
+					});
+					return result;
+				},
+				renderMisTable: function(tableContainer, dashboardInstance) {
+					const self = this;
+					const format = dashboardInstance.state.formatMode || "number";
+					const fmtCount = (val) => {
+						if (!val && val !== 0) return "0";
+						if (format === "words") {
+							if (val >= 10000000) return (val / 10000000).toFixed(2) + " Cr";
+							if (val >= 100000) return (val / 100000).toFixed(2) + " L";
+							if (val >= 1000) return (val / 1000).toFixed(2) + " K";
+						}
+						return new Intl.NumberFormat("en-IN").format(val);
+					};
+
+					const fmtAmt = (val) => {
+						if (val === null || val === undefined) return "-";
+						const n = parseFloat(val);
+						if (isNaN(n)) return val;
+						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+					};
+
+					const zoneData = self.aggregateByZone();
+					const totalFilteredNewAc = zoneData.reduce((s, z) => s + z.data.new_ac, 0);
+					const totalAllNewAc = (self.tableData || []).reduce((s, r) => s + (parseInt(r.new_ac) || 0), 0);
+					const $badge = tableContainer.parent().find("#mis-records-count");
+					$badge.text(totalFilteredNewAc + " / " + totalAllNewAc + " accounts" + (self.searchTerm ? " (filtered)" : ""));
+					if (totalFilteredNewAc === totalAllNewAc && !self.searchTerm) $badge.hide(); else $badge.show();
+
+					if (!zoneData || zoneData.length === 0) {
+						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600; font-family: \'Inter\', sans-serif;">No data to display.</div>');
+						return;
+					}
+
+					const grandTotal = { new_ac: 0, deposit_amount: 0.0 };
+					zoneData.forEach(z => {
+						grandTotal.new_ac += z.data.new_ac;
+						grandTotal.deposit_amount += z.data.deposit_amount;
+					});
+
+					let sr = 0;
+					let rowsHtml = "";
+					zoneData.forEach(z => {
+						sr++;
+						const zoneExpanded = self.expandedZones[z.zone];
+						const zoneRow = z.data;
+						const zoneChecked = self.checkedRows["zone::" + z.zone];
+						
+						rowsHtml += `<tr class="mis-zone-row${zoneChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-check-id="zone::${z.zone}" style="cursor: pointer; background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
+							<td style="padding: 10px 14px; text-align: center; white-space: nowrap; width: 30px; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="zone::${z.zone}" ${zoneChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; width: 40px; font-size: 14px;">${sr}</td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;"><span class="mis-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>${z.zone}</td>
+							<td></td>
+							<td></td>
+							<td></td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px;">${fmtCount(zoneRow.new_ac)}</td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: right; white-space: nowrap; font-size: 14px; background: #e2e8f0;">${fmtAmt(zoneRow.deposit_amount)}</td>
+						</tr>`;
+
+						z.regions.forEach(regionObj => {
+							const region = regionObj.region;
+							const regionRow = regionObj.data;
+							const regionKey = z.zone + "::" + region;
+							const regionExpanded = self.expandedRegions[regionKey];
+							const regionChecked = self.checkedRows[regionKey];
+							
+							rowsHtml += `<tr class="mis-region-row${regionChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-check-id="${regionKey}" style="display: ${zoneExpanded ? "table-row" : "none"}; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+								<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${regionKey}" ${regionChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+								<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 24px; font-weight: 600;"><span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${region}</td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td style="padding: 8px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtCount(regionRow.new_ac)}</td>
+								<td style="padding: 8px 14px; color: #334155; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 700; background: #f1f5f9;">${fmtAmt(regionRow.deposit_amount)}</td>
+							</tr>`;
+
+							regionObj.districts.forEach(districtObj => {
+								const district = districtObj.district;
+								const districtKey = z.zone + "::" + region + "::" + district;
+								const districtExpanded = self.expandedDistricts[districtKey];
+								const districtChecked = self.checkedRows[districtKey];
+								const showDistrict = zoneExpanded && regionExpanded;
+
+								rowsHtml += `<tr class="mis-district-row${districtChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${districtKey}" style="display: ${showDistrict ? "table-row" : "none"}; cursor: pointer; background: #fafaf9; border-bottom: 1px solid #e7e5e4;">
+									<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${districtKey}" ${districtChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+									<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}</td>
+									<td></td>
+									<td></td>
+									<td></td>
+									<td style="padding: 8px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtCount(districtObj.data.new_ac)}</td>
+									<td style="padding: 8px 14px; color: #44403c; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 700; background: #f5f5f4;">${fmtAmt(districtObj.data.deposit_amount)}</td>
+								</tr>`;
+
+								districtObj.branches.forEach((branch, bnIndex) => {
+									const branchKey = districtKey + "::" + branch.sol_id;
+									const branchExpanded = self.expandedBranches[branchKey];
+									const branchChecked = self.checkedRows[branchKey];
+									const showBranch = zoneExpanded && regionExpanded && districtExpanded;
+
+									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-branch="${branch.sol_id}" data-check-id="${branchKey}" style="display: ${showBranch ? "table-row" : "none"}; cursor: pointer; background: #ffffff; border-bottom: 1px solid #e2e8f0;">
+										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${branchKey}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 600;"><span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${branchExpanded ? "▼" : "▶"}</span>${branch.sol_id} - ${branch.sol_desc}</td>
+										<td></td>
+										<td></td>
+										<td></td>
+										<td style="padding: 6px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtCount(branch.new_ac)}</td>
+										<td style="padding: 6px 14px; color: #475569; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 700; background: #f8fafc;">${fmtAmt(branch.deposit_amount)}</td>
+									</tr>`;
+
+									branch.authorizers.forEach((auth, ai) => {
+										const showAuth = zoneExpanded && regionExpanded && districtExpanded && branchExpanded;
+										const authBg = ai % 2 === 0 ? "#fafafa" : "#f5f5f5";
+										const authKey = branchKey + "::" + auth.auth_id;
+										const authChecked = self.checkedRows[authKey];
+										
+										rowsHtml += `<tr class="mis-auth-row${authChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-branch="${branch.sol_id}" data-check-id="${authKey}" style="display: ${showAuth ? "table-row" : "none"}; background: ${authBg}; border-bottom: 1px solid #f1f5f9;">
+											<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${authKey}" ${authChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+											<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+											<td style="padding: 6px 14px; color: #94a3b8; white-space: nowrap; font-size: 14px; padding-left: 78px; font-weight: 500;">└─</td>
+											<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${auth.auth_id}</td>
+											<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${auth.auth_name}</td>
+											<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${auth.designation || ""}</td>
+											<td style="padding: 6px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(auth.new_ac)}</td>
+											<td style="padding: 6px 14px; color: #64748b; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(auth.deposit_amount)}</td>
+										</tr>`;
+									});
+								});
+							});
+						});
+					});
+
+					const tableHtml = `
+						<style>
+							#mis-new-ac-table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; }
+							#mis-new-ac-table thead { position: sticky; top: 0; z-index: 2; }
+							#mis-new-ac-table tfoot { position: sticky; bottom: 0; z-index: 2; }
+							#mis-new-ac-table tfoot tr { box-shadow: 0 -2px 6px rgba(0,0,0,0.1); }
+							#mis-new-ac-table tbody tr { transition: background-color 0.2s ease; border-bottom: 1px solid #e2e8f0; }
+							#mis-new-ac-table tbody tr:hover { background: #dcfce7 !important; }
+							#mis-new-ac-table tbody tr.mis-row-checked { background: #bbf7d0 !important; }
+							#mis-new-ac-table tbody tr.mis-zone-row.mis-row-checked,
+							#mis-new-ac-table tbody tr.mis-region-row.mis-row-checked,
+							#mis-new-ac-table tbody tr.mis-district-row.mis-row-checked,
+							#mis-new-ac-table tbody tr.mis-branch-row.mis-row-checked,
+							#mis-new-ac-table tbody tr.mis-auth-row.mis-row-checked { background: #86efac !important; }
+							#mis-scroll-area { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
+						</style>
+						<div id="mis-scroll-area">
+							<table id="mis-new-ac-table">
+								<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / District / Branch</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 120px;">Auth ID</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 180px;">Auth Name</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 150px;">Designation</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 120px;">New Ac</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 180px;">Deposit Amount</th>
+								</tr></thead>
+								<tbody>${rowsHtml}</tbody>
+								<tfoot><tr style="background: #1e293b; color: #ffffff; font-weight: 700;">
+									<td style="padding: 10px 12px; text-align: center;"></td>
+									<td style="padding: 10px 12px; text-align: center;"></td>
+									<td style="padding: 10px 12px; text-align: left; white-space: nowrap; font-size: 14px;">TOTAL</td>
+									<td></td>
+									<td></td>
+									<td></td>
+									<td style="padding: 10px 12px; text-align: center; white-space: nowrap; font-size: 14px;">${fmtCount(grandTotal.new_ac)}</td>
+									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(grandTotal.deposit_amount)}</td>
+								</tr></tfoot>
+							</table>
+						</div>`;
+					tableContainer.html(tableHtml);
+
+					// Attach folding handlers
+					tableContainer.off("click", ".mis-zone-row").on("click", ".mis-zone-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						self.expandedZones[zone] = !self.expandedZones[zone];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".mis-region-row").on("click", ".mis-region-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						const region = $(this).data("region");
+						const key = zone + "::" + region;
+						self.expandedRegions[key] = !self.expandedRegions[key];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".mis-district-row").on("click", ".mis-district-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						const region = $(this).data("region");
+						const district = $(this).data("district");
+						const key = zone + "::" + region + "::" + district;
+						self.expandedDistricts[key] = !self.expandedDistricts[key];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".mis-branch-row").on("click", ".mis-branch-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						const region = $(this).data("region");
+						const district = $(this).data("district");
+						const branch = $(this).data("branch");
+						const key = zone + "::" + region + "::" + district + "::" + branch;
+						self.expandedBranches[key] = !self.expandedBranches[key];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					// Attach checkbox handlers
+					tableContainer.off("change", ".mis-row-check").on("change", ".mis-row-check", function () {
+						const checkId = $(this).data("check-id");
+						const checked = $(this).prop("checked");
+						self.checkedRows[checkId] = checked;
+						const tr = $(this).closest("tr");
+						if (checked) tr.addClass("mis-row-checked"); else tr.removeClass("mis-row-checked");
+					});
+
+					tableContainer.off("change", ".mis-check-all").on("change", ".mis-check-all", function () {
+						const checked = $(this).prop("checked");
+						tableContainer.find(".mis-row-check").each(function () {
+							$(this).prop("checked", checked).trigger("change");
+						});
+					});
+				}
+			},
+			{	id: "staff_wise_demand_collection",
+				name: "Staff Wise Demand Vs Collection Report",
+				tableData: [],
+				expandedZones: {},
+				expandedRegions: {},
+				expandedDistricts: {},
+				expandedBranches: {},
+				checkedRows: {},
+				searchTerm: "",
+				allExpanded: false,
+				selectedMisZones: [],
+				render: function(container, dashboardInstance, seq) {
+					const self = this;
+					container.html(`
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="text" id="mis-search" placeholder="Search branch, SOL ID, district or authorizer..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
+							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
+								<div class="btn-group mis-format-toggle" role="group">
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+								</div>
+							</div>
+							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="mis-records-count"></div>
+						</div>
+						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
+							${dashboardInstance.buildMisSkeletonTable("Loading Staff Wise Demand Vs Collection...")}
+						</div>
+						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
+						<div id="mis-kpi-container" ${self.tableData && self.tableData.length ? "" : 'style="display: none;"'}></div>
+						<div id="mis-table-container" ${self.tableData ? "" : 'style="display: none;"'}></div>
+					`);
+
+					if (self.tableData && self.tableData.length > 0) {
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+						container.find("#mis-records-count").text(`${self.tableData.length} records`);
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderZoneFilterTags(container, dashboardInstance);
+						container.find("#mis-controls, #mis-table-container, #mis-kpi-container").show();
+						container.find("#mis-loading").hide();
+						self.attachReportEventHandlers(container, dashboardInstance);
+						return;
+					}
+
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_staff_wise_demand_collection_data",
+						args: { selected_date: dashboardInstance.state.selectedDate },
+						callback: function(r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
+							container.find("#mis-loading").hide();
+							if (r.message && r.message.length) {
+								self.tableData = r.message;
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+								container.find("#mis-records-count").text(`${r.message.length} records`);
+								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderZoneFilterTags(container, dashboardInstance);
+							}
+							container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+						}
+					});
+					self.attachReportEventHandlers(container, dashboardInstance);
+				},
+				attachReportEventHandlers: function(container, dashboardInstance) {
+					const self = this;
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
+						const format = $(this).data("format");
+						dashboardInstance.state.formatMode = format;
+						container.find(".mis-format-btn").each(function () {
+							const btn = $(this);
+							const isActive = btn.data("format") === format;
+							btn.css("background", isActive ? "#417d81" : "#e2e8f0");
+							btn.css("color", isActive ? "white" : "#475569");
+						});
+						if (self.tableData && self.tableData.length > 0) {
+							self.switchFormat(format, container, dashboardInstance);
+						}
+					});
+					let searchTimeout;
+					container.off("input", "#mis-search").on("input", "#mis-search", function () {
+						clearTimeout(searchTimeout);
+						searchTimeout = setTimeout(() => {
+							self.searchTerm = $(this).val().toLowerCase().trim();
+							if (self.tableData) {
+								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+							}
+						}, 300);
+					});
+					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function () {
+						self.allExpanded = !self.allExpanded;
+						const expand = self.allExpanded;
+						if (!self.tableData) return;
+						const zoneData = self.aggregateByZone();
+						zoneData.forEach(z => {
+							self.expandedZones[z.zone] = expand;
+							z.regions.forEach(r => {
+								self.expandedRegions[z.zone + "::" + r.region] = expand;
+								r.districts.forEach(d => {
+									self.expandedDistricts[z.zone + "::" + r.region + "::" + d.district] = expand;
+									d.branches.forEach(b => {
+										self.expandedBranches[z.zone + "::" + r.region + "::" + d.district + "::" + b.sol_id] = expand;
+									});
+								});
+							});
+						});
+						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+					});
+					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function () {
+						self.refetchData(container, dashboardInstance);
+					});
+				},
+				renderKPI: function(container, dashboardInstance) {
+					const self = this;
+					const data = self.tableData || [];
+					const totalDemand = data.reduce((s, r) => s + (parseFloat(r.monthly_demand_amount) || 0.0), 0.0);
+					const totalCollection = data.reduce((s, r) => s + (parseFloat(r.monthly_collection) || 0.0), 0.0);
+					const overallPct = totalDemand > 0 ? ((totalCollection / totalDemand) * 100).toFixed(2) + "%" : "0.00%";
+					const activeBranches = [...new Set(data.map(r => r.sol_id).filter(Boolean))].length;
+					const activeAuthorizers = [...new Set(data.map(r => r.auth_id).filter(Boolean))].length;
+
+					const fmtAmt = (val) => {
+						if (val === null || val === undefined) return "-";
+						const n = parseFloat(val);
+						if (isNaN(n)) return val;
+						const format = dashboardInstance.state.formatMode || "number";
+						if (format === "words") {
+							if (n >= 10000000) return "₹ " + (n / 10000000).toFixed(2) + " Cr";
+							if (n >= 100000) return "₹ " + (n / 100000).toFixed(2) + " L";
+							if (n >= 1000) return "₹ " + (n / 1000).toFixed(2) + " K";
+						}
+						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+					};
+
+					const fmtCount = (val) => {
+						return new Intl.NumberFormat("en-IN").format(val);
+					};
+
+					const kpiCards = [
+						{ label: "Total Demand", value: fmtAmt(totalDemand), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
+						{ label: "Total Collection", value: fmtAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
+						{ label: "Collection %", value: overallPct, color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
+						{ label: "Active Branches", value: fmtCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
+						{ label: "Active Authorizers", value: fmtCount(activeAuthorizers), color: "#f97316", bg: "#fff7ed", icon: "👥" }
+					];
+
+					container.html(`
+						<style>
+							#demand-coll-kpi-container { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+							#demand-coll-kpi-container .kpi-card { flex: 1 1 180px; min-width: 150px; border-radius: 10px; padding: 16px 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); box-sizing: border-box; min-height: 100px; }
+							#demand-coll-kpi-container .kpi-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+							#demand-coll-kpi-container .kpi-icon { font-size: 20px; flex-shrink: 0; line-height: 1; }
+							#demand-coll-kpi-container .kpi-label { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Inter', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+							#demand-coll-kpi-container .kpi-value { font-size: clamp(18px, 2.2vw, 24px); font-weight: 800; font-family: 'Inter', sans-serif; line-height: 1.2; word-break: break-word; }
+							@media (max-width: 768px) { #demand-coll-kpi-container .kpi-card { flex: 1 1 140px; min-width: 120px; padding: 12px 14px; min-height: 80px; } #demand-coll-kpi-container .kpi-value { font-size: 16px; } }
+							@media (max-width: 480px) { #demand-coll-kpi-container .kpi-card { flex: 1 1 100%; min-width: unset; } }
+						</style>
+						<div id="demand-coll-kpi-container">
+							${kpiCards.map(card => `<div class="kpi-card" style="background: ${card.bg}; border-left: 4px solid ${card.color};"><div class="kpi-card-header"><span class="kpi-icon">${card.icon}</span><span class="kpi-label">${card.label}</span></div><div class="kpi-value" style="color: ${card.color};">${card.value}</div></div>`).join('')}
+						</div>
+					`);
+				},
+				refetchData: function(container, dashboardInstance) {
+					const self = this;
+					self.tableData = [];
+					self.expandedZones = {};
+					self.expandedRegions = {};
+					self.expandedDistricts = {};
+					self.expandedBranches = {};
+					self.checkedRows = {};
+					self.searchTerm = "";
+					self.allExpanded = false;
+					self.selectedMisZones = [];
+					dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
+					self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
+				},
+				switchFormat: function(format, container, dashboardInstance) {
+					const self = this;
+					if (self.tableData && self.tableData.length > 0) {
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+					}
+					self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+				},
+				renderZoneFilterTags: function(container, dashboardInstance) {
+					const self = this;
+					if (!self.tableData || self.tableData.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					let zones = [...new Set(self.tableData.map(r => r.zone).filter(Boolean))].sort();
+					if (zones.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					const allSelected = self.selectedMisZones.length === 0;
+					let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
+					html += `<button class="mis-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
+					zones.forEach(zone => {
+						const active = self.selectedMisZones.includes(zone);
+						html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
+					});
+					const $row = container.find("#mis-zone-filter-row");
+					$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
+					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
+						const zone = $(this).data("zone");
+						if (zone === "all") {
+							self.selectedMisZones = [];
+						} else {
+							const idx = self.selectedMisZones.indexOf(zone);
+							if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); }
+						}
+						self.renderZoneFilterTags(container, dashboardInstance);
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+					});
+				},
+				aggregateByZone: function() {
+					const self = this;
+					let data = self.tableData || [];
+					const term = (self.searchTerm || "").trim().toLowerCase();
+					if (term) {
+						data = data.filter(row => {
+							const zone = (row.zone || "").toLowerCase();
+							const region = (row.region || "").toLowerCase();
+							const district = (row.district || "").toLowerCase();
+							const sol = (row.sol_desc || row.sol_id || "").toLowerCase();
+							const solId = (row.sol_id || "").toLowerCase();
+							const authId = (row.auth_id || "").toLowerCase();
+							const authName = (row.auth_name || "").toLowerCase();
+							const designation = (row.designation || "").toLowerCase();
+							return zone.includes(term) || region.includes(term) || district.includes(term) || sol.includes(term) || solId.includes(term) || authId.includes(term) || authName.includes(term) || designation.includes(term);
+						});
+					}
+					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+						data = data.filter(row => self.selectedMisZones.includes(row.zone));
+					}
+					const zoneMap = {};
+					data.forEach(row => {
+						const zone = row.zone || "Unknown";
+						const region = row.region || "Unknown";
+						const district = row.district || "Unknown";
+						const solId = row.sol_id || "Unknown";
+						const solDesc = row.sol_desc || row.sol_id || "Unknown";
+						
+						if (!zoneMap[zone]) {
+							zoneMap[zone] = { zone, regions: {}, monthly_demand_amount: 0.0, monthly_collection: 0.0, branches_count: new Set() };
+						}
+						if (!zoneMap[zone].regions[region]) {
+							zoneMap[zone].regions[region] = { region, districts: {}, monthly_demand_amount: 0.0, monthly_collection: 0.0, branches_count: new Set() };
+						}
+						if (!zoneMap[zone].regions[region].districts[district]) {
+							zoneMap[zone].regions[region].districts[district] = { district, branches: {}, monthly_demand_amount: 0.0, monthly_collection: 0.0 };
+						}
+						if (!zoneMap[zone].regions[region].districts[district].branches[solId]) {
+							zoneMap[zone].regions[region].districts[district].branches[solId] = { 
+								sol_id: solId, 
+								sol_desc: solDesc, 
+								authorizers: [], 
+								monthly_demand_amount: 0.0, 
+								monthly_collection: 0.0 
+							};
+						}
+						
+						const branchObj = zoneMap[zone].regions[region].districts[district].branches[solId];
+						branchObj.authorizers.push(row);
+						
+						const demand = parseFloat(row.monthly_demand_amount || 0);
+						const collection = parseFloat(row.monthly_collection || 0);
+						
+						branchObj.monthly_demand_amount += demand;
+						branchObj.monthly_collection += collection;
+						
+						zoneMap[zone].regions[region].districts[district].monthly_demand_amount += demand;
+						zoneMap[zone].regions[region].districts[district].monthly_collection += collection;
+						
+						zoneMap[zone].regions[region].monthly_demand_amount += demand;
+						zoneMap[zone].regions[region].monthly_collection += collection;
+						zoneMap[zone].regions[region].branches_count.add(solId);
+						
+						zoneMap[zone].monthly_demand_amount += demand;
+						zoneMap[zone].monthly_collection += collection;
+						zoneMap[zone].branches_count.add(solId);
+					});
+					
+					const sortedZones = Object.keys(zoneMap).sort();
+					const result = [];
+					sortedZones.forEach(zoneName => {
+						const zd = zoneMap[zoneName];
+						const sortedRegions = Object.keys(zd.regions).sort();
+						const regions = sortedRegions.map(rn => {
+							const rd = zd.regions[rn];
+							const sortedDistricts = Object.keys(rd.districts).sort();
+							const districts = sortedDistricts.map(dn => {
+								const dd = rd.districts[dn];
+								const sortedBranches = Object.keys(dd.branches).sort();
+								const branches = sortedBranches.map(bn => dd.branches[bn]);
+								return { district: dn, data: dd, branches: branches };
+							});
+							return { region: rn, data: rd, districts: districts };
+						});
+						result.push({ zone: zoneName, data: zd, regions: regions });
+					});
+					return result;
+				},
+				renderMisTable: function(tableContainer, dashboardInstance) {
+					const self = this;
+					const format = dashboardInstance.state.formatMode || "number";
+
+					const fmtAmt = (val) => {
+						if (val === null || val === undefined) return "-";
+						const n = parseFloat(val);
+						if (isNaN(n)) return val;
+						if (format === "words") {
+							if (n >= 10000000) return "₹ " + (n / 10000000).toFixed(2) + " Cr";
+							if (n >= 100000) return "₹ " + (n / 100000).toFixed(2) + " L";
+							if (n >= 1000) return "₹ " + (n / 1000).toFixed(2) + " K";
+						}
+						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+					};
+
+					const fmtPct = (coll, dem) => {
+						const d = parseFloat(dem);
+						const c = parseFloat(coll);
+						if (!d || d <= 0) return "0.00%";
+						return ((c / d) * 100).toFixed(2) + "%";
+					};
+
+					const zoneData = self.aggregateByZone();
+					const totalFilteredDemand = zoneData.reduce((s, z) => s + z.data.monthly_demand_amount, 0);
+					const totalAllDemand = (self.tableData || []).reduce((s, r) => s + (parseFloat(r.monthly_demand_amount) || 0), 0);
+					const $badge = tableContainer.parent().find("#mis-records-count");
+					$badge.text(fmtAmt(totalFilteredDemand) + " / " + fmtAmt(totalAllDemand) + " demand" + (self.searchTerm ? " (filtered)" : ""));
+					if (totalFilteredDemand === totalAllDemand && !self.searchTerm) $badge.hide(); else $badge.show();
+
+					if (!zoneData || zoneData.length === 0) {
+						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600; font-family: \'Inter\', sans-serif;">No data to display.</div>');
+						return;
+					}
+
+					const grandTotal = { monthly_demand_amount: 0.0, monthly_collection: 0.0 };
+					zoneData.forEach(z => {
+						grandTotal.monthly_demand_amount += z.data.monthly_demand_amount;
+						grandTotal.monthly_collection += z.data.monthly_collection;
+					});
+
+					let sr = 0;
+					let rowsHtml = "";
+					zoneData.forEach(z => {
+						sr++;
+						const zoneExpanded = self.expandedZones[z.zone];
+						const zoneRow = z.data;
+						const zoneChecked = self.checkedRows["zone::" + z.zone];
+						
+						rowsHtml += `<tr class="mis-zone-row${zoneChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-check-id="zone::${z.zone}" style="cursor: pointer; background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
+							<td style="padding: 10px 14px; text-align: center; white-space: nowrap; width: 30px; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="zone::${z.zone}" ${zoneChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; width: 40px; font-size: 14px;">${sr}</td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;"><span class="mis-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>${z.zone}</td>
+							<td></td>
+							<td></td>
+							<td></td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(zoneRow.monthly_demand_amount)}</td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(zoneRow.monthly_collection)}</td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #8b5cf6; text-align: center; white-space: nowrap; font-size: 14px; background: #e2e8f0;">${fmtPct(zoneRow.monthly_collection, zoneRow.monthly_demand_amount)}</td>
+						</tr>`;
+
+						z.regions.forEach(regionObj => {
+							const region = regionObj.region;
+							const regionRow = regionObj.data;
+							const regionKey = z.zone + "::" + region;
+							const regionExpanded = self.expandedRegions[regionKey];
+							const regionChecked = self.checkedRows[regionKey];
+							
+							rowsHtml += `<tr class="mis-region-row${regionChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-check-id="${regionKey}" style="display: ${zoneExpanded ? "table-row" : "none"}; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+								<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${regionKey}" ${regionChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+								<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 24px; font-weight: 600;"><span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${region}</td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td style="padding: 8px 14px; color: #334155; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(regionRow.monthly_demand_amount)}</td>
+								<td style="padding: 8px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(regionRow.monthly_collection)}</td>
+								<td style="padding: 8px 14px; color: #8b5cf6; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 700; background: #f1f5f9;">${fmtPct(regionRow.monthly_collection, regionRow.monthly_demand_amount)}</td>
+							</tr>`;
+
+							regionObj.districts.forEach(districtObj => {
+								const district = districtObj.district;
+								const districtKey = z.zone + "::" + region + "::" + district;
+								const districtExpanded = self.expandedDistricts[districtKey];
+								const districtChecked = self.checkedRows[districtKey];
+								const showDistrict = zoneExpanded && regionExpanded;
+
+								rowsHtml += `<tr class="mis-district-row${districtChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${districtKey}" style="display: ${showDistrict ? "table-row" : "none"}; cursor: pointer; background: #fafaf9; border-bottom: 1px solid #e7e5e4;">
+									<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${districtKey}" ${districtChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+									<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}</td>
+									<td></td>
+									<td></td>
+									<td></td>
+									<td style="padding: 8px 14px; color: #44403c; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(districtObj.data.monthly_demand_amount)}</td>
+									<td style="padding: 8px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(districtObj.data.monthly_collection)}</td>
+									<td style="padding: 8px 14px; color: #8b5cf6; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 700; background: #f5f5f4;">${fmtPct(districtObj.data.monthly_collection, districtObj.data.monthly_demand_amount)}</td>
+								</tr>`;
+
+								districtObj.branches.forEach((branch, bnIndex) => {
+									const branchKey = districtKey + "::" + branch.sol_id;
+									const branchExpanded = self.expandedBranches[branchKey];
+									const branchChecked = self.checkedRows[branchKey];
+									const showBranch = zoneExpanded && regionExpanded && districtExpanded;
+
+									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-branch="${branch.sol_id}" data-check-id="${branchKey}" style="display: ${showBranch ? "table-row" : "none"}; cursor: pointer; background: #ffffff; border-bottom: 1px solid #e2e8f0;">
+										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${branchKey}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 600;"><span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${branchExpanded ? "▼" : "▶"}</span>${branch.sol_id} - ${branch.sol_desc}</td>
+										<td></td>
+										<td></td>
+										<td></td>
+										<td style="padding: 6px 14px; color: #475569; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(branch.monthly_demand_amount)}</td>
+										<td style="padding: 6px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(branch.monthly_collection)}</td>
+										<td style="padding: 6px 14px; color: #8b5cf6; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 700; background: #f8fafc;">${fmtPct(branch.monthly_collection, branch.monthly_demand_amount)}</td>
+									</tr>`;
+
+									branch.authorizers.forEach((auth, ai) => {
+										const showAuth = zoneExpanded && regionExpanded && districtExpanded && branchExpanded;
+										const authBg = ai % 2 === 0 ? "#fafafa" : "#f5f5f5";
+										const authKey = branchKey + "::" + auth.auth_id;
+										const authChecked = self.checkedRows[authKey];
+										
+										rowsHtml += `<tr class="mis-auth-row${authChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-branch="${branch.sol_id}" data-check-id="${authKey}" style="display: ${showAuth ? "table-row" : "none"}; background: ${authBg}; border-bottom: 1px solid #f1f5f9;">
+											<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${authKey}" ${authChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+											<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+											<td style="padding: 6px 14px; color: #94a3b8; white-space: nowrap; font-size: 14px; padding-left: 78px; font-weight: 500;">└─</td>
+											<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${auth.auth_id}</td>
+											<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${auth.auth_name}</td>
+											<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${auth.designation || ""}</td>
+											<td style="padding: 6px 14px; color: #64748b; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtAmt(auth.monthly_demand_amount)}</td>
+											<td style="padding: 6px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtAmt(auth.monthly_collection)}</td>
+											<td style="padding: 6px 14px; color: #8b5cf6; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtPct(auth.monthly_collection, auth.monthly_demand_amount)}</td>
+										</tr>`;
+									});
+								});
+							});
+						});
+					});
+
+					const tableHtml = `
+						<style>
+							#mis-new-ac-table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; }
+							#mis-new-ac-table thead { position: sticky; top: 0; z-index: 2; }
+							#mis-new-ac-table tfoot { position: sticky; bottom: 0; z-index: 2; }
+							#mis-new-ac-table tfoot tr { box-shadow: 0 -2px 6px rgba(0,0,0,0.1); }
+							#mis-new-ac-table tbody tr { transition: background-color 0.2s ease; border-bottom: 1px solid #e2e8f0; }
+							#mis-new-ac-table tbody tr:hover { background: #dcfce7 !important; }
+							#mis-new-ac-table tbody tr.mis-row-checked { background: #bbf7d0 !important; }
+							#mis-new-ac-table tbody tr.mis-zone-row.mis-row-checked,
+							#mis-new-ac-table tbody tr.mis-region-row.mis-row-checked,
+							#mis-new-ac-table tbody tr.mis-district-row.mis-row-checked,
+							#mis-new-ac-table tbody tr.mis-branch-row.mis-row-checked,
+							#mis-new-ac-table tbody tr.mis-auth-row.mis-row-checked { background: #86efac !important; }
+							#mis-scroll-area { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
+						</style>
+						<div id="mis-scroll-area">
+							<table id="mis-new-ac-table">
+								<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / District / Branch</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 120px;">Auth ID</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 180px;">Auth Name</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 150px;">Designation</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 150px;">Monthly Demand</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 150px;">Sum of Collection</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 120px;">Collection %</th>
+								</tr></thead>
+								<tbody>${rowsHtml}</tbody>
+								<tfoot><tr style="background: #1e293b; color: #ffffff; font-weight: 700;">
+									<td style="padding: 10px 12px; text-align: center;"></td>
+									<td style="padding: 10px 12px; text-align: center;"></td>
+									<td style="padding: 10px 12px; text-align: left; white-space: nowrap; font-size: 14px;">TOTAL</td>
+									<td></td>
+									<td></td>
+									<td></td>
+									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(grandTotal.monthly_demand_amount)}</td>
+									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(grandTotal.monthly_collection)}</td>
+									<td style="padding: 10px 12px; text-align: center; white-space: nowrap; font-size: 14px;">${fmtPct(grandTotal.monthly_collection, grandTotal.monthly_demand_amount)}</td>
+								</tr></tfoot>
+							</table>
+						</div>`;
+					tableContainer.html(tableHtml);
+
+					// Attach folding handlers
+					tableContainer.off("click", ".mis-zone-row").on("click", ".mis-zone-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						self.expandedZones[zone] = !self.expandedZones[zone];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".mis-region-row").on("click", ".mis-region-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						const region = $(this).data("region");
+						const key = zone + "::" + region;
+						self.expandedRegions[key] = !self.expandedRegions[key];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".mis-district-row").on("click", ".mis-district-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						const region = $(this).data("region");
+						const district = $(this).data("district");
+						const key = zone + "::" + region + "::" + district;
+						self.expandedDistricts[key] = !self.expandedDistricts[key];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".mis-branch-row").on("click", ".mis-branch-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						const region = $(this).data("region");
+						const district = $(this).data("district");
+						const branch = $(this).data("branch");
+						const key = zone + "::" + region + "::" + district + "::" + branch;
+						self.expandedBranches[key] = !self.expandedBranches[key];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					// Attach checkbox handlers
+					tableContainer.off("change", ".mis-row-check").on("change", ".mis-row-check", function () {
+						const checkId = $(this).data("check-id");
+						const checked = $(this).prop("checked");
+						self.checkedRows[checkId] = checked;
+						const tr = $(this).closest("tr");
+						if (checked) tr.addClass("mis-row-checked"); else tr.removeClass("mis-row-checked");
+					});
+
+					tableContainer.off("change", ".mis-check-all").on("change", ".mis-check-all", function () {
+						const checked = $(this).prop("checked");
+						tableContainer.find(".mis-row-check").each(function () {
+							$(this).prop("checked", checked).trigger("change");
+						});
+					});
+				}
+			},
+			{	id: "agent_wise_demand_collection",
+				name: "Agent Wise Demand Vs Collection Report",
+				tableData: [],
+				expandedZones: {},
+				expandedRegions: {},
+				expandedDistricts: {},
+				expandedBranches: {},
+				checkedRows: {},
+				searchTerm: "",
+				allExpanded: false,
+				selectedMisZones: [],
+				render: function(container, dashboardInstance, seq) {
+					const self = this;
+					container.html(`
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="text" id="mis-search" placeholder="Search branch, SOL ID, agent, authorizer..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
+							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
+								<div class="btn-group mis-format-toggle" role="group">
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+								</div>
+							</div>
+							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="mis-records-count"></div>
+						</div>
+						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
+							${dashboardInstance.buildMisSkeletonTable("Loading Agent Wise Demand Vs Collection...")}
+						</div>
+						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
+						<div id="mis-kpi-container" ${self.tableData && self.tableData.length ? "" : 'style="display: none;"'}></div>
+						<div id="mis-table-container" ${self.tableData ? "" : 'style="display: none;"'}></div>
+					`);
+
+					if (self.tableData && self.tableData.length > 0) {
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+						container.find("#mis-records-count").text(`${self.tableData.length} records`);
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderZoneFilterTags(container, dashboardInstance);
+						container.find("#mis-controls, #mis-table-container, #mis-kpi-container").show();
+						container.find("#mis-loading").hide();
+						self.attachReportEventHandlers(container, dashboardInstance);
+						return;
+					}
+
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_agent_wise_demand_collection_data",
+						args: { selected_date: dashboardInstance.state.selectedDate },
+						callback: function(r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
+							container.find("#mis-loading").hide();
+							if (r.message && r.message.length) {
+								self.tableData = r.message;
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+								container.find("#mis-records-count").text(`${r.message.length} records`);
+								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderZoneFilterTags(container, dashboardInstance);
+							}
+							container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+						}
+					});
+					self.attachReportEventHandlers(container, dashboardInstance);
+				},
+				attachReportEventHandlers: function(container, dashboardInstance) {
+					const self = this;
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
+						const format = $(this).data("format");
+						dashboardInstance.state.formatMode = format;
+						container.find(".mis-format-btn").each(function () {
+							const btn = $(this);
+							const isActive = btn.data("format") === format;
+							btn.css("background", isActive ? "#417d81" : "#e2e8f0");
+							btn.css("color", isActive ? "white" : "#475569");
+						});
+						if (self.tableData && self.tableData.length > 0) {
+							self.switchFormat(format, container, dashboardInstance);
+						}
+					});
+					let searchTimeout;
+					container.off("input", "#mis-search").on("input", "#mis-search", function () {
+						clearTimeout(searchTimeout);
+						searchTimeout = setTimeout(() => {
+							self.searchTerm = $(this).val().toLowerCase().trim();
+							if (self.tableData) {
+								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+							}
+						}, 300);
+					});
+					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function () {
+						self.allExpanded = !self.allExpanded;
+						const expand = self.allExpanded;
+						if (!self.tableData) return;
+						const zoneData = self.aggregateByZone();
+						zoneData.forEach(z => {
+							self.expandedZones[z.zone] = expand;
+							z.regions.forEach(r => {
+								self.expandedRegions[z.zone + "::" + r.region] = expand;
+								r.districts.forEach(d => {
+									self.expandedDistricts[z.zone + "::" + r.region + "::" + d.district] = expand;
+									d.branches.forEach(b => {
+										self.expandedBranches[z.zone + "::" + r.region + "::" + d.district + "::" + b.sol_id] = expand;
+									});
+								});
+							});
+						});
+						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+					});
+					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function () {
+						self.refetchData(container, dashboardInstance);
+					});
+				},
+				renderKPI: function(container, dashboardInstance) {
+					const self = this;
+					const data = self.tableData || [];
+					const totalDemand = data.reduce((s, r) => s + (parseFloat(r.monthly_demand_amount) || 0.0), 0.0);
+					const totalCollection = data.reduce((s, r) => s + (parseFloat(r.monthly_collection) || 0.0), 0.0);
+					const overallPct = totalDemand > 0 ? ((totalCollection / totalDemand) * 100).toFixed(2) + "%" : "0.00%";
+					const activeBranches = [...new Set(data.map(r => r.sol_id).filter(Boolean))].length;
+					const activeAgents = [...new Set(data.map(r => r.rm_id).filter(Boolean))].length;
+
+					const fmtAmt = (val) => {
+						if (val === null || val === undefined) return "-";
+						const n = parseFloat(val);
+						if (isNaN(n)) return val;
+						const format = dashboardInstance.state.formatMode || "number";
+						if (format === "words") {
+							if (n >= 10000000) return "₹ " + (n / 10000000).toFixed(2) + " Cr";
+							if (n >= 100000) return "₹ " + (n / 100000).toFixed(2) + " L";
+							if (n >= 1000) return "₹ " + (n / 1000).toFixed(2) + " K";
+						}
+						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+					};
+
+					const fmtCount = (val) => {
+						return new Intl.NumberFormat("en-IN").format(val);
+					};
+
+					const kpiCards = [
+						{ label: "Total Demand", value: fmtAmt(totalDemand), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
+						{ label: "Total Collection", value: fmtAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
+						{ label: "Collection %", value: overallPct, color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
+						{ label: "Active Branches", value: fmtCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
+						{ label: "Active Agents", value: fmtCount(activeAgents), color: "#f97316", bg: "#fff7ed", icon: "👥" }
+					];
+
+					container.html(`
+						<style>
+							#agent-coll-kpi-container { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+							#agent-coll-kpi-container .kpi-card { flex: 1 1 180px; min-width: 150px; border-radius: 10px; padding: 16px 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); box-sizing: border-box; min-height: 100px; }
+							#agent-coll-kpi-container .kpi-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+							#agent-coll-kpi-container .kpi-icon { font-size: 20px; flex-shrink: 0; line-height: 1; }
+							#agent-coll-kpi-container .kpi-label { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Inter', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+							#agent-coll-kpi-container .kpi-value { font-size: clamp(18px, 2.2vw, 24px); font-weight: 800; font-family: 'Inter', sans-serif; line-height: 1.2; word-break: break-word; }
+							@media (max-width: 768px) { #agent-coll-kpi-container .kpi-card { flex: 1 1 140px; min-width: 120px; padding: 12px 14px; min-height: 80px; } #agent-coll-kpi-container .kpi-value { font-size: 16px; } }
+							@media (max-width: 480px) { #agent-coll-kpi-container .kpi-card { flex: 1 1 100%; min-width: unset; } }
+						</style>
+						<div id="agent-coll-kpi-container">
+							${kpiCards.map(card => `<div class="kpi-card" style="background: ${card.bg}; border-left: 4px solid ${card.color};"><div class="kpi-card-header"><span class="kpi-icon">${card.icon}</span><span class="kpi-label">${card.label}</span></div><div class="kpi-value" style="color: ${card.color};">${card.value}</div></div>`).join('')}
+						</div>
+					`);
+				},
+				refetchData: function(container, dashboardInstance) {
+					const self = this;
+					self.tableData = [];
+					self.expandedZones = {};
+					self.expandedRegions = {};
+					self.expandedDistricts = {};
+					self.expandedBranches = {};
+					self.checkedRows = {};
+					self.searchTerm = "";
+					self.allExpanded = false;
+					self.selectedMisZones = [];
+					dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
+					self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
+				},
+				switchFormat: function(format, container, dashboardInstance) {
+					const self = this;
+					if (self.tableData && self.tableData.length > 0) {
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+					}
+					self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+				},
+				renderZoneFilterTags: function(container, dashboardInstance) {
+					const self = this;
+					if (!self.tableData || self.tableData.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					let zones = [...new Set(self.tableData.map(r => r.zone).filter(Boolean))].sort();
+					if (zones.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					const allSelected = self.selectedMisZones.length === 0;
+					let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
+					html += `<button class="mis-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
+					zones.forEach(zone => {
+						const active = self.selectedMisZones.includes(zone);
+						html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
+					});
+					const $row = container.find("#mis-zone-filter-row");
+					$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
+					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
+						const zone = $(this).data("zone");
+						if (zone === "all") {
+							self.selectedMisZones = [];
+						} else {
+							const idx = self.selectedMisZones.indexOf(zone);
+							if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); }
+						}
+						self.renderZoneFilterTags(container, dashboardInstance);
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+					});
+				},
+				aggregateByZone: function() {
+					const self = this;
+					let data = self.tableData || [];
+					const term = (self.searchTerm || "").trim().toLowerCase();
+					if (term) {
+						data = data.filter(row => {
+							const zone = (row.zone || "").toLowerCase();
+							const region = (row.region || "").toLowerCase();
+							const district = (row.district || "").toLowerCase();
+							const sol = (row.sol_desc || row.sol_id || "").toLowerCase();
+							const solId = (row.sol_id || "").toLowerCase();
+							const rmId = (row.rm_id || "").toLowerCase();
+							const rmName = (row.rm_name || "").toLowerCase();
+							const authId = (row.auth_id || "").toLowerCase();
+							const authName = (row.auth_name || "").toLowerCase();
+							const designation = (row.designation || "").toLowerCase();
+							return zone.includes(term) || region.includes(term) || district.includes(term) || sol.includes(term) || solId.includes(term) || rmId.includes(term) || rmName.includes(term) || authId.includes(term) || authName.includes(term) || designation.includes(term);
+						});
+					}
+					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+						data = data.filter(row => self.selectedMisZones.includes(row.zone));
+					}
+					const zoneMap = {};
+					data.forEach(row => {
+						const zone = row.zone || "Unknown";
+						const region = row.region || "Unknown";
+						const district = row.district || "Unknown";
+						const solId = row.sol_id || "Unknown";
+						const solDesc = row.sol_desc || row.sol_id || "Unknown";
+						
+						if (!zoneMap[zone]) {
+							zoneMap[zone] = { zone, regions: {}, monthly_demand_amount: 0.0, monthly_collection: 0.0, branches_count: new Set() };
+						}
+						if (!zoneMap[zone].regions[region]) {
+							zoneMap[zone].regions[region] = { region, districts: {}, monthly_demand_amount: 0.0, monthly_collection: 0.0, branches_count: new Set() };
+						}
+						if (!zoneMap[zone].regions[region].districts[district]) {
+							zoneMap[zone].regions[region].districts[district] = { district, branches: {}, monthly_demand_amount: 0.0, monthly_collection: 0.0 };
+						}
+						if (!zoneMap[zone].regions[region].districts[district].branches[solId]) {
+							zoneMap[zone].regions[region].districts[district].branches[solId] = { 
+								sol_id: solId, 
+								sol_desc: solDesc, 
+								agents: [], 
+								monthly_demand_amount: 0.0, 
+								monthly_collection: 0.0 
+							};
+						}
+						
+						const branchObj = zoneMap[zone].regions[region].districts[district].branches[solId];
+						branchObj.agents.push(row);
+						
+						const demand = parseFloat(row.monthly_demand_amount || 0);
+						const collection = parseFloat(row.monthly_collection || 0);
+						
+						branchObj.monthly_demand_amount += demand;
+						branchObj.monthly_collection += collection;
+						
+						zoneMap[zone].regions[region].districts[district].monthly_demand_amount += demand;
+						zoneMap[zone].regions[region].districts[district].monthly_collection += collection;
+						
+						zoneMap[zone].regions[region].monthly_demand_amount += demand;
+						zoneMap[zone].regions[region].monthly_collection += collection;
+						zoneMap[zone].regions[region].branches_count.add(solId);
+						
+						zoneMap[zone].monthly_demand_amount += demand;
+						zoneMap[zone].monthly_collection += collection;
+						zoneMap[zone].branches_count.add(solId);
+					});
+					
+					const sortedZones = Object.keys(zoneMap).sort();
+					const result = [];
+					sortedZones.forEach(zoneName => {
+						const zd = zoneMap[zoneName];
+						const sortedRegions = Object.keys(zd.regions).sort();
+						const regions = sortedRegions.map(rn => {
+							const rd = zd.regions[rn];
+							const sortedDistricts = Object.keys(rd.districts).sort();
+							const districts = sortedDistricts.map(dn => {
+								const dd = rd.districts[dn];
+								const sortedBranches = Object.keys(dd.branches).sort();
+								const branches = sortedBranches.map(bn => dd.branches[bn]);
+								return { district: dn, data: dd, branches: branches };
+							});
+							return { region: rn, data: rd, districts: districts };
+						});
+						result.push({ zone: zoneName, data: zd, regions: regions });
+					});
+					return result;
+				},
+				renderMisTable: function(tableContainer, dashboardInstance) {
+					const self = this;
+					const format = dashboardInstance.state.formatMode || "number";
+
+					const fmtAmt = (val) => {
+						if (val === null || val === undefined) return "-";
+						const n = parseFloat(val);
+						if (isNaN(n)) return val;
+						if (format === "words") {
+							if (n >= 10000000) return "₹ " + (n / 10000000).toFixed(2) + " Cr";
+							if (n >= 100000) return "₹ " + (n / 100000).toFixed(2) + " L";
+							if (n >= 1000) return "₹ " + (n / 1000).toFixed(2) + " K";
+						}
+						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+					};
+
+					const fmtPct = (coll, dem) => {
+						const d = parseFloat(dem);
+						const c = parseFloat(coll);
+						if (!d || d <= 0) return "0.00%";
+						return ((c / d) * 100).toFixed(2) + "%";
+					};
+
+					const zoneData = self.aggregateByZone();
+					const totalFilteredDemand = zoneData.reduce((s, z) => s + z.data.monthly_demand_amount, 0);
+					const totalAllDemand = (self.tableData || []).reduce((s, r) => s + (parseFloat(r.monthly_demand_amount) || 0), 0);
+					const $badge = tableContainer.parent().find("#mis-records-count");
+					$badge.text(fmtAmt(totalFilteredDemand) + " / " + fmtAmt(totalAllDemand) + " demand" + (self.searchTerm ? " (filtered)" : ""));
+					if (totalFilteredDemand === totalAllDemand && !self.searchTerm) $badge.hide(); else $badge.show();
+
+					if (!zoneData || zoneData.length === 0) {
+						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600; font-family: \'Inter\', sans-serif;">No data to display.</div>');
+						return;
+					}
+
+					const grandTotal = { monthly_demand_amount: 0.0, monthly_collection: 0.0 };
+					zoneData.forEach(z => {
+						grandTotal.monthly_demand_amount += z.data.monthly_demand_amount;
+						grandTotal.monthly_collection += z.data.monthly_collection;
+					});
+
+					let sr = 0;
+					let rowsHtml = "";
+					zoneData.forEach(z => {
+						sr++;
+						const zoneExpanded = self.expandedZones[z.zone];
+						const zoneRow = z.data;
+						const zoneChecked = self.checkedRows["zone::" + z.zone];
+						
+						rowsHtml += `<tr class="mis-zone-row${zoneChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-check-id="zone::${z.zone}" style="cursor: pointer; background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
+							<td style="padding: 10px 14px; text-align: center; white-space: nowrap; width: 30px; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="zone::${z.zone}" ${zoneChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; width: 40px; font-size: 14px;">${sr}</td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;"><span class="mis-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>${z.zone}</td>
+							<td></td>
+							<td></td>
+							<td></td>
+							<td></td>
+							<td></td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(zoneRow.monthly_demand_amount)}</td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(zoneRow.monthly_collection)}</td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #8b5cf6; text-align: center; white-space: nowrap; font-size: 14px; background: #e2e8f0;">${fmtPct(zoneRow.monthly_collection, zoneRow.monthly_demand_amount)}</td>
+						</tr>`;
+
+						z.regions.forEach(regionObj => {
+							const region = regionObj.region;
+							const regionRow = regionObj.data;
+							const regionKey = z.zone + "::" + region;
+							const regionExpanded = self.expandedRegions[regionKey];
+							const regionChecked = self.checkedRows[regionKey];
+							
+							rowsHtml += `<tr class="mis-region-row${regionChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-check-id="${regionKey}" style="display: ${zoneExpanded ? "table-row" : "none"}; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+								<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${regionKey}" ${regionChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+								<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 24px; font-weight: 600;"><span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${region}</td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td style="padding: 8px 14px; color: #334155; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(regionRow.monthly_demand_amount)}</td>
+								<td style="padding: 8px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(regionRow.monthly_collection)}</td>
+								<td style="padding: 8px 14px; color: #8b5cf6; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 700; background: #f1f5f9;">${fmtPct(regionRow.monthly_collection, regionRow.monthly_demand_amount)}</td>
+							</tr>`;
+
+							regionObj.districts.forEach(districtObj => {
+								const district = districtObj.district;
+								const districtKey = z.zone + "::" + region + "::" + district;
+								const districtExpanded = self.expandedDistricts[districtKey];
+								const districtChecked = self.checkedRows[districtKey];
+								const showDistrict = zoneExpanded && regionExpanded;
+
+								rowsHtml += `<tr class="mis-district-row${districtChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${districtKey}" style="display: ${showDistrict ? "table-row" : "none"}; cursor: pointer; background: #fafaf9; border-bottom: 1px solid #e7e5e4;">
+									<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${districtKey}" ${districtChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+									<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}</td>
+									<td></td>
+									<td></td>
+									<td></td>
+									<td></td>
+									<td></td>
+									<td style="padding: 8px 14px; color: #44403c; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(districtObj.data.monthly_demand_amount)}</td>
+									<td style="padding: 8px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(districtObj.data.monthly_collection)}</td>
+									<td style="padding: 8px 14px; color: #8b5cf6; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 700; background: #f5f5f4;">${fmtPct(districtObj.data.monthly_collection, districtObj.data.monthly_demand_amount)}</td>
+								</tr>`;
+
+								districtObj.branches.forEach((branch, bnIndex) => {
+									const branchKey = districtKey + "::" + branch.sol_id;
+									const branchExpanded = self.expandedBranches[branchKey];
+									const branchChecked = self.checkedRows[branchKey];
+									const showBranch = zoneExpanded && regionExpanded && districtExpanded;
+
+									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-branch="${branch.sol_id}" data-check-id="${branchKey}" style="display: ${showBranch ? "table-row" : "none"}; cursor: pointer; background: #ffffff; border-bottom: 1px solid #e2e8f0;">
+										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${branchKey}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 600;"><span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${branchExpanded ? "▼" : "▶"}</span>${branch.sol_id} - ${branch.sol_desc}</td>
+										<td></td>
+										<td></td>
+										<td></td>
+										<td></td>
+										<td></td>
+										<td style="padding: 6px 14px; color: #475569; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(branch.monthly_demand_amount)}</td>
+										<td style="padding: 6px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(branch.monthly_collection)}</td>
+										<td style="padding: 6px 14px; color: #8b5cf6; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 700; background: #f8fafc;">${fmtPct(branch.monthly_collection, branch.monthly_demand_amount)}</td>
+									</tr>`;
+
+									branch.agents.forEach((auth, ai) => {
+										const showAuth = zoneExpanded && regionExpanded && districtExpanded && branchExpanded;
+										const authBg = ai % 2 === 0 ? "#fafafa" : "#f5f5f5";
+										const authKey = branchKey + "::" + auth.rm_id + "::" + auth.auth_id;
+										const authChecked = self.checkedRows[authKey];
+										
+										rowsHtml += `<tr class="mis-auth-row${authChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-branch="${branch.sol_id}" data-check-id="${authKey}" style="display: ${showAuth ? "table-row" : "none"}; background: ${authBg}; border-bottom: 1px solid #f1f5f9;">
+											<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${authKey}" ${authChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+											<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+											<td style="padding: 6px 14px; color: #94a3b8; white-space: nowrap; font-size: 14px; padding-left: 78px; font-weight: 500;">└─</td>
+											<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${auth.rm_id}</td>
+											<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${auth.rm_name}</td>
+											<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${auth.auth_id}</td>
+											<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${auth.auth_name}</td>
+											<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${auth.designation || ""}</td>
+											<td style="padding: 6px 14px; color: #64748b; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtAmt(auth.monthly_demand_amount)}</td>
+											<td style="padding: 6px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtAmt(auth.monthly_collection)}</td>
+											<td style="padding: 6px 14px; color: #8b5cf6; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtPct(auth.monthly_collection, auth.monthly_demand_amount)}</td>
+										</tr>`;
+									});
+								});
+							});
+						});
+					});
+
+					const tableHtml = `
+						<style>
+							#mis-agent-demand-table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; }
+							#mis-agent-demand-table thead { position: sticky; top: 0; z-index: 2; }
+							#mis-agent-demand-table tfoot { position: sticky; bottom: 0; z-index: 2; }
+							#mis-agent-demand-table tfoot tr { box-shadow: 0 -2px 6px rgba(0,0,0,0.1); }
+							#mis-agent-demand-table tbody tr { transition: background-color 0.2s ease; border-bottom: 1px solid #e2e8f0; }
+							#mis-agent-demand-table tbody tr:hover { background: #dcfce7 !important; }
+							#mis-agent-demand-table tbody tr.mis-row-checked { background: #bbf7d0 !important; }
+							#mis-agent-demand-table tbody tr.mis-zone-row.mis-row-checked,
+							#mis-agent-demand-table tbody tr.mis-region-row.mis-row-checked,
+							#mis-agent-demand-table tbody tr.mis-district-row.mis-row-checked,
+							#mis-agent-demand-table tbody tr.mis-branch-row.mis-row-checked,
+							#mis-agent-demand-table tbody tr.mis-auth-row.mis-row-checked { background: #86efac !important; }
+							#mis-agent-scroll-area { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
+						</style>
+						<div id="mis-agent-scroll-area">
+							<table id="mis-agent-demand-table">
+								<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / District / Branch</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 120px;">Agent Code</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 180px;">Agent Name</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 120px;">Auth ID</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 180px;">Auth Name</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 150px;">Designation</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 150px;">Monthly Demand</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 150px;">Sum of Collection</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 120px;">Collection %</th>
+								</tr></thead>
+								<tbody>${rowsHtml}</tbody>
+								<tfoot><tr style="background: #1e293b; color: #ffffff; font-weight: 700;">
+									<td style="padding: 10px 12px; text-align: center;"></td>
+									<td style="padding: 10px 12px; text-align: center;"></td>
+									<td style="padding: 10px 12px; text-align: left; white-space: nowrap; font-size: 14px;">TOTAL</td>
+									<td></td>
+									<td></td>
+									<td></td>
+									<td></td>
+									<td></td>
+									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(grandTotal.monthly_demand_amount)}</td>
+									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(grandTotal.monthly_collection)}</td>
+									<td style="padding: 10px 12px; text-align: center; white-space: nowrap; font-size: 14px;">${fmtPct(grandTotal.monthly_collection, grandTotal.monthly_demand_amount)}</td>
+								</tr></tfoot>
+							</table>
+						</div>`;
+					tableContainer.html(tableHtml);
+
+					// Attach folding handlers
+					tableContainer.off("click", ".mis-zone-row").on("click", ".mis-zone-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						self.expandedZones[zone] = !self.expandedZones[zone];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".mis-region-row").on("click", ".mis-region-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						const region = $(this).data("region");
+						const key = zone + "::" + region;
+						self.expandedRegions[key] = !self.expandedRegions[key];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".mis-district-row").on("click", ".mis-district-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						const region = $(this).data("region");
+						const district = $(this).data("district");
+						const key = zone + "::" + region + "::" + district;
+						self.expandedDistricts[key] = !self.expandedDistricts[key];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".mis-branch-row").on("click", ".mis-branch-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						const region = $(this).data("region");
+						const district = $(this).data("district");
+						const branch = $(this).data("branch");
+						const key = zone + "::" + region + "::" + district + "::" + branch;
+						self.expandedBranches[key] = !self.expandedBranches[key];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					// Attach checkbox handlers
+					tableContainer.off("change", ".mis-row-check").on("change", ".mis-row-check", function () {
+						const checkId = $(this).data("check-id");
+						const checked = $(this).prop("checked");
+						self.checkedRows[checkId] = checked;
+						const tr = $(this).closest("tr");
+						if (checked) tr.addClass("mis-row-checked"); else tr.removeClass("mis-row-checked");
+					});
+
+					tableContainer.off("change", ".mis-check-all").on("change", ".mis-check-all", function () {
+						const checked = $(this).prop("checked");
+						tableContainer.find(".mis-row-check").each(function () {
+							$(this).prop("checked", checked).trigger("change");
+						});
+					});
+				}
+			},
+			{
+				id: "agent_wise",
+				name: "Agent Wise",
+				tableData: [],
+				render: function (container, dashboardInstance, seq) {
+					const self = this;
+					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+					container.html(`
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<div style="display: inline-flex; border-radius: 4px; overflow: hidden; border: 1px solid #cbd5e1;">
+								<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
+								<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+							</div>
+						</div>
+						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
+							${dashboardInstance.buildMisSkeletonTable("Fetching Agent Wise data...")}
+						</div>
+						<div id="mis-table-container" ${self.tableData && self.tableData.length > 0 ? "" : 'style="display: none;"'}></div>
+					`);
+
+					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function () {
+						self.tableData = [];
+						dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
+						self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
+					});
+
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
+						const format = $(this).data("format");
+						dashboardInstance.state.formatMode = format;
+						container.find(".mis-format-btn").removeClass("active").css({ background: "#e2e8f0", color: "#475569" });
+						$(this).addClass("active").css({ background: "#417d81", color: "white" });
+						self.renderAgentWiseTable(container.find("#mis-table-container"), dashboardInstance);
+					});
+
+					if (self.tableData && self.tableData.length > 0) {
+						self.renderAgentWiseTable(container.find("#mis-table-container"), dashboardInstance);
+						container.find("#mis-controls, #mis-table-container").show();
+						container.find("#mis-loading").hide();
+						return;
+					}
+
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_agent_wise_ss_vs_data",
+						args: {
+							selected_date: t1_date
+						},
+						callback: function (r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
+							const msg = r.message;
+							if (msg && msg.data) {
+								self.tableData = msg.data;
+								self.actualDate = msg.actual_date;
+							} else {
+								self.tableData = Array.isArray(msg) ? msg : [];
+								self.actualDate = t1_date;
+							}
+							self.renderAgentWiseTable(container.find("#mis-table-container"), dashboardInstance);
+							container.find("#mis-loading").hide();
+							container.find("#mis-controls, #mis-table-container").show();
+						}
+					});
+				},
+				agentDetails: {},
+				expandedTypes: {},
+				renderAgentWiseTable: function (tableContainer, dashboardInstance) {
+					const self = this;
+					const data = self.tableData || [];
+					if (!self.agentDetails) self.agentDetails = {};
+					if (!self.expandedTypes) self.expandedTypes = {};
+
+					if (data.length === 0) {
+						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">No data to display.</div>');
+						return;
+					}
+
+					let sr = 0;
+					let grandTotalRecords = 0;
+					let grandTotalAgents = 0;
+					let grandTotalCommission = 0;
+
+					const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
+					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
+
+					let rowsHtml = "";
+					data.forEach(row => {
+						sr++;
+						const rType = row.report_type || "Unknown";
+						const totAgents = row.total_agents || 0;
+						const totRecs = row.total_records || 0;
+						const totComm = row.total_commission || 0;
+						const isExpanded = !!self.expandedTypes[rType];
+
+						grandTotalAgents += totAgents;
+						grandTotalRecords += totRecs;
+						grandTotalCommission += totComm;
+
+						rowsHtml += `
+							<tr class="agent-type-row" data-type="${rType}" style="border-bottom: 1px solid #e2e8f0; cursor: pointer; background: ${isExpanded ? '#f0fdf4' : '#fff'};">
+								<td style="padding: 10px 12px; text-align: center; font-size: 13px; font-weight: 600;">${sr}</td>
+								<td style="padding: 10px 12px; font-size: 13px; font-weight: 700; color: #1e293b;">
+									<span class="type-toggle-icon" style="display: inline-block; width: 16px; color: #417d81;">${isExpanded ? '▼' : '▶'}</span>
+									<span style="color: #417d81; text-decoration: underline;">${rType}</span>
+								</td>
+								<td style="padding: 10px 12px; text-align: right; font-size: 13px; font-weight: 600;">${fmtNum(totAgents)}</td>
+								<td style="padding: 10px 12px; text-align: right; font-size: 13px;">${fmtNum(totRecs)}</td>
+								<td style="padding: 10px 12px; text-align: right; font-size: 13px; font-weight: 700; color: #10b981;">${fmtAmt(totComm)}</td>
+							</tr>
+							<tr class="agent-detail-row" data-type="${rType}" style="display: ${isExpanded ? 'table-row' : 'none'}; background: #f8fafc;">
+								<td colspan="5" style="padding: 12px; border-bottom: 2px solid #cbd5e1;">
+									<div class="agent-detail-container" data-type="${rType}">
+										<div style="padding: 10px; color: #64748b; font-size: 12px; font-weight: 600;">Loading Agent Details...</div>
+									</div>
+								</td>
+							</tr>
+						`;
+					});
+
+					const tableHtml = `
+						<div style="max-height: 600px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
+							<table class="table table-bordered" style="width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 0;">
+								<thead>
+									<tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
+										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: center; width: 50px;">Sr</th>
+										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: left;">Report Type (Click to Drill Down)</th>
+										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: right;">Total Agents</th>
+										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: right;">Total Records</th>
+										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: right;">Total Commission</th>
+									</tr>
+								</thead>
+								<tbody>${rowsHtml}</tbody>
+								<tfoot>
+									<tr style="background: #1e293b; color: #ffffff; font-weight: 700;">
+										<td style="padding: 10px 12px; text-align: center;"></td>
+										<td style="padding: 10px 12px; text-align: left;">TOTAL</td>
+										<td style="padding: 10px 12px; text-align: right;">${fmtNum(grandTotalAgents)}</td>
+										<td style="padding: 10px 12px; text-align: right;">${fmtNum(grandTotalRecords)}</td>
+										<td style="padding: 10px 12px; text-align: right; color: #34d399;">${fmtAmt(grandTotalCommission)}</td>
+									</tr>
+								</tfoot>
+							</table>
+						</div>
+					`;
+					let noticeHtml = "";
+					const reqDate = dashboardInstance.state.selectedDate || frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+					if (self.actualDate && self.actualDate !== reqDate) {
+						noticeHtml = `
+							<div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 8px 14px; font-size: 12px; color: #1e40af; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+								<span>ℹ Data for <strong>${reqDate}</strong> was not found in SS & VS Report. Displaying latest available records from <strong>${self.actualDate}</strong>.</span>
+							</div>
+						`;
+					}
+					tableContainer.html(noticeHtml + tableHtml);
+
+					// Render details for already expanded types
+					Object.keys(self.expandedTypes).forEach(rType => {
+						if (self.expandedTypes[rType]) {
+							self.loadAndRenderAgentDetails(rType, tableContainer, dashboardInstance);
+						}
+					});
+
+					// Attach Row Click Handler
+					tableContainer.off("click", ".agent-type-row").on("click", ".agent-type-row", function () {
+						const rType = $(this).data("type");
+						self.expandedTypes[rType] = !self.expandedTypes[rType];
+						const isExp = self.expandedTypes[rType];
+						
+						$(this).css("background", isExp ? "#f0fdf4" : "#fff");
+						$(this).find(".type-toggle-icon").text(isExp ? "▼" : "▶");
+						
+						const $detailRow = tableContainer.find(`.agent-detail-row[data-type="${rType}"]`);
+						if (isExp) {
+							$detailRow.show();
+							self.loadAndRenderAgentDetails(rType, tableContainer, dashboardInstance);
+						} else {
+							$detailRow.hide();
+						}
+					});
+				},
+
+				loadAndRenderAgentDetails: function (rType, tableContainer, dashboardInstance) {
+					const self = this;
+					const $container = tableContainer.find(`.agent-detail-container[data-type="${rType}"]`);
+					if (!$container.length) return;
+
+					if (self.agentDetails[rType]) {
+						self.renderAgentSubTable(rType, self.agentDetails[rType], $container, dashboardInstance);
+						return;
+					}
+
+					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+					$container.html('<div style="padding: 12px; color: #417d81; font-weight: 600; font-size: 12px;">⏳ Fetching Agent Wise details for ' + rType + '...</div>');
+
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_agent_wise_details",
+						args: {
+							report_type: rType,
+							selected_date: t1_date
+						},
+						callback: function (r) {
+							if (r.message) {
+								self.agentDetails[rType] = r.message;
+								self.renderAgentSubTable(rType, r.message, $container, dashboardInstance);
+							} else {
+								$container.html('<div style="padding: 12px; color: #64748b; font-weight: 600;">No agent records found.</div>');
+							}
+						}
+					});
+				},
+
+				customerDetails: {},
+				expandedAgents: {},
+				renderAgentSubTable: function (rType, agentList, $container, dashboardInstance) {
+					const self = this;
+					if (!self.customerDetails) self.customerDetails = {};
+					if (!self.expandedAgents) self.expandedAgents = {};
+
+					const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
+					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
+
+					const buildRows = (list) => {
+						if (!list || list.length === 0) {
+							return '<tr><td colspan="5" style="text-align: center; padding: 12px; color: #64748b;">No agents found.</td></tr>';
+						}
+						let html = "";
+						list.forEach((a, idx) => {
+							const key = rType + "::" + a.rm_id;
+							const isExpanded = !!self.expandedAgents[key];
+							html += `
+								<tr class="agent-row-item" data-rm-id="${a.rm_id}" data-type="${rType}" style="border-bottom: 1px solid #e2e8f0; cursor: pointer; background: ${isExpanded ? '#eff6ff' : '#fff'};">
+									<td style="padding: 6px 10px; text-align: center; font-size: 12px; width: 40px;">${idx + 1}</td>
+									<td style="padding: 6px 10px; font-size: 12px; font-weight: 600; color: #1e293b;">
+										<span class="agent-toggle-icon" style="display: inline-block; width: 14px; color: #2563eb;">${isExpanded ? '▼' : '▶'}</span>
+										<span style="color: #2563eb; text-decoration: underline;">${a.rm_id || "-"}</span>
+									</td>
+									<td style="padding: 6px 10px; font-size: 12px; color: #334155; font-weight: 600;">${a.rm_name || "-"}</td>
+									<td style="padding: 6px 10px; text-align: right; font-size: 12px;">${fmtNum(a.record_count)}</td>
+									<td style="padding: 6px 10px; text-align: right; font-size: 12px; font-weight: 600; color: #10b981;">${fmtAmt(a.total_commission)}</td>
+								</tr>
+								<tr class="customer-detail-row" data-rm-id="${a.rm_id}" data-type="${rType}" style="display: ${isExpanded ? 'table-row' : 'none'}; background: #f1f5f9;">
+									<td colspan="5" style="padding: 8px 12px;">
+										<div class="customer-detail-container" data-rm-id="${a.rm_id}" data-type="${rType}">
+											<div style="padding: 8px; color: #64748b; font-size: 12px;">Loading Customer Accounts...</div>
+										</div>
+									</td>
+								</tr>
+							`;
+						});
+						return html;
+					};
+
+					$container.html(`
+						<div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px;">
+							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+								<span style="font-weight: 700; font-size: 13px; color: #334155;">Agent Details for ${rType} (${fmtNum(agentList.length)} Agents - Click Agent to view Customer Accounts)</span>
+								<input type="text" class="agent-search-input" data-type="${rType}" placeholder="Search RM ID or Name..." style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 220px; outline: none;">
+							</div>
+							<div style="max-height: 380px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 4px;">
+								<table class="table table-sm table-striped" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0;">
+									<thead>
+										<tr style="background: #f1f5f9; color: #475569; position: sticky; top: 0; z-index: 1;">
+											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
+											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: left;">RM ID (Agent Code)</th>
+											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: left;">RM Name (Agent Name)</th>
+											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: right;">Records</th>
+											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: right;">Total Commission</th>
+										</tr>
+									</thead>
+									<tbody class="agent-rows-body" data-type="${rType}">${buildRows(agentList)}</tbody>
+								</table>
+							</div>
+						</div>
+					`);
+
+					// Render details for expanded agents
+					Object.keys(self.expandedAgents).forEach(key => {
+						if (self.expandedAgents[key] && key.startsWith(rType + "::")) {
+							const rmId = key.split("::")[1];
+							self.loadAndRenderCustomerDetails(rType, rmId, $container, dashboardInstance);
+						}
+					});
+
+					// Agent Search Filter Handler (with 300ms Debounce)
+					let searchTimeout = null;
+					$container.off("input", ".agent-search-input").on("input", ".agent-search-input", function () {
+						const $input = $(this);
+						clearTimeout(searchTimeout);
+						searchTimeout = setTimeout(() => {
+							const query = $input.val().toLowerCase().trim();
+							const filtered = agentList.filter(a => 
+								(a.rm_id || "").toLowerCase().includes(query) ||
+								(a.rm_name || "").toLowerCase().includes(query)
+							);
+							$container.find(`.agent-rows-body[data-type="${rType}"]`).html(buildRows(filtered));
+						}, 300);
+					});
+
+					// Agent Row Click Handler for Customer Accounts Drilldown
+					$container.off("click", ".agent-row-item").on("click", ".agent-row-item", function (e) {
+						e.stopPropagation();
+						const rmId = $(this).data("rm-id");
+						const key = rType + "::" + rmId;
+						self.expandedAgents[key] = !self.expandedAgents[key];
+						const isExp = self.expandedAgents[key];
+
+						$(this).css("background", isExp ? "#eff6ff" : "#fff");
+						$(this).find(".agent-toggle-icon").text(isExp ? "▼" : "▶");
+
+						const $detailRow = $container.find(`.customer-detail-row[data-rm-id="${rmId}"][data-type="${rType}"]`);
+						if (isExp) {
+							$detailRow.show();
+							self.loadAndRenderCustomerDetails(rType, rmId, $container, dashboardInstance);
+						} else {
+							$detailRow.hide();
+						}
+					});
+				},
+
+				loadAndRenderCustomerDetails: function (rType, rmId, $container, dashboardInstance) {
+					const self = this;
+					const key = rType + "::" + rmId;
+					const $custContainer = $container.find(`.customer-detail-container[data-rm-id="${rmId}"][data-type="${rType}"]`);
+					if (!$custContainer.length) return;
+
+					if (self.customerDetails[key]) {
+						self.renderCustomerSubTable(self.customerDetails[key], $custContainer, dashboardInstance);
+						return;
+					}
+
+					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+					$custContainer.html('<div style="padding: 8px; color: #2563eb; font-weight: 600; font-size: 11px;">⏳ Loading Customer Accounts...</div>');
+
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_agent_customer_details",
+						args: {
+							report_type: rType,
+							rm_id: rmId,
+							selected_date: t1_date
+						},
+						callback: function (r) {
+							if (r.message) {
+								self.customerDetails[key] = r.message;
+								self.renderCustomerSubTable(r.message, $custContainer, dashboardInstance);
+							} else {
+								$custContainer.html('<div style="padding: 8px; color: #64748b; font-weight: 600; font-size: 11px;">No customer accounts found.</div>');
+							}
+						}
+					});
+				},
+
+				renderCustomerSubTable: function (customerList, $custContainer, dashboardInstance) {
+					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
+
+					if (!customerList || customerList.length === 0) {
+						$custContainer.html('<div style="padding: 8px; color: #64748b; font-size: 11px;">No customer accounts found.</div>');
+						return;
+					}
+
+					const rowsHtml = customerList.map((c, idx) => `
+						<tr style="border-bottom: 1px solid #e2e8f0; background: #fff;">
+							<td style="padding: 5px 8px; text-align: center; font-size: 11px; width: 35px;">${idx + 1}</td>
+							<td style="padding: 5px 8px; font-size: 11px; font-weight: 700; color: #0f172a;">${c.foracid || "-"}</td>
+							<td style="padding: 5px 8px; font-size: 11px; font-weight: 600; color: #1e293b;">${c.acct_name || "-"}</td>
+							<td style="padding: 5px 8px; font-size: 11px; color: #475569;">${c.operative_account_number || "-"}</td>
+							<td style="padding: 5px 8px; text-align: right; font-size: 11px; font-weight: 600; color: #10b981;">${fmtAmt(c.commission)}</td>
+						</tr>
+					`).join("");
+
+					$custContainer.html(`
+						<div style="background: #f8fafc; border: 1px solid #bfdbfe; border-radius: 4px; padding: 8px;">
+							<div style="font-weight: 700; font-size: 11px; color: #1e40af; margin-bottom: 6px;">Customer Accounts (${customerList.length} Accounts)</div>
+							<div style="max-height: 200px; overflow-y: auto; border: 1px solid #dbeafe; border-radius: 4px;">
+								<table class="table table-sm" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0;">
+									<thead>
+										<tr style="background: #e0f2fe; color: #0369a1;">
+											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: center; width: 35px;">Sr</th>
+											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: left;">Foracid (Account No)</th>
+											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: left;">Customer Name (acct_name)</th>
+											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: left;">Agent Operative Account</th>
+											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: right;">Commission</th>
+										</tr>
+									</thead>
+									<tbody>${rowsHtml}</tbody>
+								</table>
+							</div>
+						</div>
+					`);
+				}
+			},
+			{
+				id: "rm_wise",
+				name: "RM Wise",
+				tableData: [],
+				render: function (container, dashboardInstance, seq) {
+					const self = this;
+					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+					container.html(`
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<div style="display: inline-flex; border-radius: 4px; overflow: hidden; border: 1px solid #cbd5e1;">
+								<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
+								<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+							</div>
+							<input type="text" id="rm-top-search" placeholder="Search RM ID or Name..." style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 220px; outline: none; margin-left: auto;">
+						</div>
+						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
+							${dashboardInstance.buildMisSkeletonTable("Fetching RM Wise data...")}
+						</div>
+						<div id="mis-table-container" ${self.tableData && self.tableData.length > 0 ? "" : 'style="display: none;"'}></div>
+					`);
+
+					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function () {
+						self.tableData = [];
+						dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
+						self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
+					});
+
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
+						const format = $(this).data("format");
+						dashboardInstance.state.formatMode = format;
+						container.find(".mis-format-btn").removeClass("active").css({ background: "#e2e8f0", color: "#475569" });
+						$(this).addClass("active").css({ background: "#417d81", color: "white" });
+						self.renderRmWiseTable(container.find("#mis-table-container"), dashboardInstance);
+					});
+
+					let rmSearchTimeout = null;
+					container.off("input", "#rm-top-search").on("input", "#rm-top-search", function () {
+						const $input = $(this);
+						clearTimeout(rmSearchTimeout);
+						rmSearchTimeout = setTimeout(() => {
+							const query = $input.val().toLowerCase().trim();
+							self.filterQuery = query;
+							self.renderRmWiseTable(container.find("#mis-table-container"), dashboardInstance);
+						}, 300);
+					});
+
+					if (self.tableData && self.tableData.length > 0) {
+						self.renderRmWiseTable(container.find("#mis-table-container"), dashboardInstance);
+						container.find("#mis-controls, #mis-table-container").show();
+						container.find("#mis-loading").hide();
+						return;
+					}
+
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rm_wise_ss_vs_data",
+						args: {
+							selected_date: t1_date
+						},
+						callback: function (r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
+							const msg = r.message;
+							if (msg && msg.data) {
+								self.tableData = msg.data;
+								self.actualDate = msg.actual_date;
+							} else {
+								self.tableData = Array.isArray(msg) ? msg : [];
+								self.actualDate = t1_date;
+							}
+							self.renderRmWiseTable(container.find("#mis-table-container"), dashboardInstance);
+							container.find("#mis-loading").hide();
+							container.find("#mis-controls, #mis-table-container").show();
+						}
+					});
+				},
+				rmDetails: {},
+				expandedRms: {},
+				customerDetails: {},
+				expandedRmCategories: {},
+				renderRmWiseTable: function (tableContainer, dashboardInstance) {
+					const self = this;
+					let data = self.tableData || [];
+					if (!self.rmDetails) self.rmDetails = {};
+					if (!self.expandedRms) self.expandedRms = {};
+					if (!self.customerDetails) self.customerDetails = {};
+					if (!self.expandedRmCategories) self.expandedRmCategories = {};
+
+					if (self.filterQuery) {
+						data = data.filter(r => 
+							(r.rm_id || "").toLowerCase().includes(self.filterQuery) ||
+							(r.rm_name || "").toLowerCase().includes(self.filterQuery)
+						);
+					}
+
+					if (data.length === 0) {
+						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">No RM records to display.</div>');
+						return;
+					}
+
+					const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
+					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
+
+					let grandTotalRecords = 0;
+					let grandTotalCommission = 0;
+
+					self.tableData.forEach(r => {
+						grandTotalRecords += (r.total_records || 0);
+						grandTotalCommission += (r.total_commission || 0);
+					});
+
+					let rowsHtml = "";
+					data.forEach((row, idx) => {
+						const rmId = row.rm_id || "Unknown";
+						const rmName = row.rm_name || "-";
+						const totRecs = row.total_records || 0;
+						const totComm = row.total_commission || 0;
+						const isExpanded = !!self.expandedRms[rmId];
+
+						rowsHtml += `
+							<tr class="rm-master-row" data-rm-id="${rmId}" style="cursor: pointer; background: ${isExpanded ? '#f0fdf4' : '#fff'}; border-bottom: 1px solid #e2e8f0;">
+								<td style="padding: 8px 12px; text-align: center; font-size: 13px; font-weight: 600; width: 45px;">${idx + 1}</td>
+								<td style="padding: 8px 12px; font-size: 13px; font-weight: 700; color: #1e293b;">
+									<span class="rm-toggle-icon" style="display: inline-block; width: 16px; color: #16a34a;">${isExpanded ? '▼' : '▶'}</span>
+									<span style="color: #16a34a; text-decoration: underline;">${rmId}</span>
+								</td>
+								<td style="padding: 8px 12px; font-size: 13px; font-weight: 600; color: #334155;">${rmName}</td>
+								<td style="padding: 8px 12px; text-align: right; font-size: 13px;">${fmtNum(totRecs)}</td>
+								<td style="padding: 8px 12px; text-align: right; font-size: 13px; font-weight: 700; color: #059669;">${fmtAmt(totComm)}</td>
+							</tr>
+							<tr class="rm-detail-row" data-rm-id="${rmId}" style="display: ${isExpanded ? 'table-row' : 'none'}; background: #f8fafc;">
+								<td colspan="5" style="padding: 10px 14px;">
+									<div class="rm-category-container" data-rm-id="${rmId}">
+										<div style="padding: 8px; color: #64748b; font-size: 12px;">Loading Category Breakdown...</div>
+									</div>
+								</td>
+							</tr>
+						`;
+					});
+
+					const tableHtml = `
+						<div style="max-height: 700px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+							<table class="table table-sm table-hover" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
+								<thead>
+									<tr style="background: #16a34a; color: #ffffff; position: sticky; top: 0; z-index: 2;">
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: center; width: 45px;">Sr</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">RM ID (Agent Code)</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">RM Name (Agent Name)</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Records</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Commission</th>
+									</tr>
+								</thead>
+								<tbody>${rowsHtml}</tbody>
+								<tfoot>
+									<tr style="background: #dcfce7; color: #14532d; font-weight: 700; position: sticky; bottom: 0; z-index: 2;">
+										<td colspan="3" style="padding: 10px 12px; text-align: right; font-size: 13px;">GRAND TOTAL (${fmtNum(self.tableData.length)} RMs)</td>
+										<td style="padding: 10px 12px; text-align: right; font-size: 13px;">${fmtNum(grandTotalRecords)}</td>
+										<td style="padding: 10px 12px; text-align: right; font-size: 13px; color: #047857;">${fmtAmt(grandTotalCommission)}</td>
+									</tr>
+								</tfoot>
+							</table>
+						</div>
+					`;
+
+					let noticeHtml = "";
+					const reqDate = dashboardInstance.state.selectedDate || frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+					if (self.actualDate && self.actualDate !== reqDate) {
+						noticeHtml = `
+							<div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 8px 14px; font-size: 12px; color: #1e40af; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+								<span>ℹ Data for <strong>${reqDate}</strong> was not found in SS & VS Report. Displaying latest available records from <strong>${self.actualDate}</strong>.</span>
+							</div>
+						`;
+					}
+					tableContainer.html(noticeHtml + tableHtml);
+
+					// Render category details for expanded RMs
+					Object.keys(self.expandedRms).forEach(rmId => {
+						if (self.expandedRms[rmId]) {
+							self.loadAndRenderRmCategoryDetails(rmId, tableContainer, dashboardInstance);
+						}
+					});
+
+					// Master RM Row Click Event
+					tableContainer.off("click", ".rm-master-row").on("click", ".rm-master-row", function (e) {
+						e.stopPropagation();
+						const rmId = $(this).data("rm-id");
+						self.expandedRms[rmId] = !self.expandedRms[rmId];
+						const isExp = self.expandedRms[rmId];
+
+						$(this).css("background", isExp ? "#f0fdf4" : "#fff");
+						$(this).find(".rm-toggle-icon").text(isExp ? "▼" : "▶");
+
+						const $detailRow = tableContainer.find(`.rm-detail-row[data-rm-id="${rmId}"]`);
+						if (isExp) {
+							$detailRow.show();
+							self.loadAndRenderRmCategoryDetails(rmId, tableContainer, dashboardInstance);
+						} else {
+							$detailRow.hide();
+						}
+					});
+				},
+
+				loadAndRenderRmCategoryDetails: function (rmId, tableContainer, dashboardInstance) {
+					const self = this;
+					const $container = tableContainer.find(`.rm-category-container[data-rm-id="${rmId}"]`);
+					if (!$container.length) return;
+
+					if (self.rmDetails[rmId]) {
+						self.renderRmCategorySubTable(rmId, self.rmDetails[rmId], $container, dashboardInstance);
+						return;
+					}
+
+					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+					$container.html('<div style="padding: 8px; color: #16a34a; font-weight: 600; font-size: 12px;">⏳ Fetching Categories for RM ' + rmId + '...</div>');
+
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rm_wise_category_breakdown",
+						args: {
+							rm_id: rmId,
+							selected_date: t1_date
+						},
+						callback: function (r) {
+							if (r.message) {
+								self.rmDetails[rmId] = r.message;
+								self.renderRmCategorySubTable(rmId, r.message, $container, dashboardInstance);
+							} else {
+								$container.html('<div style="padding: 8px; color: #64748b; font-weight: 600;">No report categories found for this RM.</div>');
+							}
+						}
+					});
+				},
+
+				renderRmCategorySubTable: function (rmId, catList, $container, dashboardInstance) {
+					const self = this;
+					const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
+					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
+
+					if (!catList || catList.length === 0) {
+						$container.html('<div style="padding: 8px; color: #64748b; font-size: 12px;">No categories found.</div>');
+						return;
+					}
+
+					let rowsHtml = "";
+					catList.forEach((c, idx) => {
+						const key = rmId + "::" + c.report_type;
+						const isExp = !!self.expandedRmCategories[key];
+						rowsHtml += `
+							<tr class="rm-cat-row" data-rm-id="${rmId}" data-type="${c.report_type}" style="border-bottom: 1px solid #e2e8f0; cursor: pointer; background: ${isExp ? '#eff6ff' : '#fff'};">
+								<td style="padding: 6px 10px; text-align: center; font-size: 12px; width: 40px;">${idx + 1}</td>
+								<td style="padding: 6px 10px; font-size: 12px; font-weight: 700; color: #1e293b;">
+									<span class="rm-cat-toggle-icon" style="display: inline-block; width: 14px; color: #2563eb;">${isExp ? '▼' : '▶'}</span>
+									<span style="color: #2563eb; text-decoration: underline;">${c.report_type || "-"}</span>
+								</td>
+								<td style="padding: 6px 10px; text-align: right; font-size: 12px;">${fmtNum(c.record_count)}</td>
+								<td style="padding: 6px 10px; text-align: right; font-size: 12px; font-weight: 600; color: #059669;">${fmtAmt(c.total_commission)}</td>
+							</tr>
+							<tr class="rm-cat-cust-row" data-rm-id="${rmId}" data-type="${c.report_type}" style="display: ${isExp ? 'table-row' : 'none'}; background: #f1f5f9;">
+								<td colspan="4" style="padding: 8px 12px;">
+									<div class="rm-cat-cust-container" data-rm-id="${rmId}" data-type="${c.report_type}">
+										<div style="padding: 8px; color: #64748b; font-size: 12px;">Loading Customer Accounts...</div>
+									</div>
+								</td>
+							</tr>
+						`;
+					});
+
+					$container.html(`
+						<div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px;">
+							<div style="font-weight: 700; font-size: 12px; color: #15803d; margin-bottom: 6px;">Report Categories for RM ${rmId} (${catList.length} Categories - Click Category to view Customer Accounts)</div>
+							<div style="max-height: 250px; overflow-y: auto; border: 1px solid #dcfce7; border-radius: 4px;">
+								<table class="table table-sm" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0;">
+									<thead>
+										<tr style="background: #f0fdf4; color: #166534;">
+											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
+											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: left;">Report Type</th>
+											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: right;">Records</th>
+											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: right;">Total Commission</th>
+										</tr>
+									</thead>
+									<tbody>${rowsHtml}</tbody>
+								</table>
+							</div>
+						</div>
+					`);
+
+					// Render details for expanded RM Categories
+					Object.keys(self.expandedRmCategories).forEach(key => {
+						if (self.expandedRmCategories[key] && key.startsWith(rmId + "::")) {
+							const rType = key.split("::")[1];
+							self.loadAndRenderRmCatCustomerDetails(rmId, rType, $container, dashboardInstance);
+						}
+					});
+
+					// Category row click handler
+					$container.off("click", ".rm-cat-row").on("click", ".rm-cat-row", function (e) {
+						e.stopPropagation();
+						const rType = $(this).data("type");
+						const key = rmId + "::" + rType;
+						self.expandedRmCategories[key] = !self.expandedRmCategories[key];
+						const isExp = self.expandedRmCategories[key];
+
+						$(this).css("background", isExp ? "#eff6ff" : "#fff");
+						$(this).find(".rm-cat-toggle-icon").text(isExp ? "▼" : "▶");
+
+						const $custRow = $container.find(`.rm-cat-cust-row[data-rm-id="${rmId}"][data-type="${rType}"]`);
+						if (isExp) {
+							$custRow.show();
+							self.loadAndRenderRmCatCustomerDetails(rmId, rType, $container, dashboardInstance);
+						} else {
+							$custRow.hide();
+						}
+					});
+				},
+
+				loadAndRenderRmCatCustomerDetails: function (rmId, rType, $container, dashboardInstance) {
+					const self = this;
+					const key = rmId + "::" + rType;
+					const $custContainer = $container.find(`.rm-cat-cust-container[data-rm-id="${rmId}"][data-type="${rType}"]`);
+					if (!$custContainer.length) return;
+
+					if (self.customerDetails[key]) {
+						self.renderRmCustomerSubTable(self.customerDetails[key], $custContainer, dashboardInstance);
+						return;
+					}
+
+					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+					$custContainer.html('<div style="padding: 8px; color: #2563eb; font-weight: 600; font-size: 11px;">⏳ Loading Customer Accounts...</div>');
+
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_agent_customer_details",
+						args: {
+							report_type: rType,
+							rm_id: rmId,
+							selected_date: t1_date
+						},
+						callback: function (r) {
+							if (r.message) {
+								self.customerDetails[key] = r.message;
+								self.renderRmCustomerSubTable(r.message, $custContainer, dashboardInstance);
+							} else {
+								$custContainer.html('<div style="padding: 8px; color: #64748b; font-weight: 600; font-size: 11px;">No customer accounts found.</div>');
+							}
+						}
+					});
+				},
+
+				renderRmCustomerSubTable: function (customerList, $custContainer, dashboardInstance) {
+					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
+
+					if (!customerList || customerList.length === 0) {
+						$custContainer.html('<div style="padding: 8px; color: #64748b; font-size: 11px;">No customer accounts found.</div>');
+						return;
+					}
+
+					const rowsHtml = customerList.map((c, idx) => `
+						<tr style="border-bottom: 1px solid #e2e8f0; background: #fff;">
+							<td style="padding: 5px 8px; text-align: center; font-size: 11px; width: 35px;">${idx + 1}</td>
+							<td style="padding: 5px 8px; font-size: 11px; font-weight: 700; color: #0f172a;">${c.foracid || "-"}</td>
+							<td style="padding: 5px 8px; font-size: 11px; font-weight: 600; color: #1e293b;">${c.acct_name || "-"}</td>
+							<td style="padding: 5px 8px; font-size: 11px; color: #475569;">${c.operative_account_number || "-"}</td>
+							<td style="padding: 5px 8px; text-align: right; font-size: 11px; font-weight: 600; color: #059669;">${fmtAmt(c.commission)}</td>
+						</tr>
+					`).join("");
+
+					$custContainer.html(`
+						<div style="background: #f8fafc; border: 1px solid #bfdbfe; border-radius: 4px; padding: 8px;">
+							<div style="font-weight: 700; font-size: 11px; color: #1e40af; margin-bottom: 6px;">Customer Accounts (${customerList.length} Accounts)</div>
+							<div style="max-height: 200px; overflow-y: auto; border: 1px solid #dbeafe; border-radius: 4px;">
+								<table class="table table-sm" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0;">
+									<thead>
+										<tr style="background: #e0f2fe; color: #0369a1;">
+											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: center; width: 35px;">Sr</th>
+											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: left;">Foracid (Account No)</th>
+											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: left;">Customer Name (acct_name)</th>
+											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: left;">Agent Operative Account</th>
+											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: right;">Commission</th>
+										</tr>
+									</thead>
+									<tbody>${rowsHtml}</tbody>
+								</table>
+							</div>
+						</div>
+					`);
+				}
 			}
 		];
 
 		this.init();
 	}
 
+	checkUserDesignation() {
+		const currentUser = frappe.session.user;
+		frappe.db.get_value("Employee", { user_id: currentUser }, ["name", "employee_name", "designation"])
+			.then(r => {
+				const emp = r && r.message ? r.message : null;
+				const designation = emp ? (emp.designation || "") : "";
+				const isBranchManager = designation.toLowerCase().includes("branch manager");
+
+				console.log("[Sahayog Dashboard] Logged in User:", currentUser);
+				console.log("[Sahayog Dashboard] Employee Designation:", designation);
+				console.log("[Sahayog Dashboard] Is Branch Manager?:", isBranchManager);
+
+				this.isBranchManager = isBranchManager;
+				if (isBranchManager) {
+					this.applyBranchManagerRestrictions();
+				}
+			})
+			.catch(err => {
+				console.error("[Sahayog Dashboard] Error checking employee designation:", err);
+			});
+	}
+
+	applyBranchManagerRestrictions() {
+		if (this.isBranchManager) {
+			this.page.main
+				.find('.tab-btn[data-tab="zone"], .tab-btn[data-tab="category"], .tab-btn[data-tab="product"], .tab-btn[data-tab="agent"]')
+				.hide();
+
+			if (["zone", "category", "product", "agent"].includes(this.state.activeTab)) {
+				this.switchTab("branch");
+			}
+		}
+	}
+
 	init() {
+		this.checkUserDesignation();
 		this.setupLegacyStyles();
 		this.setupStyles();
 		this.setupBranchProfilePopup();
@@ -1641,9 +5169,14 @@ class DrishtiDashboard {
 
 		// Clear expanded/collapsed state
 		this.state.expandedZones = {};
+		this.state.expandedZoneRegions = {};
+		this.state.checkedZoneRows = {};
+		this.state.expandedProductRows = {};
+		this.state.checkedProductRows = {};
 
 		// Clear MIS report caches
 		this.misReportsList.forEach((report) => {
+			if (report.type === "group") return;
 			report.tableData = [];
 			report.filterOptions = null;
 			report.expandedZones = {};
@@ -1704,6 +5237,44 @@ class DrishtiDashboard {
 				<div class="drishti-skeleton" style="width: 100%; height: 36px; border-radius: 6px; margin-bottom: 4px;"></div>
 				<div class="drishti-skeleton" style="width: 70%; height: 36px; border-radius: 6px;"></div>
 			</div>
+		`;
+	}
+
+	buildMisSkeletonTable(label) {
+		return `
+			<style>
+				.mis-skeleton-table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; }
+				.mis-skeleton-table th { background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; }
+				.mis-skeleton-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+				.mis-skeleton-pulse { background: linear-gradient(-90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%); background-size: 400% 400%; animation: mis-shimmer 1.5s ease-in-out infinite; border-radius: 4px; height: 16px; }
+				@keyframes mis-shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+			</style>
+			<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+				<div class="spinner-border text-primary" role="status" style="width: 1.2rem; height: 1.2rem; border-width: 0.15em; color: #417d81 !important; animation: spinner-border .75s linear infinite;"></div>
+				<span style="font-weight: 600; color: #417d81; font-size: 13px;">${label || "Fetching data..."}</span>
+			</div>
+			<table class="mis-skeleton-table">
+				<thead><tr>
+					<th style="width: 30px;"><div class="mis-skeleton-pulse" style="width: 14px; height: 14px;"></div></th>
+					<th style="width: 40px; text-align: center;">Sr</th>
+					<th>Zone / Region / Branch</th>
+					<th style="text-align: center; width: 80px;">Branches</th>
+					<th style="text-align: right; width: 100px;">Accounts</th>
+					<th style="text-align: right; width: 120px;">Collection</th>
+					<th style="text-align: right; width: 110px;">Pending</th>
+				</tr></thead>
+				<tbody>
+					${[1,2,3,4,5].map(i => `<tr style="background: ${i%2===0 ? '#f8fafc' : '#fff'};">
+						<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
+						<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
+						<td><div class="mis-skeleton-pulse" style="width: ${120 + Math.random()*60}px;"></div></td>
+						<td><div class="mis-skeleton-pulse" style="width: 30px; margin: auto;"></div></td>
+						<td><div class="mis-skeleton-pulse" style="width: ${50 + Math.random()*30}px; margin-left: auto;"></div></td>
+						<td><div class="mis-skeleton-pulse" style="width: ${60 + Math.random()*30}px; margin-left: auto;"></div></td>
+						<td><div class="mis-skeleton-pulse" style="width: ${50 + Math.random()*20}px; margin-left: auto;"></div></td>
+					</tr>`).join('')}
+				</tbody>
+			</table>
 		`;
 	}
 
@@ -1853,6 +5424,7 @@ class DrishtiDashboard {
 						self.state.selectedMonth = monthNames[monthNum - 1];
 
 						self.updateUrlFromState();
+						self._dataLoaded = false;
 						self.loadData();
 					},
 				},
@@ -2239,16 +5811,24 @@ class DrishtiDashboard {
 			}
 
 			/* Product Wise Table - Column Layout */
-			.product-wise-table th {
+			.product-wise-table th, .gl-wise-table th {
 				text-align: center;
 				vertical-align: middle;
 				background: #f8f9fa;
+				position: sticky;
+				top: 0;
+				z-index: 2;
 			}
-			.product-wise-table td {
+			.product-wise-table thead, .gl-wise-table thead {
+				position: sticky;
+				top: 0;
+				z-index: 2;
+			}
+			.product-wise-table td, .gl-wise-table td {
 				text-align: right;
 				vertical-align: middle;
 			}
-			.product-wise-table td:nth-child(2) {
+			.product-wise-table td:nth-child(2), .gl-wise-table td:nth-child(2) {
 				text-align: left !important;
 			}
 
@@ -2333,16 +5913,6 @@ class DrishtiDashboard {
 			.zone-wise-table tr:hover td.zone-col,
 			.zone-wise-table tr:hover td.branches-col {
 				background-color: #f8f9fa !important;
-			}
-			.zone-wise-table tr.zone-total-row td.sr-col,
-			.zone-wise-table tr.zone-total-row td.zone-col,
-			.zone-wise-table tr.zone-total-row td.branches-col {
-				background-color: #e0e1dd !important;
-			}
-			.zone-wise-table tr.zone-total-row:hover td.sr-col,
-			.zone-wise-table tr.zone-total-row:hover td.zone-col,
-			.zone-wise-table tr.zone-total-row:hover td.branches-col {
-				background-color: #d4d5d1 !important;
 			}
 			.region-detail-row td.sr-col {
 				border-left: 4px solid #417d81 !important;
@@ -2431,6 +6001,7 @@ class DrishtiDashboard {
 			.branch-table th,
 			.agent-wise-table th,
 			.product-wise-table th,
+			.gl-wise-table th,
 			.category-table-redesigned th {
 				text-align: center !important;
 				vertical-align: middle !important;
@@ -2609,6 +6180,16 @@ class DrishtiDashboard {
 
 		// Update region options
 		this.updateRegionOptions();
+
+		// Extract districts
+		const districtSet = new Set();
+		this.zoneData.forEach((item) => {
+			if (item.district && item.district !== item.zone && item.district !== item.region && !item.isZoneTotal && !item.isRegionTotal) {
+				districtSet.add(item.district);
+			}
+		});
+		this.availableFilters.districts = Array.from(districtSet).sort();
+		this.updateDistrictOptions();
 	}
 
 	// ========================================================================
@@ -2647,6 +6228,14 @@ class DrishtiDashboard {
 				this.state.selectedRegions = [queryParams.selectedRegion];
 			} else {
 				this.state.selectedRegions = [];
+			}
+
+			if (queryParams.selectedDistricts) {
+				this.state.selectedDistricts = queryParams.selectedDistricts
+					.split(",")
+					.filter(Boolean);
+			} else {
+				this.state.selectedDistricts = [];
 			}
 
 			if (queryParams.selectedCategories) {
@@ -2696,6 +6285,9 @@ class DrishtiDashboard {
 		}
 		if (this.state.selectedRegions.length > 0) {
 			newSearchParams.set("selectedRegions", this.state.selectedRegions.join(","));
+		}
+		if (this.state.selectedDistricts.length > 0) {
+			newSearchParams.set("selectedDistricts", this.state.selectedDistricts.join(","));
 		}
 
 		newUrl.search = newSearchParams.toString();
@@ -2758,6 +6350,9 @@ class DrishtiDashboard {
 		// Update Region selector
 		this.updateRegionDropdownUI();
 
+		// Update District selector
+		this.updateDistrictDropdownUI();
+
 		// Update Branch search
 		this.page.main.find("#branch-search").val(this.state.branchSearchTerm);
 
@@ -2779,6 +6374,7 @@ class DrishtiDashboard {
 
 		// Update filter tags for zones and categories
 		this.updateFilterTagsUI();
+		this.applyBranchManagerRestrictions();
 	}
 
 	repopulateHeaderFilters() {
@@ -2830,14 +6426,28 @@ class DrishtiDashboard {
 			if (this.drishti_container) this.drishti_container.show();
 			$(this.page.wrapper).find("#drishti-subtitle").show();
 			$("#drishti-header-timer").show();
-			if (this._fyLoaded) this.loadData();
+			if (this._fyLoaded) { this._dataLoaded = false; this.loadData(); }
 		} else {
 			if (this.drishti_container) this.drishti_container.hide();
 			if (this.mis_container) {
 				this.mis_container.show();
 				const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
 				this.mis_container.find(".mis-report-tab-btn").removeClass("active");
-				this.mis_container.find(`.mis-report-tab-btn[data-report-id="${activeReportId}"]`).addClass("active");
+				this.mis_container.find(".mis-dropdown-toggle").removeClass("active");
+				const $matchedTab = this.mis_container.find(`.mis-report-tab-btn[data-report-id="${activeReportId}"]`);
+				if ($matchedTab.length) {
+					$matchedTab.addClass("active");
+				} else {
+					const $dropdown = this.mis_container.find(".mis-report-dropdown");
+					if ($dropdown.length) {
+						const childIds = ($dropdown.data("child-ids") || "").split(",");
+						if (childIds.includes(activeReportId)) {
+							$dropdown.find(".mis-dropdown-toggle").addClass("active").attr("data-selected-child", activeReportId);
+							$dropdown.find(".mis-dropdown-item.active").removeClass("active");
+							$dropdown.find(`.mis-dropdown-item[data-report-id="${activeReportId}"]`).addClass("active");
+						}
+					}
+				}
 				this.renderMisReport(activeReportId);
 			} else {
 				this.initMisReportsContainer();
@@ -2856,6 +6466,7 @@ class DrishtiDashboard {
 			<div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 16px; width: 100%;">
 				<div style="display: flex; gap: 12px;" id="mis-report-selector-tabs"></div>
 			</div>
+			<div id="mis-report-title" style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px; padding: 0 4px;"></div>
 			<div id="mis-report-content-area" style="min-height: 200px;"></div>
 		`;
 		this.mis_container.html(selectorHtml);
@@ -2865,21 +6476,70 @@ class DrishtiDashboard {
 		const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
 
 		this.misReportsList.forEach((report) => {
-			const activeClass = report.id === activeReportId ? "active" : "";
-			tabSelectorContainer.append(`
-				<button class="mis-report-tab-btn ${activeClass}" data-report-id="${report.id}">
-					${report.name}
-				</button>
-			`);
+			if (report.type === "group") {
+				const firstChildId = report.children[0];
+				const selectedChildId = report.children.includes(activeReportId) ? activeReportId : firstChildId;
+				const selectedChild = this.misReportsList.find(r => r.id === selectedChildId);
+				const isActive = report.children.includes(activeReportId);
+				const childIds = report.children.join(",");
+
+				tabSelectorContainer.append(`
+					<div class="mis-report-dropdown" data-child-ids="${childIds}" style="position: relative; display: inline-block;">
+						<button class="mis-report-tab-btn mis-dropdown-toggle ${isActive ? "active" : ""}" data-selected-child="${selectedChildId}" style="display: inline-flex; align-items: center; gap: 4px;">
+							${report.name} <span style="font-size: 10px; margin-left: 2px;">▾</span>
+						</button>
+						<div class="mis-dropdown-menu" style="display: none; position: absolute; top: 100%; left: 0; min-width: 280px; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 100; padding: 4px; margin-top: 4px;">
+							${report.children.map(childId => {
+								const child = self.misReportsList.find(r => r.id === childId);
+								return `<button class="mis-dropdown-item ${childId === activeReportId ? "active" : ""}" data-report-id="${childId}">${child.name}</button>`;
+							}).join("")}
+						</div>
+					</div>
+				`);
+			} else {
+				const isChildOfGroup = this.misReportsList.some(r => r.type === "group" && r.children && r.children.includes(report.id));
+				if (isChildOfGroup) return;
+				const activeClass = report.id === activeReportId ? "active" : "";
+				tabSelectorContainer.append(`
+					<button class="mis-report-tab-btn ${activeClass}" data-report-id="${report.id}">
+						${report.name}
+					</button>
+				`);
+			}
 		});
 
-		this.mis_container.on("click", ".mis-report-tab-btn", function () {
-			self.mis_container.find(".mis-report-tab-btn").removeClass("active");
+		this.mis_container.on("click", ".mis-report-tab-btn:not(.mis-dropdown-toggle)", function () {
+			self.mis_container.find(".mis-report-tab-btn.active, .mis-dropdown-toggle.active, .mis-dropdown-item.active").removeClass("active");
 			$(this).addClass("active");
 			const reportId = $(this).data("report-id");
 			self.state.selectedMisReport = reportId;
 			self.updateUrlFromState();
 			self.renderMisReport(reportId);
+		});
+
+		this.mis_container.on("click", ".mis-dropdown-toggle", function (e) {
+			e.stopPropagation();
+			const $menu = $(this).siblings(".mis-dropdown-menu");
+			$(".mis-dropdown-menu").not($menu).hide();
+			$menu.toggle();
+		});
+
+		this.mis_container.on("click", ".mis-dropdown-item", function () {
+			const reportId = $(this).data("report-id");
+			const $dropdown = $(this).closest(".mis-report-dropdown");
+			self.mis_container.find(".mis-dropdown-item.active").removeClass("active");
+			$(this).addClass("active");
+			$dropdown.find(".mis-dropdown-toggle").attr("data-selected-child", reportId);
+			$dropdown.find(".mis-dropdown-menu").hide();
+			self.mis_container.find(".mis-report-tab-btn.active, .mis-dropdown-toggle.active").removeClass("active");
+			$dropdown.find(".mis-dropdown-toggle").addClass("active");
+			self.state.selectedMisReport = reportId;
+			self.updateUrlFromState();
+			self.renderMisReport(reportId);
+		});
+
+		$(document).on("click", function () {
+			$(".mis-dropdown-menu").hide();
 		});
 
 		const contentArea = this.mis_container.find("#mis-report-content-area");
@@ -2891,7 +6551,9 @@ class DrishtiDashboard {
 		const seq = this._misRenderSeq;
 		const report = this.misReportsList.find(r => r.id === reportId);
 		const contentArea = this.mis_container.find("#mis-report-content-area");
+		const titleEl = this.mis_container.find("#mis-report-title");
 		if (report && contentArea.length) {
+			titleEl.text(report.name);
 			if (typeof report.render === "function") {
 				report.render(contentArea, this, seq);
 			} else {
@@ -2912,6 +6574,7 @@ class DrishtiDashboard {
 		this.state.selectedCategories = [];
 		this.state.selectedZones = [];
 		this.state.selectedRegions = [];
+		this.state.selectedDistricts = [];
 		this.state.branchSearchTerm = "";
 		this.state.selectedMonth = null;
 		this.state.drillDownActive = false;
@@ -3096,12 +6759,12 @@ class DrishtiDashboard {
 		container.empty();
 
 		const categoryColors = {
-			Pinnacle: "#10b981",
-			Master: "#14b8a6",
-			Accelerator: "#3b82f6",
-			Starter: "#f59e0b",
-			Learner: "#ef4444",
-			"Zero Level": "#dc2626",
+			Pinnacle: "#6D28D9",
+			Master: "#1D4ED8",
+			Accelerator: "#047857",
+			Starter: "#B45309",
+			Learner: "#BE185D",
+			"Zero Level": "#991B1B",
 		};
 
 		const allCategoriesCount = this.categoryCounts["all"] || 0;
@@ -3147,7 +6810,7 @@ class DrishtiDashboard {
 		container.append(`
             <button class="filter-tag category-tag all-tag ${
 				allCategoriesActive ? "active" : ""
-			}" data-category="all">
+			}" data-category="all" style="--fill-pct: ${percentages["all"]}%; --fill-color: #cbd5e133; color: #475569;">
                 <span class="category-tag-content">
                     All
                     <span class="filter-tag-count">${allCategoriesCount}</span>
@@ -3165,7 +6828,7 @@ class DrishtiDashboard {
 			container.append(`
                 <button class="filter-tag category-tag ${isActive ? "active" : ""}" 
                         data-category="${category}" 
-                        style="border-left: 3px solid ${color};">
+                        style="--fill-pct: ${pct}%; --fill-color: ${color}26; color: ${color};">
                     <span class="category-tag-content">
                         ${category}
                         <span class="filter-tag-count">${count}</span>
@@ -3377,6 +7040,17 @@ class DrishtiDashboard {
                         </ul>
                     </div>
 
+                    <!-- District Filter (Multi-select dropdown) -->
+                    <div class="dropdown outlined-input-container" id="district-dropdown-container">
+                        <label class="outlined-input-label">District</label>
+                        <button class="btn btn-default btn-sm dropdown-toggle" type="button" id="district-dropdown-btn" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="min-width: 150px; text-align: left; display: inline-flex; align-items: center; justify-content: space-between;">
+                            <span id="district-dropdown-label">All Districts</span>
+                            <span class="caret" style="margin-left: 8px;"></span>
+                        </button>
+                        <ul class="dropdown-menu" id="district-dropdown-menu" aria-labelledby="district-dropdown-btn" style="max-height: 250px; overflow-y: auto; padding: 5px 0; border: 1px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); width: 220px;">
+                        </ul>
+                    </div>
+
                     <!-- Format Control -->
                     <div style="display: flex; align-items: center; gap: 6px;">
                         <span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
@@ -3433,6 +7107,7 @@ class DrishtiDashboard {
 
 		$(html).appendTo(this.drishti_container);
 		this.attachTabEvents();
+		this.applyBranchManagerRestrictions();
 	}
 
 	attachTabEvents() {
@@ -3466,6 +7141,7 @@ class DrishtiDashboard {
 				self.state.financialYear = $(this).val();
 				self.applyPreviousFinancialYearDefaultDate();
 				self.updateUrlFromState();
+				self._dataLoaded = false;
 				self.loadData();
 			});
 
@@ -3495,6 +7171,7 @@ class DrishtiDashboard {
 
 			self.updateUrlFromState();
 			self.updateUiFromState();
+			self._dataLoaded = false;
 			self.loadData();
 		});
 
@@ -3516,6 +7193,7 @@ class DrishtiDashboard {
 			);
 			self.updateUrlFromState();
 			self.updateUiFromState();
+			self._dataLoaded = false;
 			self.loadData();
 		});
 
@@ -3580,6 +7258,7 @@ class DrishtiDashboard {
 
 			self.updateDatePickerValue(newDateStr);
 			self.updateUrlFromState();
+			self._dataLoaded = false;
 			self.loadData();
 		});
 
@@ -3589,6 +7268,7 @@ class DrishtiDashboard {
 			$(this).addClass("active");
 			self.state.targetType = self.normalizeTargetType($(this).data("target"));
 			self.updateUrlFromState();
+			self._dataLoaded = false;
 			self.loadData();
 		});
 
@@ -3647,6 +7327,59 @@ class DrishtiDashboard {
 			e.stopPropagation();
 		});
 
+		// District Filter - All Districts checkbox change
+		this.page.main.on("change", "#district-all-checkbox", function () {
+			const isChecked = $(this).prop("checked");
+			if (isChecked) {
+				self.state.selectedDistricts = [];
+			} else {
+				self.state.selectedDistricts = [...self.availableFilters.districts];
+			}
+			self.updateDistrictDropdownUI();
+			self.updateUrlFromState();
+			self.render();
+		});
+
+		// District Filter - Individual checkbox change
+		this.page.main.on("change", ".district-checkbox", function () {
+			const district = $(this).val();
+			const isChecked = $(this).prop("checked");
+
+			if (isChecked) {
+				if (!self.state.selectedDistricts.includes(district)) {
+					self.state.selectedDistricts.push(district);
+				}
+			} else {
+				const index = self.state.selectedDistricts.indexOf(district);
+				if (index > -1) {
+					self.state.selectedDistricts.splice(index, 1);
+				}
+			}
+
+			if (self.state.selectedDistricts.length === self.availableFilters.districts.length) {
+				self.state.selectedDistricts = [];
+			}
+
+			self.updateDistrictDropdownUI();
+			self.updateUrlFromState();
+			self.render();
+		});
+
+		// Prevent dropdown from closing when clicking inside the menu
+		this.page.main.on("click", "#district-dropdown-menu", function (e) {
+			e.stopPropagation();
+		});
+
+		// District search filter
+		this.page.main.on("input", "#district-search-input", function () {
+			const searchText = $(this).val().toLowerCase();
+			const menu = self.page.main.find("#district-dropdown-menu");
+			menu.find("li.district-item").each(function () {
+				const label = $(this).find("label").text().trim().toLowerCase();
+				$(this).toggle(label.includes(searchText));
+			});
+		});
+
 		// Clear Filters
 		this.page.main.find("#clear-filters").on("click", function () {
 			history.pushState({}, "", window.location.pathname);
@@ -3662,6 +7395,10 @@ class DrishtiDashboard {
 	}
 
 	switchTab(tabId) {
+		if (this.isBranchManager && ["zone", "category", "product", "agent"].includes(tabId)) {
+			tabId = "branch";
+		}
+
 		// Save current tab's date before switching
 		if (this.state.activeTab && this.tabDates.hasOwnProperty(this.state.activeTab)) {
 			this.tabDates[this.state.activeTab] = this.state.selectedDate;
@@ -3760,8 +7497,8 @@ class DrishtiDashboard {
 				this.dateControl.set_value(null);
 				this.isRefreshingDate = false;
 			}
-			// Load data with today's date (default) - but don't show it in selector
-			this.loadDataWithDate(frappe.datetime.get_today());
+			// Load data with yesterday's date (default) - but don't show it in selector
+			this.loadDataWithDate(frappe.datetime.add_days(frappe.datetime.get_today(), -1));
 		}
 
 		this.updateUiFromState();
@@ -3776,7 +7513,7 @@ class DrishtiDashboard {
 			dateStr ||
 			this.state.selectedDate ||
 			this.getPreviousFinancialYearDefaultDate() ||
-			frappe.datetime.get_today();
+			frappe.datetime.add_days(frappe.datetime.get_today(), -1);
 
 		// Show loading skeleton in data container
 		const dataContainer = this.page.main.find("#data-container");
@@ -3904,6 +7641,24 @@ class DrishtiDashboard {
 	// ========================================================================
 	loadData() {
 		if (this.state.dashboardMode === "mis") {
+			const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
+			if (activeReportId) {
+				const report = this.misReportsList.find(r => r.id === activeReportId);
+				if (report) {
+					if (report.cacheDate !== this.state.selectedDate) {
+						report.tableData = [];
+						if (report.cachedPages !== undefined) {
+							report.cachedPages = {};
+							report.cacheDate = null;
+							report.currentPage = 1;
+							report.totalRows = 0;
+							report.totalPages = 0;
+							report._bgRunning = false;
+						}
+					}
+				}
+				this.renderMisReport(activeReportId);
+			}
 			return;
 		}
 		if (this._dataLoaded) return;
@@ -3925,7 +7680,7 @@ class DrishtiDashboard {
 		const apiDate =
 			this.state.selectedDate ||
 			this.getPreviousFinancialYearDefaultDate() ||
-			frappe.datetime.get_today();
+			frappe.datetime.add_days(frappe.datetime.get_today(), -1);
 
 		const reqArgs = {
 			financial_year: this.state.financialYear,
@@ -4039,6 +7794,38 @@ class DrishtiDashboard {
 		this.updateRegionDropdownUI();
 	}
 
+	updateDistrictOptions() {
+		const menu = this.page.main.find("#district-dropdown-menu");
+		if (!menu.length) return;
+		menu.empty();
+
+		menu.append(`
+			<li style="padding: 6px 12px; border-bottom: 1px solid #edf2f7; margin-bottom: 4px; white-space: nowrap; display: flex; align-items: center;">
+				<label style="font-weight: bold; margin-bottom: 0; cursor: pointer; display: flex; align-items: center; width: 100%; color: #0d1b2a;">
+					<input type="checkbox" id="district-all-checkbox" style="position: relative !important; margin: 0 8px 0 0 !important; cursor: pointer; width: 14px; height: 14px; vertical-align: middle;" />
+					All Districts
+				</label>
+			</li>
+			<li style="padding: 4px 12px; border-bottom: 1px solid #edf2f7; margin-bottom: 4px;">
+				<input type="text" id="district-search-input" placeholder="Search district..." style="width: 100%; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; box-sizing: border-box;" />
+			</li>
+		`);
+
+		this.availableFilters.districts.forEach((district) => {
+			const isChecked = this.state.selectedDistricts.includes(district);
+			menu.append(`
+				<li class="district-item" style="padding: 6px 12px; white-space: nowrap; display: flex; align-items: center;">
+					<label style="font-weight: normal; margin-bottom: 0; cursor: pointer; display: flex; align-items: center; width: 100%; color: #1b263b;">
+						<input type="checkbox" class="district-checkbox" value="${district}" ${isChecked ? "checked" : ""} style="position: relative !important; margin: 0 8px 0 0 !important; cursor: pointer; width: 14px; height: 14px; vertical-align: middle;" />
+						${district}
+					</label>
+				</li>
+			`);
+		});
+
+		this.updateDistrictDropdownUI();
+	}
+
 	updateRegionDropdownUI() {
 		const self = this;
 		const container = this.page.main.find("#region-dropdown-container");
@@ -4078,6 +7865,45 @@ class DrishtiDashboard {
 			label.text(self.state.selectedRegions[0]);
 		} else {
 			label.text(`${self.state.selectedRegions.length} Regions`);
+		}
+	}
+
+	updateDistrictDropdownUI() {
+		const self = this;
+		const container = this.page.main.find("#district-dropdown-container");
+		if (!container.length) return;
+
+		const checkboxes = container.find(".district-checkbox");
+		checkboxes.each(function () {
+			const district = $(this).val();
+			$(this).prop("checked", self.state.selectedDistricts.includes(district));
+		});
+
+		const allCheckbox = container.find("#district-all-checkbox");
+		const allSelected =
+			checkboxes.length > 0 && checkboxes.length === self.state.selectedDistricts.length;
+		const noneSelected = self.state.selectedDistricts.length === 0;
+
+		if (noneSelected) {
+			allCheckbox.prop("checked", true);
+			allCheckbox.prop("indeterminate", false);
+		} else if (allSelected) {
+			allCheckbox.prop("checked", true);
+			allCheckbox.prop("indeterminate", false);
+		} else {
+			allCheckbox.prop("checked", false);
+			allCheckbox.prop("indeterminate", true);
+		}
+
+		const label = container.find("#district-dropdown-label");
+		if (noneSelected) {
+			label.text("All Districts");
+		} else if (allSelected) {
+			label.text("All Districts");
+		} else if (self.state.selectedDistricts.length === 1) {
+			label.text(self.state.selectedDistricts[0]);
+		} else {
+			label.text(`${self.state.selectedDistricts.length} Districts`);
 		}
 	}
 
@@ -4202,7 +8028,18 @@ class DrishtiDashboard {
 			);
 		}
 
-		// 4. Branch search term filter (supports comma-separated multi-search)
+		// 4. District filter
+		if (this.state.selectedDistricts && this.state.selectedDistricts.length > 0) {
+			filtered = filtered.filter((branch) =>
+				this.state.selectedDistricts.some(
+					(district) =>
+						this.getLocationIdentifier(district) ===
+						this.getLocationIdentifier(branch.district),
+				),
+			);
+		}
+
+		// 5. Branch search term filter (supports comma-separated multi-search)
 		if (this.state.branchSearchTerm) {
 			const searchTerms = this.state.branchSearchTerm
 				.toLowerCase()
@@ -4223,31 +8060,62 @@ class DrishtiDashboard {
 		return filtered;
 	}
 
+	getFilteredProductData() {
+		if (!this.state.selectedDistricts || this.state.selectedDistricts.length === 0) {
+			return this.productData;
+		}
+
+		const selectedNames = new Set(
+			this.state.selectedDistricts.map((d) => d.toLowerCase().trim()),
+		);
+
+		const matchingDistrictPaths = new Set();
+		const matchingRegionPaths = new Set();
+		const matchingZonePaths = new Set();
+
+		this.productData.forEach((item) => {
+			if (item.type === "district" && selectedNames.has(item.name.toLowerCase().trim())) {
+				matchingDistrictPaths.add(item.path);
+				matchingRegionPaths.add(item.parent_region);
+				matchingZonePaths.add(item.parent_zone);
+			}
+		});
+
+		if (matchingZonePaths.size === 0) return [];
+
+		return this.productData.filter((item) => {
+			if (item.type === "zone") return matchingZonePaths.has(item.path);
+			if (item.type === "region") return matchingRegionPaths.has(item.path);
+			if (item.type === "district") return matchingDistrictPaths.has(item.path);
+			if (item.type === "sol") return matchingDistrictPaths.has(item.parent_district);
+			return true;
+		});
+	}
+
 	reaggregateZoneData(branches) {
 		if (!branches || !this.months || this.months.length === 0) return [];
 
-		const aggregatedMap = new Map(); // Key: zoneName or regionName, Value: aggregated object
-
-		// Group branches into top-level zones and regions
-		const groupedData = {}; // { "ZONE-1": { totalBranches: [], regionBranches: { "REGION-A": [] } } }
+		const groupedData = {};
 
 		branches.forEach((branch) => {
 			const zoneName = branch.zone;
 			const regionName = branch.region;
+			const districtName = branch.district || "Unknown District";
 
 			if (!groupedData[zoneName]) {
 				groupedData[zoneName] = { totalBranches: [], regionBranches: {} };
 			}
-
-			// Add to total zone branches
 			groupedData[zoneName].totalBranches.push(branch);
 
-			// Add to region branches if it's a specific region
 			if (regionName && regionName !== zoneName) {
 				if (!groupedData[zoneName].regionBranches[regionName]) {
-					groupedData[zoneName].regionBranches[regionName] = [];
+					groupedData[zoneName].regionBranches[regionName] = { branches: [], districts: {} };
 				}
-				groupedData[zoneName].regionBranches[regionName].push(branch);
+				groupedData[zoneName].regionBranches[regionName].branches.push(branch);
+				if (!groupedData[zoneName].regionBranches[regionName].districts[districtName]) {
+					groupedData[zoneName].regionBranches[regionName].districts[districtName] = [];
+				}
+				groupedData[zoneName].regionBranches[regionName].districts[districtName].push(branch);
 			}
 		});
 
@@ -4258,70 +8126,63 @@ class DrishtiDashboard {
 			return aNum && bNum ? parseInt(aNum) - parseInt(bNum) : a.localeCompare(b);
 		});
 
-		sortedZoneNames.forEach((zoneName) => {
-			const zoneGroup = groupedData[zoneName];
-
-			// Aggregate for the top-level zone
-			const zoneAgg = {
-				zone: zoneName,
-				region: zoneName,
-				months: Object.fromEntries(
-					this.months.map((m) => [
-						m.key,
-						{ target: 0, achievement: 0, percentage: 0, branches: 0 },
-					]),
-				),
-				isZoneTotal: true,
-			};
-
-			zoneGroup.totalBranches.forEach((branch) => {
+		const aggregateMonths = (branchList) => {
+			const agg = Object.fromEntries(
+				this.months.map((m) => [m.key, { target: 0, achievement: 0, percentage: 0, branches: 0 }]),
+			);
+			branchList.forEach((b) => {
 				this.months.forEach((m) => {
-					const monthData = branch.months[m.key];
-					if (monthData) {
-						zoneAgg.months[m.key].target += monthData.target || 0;
-						zoneAgg.months[m.key].achievement += monthData.achievement || 0;
+					const md = b.months[m.key];
+					if (md) {
+						agg[m.key].target += md.target || 0;
+						agg[m.key].achievement += md.achievement || 0;
 					}
 				});
 			});
-			zoneAgg.months[this.months[0].key].branches = zoneGroup.totalBranches.length; // Count branches for the first month
+			agg[this.months[0].key].branches = branchList.length;
 			this.months.forEach((m) => {
-				const monthAgg = zoneAgg.months[m.key];
-				monthAgg.percentage =
-					monthAgg.target > 0 ? (monthAgg.achievement / monthAgg.target) * 100 : 0;
+				const ma = agg[m.key];
+				ma.percentage = ma.target > 0 ? (ma.achievement / ma.target) * 100 : 0;
 			});
+			return agg;
+		};
+
+		sortedZoneNames.forEach((zoneName) => {
+			const zoneGroup = groupedData[zoneName];
+
+			const zoneAgg = {
+				zone: zoneName,
+				region: zoneName,
+				months: aggregateMonths(zoneGroup.totalBranches),
+				isZoneTotal: true,
+			};
 			result.push(zoneAgg);
 
-			// Aggregate for regions within this zone
 			const sortedRegionNames = Object.keys(zoneGroup.regionBranches).sort();
 			sortedRegionNames.forEach((regionName) => {
-				const regionBranches = zoneGroup.regionBranches[regionName];
+				const regionGroup = zoneGroup.regionBranches[regionName];
+
 				const regionAgg = {
 					zone: zoneName,
 					region: regionName,
-					months: Object.fromEntries(
-						this.months.map((m) => [
-							m.key,
-							{ target: 0, achievement: 0, percentage: 0, branches: 0 },
-						]),
-					),
+					months: aggregateMonths(regionGroup.branches),
 					isZoneTotal: false,
+					isRegionTotal: true,
 				};
-				regionBranches.forEach((branch) => {
-					this.months.forEach((m) => {
-						const monthData = branch.months[m.key];
-						if (monthData) {
-							regionAgg.months[m.key].target += monthData.target || 0;
-							regionAgg.months[m.key].achievement += monthData.achievement || 0;
-						}
+				result.push(regionAgg);
+
+				const sortedDistrictNames = Object.keys(regionGroup.districts).sort();
+				sortedDistrictNames.forEach((districtName) => {
+					const districtBranches = regionGroup.districts[districtName];
+					result.push({
+						zone: zoneName,
+						region: regionName,
+						district: districtName,
+						months: aggregateMonths(districtBranches),
+						isZoneTotal: false,
+						isRegionTotal: false,
 					});
 				});
-				regionAgg.months[this.months[0].key].branches = regionBranches.length; // Count branches for the first month
-				this.months.forEach((m) => {
-					const monthAgg = regionAgg.months[m.key];
-					monthAgg.percentage =
-						monthAgg.target > 0 ? (monthAgg.achievement / monthAgg.target) * 100 : 0;
-				});
-				result.push(regionAgg);
 			});
 		});
 
@@ -4414,7 +8275,8 @@ class DrishtiDashboard {
 			} else if (this.state.activeTab === "category") {
 				htmlContent = this.renderCategoryTable(reaggregatedCategoryData);
 			} else if (this.state.activeTab === "product") {
-				htmlContent = this.renderProductTable(this.productData);
+				const filteredProductData = this.getFilteredProductData();
+				htmlContent = this.renderProductTable(filteredProductData);
 			} else if (this.state.activeTab === "agent") {
 				htmlContent = this.renderAgentWiseTable(this.agentData);
 			} else if (this.state.activeTab === "branch") {
@@ -4455,11 +8317,13 @@ class DrishtiDashboard {
 		const months = this.months;
 
 		let html = `
-			    <table class="table table-bordered zone-wise-table">
-			        <thead>
+			<div style="overflow-x: auto; max-height: 75vh; overflow-y: auto;">
+			    <table class="table table-bordered zone-wise-table" style="min-width: 100%; border-collapse: separate; border-spacing: 0;">
+			        <thead style="position: sticky; top: 0; z-index: 20; background: white;">
 			            <tr class="zone-table-header">
-			                <th rowspan="2" class="sr-col">Sr</th>
-			                <th rowspan="2" class="zone-col">Zone/Region</th>
+			                <th rowspan="2" style="text-align: center; width: 40px;"><input type="checkbox" class="zone-check-all" style="cursor: pointer;"></th>
+			                <th rowspan="2" class="sr-col" style="width: 40px;">Sr</th>
+			                <th rowspan="2" class="zone-col" style="text-align: left;">Z/R/DIS</th>
 			                <th rowspan="2" class="branches-col">Branches</th>
 			    `;
 
@@ -4496,13 +8360,14 @@ class DrishtiDashboard {
 				highlightStyle = `background: #6ca8ac !important; color: #ffffff !important; border-bottom: 2px solid #558a8e !important;`;
 			}
 
-			html += `<th colspan="3" ${highlightStyle ? `style="${highlightStyle}"` : ""}>${displayYear}${daysLeftIndicator}</th>`;
+			const thStyle = highlightStyle ? "background: #6ca8ac !important; color: #ffffff !important; border-bottom: 2px solid #558a8e !important;" : "background: white; color: #1b263b;";
+			html += `<th colspan="3" style="${thStyle}">${displayYear}${daysLeftIndicator}</th>`;
 		});
 
 		html += '</tr><tr class="zone-table-subheader">';
 
 		months.forEach(() => {
-			html += "<th>Target</th><th>Ach</th><th>ACH %</th>";
+			html += "<th style=\"background: white; color: #1b263b;\">Target</th><th style=\"background: white; color: #1b263b;\">Ach</th><th style=\"background: white; color: #1b263b;\">ACH %</th>";
 		});
 
 		html += "</tr></thead><tbody>";
@@ -4530,6 +8395,24 @@ class DrishtiDashboard {
                     letter-spacing: 0.05em;
                     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
                 }
+                .zone-table-row td { background: inherit; }
+                .zone-total-row td { background: #e0e1dd; }
+                .zone-total-row td.sr-col,
+                .zone-total-row td.zone-col,
+                .zone-total-row td.branches-col { background: inherit; }
+                .zone-table-row:hover td { background-color: #e8f4f8 !important; }
+                .zone-table-row.checked td { background-color: #c8e6c9 !important; }
+                .zone-table-row.checked:hover td { background-color: #b8d9b9 !important; }
+                .region-detail-row td { background: inherit; }
+                .region-detail-row:hover td { background-color: #e8f4f8 !important; }
+                .region-detail-row.checked td { background-color: #c8e6c9 !important; }
+                .region-detail-row.checked:hover td { background-color: #b8d9b9 !important; }
+                .district-detail-row td { background: inherit; }
+                .district-detail-row:hover td { background-color: #e8f4f8 !important; }
+                .district-detail-row.checked td { background-color: #c8e6c9 !important; }
+                .district-detail-row.checked:hover td { background-color: #b8d9b9 !important; }
+                .zone-wise-table thead th { background: white; }
+                .zone-wise-table tfoot td { position: sticky; bottom: 0; z-index: 9; }
             `;
 			document.head.appendChild(style);
 		}
@@ -4544,7 +8427,6 @@ class DrishtiDashboard {
 		// Accumulate grand totals only from zone total items (isZoneTotal === true)
 		zoneData.forEach((item) => {
 			if (item.isZoneTotal) {
-				// Only sum from the main zone aggregates to avoid double-counting regions
 				const firstMonthData = item.months[months[0].key];
 				grandTotals.branches += firstMonthData?.branches || 0;
 
@@ -4558,24 +8440,34 @@ class DrishtiDashboard {
 			}
 		});
 
-		// Group data by zone from the reaggregated data
+		// Group data by zone → region (with districts)
 		const zoneGroups = {};
 
 		zoneData.forEach((item) => {
-			const isZoneTotal = item.isZoneTotal; // Use the flag from reaggregated data
-
-			if (isZoneTotal) {
+			if (item.isZoneTotal) {
 				if (!zoneGroups[item.zone]) {
-					zoneGroups[item.zone] = { total: item, regions: [] };
+					zoneGroups[item.zone] = { total: item, regionItems: {} };
 				} else {
 					zoneGroups[item.zone].total = item;
 				}
-			} else {
+			} else if (item.isRegionTotal) {
 				if (!zoneGroups[item.zone]) {
-					// Ensure a total object exists for zones that only have regions in the filtered data
-					zoneGroups[item.zone] = { total: null, regions: [] };
+					zoneGroups[item.zone] = { total: null, regionItems: {} };
 				}
-				zoneGroups[item.zone].regions.push(item);
+				if (!zoneGroups[item.zone].regionItems[item.region]) {
+					zoneGroups[item.zone].regionItems[item.region] = { total: item, districts: [] };
+				} else {
+					zoneGroups[item.zone].regionItems[item.region].total = item;
+				}
+			} else {
+				// District item
+				if (!zoneGroups[item.zone]) {
+					zoneGroups[item.zone] = { total: null, regionItems: {} };
+				}
+				if (!zoneGroups[item.zone].regionItems[item.region]) {
+					zoneGroups[item.zone].regionItems[item.region] = { total: null, districts: [] };
+				}
+				zoneGroups[item.zone].regionItems[item.region].districts.push(item);
 			}
 		});
 
@@ -4591,16 +8483,30 @@ class DrishtiDashboard {
 			.forEach((zoneName) => {
 				const zoneGroup = zoneGroups[zoneName];
 
-				const isExpanded = this.state.expandedZones[zoneName] || false;
+				const isZoneExpanded = this.state.expandedZones[zoneName] || false;
 
 				// Zone Total Row
 				if (zoneGroup.total) {
-					html += this.buildZoneRow(zoneGroup.total, sr++, true, zoneName, isExpanded);
+					html += this.buildZoneRow(zoneGroup.total, sr++, zoneName, isZoneExpanded);
 				}
 
-				// Region Rows (hidden by default)
-				zoneGroup.regions.forEach((regionItem) => {
-					html += this.buildRegionRow(regionItem, "", zoneName, isExpanded);
+				// Region and District Rows
+				Object.keys(zoneGroup.regionItems).sort().forEach((regionName) => {
+					const regionGroup = zoneGroup.regionItems[regionName];
+					const regionKey = zoneName + "::" + regionName;
+					const isRegionExpanded = this.state.expandedZoneRegions[regionKey] || false;
+
+					// Region Row
+					if (regionGroup.total) {
+						html += this.buildRegionRow(regionGroup.total, zoneName, isZoneExpanded, regionKey, isRegionExpanded);
+					}
+
+					// District Rows (hidden unless region expanded)
+					if (regionGroup.total) {
+						regionGroup.districts.forEach((districtItem) => {
+							html += this.buildDistrictRow(districtItem, zoneName, isZoneExpanded, isRegionExpanded);
+						});
+					}
 				});
 			});
 
@@ -4609,7 +8515,7 @@ class DrishtiDashboard {
 		// Grand Total Row (Sticky Vertically and Horizontally)
 		html += `<tfoot style="color: #ffffff; font-weight: bold; border-top: 2px solid #3d7579;">`;
 		html += `<tr style="height: 40px;">`;
-		html += `<td colspan="2" style="position: sticky; left: 0; bottom: 0; z-index: 9; background-color: #264a4d !important; color: #ffffff !important; text-align: left; padding-left: 12px; text-transform: uppercase; letter-spacing: 1px; border-right: none !important; box-shadow: inset -1px 0 0 #3d7579 !important;">TOTAL</td>`;
+		html += `<td colspan="3" style="position: sticky; left: 0; bottom: 0; z-index: 9; background-color: #264a4d !important; color: #ffffff !important; text-align: left; padding-left: 12px; text-transform: uppercase; letter-spacing: 1px; border-right: none !important; box-shadow: inset -1px 0 0 #3d7579 !important;">TOTAL</td>`;
 		html += `<td class="branches-col" style="position: sticky; left: 230px; bottom: 0; z-index: 9; background-color: #264a4d !important; color: #ffffff !important; text-align: center; border-right: none !important; box-shadow: inset -2px 0 0 #3d7579 !important;">${grandTotals.branches}</td>`;
 
 		months.forEach((month) => {
@@ -4637,19 +8543,21 @@ class DrishtiDashboard {
 		});
 		html += `</tr></tfoot>`;
 
-		html += "</table>";
+		html += "</table></div>";
 
 		return html;
 	}
 
-	buildZoneRow(zoneItem, sr, isZoneTotal, zoneName, isExpanded) {
+	buildZoneRow(zoneItem, sr, zoneName, isExpanded) {
 		const months = this.months;
+		const checked = this.state.checkedZoneRows["zone::" + zoneName] ? ' checked' : '';
 
 		const firstMonthData = zoneItem.months[months[0].key];
 
 		const branchCount = firstMonthData?.branches || 0;
 
-		let html = `<tr class="zone-total-row" data-zone="${zoneName}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">`;
+		let html = `<tr class="zone-total-row zone-table-row${checked}" data-zone="${zoneName}" style="font-weight: bold; cursor: pointer;">`;
+		html += `<td style="text-align: center;"><input type="checkbox" class="zone-row-check" data-check-id="zone::${zoneName}"${checked} style="cursor: pointer;"></td>`;
 		html += `<td class="sr-col">${sr}</td>`;
 		html += `<td class="zone-col"><span class="zone-toggle">${isExpanded ? "▼" : "▶"}</span> ${zoneName}</td>`;
 		html += `<td class="branches-col branch-drilldown" data-zone="${zoneName}" title="Click to view branches in ${zoneName}">${branchCount}</td>`;
@@ -4678,23 +8586,67 @@ class DrishtiDashboard {
 		return html + "</tr>";
 	}
 
-	buildRegionRow(regionItem, sr, zoneName, isExpanded) {
+	buildRegionRow(regionItem, zoneName, isZoneExpanded, regionKey, isRegionExpanded) {
 		const months = this.months;
+		const checked = this.state.checkedZoneRows[regionKey] ? ' checked' : '';
 
 		const firstMonthData = regionItem.months[months[0].key];
 
 		const branchCount = firstMonthData?.branches || 0;
 
-		let html = `<tr class="region-detail-row" data-zone="${zoneName}" style="display: ${
-			isExpanded ? "table-row" : "none"
-		}; border-left: 4px solid #417d81;">`;
+		let html = `<tr class="region-detail-row zone-table-row${checked}" data-zone="${zoneName}" data-region="${regionItem.region}" data-region-key="${regionKey}" style="display: ${
+			isZoneExpanded ? "table-row" : "none"
+		}; border-left: 4px solid #417d81; cursor: pointer;">`;
 
-		html += `<td class="sr-col">${sr}</td>`;
-		html += `<td class="zone-col" style="padding-left: 30px;">${regionItem.region}</td>`;
+		html += `<td style="text-align: center;"><input type="checkbox" class="zone-row-check" data-check-id="${regionKey}"${checked} style="cursor: pointer;"></td>`;
+		html += `<td class="sr-col"></td>`;
+		html += `<td class="zone-col" style="padding-left: 30px;"><span class="region-toggle" style="margin-right: 4px;">${isRegionExpanded ? "▼" : "▶"}</span> ${regionItem.region}</td>`;
 		html += `<td class="branches-col branch-drilldown" data-zone="${zoneName}" data-region="${regionItem.region}" title="Click to view branches in ${regionItem.region}">${branchCount}</td>`;
 
 		months.forEach((month) => {
 			const mdata = regionItem.months[month.key];
+
+			if (mdata) {
+				html += `
+			                <td>${this.formatNumber(mdata.target)}</td>
+			                <td>${this.formatNumber(mdata.achievement)}</td>
+			                <td>
+								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+									<span class="pct-value" style="color: ${this.getPctColor(
+										mdata.percentage,
+									)}; min-width: 45px; text-align: right;">${Math.round(mdata.percentage)}%</span>
+									${this.renderProgressBar(mdata.percentage)}
+								</div>
+							</td>
+			            `;
+			} else {
+				html += "<td>-</td><td>-</td><td>-</td>";
+			}
+		});
+
+		return html + "</tr>";
+	}
+
+	buildDistrictRow(districtItem, zoneName, isZoneExpanded, isRegionExpanded) {
+		const months = this.months;
+		const districtKey = zoneName + "::" + districtItem.region + "::" + districtItem.district;
+		const checked = this.state.checkedZoneRows[districtKey] ? ' checked' : '';
+
+		const firstMonthData = districtItem.months[months[0].key];
+
+		const branchCount = firstMonthData?.branches || 0;
+
+		let html = `<tr class="district-detail-row zone-table-row${checked}" data-zone="${zoneName}" data-region="${districtItem.region}" data-district="${districtItem.district}" data-district-key="${districtKey}" style="display: ${
+			isZoneExpanded && isRegionExpanded ? "table-row" : "none"
+		};">`;
+
+		html += `<td style="text-align: center;"><input type="checkbox" class="zone-row-check" data-check-id="${districtKey}"${checked} style="cursor: pointer;"></td>`;
+		html += `<td class="sr-col"></td>`;
+		html += `<td class="zone-col" style="padding-left: 60px;">${districtItem.district}</td>`;
+		html += `<td class="branches-col branch-drilldown" data-zone="${zoneName}" data-region="${districtItem.region}" data-district="${districtItem.district}" title="Click to view branches in ${districtItem.district}">${branchCount}</td>`;
+
+		months.forEach((month) => {
+			const mdata = districtItem.months[month.key];
 
 			if (mdata) {
 				html += `
@@ -4726,10 +8678,68 @@ class DrishtiDashboard {
 
 			.off("click")
 
-			.on("click", function () {
+			.on("click", function (e) {
+				if ($(e.target).is("input[type=checkbox]") || $(e.target).closest("input[type=checkbox]").length) return;
 				const zoneName = $(this).data("zone");
 
 				self.state.expandedZones[zoneName] = !self.state.expandedZones[zoneName];
+
+				self.render();
+			});
+
+		this.page.main
+
+			.find(".zone-row-check")
+
+			.off("click")
+
+			.on("click", function (e) {
+				e.stopPropagation();
+				const checkId = $(this).data("check-id");
+				const checked = $(this).prop("checked");
+
+				if (checked) {
+					self.state.checkedZoneRows[checkId] = true;
+				} else {
+					delete self.state.checkedZoneRows[checkId];
+				}
+
+				self.render();
+			});
+
+		this.page.main
+
+			.find(".zone-check-all")
+
+			.off("click")
+
+			.on("click", function () {
+				const checked = $(this).prop("checked");
+				self.state.checkedZoneRows = {};
+				if (checked) {
+					// Check all visible rows
+					self.page.main.find(".zone-table-row:visible").each(function () {
+						const cb = $(this).find(".zone-row-check");
+						if (cb.length) {
+							self.state.checkedZoneRows[cb.data("check-id")] = true;
+						}
+					});
+				}
+				self.render();
+			});
+
+		this.page.main
+
+			.find(".region-detail-row")
+
+			.off("click")
+
+			.on("click", function (e) {
+				if ($(e.target).is("input[type=checkbox]") || $(e.target).closest("input[type=checkbox]").length) return;
+				const regionKey = $(this).data("region-key");
+				if (!regionKey) return;
+
+				self.state.expandedZoneRegions[regionKey] = !self.state.expandedZoneRegions[regionKey];
 
 				self.render();
 			});
@@ -4754,13 +8764,20 @@ class DrishtiDashboard {
 			allProducts.push("SHARE");
 		}
 
-		// Build dynamic header with product columns
 		let headerHtml = `
+			<style>
+				.product-wise-table tbody tr:hover { background-color: #e8f4f8 !important; cursor: pointer; }
+				.product-wise-table tbody tr.checked-row { background-color: #c8e6c9 !important; }
+				.product-wise-table tbody tr.checked-row:hover { background-color: #a5d6a7 !important; }
+				.product-wise-table .row-checkbox { width: 32px; text-align: center; vertical-align: middle; }
+				.product-wise-table .row-checkbox input { cursor: pointer; width: 15px; height: 15px; accent-color: #417d81; }
+			</style>
 			<table class="table table-bordered product-wise-table">
 				<thead>
 					<tr class="zone-table-header">
+						<th rowspan="2" style="width:32px;" class="row-checkbox"></th>
 						<th rowspan="2" style="width:60px;">SR</th>
-						<th rowspan="2">ZONE/REGION</th>
+						<th rowspan="2" style="text-align: left;">Z/R/DIS/SOL</th>
 		`;
 
 		allProducts.forEach((product) => {
@@ -4777,81 +8794,104 @@ class DrishtiDashboard {
 		let html = headerHtml;
 
 		let sr = 1;
-		let zoneTotalAmount = 0;
-		let zoneTotalCount = 0;
+		let grandTotal = 0;
 		let productTotals = {};
 
-		// Initialize product totals
 		allProducts.forEach((product) => {
 			productTotals[product] = 0;
 		});
 
 		productData.forEach((item) => {
-			if (item.is_group) {
-				const isExpanded = this.state.expandedZones[item.name] || false;
-				const products = item.products || {};
+			const products = item.products || {};
+			const isExpanded = this.state.expandedProductRows[item.path] || false;
+			const checked = this.state.checkedProductRows && this.state.checkedProductRows[item.path] ? ' checked' : '';
+			const checkedClass = checked ? ' checked-row' : '';
 
+			if (item.type === "zone") {
 				html += `
-					<tr class="zone-total-row product-total-row" data-zone="${item.name}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">
+					<tr class="zone-total-row product-total-row${checkedClass}" data-path="${item.path}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">
+						<td class="row-checkbox"><input type="checkbox" class="product-row-checkbox" data-path="${item.path}"${checked}></td>
 						<td>${sr++}</td>
-						<td>
-							<span class="product-toggle">${isExpanded ? "▼" : "▶"}</span>
+						<td style="text-align: left; padding-left: 8px;">
+							<span class="product-toggle" style="margin-right: 6px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
 							<strong>${item.name}</strong>
 						</td>
 				`;
-
-				// Add a column for each product (zone totals) and accumulate totals
 				allProducts.forEach((product) => {
 					const amount = products[product] || 0;
 					productTotals[product] += amount;
 					html += `<td>${this.formatCurrency(amount)}</td>`;
 				});
-
+				html += `<td>${this.formatCurrency(item.amount)}</td></tr>`;
+				grandTotal += item.amount;
+			} else if (item.type === "region") {
+				const parentExpanded = this.state.expandedProductRows[item.parent_zone] || false;
+				const show = parentExpanded;
 				html += `
-						<td>${this.formatCurrency(item.amount)}</td>
-					</tr>
-				`;
-
-				zoneTotalAmount += item.amount;
-				zoneTotalCount += item.count;
-			} else {
-				const isExpanded = this.state.expandedZones[item.parent] || false;
-				const products = item.products || {};
-
-				html += `
-					<tr class="region-detail-row product-detail-row" data-parent-zone="${item.parent}" data-region="${item.name}" style="display: ${isExpanded ? "table-row" : "none"}; cursor: pointer; background: #ffffff; border-left: 4px solid #417d81;">
+					<tr class="product-detail-row${checkedClass}" data-path="${item.path}" data-parent="${item.parent_zone}" style="display: ${show ? "table-row" : "none"}; background-color: #f8fafc; font-weight: bold; cursor: pointer; border-left: 4px solid #417d81;">
+						<td class="row-checkbox"><input type="checkbox" class="product-row-checkbox" data-path="${item.path}"${checked}></td>
 						<td></td>
-						<td style="padding-left: 40px; color: #097c80; font-weight: 500;">${item.name}</td>
+						<td style="text-align: left; padding-left: 28px; color: #097c80;">
+							<span class="product-toggle" style="margin-right: 6px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
+							<strong>${item.name}</strong>
+						</td>
 				`;
-
-				// Add a column for each product
 				allProducts.forEach((product) => {
 					const amount = products[product] || 0;
 					html += `<td>${this.formatCurrency(amount)}</td>`;
 				});
-
+				html += `<td>${this.formatCurrency(item.amount)}</td></tr>`;
+			} else if (item.type === "district") {
+				const zoneExp = this.state.expandedProductRows[item.parent_zone] || false;
+				const regionExp = this.state.expandedProductRows[item.parent_region] || false;
+				const show = zoneExp && regionExp;
 				html += `
-						<td>${this.formatCurrency(item.amount)}</td>
-					</tr>
+					<tr class="product-detail-row${checkedClass}" data-path="${item.path}" data-parent="${item.parent_region}" style="display: ${show ? "table-row" : "none"}; background-color: #fafafa; font-weight: bold; cursor: pointer; border-left: 6px solid #64748b;">
+						<td class="row-checkbox"><input type="checkbox" class="product-row-checkbox" data-path="${item.path}"${checked}></td>
+						<td></td>
+						<td style="text-align: left; padding-left: 48px; color: #1e293b;">
+							<span class="product-toggle" style="margin-right: 6px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
+							<strong>${item.name}</strong>
+						</td>
 				`;
+				allProducts.forEach((product) => {
+					const amount = products[product] || 0;
+					html += `<td>${this.formatCurrency(amount)}</td>`;
+				});
+				html += `<td>${this.formatCurrency(item.amount)}</td></tr>`;
+			} else if (item.type === "sol") {
+				const zoneExp = this.state.expandedProductRows[item.parent_zone] || false;
+				const regionExp = this.state.expandedProductRows[item.parent_region] || false;
+				const districtExp = this.state.expandedProductRows[item.parent_district] || false;
+				const show = zoneExp && regionExp && districtExp;
+				html += `
+					<tr class="product-detail-row${checkedClass}" style="display: ${show ? "table-row" : "none"}; background: #ffffff; border-left: 8px solid #cbd5e1;">
+						<td class="row-checkbox"><input type="checkbox" class="product-row-checkbox" data-path="${item.path}"${checked}></td>
+						<td></td>
+						<td style="text-align: left; padding-left: 68px; color: #475569; font-weight: normal;">${item.name}</td>
+				`;
+				allProducts.forEach((product) => {
+					const amount = products[product] || 0;
+					html += `<td>${this.formatCurrency(amount)}</td>`;
+				});
+				html += `<td>${this.formatCurrency(item.amount)}</td></tr>`;
 			}
 		});
 
-		// Grand Total Row
 		html += `
 			</tbody>
 			<tfoot style="background-color: #264a4d; color: #ffffff; font-weight: bold; border-top: 2px solid #3d7579;">
 				<tr style="height: 40px;">
+					<td></td>
 					<td colspan="2" style="text-align: left; padding-left: 12px; text-transform: uppercase; letter-spacing: 1px;">TOTAL</td>
 		`;
 
-		// Add product-wise totals for each product column
 		allProducts.forEach((product) => {
 			html += `<td>${this.formatCurrency(productTotals[product])}</td>`;
 		});
 
 		html += `
-					<td>${this.formatCurrency(zoneTotalAmount)}</td>
+					<td>${this.formatCurrency(grandTotal)}</td>
 				</tr>
 			</tfoot>
 		</table>`;
@@ -4862,14 +8902,30 @@ class DrishtiDashboard {
 	attachProductExpandHandlers() {
 		const self = this;
 
-		// Handle Zone Expand/Collapse
+		this.page.main.find(".product-row-checkbox").off("change").on("change", function (e) {
+			e.stopPropagation();
+			const path = $(this).data("path");
+			const checked = $(this).prop("checked");
+			if (!self.state.checkedProductRows) self.state.checkedProductRows = {};
+			if (checked) {
+				self.state.checkedProductRows[path] = true;
+				$(this).closest("tr").addClass("checked-row");
+			} else {
+				delete self.state.checkedProductRows[path];
+				$(this).closest("tr").removeClass("checked-row");
+			}
+		});
+
 		this.page.main
-			.find(".product-total-row")
+			.find(".product-wise-table .product-total-row, .product-wise-table .product-detail-row")
 			.off("click")
-			.on("click", function () {
-				const zoneName = $(this).data("zone");
-				self.state.expandedZones[zoneName] = !self.state.expandedZones[zoneName];
-				self.render();
+			.on("click", function (e) {
+				if ($(e.target).is("input[type=checkbox]")) return;
+				const path = $(this).data("path");
+				if (path) {
+					self.state.expandedProductRows[path] = !self.state.expandedProductRows[path];
+					self.render();
+				}
 			});
 	}
 
@@ -4958,8 +9014,10 @@ class DrishtiDashboard {
 				zoneInactive += parseFloat(r.inactive || 0);
 			});
 
-			const zoneSsShortfall = zoneSsTarget - zoneSsAch;
-			const zoneAgentShortfall = zoneTarget - zoneAch;
+			const zoneSsShortfallRaw = zoneSsTarget - zoneSsAch;
+			const zoneAgentShortfallRaw = zoneTarget - zoneAch;
+			const zoneSsShortfall = Math.abs(zoneSsShortfallRaw);
+			const zoneAgentShortfall = Math.abs(zoneAgentShortfallRaw);
 			const zonePercent = zoneTarget > 0 ? ((zoneAch / zoneTarget) * 100).toFixed(2) : 0;
 			const isExpanded = this.state.expandedZones[`agent_${zone}`] || false;
 			const zoneDate =
@@ -4979,12 +9037,12 @@ class DrishtiDashboard {
 					</td>
 					<td class="metric-cell amount-cell">${this.formatCurrency(zoneSsTarget)}</td>
 					<td class="metric-cell amount-cell">${this.formatCurrency(zoneSsAch)}</td>
-					<td class="metric-cell amount-cell" style="color: ${zoneSsShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneSsShortfall)}</td>
+					<td class="metric-cell amount-cell" style="color: ${zoneSsShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneSsShortfall)}</td>
 					<td class="metric-cell amount-cell">${this.formatNumber(zoneSsActive)}</td>
 					<td class="metric-cell amount-cell">${this.formatNumber(zoneSsInactive)}</td>
 					<td class="metric-cell amount-cell">${this.formatCurrency(zoneTarget)}</td>
 					<td class="metric-cell amount-cell">${this.formatCurrency(zoneAch)}</td>
-					<td class="metric-cell amount-cell" style="color: ${zoneAgentShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneAgentShortfall)}</td>
+					<td class="metric-cell amount-cell" style="color: ${zoneAgentShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneAgentShortfall)}</td>
 					<td class="metric-cell amount-cell">${this.formatNumber(zoneActive)}</td>
 					<td class="metric-cell amount-cell">${this.formatNumber(zoneInactive)}</td>
 					<td>
@@ -5017,8 +9075,10 @@ class DrishtiDashboard {
 				const rInactive = parseFloat(r.inactive || 0);
 				const rDate = r.date || zoneDate;
 
-				const rSsShortfall = rSsTarget - rSsAch;
-				const rAgentShortfall = rTarget - rAch;
+				const rSsShortfallRaw = rSsTarget - rSsAch;
+				const rAgentShortfallRaw = rTarget - rAch;
+				const rSsShortfall = Math.abs(rSsShortfallRaw);
+				const rAgentShortfall = Math.abs(rAgentShortfallRaw);
 				const rPercent = rTarget > 0 ? ((rAch / rTarget) * 100).toFixed(2) : 0;
 
 				html += `
@@ -5034,12 +9094,12 @@ class DrishtiDashboard {
 						</td>
 						<td class="metric-cell amount-cell">${this.formatCurrency(rSsTarget)}</td>
 						<td class="metric-cell amount-cell">${this.formatCurrency(rSsAch)}</td>
-						<td class="metric-cell amount-cell" style="color: ${rSsShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rSsShortfall)}</td>
+						<td class="metric-cell amount-cell" style="color: ${rSsShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rSsShortfall)}</td>
 						<td class="metric-cell amount-cell">${this.formatNumber(rSsActive)}</td>
 						<td class="metric-cell amount-cell">${this.formatNumber(rSsInactive)}</td>
 						<td class="metric-cell amount-cell">${this.formatCurrency(rTarget)}</td>
 						<td class="metric-cell amount-cell">${this.formatCurrency(rAch)}</td>
-						<td class="metric-cell amount-cell" style="color: ${rAgentShortfall > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rAgentShortfall)}</td>
+						<td class="metric-cell amount-cell" style="color: ${rAgentShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rAgentShortfall)}</td>
 						<td class="metric-cell amount-cell">${this.formatNumber(rActive)}</td>
 						<td class="metric-cell amount-cell">${this.formatNumber(rInactive)}</td>
 						<td>
@@ -5084,6 +9144,7 @@ class DrishtiDashboard {
 		this.tabDates["agent"] = formatted_for_input;
 
 		// Reload data with new date
+		this._dataLoaded = false;
 		this.loadData();
 	}
 
@@ -5137,12 +9198,12 @@ class DrishtiDashboard {
 		if (!latestMonthKey) return "<div>No data available for the selected period.</div>";
 
 		const categoryConfig = {
-			Pinnacle: { grade: "A+", range: ">100%", color: "#10b981", health: "Excellent" },
-			Master: { grade: "A", range: "80-100%", color: "#14b8a6", health: "Good" },
-			Accelerator: { grade: "B", range: "60-80%", color: "#3b82f6", health: "Improving" },
-			Starter: { grade: "C", range: "40-60%", color: "#f59e0b", health: "Needs Attention" },
-			Learner: { grade: "D", range: "20-40%", color: "#ef4444", health: "At Risk" },
-			"Zero Level": { grade: "E", range: "0-20%", color: "#dc2626", health: "Critical" },
+			Pinnacle: { grade: "A+", range: ">100%", color: "#6D28D9", health: "Excellent" },
+			Master: { grade: "A", range: "80-100%", color: "#1D4ED8", health: "Good" },
+			Accelerator: { grade: "B", range: "60-80%", color: "#047857", health: "Improving" },
+			Starter: { grade: "C", range: "40-60%", color: "#B45309", health: "Needs Attention" },
+			Learner: { grade: "D", range: "20-40%", color: "#BE185D", health: "At Risk" },
+			"Zero Level": { grade: "E", range: "0-20%", color: "#991B1B", health: "Critical" },
 		};
 		const categoryOrder = Object.keys(categoryConfig);
 
@@ -5216,13 +9277,13 @@ class DrishtiDashboard {
             <tr class="category-row-redesigned" data-category="${catName}" style="border-left: 5px solid ${
 				config.color
 			};">
-                <td class="cat-name-cell">
+                <td class="cat-name-cell" style="--fill-pct: ${percentage}%; --fill-color: ${config.color}26;">
                     <span class="category-toggle">${isExpanded ? "▼" : "▶"}</span>
                     <span class="cat-grade" style="background-color: ${config.color};">${
 						config.grade
 					}</span>
                     <div class="cat-name-wrapper">
-                        <span>${catName}</span>
+                        <span style="color: ${config.color};">${catName}</span>
                         <span class="category-percentage-share" style="color: ${this.getPctColor(percentage)}; font-weight: 600;">• ${Math.round(percentage)}%</span>
                     </div>
                 </td>
@@ -5682,23 +9743,26 @@ class DrishtiDashboard {
 	attachZoneDrilldownHandlers() {
 		const self = this;
 		this.page.main.find(".zone-wise-table .branch-drilldown").on("click", function (e) {
-			e.stopPropagation(); // Prevents the row's expand/collapse click handler from firing
+			e.stopPropagation();
 
 			const zone = $(this).data("zone");
-			const region = $(this).data("region"); // This will be undefined for the zone total row, which is fine
+			const region = $(this).data("region");
+			const district = $(this).data("district");
 
-			self.drillDownToBranchView(zone, region);
+			self.drillDownToBranchView(zone, region, district);
 		});
 	}
 
-	drillDownToBranchView(zone, region = null) {
+	drillDownToBranchView(zone, region = null, district = null) {
 		console.log(
 			`Drilling down to Branch view for Zone: ${zone}` +
-				(region ? `, Region: ${region}` : ""),
+				(region ? `, Region: ${region}` : "") +
+				(district ? `, District: ${district}` : ""),
 		);
 
 		this.state.selectedZones = [zone];
 		this.state.selectedRegions = region ? [region] : [];
+		this.state.selectedDistricts = district ? [district] : [];
 		this.state.drillDownActive = true;
 
 		// Update filter UI elements to reflect the change
@@ -5876,13 +9940,13 @@ class DrishtiDashboard {
 		html += `<td class="sr-col">${serialNo}</td>`;
 		html += `<td class="branch-col">
 			<div class="branch-info">
-				<div class="branch-code-name">
-					<a onclick="window.showBranchProfilePopup('${branch.sol_id}'); return false;" class="branch-code-link" style="cursor: pointer; text-decoration: underline;">${branch.sol_id}</a>
-					<a onclick="window.showBranchProfilePopup('${branch.sol_id}'); return false;" class="branch-name-link" style="cursor: pointer;">${branch.branch}</a>
-				</div>
 				<div class="branch-zone-region">
 					<span class="zone-badge">${branch.zone}</span>
 					<span class="region-label">${branch.region}</span>
+				</div>
+				<div class="branch-district">${branch.district || ''}</div>
+				<div class="branch-code-name">
+					<a onclick="window.showBranchProfilePopup('${branch.sol_id}'); return false;" class="branch-code-link" style="cursor: pointer; text-decoration: underline;">${branch.sol_id}-${branch.branch.replace(/\s*BRANCH\s*$/i, '')}</a>
 				</div>
 			</div>
 		</td>`;
@@ -5924,7 +9988,7 @@ class DrishtiDashboard {
 
 	formatCurrency(value) {
 		if (!value || value === 0) return "-";
-		const numValue = Math.round(value);
+		const numValue = Math.round(Math.abs(value));
 
 		if (this.state.formatMode === "words") {
 			if (numValue >= 1000000000) {
@@ -5979,43 +10043,18 @@ class DrishtiDashboard {
 	}
 
 	getCategoryBadge(category, size = "normal") {
-		const colors = {
-			Pinnacle: "#10b981",
-			Master: "#14b8a6",
-			Accelerator: "#3b82f6",
-			Starter: "#f59e0b",
-			Learner: "#ef4444",
-			"Zero Level": "#dc2626",
+		const categoryConfig = {
+			"Pinnacle":    { text: "#6D28D9", bg: "#F5F3FF", border: "#C4B5FD" },
+			"Master":      { text: "#1D4ED8", bg: "#EFF6FF", border: "#93C5FD" },
+			"Accelerator": { text: "#047857", bg: "#ECFDF5", border: "#6EE7B7" },
+			"Starter":     { text: "#B45309", bg: "#FFFBEB", border: "#FDE68A" },
+			"Learner":     { text: "#BE185D", bg: "#FDF2F8", border: "#F9A8D4" },
+			"Zero Level":  { text: "#991B1B", bg: "#FEF2F2", border: "#FECACA" },
+			"Zero":        { text: "#991B1B", bg: "#FEF2F2", border: "#FECACA" }
 		};
-		const color = colors[category] || "#778da9";
+		const config = categoryConfig[category] || { text: "#64748b", bg: "#f8fafc", border: "#e2e8f0" };
 		const fontSize = size === "small" ? "10px" : "12px";
-		return `<span class="category-badge" style="background:${color};color:white;padding:4px 8px;border-radius:4px;font-size:${fontSize};font-weight:600;display:inline-block;">${category}</span>`;
-	}
-
-	getStatusIcon(status) {
-		const icons = {
-			improved: "🟢",
-			declined: "🔴",
-			increased: "🟡↑",
-			decreased: "🟠↓",
-			unchanged: "⚪",
-			new: "✨",
-		};
-		return icons[status] || "";
-	}
-
-	getCategoryBadge(category, size = "normal") {
-		const colors = {
-			Pinnacle: "#10b981",
-			Master: "#14b8a6",
-			Accelerator: "#3b82f6",
-			Starter: "#f59e0b",
-			Learner: "#ef4444",
-			"Zero Level": "#dc2626",
-		};
-		const color = colors[category] || "#778da9";
-		const fontSize = size === "small" ? "10px" : "12px";
-		return `<span class="category-badge" style="background:${color};color:white;padding:4px 8px;border-radius:4px;font-size:${fontSize};font-weight:600;display:inline-block;">${category}</span>`;
+		return `<span class="category-badge" style="background:${config.bg};color:${config.text};border:1px solid ${config.border};padding:4px 8px;border-radius:4px;font-size:${fontSize};font-weight:700;display:inline-block;text-transform:uppercase;">${category}</span>`;
 	}
 
 	updateSummaryCards(filteredBranches, reaggregatedZoneData) {
@@ -6116,6 +10155,7 @@ class DrishtiDashboard {
                 .branch-table,
                 .agent-wise-table,
                 .product-wise-table,
+                .gl-wise-table,
                 .category-table-redesigned {
                     margin-top: 0 !important;
                 }
@@ -6440,6 +10480,15 @@ class DrishtiDashboard {
                     gap: 6px !important;
                     font-size: 13px;
                     font-weight: 600;
+                    background-image: linear-gradient(to right, var(--fill-color, transparent) var(--fill-pct, 0%), #ffffff var(--fill-pct, 0%));
+                }
+
+                .category-tag:hover {
+                    background-image: linear-gradient(to right, var(--fill-color, transparent) var(--fill-pct, 0%), #f8fafc var(--fill-pct, 0%)) !important;
+                }
+
+                .category-tag.active {
+                    background-image: none !important;
                 }
 
                 .category-tag .filter-tag-count {
@@ -6468,46 +10517,42 @@ class DrishtiDashboard {
 
                 /* Category-specific Active Colors */
                 .category-tag[data-category="Pinnacle"].active {
-                    background-color: #10b981 !important;
-                    border-color: #10b981 !important;
+                    background-color: #6D28D9 !important;
+                    border-color: #6D28D9 !important;
                     color: #ffffff !important;
-                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+                    box-shadow: 0 4px 12px rgba(109, 40, 217, 0.25);
                 }
                 .category-tag[data-category="Master"].active {
-                    background-color: #14b8a6 !important;
-                    border-color: #14b8a6 !important;
+                    background-color: #1D4ED8 !important;
+                    border-color: #1D4ED8 !important;
                     color: #ffffff !important;
-                    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.25);
+                    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);
                 }
                 .category-tag[data-category="Accelerator"].active {
-                    background-color: #3b82f6 !important;
-                    border-color: #3b82f6 !important;
+                    background-color: #047857 !important;
+                    border-color: #047857 !important;
                     color: #ffffff !important;
-                    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+                    box-shadow: 0 4px 12px rgba(4, 120, 87, 0.25);
                 }
                 .category-tag[data-category="Starter"].active {
-                    background-color: #f59e0b !important;
-                    border-color: #f59e0b !important;
+                    background-color: #B45309 !important;
+                    border-color: #B45309 !important;
                     color: #ffffff !important;
-                    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+                    box-shadow: 0 4px 12px rgba(180, 83, 9, 0.25);
                 }
                 .category-tag[data-category="Learner"].active {
-                    background-color: #ef4444 !important;
-                    border-color: #ef4444 !important;
+                    background-color: #BE185D !important;
+                    border-color: #BE185D !important;
                     color: #ffffff !important;
-                    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+                    box-shadow: 0 4px 12px rgba(190, 24, 93, 0.25);
                 }
                 .category-tag[data-category="Zero Level"].active {
-                    background-color: #dc2626 !important;
-                    border-color: #dc2626 !important;
+                    background-color: #991B1B !important;
+                    border-color: #991B1B !important;
                     color: #ffffff !important;
-                    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+                    box-shadow: 0 4px 12px rgba(153, 27, 27, 0.25);
                 }
 
-                /* Ensure active category tag left border looks clean */
-                .category-tag.active {
-                    border-left-width: 1px !important;
-                }
 
                 /* Toggle Button Styles */
                 .btn-group .btn {
@@ -6831,8 +10876,7 @@ class DrishtiDashboard {
 
                 .branch-code-name {
                     display: flex;
-                    flex-direction: column;
-                    gap: 4px;
+                    align-items: center;
                 }
 
                 /* Agent toggle - keep arrow and zone name in same row */
@@ -6846,11 +10890,23 @@ class DrishtiDashboard {
                     color: #417d81;
                     font-weight: 600;
                     text-decoration: none;
-                    font-size: 13px;
+                    font-size: 11px;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    display: inline-block;
+                    max-width: 100%;
+                    vertical-align: middle;
                 }
 
                 .branch-code-link:hover {
                     text-decoration: underline;
+                }
+
+                .branch-district {
+                    font-size: 11px;
+                    color: #475569;
+                    margin: 2px 0;
                 }
 
                 .branch-name {
@@ -7047,12 +11103,17 @@ class DrishtiDashboard {
                 .popup-section.improved .diff-change { color: #10b981; }
                 .popup-section.declined .diff-change { color: #dc2626; }
 
-                /* Category Row Expansion & Drilldown */
                 .category-row-redesigned {
                     cursor: pointer;
                 }
                 .category-row-redesigned:hover {
                     background-color: #f8f9fa;
+                }
+                .category-row-redesigned .cat-name-cell {
+                    background-image: linear-gradient(to right, var(--fill-color, transparent) var(--fill-pct, 0%), #ffffff var(--fill-pct, 0%));
+                }
+                .category-row-redesigned:hover .cat-name-cell {
+                    background-image: linear-gradient(to right, var(--fill-color, transparent) var(--fill-pct, 0%), #f8f9fa var(--fill-pct, 0%)) !important;
                 }
                 .count-cell .drill-link {
                     color: #007bff;
@@ -7323,15 +11384,32 @@ class DrishtiDashboard {
                     outline: none !important;
                     margin: 0 !important;
                 }
-                .mis-report-tab-btn:hover {
-                    color: #417d81 !important;
-                    background: rgba(65, 125, 129, 0.08) !important;
-                }
                 .mis-report-tab-btn.active {
                     background: #417d81 !important;
                     color: #ffffff !important;
                     font-weight: 700 !important;
                     box-shadow: 0 4px 10px rgba(65, 125, 129, 0.25) !important;
+                }
+                .mis-dropdown-item {
+                    display: block !important;
+                    width: 100% !important;
+                    padding: 8px 12px !important;
+                    background: transparent !important;
+                    color: #1e293b !important;
+                    border: none !important;
+                    text-align: left !important;
+                    font-size: 13px !important;
+                    font-weight: 600 !important;
+                    border-radius: 6px !important;
+                    cursor: pointer !important;
+                }
+                .mis-dropdown-item.active {
+                    background: #417d81 !important;
+                    color: #fff !important;
+                    font-weight: 700 !important;
+                }
+                .mis-dropdown-item:hover:not(.active) {
+                    background: #f1f5f9 !important;
                 }
                 .mis-table-body tr:hover {
                     background-color: #f8fafc !important;
