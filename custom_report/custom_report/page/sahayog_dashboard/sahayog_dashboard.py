@@ -307,6 +307,7 @@ def get_fy_months_with_dates(financial_year, view="Monthly", selected_date=None,
         ref_date = selected_date_obj if selected_date_obj else datetime.now()
         ref_month = ref_date.month
         ref_year = ref_date.year
+        found = False
         for m in all_months:
             if m[1] == ref_month and m[2] == ref_year:
                 if selected_date_obj and selected_date_obj.month == ref_month and selected_date_obj.year == ref_year:
@@ -314,11 +315,21 @@ def get_fy_months_with_dates(financial_year, view="Monthly", selected_date=None,
                         exists = frappe.db.exists("Branch Category Report", {"date": selected_date_obj})
                         if exists:
                             result_months.append((m[0], m[1], m[2], str(selected_date_obj)))
+                            found = True
                             break
+                if not found:
+                    last_date = get_last_available_date_for_month(m[1], m[2])
+                    if last_date:
+                        result_months.append((m[0], m[1], m[2], last_date))
+                        found = True
+                break
+        # Fallback: if current month has no data, walk backwards to find latest available month
+        if not found:
+            for m in reversed(all_months):
                 last_date = get_last_available_date_for_month(m[1], m[2])
                 if last_date:
                     result_months.append((m[0], m[1], m[2], last_date))
-                break
+                    break
     
     elif view in ("Quarterly", "Yearly"):
         for m in all_months:
@@ -719,6 +730,16 @@ def build_zone_wise(branch_data, targets_map, target_type, district_map=None):
         zrm["branches"].add(sol_id)
         zrm["target"] += tgt
         zrm["achievement"] += ach
+
+        branch = zone_hierarchy[zone][region]["branch_details"][sol_id]
+        branch["zone"] = zone
+        branch["region"] = region
+        branch["sol_id"] = sol_id
+        branch["branch"] = branch_name
+        if month_key not in branch["months"]:
+            branch["months"][month_key] = {"target": 0.0, "achievement": 0.0, "percentage": 0.0}
+        branch["months"][month_key]["target"] += tgt
+        branch["months"][month_key]["achievement"] += ach
     
     zone_wise = []
     def zone_sort_key(z):
@@ -1089,6 +1110,18 @@ def build_branch_wise(branch_data, targets_map, months, target_type, district_ma
     
     out = []
     for i, (sol_id, data) in enumerate(branch_map.items(), 1):
+        # Fetch additional branch details from Sahayog Branch doctype
+        branch_details = {}
+        if frappe.db.exists("DocType", "Sahayog Branch"):
+            branch_details = frappe.get_all(
+                "Sahayog Branch",
+                filters={"sol_id": sol_id},
+                fields=["state", "email", "branch_address"],
+                limit_page_length=1
+            )
+            if branch_details:
+                branch_details = branch_details[0]
+        
         out.append({
             "sr_no": i,
             "sol_id": sol_id,
@@ -1110,6 +1143,13 @@ def build_agent_wise(selected_date=None):
     """
     if not selected_date:
         selected_date = frappe.utils.today()
+    
+    # Check if data exists for selected_date, fallback to latest available
+    has_data = frappe.db.exists("Agent  Wise Report", {"date": ["between", [f"{selected_date} 00:00:00", f"{selected_date} 23:59:59"]]})
+    if not has_data:
+        latest = frappe.db.get_value("Agent  Wise Report", {}, "date", order_by="date desc")
+        if latest:
+            selected_date = str(latest)[:10]
         
     # Fetch data from Agent  Wise Report doctype
     agent_data = frappe.get_all(

@@ -24,7 +24,7 @@ const financialYear = ref(`fy${fyStartYear}${fyStartYear + 1}`)
 const asOfDate = ref('')
 const asOfMonth = ref('6')
 const segmentSelect = ref('all')
-const isDark = ref(false)
+const isDark = ref(localStorage.getItem('theme') === 'dark')
 
 const categories = ref([
   { name: 'Pinnacle', range: '>100%', color: '#4fffb0', count: 42, enabled: true },
@@ -74,14 +74,18 @@ function toInitials(name: string): string {
 }
 
 function mapZoneName(name: string): string {
-  const match = name.match(/^Zone\s*-?\s*(.+)/i)
-  if (match) return 'Z' + (match[1] ? '-' + match[1] : '')
+  const match = name.match(/^ZONE-?\s*(.+)/i)
+  if (match) return 'Z-' + (match[1] || '')
+  const match2 = name.match(/^Zone\s*-?\s*(.+)/i)
+  if (match2) return 'Z-' + (match2[1] || '')
   return toInitials(name)
 }
 
 function mapRegionName(name: string): string {
-  const match = name.match(/^Region\s*-?\s*(.+)/i)
-  if (match) return 'R' + (match[1] ? '-' + match[1] : '')
+  const match = name.match(/^REGION-?\s*(.+)/i)
+  if (match) return 'R-' + (match[1] || '')
+  const match2 = name.match(/^Region\s*-?\s*(.+)/i)
+  if (match2) return 'R-' + (match2[1] || '')
   return toInitials(name)
 }
 
@@ -218,19 +222,20 @@ initFilters()
   >
     <div class="sidebar-inner">
       <!-- Logo -->
-      <div class="sidebar-logo" :class="{ 'logo-clickable': collapsed }" @click="collapsed ? toggleSidebar() : null" style="cursor: default;">
+      <div class="sidebar-logo" :class="{ 'logo-clickable': collapsed }" @click="collapsed ? toggleSidebar() : null" :style="{ cursor: collapsed ? 'pointer' : 'default' }">
         <img src="/fav-icon.png" alt="Drishti" class="logo-mark" />
         <div v-if="!collapsed">
           <div class="logo-text">DRISHTI</div>
           <div class="logo-sub">Performance Intelligence</div>
         </div>
-        <div style="flex:1" />
-        <button class="collapse-btn" @click="toggleSidebar" :title="collapsed ? 'Expand' : 'Collapse'">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline v-if="!collapsed" points="11 17 6 12 11 7" />
-            <polyline v-else points="13 7 18 12 13 17" />
-          </svg>
-        </button>
+        <template v-if="!collapsed">
+          <div style="flex:1" />
+          <button class="collapse-btn" @click.stop="toggleSidebar" title="Collapse">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="11 17 6 12 11 7" />
+            </svg>
+          </button>
+        </template>
       </div>
 
       <template v-if="!collapsed">
@@ -310,11 +315,42 @@ initFilters()
       </template>
 
       <!-- Footer -->
-      <div class="sb-footer">
-        <div class="sb-footer-row">
-          <button class="reset-btn" @click="$emit('reset')">↺ Reset All Filters</button>
-          <button class="theme-toggle-btn-sm" @click="toggleTheme" title="Toggle light/dark theme">
-            <svg v-if="isDark" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <template v-if="!collapsed">
+        <div class="sb-footer">
+          <div class="sb-footer-row">
+            <button class="reset-btn" @click="$emit('reset')">↺ Reset All Filters</button>
+            <button class="theme-toggle-btn-sm" @click="toggleTheme" title="Toggle light/dark theme">
+              <svg v-if="isDark" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+              </svg>
+              <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Collapsed Footer -->
+      <template v-if="collapsed">
+        <div class="sb-footer-collapsed">
+          <button class="collapsed-icon-btn" @click="$emit('reset')" title="Clear Filters">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18"></path>
+              <path d="M7 12h10"></path>
+              <path d="M10 18h4"></path>
+            </svg>
+          </button>
+          <button class="collapsed-icon-btn" @click="toggleTheme" title="Toggle theme">
+            <svg v-if="isDark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="5"></circle>
               <line x1="12" y1="1" x2="12" y2="3"></line>
               <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -325,12 +361,12 @@ initFilters()
               <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
               <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
             </svg>
-            <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
             </svg>
           </button>
         </div>
-      </div>
+      </template>
     </div>
   </aside>
 </template>

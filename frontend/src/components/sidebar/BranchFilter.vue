@@ -9,7 +9,10 @@ const branchOptions = ref([])
 
 const filteredBranches = computed(() => {
   const q = search.value.toLowerCase()
-  return branchOptions.value.filter(b => b.label.toLowerCase().includes(q))
+  const matched = branchOptions.value.filter(b => b.label.toLowerCase().includes(q))
+  const selected = matched.filter(b => branchFilter.value.includes(String(b.value)))
+  const unselected = matched.filter(b => !branchFilter.value.includes(String(b.value)))
+  return [...selected, ...unselected]
 })
 
 const allBranchesSelected = computed(() => branchFilter.value.length === branchOptions.value.length)

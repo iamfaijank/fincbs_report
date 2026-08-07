@@ -1,99 +1,194 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { frappeRequest } from 'frappe-ui'
 import { useNumberFormat } from '@/composables/useNumberFormat.js'
+import { useFilters } from '@/composables/useFilters.js'
+import { useNameFormat } from '@/composables/useNameFormat.js'
 import AchievementBadge from './AchievementBadge.vue'
 
+const props = defineProps({
+  searchQuery: { type: String, default: '' },
+})
+
+const emit = defineEmits(['select'])
+
 const { formatNumber } = useNumberFormat()
+const { isZoneSelected, isRegionSelected } = useFilters()
+const { formatZone, formatRegion } = useNameFormat()
 
-const branchData = ref([
-  { sr: 1, branch: 'ABD-1001', segments: 'SB/CA/ND', category: 'Pinnacle', target: 1567890, julTarget: 522630, ach: 456789, achPercent: 87.4 },
-  { sr: 2, branch: 'JHD-1002', segments: 'SB/CA', category: 'Master', target: 1432500, julTarget: 477500, ach: 423456, achPercent: 88.7 },
-  { sr: 3, branch: 'PUN-1003', segments: 'SB/CA/FD', category: 'Accelerator', target: 1289000, julTarget: 429667, ach: 345678, achPercent: 80.5 },
-  { sr: 4, branch: 'MUM-1004', segments: 'SB/CA/ND/RD', category: 'Pinnacle', target: 1890000, julTarget: 630000, ach: 598765, achPercent: 95.0 },
-  { sr: 5, branch: 'DEL-1005', segments: 'SB/CA', category: 'Starter', target: 987650, julTarget: 329217, ach: 234567, achPercent: 71.3 },
-  { sr: 6, branch: 'CHN-1006', segments: 'SB/CA/FD/RD', category: 'Master', target: 1654300, julTarget: 551433, ach: 498765, achPercent: 90.6 },
-  { sr: 7, branch: 'HYD-1007', segments: 'SB/CA', category: 'Learner', target: 756000, julTarget: 252000, ach: 156789, achPercent: 62.4 },
-  { sr: 8, branch: 'KOL-1008', segments: 'SB/CA/ND', category: 'Accelerator', target: 1123400, julTarget: 374467, ach: 298765, achPercent: 79.2 },
-])
+const branchWise = ref([])
+const months = ref([])
+const loading = ref(true)
 
-const totalTarget = computed(() => branchData.value.reduce((a, r) => a + r.target, 0))
-const totalAch = computed(() => branchData.value.reduce((a, r) => a + r.ach, 0))
-const totalAchPercent = computed(() => totalTarget.value > 0 ? (totalAch.value / totalTarget.value * 100).toFixed(1) : 0)
+const STATUS_META = {
+  improved: { label: 'Improved', class: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400', icon: 'up' },
+  declined: { label: 'Declined', class: 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400', icon: 'down' },
+  increased: { label: 'Increased', class: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400', icon: 'up' },
+  decreased: { label: 'Decreased', class: 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400', icon: 'down' },
+  unchanged: { label: 'Unchanged', class: 'bg-gray-50 text-gray-600 dark:bg-gray-900/30 dark:text-gray-400', icon: 'flat' },
+  new: { label: 'New', class: 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400', icon: 'new' },
+}
+
+const CATEGORY_COLORS = {
+  Pinnacle: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400',
+  Master: 'bg-teal-50 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400',
+  Accelerator: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+  Starter: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+  Learner: 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
+  'Zero Level': 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+}
+
+onMounted(async () => {
+  try {
+    const data = await frappeRequest({
+      url: '/api/method/custom_report.www.drishti.get_branch_wise_data',
+      method: 'POST',
+    }) || {}
+    branchWise.value = data.branch_wise || []
+    months.value = data.months || []
+  } catch (e) {
+    console.error('Failed to load branch wise data', e)
+  } finally {
+    loading.value = false
+  }
+})
+
+const activeMonth = computed(() => {
+  if (months.value.length === 0) return null
+  return months.value[months.value.length - 1]
+})
+
+const filteredBranchData = computed(() => {
+  let data = branchWise.value.filter(b => isZoneSelected(b.zone) && isRegionSelected(b.region))
+  if (props.searchQuery && props.searchQuery.trim()) {
+    const q = props.searchQuery.trim().toLowerCase()
+    data = data.filter(b => b.branch.toLowerCase().includes(q) || b.sol_id.toLowerCase().includes(q))
+  }
+  return data
+})
+
+function getMonthData(branch) {
+  if (!activeMonth.value) return null
+  return branch.months?.[activeMonth.value.key] || null
+}
+
+const totals = computed(() => {
+  let target = 0, achievement = 0
+  filteredBranchData.value.forEach(b => {
+    const md = getMonthData(b)
+    if (md) {
+      target += md.target || 0
+      achievement += md.achievement || 0
+    }
+  })
+  return { target, achievement, percentage: target > 0 ? Math.round(achievement / target * 100) : 0 }
+})
+
+function selectBranch(row) {
+  emit('select', row)
+}
 </script>
 
 <template>
   <div class="sb-card card-table">
-    <div class="overflow-x-auto">
+    <div v-if="loading" class="p-8 text-center text-sm text-[var(--text3)]">Loading...</div>
+    <div v-else>
       <table class="w-full">
         <thead>
           <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
-            <th rowspan="2" class="border-r border-[var(--border)] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+            <th class="border-r border-[var(--border)] px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
               SR. NO.
             </th>
-            <th rowspan="2" class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+            <th class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
               BRANCH
             </th>
-            <th rowspan="2" class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-              SEGMENTS
+            <th class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+              ZONE
             </th>
-            <th colspan="4" class="border-b border-r border-[var(--border)] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-              JUL-2026<br/>
-              <span class="text-[10px] font-normal">10 WORKING DAYS LEFT</span>
+            <th class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+              REGION
+            </th>
+            <th v-if="activeMonth" colspan="4" class="border-r border-[var(--border)] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+              {{ activeMonth.display }}
+            </th>
+            <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+              STATUS
             </th>
           </tr>
-          <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
-            <th class="border-r border-[var(--border)] px-4 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">CATEGORY</th>
-            <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">TARGET</th>
-            <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">ACH</th>
-            <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">ACH %</th>
+          <tr v-if="activeMonth" class="border-b border-[var(--border)] bg-[var(--bg2)]">
+            <th colspan="4" class="border-r border-[var(--border)] px-4 py-2"></th>
+            <th class="border-r border-[var(--border)] px-4 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Category</th>
+            <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Target</th>
+            <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Ach</th>
+            <th class="border-r border-[var(--border)] px-4 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Ach %</th>
+            <th class="px-4 py-2"></th>
           </tr>
         </thead>
         <tbody>
           <tr
-            v-for="row in branchData"
-            :key="row.sr"
-            class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)]"
+            v-for="row in filteredBranchData"
+            :key="row.sol_id"
+            class="border-b border-[var(--border)] transition hover:bg-[var(--bg2)] cursor-pointer"
+            @click="selectBranch(row)"
           >
             <td class="border-r border-[var(--border)] px-4 py-3 text-center font-mono text-sm text-[var(--text3)]">
-              {{ row.sr }}
+              {{ row.sr_no }}
             </td>
             <td class="border-r border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--text)]">
-              {{ row.branch }}
+              {{ row.branch }} ({{ row.sol_id }})
             </td>
             <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text2)]">
-              {{ row.segments }}
+              {{ formatZone(row.zone) }}
             </td>
-            <td class="border-r border-[var(--border)] px-4 py-3 text-center">
-              <span class="inline-block rounded px-2 py-0.5 text-xs font-medium"
-                :class="
-                  row.category === 'Pinnacle' ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                  : row.category === 'Master' ? 'bg-teal-50 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400'
-                  : row.category === 'Accelerator' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                  : row.category === 'Starter' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
-                  : 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                "
+            <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text2)]">
+              {{ formatRegion(row.region) }}
+            </td>
+            <template v-if="activeMonth && getMonthData(row)">
+              <td class="border-r border-[var(--border)] px-4 py-3 text-center">
+                <span class="inline-block rounded px-2 py-0.5 text-xs font-medium" :class="CATEGORY_COLORS[getMonthData(row).category] || ''">
+                  {{ getMonthData(row).category }}
+                </span>
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
+                {{ formatNumber(getMonthData(row).target) }}
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
+                {{ formatNumber(getMonthData(row).achievement) }}
+              </td>
+              <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm">
+                <AchievementBadge :value="getMonthData(row).percentage" />
+              </td>
+            </template>
+            <template v-else>
+              <td colspan="4" class="border-r border-[var(--border)] px-4 py-3 text-center text-sm text-[var(--text3)]">—</td>
+            </template>
+            <td class="px-4 py-3 text-center">
+              <span
+                v-if="getMonthData(row)"
+                class="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium"
+                :class="STATUS_META[getMonthData(row).status]?.class || ''"
               >
-                {{ row.category }}
+                <svg v-if="STATUS_META[getMonthData(row).status]?.icon === 'up'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="18 15 12 9 6 15"></polyline>
+                </svg>
+                <svg v-else-if="STATUS_META[getMonthData(row).status]?.icon === 'down'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+                <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                {{ STATUS_META[getMonthData(row).status]?.label || getMonthData(row).status }}
               </span>
-            </td>
-            <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
-              {{ formatNumber(row.target) }}
-            </td>
-            <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">
-              {{ formatNumber(row.ach) }}
-            </td>
-            <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm">
-              <AchievementBadge :value="row.achPercent" />
             </td>
           </tr>
           <tr class="border-t-2 border-[var(--border)] bg-[var(--bg2)] font-semibold">
             <td class="border-r border-[var(--border)] px-4 py-3 text-center text-sm text-[var(--text3)]"></td>
-            <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text)]">Total</td>
-            <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text3)]">—</td>
+            <td class="border-r border-[var(--border)] px-4 py-3 text-sm text-[var(--text)]" colspan="3">Total</td>
             <td class="border-r border-[var(--border)] px-4 py-3 text-center text-sm text-[var(--text3)]">—</td>
-            <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(totalTarget) }}</td>
-            <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(totalAch) }}</td>
-            <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ totalAchPercent }}%</td>
+            <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(totals.target) }}</td>
+            <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(totals.achievement) }}</td>
+            <td class="border-r border-[var(--border)] px-4 py-3 text-right font-mono text-sm text-[var(--text)]">{{ totals.percentage }}%</td>
+            <td class="px-4 py-3 text-center text-sm text-[var(--text3)]">—</td>
           </tr>
         </tbody>
       </table>

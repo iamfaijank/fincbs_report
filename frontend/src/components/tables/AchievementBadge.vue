@@ -5,6 +5,15 @@ const props = defineProps({
   value: { type: [Number, String], required: true },
 })
 
+function roundPercent(val) {
+  const n = parseFloat(val) || 0
+  const decimal = n - Math.floor(n)
+  if (decimal > 0.5) return Math.ceil(n)
+  return Math.floor(n)
+}
+
+const displayValue = computed(() => roundPercent(props.value))
+
 const colorClass = computed(() => {
   const v = Number(props.value)
   if (v >= 90) return 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
@@ -15,6 +24,6 @@ const colorClass = computed(() => {
 
 <template>
   <span class="inline-block rounded px-2 py-0.5 text-xs font-medium" :class="colorClass">
-    {{ value }}%
+    {{ displayValue }}%
   </span>
 </template>

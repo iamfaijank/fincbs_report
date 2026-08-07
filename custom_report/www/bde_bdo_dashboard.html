@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>BDE BDO Dashboard</title>
+		<link rel="icon" type="image/png" href="/assets/custom_report/frontend/favicon.png" />
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+		<style>
+			* { margin: 0; padding: 0; box-sizing: border-box; }
+			body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #1b263b; min-height: 100vh; display: flex; }
+			.sidebar { width: 240px; background: #0f172a; color: white; min-height: 100vh; flex-shrink: 0; display: flex; flex-direction: column; }
+			.sidebar-header { padding: 20px; border-bottom: 1px solid #1e293b; }
+			.sidebar-header h2 { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
+			.sidebar-header p { font-size: 11px; color: #94a3b8; }
+			.sidebar-nav { padding: 12px 0; flex: 1; }
+			.sidebar-nav-label { padding: 8px 20px; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+			.sidebar-nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 13px; font-weight: 500; color: #cbd5e1; cursor: pointer; transition: all 0.15s; border-left: 3px solid transparent; }
+			.sidebar-nav-item:hover { background: rgba(65,125,129,0.15); color: white; }
+			.sidebar-nav-item.active { background: rgba(65,125,129,0.2); color: #5eead4; border-left-color: #5eead4; font-weight: 600; }
+			.sidebar-nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+			.main-content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+			.main-header { background: linear-gradient(135deg, #417d81 0%, #346569 100%); color: white; padding: 16px 24px; }
+			.main-header h1 { font-size: 18px; font-weight: 700; }
+			.main-body { padding: 20px 24px; flex: 1; overflow: auto; }
+			.controls-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+			.controls-bar input[type="text"] { padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; min-width: 220px; background: white; color: #1b263b; font-size: 13px; outline: none; font-family: 'Inter', sans-serif; }
+			.controls-bar input[type="text"]:focus { border-color: #417d81; box-shadow: 0 0 0 2px rgba(65,125,129,0.15); }
+			.btn { padding: 6px 14px; font-size: 12px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+			.btn-secondary { background: #e2e8f0; color: #475569; }
+			.btn-secondary:hover { background: #cbd5e1; }
+			.format-toggle { display: flex; gap: 0; margin-left: auto; }
+			.format-toggle .btn { border-radius: 0; }
+			.format-toggle .btn:first-child { border-radius: 6px 0 0 6px; }
+			.format-toggle .btn:last-child { border-radius: 0 6px 6px 0; }
+			.format-toggle .btn.active { background: #417d81; color: white; }
+			.format-toggle .btn:not(.active) { background: #e2e8f0; color: #475569; }
+			.records-count { font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 14px; border-radius: 6px; white-space: nowrap; }
+			.zone-filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+			.zone-filter-tag { padding: 5px 14px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: white; color: #475569; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+			.zone-filter-tag:hover { border-color: #417d81; }
+			.zone-filter-tag.active { background: #417d81; color: white; border-color: #417d81; }
+			.kpi-container { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+			.kpi-card { flex: 1 1 180px; min-width: 150px; border-radius: 10px; padding: 16px 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); min-height: 100px; }
+			.kpi-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+			.kpi-icon { font-size: 20px; flex-shrink: 0; }
+			.kpi-label { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+			.kpi-value { font-size: clamp(18px, 2.2vw, 24px); font-weight: 800; line-height: 1.2; word-break: break-word; }
+			.table-scroll { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 8px; background: white; }
+			.data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+			.data-table thead { position: sticky; top: 0; z-index: 2; }
+			.data-table thead th { background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: white; padding: 10px 14px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; border-bottom: 2px solid #2d5559; }
+			.data-table th:first-child, .data-table td:first-child { text-align: center; width: 36px; }
+			.data-table th:nth-child(2), .data-table td:nth-child(2) { text-align: center; width: 44px; }
+			.data-table th.num, .data-table td.num { text-align: right; }
+			.data-table tfoot { position: sticky; bottom: 0; z-index: 2; }
+			.data-table tfoot tr { box-shadow: 0 -2px 6px rgba(0,0,0,0.1); }
+			.data-table tfoot td { background: #1e293b; color: white; font-weight: 700; padding: 10px 14px; font-size: 14px; }
+			.data-table tbody tr { transition: background-color 0.15s; border-bottom: 1px solid #e2e8f0; }
+			.data-table tbody tr:hover { background: #dcfce7 !important; }
+			.data-table tbody tr.row-checked { background: #bbf7d0 !important; }
+			.zone-row { background: #f1f5f9; cursor: pointer; }
+			.zone-row td { font-weight: 700; color: #0f172a; font-size: 14px; padding: 10px 14px; }
+			.region-row { background: #f8fafc; cursor: pointer; }
+			.region-row td { font-weight: 600; color: #334155; font-size: 14px; padding: 8px 14px; }
+			.branch-row td { color: #475569; font-size: 14px; padding: 6px 14px; font-weight: 500; }
+			.toggle-icon { cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b; }
+			.region-row .toggle-icon { color: #94a3b8; }
+			input[type="checkbox"] { cursor: pointer; width: 14px; height: 14px; }
+			.loading-container { text-align: center; padding: 60px 20px; }
+			.spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #417d81; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+			@keyframes spin { to { transform: rotate(360deg); } }
+			.loading-text { font-weight: 600; color: #417d81; font-size: 14px; }
+			.empty-state { padding: 40px; text-align: center; color: #64748b; font-weight: 600; }
+			@media (max-width: 768px) {
+				body { flex-direction: column; }
+				.sidebar { width: 100%; min-height: auto; flex-direction: row; overflow-x: auto; }
+				.sidebar-header { display: none; }
+				.sidebar-nav { display: flex; padding: 0; }
+				.sidebar-nav-label { display: none; }
+				.sidebar-nav-item { border-left: none; border-bottom: 3px solid transparent; padding: 12px 16px; white-space: nowrap; }
+				.sidebar-nav-item.active { border-bottom-color: #5eead4; border-left-color: transparent; }
+				.kpi-card { flex: 1 1 140px; min-width: 120px; padding: 12px 14px; min-height: 80px; }
+				.kpi-value { font-size: 16px; }
+				.controls-bar { flex-direction: column; align-items: stretch; }
+				.format-toggle { margin-left: 0; }
+			}
+		</style>
+	</head>
+	<body>
+		<script>
+			window.csrf_token = "{{ frappe.session.csrf_token }}";
+		</script>
+		<aside class="sidebar">
+			<div class="sidebar-header">
+				<h2>BDE BDO</h2>
+				<p>Dashboard</p>
+			</div>
+			<nav class="sidebar-nav">
+				<div class="sidebar-nav-label">MIS Reports</div>
+				<div class="sidebar-nav-item active" data-tab="rd_smbg_pending">
+					<span class="icon">&#128202;</span>
+					<span>RD &amp; SMBG Pending</span>
+				</div>
+			</nav>
+		</aside>
+		<div class="main-content">
+			<div class="main-header">
+				<h1>RD &amp; SMBG Pending</h1>
+			</div>
+			<div class="main-body" id="tab-content-rd_smbg_pending">
+				<div class="controls-bar">
+					<input type="text" id="search-input" placeholder="Search branch or SOL ID..." />
+					<button class="btn btn-secondary" id="expand-toggle">&#9660; Expand All</button>
+					<button class="btn btn-secondary" id="refetch-btn">&#10227; Refetch</button>
+					<div class="format-toggle">
+						<button class="btn active" data-format="number">Numbers</button>
+						<button class="btn" data-format="words">Words</button>
+					</div>
+					<div class="records-count" id="records-count"></div>
+				</div>
+				<div class="zone-filter-row" id="zone-filter-row"></div>
+				<div class="kpi-container" id="kpi-container"></div>
+				<div id="loading" class="loading-container">
+					<div class="spinner"></div>
+					<div class="loading-text">Fetching latest RD &amp; SMBG data...</div>
+				</div>
+				<div id="table-container" style="display: none;"></div>
+			</div>
+		</div>
+
+		<script>
+			(function () {
+				const state = {
+					formatMode: "number",
+					tableData: [],
+					filterOptions: null,
+					expandedZones: {},
+					expandedRegions: {},
+					checkedRows: {},
+					searchTerm: "",
+					allExpanded: false,
+					selectedZones: [],
+				};
+
+				function fmtCount(val) {
+					if (!val && val !== 0) return "0";
+					if (state.formatMode === "words") {
+						if (val >= 10000000) return (val / 10000000).toFixed(2) + " Cr";
+						if (val >= 100000) return (val / 100000).toFixed(2) + " L";
+						if (val >= 1000) return (val / 1000).toFixed(2) + " K";
+					}
+					return new Intl.NumberFormat("en-IN").format(val);
+				}
+
+				function fmtAmt(val) {
+					if (!val || val === 0) return "\u20B90";
+					if (state.formatMode === "words") {
+						if (val >= 10000000) return "\u20B9" + (val / 10000000).toFixed(2) + " Cr";
+						if (val >= 100000) return "\u20B9" + (val / 100000).toFixed(2) + " L";
+						if (val >= 1000) return "\u20B9" + (val / 1000).toFixed(2) + " K";
+					}
+					return "\u20B9" + new Intl.NumberFormat("en-IN").format(Math.round(val));
+				}
+
+				function renderKPI() {
+					const data = state.tableData || [];
+					const totalAccounts = data.reduce((s, r) => s + (r.total_accounts || 0), 0);
+					const totalCollection = data.reduce((s, r) => s + (r.total_collection || 0), 0);
+					const pendingAccounts = data.reduce((s, r) => s + (r.pending_accounts || 0), 0);
+					const pendingInstalments = data.reduce((s, r) => s + (r.pending_instalments || 0), 0);
+					const pendingAmount = data.reduce((s, r) => s + (r.pending_amount || 0), 0);
+					const cards = [
+						{ label: "Total Accounts", value: fmtCount(totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "\uD83D\uDCCA" },
+						{ label: "Total Collection", value: fmtAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "\uD83D\uDCB0" },
+						{ label: "Pending Accounts", value: fmtCount(pendingAccounts), color: "#f59e0b", bg: "#fffbeb", icon: "\u23F3" },
+						{ label: "Pending Instalments", value: fmtCount(pendingInstalments), color: "#f97316", bg: "#fff7ed", icon: "\uD83D\uDCC5" },
+						{ label: "Pending Amount", value: fmtAmt(pendingAmount), color: "#ef4444", bg: "#fef2f2", icon: "\uD83D\uDD34" },
+					];
+					document.getElementById("kpi-container").innerHTML = cards
+						.map(
+							(c) =>
+								'<div class="kpi-card" style="background:' + c.bg + ";border-left:4px solid " + c.color + ';">' +
+								'<div class="kpi-card-header"><span class="kpi-icon">' + c.icon + '</span><span class="kpi-label">' + c.label + '</span></div>' +
+								'<div class="kpi-value" style="color:' + c.color + ';">' + c.value + '</div></div>'
+						)
+						.join("");
+				}
+
+				function aggregateByZone() {
+					let data = state.tableData || [];
+					const term = (state.searchTerm || "").trim();
+					if (term) {
+						const terms = term.split(",").map((t) => t.trim().toLowerCase()).filter((t) => t);
+						data = data.filter((row) => {
+							const br = (row.branch_name || row.sol_desc || "").toLowerCase();
+							const id = (row.sol_id || "").toLowerCase();
+							return terms.some((t) => br.includes(t) || id.includes(t));
+						});
+					}
+					if (state.selectedZones && state.selectedZones.length > 0) {
+						data = data.filter((row) => state.selectedZones.includes(row.zone));
+					}
+					const zoneMap = {};
+					data.forEach((row) => {
+						const zone = row.zone || "Unknown";
+						const region = row.region || "Unknown";
+						if (!zoneMap[zone]) zoneMap[zone] = { zone: zone, regions: {}, branches: [], total_accounts: 0, total_collection: 0, pending_accounts: 0, pending_amount: 0, pending_instalments: 0 };
+						if (!zoneMap[zone].regions[region]) zoneMap[zone].regions[region] = { region: region, branches: [], total_accounts: 0, total_collection: 0, pending_accounts: 0, pending_amount: 0, pending_instalments: 0 };
+						zoneMap[zone].branches.push(row);
+						zoneMap[zone].regions[region].branches.push(row);
+						["total_accounts", "total_collection", "pending_accounts", "pending_amount", "pending_instalments"].forEach((k) => {
+							zoneMap[zone][k] += row[k] || 0;
+							zoneMap[zone].regions[region][k] += row[k] || 0;
+						});
+					});
+					const sorted = Object.keys(zoneMap)
+						.sort((a, b) => (parseInt(a.replace(/\D/g, "")) || 0) - (parseInt(b.replace(/\D/g, "")) || 0))
+						.map((zn) => {
+							const zd = zoneMap[zn];
+							const regions = Object.keys(zd.regions)
+								.sort((a, b) => (parseInt(a.replace(/\D/g, "")) || 0) - (parseInt(b.replace(/\D/g, "")) || 0))
+								.map((rn) => zd.regions[rn]);
+							return { zone: zn, data: zd, regions: regions };
+						});
+					return sorted;
+				}
+
+				function renderTable() {
+					const container = document.getElementById("table-container");
+					const zoneData = aggregateByZone();
+					const totalFiltered = zoneData.reduce((s, z) => s + z.data.branches.length, 0);
+					const totalAll = (state.tableData || []).length;
+					document.getElementById("records-count").textContent = totalFiltered + " / " + totalAll + " branches" + (state.searchTerm ? " (filtered)" : "");
+
+					if (!zoneData || zoneData.length === 0) {
+						container.innerHTML = '<div class="empty-state">No data to display.</div>';
+						container.style.display = "block";
+						return;
+					}
+
+					const metricCols = [
+						{ key: "total_accounts", label: "Total Accounts", align: "right", fmt: fmtCount },
+						{ key: "total_collection", label: "Total Collection", align: "right", fmt: fmtAmt },
+						{ key: "pending_accounts", label: "Pending Accounts", align: "right", fmt: fmtCount },
+						{ key: "pending_instalments", label: "Pending Inst.", align: "right", fmt: fmtCount },
+						{ key: "pending_amount", label: "Pending Amount", align: "right", fmt: fmtAmt },
+					];
+
+					const grandTotal = { total_accounts: 0, total_collection: 0, pending_accounts: 0, pending_amount: 0, pending_instalments: 0 };
+					zoneData.forEach((z) => {
+						["total_accounts", "total_collection", "pending_accounts", "pending_amount", "pending_instalments"].forEach((k) => {
+							grandTotal[k] += z.data[k] || 0;
+						});
+					});
+
+					let sr = 0;
+					let rowsHtml = "";
+					zoneData.forEach((z) => {
+						sr++;
+						const ze = state.expandedZones[z.zone];
+						const zc = state.checkedRows["zone::" + z.zone];
+						rowsHtml += '<tr class="zone-row' + (zc ? " row-checked" : "") + '" data-zone="' + z.zone + '">';
+						rowsHtml += '<td><input type="checkbox" class="row-check" data-check-id="zone::' + z.zone + '"' + (zc ? " checked" : "") + "/></td>";
+						rowsHtml += "<td>" + sr + "</td>";
+						rowsHtml += '<td><span class="toggle-icon">' + (ze ? "\u25BC" : "\u25B6") + "</span>" + z.zone + "</td>";
+						rowsHtml += '<td style="text-align:center;color:#0d9488;">' + z.data.branches.length + "</td>";
+						metricCols.forEach((mc) => {
+							rowsHtml += '<td class="num" style="font-weight:700;">' + mc.fmt(z.data[mc.key]) + "</td>";
+						});
+						rowsHtml += "</tr>";
+
+						z.regions.forEach((region) => {
+							const rk = z.zone + "::" + region.region;
+							const re = state.expandedRegions[rk];
+							const rc = state.checkedRows[rk];
+							rowsHtml += '<tr class="region-row' + (rc ? " row-checked" : "") + '" data-zone="' + z.zone + '" data-region="' + region.region + '" style="display:' + (ze ? "table-row" : "none") + ';">';
+							rowsHtml += '<td><input type="checkbox" class="row-check" data-check-id="' + rk + '"' + (rc ? " checked" : "") + "/></td>";
+							rowsHtml += "<td></td>";
+							rowsHtml += '<td style="padding-left:30px;"><span class="toggle-icon">' + (re ? "\u25BC" : "\u25B6") + "</span>" + region.region + "</td>";
+							rowsHtml += '<td style="text-align:center;color:#0d9488;font-weight:600;">' + region.branches.length + "</td>";
+							metricCols.forEach((mc) => {
+								rowsHtml += '<td class="num" style="font-weight:500;">' + mc.fmt(region[mc.key]) + "</td>";
+							});
+							rowsHtml += "</tr>";
+
+							region.branches.forEach((branch, bi) => {
+								const show = ze && state.expandedRegions[rk];
+								const bg = bi % 2 === 0 ? "#ffffff" : "#f1f5f9";
+								const bid = branch.sol_id || "b_" + bi;
+								const bc = state.checkedRows[bid];
+								rowsHtml += '<tr class="branch-row' + (bc ? " row-checked" : "") + '" data-zone="' + z.zone + '" data-region="' + region.region + '" style="display:' + (show ? "table-row" : "none") + ";background:" + bg + ';">';
+								rowsHtml += '<td><input type="checkbox" class="row-check" data-check-id="' + bid + '"' + (bc ? " checked" : "") + "/></td>";
+								rowsHtml += "<td></td>";
+								rowsHtml += '<td style="padding-left:50px;">' + branch.sol_id + " - " + (branch.branch_name || branch.sol_desc) + "</td>";
+								rowsHtml += '<td style="text-align:center;color:#94a3b8;">1</td>';
+								metricCols.forEach((mc) => {
+									rowsHtml += '<td class="num">' + mc.fmt(branch[mc.key]) + "</td>";
+								});
+								rowsHtml += "</tr>";
+							});
+						});
+					});
+
+					const theadCells = metricCols.map((mc) => '<th class="' + mc.align + '">' + mc.label + "</th>").join("");
+					const tfootCells = metricCols.map((mc) => '<td class="' + mc.align + '">' + mc.fmt(grandTotal[mc.key]) + "</td>").join("");
+					const totalBranches = zoneData.reduce((s, z) => s + z.data.branches.length, 0);
+
+					container.innerHTML =
+						'<div class="table-scroll"><table class="data-table">' +
+						"<thead><tr>" +
+						'<th><input type="checkbox" class="check-all" /></th>' +
+						"<th>Sr</th>" +
+						"<th>Zone / Region / Branch</th>" +
+						'<th style="text-align:center;">Branches</th>' +
+						theadCells +
+						"</tr></thead>" +
+						"<tbody>" + rowsHtml + "</tbody>" +
+						"<tfoot><tr>" +
+						"<td></td><td></td>" +
+						'<td style="text-align:left;">TOTAL</td>' +
+						'<td style="text-align:center;">' + totalBranches + "</td>" +
+						tfootCells +
+						"</tr></tfoot></table></div>";
+
+					container.style.display = "block";
+					attachTableEvents();
+				}
+
+				function renderZoneFilters() {
+					const container = document.getElementById("zone-filter-row");
+					if (!state.tableData || state.tableData.length === 0) {
+						container.style.display = "none";
+						return;
+					}
+					const permittedZones = (state.filterOptions && state.filterOptions.zones) || [];
+					let zones = permittedZones.length > 0 ? permittedZones : [...new Set(state.tableData.map((r) => r.zone).filter(Boolean))].sort();
+					if (zones.length === 0) {
+						container.style.display = "none";
+						return;
+					}
+					const allSelected = state.selectedZones.length === 0;
+					let html = '<span style="font-weight:600;color:#475569;font-size:13px;white-space:nowrap;">Zone:</span>';
+					html += '<button class="zone-filter-tag' + (allSelected ? " active" : "") + '" data-zone="all">All</button>';
+					zones.forEach((zone) => {
+						const active = state.selectedZones.includes(zone);
+						html += '<button class="zone-filter-tag' + (active ? " active" : "") + '" data-zone="' + zone + '">' + zone + "</button>";
+					});
+					container.innerHTML = html;
+					container.style.display = "flex";
+				}
+
+				function attachTableEvents() {
+					const tc = document.getElementById("table-container");
+					tc.onclick = function (e) {
+						const zoneRow = e.target.closest(".zone-row");
+						const regionRow = e.target.closest(".region-row");
+						const checkbox = e.target.closest('input[type="checkbox"]');
+
+						if (checkbox) {
+							const checkId = checkbox.dataset.checkId;
+							state.checkedRows[checkId] = checkbox.checked;
+							checkbox.closest("tr").classList.toggle("row-checked", checkbox.checked);
+							return;
+						}
+
+						if (zoneRow) {
+							const zone = zoneRow.dataset.zone;
+							state.expandedZones[zone] = !state.expandedZones[zone];
+							const show = state.expandedZones[zone];
+							zoneRow.querySelector(".toggle-icon").textContent = show ? "\u25BC" : "\u25B6";
+							tc.querySelectorAll('.region-row[data-zone="' + zone + '"]').forEach((rr) => {
+								rr.style.display = show ? "table-row" : "none";
+								const r = rr.dataset.region;
+								if (state.expandedRegions[zone + "::" + r]) {
+									tc.querySelectorAll('.branch-row[data-zone="' + zone + '"][data-region="' + r + '"]').forEach((br) => {
+										br.style.display = "table-row";
+									});
+								}
+							});
+							if (!show) {
+								tc.querySelectorAll('.branch-row[data-zone="' + zone + '"]').forEach((br) => {
+									br.style.display = "none";
+								});
+							}
+							return;
+						}
+
+						if (regionRow) {
+							e.stopPropagation();
+							const zone = regionRow.dataset.zone;
+							const region = regionRow.dataset.region;
+							const rk = zone + "::" + region;
+							state.expandedRegions[rk] = !state.expandedRegions[rk];
+							const show = state.expandedRegions[rk];
+							regionRow.querySelector(".toggle-icon").textContent = show ? "\u25BC" : "\u25B6";
+							tc.querySelectorAll('.branch-row[data-zone="' + zone + '"][data-region="' + region + '"]').forEach((br) => {
+								br.style.display = show ? "table-row" : "none";
+							});
+						}
+					};
+
+					const checkAll = tc.querySelector(".check-all");
+					if (checkAll) {
+						checkAll.onchange = function () {
+							const checked = this.checked;
+							tc.querySelectorAll(".row-check").forEach((cb) => {
+								cb.checked = checked;
+								state.checkedRows[cb.dataset.checkId] = checked;
+								cb.closest("tr").classList.toggle("row-checked", checked);
+							});
+						};
+					}
+				}
+
+				function apiCall(method) {
+					return fetch("/api/method/" + method, {
+						method: "GET",
+						headers: { "Accept": "application/json" },
+						credentials: "same-origin",
+					}).then((res) => res.json());
+				}
+
+				function fetchData() {
+					state.tableData = [];
+					state.filterOptions = null;
+					state.selectedZones = [];
+					state.expandedZones = {};
+					state.expandedRegions = {};
+					state.checkedRows = {};
+					state.searchTerm = "";
+					state.allExpanded = false;
+					document.getElementById("search-input").value = "";
+					document.getElementById("expand-toggle").textContent = "\u25BC Expand All";
+					document.getElementById("loading").style.display = "block";
+					document.getElementById("table-container").style.display = "none";
+
+					apiCall("custom_report.www.bde_bdo_dashboard.get_mis_filter_options")
+						.then((r) => {
+							if (r.message) {
+								state.filterOptions = r.message;
+								return apiCall("custom_report.www.bde_bdo_dashboard.get_rd_smbg_pending_table_data");
+							}
+						})
+						.then((r2) => {
+							if (r2 && r2.message) {
+								let data = r2.message;
+								const pz = state.filterOptions && state.filterOptions.zones;
+								if (pz && pz.length > 0) {
+									data = data.filter((row) => pz.includes(row.zone));
+								}
+								state.tableData = data;
+								renderKPI();
+								renderZoneFilters();
+								renderTable();
+							}
+							document.getElementById("loading").style.display = "none";
+						})
+						.catch(() => {
+							document.getElementById("loading").style.display = "none";
+						});
+				}
+
+				document.getElementById("search-input").addEventListener("input", function () {
+					clearTimeout(window._searchTimeout);
+					window._searchTimeout = setTimeout(() => {
+						state.searchTerm = this.value.toLowerCase().trim();
+						if (state.tableData) renderTable();
+					}, 300);
+				});
+
+				document.getElementById("expand-toggle").addEventListener("click", function () {
+					state.allExpanded = !state.allExpanded;
+					const expand = state.allExpanded;
+					const zoneData = aggregateByZone();
+					zoneData.forEach((z) => {
+						state.expandedZones[z.zone] = expand;
+						z.regions.forEach((r) => {
+							state.expandedRegions[z.zone + "::" + r.region] = expand;
+						});
+					});
+					this.textContent = expand ? "\u25B2 Collapse All" : "\u25BC Expand All";
+					renderTable();
+				});
+
+				document.getElementById("refetch-btn").addEventListener("click", fetchData);
+
+				document.querySelectorAll(".format-toggle .btn").forEach((btn) => {
+					btn.addEventListener("click", function () {
+						state.formatMode = this.dataset.format;
+						document.querySelectorAll(".format-toggle .btn").forEach((b) => {
+							b.classList.toggle("active", b.dataset.format === state.formatMode);
+						});
+						renderKPI();
+						if (state.tableData && state.tableData.length > 0) renderTable();
+					});
+				});
+
+				document.getElementById("zone-filter-row").addEventListener("click", function (e) {
+					const tag = e.target.closest(".zone-filter-tag");
+					if (!tag) return;
+					const zone = tag.dataset.zone;
+					if (zone === "all") {
+						state.selectedZones = [];
+					} else {
+						const idx = state.selectedZones.indexOf(zone);
+						if (idx > -1) state.selectedZones.splice(idx, 1);
+						else state.selectedZones.push(zone);
+					}
+					renderZoneFilters();
+					renderTable();
+				});
+
+				fetchData();
+			})();
+		</script>
+	</body>
+</html>

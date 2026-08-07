@@ -10,14 +10,18 @@ const zoneFilterOptions = ref([])
 const regionFilterOptions = ref([])
 
 function mapZoneName(name) {
-  const match = name.match(/^Zone\s*-?\s*(.+)/i)
-  if (match) return 'Z' + (match[1] ? '-' + match[1] : '')
+  const match = name.match(/^ZONE-?\s*(.+)/i)
+  if (match) return 'Z-' + (match[1] || '')
+  const match2 = name.match(/^Zone\s*-?\s*(.+)/i)
+  if (match2) return 'Z-' + (match2[1] || '')
   return name
 }
 
 function mapRegionName(name) {
-  const match = name.match(/^Region\s*-?\s*(.+)/i)
-  if (match) return 'R' + (match[1] ? '-' + match[1] : '')
+  const match = name.match(/^REGION-?\s*(.+)/i)
+  if (match) return 'R-' + (match[1] || '')
+  const match2 = name.match(/^Region\s*-?\s*(.+)/i)
+  if (match2) return 'R-' + (match2[1] || '')
   return name
 }
 
@@ -62,11 +66,11 @@ export function useFilters() {
   const allRegionsSelected = computed(() => regionFilter.value.length === regionFilterOptions.value.length)
 
   function isZoneSelected(displayName) {
-    return zoneFilter.value.some(apiName => mapZoneName(apiName) === displayName)
+    return zoneFilter.value.includes(displayName)
   }
 
   function isRegionSelected(displayName) {
-    return regionFilter.value.some(apiName => mapRegionName(apiName) === displayName)
+    return regionFilter.value.includes(displayName)
   }
 
   return {
