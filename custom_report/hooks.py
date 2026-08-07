@@ -34,6 +34,7 @@ app_include_js = [
 
 website_route_rules = [
 	{"from_route": "/drishti/<path:app_path>", "to_route": "drishti"},
+	{"from_route": "/bde_bdo_dashboard/<path:app_path>", "to_route": "bde_bdo_dashboard"},
 ]
 
 
