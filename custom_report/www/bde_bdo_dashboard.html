@@ -19,6 +19,13 @@
 			.sidebar-nav-item:hover { background: rgba(65,125,129,0.15); color: white; }
 			.sidebar-nav-item.active { background: rgba(65,125,129,0.2); color: #5eead4; border-left-color: #5eead4; font-weight: 600; }
 			.sidebar-nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+			.sidebar-nav-item .dropdown-icon { margin-left: auto; font-size: 10px; transition: transform 0.2s; }
+			.sidebar-nav-item.expanded .dropdown-icon { transform: rotate(180deg); }
+			.sidebar-sub-menu { display: none; padding-left: 30px; }
+			.sidebar-sub-menu.expanded { display: block; }
+			.sidebar-sub-item { padding: 8px 20px; font-size: 12px; font-weight: 500; color: #94a3b8; cursor: pointer; transition: all 0.15s; border-left: 3px solid transparent; }
+			.sidebar-sub-item:hover { background: rgba(65,125,129,0.1); color: #cbd5e1; }
+			.sidebar-sub-item.active { background: rgba(65,125,129,0.15); color: #5eead4; border-left-color: #5eead4; font-weight: 600; }
 			.main-content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 			.main-header { background: linear-gradient(135deg, #417d81 0%, #346569 100%); color: white; padding: 16px 24px; }
 			.main-header h1 { font-size: 18px; font-weight: 700; }
@@ -101,6 +108,17 @@
 				<div class="sidebar-nav-item active" data-tab="rd_smbg_pending">
 					<span class="icon">&#128202;</span>
 					<span>RD &amp; SMBG Pending</span>
+				</div>
+				<div class="sidebar-nav-item" data-tab="dd_tracker">
+					<span class="icon">&#128196;</span>
+					<span>DD Tracker Report</span>
+					<span class="dropdown-icon">&#9660;</span>
+				</div>
+				<div class="sidebar-sub-menu" id="dd-tracker-submenu">
+					<div class="sidebar-sub-item" data-subtab="bucket_wise">Bucket Wise Account MIS</div>
+					<div class="sidebar-sub-item" data-subtab="new_account">New Account Report</div>
+					<div class="sidebar-sub-item" data-subtab="staff_demand_collection">Staff Wise Demand Vs Collection Report</div>
+					<div class="sidebar-sub-item" data-subtab="agent_demand_collection">Agent Wise Demand Vs Collection Report</div>
 				</div>
 			</nav>
 		</aside>
@@ -513,6 +531,61 @@
 
 				fetchData();
 			})();
+
+			// Sidebar navigation handling
+			document.querySelectorAll('.sidebar-nav-item').forEach(item => {
+				item.addEventListener('click', function(e) {
+					const tab = this.dataset.tab;
+					
+					// Toggle dropdown for DD Tracker
+					if (tab === 'dd_tracker') {
+						e.stopPropagation();
+						this.classList.toggle('expanded');
+						const submenu = document.getElementById('dd-tracker-submenu');
+						submenu.classList.toggle('expanded');
+						return;
+					}
+					
+					// Handle other tabs
+					document.querySelectorAll('.sidebar-nav-item').forEach(i => i.classList.remove('active'));
+					document.querySelectorAll('.sidebar-sub-item').forEach(i => i.classList.remove('active'));
+					this.classList.add('active');
+					
+					// Hide all tab contents
+					document.querySelectorAll('[id^="tab-content-"]').forEach(tc => tc.style.display = 'none');
+					
+					// Show selected tab
+					const contentEl = document.getElementById('tab-content-' + tab);
+					if (contentEl) {
+						contentEl.style.display = 'block';
+					}
+				});
+			});
+
+			// Submenu item click handling
+			document.querySelectorAll('.sidebar-sub-item').forEach(item => {
+				item.addEventListener('click', function(e) {
+					e.stopPropagation();
+					const subtab = this.dataset.subtab;
+					
+					// Update active states
+					document.querySelectorAll('.sidebar-nav-item').forEach(i => i.classList.remove('active'));
+					document.querySelectorAll('.sidebar-sub-item').forEach(i => i.classList.remove('active'));
+					this.classList.add('active');
+					
+					// Hide all tab contents
+					document.querySelectorAll('[id^="tab-content-"]').forEach(tc => tc.style.display = 'none');
+					
+					// Show selected subtab content
+					const contentEl = document.getElementById('tab-content-dd-' + subtab);
+					if (contentEl) {
+						contentEl.style.display = 'block';
+					} else {
+						// Placeholder for not yet implemented subtabs
+						alert('This report is under development: ' + this.textContent);
+					}
+				});
+			});
 		</script>
 	</body>
 </html>
