@@ -257,28 +257,36 @@ function scrollToManpowerDetails() {
           <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Category</div>
         </div>
         <div class="px-4 py-4">
-          <div class="flex items-center justify-center">
-            <span
-              v-if="activeMonth && branch.months?.[activeMonth.key]"
-              class="inline-block rounded px-3 py-1 text-sm font-medium"
-              :class="CATEGORY_COLORS[branch.months[activeMonth.key].category] || ''"
-            >
-              {{ branch.months[activeMonth.key].category }}
-            </span>
-            <span v-else class="text-[11px] text-[var(--text3)]">—</span>
-          </div>
-          <div class="mt-4 space-y-3">
-            <div class="flex justify-between items-center">
-              <span class="text-[11px] text-[var(--text3)]">Target</span>
-              <span class="text-[11px] font-medium text-[var(--text)]">{{ formatNumber(branch.months?.[activeMonth?.key]?.target || 0) }}</span>
+          <div class="space-y-2">
+            <!-- PINNACLE -->
+            <div class="flex items-center justify-between py-1.5 px-2 rounded bg-green-50 dark:bg-green-900/20">
+              <span class="text-xs font-semibold text-green-700 dark:text-green-400">PINNACLE</span>
+              <span class="text-xs font-medium text-green-600 dark:text-green-500">100%</span>
             </div>
-            <div class="flex justify-between items-center">
-              <span class="text-[11px] text-[var(--text3)]">Achievement</span>
-              <span class="text-[11px] font-medium text-[var(--text)]">{{ formatNumber(branch.months?.[activeMonth?.key]?.achievement || 0) }}</span>
+            <!-- MASTER -->
+            <div class="flex items-center justify-between py-1.5 px-2 rounded bg-teal-50 dark:bg-teal-900/20">
+              <span class="text-xs font-semibold text-teal-700 dark:text-teal-400">MASTER</span>
+              <span class="text-xs font-medium text-teal-600 dark:text-teal-500">80-100%</span>
             </div>
-            <div class="flex justify-between items-center">
-              <span class="text-[11px] text-[var(--text3)]">Ach %</span>
-              <span class="text-[11px] font-medium text-[var(--text)]">{{ branch.months?.[activeMonth?.key]?.percentage || 0 }}%</span>
+            <!-- ACCELERATOR -->
+            <div class="flex items-center justify-between py-1.5 px-2 rounded bg-blue-50 dark:bg-blue-900/20">
+              <span class="text-xs font-semibold text-blue-700 dark:text-blue-400">ACCELERATOR</span>
+              <span class="text-xs font-medium text-blue-600 dark:text-blue-500">65-80%</span>
+            </div>
+            <!-- STARTER -->
+            <div class="flex items-center justify-between py-1.5 px-2 rounded bg-amber-50 dark:bg-amber-900/20">
+              <span class="text-xs font-semibold text-amber-700 dark:text-amber-400">STARTER</span>
+              <span class="text-xs font-medium text-amber-600 dark:text-amber-500">40-65%</span>
+            </div>
+            <!-- LEARNER -->
+            <div class="flex items-center justify-between py-1.5 px-2 rounded bg-orange-50 dark:bg-orange-900/20">
+              <span class="text-xs font-semibold text-orange-700 dark:text-orange-400">LEARNER</span>
+              <span class="text-xs font-medium text-orange-600 dark:text-orange-500">20-40%</span>
+            </div>
+            <!-- ZERO -->
+            <div class="flex items-center justify-between py-1.5 px-2 rounded bg-red-50 dark:bg-red-900/20">
+              <span class="text-xs font-semibold text-red-700 dark:text-red-400">ZERO</span>
+              <span class="text-xs font-medium text-red-600 dark:text-red-500">0-20%</span>
             </div>
           </div>
         </div>
