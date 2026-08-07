@@ -6830,9 +6830,9 @@ class DrishtiDashboard {
                         data-category="${category}" 
                         style="--fill-pct: ${pct}%; --fill-color: ${color}26; color: ${color}; border-color: ${color}40;">
                     <span class="category-tag-content">
-                        ${category}
-                        <span class="filter-tag-count" style="color: ${color}; border-color: ${color}50; background-color: ${color}12;">${count}</span>
-                        <span class="category-tag-pct" style="color: ${color};">${pct}%</span>
+                        <span class="category-tag-name" style="color: ${color}; font-weight: 700;">${category}</span>
+                        <span class="filter-tag-count" style="color: ${color}; border-color: ${color}50; background-color: ${color}15;">${count}</span>
+                        <span class="category-tag-pct" style="color: ${color}; font-weight: 700;">${pct}%</span>
                     </span>
                 </button>
             `);
@@ -9279,17 +9279,17 @@ class DrishtiDashboard {
 			};">
                 <td class="cat-name-cell" style="--fill-pct: ${percentage}%; --fill-color: ${config.color}26;">
                     <span class="category-toggle">${isExpanded ? "▼" : "▶"}</span>
-                    <span class="cat-grade" style="background-color: ${config.color};">${
+                    <span class="cat-grade" style="background-color: ${config.color}; font-weight: 800;">${
 						config.grade
 					}</span>
                     <div class="cat-name-wrapper">
-                        <span style="color: ${config.color};">${catName}</span>
-                        <span class="category-percentage-share" style="color: ${this.getPctColor(percentage)}; font-weight: 600;">• ${Math.round(percentage)}%</span>
+                        <span style="color: ${config.color}; font-weight: 700; font-size: 14px;">${catName}</span>
+                        <span class="category-percentage-share" style="color: ${config.color}; font-weight: 700; opacity: 0.85;">• ${Math.round(percentage)}%</span>
                     </div>
                 </td>
-                <td class="perf-band-cell">${config.range}</td>
+                <td class="perf-band-cell" style="color: ${config.color}; font-weight: 700;">${config.range}</td>
                 <td class="count-cell drill-cell" data-category="${catName}" data-month="${latestMonthKey}">
-                    <span class="drill-link">${count}</span>
+                    <span class="drill-link" style="color: ${config.color}; font-weight: 800;">${count}</span>
                 </td>
                 <td class="movement-cell" data-changes='${JSON.stringify(filteredChanges)}'>
                     <div class="movement-summary">
@@ -9302,10 +9302,10 @@ class DrishtiDashboard {
 						}
                     </div>
                 </td>
-                <td class="health-cell">
+                <td class="health-cell" style="color: ${config.color}; font-weight: 700;">
                     <span class="health-indicator" style="background-color: ${
 						config.color
-					};"></span>
+					}; box-shadow: 0 0 6px ${config.color}80;"></span>
                     ${config.health}
                 </td>
             </tr>
@@ -10500,6 +10500,11 @@ class DrishtiDashboard {
                     transition: all 0.2s ease;
                 }
 
+                .category-tag-name {
+                    color: inherit;
+                    font-weight: 700;
+                }
+
                 .category-tag-pct {
                     font-size: 11px;
                     font-weight: 700;
@@ -10508,14 +10513,15 @@ class DrishtiDashboard {
                     margin-left: auto;
                 }
 
-                .category-tag.active .category-tag-pct {
+                .category-tag.active .category-tag-name,
+                .category-tag.active .category-tag-pct,
+                .category-tag.active .filter-tag-count {
                     color: #ffffff !important;
+                    border-color: rgba(255, 255, 255, 0.4) !important;
                 }
 
                 .category-tag.active .filter-tag-count {
                     background-color: rgba(255, 255, 255, 0.25) !important;
-                    color: #ffffff !important;
-                    border-color: rgba(255, 255, 255, 0.4) !important;
                 }
 
                 .category-tag-content {
