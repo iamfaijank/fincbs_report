@@ -5740,6 +5740,7 @@ def get_rm_wise_ss_vs_data(selected_date=None):
             agent_name AS rm_name
         FROM `tabAgent`
         WHERE docstatus < 2
+          AND agent_type IN ('RDDSA', 'DDDSA')
         ORDER BY agent_code ASC
     """, as_dict=True)
 
