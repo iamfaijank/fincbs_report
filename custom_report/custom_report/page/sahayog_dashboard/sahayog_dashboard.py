@@ -5729,24 +5729,56 @@ def get_agent_customer_details(report_type, rm_id, selected_date=None):
 @sahayog_cache(ttl=86400)
 def get_rm_wise_ss_vs_data(selected_date=None):
     """
-    Fetches Agent Code and Agent Name directly from tabAgent using raw SQL.
-    Attaches total_customer and total_commission fields matching screenshot.
+    Fetches Agent Code, Agent Name, and Commission 100% directly from tabAgent.commission_json using raw SQL.
     """
     data = frappe.db.sql("""
         SELECT 
+            name,
             agent_code,
             agent_code AS rm_id,
             agent_name,
-            agent_name AS rm_name
+            agent_name AS rm_name,
+            commission_json
         FROM `tabAgent`
         WHERE docstatus < 2
           AND agent_type IN ('RDDSA', 'DDDSA')
         ORDER BY agent_code ASC
     """, as_dict=True)
 
+    target_year = None
+    target_month = None
+    if selected_date:
+        dt = frappe.utils.getdate(selected_date)
+        target_year = str(dt.year)
+        target_month = str(dt.month).zfill(2)
+
     for row in data:
-        row['total_customer'] = 32
-        row['total_commission'] = 325325.00
+        raw_json = row.pop('commission_json', None)
+        comm_dict = frappe.parse_json(raw_json) if raw_json else {}
+
+        agent_comm = 0.0
+        cust_count = 0
+
+        if comm_dict and isinstance(comm_dict, dict):
+            if target_year and target_month:
+                if target_year in comm_dict and target_month in comm_dict[target_year]:
+                    m_data = comm_dict[target_year][target_month]
+                    agent_comm = float(m_data.get("total_commission", 0.0) or 0.0)
+                    cust_count = len([k for k in m_data.keys() if k != "total_commission"])
+                else:
+                    agent_comm = 0.0
+                    cust_count = 0
+            else:
+                agent_comm = float(comm_dict.get("grand_total_commission", 0.0) or 0.0)
+                cust_count = 0
+                for yr, yr_data in comm_dict.items():
+                    if isinstance(yr_data, dict):
+                        for mth, mth_data in yr_data.items():
+                            if isinstance(mth_data, dict):
+                                cust_count += len([k for k in mth_data.keys() if k != "total_commission"])
+
+        row['total_customer'] = cust_count
+        row['total_commission'] = round(agent_comm, 2)
 
     return {"data": data}
 
@@ -5755,11 +5787,59 @@ def get_rm_wise_ss_vs_data(selected_date=None):
 @sahayog_cache(ttl=86400)
 def get_rm_wise_category_breakdown(rm_id, selected_date=None):
     """
-    Returns Product breakdown for specified agent matching screenshot layout.
+    Returns Product breakdown for specified agent 100% directly from tabAgent.commission_json.
     """
-    return [
-        {"product_name": "DAM", "report_type": "DAM", "total_customer": 10, "record_count": 10, "total_commission": 353.00},
-        {"product_name": "SMBG", "report_type": "SMBG", "total_customer": 10, "record_count": 10, "total_commission": 3534.00},
-        {"product_name": "RD", "report_type": "RD", "total_customer": 10, "record_count": 10, "total_commission": 24.00},
-        {"product_name": "DD SAV", "report_type": "DD SAV", "total_customer": 2, "record_count": 2, "total_commission": 4244.00}
-    ]
+    if not rm_id:
+        return []
+
+    raw_json = frappe.db.get_value(
+        "Agent",
+        {"name": rm_id},
+        "commission_json"
+    ) or frappe.db.get_value(
+        "Agent",
+        {"agent_code": rm_id},
+        "commission_json"
+    )
+
+    comm_dict = frappe.parse_json(raw_json) if raw_json else {}
+
+    target_year = None
+    target_month = None
+    if selected_date:
+        dt = frappe.utils.getdate(selected_date)
+        target_year = str(dt.year)
+        target_month = str(dt.month).zfill(2)
+
+    breakdown = []
+    report_totals = {}
+
+    if comm_dict and isinstance(comm_dict, dict):
+        if target_year and target_month:
+            if target_year in comm_dict and target_month in comm_dict[target_year]:
+                m_data = comm_dict[target_year][target_month]
+                for r_type, val in m_data.items():
+                    if r_type != "total_commission":
+                        report_totals[r_type] = float(val or 0.0)
+        else:
+            for yr, yr_data in comm_dict.items():
+                if isinstance(yr_data, dict):
+                    for mth, mth_data in yr_data.items():
+                        if isinstance(mth_data, dict):
+                            for r_type, val in mth_data.items():
+                                if r_type != "total_commission":
+                                    report_totals[r_type] = report_totals.get(r_type, 0.0) + float(val or 0.0)
+
+    standard_products = ["DAM", "SMBG", "RD", "DD SAV", "FD", "FD 1", "DD TDA", "SHARE"]
+
+    for prod in standard_products:
+        val = report_totals.get(prod, 0.0)
+        breakdown.append({
+            "product_name": prod,
+            "report_type": prod,
+            "total_customer": 1 if val > 0 else 0,
+            "record_count": 1 if val > 0 else 0,
+            "total_commission": round(val, 2)
+        })
+
+    return breakdown
