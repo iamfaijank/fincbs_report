@@ -4807,7 +4807,6 @@ class DrishtiDashboard {
 							catList.forEach((c, idx) => {
 								const prodName = c.product_name || c.report_type || "-";
 								const totComm = c.total_commission || 0;
-								const sharePct = grand4mTotal > 0 ? ((totComm / grand4mTotal) * 100).toFixed(1) : "0.0";
 
 								let monthCellsHtml = targetMonths.map(m => {
 									const mVal = (c.months && c.months[m.label]) || 0;
@@ -4824,7 +4823,6 @@ class DrishtiDashboard {
 										<td style="padding: 8px 10px; font-size: 12px; font-weight: 700; color: #1e293b;">${prodName}</td>
 										${monthCellsHtml}
 										<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 800; color: #417d81;">${fmtAmt(totComm)}</td>
-										<td style="padding: 8px 10px; text-align: right; font-size: 11px; font-weight: 700; color: #64748b;">${sharePct}%</td>
 									</tr>
 								`;
 							});
@@ -4855,7 +4853,6 @@ class DrishtiDashboard {
 												<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Product</th>
 												${monthHeadersHtml}
 												<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">4-Mo Total</th>
-												<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">Share %</th>
 											</tr>
 										</thead>
 										<tbody>${rowsHtml}</tbody>
@@ -4864,7 +4861,6 @@ class DrishtiDashboard {
 												<td colspan="2" style="padding: 8px 10px; text-align: right; font-size: 12px;">TOTAL:</td>
 												${monthFootersHtml}
 												<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 800; color: #417d81;">${fmtAmt(grand4mTotal)}</td>
-												<td style="padding: 8px 10px; text-align: right; font-size: 12px;">100.0%</td>
 											</tr>
 										</tfoot>
 									</table>
