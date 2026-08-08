@@ -1418,26 +1418,48 @@ def get_monthly_status(year: int = None):
 @frappe.whitelist()
 def cleanup_ss_vs_old_monthly_records():
 	"""
-	Daily Cron / Whitelisted API to cleanup intermediate daily records in tabSS and VS Report.
-	Retains ONLY the maximum (last) date records for each month, and deletes all prior dates.
-	Example: For May (records on 1..31), keeps May 31 and deletes May 1..May 30.
+	Daily Cleanup for SS & VS Report:
+	1. For CURRENT month: Verifies if yesterday's date data is present in tabSS and VS Report.
+	   ONLY if yesterday's data is verified present, deletes prior daily dates (< yesterday) for current month.
+	2. For PAST completed months: Retains ONLY the max (last) date for each past month and deletes prior dates.
 	"""
 	try:
+		today = frappe.utils.nowdate()
+		yesterday = frappe.utils.add_days(today, -1)
+		
+		# 1. Verify if yesterday's date has data in tabSS and VS Report
+		yesterday_count = frappe.db.count("SS and VS Report", filters={"date": yesterday})
+		
+		# 2. Cleanup current month ONLY if yesterday's date data is present
+		if yesterday_count > 0:
+			dt = frappe.utils.getdate(yesterday)
+			frappe.db.sql("""
+				DELETE FROM `tabSS and VS Report`
+				WHERE YEAR(`date`) = %s
+				  AND MONTH(`date`) = %s
+				  AND `date` < %s
+			""", (dt.year, dt.month, yesterday))
+
+		# 3. Cleanup past completed months (months before current month)
+		current_month_start = frappe.utils.get_first_day(today)
 		frappe.db.sql("""
 			DELETE FROM `tabSS and VS Report`
-			WHERE `date` NOT IN (
+			WHERE `date` < %s
+			  AND `date` NOT IN (
 				SELECT max_date FROM (
 					SELECT MAX(`date`) AS max_date
 					FROM `tabSS and VS Report`
+					WHERE `date` < %s
 					GROUP BY YEAR(`date`), MONTH(`date`)
-				) AS keep_dates
+				) AS keep_past_dates
 			)
-		""")
+		""", (current_month_start, current_month_start))
+
 		frappe.db.commit()
 
-		msg = "Successfully cleaned up SS & VS Report daily records. Retained only the last date of each month."
+		msg = f"SS & VS Cleanup completed. Yesterday ({yesterday}) data verified: {yesterday_count > 0}."
 		frappe.logger("scheduler").info(msg)
-		return {"status": "success", "message": msg}
+		return {"status": "success", "message": msg, "yesterday_verified": yesterday_count > 0}
 	except Exception as e:
 		frappe.log_error(f"Error cleaning up SS & VS monthly records: {str(e)}", "SS & VS Cleanup Error")
 		return {"status": "error", "message": str(e)}
