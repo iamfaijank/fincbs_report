@@ -302,10 +302,8 @@ document.getElementById(cfg.zid).innerHTML="";
 document.getElementById(cfg.cid).textContent="";
 var dp=cfg.did?document.getElementById(cfg.did).value:"";
 if(cfg.did&&!dp){
-document.getElementById(cfg.lid).style.display="none";
-document.getElementById(cfg.tid).innerHTML='<div style="text-align:center;padding:60px 20px;color:#94a3b8;font-size:14px;">Please select a date and click <b>Refresh</b> to load data.</div>';
-document.getElementById(cfg.tid).style.display="block";
-return}
+var y=new Date();y.setDate(y.getDate()-1);dp=y.toISOString().split("T")[0];
+document.getElementById(cfg.did).value=dp}
 var url=BASE+cfg.api+(dp?"?selected_date="+dp:"");
 apiCall(url).then(function(r){
 if(r&&r.message){
