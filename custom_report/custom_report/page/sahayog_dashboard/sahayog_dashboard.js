@@ -4887,6 +4887,9 @@ class DrishtiDashboard {
 						const agentInfo = res.agent_info || {};
 						const bName = agentInfo.branch_name || agentData.branch_name || "-";
 						const bCode = agentInfo.branch_code || agentData.branch_code || "-";
+						const bZone = agentInfo.zone || agentData.zone || "";
+						const bRegion = agentInfo.region || agentData.region || "";
+						const bDistrict = agentInfo.district || agentData.district || "";
 						const authId = agentInfo.auth_id || agentData.auth_id || "-";
 						const empId = agentInfo.employee || agentData.employee || "-";
 						const empName = agentInfo.employee_name || agentData.employee_name || "";
@@ -4922,6 +4925,24 @@ class DrishtiDashboard {
 											<span style="color: #64748b; font-weight: 600;">Branch:</span>
 											<strong style="color: #1e293b;">${bName} ${bCode !== '-' ? '(' + bCode + ')' : ''}</strong>
 										</div>
+										${bZone ? `
+										<div>
+											<span style="color: #64748b; font-weight: 600;">Zone:</span>
+											<strong style="color: #1e293b;">${bZone}</strong>
+										</div>
+										` : ''}
+										${bRegion ? `
+										<div>
+											<span style="color: #64748b; font-weight: 600;">Region:</span>
+											<strong style="color: #1e293b;">${bRegion}</strong>
+										</div>
+										` : ''}
+										${bDistrict ? `
+										<div>
+											<span style="color: #64748b; font-weight: 600;">District:</span>
+											<strong style="color: #1e293b;">${bDistrict}</strong>
+										</div>
+										` : ''}
 										<div>
 											<span style="color: #64748b; font-weight: 600;">Auth ID:</span>
 											<strong style="color: #1e293b;">${authId}</strong>
@@ -5024,6 +5045,9 @@ class DrishtiDashboard {
 						resInstant.agent_info = {
 							branch_code: agentData.branch_code,
 							branch_name: agentData.branch_name,
+							zone: agentData.zone,
+							region: agentData.region,
+							district: agentData.district,
 							auth_id: agentData.auth_id,
 							employee: agentData.employee,
 							employee_name: agentData.employee_name,

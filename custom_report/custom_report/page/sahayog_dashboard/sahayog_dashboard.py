@@ -5728,7 +5728,7 @@ def get_agent_customer_details(report_type, rm_id, selected_date=None):
 @frappe.whitelist()
 def get_rm_wise_ss_vs_data(selected_date=None):
     """
-    Superfast Zero-CPU SQL Fetching of Agent Code, Name, Status, Branch, Auth ID, Employee, and Employee details.
+    Superfast Zero-CPU SQL Fetching of Agent Code, Name, Status, Branch, Zone, Region, District, Auth ID, Employee details.
     """
     json_path = '$.grand_total_commission'
     if selected_date:
@@ -5745,6 +5745,9 @@ def get_rm_wise_ss_vs_data(selected_date=None):
             A.agent_status,
             A.branch_code,
             A.branch_name,
+            B.zone,
+            B.region,
+            B.district,
             A.auth_id,
             A.employee,
             E.employee_name,
@@ -5758,6 +5761,7 @@ def get_rm_wise_ss_vs_data(selected_date=None):
             CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(A.commission_json, '{json_path}')), 0) AS DECIMAL(18,2)) AS total_commission
         FROM `tabAgent` A
         LEFT JOIN `tabEmployee` E ON A.employee = E.name
+        LEFT JOIN `tabSahayog Branch` B ON (A.branch_code = B.sol_id OR A.branch_code = B.branch_code)
         WHERE A.docstatus < 2
           AND A.agent_type IN ('RDDSA', 'DDDSA')
         ORDER BY total_commission DESC
@@ -5853,6 +5857,9 @@ def get_rm_wise_category_breakdown(rm_id, selected_date=None):
             A.agent_name,
             A.branch_code,
             A.branch_name,
+            B.zone,
+            B.region,
+            B.district,
             A.auth_id,
             A.employee,
             E.employee_name,
@@ -5865,6 +5872,7 @@ def get_rm_wise_category_breakdown(rm_id, selected_date=None):
             A.role
         FROM `tabAgent` A
         LEFT JOIN `tabEmployee` E ON A.employee = E.name
+        LEFT JOIN `tabSahayog Branch` B ON (A.branch_code = B.sol_id OR A.branch_code = B.branch_code)
         WHERE A.name = %s OR A.agent_code = %s
         LIMIT 1
     """, (rm_id, rm_id), as_dict=True)
