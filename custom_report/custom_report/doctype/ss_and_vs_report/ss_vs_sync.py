@@ -1192,6 +1192,34 @@ def sync_share_daily():
 	return _sync_daily_t1_report("SHARE")
 
 
+def execute_ss_vs_bulk_insert(fields: list, records: list, chunk_size: int = 5000) -> None:
+	"""
+	Direct chunked raw SQL bulk INSERT into tabSS and VS Report table without ORM overhead.
+	Bypasses frappe.db.bulk_insert packet size limits by inserting in optimal chunks of 5000.
+	"""
+	if not records or not fields:
+		return
+
+	db_type = getattr(frappe.db, "db_type", "mariadb")
+
+	if db_type == "mariadb":
+		escaped_fields = ", ".join(f"`{f}`" for f in fields)
+		table_name = "`tabSS and VS Report`"
+	else:
+		escaped_fields = ", ".join(f'"{f}"' for f in fields)
+		table_name = '"tabSS and VS Report"'
+
+	row_placeholder = "(" + ", ".join(["%s"] * len(fields)) + ")"
+
+	for i in range(0, len(records), chunk_size):
+		chunk = records[i : i + chunk_size]
+		placeholders = ", ".join([row_placeholder] * len(chunk))
+		flattened_params = [val for row in chunk for val in row]
+
+		sql = f"INSERT INTO {table_name} ({escaped_fields}) VALUES {placeholders};"
+		frappe.db.sql(sql, flattened_params)
+
+
 class SSandVSSyncEngine:
 	def __init__(self, report_type: str, sync_date: str):
 		self.report_type = report_type
@@ -1298,7 +1326,7 @@ class SSandVSSyncEngine:
 				for d in new_docs
 			]
 
-			frappe.db.bulk_insert("SS and VS Report", insert_fields, values_to_insert, ignore_duplicates=True)
+			execute_ss_vs_bulk_insert(insert_fields, values_to_insert, chunk_size=5000)
 			self.summary["inserted"] = len(new_docs)
 
 		# Final commit
