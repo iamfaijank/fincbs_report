@@ -4735,6 +4735,56 @@ class DrishtiDashboard {
 								if ((c.total_commission || 0) > 0) activeProductsCount++;
 							});
 
+							// Calculate Max Month Total for Scaling Bars
+							let maxMonthVal = 0;
+							targetMonths.forEach(m => {
+								const val = monthTotals[m.label] || 0;
+								if (val > maxMonthVal) maxMonthVal = val;
+							});
+							if (maxMonthVal === 0) maxMonthVal = 1;
+
+							// Build Bar Chart HTML with Amount Labels on top
+							let barChartItemsHtml = targetMonths.map(m => {
+								const val = monthTotals[m.label] || 0;
+								const pctHeight = Math.max(Math.round((val / maxMonthVal) * 85), val > 0 ? 8 : 2);
+								const isCurrent = m.is_current;
+								const barBg = isCurrent
+									? "linear-gradient(180deg, #22c55e 0%, #15803d 100%)"
+									: "linear-gradient(180deg, #417d81 0%, #2b5558 100%)";
+								const labelColor = isCurrent ? "#15803d" : "#417d81";
+
+								return `
+									<div style="flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; position: relative;">
+										<!-- Amount Label Printed Directly Above Bar -->
+										<div style="font-size: 11px; font-weight: 800; color: ${val > 0 ? labelColor : '#94a3b8'}; margin-bottom: 4px; white-space: nowrap;">
+											${val > 0 ? fmtAmt(val) : '₹0'}
+										</div>
+										<!-- Vertical Bar Graphic -->
+										<div style="width: 75%; max-width: 48px; height: ${pctHeight}%; background: ${barBg}; border-radius: 6px 6px 0 0; transition: height 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.08);" title="${m.label}: ${fmtAmt(val)}"></div>
+										<!-- X-Axis Month Label -->
+										<div style="font-size: 11px; font-weight: 700; color: ${isCurrent ? '#15803d' : '#475569'}; margin-top: 8px; text-transform: uppercase;">
+											${m.label} ${isCurrent ? '⚡' : ''}
+										</div>
+									</div>
+								`;
+							}).join('');
+
+							const barChartCardHtml = `
+								<div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+									<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+										<div style="font-size: 12px; font-weight: 800; color: #417d81; text-transform: uppercase; letter-spacing: 0.5px;">
+											📈 4-Month Commission Trend Bar Chart
+										</div>
+										<div style="font-size: 11px; font-weight: 700; color: #64748b;">
+											Grand 4-Month Total: <span style="color: #417d81; font-weight: 800;">${fmtAmt(grand4mTotal)}</span>
+										</div>
+									</div>
+									<div style="height: 150px; display: flex; align-items: flex-end; gap: 16px; padding: 12px 20px 0 20px; background: #f8fafc; border-radius: 6px; border: 1px solid #f1f5f9;">
+										${barChartItemsHtml}
+									</div>
+								</div>
+							`;
+
 							// Render Month Summary Cards (4 Months)
 							let monthCardsHtml = targetMonths.map(m => {
 								const val = monthTotals[m.label] || 0;
@@ -4788,6 +4838,9 @@ class DrishtiDashboard {
 							}).join('');
 
 							const modalBodyHtml = `
+								<!-- 4-Month Trend Bar Chart Card -->
+								${barChartCardHtml}
+
 								<!-- 4 Month Trend KPI Cards -->
 								<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;">
 									${monthCardsHtml}
