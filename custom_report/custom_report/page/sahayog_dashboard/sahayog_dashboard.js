@@ -4887,52 +4887,97 @@ class DrishtiDashboard {
 						const authId = agentInfo.auth_id || agentData.auth_id || "-";
 						const empId = agentInfo.employee || agentData.employee || "-";
 						const empName = agentInfo.employee_name || agentData.employee_name || "";
-						const empDisplay = empName ? `${empName} (${empId})` : empId;
+						const empDesignation = agentInfo.emp_designation || agentData.emp_designation || "";
+						const empDept = agentInfo.emp_department || agentData.emp_department || "";
+						const empBranch = agentInfo.emp_branch || agentData.emp_branch || "";
+						const empCell = agentInfo.emp_cell_number || agentData.emp_cell_number || "";
 						const phoneNo = agentInfo.phone_number || agentData.phone_number || "-";
 						const agentRole = agentInfo.role || agentData.role || agentData.agent_type || "-";
 
-						const leftProfileCardHtml = `
-							<div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-								<div style="text-align: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
-									<div style="width: 54px; height: 54px; background: #417d81; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px auto; box-shadow: 0 4px 10px rgba(65, 125, 129, 0.35);">
-										<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-											<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-											<circle cx="12" cy="7" r="4"></circle>
-										</svg>
+						const leftColumnCardsHtml = `
+							<div style="display: flex; flex-direction: column; gap: 14px;">
+								<!-- CARD 1: AGENT PROFILE CARD -->
+								<div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+									<div style="font-size: 11px; font-weight: 800; color: #417d81; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+										<span>Agent Profile</span>
+										${statusBadge}
 									</div>
-									<div style="font-size: 14px; font-weight: 800; color: #0f172a; line-height: 1.2;">${agentName}</div>
-									<div style="font-size: 12px; font-weight: 700; color: #417d81; margin-top: 2px;">${agentCode}</div>
-									<div style="margin-top: 6px;">${statusBadge}</div>
+									<div style="display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 10px;">
+										<div style="width: 44px; height: 44px; background: #417d81; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 3px 6px rgba(65, 125, 129, 0.3);">
+											<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+												<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+												<circle cx="12" cy="7" r="4"></circle>
+											</svg>
+										</div>
+										<div>
+											<div style="font-size: 13px; font-weight: 800; color: #0f172a; line-height: 1.2;">${agentName}</div>
+											<div style="font-size: 11px; font-weight: 700; color: #417d81; margin-top: 2px;">${agentCode} ${agentRole !== '-' ? '(' + agentRole + ')' : ''}</div>
+										</div>
+									</div>
+									<div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
+										<div>
+											<span style="color: #64748b; font-weight: 600;">Branch:</span>
+											<strong style="color: #1e293b;">${bName} ${bCode !== '-' ? '(' + bCode + ')' : ''}</strong>
+										</div>
+										<div>
+											<span style="color: #64748b; font-weight: 600;">Auth ID:</span>
+											<strong style="color: #1e293b;">${authId}</strong>
+										</div>
+										${phoneNo !== '-' ? `
+										<div>
+											<span style="color: #64748b; font-weight: 600;">Phone:</span>
+											<strong style="color: #1e293b;">${phoneNo}</strong>
+										</div>
+										` : ''}
+									</div>
 								</div>
 
-								<div style="display: flex; flex-direction: column; gap: 9px; font-size: 12px;">
-									<div>
-										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Branch</div>
-										<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${bName} ${bCode !== '-' ? '(' + bCode + ')' : ''}</div>
+								<!-- CARD 2: ASSIGNED EMPLOYEE / MANAGER CARD -->
+								${empId !== '-' ? `
+								<div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+									<div style="font-size: 11px; font-weight: 800; color: #334155; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+										<span>Assigned Employee</span>
+										<span style="background: #e2e8f0; color: #334155; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: 700;">ID: ${empId}</span>
 									</div>
-									<div>
-										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Auth ID</div>
-										<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${authId}</div>
+									<div style="display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 10px;">
+										<div style="width: 44px; height: 44px; background: #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 3px 6px rgba(51, 65, 85, 0.3);">
+											<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+												<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+												<circle cx="9" cy="7" r="4"></circle>
+												<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+												<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+											</svg>
+										</div>
+										<div>
+											<div style="font-size: 13px; font-weight: 800; color: #0f172a; line-height: 1.2;">${empName || empId}</div>
+											<div style="font-size: 11px; font-weight: 700; color: #64748b; margin-top: 2px;">${empDesignation || 'Branch Manager'}</div>
+										</div>
 									</div>
-									<div>
-										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Employee / Manager</div>
-										<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${empDisplay}</div>
+									<div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
+										${empDept ? `
+										<div>
+											<span style="color: #64748b; font-weight: 600;">Department:</span>
+											<strong style="color: #1e293b;">${empDept}</strong>
+										</div>
+										` : ''}
+										${empBranch ? `
+										<div>
+											<span style="color: #64748b; font-weight: 600;">Emp Branch:</span>
+											<strong style="color: #1e293b;">${empBranch}</strong>
+										</div>
+										` : ''}
+										${empCell ? `
+										<div>
+											<span style="color: #64748b; font-weight: 600;">Contact:</span>
+											<strong style="color: #1e293b;">${empCell}</strong>
+										</div>
+										` : ''}
 									</div>
-									${phoneNo !== '-' ? `
-									<div>
-										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Phone Number</div>
-										<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${phoneNo}</div>
-									</div>
-									` : ''}
-									${agentRole !== '-' ? `
-									<div>
-										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Agent Type</div>
-										<div style="font-weight: 700; color: #417d81; margin-top: 1px;">${agentRole}</div>
-									</div>
-									` : ''}
 								</div>
+								` : ''}
 
-								<div style="background: rgba(65, 125, 129, 0.08); border: 1px solid rgba(65, 125, 129, 0.25); border-radius: 8px; padding: 10px; margin-top: auto; text-align: center;">
+								<!-- CARD 3: 4-MONTH TOTAL ACCENT CARD -->
+								<div style="background: rgba(65, 125, 129, 0.08); border: 1px solid rgba(65, 125, 129, 0.25); border-radius: 8px; padding: 10px; text-align: center;">
 									<div style="font-size: 10px; font-weight: 700; color: #417d81; text-transform: uppercase;">4-Month Total Commission</div>
 									<div style="font-size: 17px; font-weight: 800; color: #417d81; margin-top: 2px;">${fmtAmt(grand4mTotal)}</div>
 								</div>
@@ -4940,8 +4985,8 @@ class DrishtiDashboard {
 						`;
 
 						const modalBodyHtml = `
-							<div style="display: grid; grid-template-columns: 240px 1fr; gap: 16px; align-items: start;">
-								${leftProfileCardHtml}
+							<div style="display: grid; grid-template-columns: 260px 1fr; gap: 16px; align-items: start;">
+								${leftColumnCardsHtml}
 								<div style="display: flex; flex-direction: column; gap: 14px;">
 									${barChartCardHtml}
 									<div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
@@ -4979,6 +5024,10 @@ class DrishtiDashboard {
 							auth_id: agentData.auth_id,
 							employee: agentData.employee,
 							employee_name: agentData.employee_name,
+							emp_designation: agentData.emp_designation,
+							emp_department: agentData.emp_department,
+							emp_branch: agentData.emp_branch,
+							emp_cell_number: agentData.emp_cell_number,
 							phone_number: agentData.phone_number,
 							role: agentData.role
 						};

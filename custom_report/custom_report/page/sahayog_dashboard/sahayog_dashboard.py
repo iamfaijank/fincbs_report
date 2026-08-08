@@ -5728,7 +5728,7 @@ def get_agent_customer_details(report_type, rm_id, selected_date=None):
 @frappe.whitelist()
 def get_rm_wise_ss_vs_data(selected_date=None):
     """
-    Superfast Zero-CPU SQL Fetching of Agent Code, Name, Status, Branch, Auth ID, Employee, and Employee Name.
+    Superfast Zero-CPU SQL Fetching of Agent Code, Name, Status, Branch, Auth ID, Employee, and Employee details.
     """
     json_path = '$.grand_total_commission'
     if selected_date:
@@ -5748,6 +5748,10 @@ def get_rm_wise_ss_vs_data(selected_date=None):
             A.auth_id,
             A.employee,
             E.employee_name,
+            E.designation AS emp_designation,
+            E.department AS emp_department,
+            E.branch AS emp_branch,
+            E.cell_number AS emp_cell_number,
             A.phone_number,
             A.role,
             A.commission_json,
@@ -5852,6 +5856,10 @@ def get_rm_wise_category_breakdown(rm_id, selected_date=None):
             A.auth_id,
             A.employee,
             E.employee_name,
+            E.designation AS emp_designation,
+            E.department AS emp_department,
+            E.branch AS emp_branch,
+            E.cell_number AS emp_cell_number,
             A.agent_status,
             A.phone_number,
             A.role
