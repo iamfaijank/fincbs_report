@@ -1284,14 +1284,16 @@ class SSandVSSyncEngine:
 						pass
 
 				err_str = str(e).lower()
-				is_recovery_conflict = any(term in err_str for term in [
+				is_retriable_error = any(term in err_str for term in [
 					"conflict with recovery", "canceling statement", "querycanceled",
-					"serializationfailure", "55006", "40001"
+					"serializationfailure", "server closed the connection", "connection closed",
+					"connection reset", "terminating connection", "broken pipe",
+					"operationalerror", "55006", "40001", "57p01", "57p03"
 				])
 
-				if is_recovery_conflict and attempt < max_retries - 1:
+				if is_retriable_error and attempt < max_retries - 1:
 					retry_delay = (attempt + 1) * 3
-					frappe.log_error(f"DR DB Query Conflict for {self.report_type} (Attempt {attempt + 1}/{max_retries}). Retrying in {retry_delay}s...", "SS & VS Sync Retry")
+					frappe.log_error(f"DR DB Query Conflict/Disconnection for {self.report_type} (Attempt {attempt + 1}/{max_retries}): {str(e)}. Retrying in {retry_delay}s...", "SS & VS Sync Retry")
 					time.sleep(retry_delay)
 				else:
 					frappe.log_error(
