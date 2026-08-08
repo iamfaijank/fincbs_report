@@ -4403,6 +4403,10 @@ class DrishtiDashboard {
 					if (!self.rmDetails) self.rmDetails = {};
 					if (!self.expandedRms) self.expandedRms = {};
 
+					// State pagination
+					if (!self.currentPage) self.currentPage = 1;
+					if (!self.pageSize) self.pageSize = 50;
+
 					if (self.filterQuery) {
 						data = data.filter(r => 
 							(r.agent_code || r.rm_id || "").toLowerCase().includes(self.filterQuery) ||
@@ -4426,8 +4430,18 @@ class DrishtiDashboard {
 						grandTotalComm += (r.total_commission || 0);
 					});
 
+					// Calculate Paged Window
+					const totalFiltered = data.length;
+					const totalPages = Math.ceil(totalFiltered / self.pageSize) || 1;
+					if (self.currentPage > totalPages) self.currentPage = totalPages;
+					if (self.currentPage < 1) self.currentPage = 1;
+
+					const startIndex = (self.currentPage - 1) * self.pageSize;
+					const pagedData = data.slice(startIndex, startIndex + self.pageSize);
+
 					let rowsHtml = "";
-					data.forEach((row, idx) => {
+					pagedData.forEach((row, idx) => {
+						const globalIdx = startIndex + idx + 1;
 						const agentCode = row.agent_code || row.rm_id || "-";
 						const agentName = row.agent_name || row.rm_name || "-";
 						const agentStatus = (row.agent_status || "Inactive").trim();
@@ -4441,7 +4455,7 @@ class DrishtiDashboard {
 
 						rowsHtml += `
 							<tr class="rm-master-row" data-rm-id="${agentCode}" style="cursor: pointer; background: ${isExpanded ? '#f0fdf4' : '#fff'}; border-bottom: 1px solid #e2e8f0;">
-								<td style="padding: 8px 12px; text-align: center; font-size: 13px; font-weight: 600; width: 45px;">${idx + 1}</td>
+								<td style="padding: 8px 12px; text-align: center; font-size: 13px; font-weight: 600; width: 50px;">${globalIdx}</td>
 								<td style="padding: 8px 12px; font-size: 13px; font-weight: 700; color: #1e293b;">
 									<span class="rm-toggle-icon" style="display: inline-block; width: 16px; color: #16a34a;">${isExpanded ? '▼' : '▶'}</span>
 									<span style="color: #16a34a; text-decoration: underline;">${agentCode}</span>
@@ -4461,6 +4475,32 @@ class DrishtiDashboard {
 						`;
 					});
 
+					const paginationBarHtml = `
+						<div class="rm-pagination-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+							<div style="font-size: 12px; font-weight: 600; color: #475569;">
+								Showing <span style="color: #0f172a; font-weight: 700;">${startIndex + 1}</span> to <span style="color: #0f172a; font-weight: 700;">${Math.min(startIndex + self.pageSize, totalFiltered)}</span> of <span style="color: #0f172a; font-weight: 700;">${fmtNum(totalFiltered)}</span> Agents
+							</div>
+							<div style="display: flex; align-items: center; gap: 10px;">
+								<div style="display: flex; align-items: center; gap: 4px;">
+									<label style="font-size: 11px; font-weight: 600; color: #64748b; margin: 0;">Per Page:</label>
+									<select class="rm-page-size-select" style="font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; border: 1px solid #cbd5e1; outline: none; background: #f8fafc; cursor: pointer;">
+										<option value="50" ${self.pageSize === 50 ? 'selected' : ''}>50</option>
+										<option value="100" ${self.pageSize === 100 ? 'selected' : ''}>100</option>
+										<option value="250" ${self.pageSize === 250 ? 'selected' : ''}>250</option>
+										<option value="500" ${self.pageSize === 500 ? 'selected' : ''}>500</option>
+									</select>
+								</div>
+								<div style="display: flex; align-items: center; gap: 4px;">
+									<button type="button" class="btn btn-xs rm-page-first" ${self.currentPage <= 1 ? 'disabled' : ''} style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 2px 6px;">« First</button>
+									<button type="button" class="btn btn-xs rm-page-prev" ${self.currentPage <= 1 ? 'disabled' : ''} style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 2px 6px;">‹ Prev</button>
+									<span style="font-size: 12px; font-weight: 700; padding: 0 6px; color: #1e293b;">Page ${self.currentPage} of ${totalPages}</span>
+									<button type="button" class="btn btn-xs rm-page-next" ${self.currentPage >= totalPages ? 'disabled' : ''} style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 2px 6px;">Next ›</button>
+									<button type="button" class="btn btn-xs rm-page-last" ${self.currentPage >= totalPages ? 'disabled' : ''} style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 2px 6px;">Last »</button>
+								</div>
+							</div>
+						</div>
+					`;
+
 					const tableHtml = `
 						<style>
 							.rm-master-row { transition: background-color 0.15s ease-in-out; }
@@ -4468,11 +4508,12 @@ class DrishtiDashboard {
 							.rm-sub-product-row { transition: background-color 0.15s ease-in-out; }
 							.rm-sub-product-row:hover { background-color: #ecfdf5 !important; }
 						</style>
-						<div style="max-height: 700px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+						${paginationBarHtml}
+						<div style="max-height: 650px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
 							<table class="table table-sm table-hover" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
 								<thead>
 									<tr style="background: #16a34a; color: #ffffff; position: sticky; top: 0; z-index: 2;">
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: center; width: 45px;">Sr</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: center; width: 50px;">Sr</th>
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Agent Code</th>
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Agent Name</th>
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: center;">Status</th>
@@ -4490,9 +4531,43 @@ class DrishtiDashboard {
 								</tfoot>
 							</table>
 						</div>
+						<div style="margin-top: 8px;">
+							${paginationBarHtml}
+						</div>
 					`;
 
 					tableContainer.html(tableHtml);
+
+					// Pagination Event Handlers
+					tableContainer.off("change", ".rm-page-size-select").on("change", ".rm-page-size-select", function () {
+						self.pageSize = parseInt($(this).val());
+						self.currentPage = 1;
+						self.renderRmWiseTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".rm-page-first").on("click", ".rm-page-first", function () {
+						self.currentPage = 1;
+						self.renderRmWiseTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".rm-page-prev").on("click", ".rm-page-prev", function () {
+						if (self.currentPage > 1) {
+							self.currentPage--;
+							self.renderRmWiseTable(tableContainer, dashboardInstance);
+						}
+					});
+
+					tableContainer.off("click", ".rm-page-next").on("click", ".rm-page-next", function () {
+						if (self.currentPage < totalPages) {
+							self.currentPage++;
+							self.renderRmWiseTable(tableContainer, dashboardInstance);
+						}
+					});
+
+					tableContainer.off("click", ".rm-page-last").on("click", ".rm-page-last", function () {
+						self.currentPage = totalPages;
+						self.renderRmWiseTable(tableContainer, dashboardInstance);
+					});
 
 					// Render category details for expanded RMs
 					Object.keys(self.expandedRms).forEach(rmId => {
