@@ -4635,6 +4635,83 @@ class DrishtiDashboard {
 					});
 				},
 
+				parseAgentCommissionJson: function (comm_dict_or_str, selectedDate) {
+					let comm_dict = comm_dict_or_str;
+					if (typeof comm_dict_or_str === "string") {
+						try { comm_dict = JSON.parse(comm_dict_or_str); } catch (e) { comm_dict = {}; }
+					}
+					if (!comm_dict || typeof comm_dict !== "object") comm_dict = {};
+
+					const today = selectedDate ? new Date(selectedDate) : new Date();
+					const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+					const targetMonths = [];
+
+					for (let i = 3; i >= 0; i--) {
+						const dt = new Date(today.getFullYear(), today.getMonth() - i, 1);
+						const yStr = String(dt.getFullYear());
+						const mStr = String(dt.getMonth() + 1).padStart(2, '0');
+						const mName = `${monthNames[dt.getMonth()]} ${dt.getFullYear()}`;
+						targetMonths.push({
+							year: yStr,
+							month: mStr,
+							label: mName,
+							is_current: (i === 0)
+						});
+					}
+
+					const standardProducts = ["DAM", "SMBG", "RD", "DD SAV", "FD", "FD 1", "DD TDA", "SHARE"];
+					const productMatrix = {};
+					standardProducts.forEach(prod => {
+						productMatrix[prod] = { product_name: prod, months: {}, total_commission: 0 };
+					});
+
+					const monthTotals = {};
+					targetMonths.forEach(m => monthTotals[m.label] = 0);
+					let grand4mTotal = 0;
+
+					targetMonths.forEach(mInfo => {
+						const yr = mInfo.year;
+						const mth = mInfo.month;
+						const lbl = mInfo.label;
+
+						if (comm_dict[yr] && comm_dict[yr][mth]) {
+							const mData = comm_dict[yr][mth];
+							standardProducts.forEach(prod => {
+								const val = parseFloat(mData[prod] || 0);
+								productMatrix[prod].months[lbl] = val;
+								productMatrix[prod].total_commission += val;
+								monthTotals[lbl] += val;
+								grand4mTotal += val;
+							});
+						} else {
+							standardProducts.forEach(prod => {
+								productMatrix[prod].months[lbl] = 0;
+							});
+						}
+					});
+
+					const breakdownList = standardProducts.map(prod => {
+						const pData = productMatrix[prod];
+						return {
+							product_name: prod,
+							report_type: prod,
+							months: pData.months,
+							total_commission: pData.total_commission,
+							total_customer: pData.total_commission > 0 ? 1 : 0
+						};
+					});
+
+					breakdownList.sort((a, b) => b.total_commission - a.total_commission);
+
+					return {
+						breakdown: breakdownList,
+						target_months: targetMonths,
+						month_totals: monthTotals,
+						grand_4m_total: grand4mTotal,
+						comm_dict: comm_dict
+					};
+				},
+
 				openAgentModal: function (agentData, dashboardInstance) {
 					const self = this;
 					const agentCode = agentData.agent_code || agentData.rm_id || "-";
@@ -4711,221 +4788,205 @@ class DrishtiDashboard {
 						}
 					});
 
-					// Fetch Product Breakdown Data
-					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+					const renderModalContent = (res) => {
+						const catList = res.breakdown || [];
+						const targetMonths = res.target_months || [];
+						const monthTotals = res.month_totals || {};
+						const grand4mTotal = res.grand_4m_total || 0;
 
-					frappe.call({
-						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rm_wise_category_breakdown",
-						args: {
-							rm_id: agentCode,
-							selected_date: t1_date
-						},
-						callback: function (r) {
-							const res = r.message || {};
-							const catList = res.breakdown || [];
-							const targetMonths = res.target_months || [];
-							const monthTotals = res.month_totals || {};
-							const grand4mTotal = res.grand_4m_total || 0;
-
-							if (catList.length === 0) {
-								$("#modal-subtable-content").html('<div style="padding: 20px; text-align: center; color: #64748b; font-weight: 600;">No product breakdown data found.</div>');
-								return;
-							}
-
-							// Sort Products High to Low by 4-Month Total Commission
-							catList.sort((a, b) => (b.total_commission || 0) - (a.total_commission || 0));
-
-							let activeProductsCount = 0;
-							catList.forEach(c => {
-								if ((c.total_commission || 0) > 0) activeProductsCount++;
-							});
-
-							// Calculate Max Month Total for Scaling Bars
-							let maxMonthVal = 0;
-							targetMonths.forEach(m => {
-								const val = monthTotals[m.label] || 0;
-								if (val > maxMonthVal) maxMonthVal = val;
-							});
-							if (maxMonthVal === 0) maxMonthVal = 1;
-
-							// Build Bar Chart HTML with Amount Labels on top
-							let barChartItemsHtml = targetMonths.map(m => {
-								const val = monthTotals[m.label] || 0;
-								const pctHeight = Math.max(Math.round((val / maxMonthVal) * 85), val > 0 ? 8 : 2);
-								const isCurrent = m.is_current;
-								const barBg = isCurrent
-									? "linear-gradient(180deg, #22c55e 0%, #15803d 100%)"
-									: "linear-gradient(180deg, #417d81 0%, #2b5558 100%)";
-								const labelColor = isCurrent ? "#15803d" : "#417d81";
-
-								return `
-									<div style="flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; position: relative;">
-										<!-- Amount Label Printed Directly Above Bar -->
-										<div style="font-size: 11px; font-weight: 800; color: ${val > 0 ? labelColor : '#94a3b8'}; margin-bottom: 4px; white-space: nowrap;">
-											${val > 0 ? fmtAmt(val) : '₹0'}
-										</div>
-										<!-- Vertical Bar Graphic -->
-										<div style="width: 75%; max-width: 48px; height: ${pctHeight}%; background: ${barBg}; border-radius: 6px 6px 0 0; transition: height 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.08);" title="${m.label}: ${fmtAmt(val)}"></div>
-										<!-- X-Axis Month Label -->
-										<div style="font-size: 11px; font-weight: 700; color: ${isCurrent ? '#15803d' : '#475569'}; margin-top: 8px; text-transform: uppercase;">
-											${m.label} ${isCurrent ? '⚡' : ''}
-										</div>
-									</div>
-								`;
-							}).join('');
-
-							const barChartCardHtml = `
-								<div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-									<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-										<div style="font-size: 12px; font-weight: 800; color: #417d81; text-transform: uppercase; letter-spacing: 0.5px;">
-											📈 4-Month Commission Trend Bar Chart
-										</div>
-										<div style="font-size: 11px; font-weight: 700; color: #64748b;">
-											Grand 4-Month Total: <span style="color: #417d81; font-weight: 800;">${fmtAmt(grand4mTotal)}</span>
-										</div>
-									</div>
-									<div style="height: 150px; display: flex; align-items: flex-end; gap: 16px; padding: 12px 20px 0 20px; background: #f8fafc; border-radius: 6px; border: 1px solid #f1f5f9;">
-										${barChartItemsHtml}
-									</div>
-								</div>
-							`;
-
-							// Render Month Summary Cards (4 Months)
-							let monthCardsHtml = targetMonths.map(m => {
-								const val = monthTotals[m.label] || 0;
-								const isCurrent = m.is_current;
-								return `
-									<div style="background: ${isCurrent ? '#f0fdf4' : '#f8fafc'}; border: 1px solid ${isCurrent ? '#86efac' : '#e2e8f0'}; border-radius: 8px; padding: 10px 12px; text-align: center;">
-										<div style="font-size: 10px; font-weight: 700; color: ${isCurrent ? '#166534' : '#64748b'}; text-transform: uppercase;">${m.label} ${isCurrent ? '⚡' : ''}</div>
-										<div style="font-size: 16px; font-weight: 800; color: ${isCurrent ? '#15803d' : '#334155'}; margin-top: 2px;">${fmtAmt(val)}</div>
-									</div>
-								`;
-							}).join('');
-
-							// Table Headers
-							let monthHeadersHtml = targetMonths.map(m => `
-								<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right; ${m.is_current ? 'background: #35676a;' : ''}">${m.label}</th>
-							`).join('');
-
-							// Table Rows
-							let rowsHtml = "";
-							catList.forEach((c, idx) => {
-								const prodName = c.product_name || c.report_type || "-";
-								const totComm = c.total_commission || 0;
-
-								let monthCellsHtml = targetMonths.map(m => {
-									const mVal = (c.months && c.months[m.label]) || 0;
-									return `
-										<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: ${mVal > 0 ? '700' : '500'}; color: ${mVal > 0 ? (m.is_current ? '#15803d' : '#334155') : '#94a3b8'};">
-											${mVal > 0 ? fmtAmt(mVal) : '-'}
-										</td>
-									`;
-								}).join('');
-
-								rowsHtml += `
-									<tr class="modal-table-row" style="border-bottom: 1px solid #e2e8f0; background: ${totComm > 0 ? '#ffffff' : '#f8fafc'};">
-										<td style="padding: 8px 10px; text-align: center; font-size: 12px; font-weight: 600; color: #64748b; width: 40px;">${idx + 1}</td>
-										<td style="padding: 8px 10px; font-size: 12px; font-weight: 700; color: #1e293b;">${prodName}</td>
-										${monthCellsHtml}
-										<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 800; color: #417d81;">${fmtAmt(totComm)}</td>
-									</tr>
-								`;
-							});
-
-							const agentInfo = res.agent_info || {};
-							const bName = agentInfo.branch_name || agentData.branch_name || "-";
-							const bCode = agentInfo.branch_code || agentData.branch_code || "-";
-							const authId = agentInfo.auth_id || agentData.auth_id || "-";
-							const empName = agentInfo.employee || agentData.employee || "-";
-							const phoneNo = agentInfo.phone_number || agentData.phone_number || "-";
-							const agentRole = agentInfo.role || agentData.role || agentData.agent_type || "-";
-
-							const leftProfileCardHtml = `
-								<div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-									<!-- Avatar & Header -->
-									<div style="text-align: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
-										<div style="width: 50px; height: 50px; background: #417d81; color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; margin: 0 auto 8px auto; box-shadow: 0 4px 6px -1px rgba(65, 125, 129, 0.3);">
-											👤
-										</div>
-										<div style="font-size: 14px; font-weight: 800; color: #0f172a; line-height: 1.2;">${agentName}</div>
-										<div style="font-size: 12px; font-weight: 700; color: #417d81; margin-top: 2px;">${agentCode}</div>
-										<div style="margin-top: 6px;">${statusBadge}</div>
-									</div>
-
-									<!-- Agent Metadata Fields -->
-									<div style="display: flex; flex-direction: column; gap: 9px; font-size: 12px;">
-										<div>
-											<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Branch</div>
-											<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${bName} ${bCode !== '-' ? '(' + bCode + ')' : ''}</div>
-										</div>
-										<div>
-											<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Auth ID</div>
-											<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${authId}</div>
-										</div>
-										<div>
-											<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Employee / Manager</div>
-											<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${empName}</div>
-										</div>
-										${phoneNo !== '-' ? `
-										<div>
-											<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Phone Number</div>
-											<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${phoneNo}</div>
-										</div>
-										` : ''}
-										${agentRole !== '-' ? `
-										<div>
-											<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Agent Type</div>
-											<div style="font-weight: 700; color: #417d81; margin-top: 1px;">${agentRole}</div>
-										</div>
-										` : ''}
-									</div>
-
-									<!-- 4-Month Total Accent Card -->
-									<div style="background: rgba(65, 125, 129, 0.08); border: 1px solid rgba(65, 125, 129, 0.25); border-radius: 8px; padding: 10px; margin-top: auto; text-align: center;">
-										<div style="font-size: 10px; font-weight: 700; color: #417d81; text-transform: uppercase;">4-Month Total Commission</div>
-										<div style="font-size: 17px; font-weight: 800; color: #417d81; margin-top: 2px;">${fmtAmt(grand4mTotal)}</div>
-									</div>
-								</div>
-							`;
-
-							const modalBodyHtml = `
-								<div style="display: grid; grid-template-columns: 240px 1fr; gap: 16px; align-items: start;">
-									<!-- LEFT BLOCK: Agent Profile Card -->
-									${leftProfileCardHtml}
-
-									<!-- RIGHT BLOCK: Bar Chart & Table -->
-									<div style="display: flex; flex-direction: column; gap: 14px;">
-										<!-- 4-Month Trend Bar Chart Card -->
-										${barChartCardHtml}
-
-										<!-- 4-Month Trend Matrix Table -->
-										<div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-											<table class="table table-sm" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
-												<thead>
-													<tr style="background: #417d81; color: #ffffff;">
-														<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
-														<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Product</th>
-														${monthHeadersHtml}
-														<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">4-Mo Total</th>
-													</tr>
-												</thead>
-												<tbody>${rowsHtml}</tbody>
-												<tfoot>
-													<tr style="background: rgba(65, 125, 129, 0.08); font-weight: 800; color: #417d81; border-top: 2px solid #417d81;">
-														<td colspan="2" style="padding: 8px 10px; text-align: right; font-size: 12px;">TOTAL:</td>
-														${monthFootersHtml}
-														<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 800; color: #417d81;">${fmtAmt(grand4mTotal)}</td>
-													</tr>
-												</tfoot>
-											</table>
-										</div>
-									</div>
-								</div>
-							`;
-
-							$("#modal-subtable-content").html(modalBodyHtml);
+						if (catList.length === 0) {
+							$("#modal-subtable-content").html('<div style="padding: 20px; text-align: center; color: #64748b; font-weight: 600;">No product breakdown data found.</div>');
+							return;
 						}
-					});
+
+						catList.sort((a, b) => (b.total_commission || 0) - (a.total_commission || 0));
+
+						let maxMonthVal = 0;
+						targetMonths.forEach(m => {
+							const val = monthTotals[m.label] || 0;
+							if (val > maxMonthVal) maxMonthVal = val;
+						});
+						if (maxMonthVal === 0) maxMonthVal = 1;
+
+						let barChartItemsHtml = targetMonths.map(m => {
+							const val = monthTotals[m.label] || 0;
+							const pctHeight = Math.max(Math.round((val / maxMonthVal) * 85), val > 0 ? 8 : 2);
+							const isCurrent = m.is_current;
+							const barBg = isCurrent
+								? "linear-gradient(180deg, #22c55e 0%, #15803d 100%)"
+								: "linear-gradient(180deg, #417d81 0%, #2b5558 100%)";
+							const labelColor = isCurrent ? "#15803d" : "#417d81";
+
+							return `
+								<div style="flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; position: relative;">
+									<div style="font-size: 11px; font-weight: 800; color: ${val > 0 ? labelColor : '#94a3b8'}; margin-bottom: 4px; white-space: nowrap;">
+										${val > 0 ? fmtAmt(val) : '₹0'}
+									</div>
+									<div style="width: 75%; max-width: 48px; height: ${pctHeight}%; background: ${barBg}; border-radius: 6px 6px 0 0; transition: height 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.08);" title="${m.label}: ${fmtAmt(val)}"></div>
+									<div style="font-size: 11px; font-weight: 700; color: ${isCurrent ? '#15803d' : '#475569'}; margin-top: 8px; text-transform: uppercase;">
+										${m.label} ${isCurrent ? '⚡' : ''}
+									</div>
+								</div>
+							`;
+						}).join('');
+
+						const barChartCardHtml = `
+							<div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+								<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+									<div style="font-size: 12px; font-weight: 800; color: #417d81; text-transform: uppercase; letter-spacing: 0.5px;">
+										📈 4-Month Commission Trend Bar Chart
+									</div>
+									<div style="font-size: 11px; font-weight: 700; color: #64748b;">
+										Grand 4-Month Total: <span style="color: #417d81; font-weight: 800;">${fmtAmt(grand4mTotal)}</span>
+									</div>
+								</div>
+								<div style="height: 150px; display: flex; align-items: flex-end; gap: 16px; padding: 12px 20px 0 20px; background: #f8fafc; border-radius: 6px; border: 1px solid #f1f5f9;">
+									${barChartItemsHtml}
+								</div>
+							</div>
+						`;
+
+						let monthHeadersHtml = targetMonths.map(m => `
+							<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right; ${m.is_current ? 'background: #35676a;' : ''}">${m.label}</th>
+						`).join('');
+
+						let rowsHtml = "";
+						catList.forEach((c, idx) => {
+							const prodName = c.product_name || c.report_type || "-";
+							const totComm = c.total_commission || 0;
+
+							let monthCellsHtml = targetMonths.map(m => {
+								const mVal = (c.months && c.months[m.label]) || 0;
+								return `
+									<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: ${mVal > 0 ? '700' : '500'}; color: ${mVal > 0 ? (m.is_current ? '#15803d' : '#334155') : '#94a3b8'};">
+										${mVal > 0 ? fmtAmt(mVal) : '-'}
+									</td>
+								`;
+							}).join('');
+
+							rowsHtml += `
+								<tr class="modal-table-row" style="border-bottom: 1px solid #e2e8f0; background: ${totComm > 0 ? '#ffffff' : '#f8fafc'};">
+									<td style="padding: 8px 10px; text-align: center; font-size: 12px; font-weight: 600; color: #64748b; width: 40px;">${idx + 1}</td>
+									<td style="padding: 8px 10px; font-size: 12px; font-weight: 700; color: #1e293b;">${prodName}</td>
+									${monthCellsHtml}
+									<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 800; color: #417d81;">${fmtAmt(totComm)}</td>
+								</tr>
+							`;
+						});
+
+						let monthFootersHtml = targetMonths.map(m => {
+							const mTot = monthTotals[m.label] || 0;
+							return `
+								<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 800;">${fmtAmt(mTot)}</td>
+							`;
+						}).join('');
+
+						const agentInfo = res.agent_info || {};
+						const bName = agentInfo.branch_name || agentData.branch_name || "-";
+						const bCode = agentInfo.branch_code || agentData.branch_code || "-";
+						const authId = agentInfo.auth_id || agentData.auth_id || "-";
+						const empName = agentInfo.employee || agentData.employee || "-";
+						const phoneNo = agentInfo.phone_number || agentData.phone_number || "-";
+						const agentRole = agentInfo.role || agentData.role || agentData.agent_type || "-";
+
+						const leftProfileCardHtml = `
+							<div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+								<div style="text-align: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
+									<div style="width: 50px; height: 50px; background: #417d81; color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; margin: 0 auto 8px auto; box-shadow: 0 4px 6px -1px rgba(65, 125, 129, 0.3);">
+										👤
+									</div>
+									<div style="font-size: 14px; font-weight: 800; color: #0f172a; line-height: 1.2;">${agentName}</div>
+									<div style="font-size: 12px; font-weight: 700; color: #417d81; margin-top: 2px;">${agentCode}</div>
+									<div style="margin-top: 6px;">${statusBadge}</div>
+								</div>
+
+								<div style="display: flex; flex-direction: column; gap: 9px; font-size: 12px;">
+									<div>
+										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Branch</div>
+										<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${bName} ${bCode !== '-' ? '(' + bCode + ')' : ''}</div>
+									</div>
+									<div>
+										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Auth ID</div>
+										<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${authId}</div>
+									</div>
+									<div>
+										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Employee / Manager</div>
+										<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${empName}</div>
+									</div>
+									${phoneNo !== '-' ? `
+									<div>
+										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Phone Number</div>
+										<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${phoneNo}</div>
+									</div>
+									` : ''}
+									${agentRole !== '-' ? `
+									<div>
+										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Agent Type</div>
+										<div style="font-weight: 700; color: #417d81; margin-top: 1px;">${agentRole}</div>
+									</div>
+									` : ''}
+								</div>
+
+								<div style="background: rgba(65, 125, 129, 0.08); border: 1px solid rgba(65, 125, 129, 0.25); border-radius: 8px; padding: 10px; margin-top: auto; text-align: center;">
+									<div style="font-size: 10px; font-weight: 700; color: #417d81; text-transform: uppercase;">4-Month Total Commission</div>
+									<div style="font-size: 17px; font-weight: 800; color: #417d81; margin-top: 2px;">${fmtAmt(grand4mTotal)}</div>
+								</div>
+							</div>
+						`;
+
+						const modalBodyHtml = `
+							<div style="display: grid; grid-template-columns: 240px 1fr; gap: 16px; align-items: start;">
+								${leftProfileCardHtml}
+								<div style="display: flex; flex-direction: column; gap: 14px;">
+									${barChartCardHtml}
+									<div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+										<table class="table table-sm" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
+											<thead>
+												<tr style="background: #417d81; color: #ffffff;">
+													<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
+													<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Product</th>
+													${monthHeadersHtml}
+													<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">4-Mo Total</th>
+												</tr>
+											</thead>
+											<tbody>${rowsHtml}</tbody>
+											<tfoot>
+												<tr style="background: rgba(65, 125, 129, 0.08); font-weight: 800; color: #417d81; border-top: 2px solid #417d81;">
+													<td colspan="2" style="padding: 8px 10px; text-align: right; font-size: 12px;">TOTAL:</td>
+													${monthFootersHtml}
+													<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 800; color: #417d81;">${fmtAmt(grand4mTotal)}</td>
+												</tr>
+											</tfoot>
+										</table>
+									</div>
+								</div>
+							</div>
+						`;
+
+						$("#modal-subtable-content").html(modalBodyHtml);
+					};
+
+					if (agentData.commission_json) {
+						const resInstant = self.parseAgentCommissionJson(agentData.commission_json);
+						resInstant.agent_info = {
+							branch_code: agentData.branch_code,
+							branch_name: agentData.branch_name,
+							auth_id: agentData.auth_id,
+							employee: agentData.employee,
+							phone_number: agentData.phone_number,
+							role: agentData.role
+						};
+						renderModalContent(resInstant);
+					} else {
+						const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+						frappe.call({
+							method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rm_wise_category_breakdown",
+							args: { rm_id: agentCode, selected_date: t1_date },
+							callback: function (r) {
+								renderModalContent(r.message || {});
+							}
+						});
+					}
 				},
 
 				loadAndRenderRmCategoryDetails: function (rmId, tableContainer, dashboardInstance) {

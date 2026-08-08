@@ -5744,6 +5744,11 @@ def get_rm_wise_ss_vs_data(selected_date=None):
             agent_name,
             agent_name AS rm_name,
             agent_status,
+            branch_code,
+            branch_name,
+            auth_id,
+            employee,
+            commission_json,
             CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(commission_json, '{json_path}')), 0) AS DECIMAL(18,2)) AS total_commission
         FROM `tabAgent`
         WHERE docstatus < 2
