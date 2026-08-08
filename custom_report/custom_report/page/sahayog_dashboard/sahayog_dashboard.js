@@ -4456,6 +4456,12 @@ class DrishtiDashboard {
 					});
 
 					const tableHtml = `
+						<style>
+							.rm-master-row { transition: background-color 0.15s ease-in-out; }
+							.rm-master-row:hover { background-color: #f1f5f9 !important; }
+							.rm-sub-product-row { transition: background-color 0.15s ease-in-out; }
+							.rm-sub-product-row:hover { background-color: #ecfdf5 !important; }
+						</style>
 						<div style="max-height: 700px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
 							<table class="table table-sm table-hover" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
 								<thead>
@@ -4561,7 +4567,7 @@ class DrishtiDashboard {
 						totalCommSum += totComm;
 
 						rowsHtml += `
-							<tr style="border-bottom: 1px solid #e2e8f0; background: #fff;">
+							<tr class="rm-sub-product-row" style="border-bottom: 1px solid #e2e8f0; background: #fff; cursor: pointer;">
 								<td style="padding: 6px 10px; text-align: center; font-size: 12px; width: 40px;">${idx + 1}</td>
 								<td style="padding: 6px 10px; font-size: 12px; font-weight: 700; color: #1e293b;">${prodName}</td>
 								<td style="padding: 6px 10px; text-align: right; font-size: 12px;">${fmtNum(totCust)}</td>
