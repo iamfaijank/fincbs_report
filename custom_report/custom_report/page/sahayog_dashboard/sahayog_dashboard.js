@@ -804,137 +804,273 @@ class DrishtiDashboard {
 				},
 				renderAnalysisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
-					const zoneData = self.aggregateByZone();
-					const totalFilteredBranches = zoneData.reduce((s, z) => s + z.data.branches.length, 0);
-					const totalAllBranches = [...new Set((self.tableData || []).map(r => r.sol_id))].length;
-					const $badge = tableContainer.parent().find("#mis-records-count");
-					$badge.text(totalFilteredBranches + " / " + totalAllBranches + " branches" + (self.searchTerm ? " (filtered)" : ""));
-					if (totalFilteredBranches === totalAllBranches && !self.searchTerm) $badge.hide(); else $badge.show();
-					if (!zoneData || zoneData.length === 0) {
+					const data = self.tableData || [];
+
+					if (!data || data.length === 0) {
 						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">No data to display.</div>');
 						return;
 					}
-					const grandTotal = { ca: 0, sa: 0, tasc: 0, rd: 0, smbg: 0, dd: 0, fd: 0, total: 0 };
-					zoneData.forEach(z => {
-						grandTotal.ca += z.data.ca; grandTotal.sa += z.data.sa; grandTotal.tasc += z.data.tasc;
-						grandTotal.rd += z.data.rd; grandTotal.smbg += z.data.smbg; grandTotal.dd += z.data.dd;
-						grandTotal.fd += z.data.fd; grandTotal.total += z.data.total;
-					});
-					const metricCols = [
-						{ key: "ca", label: "CA", align: "right" }, { key: "sa", label: "SA", align: "right" },
-						{ key: "tasc", label: "TASC", align: "right" }, { key: "rd", label: "RD", align: "right" },
-						{ key: "smbg", label: "SMBG", align: "right" }, { key: "dd", label: "DD", align: "right" },
-						{ key: "fd", label: "FD", align: "right" },
-						{ key: "ca_sa_tasc", label: "CA+SA+TASC", align: "right", calc: (r) => (r.ca || 0) + (r.sa || 0) + (r.tasc || 0) },
-						{ key: "rd_smbg_dd_fd", label: "RD+SMBG+DD+FD", align: "right", calc: (r) => (r.rd || 0) + (r.smbg || 0) + (r.dd || 0) + (r.fd || 0) },
-						{ key: "total", label: "TOTAL", align: "right" }
-					];
-					let sr = 0, rowsHtml = "";
-					zoneData.forEach(z => {
-						sr++;
-						const zoneExpanded = self.expandedZones[z.zone];
-						const zoneRow = z.data;
-						const zoneChecked = self.checkedRows["zone::" + z.zone];
-						rowsHtml += `<tr class="mis-zone-row${zoneChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-check-id="zone::${z.zone}" style="cursor: pointer; background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
-							<td style="padding: 10px 14px; text-align: center; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="zone::${z.zone}" ${zoneChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
-							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; width: 40px; font-size: 14px;">${sr}</td>
-							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;"><span class="mis-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>${z.zone}</td>
-							<td style="padding: 10px 14px; font-weight: 700; color: #0d9488; text-align: center; font-size: 14px;">${zoneRow.branches.length}</td>
-							${metricCols.map(mc => { const val = mc.calc ? mc.calc(zoneRow) : zoneRow[mc.key]; return `<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: ${mc.align}; white-space: nowrap; font-size: 14px;">${new Intl.NumberFormat("en-IN").format(val)}</td>`; }).join('')}
-						</tr>`;
-						z.regions.forEach(region => {
-							const regionKey = z.zone + "::" + region.region;
-							const regionExpanded = self.expandedRegions[regionKey];
-							const regionChecked = self.checkedRows[regionKey];
-							rowsHtml += `<tr class="mis-region-row${regionChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region.region}" data-check-id="${regionKey}" style="display: ${zoneExpanded ? "table-row" : "none"}; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-								<td style="padding: 8px 14px; text-align: center; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${regionKey}" ${regionChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
-								<td style="padding: 8px 14px; color: #64748b; text-align: center;"></td>
-								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; padding-left: 30px; font-weight: 600;"><span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${region.region}</td>
-								<td style="padding: 8px 14px; color: #0d9488; text-align: center; font-weight: 600;">${region.branches.length}</td>
-								${metricCols.map(mc => { const val = mc.calc ? mc.calc(region) : region[mc.key]; return `<td style="padding: 8px 14px; color: #334155; text-align: ${mc.align}; white-space: nowrap; font-weight: 500;">${new Intl.NumberFormat("en-IN").format(val)}</td>`; }).join('')}
-							</tr>`;
-							region.branches.forEach((branch, bi) => {
-								const showBranch = zoneExpanded && self.expandedRegions[regionKey];
-								const branchBg = bi % 2 === 0 ? "#ffffff" : "#f1f5f9";
-								rowsHtml += `<tr class="mis-branch-row" data-zone="${z.zone}" data-region="${region.region}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0;">
-									<td style="padding: 6px 14px; text-align: center; vertical-align: middle;"><input type="checkbox" class="mis-row-check" style="cursor: pointer; width: 14px; height: 14px;"></td>
-									<td style="padding: 6px 14px; color: #94a3b8; text-align: center;"></td>
-									<td style="padding: 6px 14px; color: #475569; white-space: nowrap; padding-left: 50px; font-weight: 500;">${branch.sol_id} - ${branch.branch_name || branch.sol_id}</td>
-									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; font-weight: 500;">1</td>
-									${metricCols.map(mc => { const val = mc.calc ? mc.calc(branch) : branch[mc.key]; return `<td style="padding: 6px 14px; color: #475569; text-align: ${mc.align}; white-space: nowrap; font-weight: 500;">${new Intl.NumberFormat("en-IN").format(val)}</td>`; }).join('')}
-								</tr>`;
-							});
-						});
-					});
-					tableContainer.html(`
-						<style>#mis-analysis-table-dao { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; }
-						#mis-analysis-table-dao thead { position: sticky; top: 0; z-index: 2; }
-						#mis-analysis-table-dao tfoot { position: sticky; bottom: 0; z-index: 2; }
-						#mis-analysis-table-dao tbody tr { transition: background-color 0.2s ease; border-bottom: 1px solid #e2e8f0; }
-						#mis-analysis-table-dao tbody tr:hover { background: #dcfce7 !important; }
-						#mis-analysis-table-dao tbody tr.mis-row-checked { background: #bbf7d0 !important; }
-						#mis-analysis-table-dao tbody tr.mis-zone-row.mis-row-checked,
-						#mis-analysis-table-dao tbody tr.mis-region-row.mis-row-checked,
-						#mis-analysis-table-dao tbody tr.mis-branch-row.mis-row-checked { background: #86efac !important; }
-						#mis-scroll-area-dao { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }</style>
-						<div id="mis-scroll-area-dao"><table id="mis-analysis-table-dao">
-							<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
-								<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: center; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
-								<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
-								<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: left;">Zone / Region / Branch</th>
-								<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: center;">Branches</th>
-								${metricCols.map(mc => `<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: ${mc.align};">${mc.label}</th>`).join('')}
-							</tr></thead>
-							<tbody>${rowsHtml}</tbody>
-							<tfoot><tr style="background: #e2e8f0; color: #0f172a;">
-								<td style="padding: 10px 14px; text-align: center;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></td>
-								<td style="padding: 10px 14px;"></td>
-								<td style="padding: 10px 14px; font-weight: 700; font-size: 14px;">Grand Total</td>
-								<td style="padding: 10px 14px; text-align: center; font-weight: 700; color: #0d9488;">${totalFilteredBranches}</td>
-								${metricCols.map(mc => { const val = mc.calc ? mc.calc(grandTotal) : grandTotal[mc.key]; return `<td style="padding: 10px 14px; font-weight: 700; text-align: ${mc.align};">${new Intl.NumberFormat("en-IN").format(val)}</td>`; }).join('')}
-							</tr></tfoot>
-						</table></div>
-					`);
-					tableContainer.show();
-					tableContainer.off("click", ".mis-zone-row").on("click", ".mis-zone-row", function (e) {
-						if ($(e.target).is("input[type='checkbox']")) return;
-						const zone = $(this).data("zone");
-						self.expandedZones[zone] = !self.expandedZones[zone];
-						const show = self.expandedZones[zone];
-						const $regRows = tableContainer.find(`.mis-region-row[data-zone="${zone}"]`);
-						const $brRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"]`);
-						if (show) {
-							$regRows.stop(true, true).slideDown(200);
-							$regRows.each(function () {
-								const reg = $(this).data("region");
-								if (self.expandedRegions[zone + "::" + reg]) {
-									tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${reg}"]`).stop(true, true).slideDown(200);
-								}
-							});
-						} else {
-							$regRows.stop(true, true).slideUp(150);
-							$brRows.stop(true, true).slideUp(150);
+
+					if (!self.expandedTreeNodes) self.expandedTreeNodes = {};
+
+					// Build Tree Data (Zone -> Region -> District -> SOL)
+					const rootNodes = [];
+					const zMap = {};
+
+					data.forEach(r => {
+						const zName = (r.zone || "OTHER ZONE").trim();
+						const rName = (r.region || "OTHER REGION").trim();
+						const dName = (r.district || "OTHER DISTRICT").trim();
+						const sCode = (r.sol_id || "-").trim();
+						const sName = (r.branch_name || r.sol_desc || sCode).trim();
+						const solLabel = sCode !== '-' ? `${sName} (${sCode})` : sName;
+
+						const totAccts = r.total_accounts || 0;
+						const totColl = r.total_collection || 0;
+						const pendAccts = r.pending_accounts || 0;
+						const pendAmt = r.pending_amount || 0;
+						const pendInst = r.pending_instalments || 0;
+
+						if (!zMap[zName]) {
+							zMap[zName] = {
+								id: `rd_z_${zName}`,
+								name: zName,
+								code: zName,
+								type: "Zone",
+								level: 1,
+								total_accounts: 0,
+								total_collection: 0,
+								pending_accounts: 0,
+								pending_amount: 0,
+								pending_instalments: 0,
+								children: {}
+							};
+							rootNodes.push(zMap[zName]);
 						}
-						$(this).find(".mis-zone-toggle").text(show ? "▼" : "▶");
+						zMap[zName].total_accounts += totAccts;
+						zMap[zName].total_collection += totColl;
+						zMap[zName].pending_accounts += pendAccts;
+						zMap[zName].pending_amount += pendAmt;
+						zMap[zName].pending_instalments += pendInst;
+
+						const rMap = zMap[zName].children;
+						if (!rMap[rName]) {
+							rMap[rName] = {
+								id: `rd_r_${zName}_${rName}`,
+								name: rName,
+								code: rName,
+								type: "Region",
+								level: 2,
+								total_accounts: 0,
+								total_collection: 0,
+								pending_accounts: 0,
+								pending_amount: 0,
+								pending_instalments: 0,
+								children: {}
+							};
+						}
+						rMap[rName].total_accounts += totAccts;
+						rMap[rName].total_collection += totColl;
+						rMap[rName].pending_accounts += pendAccts;
+						rMap[rName].pending_amount += pendAmt;
+						rMap[rName].pending_instalments += pendInst;
+
+						const dMap = rMap[rName].children;
+						if (!dMap[dName]) {
+							dMap[dName] = {
+								id: `rd_d_${zName}_${rName}_${dName}`,
+								name: dName,
+								code: dName,
+								type: "District",
+								level: 3,
+								total_accounts: 0,
+								total_collection: 0,
+								pending_accounts: 0,
+								pending_amount: 0,
+								pending_instalments: 0,
+								children: {}
+							};
+						}
+						dMap[dName].total_accounts += totAccts;
+						dMap[dName].total_collection += totColl;
+						dMap[dName].pending_accounts += pendAccts;
+						dMap[dName].pending_amount += pendAmt;
+						dMap[dName].pending_instalments += pendInst;
+
+						const sMap = dMap[dName].children;
+						if (!sMap[sCode]) {
+							sMap[sCode] = {
+								id: `rd_s_${zName}_${rName}_${dName}_${sCode}`,
+								name: solLabel,
+								code: sCode,
+								type: "SOL",
+								level: 4,
+								total_accounts: totAccts,
+								total_collection: totColl,
+								pending_accounts: pendAccts,
+								pending_amount: pendAmt,
+								pending_instalments: pendInst,
+								children: []
+							};
+						}
 					});
-					tableContainer.off("click", ".mis-region-row").on("click", ".mis-region-row", function (e) {
-						if ($(e.target).is("input[type='checkbox']")) return;
-						e.stopPropagation();
-						const zone = $(this).data("zone");
-						const region = $(this).data("region");
-						const regionKey = zone + "::" + region;
-						self.expandedRegions[regionKey] = !self.expandedRegions[regionKey];
-						const show = self.expandedRegions[regionKey];
-						const $branchRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"]`);
-						if (show) { $branchRows.stop(true, true).slideDown(200); } else { $branchRows.stop(true, true).slideUp(150); }
-						$(this).find(".mis-region-toggle").text(show ? "▼" : "▶");
+
+					rootNodes.sort((a, b) => b.pending_amount - a.pending_amount);
+
+					const allNodeIds = [];
+					const collectAllNodeIds = (nodes) => {
+						nodes.forEach(n => {
+							if (n.level < 4) {
+								allNodeIds.push(n.id);
+								let childList = Array.isArray(n.children) ? n.children : Object.values(n.children);
+								collectAllNodeIds(childList);
+							}
+						});
+					};
+					collectAllNodeIds(rootNodes);
+
+					let grandTotal = {
+						total_accounts: 0,
+						total_collection: 0,
+						pending_accounts: 0,
+						pending_amount: 0,
+						pending_instalments: 0
+					};
+					data.forEach(r => {
+						grandTotal.total_accounts += (r.total_accounts || 0);
+						grandTotal.total_collection += (r.total_collection || 0);
+						grandTotal.pending_accounts += (r.pending_accounts || 0);
+						grandTotal.pending_amount += (r.pending_amount || 0);
+						grandTotal.pending_instalments += (r.pending_instalments || 0);
 					});
-					tableContainer.off("change", ".mis-row-check").on("change", ".mis-row-check", function () {
-						$(this).closest("tr").toggleClass("mis-row-checked", $(this).prop("checked"));
+
+					const renderTreeRows = (nodes) => {
+						let html = "";
+						nodes.forEach(node => {
+							const isExpanded = !!self.expandedTreeNodes[node.id];
+							const indent = (node.level - 1) * 10 + 10;
+							const hasChildren = node.level < 4;
+
+							let typeBadgeBg = "#e0f2fe";
+							let typeBadgeColor = "#0369a1";
+							let typeBadgeBorder = "#7dd3fc";
+							if (node.level === 1) { typeBadgeBg = "#f3e8ff"; typeBadgeColor = "#7e22ce"; typeBadgeBorder = "#d8b4fe"; } // Zone
+							else if (node.level === 2) { typeBadgeBg = "#e0e7ff"; typeBadgeColor = "#3730a3"; typeBadgeBorder = "#a5b4fc"; } // Region
+							else if (node.level === 3) { typeBadgeBg = "#fef3c7"; typeBadgeColor = "#92400e"; typeBadgeBorder = "#fcd34d"; } // District
+							else if (node.level === 4) { typeBadgeBg = "#ccfbf1"; typeBadgeColor = "#115e59"; typeBadgeBorder = "#5eead4"; } // SOL
+
+							let rowBg = '#ffffff';
+							if (node.level === 1) rowBg = '#f8fafc';
+							else if (node.level === 2) rowBg = '#ffffff';
+							else if (node.level === 3) rowBg = '#f8fafc';
+							else if (node.level === 4) rowBg = '#f0fdfa';
+
+							html += `
+								<tr class="rd-tree-row" data-node-id="${node.id}" data-level="${node.level}" style="cursor: pointer; background: ${rowBg}; border-bottom: 1px solid #e2e8f0;">
+									<td style="padding: 8px 12px; text-align: left; padding-left: ${indent}px; font-weight: ${node.level < 4 ? '700' : '600'}; color: #1e293b;">
+										${hasChildren ? `<span class="tree-toggle-icon" style="display: inline-block; width: 16px; color: #417d81; font-weight: 800;">${isExpanded ? '▼' : '▶'}</span>` : '<span style="display: inline-block; width: 16px; color: #94a3b8;">•</span>'}
+										<span style="color: ${node.level === 4 ? '#417d81' : '#0f172a'};">${node.name}</span>
+									</td>
+									<td style="padding: 8px 12px; text-align: left; font-size: 12px; font-weight: 700; color: #417d81;">${node.code}</td>
+									<td style="padding: 8px 12px; text-align: left; font-size: 11px;">
+										<span style="background: ${typeBadgeBg}; color: ${typeBadgeColor}; border: 1px solid ${typeBadgeBorder}; padding: 2px 8px; border-radius: 12px; font-weight: 700;">${node.type}</span>
+									</td>
+									<td style="padding: 8px 12px; text-align: right; font-size: 12px; font-weight: 600;">${fmtNum(node.total_accounts)}</td>
+									<td style="padding: 8px 12px; text-align: right; font-size: 12px; font-weight: 600; color: #15803d;">${fmtAmt(node.total_collection)}</td>
+									<td style="padding: 8px 12px; text-align: right; font-size: 12px; font-weight: 700; color: #dc2626;">${fmtNum(node.pending_accounts)}</td>
+									<td style="padding: 8px 12px; text-align: right; font-size: 12px; font-weight: 800; color: #dc2626;">${fmtAmt(node.pending_amount)}</td>
+									<td style="padding: 8px 12px; text-align: right; font-size: 12px; font-weight: 600; color: #b91c1c;">${fmtNum(node.pending_instalments)}</td>
+								</tr>
+							`;
+
+							if (hasChildren && isExpanded) {
+								let childNodes = [];
+								if (Array.isArray(node.children)) {
+									childNodes = node.children;
+								} else if (typeof node.children === "object") {
+									childNodes = Object.values(node.children);
+								}
+								childNodes.sort((a, b) => b.pending_amount - a.pending_amount);
+								html += renderTreeRows(childNodes);
+							}
+						});
+						return html;
+					};
+
+					const treeRowsHtml = renderTreeRows(rootNodes);
+
+					const controlBarHtml = `
+						<div class="rm-pagination-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+							<div style="font-size: 12px; font-weight: 700; color: #417d81; display: flex; align-items: center; gap: 8px;">
+								<span>🌳 RD & SMBG Pending (Zone → Region → District → SOL)</span>
+								<span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700;">${fmtNum(data.length)} Branches Total</span>
+							</div>
+							<div style="display: flex; align-items: center; gap: 8px;">
+								<button type="button" class="btn btn-xs rd-tree-expand-all" style="background: rgba(65, 125, 129, 0.1); color: #417d81; border: 1px solid rgba(65, 125, 129, 0.3); font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
+									📂 Expand All
+								</button>
+								<button type="button" class="btn btn-xs rd-tree-collapse-all" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
+									📁 Collapse All
+								</button>
+							</div>
+						</div>
+					`;
+
+					const tableHtml = `
+						<style>
+							.rd-tree-row { transition: background-color 0.15s ease-in-out; }
+							.rd-tree-row:hover { background-color: #f0fdfa !important; }
+						</style>
+						${controlBarHtml}
+						<div style="max-height: 650px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+							<table class="table table-sm table-hover" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
+								<thead>
+									<tr style="background: #417d81; color: #ffffff; position: sticky; top: 0; z-index: 2;">
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Z / R / D / SOL Name</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Code / ID</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Level</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Accounts</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Collection</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Pending Accounts</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Pending Amount</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Pending Instalments</th>
+									</tr>
+								</thead>
+								<tbody>${treeRowsHtml}</tbody>
+								<tfoot>
+									<tr style="background: rgba(65, 125, 129, 0.08); color: #1e293b; font-weight: 700; position: sticky; bottom: 0; z-index: 2; border-top: 2px solid #417d81;">
+										<td colspan="3" style="padding: 10px 12px; text-align: left; font-size: 12px; color: #417d81;">GRAND TOTAL (${fmtNum(data.length)} BRANCHES)</td>
+										<td style="padding: 10px 12px; text-align: right; font-size: 12px;">${fmtNum(grandTotal.total_accounts)}</td>
+										<td style="padding: 10px 12px; text-align: right; font-size: 12px; color: #15803d;">${fmtAmt(grandTotal.total_collection)}</td>
+										<td style="padding: 10px 12px; text-align: right; font-size: 12px; color: #dc2626;">${fmtNum(grandTotal.pending_accounts)}</td>
+										<td style="padding: 10px 12px; text-align: right; font-size: 13px; color: #dc2626; font-weight: 800;">${fmtAmt(grandTotal.pending_amount)}</td>
+										<td style="padding: 10px 12px; text-align: right; font-size: 12px; color: #b91c1c;">${fmtNum(grandTotal.pending_instalments)}</td>
+									</tr>
+								</tfoot>
+							</table>
+						</div>
+					`;
+
+					tableContainer.html(tableHtml).show();
+
+					// Tree Event Handlers
+					tableContainer.off("click", ".rd-tree-row").on("click", ".rd-tree-row", function () {
+						const nodeId = $(this).data("node-id");
+						const level = parseInt($(this).data("level"));
+						if (level < 4) {
+							self.expandedTreeNodes[nodeId] = !self.expandedTreeNodes[nodeId];
+							self.renderAnalysisTable(tableContainer, dashboardInstance);
+						}
 					});
-					tableContainer.off("change", ".mis-check-all").on("change", ".mis-check-all", function () {
-						const checked = $(this).prop("checked");
-						tableContainer.find(".mis-row-check").each(function () { $(this).prop("checked", checked).trigger("change"); });
+
+					tableContainer.off("click", ".rd-tree-expand-all").on("click", ".rd-tree-expand-all", function () {
+						allNodeIds.forEach(id => self.expandedTreeNodes[id] = true);
+						self.renderAnalysisTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".rd-tree-collapse-all").on("click", ".rd-tree-collapse-all", function () {
+						self.expandedTreeNodes = {};
+						self.renderAnalysisTable(tableContainer, dashboardInstance);
 					});
 				},
 				renderZoneFilterTags: function (container, dashboardInstance) {

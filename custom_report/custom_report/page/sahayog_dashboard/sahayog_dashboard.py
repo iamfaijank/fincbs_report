@@ -1339,6 +1339,32 @@ def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
                 "pending_amount": float(row[8]) if row[8] else 0,
                 "pending_instalments": row[9] or 0
             })
+
+        # Apply User Report Permissions filtering
+        user = frappe.session.user
+        perms = get_user_report_permissions(user)
+
+        if perms.get("is_restricted"):
+            if perms.get("sol_ids"):
+                allowed_sols = set(str(s) for s in perms["sol_ids"])
+                result = [r for r in result if str(r.get("sol_id")) in allowed_sols]
+            else:
+                branches_map = get_sahayog_branches_cached()
+                if perms.get("zone_ids"):
+                    all_zones = set(b["zone"] for b in branches_map.values() if b["zone"])
+                    zone_pattern = re.compile(f"({'|'.join(re.escape(zid) for zid in perms['zone_ids'])})")
+                    matched_zones = set(z for z in all_zones if zone_pattern.search(z))
+                    result = [r for r in result if r.get("zone") in matched_zones]
+
+                if not perms.get("all_regions") and perms.get("region_ids"):
+                    all_regions = set(b["region"] for b in branches_map.values() if b["region"])
+                    region_pattern = re.compile(f"({'|'.join(re.escape(rid) for rid in perms['region_ids'])})")
+                    matched_regions = set(r for r in all_regions if region_pattern.search(r))
+                    result = [r for r in result if r.get("region") in matched_regions]
+
+                if not perms.get("zone_ids") and not perms.get("region_ids") and not perms.get("all_regions"):
+                    result = []
+
         return result
     except Exception as e:
         frappe.log_error(f"Error executing RD/SMBG table query: {str(e)}", "RD SMBG Table API")
