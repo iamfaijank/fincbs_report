@@ -1418,12 +1418,18 @@ def get_monthly_status(year: int = None):
 @frappe.whitelist()
 def cleanup_ss_vs_old_monthly_records():
 	"""
-	Daily Cleanup for SS & VS Report:
+	Daily Cleanup for SS & VS Report with Chunked Deletion (LIMIT 5000) to prevent lock wait timeouts:
 	1. For CURRENT month: Verifies if yesterday's date data is present in tabSS and VS Report.
 	   ONLY if yesterday's data is verified present, deletes prior daily dates (< yesterday) for current month.
 	2. For PAST completed months: Retains ONLY the max (last) date for each past month and deletes prior dates.
 	"""
 	try:
+		# Increase lock wait timeout for this session
+		try:
+			frappe.db.sql("SET SESSION innodb_lock_wait_timeout = 120;")
+		except Exception:
+			pass
+
 		today = frappe.utils.nowdate()
 		yesterday = frappe.utils.add_days(today, -1)
 		
@@ -1433,29 +1439,40 @@ def cleanup_ss_vs_old_monthly_records():
 		# 2. Cleanup current month ONLY if yesterday's date data is present
 		if yesterday_count > 0:
 			dt = frappe.utils.getdate(yesterday)
-			frappe.db.sql("""
-				DELETE FROM `tabSS and VS Report`
-				WHERE YEAR(`date`) = %s
-				  AND MONTH(`date`) = %s
-				  AND `date` < %s
-			""", (dt.year, dt.month, yesterday))
+			while True:
+				affected = frappe.db.sql("""
+					DELETE FROM `tabSS and VS Report`
+					WHERE YEAR(`date`) = %s
+					  AND MONTH(`date`) = %s
+					  AND `date` < %s
+					LIMIT 5000
+				""", (dt.year, dt.month, yesterday))
+				frappe.db.commit()
+				if not affected:
+					break
 
-		# 3. Cleanup past completed months (months before current month)
+		# 3. Cleanup past completed months in chunked iterations
 		current_month_start = frappe.utils.get_first_day(today)
-		frappe.db.sql("""
-			DELETE FROM `tabSS and VS Report`
+		
+		# Pre-fetch past max dates to avoid subquery locks
+		past_max_dates = frappe.db.sql_list("""
+			SELECT MAX(`date`)
+			FROM `tabSS and VS Report`
 			WHERE `date` < %s
-			  AND `date` NOT IN (
-				SELECT max_date FROM (
-					SELECT MAX(`date`) AS max_date
-					FROM `tabSS and VS Report`
-					WHERE `date` < %s
-					GROUP BY YEAR(`date`), MONTH(`date`)
-				) AS keep_past_dates
-			)
-		""", (current_month_start, current_month_start))
+			GROUP BY YEAR(`date`), MONTH(`date`)
+		""", (current_month_start,))
 
-		frappe.db.commit()
+		if past_max_dates:
+			while True:
+				affected = frappe.db.sql("""
+					DELETE FROM `tabSS and VS Report`
+					WHERE `date` < %s
+					  AND `date` NOT IN %s
+					LIMIT 5000
+				""", (current_month_start, tuple(past_max_dates)))
+				frappe.db.commit()
+				if not affected:
+					break
 
 		msg = f"SS & VS Cleanup completed. Yesterday ({yesterday}) data verified: {yesterday_count > 0}."
 		frappe.logger("scheduler").info(msg)
