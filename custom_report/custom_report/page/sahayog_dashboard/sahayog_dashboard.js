@@ -4408,7 +4408,9 @@ class DrishtiDashboard {
 					if (self.filterQuery) {
 						data = data.filter(r => 
 							(r.agent_code || r.rm_id || "").toLowerCase().includes(self.filterQuery) ||
-							(r.agent_name || r.rm_name || "").toLowerCase().includes(self.filterQuery)
+							(r.agent_name || r.rm_name || "").toLowerCase().includes(self.filterQuery) ||
+							(r.branch_code || "").toLowerCase().includes(self.filterQuery) ||
+							(r.branch_name || "").toLowerCase().includes(self.filterQuery)
 						);
 					}
 
@@ -4418,41 +4420,25 @@ class DrishtiDashboard {
 					}
 
 					const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
-					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
-
-					let grandTotalRecords = 0;
-					let grandTotalCommission = 0;
-
-					self.tableData.forEach(r => {
-						grandTotalRecords += (r.total_customer ?? r.total_records ?? 0);
-						grandTotalCommission += (r.total_commission || 0);
-					});
 
 					let rowsHtml = "";
 					data.forEach((row, idx) => {
-						const rmId = row.agent_code || row.rm_id || "Unknown";
-						const rmName = row.agent_name || row.rm_name || "-";
-						const totRecs = row.total_customer ?? row.total_records ?? 0;
-						const totComm = row.total_commission || 0;
-						const isExpanded = !!self.expandedRms[rmId];
+						const agentCode = row.agent_code || row.rm_id || "-";
+						const agentName = row.agent_name || row.rm_name || "-";
+						const branchCode = row.branch_code || "-";
+						const branchName = row.branch_name || "-";
+						const agentType = row.agent_type || "-";
+						const status = row.status || "-";
 
 						rowsHtml += `
-							<tr class="rm-master-row" data-rm-id="${rmId}" style="cursor: pointer; background: ${isExpanded ? '#f0fdf4' : '#fff'}; border-bottom: 1px solid #e2e8f0;">
+							<tr class="rm-master-row" data-rm-id="${agentCode}" style="background: #fff; border-bottom: 1px solid #e2e8f0;">
 								<td style="padding: 8px 12px; text-align: center; font-size: 13px; font-weight: 600; width: 45px;">${idx + 1}</td>
-								<td style="padding: 8px 12px; font-size: 13px; font-weight: 700; color: #1e293b;">
-									<span class="rm-toggle-icon" style="display: inline-block; width: 16px; color: #16a34a;">${isExpanded ? '▼' : '▶'}</span>
-									<span style="color: #16a34a; text-decoration: underline;">${rmId}</span>
-								</td>
-								<td style="padding: 8px 12px; font-size: 13px; font-weight: 600; color: #334155;">${rmName}</td>
-								<td style="padding: 8px 12px; text-align: right; font-size: 13px;">${fmtNum(totRecs)}</td>
-								<td style="padding: 8px 12px; text-align: right; font-size: 13px; font-weight: 700; color: #059669;">${fmtAmt(totComm)}</td>
-							</tr>
-							<tr class="rm-detail-row" data-rm-id="${rmId}" style="display: ${isExpanded ? 'table-row' : 'none'}; background: #f8fafc;">
-								<td colspan="5" style="padding: 10px 14px;">
-									<div class="rm-category-container" data-rm-id="${rmId}">
-										<div style="padding: 8px; color: #64748b; font-size: 12px;">Loading Product Breakdown...</div>
-									</div>
-								</td>
+								<td style="padding: 8px 12px; font-size: 13px; font-weight: 700; color: #1e293b;">${agentCode}</td>
+								<td style="padding: 8px 12px; font-size: 13px; font-weight: 600; color: #334155;">${agentName}</td>
+								<td style="padding: 8px 12px; font-size: 13px; color: #475569;">${branchCode}</td>
+								<td style="padding: 8px 12px; font-size: 13px; color: #475569;">${branchName}</td>
+								<td style="padding: 8px 12px; font-size: 13px; color: #475569;">${agentType}</td>
+								<td style="padding: 8px 12px; font-size: 13px; font-weight: 600; color: ${status === 'Allocated' ? '#16a34a' : '#d97706'};">${status}</td>
 							</tr>
 						`;
 					});
@@ -4465,16 +4451,16 @@ class DrishtiDashboard {
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: center; width: 45px;">Sr</th>
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Agent Code</th>
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Agent Name</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">total Customer</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Commission</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Branch Code</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Branch Name</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Agent Type</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Status</th>
 									</tr>
 								</thead>
 								<tbody>${rowsHtml}</tbody>
 								<tfoot>
 									<tr style="background: #dcfce7; color: #14532d; font-weight: 700; position: sticky; bottom: 0; z-index: 2;">
-										<td colspan="3" style="padding: 10px 12px; text-align: right; font-size: 13px;">GRAND TOTAL (${fmtNum(self.tableData.length)} AGENTS)</td>
-										<td style="padding: 10px 12px; text-align: right; font-size: 13px;">${fmtNum(grandTotalRecords)}</td>
-										<td style="padding: 10px 12px; text-align: right; font-size: 13px; color: #047857;">${fmtAmt(grandTotalCommission)}</td>
+										<td colspan="7" style="padding: 10px 12px; text-align: right; font-size: 13px;">TOTAL (${fmtNum(data.length)} AGENTS)</td>
 									</tr>
 								</tfoot>
 							</table>
