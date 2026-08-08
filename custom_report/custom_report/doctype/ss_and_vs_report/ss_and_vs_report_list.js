@@ -178,6 +178,10 @@ frappe.listview_settings['SS and VS Report'] = {
 					<div class="ss-vs-month-grid" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px;">
 						<div style="grid-column: span 12; color: #94a3b8; font-size: 11px; text-align: center; padding: 8px;">Loading month cards...</div>
 					</div>
+					<div class="ss-vs-selected-month-info" style="display: none; margin-top: 8px; padding: 6px 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 12px; font-weight: 600; color: #166534; justify-content: space-between; align-items: center;">
+						<span class="info-text"></span>
+						<button type="button" class="btn btn-xs clear-month-filter" style="background: #ffffff; border: 1px solid #86efac; color: #15803d; padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: 4px; cursor: pointer;">Clear Filter</button>
+					</div>
 				</div>
 			`);
 			
@@ -195,6 +199,13 @@ frappe.listview_settings['SS and VS Report'] = {
 			$wrapper.on('click', '.ss-vs-widget-refresh', function() {
 				listview.renderMonthWidget(listview);
 			});
+
+			$wrapper.on('click', '.clear-month-filter', function() {
+				$wrapper.find('.ss-vs-month-card').removeClass('active-card').css({ boxShadow: 'none', transform: 'none' });
+				$wrapper.find('.month-count-tag').hide();
+				$wrapper.find('.ss-vs-selected-month-info').hide();
+				listview.filter_area.remove('date');
+			});
 		}
 
 		frappe.call({
@@ -209,21 +220,55 @@ frappe.listview_settings['SS and VS Report'] = {
 					months.forEach(m => {
 						const isGreen = m.has_data;
 						cardsHtml += `
-							<div class="ss-vs-month-card ${isGreen ? 'has-data' : 'no-data'}" data-month="${m.month_num}" 
-								title="${isGreen ? `✓ ${m.month_name} ${listview._selectedYear}: ${fmtNum(m.record_count)} records available (Latest: ${m.latest_date})` : `No data recorded for ${m.month_name} ${listview._selectedYear}`}"
-								style="border-radius: 6px; padding: 6px 2px; text-align: center; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.15s ease-in-out; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; ${isGreen ? 'background: #dcfce7; border: 1px solid #86efac; color: #15803d;' : 'background: #f8fafc; border: 1px solid #e2e8f0; color: #94a3b8;'}">
+							<div class="ss-vs-month-card ${isGreen ? 'has-data' : 'no-data'}" 
+								data-month="${m.month_num}" 
+								data-name="${m.month_name}"
+								data-count="${m.record_count}"
+								data-latest="${m.latest_date || ''}"
+								data-has-data="${isGreen ? '1' : '0'}"
+								title="${isGreen ? `✓ ${m.month_name} ${listview._selectedYear} (Data Available - Click to view count & filter)` : `No data for ${m.month_name} ${listview._selectedYear}`}"
+								style="border-radius: 6px; padding: 8px 4px; text-align: center; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s ease-in-out; display: flex; flex-direction: column; align-items: center; justify-content: center; ${isGreen ? 'background: #dcfce7; border: 1px solid #86efac; color: #15803d;' : 'background: #f8fafc; border: 1px solid #e2e8f0; color: #94a3b8;'}">
 								<span>${isGreen ? '✓ ' : ''}${m.month_name}</span>
-								<span style="font-size: 9px; font-weight: 600; ${isGreen ? 'color: #166534;' : 'color: #cbd5e1;'}">${isGreen ? fmtNum(m.record_count) : 'No Data'}</span>
+								<span class="month-count-tag" style="font-size: 9px; font-weight: 700; margin-top: 3px; background: #166534; color: #ffffff; padding: 1px 5px; border-radius: 10px; display: none;"></span>
 							</div>
 						`;
 					});
 
 					$wrapper.find('.ss-vs-month-grid').html(cardsHtml);
 
-					// Click on month card to filter listview for that month
+					// Click on month card to show count and filter listview
 					$wrapper.off('click', '.ss-vs-month-card').on('click', '.ss-vs-month-card', function() {
-						const monthNum = parseInt($(this).data('month'));
+						const $card = $(this);
+						const monthNum = parseInt($card.data('month'));
+						const monthName = $card.data('name');
+						const count = parseInt($card.data('count') || 0);
+						const latestDate = $card.data('latest');
+						const hasData = $card.data('has-data') === 1 || $card.data('has-data') === '1';
 						const year = listview._selectedYear;
+
+						// Reset previous active card styles & count tags
+						$wrapper.find('.ss-vs-month-card').removeClass('active-card').css({ boxShadow: 'none', transform: 'none' });
+						$wrapper.find('.month-count-tag').hide();
+
+						// Apply active highlight to clicked card & show its count tag
+						$card.addClass('active-card').css({
+							boxShadow: '0 0 0 2px #16a34a',
+							transform: 'scale(1.04)'
+						});
+
+						if (hasData) {
+							$card.find('.month-count-tag').text(fmtNum(count)).show();
+							$wrapper.find('.ss-vs-selected-month-info').css('display', 'flex').find('.info-text').html(
+								`📊 <strong>${monthName} ${year}</strong> — <strong>${fmtNum(count)}</strong> Records Available ` +
+								(latestDate ? `<span style="font-weight: 500; color: #047857; margin-left: 6px;">(Latest: ${latestDate})</span>` : '')
+							);
+						} else {
+							$card.find('.month-count-tag').text("0").show();
+							$wrapper.find('.ss-vs-selected-month-info').css('display', 'flex').find('.info-text').html(
+								`ℹ️ <strong>${monthName} ${year}</strong> — No Data Records Found`
+							);
+						}
+
 						const startDate = `${year}-${String(monthNum).padStart(2, '0')}-01`;
 						const lastDay = new Date(year, monthNum, 0).getDate();
 						const endDate = `${year}-${String(monthNum).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
