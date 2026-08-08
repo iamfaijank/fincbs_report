@@ -5780,6 +5780,9 @@ def get_rm_wise_ss_vs_data(selected_date=None):
         row['total_customer'] = cust_count
         row['total_commission'] = round(agent_comm, 2)
 
+    # Sort High to Low by Commission
+    data.sort(key=lambda r: (r.get('total_commission', 0.0), r.get('total_customer', 0)), reverse=True)
+
     return {"data": data}
 
 

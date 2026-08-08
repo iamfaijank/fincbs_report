@@ -4414,6 +4414,9 @@ class DrishtiDashboard {
 						);
 					}
 
+					// Always sort High to Low by Commission
+					data.sort((a, b) => (b.total_commission || 0) - (a.total_commission || 0));
+
 					if (data.length === 0) {
 						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">No Agent records to display.</div>');
 						return;
