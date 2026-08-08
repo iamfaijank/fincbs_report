@@ -1653,8 +1653,11 @@ def get_daily_account_opening_data(selected_date=None):
 @sahayog_cache(ttl=86400)
 def get_ntb_evr_data(selected_date=None):
     from custom_report.db_connection import get_dr_connection
-    from frappe.utils import getdate, get_last_day, add_months
+    from frappe.utils import getdate, add_months
     import datetime
+
+    user = frappe.session.user
+    perms = get_user_report_permissions(user)
 
     if not selected_date:
         selected_date = str(datetime.date.today())
@@ -1771,10 +1774,7 @@ def get_ntb_evr_data(selected_date=None):
         FROM opening_calc_raw
     )
     SELECT
-        s.circle_office_name AS zone,
-        s.region_name AS region,
         wb.sol_id,
-        s.sol_desc AS branch_name,
         wb.schm_code,
         CASE
             WHEN wb.CIF_ID_Opening_Date IS NULL THEN 'NTB'
@@ -1789,8 +1789,8 @@ def get_ntb_evr_data(selected_date=None):
     LEFT JOIN opening_mab_calc om ON om.foracid = wb.foracid
     LEFT JOIN custom.dsamap dsamap ON dsamap.account_number = wb.foracid
     LEFT JOIN tbaadm.get get ON dsamap.rm_id = get.emp_id
-    GROUP BY s.circle_office_name, s.region_name, wb.sol_id, s.sol_desc, wb.schm_code, cif_status
-    ORDER BY s.circle_office_name, s.region_name, wb.sol_id, wb.schm_code, cif_status
+    GROUP BY wb.sol_id, wb.schm_code, cif_status
+    ORDER BY wb.sol_id, wb.schm_code, cif_status
     """
 
     conn = get_dr_connection()
@@ -1803,35 +1803,30 @@ def get_ntb_evr_data(selected_date=None):
         cursor.execute(query)
         rows = cursor.fetchall()
         
-        if not rows:
-            frappe.throw(f"No NTB & EVR data found for the selected date: {selected_date}. Please select a different date.")
+        branches_map = get_sahayog_branches_cached()
 
         branch_map = {}
         for row in rows:
-            raw_zone = row[0] or "Unknown"
-            region = row[1] or "Unknown"
-            sol_id = str(row[2]) if row[2] else ""
-            branch_name = row[3] or sol_id
-            schema = row[4] or ""
-            status = row[5] or ""
-            count = int(row[6]) if row[6] else 0
+            sol_id = str(row[0]).strip() if row[0] else ""
+            schema = row[1] or ""
+            status = row[2] or ""
+            count = int(row[3]) if row[3] else 0
 
-            normalized_zone = re.sub(r"[\s\-]+", "", raw_zone).upper()
-            # Extract number from zone name for display
-            zone_num = re.sub(r"[^0-9]", "", normalized_zone)
-            display_zone = f"ZONE-{zone_num}" if zone_num else normalized_zone
-
-            normalized_region = re.sub(r"[\s\-]+", "", region).upper()
-            # Fix common typos like RIGION -> REGION
-            normalized_region = normalized_region.replace("RIGION", "REGION")
-            # Extract number from region name for display
-            region_num = re.sub(r"[^0-9]", "", normalized_region)
-            display_region = f"REGION-{region_num}" if region_num else normalized_region
+            b = branches_map.get(sol_id) or branches_map.get(sol_id.lstrip('0')) or {}
+            zone = b.get("zone") or "Unknown Zone"
+            region = b.get("region") or "Unknown Region"
+            district = b.get("district") or "Unknown District"
+            branch_name = b.get("branch_name") or f"Branch {sol_id}"
 
             if sol_id not in branch_map:
                 branch_map[sol_id] = {
-                    "zone": display_zone, "region": display_region, "sol_id": sol_id,
-                    "branch_name": branch_name, "ntb": 0, "evr": 0
+                    "sol_id": sol_id,
+                    "branch_name": branch_name,
+                    "zone": zone,
+                    "region": region,
+                    "district": district,
+                    "ntb": 0,
+                    "evr": 0
                 }
             if status == "NTB":
                 branch_map[sol_id]["ntb"] += count
@@ -1839,8 +1834,20 @@ def get_ntb_evr_data(selected_date=None):
                 branch_map[sol_id]["evr"] += count
 
         result = list(branch_map.values())
-        result.sort(key=lambda x: (x["zone"], x["region"], x["sol_id"]))
-        return {"total_rows": len(rows), "data": result}
+
+        if perms.get("is_restricted"):
+            allowed_zones = perms.get("zones", [])
+            allowed_sol_ids = perms.get("sol_ids", [])
+            if allowed_zones:
+                import re
+                allowed_norm = [re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones]
+                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in allowed_norm]
+            elif allowed_sol_ids:
+                allowed_sols_str = [str(s).strip() for s in allowed_sol_ids]
+                result = [r for r in result if str(r.get("sol_id")).strip() in allowed_sols_str]
+
+        result.sort(key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+        return {"total_rows": len(result), "data": result}
 
     except Exception as e:
         frappe.log_error(f"Error executing NTB EVR query: {str(e)}", "NTB EVR API")
