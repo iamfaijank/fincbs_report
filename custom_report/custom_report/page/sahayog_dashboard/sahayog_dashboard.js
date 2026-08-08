@@ -4519,11 +4519,10 @@ class DrishtiDashboard {
 								<td style="padding: 8px 10px; font-size: 12px; font-weight: 600; color: #475569;">${region}</td>
 								<td style="padding: 8px 10px; font-size: 12px; font-weight: 600; color: #475569;">${district}</td>
 								<td style="padding: 8px 10px; text-align: center; font-size: 11px;">${statusBadge}</td>
-								<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 600;">${fmtNum(totCust)}</td>
 								<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 700; color: #417d81;">${fmtAmt(totComm)}</td>
 							</tr>
 							<tr class="rm-detail-row" data-rm-id="${agentCode}" style="display: ${isExpanded ? 'table-row' : 'none'}; background: #f8fafc;">
-								<td colspan="10" style="padding: 10px 14px;">
+								<td colspan="9" style="padding: 10px 14px;">
 									<div class="rm-category-container" data-rm-id="${agentCode}">
 										<div style="padding: 8px; color: #64748b; font-size: 12px;">Loading Product Breakdown...</div>
 									</div>
@@ -4579,7 +4578,6 @@ class DrishtiDashboard {
 										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Region</th>
 										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">District</th>
 										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center;">Status</th>
-										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">Total Customer</th>
 										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">Total Commission</th>
 									</tr>
 								</thead>
@@ -4587,7 +4585,6 @@ class DrishtiDashboard {
 								<tfoot>
 									<tr style="background: rgba(65, 125, 129, 0.08); color: #1e293b; font-weight: 700; position: sticky; bottom: 0; z-index: 2; border-top: 2px solid #417d81;">
 										<td colspan="8" style="padding: 10px 10px; text-align: right; font-size: 12px; color: #417d81;">GRAND TOTAL (${fmtNum(self.tableData.length)} AGENTS)</td>
-										<td style="padding: 10px 10px; text-align: right; font-size: 12px;">${fmtNum(grandTotalCust)}</td>
 										<td style="padding: 10px 10px; text-align: right; font-size: 12px; color: #417d81; font-weight: 800;">${fmtAmt(grandTotalComm)}</td>
 									</tr>
 								</tfoot>
