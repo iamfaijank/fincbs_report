@@ -5758,10 +5758,10 @@ def get_rm_wise_ss_vs_data(selected_date=None):
 @frappe.whitelist()
 def get_rm_wise_category_breakdown(rm_id, selected_date=None):
     """
-    Returns Product breakdown for specified agent 100% directly from tabAgent.commission_json.
+    Returns Product breakdown & 4-Month Trend Matrix for specified agent 100% directly from tabAgent.commission_json.
     """
     if not rm_id:
-        return []
+        return {}
 
     raw_json = frappe.db.get_value(
         "Agent",
@@ -5775,42 +5775,68 @@ def get_rm_wise_category_breakdown(rm_id, selected_date=None):
 
     comm_dict = frappe.parse_json(raw_json) if raw_json else {}
 
-    target_year = None
-    target_month = None
-    if selected_date:
-        dt = frappe.utils.getdate(selected_date)
-        target_year = str(dt.year)
-        target_month = str(dt.month).zfill(2)
+    today = frappe.utils.getdate(selected_date or frappe.utils.nowdate())
+    target_months = []
+    month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-    breakdown = []
-    report_totals = {}
-
-    if comm_dict and isinstance(comm_dict, dict):
-        if target_year and target_month:
-            if target_year in comm_dict and target_month in comm_dict[target_year]:
-                m_data = comm_dict[target_year][target_month]
-                for r_type, val in m_data.items():
-                    if r_type != "total_commission":
-                        report_totals[r_type] = float(val or 0.0)
-        else:
-            for yr, yr_data in comm_dict.items():
-                if isinstance(yr_data, dict):
-                    for mth, mth_data in yr_data.items():
-                        if isinstance(mth_data, dict):
-                            for r_type, val in mth_data.items():
-                                if r_type != "total_commission":
-                                    report_totals[r_type] = report_totals.get(r_type, 0.0) + float(val or 0.0)
+    for i in range(3, -1, -1):
+        dt = frappe.utils.add_months(today, -i)
+        y_str = str(dt.year)
+        m_str = str(dt.month).zfill(2)
+        m_name = f"{month_names[dt.month - 1]} {dt.year}"
+        target_months.append({
+            "year": y_str,
+            "month": m_str,
+            "label": m_name,
+            "is_current": (i == 0)
+        })
 
     standard_products = ["DAM", "SMBG", "RD", "DD SAV", "FD", "FD 1", "DD TDA", "SHARE"]
 
+    product_matrix = {}
     for prod in standard_products:
-        val = report_totals.get(prod, 0.0)
-        breakdown.append({
+        product_matrix[prod] = {
+            "product_name": prod,
+            "months": {},
+            "total_commission": 0.0
+        }
+
+    month_totals = {m["label"]: 0.0 for m in target_months}
+    grand_4m_total = 0.0
+
+    for m_info in target_months:
+        yr = m_info["year"]
+        mth = m_info["month"]
+        lbl = m_info["label"]
+
+        if yr in comm_dict and isinstance(comm_dict[yr], dict) and mth in comm_dict[yr] and isinstance(comm_dict[yr][mth], dict):
+            m_data = comm_dict[yr][mth]
+            for prod in standard_products:
+                val = float(m_data.get(prod, 0.0) or 0.0)
+                product_matrix[prod]["months"][lbl] = round(val, 2)
+                product_matrix[prod]["total_commission"] += val
+                month_totals[lbl] += val
+                grand_4m_total += val
+        else:
+            for prod in standard_products:
+                product_matrix[prod]["months"][lbl] = 0.0
+
+    breakdown_list = []
+    for prod in standard_products:
+        p_data = product_matrix[prod]
+        tot = round(p_data["total_commission"], 2)
+        breakdown_list.append({
             "product_name": prod,
             "report_type": prod,
-            "total_customer": 1 if val > 0 else 0,
-            "record_count": 1 if val > 0 else 0,
-            "total_commission": round(val, 2)
+            "months": p_data["months"],
+            "total_commission": tot,
+            "total_customer": 1 if tot > 0 else 0
         })
 
-    return breakdown
+    return {
+        "breakdown": breakdown_list,
+        "target_months": target_months,
+        "month_totals": {k: round(v, 2) for k, v in month_totals.items()},
+        "grand_4m_total": round(grand_4m_total, 2),
+        "comm_dict": comm_dict
+    }

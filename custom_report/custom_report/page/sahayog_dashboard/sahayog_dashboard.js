@@ -4719,78 +4719,99 @@ class DrishtiDashboard {
 							selected_date: t1_date
 						},
 						callback: function (r) {
-							const catList = r.message || [];
+							const res = r.message || {};
+							const catList = res.breakdown || [];
+							const targetMonths = res.target_months || [];
+							const monthTotals = res.month_totals || {};
+							const grand4mTotal = res.grand_4m_total || 0;
+
 							if (catList.length === 0) {
 								$("#modal-subtable-content").html('<div style="padding: 20px; text-align: center; color: #64748b; font-weight: 600;">No product breakdown data found.</div>');
 								return;
 							}
 
-							let totalCustSum = 0;
-							let totalCommSum = 0;
 							let activeProductsCount = 0;
-
 							catList.forEach(c => {
-								const totCust = c.total_customer ?? c.record_count ?? 0;
-								const totComm = c.total_commission || 0;
-								totalCustSum += totCust;
-								totalCommSum += totComm;
-								if (totComm > 0) activeProductsCount++;
+								if ((c.total_commission || 0) > 0) activeProductsCount++;
 							});
 
+							// Render Month Summary Cards (4 Months)
+							let monthCardsHtml = targetMonths.map(m => {
+								const val = monthTotals[m.label] || 0;
+								const isCurrent = m.is_current;
+								return `
+									<div style="background: ${isCurrent ? '#f0fdf4' : '#f8fafc'}; border: 1px solid ${isCurrent ? '#86efac' : '#e2e8f0'}; border-radius: 8px; padding: 10px 12px; text-align: center;">
+										<div style="font-size: 10px; font-weight: 700; color: ${isCurrent ? '#166534' : '#64748b'}; text-transform: uppercase;">${m.label} ${isCurrent ? '⚡' : ''}</div>
+										<div style="font-size: 16px; font-weight: 800; color: ${isCurrent ? '#15803d' : '#334155'}; margin-top: 2px;">${fmtAmt(val)}</div>
+									</div>
+								`;
+							}).join('');
+
+							// Table Headers
+							let monthHeadersHtml = targetMonths.map(m => `
+								<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right; ${m.is_current ? 'background: #35676a;' : ''}">${m.label}</th>
+							`).join('');
+
+							// Table Rows
 							let rowsHtml = "";
 							catList.forEach((c, idx) => {
 								const prodName = c.product_name || c.report_type || "-";
-								const totCust = c.total_customer ?? c.record_count ?? 0;
 								const totComm = c.total_commission || 0;
-								const sharePct = totalCommSum > 0 ? ((totComm / totalCommSum) * 100).toFixed(1) : "0.0";
+								const sharePct = grand4mTotal > 0 ? ((totComm / grand4mTotal) * 100).toFixed(1) : "0.0";
+
+								let monthCellsHtml = targetMonths.map(m => {
+									const mVal = (c.months && c.months[m.label]) || 0;
+									return `
+										<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: ${mVal > 0 ? '700' : '500'}; color: ${mVal > 0 ? (m.is_current ? '#15803d' : '#334155') : '#94a3b8'};">
+											${mVal > 0 ? fmtAmt(mVal) : '-'}
+										</td>
+									`;
+								}).join('');
 
 								rowsHtml += `
 									<tr style="border-bottom: 1px solid #e2e8f0; background: ${totComm > 0 ? '#ffffff' : '#f8fafc'}; transition: background 0.15s;">
-										<td style="padding: 10px 14px; text-align: center; font-size: 13px; font-weight: 600; color: #64748b; width: 45px;">${idx + 1}</td>
-										<td style="padding: 10px 14px; font-size: 13px; font-weight: 700; color: #1e293b;">${prodName}</td>
-										<td style="padding: 10px 14px; text-align: right; font-size: 13px; font-weight: 600; color: #334155;">${fmtNum(totCust)}</td>
-										<td style="padding: 10px 14px; text-align: right; font-size: 13px; font-weight: 700; color: #417d81;">${fmtAmt(totComm)}</td>
-										<td style="padding: 10px 14px; text-align: right; font-size: 12px; font-weight: 700; color: #64748b;">${sharePct}%</td>
+										<td style="padding: 8px 10px; text-align: center; font-size: 12px; font-weight: 600; color: #64748b; width: 40px;">${idx + 1}</td>
+										<td style="padding: 8px 10px; font-size: 12px; font-weight: 700; color: #1e293b;">${prodName}</td>
+										${monthCellsHtml}
+										<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 800; color: #417d81;">${fmtAmt(totComm)}</td>
+										<td style="padding: 8px 10px; text-align: right; font-size: 11px; font-weight: 700; color: #64748b;">${sharePct}%</td>
 									</tr>
 								`;
 							});
 
+							// Table Footers
+							let monthFootersHtml = targetMonths.map(m => {
+								const mTot = monthTotals[m.label] || 0;
+								return `
+									<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 800;">${fmtAmt(mTot)}</td>
+								`;
+							}).join('');
+
 							const modalBodyHtml = `
-								<!-- Mini Summary Cards Inside Modal -->
-								<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
-									<div style="background: #f0fdfa; border: 1px solid rgba(65, 125, 129, 0.25); border-radius: 8px; padding: 10px 14px;">
-										<div style="font-size: 11px; font-weight: 700; color: #417d81; text-transform: uppercase;">Total Customers</div>
-										<div style="font-size: 18px; font-weight: 800; color: #417d81; margin-top: 2px;">${fmtNum(totalCustSum)}</div>
-									</div>
-									<div style="background: #f0fdfa; border: 1px solid rgba(65, 125, 129, 0.25); border-radius: 8px; padding: 10px 14px;">
-										<div style="font-size: 11px; font-weight: 700; color: #417d81; text-transform: uppercase;">Total Commission</div>
-										<div style="font-size: 18px; font-weight: 800; color: #417d81; margin-top: 2px;">${fmtAmt(totalCommSum)}</div>
-									</div>
-									<div style="background: #f0fdfa; border: 1px solid rgba(65, 125, 129, 0.25); border-radius: 8px; padding: 10px 14px;">
-										<div style="font-size: 11px; font-weight: 700; color: #417d81; text-transform: uppercase;">Active Products</div>
-										<div style="font-size: 18px; font-weight: 800; color: #417d81; margin-top: 2px;">${activeProductsCount} / ${catList.length}</div>
-									</div>
+								<!-- 4 Month Trend KPI Cards -->
+								<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;">
+									${monthCardsHtml}
 								</div>
 
-								<!-- Product Breakdown Table -->
+								<!-- 4-Month Trend Matrix Table -->
 								<div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
 									<table class="table table-sm" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
 										<thead>
 											<tr style="background: #417d81; color: #ffffff;">
-												<th style="padding: 10px 14px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center; width: 45px;">Sr</th>
-												<th style="padding: 10px 14px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Product Name</th>
-												<th style="padding: 10px 14px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">Total Customer</th>
-												<th style="padding: 10px 14px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">Total Commission</th>
-												<th style="padding: 10px 14px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">Share %</th>
+												<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
+												<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Product</th>
+												${monthHeadersHtml}
+												<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">4-Mo Total</th>
+												<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">Share %</th>
 											</tr>
 										</thead>
 										<tbody>${rowsHtml}</tbody>
 										<tfoot>
 											<tr style="background: rgba(65, 125, 129, 0.08); font-weight: 800; color: #417d81; border-top: 2px solid #417d81;">
-												<td colspan="2" style="padding: 10px 14px; text-align: right; font-size: 13px;">GRAND TOTAL:</td>
-												<td style="padding: 10px 14px; text-align: right; font-size: 13px;">${fmtNum(totalCustSum)}</td>
-												<td style="padding: 10px 14px; text-align: right; font-size: 13px;">${fmtAmt(totalCommSum)}</td>
-												<td style="padding: 10px 14px; text-align: right; font-size: 13px;">100.0%</td>
+												<td colspan="2" style="padding: 8px 10px; text-align: right; font-size: 12px;">TOTAL:</td>
+												${monthFootersHtml}
+												<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 800; color: #417d81;">${fmtAmt(grand4mTotal)}</td>
+												<td style="padding: 8px 10px; text-align: right; font-size: 12px;">100.0%</td>
 											</tr>
 										</tfoot>
 									</table>
