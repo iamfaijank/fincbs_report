@@ -5728,7 +5728,7 @@ def get_agent_customer_details(report_type, rm_id, selected_date=None):
 @frappe.whitelist()
 @sahayog_cache(ttl=86400)
 def get_rm_wise_ss_vs_data(selected_date=None):
-    """Fetches top-level Agent Wise breakdown from tabAgent joined with tabSS and VS Report."""
+    """Superfast raw SQL fetch for Agent Wise breakdown to minimize CPU load."""
     effective_date = resolve_ss_vs_date(selected_date)
     
     data = frappe.db.sql("""
@@ -5737,16 +5737,22 @@ def get_rm_wise_ss_vs_data(selected_date=None):
             a.agent_code AS rm_id,
             a.agent_name AS agent_name,
             a.agent_name AS rm_name,
-            COUNT(r.name) AS total_customer,
-            COUNT(r.name) AS total_records,
-            COUNT(DISTINCT r.report_type) AS total_report_types,
-            COALESCE(SUM(CAST(COALESCE(NULLIF(r.commission, ''), '0') AS DECIMAL(18,2))), 0) AS total_commission
+            COALESCE(comm.total_customer, 0) AS total_customer,
+            COALESCE(comm.total_customer, 0) AS total_records,
+            COALESCE(comm.total_report_types, 0) AS total_report_types,
+            COALESCE(comm.total_commission, 0.00) AS total_commission
         FROM `tabAgent` a
-        LEFT JOIN `tabSS and VS Report` r 
-            ON a.agent_code = r.rm_id 
-           AND r.`date` = %s
+        LEFT JOIN (
+            SELECT 
+                rm_id,
+                COUNT(name) AS total_customer,
+                COUNT(DISTINCT report_type) AS total_report_types,
+                SUM(CAST(COALESCE(NULLIF(commission, ''), '0') AS DECIMAL(18,2))) AS total_commission
+            FROM `tabSS and VS Report`
+            WHERE `date` = %s
+            GROUP BY rm_id
+        ) comm ON a.agent_code = comm.rm_id
         WHERE a.docstatus < 2
-        GROUP BY a.agent_code, a.agent_name
         ORDER BY total_commission DESC, total_customer DESC
     """, (effective_date,), as_dict=True)
     
