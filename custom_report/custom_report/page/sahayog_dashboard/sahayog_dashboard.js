@@ -4427,11 +4427,57 @@ class DrishtiDashboard {
 
 					let grandTotalCust = 0;
 					let grandTotalComm = 0;
+					let totalActive = 0;
+					let totalInactive = 0;
 
 					self.tableData.forEach(r => {
 						grandTotalCust += (r.total_customer ?? r.total_records ?? 0);
 						grandTotalComm += (r.total_commission || 0);
+
+						const st = (r.agent_status || "Inactive").trim().toLowerCase();
+						if (st === "active" || st === "live") {
+							totalActive++;
+						} else {
+							totalInactive++;
+						}
 					});
+
+					const kpiCardsHtml = `
+						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 14px;">
+							<!-- Card 1: Active Agents -->
+							<div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: space-between;">
+								<div>
+									<div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.5px;">Total Active Agents</div>
+									<div style="font-size: 22px; font-weight: 800; color: #15803d; margin-top: 2px;">${fmtNum(totalActive)}</div>
+								</div>
+								<div style="background: #dcfce7; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+									🟢
+								</div>
+							</div>
+
+							<!-- Card 2: Inactive Agents -->
+							<div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: space-between;">
+								<div>
+									<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Total Inactive Agents</div>
+									<div style="font-size: 22px; font-weight: 800; color: #475569; margin-top: 2px;">${fmtNum(totalInactive)}</div>
+								</div>
+								<div style="background: #f1f5f9; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+									⚪
+								</div>
+							</div>
+
+							<!-- Card 3: Total Commission -->
+							<div style="background: #ffffff; border: 1px solid rgba(65, 125, 129, 0.3); border-radius: 8px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: space-between;">
+								<div>
+									<div style="font-size: 11px; font-weight: 700; color: #417d81; text-transform: uppercase; letter-spacing: 0.5px;">Total Commission</div>
+									<div style="font-size: 22px; font-weight: 800; color: #417d81; margin-top: 2px;">${fmtAmt(grandTotalComm)}</div>
+								</div>
+								<div style="background: rgba(65, 125, 129, 0.12); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+									💰
+								</div>
+							</div>
+						</div>
+					`;
 
 					// Calculate Paged Window
 					const totalFiltered = data.length;
@@ -4511,6 +4557,7 @@ class DrishtiDashboard {
 							.rm-sub-product-row { transition: background-color 0.15s ease-in-out; }
 							.rm-sub-product-row:hover { background-color: #ecfdf5 !important; }
 						</style>
+						${kpiCardsHtml}
 						${paginationBarHtml}
 						<div style="max-height: 650px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
 							<table class="table table-sm table-hover" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
