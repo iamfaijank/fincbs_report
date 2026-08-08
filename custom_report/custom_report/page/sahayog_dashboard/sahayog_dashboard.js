@@ -1215,156 +1215,18 @@ class DrishtiDashboard {
 					`);
 
 					const renderTable = (data) => {
-						const fmtCount = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
-
-						const zoneMap = {};
-						data.forEach(r => {
-							const zone = r.zone || "Unknown";
-							const region = r.region || "Unknown";
-							const solId = r.sol_id;
-							if (!zoneMap[zone]) zoneMap[zone] = { zone, regions: {} };
-							if (!zoneMap[zone].regions[region]) zoneMap[zone].regions[region] = { region, branches: [] };
-							zoneMap[zone].regions[region].branches.push(r);
-						});
-
-						const sortedZones = Object.keys(zoneMap).sort((a, b) => {
-							const numA = parseInt(a.replace(/\D/g, "")) || 0;
-							const numB = parseInt(b.replace(/\D/g, "")) || 0;
-							return numA - numB;
-						});
-
-						let sr = 0, rowsHtml = "";
-						const grandTotal = { ntb: 0, evr: 0, total: 0, branches: 0 };
-
-						sortedZones.forEach(zoneName => {
-							const zd = zoneMap[zoneName];
-							const zoneData = { ntb: 0, evr: 0, total: 0, branches: 0 };
-							const sortedRegions = Object.keys(zd.regions).sort((a, b) => {
-								const numA = parseInt(a.replace(/\D/g, "")) || 0;
-								const numB = parseInt(b.replace(/\D/g, "")) || 0;
-								return numA - numB;
-							});
-
-							sortedRegions.forEach(rn => {
-								const rd = zd.regions[rn];
-								rd.branches.forEach(b => {
-									zoneData.ntb += b.ntb || 0;
-									zoneData.evr += b.evr || 0;
-									zoneData.total += (b.ntb || 0) + (b.evr || 0);
-								});
-								zoneData.branches += rd.branches.length;
-							});
-
-							sr++;
-							const zoneExpanded = self.expandedZones[zoneName];
-							grandTotal.ntb += zoneData.ntb;
-							grandTotal.evr += zoneData.evr;
-							grandTotal.total += zoneData.total;
-							grandTotal.branches += zoneData.branches;
-
-							rowsHtml += `<tr class="ntb-zone-row" data-zone="${zoneName}" style="cursor: pointer; background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
-								<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; width: 40px; font-size: 14px;">${sr}</td>
-								<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;"><span class="ntb-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>${zoneName}</td>
-								<td style="padding: 10px 14px; font-weight: 700; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px;">${zoneData.branches}</td>
-								<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: right; white-space: nowrap; font-size: 14px;">${fmtCount(zoneData.ntb)}</td>
-								<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: right; white-space: nowrap; font-size: 14px;">${fmtCount(zoneData.evr)}</td>
-								<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: right; white-space: nowrap; font-size: 14px;">${fmtCount(zoneData.total)}</td>
-							</tr>`;
-
-							sortedRegions.forEach(rn => {
-								const rd = zd.regions[rn];
-								const regionKey = zoneName + "::" + rn;
-								const regionExpanded = self.expandedRegions[regionKey];
-								const regionData = { ntb: 0, evr: 0, total: 0 };
-								rd.branches.forEach(b => {
-									regionData.ntb += b.ntb || 0;
-									regionData.evr += b.evr || 0;
-									regionData.total += (b.ntb || 0) + (b.evr || 0);
-								});
-
-								rowsHtml += `<tr class="ntb-region-row" data-zone="${zoneName}" data-region="${rn}" style="display: ${zoneExpanded ? "table-row" : "none"}; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-									<td style="padding: 8px 14px; color: #64748b; text-align: center;"></td>
-									<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 30px; font-weight: 600;"><span class="ntb-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${rn}</td>
-									<td style="padding: 8px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${rd.branches.length}</td>
-									<td style="padding: 8px 14px; color: #334155; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(regionData.ntb)}</td>
-									<td style="padding: 8px 14px; color: #334155; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(regionData.evr)}</td>
-									<td style="padding: 8px 14px; color: #334155; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(regionData.total)}</td>
-								</tr>`;
-
-								rd.branches.forEach((b, bi) => {
-									const showBranch = zoneExpanded && regionExpanded;
-									const branchBg = bi % 2 === 0 ? "#ffffff" : "#f1f5f9";
-									rowsHtml += `<tr class="ntb-branch-row" data-zone="${zoneName}" data-region="${rn}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0;">
-										<td style="padding: 6px 14px; color: #94a3b8; text-align: center;"></td>
-										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 50px; font-weight: 500;">${b.sol_id} - ${b.branch_name}</td>
-										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
-										<td style="padding: 6px 14px; color: #475569; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(b.ntb)}</td>
-										<td style="padding: 6px 14px; color: #475569; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(b.evr)}</td>
-										<td style="padding: 6px 14px; color: #475569; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount((b.ntb || 0) + (b.evr || 0))}</td>
-									</tr>`;
-								});
-							});
-						});
-
-						container.find("#ntb-evr-table-container").html(`
-								<table id="ntb-evr-table">
-									<thead>
-										<tr>
-											<th style="text-align: center; width: 40px;">Sr</th>
-											<th>Z / R / D / SOL Name</th>
-											<th style="text-align: center;">Branches</th>
-											<th style="text-align: right;">NTB</th>
-											<th style="text-align: right;">EVR</th>
-											<th style="text-align: right;">Total</th>
-										</tr>
-									</thead>
-									<tbody>${rowsHtml}</tbody>
-									<tfoot>
-										<tr>
-											<td></td>
-											<td style="font-size: 14px;">TOTAL</td>
-											<td style="text-align: center; font-size: 14px;">${grandTotal.branches}</td>
-											<td style="text-align: right; font-size: 14px;">${fmtCount(grandTotal.ntb)}</td>
-											<td style="text-align: right; font-size: 14px;">${fmtCount(grandTotal.evr)}</td>
-											<td style="text-align: right; font-size: 14px;">${fmtCount(grandTotal.total)}</td>
-										</tr>
-									</tfoot>
-								</table>
-						`);
-
-						container.find("#ntb-evr-table-container").off("click", ".ntb-zone-row").on("click", ".ntb-zone-row", function (e) {
-							if ($(e.target).closest(".ntb-region-row, .ntb-region-toggle").length) return;
-							const zone = $(this).data("zone");
-							self.expandedZones[zone] = !self.expandedZones[zone];
-							const show = self.expandedZones[zone];
-							const $regionRows = container.find(`.ntb-region-row[data-zone="${zone}"]`);
-							const $branchRows = container.find(`.ntb-branch-row[data-zone="${zone}"]`);
-							if (show) {
-								$regionRows.stop(true, true).slideDown(200);
-								$regionRows.each(function () {
-									const r = $(this).data("region");
-									if (self.expandedRegions[zone + "::" + r]) {
-										container.find(`.ntb-branch-row[data-zone="${zone}"][data-region="${r}"]`).stop(true, true).slideDown(200);
-									}
-								});
-							} else {
-								$branchRows.stop(true, true).slideUp(150);
-								$regionRows.stop(true, true).slideUp(200);
-							}
-							$(this).find(".ntb-zone-toggle").text(show ? "▼" : "▶");
-						});
-
-						container.find("#ntb-evr-table-container").off("click", ".ntb-region-row").on("click", ".ntb-region-row", function (e) {
-							e.stopPropagation();
-							const zone = $(this).data("zone");
-							const region = $(this).data("region");
-							const regionKey = zone + "::" + region;
-							self.expandedRegions[regionKey] = !self.expandedRegions[regionKey];
-							const show = self.expandedRegions[regionKey];
-							const $branchRows = container.find(`.ntb-branch-row[data-zone="${zone}"][data-region="${region}"]`);
-							if (show) { $branchRows.stop(true, true).slideDown(200); } else { $branchRows.stop(true, true).slideUp(150); }
-							$(this).find(".ntb-region-toggle").text(show ? "▼" : "▶");
-						});
+						const metricCols = [
+							{ key: "ntb", label: "NTB" },
+							{ key: "evr", label: "EVR" },
+							{ key: "total", label: "TOTAL ACCOUNTS", calc: (r) => (r.ntb || 0) + (r.evr || 0) }
+						];
+						dashboardInstance.renderGeneric4LevelTreeTable(
+							container.find("#ntb-evr-table-container"),
+							self,
+							data,
+							metricCols,
+							"CASA NTB & EVR"
+						);
 					};
 
 					const fetchData = () => {
@@ -2706,7 +2568,7 @@ class DrishtiDashboard {
 								<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / District / Branch</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Z / R / D / SOL Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">Branches</th>
 									${buckets.map(b => `<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">${b}</th>`).join('')}
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">Grand Total</th>
@@ -3273,7 +3135,7 @@ class DrishtiDashboard {
 								<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / District / Branch</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Z / R / D / SOL Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 120px;">Auth ID</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 180px;">Auth Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 150px;">Designation</th>
@@ -3815,7 +3677,7 @@ class DrishtiDashboard {
 								<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / District / Branch</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Z / R / D / SOL Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 120px;">Auth ID</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 180px;">Auth Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 150px;">Designation</th>
@@ -4371,7 +4233,7 @@ class DrishtiDashboard {
 								<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / District / Branch</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Z / R / D / SOL Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 120px;">Agent Code</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 180px;">Agent Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 120px;">Auth ID</th>
@@ -5707,6 +5569,262 @@ class DrishtiDashboard {
 				</tbody>
 			</table>
 		`;
+	}
+
+	build4LevelTree(data, metricCols) {
+		const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(Math.round(val || 0));
+		const fmtAmt = (val) => {
+			if (!val || val === 0) return "₹0";
+			if (val >= 10000000) return "₹" + (val / 10000000).toFixed(2) + " Cr";
+			if (val >= 100000) return "₹" + (val / 100000).toFixed(2) + " L";
+			if (val >= 1000) return "₹" + (val / 1000).toFixed(2) + " K";
+			return "₹" + new Intl.NumberFormat("en-IN").format(val);
+		};
+
+		if (!data || data.length === 0) return { rootNodes: [], grandTotal: {} };
+
+		const rootNodes = [];
+		const zMap = {};
+		const grandTotal = {};
+
+		metricCols.forEach(col => {
+			grandTotal[col.key] = 0;
+		});
+
+		data.forEach(r => {
+			const zName = (r.zone || "OTHER ZONE").trim();
+			const rName = (r.region || "OTHER REGION").trim();
+			const dName = (r.district || "OTHER DISTRICT").trim();
+			const sCode = (r.sol_id || r.branch_code || "-").trim();
+			const sName = (r.branch_name || r.sol_desc || r.branch || sCode).trim();
+			const solLabel = sCode !== '-' ? `${sName} (${sCode})` : sName;
+
+			if (!zMap[zName]) {
+				zMap[zName] = {
+					id: `z_${zName}`,
+					name: zName,
+					code: zName,
+					type: "Zone",
+					level: 1,
+					children: {}
+				};
+				metricCols.forEach(col => zMap[zName][col.key] = 0);
+				rootNodes.push(zMap[zName]);
+			}
+
+			const rMap = zMap[zName].children;
+			if (!rMap[rName]) {
+				rMap[rName] = {
+					id: `r_${zName}_${rName}`,
+					name: rName,
+					code: rName,
+					type: "Region",
+					level: 2,
+					children: {}
+				};
+				metricCols.forEach(col => rMap[rName][col.key] = 0);
+			}
+
+			const dMap = rMap[rName].children;
+			if (!dMap[dName]) {
+				dMap[dName] = {
+					id: `d_${zName}_${rName}_${dName}`,
+					name: dName,
+					code: dName,
+					type: "District",
+					level: 3,
+					children: {}
+				};
+				metricCols.forEach(col => dMap[dName][col.key] = 0);
+			}
+
+			const sMap = dMap[dName].children;
+			if (!sMap[sCode]) {
+				sMap[sCode] = {
+					id: `s_${zName}_${rName}_${dName}_${sCode}`,
+					name: solLabel,
+					code: sCode,
+					type: "SOL",
+					level: 4,
+					children: []
+				};
+				metricCols.forEach(col => sMap[sCode][col.key] = 0);
+			}
+
+			metricCols.forEach(col => {
+				const val = col.calc ? col.calc(r) : (r[col.key] || 0);
+				zMap[zName][col.key] += val;
+				rMap[rName][col.key] += val;
+				dMap[dName][col.key] += val;
+				sMap[sCode][col.key] += val;
+				grandTotal[col.key] += val;
+			});
+		});
+
+		const sortKey = metricCols[metricCols.length - 1].key;
+		rootNodes.sort((a, b) => (b[sortKey] || 0) - (a[sortKey] || 0));
+
+		return { rootNodes, grandTotal };
+	}
+
+	renderGeneric4LevelTreeTable(tableContainer, reportObj, data, metricCols, reportTitle) {
+		const self = this;
+		const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(Math.round(val || 0));
+		const fmtAmt = (val) => {
+			if (!val || val === 0) return "₹0";
+			if (val >= 10000000) return "₹" + (val / 10000000).toFixed(2) + " Cr";
+			if (val >= 100000) return "₹" + (val / 100000).toFixed(2) + " L";
+			if (val >= 1000) return "₹" + (val / 1000).toFixed(2) + " K";
+			return "₹" + new Intl.NumberFormat("en-IN").format(val);
+		};
+
+		if (!data || data.length === 0) {
+			tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">No data to display.</div>');
+			return;
+		}
+
+		if (!reportObj.expandedTreeNodes) reportObj.expandedTreeNodes = {};
+
+		const { rootNodes, grandTotal } = self.build4LevelTree(data, metricCols);
+
+		const allNodeIds = [];
+		const collectAllNodeIds = (nodes) => {
+			nodes.forEach(n => {
+				if (n.level < 4) {
+					allNodeIds.push(n.id);
+					let childList = Array.isArray(n.children) ? n.children : Object.values(n.children);
+					collectAllNodeIds(childList);
+				}
+			});
+		};
+		collectAllNodeIds(rootNodes);
+
+		const renderTreeRows = (nodes) => {
+			let html = "";
+			nodes.forEach(node => {
+				const isExpanded = !!reportObj.expandedTreeNodes[node.id];
+				const indent = (node.level - 1) * 10 + 10;
+				const hasChildren = node.level < 4;
+
+				let typeBadgeBg = "#e0f2fe";
+				let typeBadgeColor = "#0369a1";
+				let typeBadgeBorder = "#7dd3fc";
+				if (node.level === 1) { typeBadgeBg = "#f3e8ff"; typeBadgeColor = "#7e22ce"; typeBadgeBorder = "#d8b4fe"; }
+				else if (node.level === 2) { typeBadgeBg = "#e0e7ff"; typeBadgeColor = "#3730a3"; typeBadgeBorder = "#a5b4fc"; }
+				else if (node.level === 3) { typeBadgeBg = "#fef3c7"; typeBadgeColor = "#92400e"; typeBadgeBorder = "#fcd34d"; }
+				else if (node.level === 4) { typeBadgeBg = "#ccfbf1"; typeBadgeColor = "#115e59"; typeBadgeBorder = "#5eead4"; }
+
+				let rowBg = '#ffffff';
+				if (node.level === 1) rowBg = '#f8fafc';
+				else if (node.level === 2) rowBg = '#ffffff';
+				else if (node.level === 3) rowBg = '#f8fafc';
+				else if (node.level === 4) rowBg = '#f0fdfa';
+
+				html += `
+					<tr class="generic-tree-row" data-node-id="${node.id}" data-level="${node.level}" style="cursor: pointer; background: ${rowBg}; border-bottom: 1px solid #e2e8f0;">
+						<td style="padding: 8px 12px; text-align: left; padding-left: ${indent}px; font-weight: ${node.level < 4 ? '700' : '600'}; color: #1e293b;">
+							${hasChildren ? `<span class="tree-toggle-icon" style="display: inline-block; width: 16px; color: #417d81; font-weight: 800;">${isExpanded ? '▼' : '▶'}</span>` : '<span style="display: inline-block; width: 16px; color: #94a3b8;">•</span>'}
+							<span style="color: ${node.level === 4 ? '#417d81' : '#0f172a'};">${node.name}</span>
+						</td>
+						<td style="padding: 8px 12px; text-align: left; font-size: 12px; font-weight: 700; color: #417d81;">${node.code}</td>
+						<td style="padding: 8px 12px; text-align: left; font-size: 11px;">
+							<span style="background: ${typeBadgeBg}; color: ${typeBadgeColor}; border: 1px solid ${typeBadgeBorder}; padding: 2px 8px; border-radius: 12px; font-weight: 700;">${node.type}</span>
+						</td>
+						${metricCols.map(col => {
+							const val = node[col.key] || 0;
+							const formatted = col.format === 'amt' ? fmtAmt(val) : fmtNum(val);
+							const style = col.style || '';
+							return `<td style="padding: 8px 12px; text-align: right; font-size: 12px; font-weight: 600; ${style}">${formatted}</td>`;
+						}).join('')}
+					</tr>
+				`;
+
+				if (hasChildren && isExpanded) {
+					let childNodes = [];
+					if (Array.isArray(node.children)) {
+						childNodes = node.children;
+					} else if (typeof node.children === "object") {
+						childNodes = Object.values(node.children);
+					}
+					const sortKey = metricCols[metricCols.length - 1].key;
+					childNodes.sort((a, b) => (b[sortKey] || 0) - (a[sortKey] || 0));
+					html += renderTreeRows(childNodes);
+				}
+			});
+			return html;
+		};
+
+		const treeRowsHtml = renderTreeRows(rootNodes);
+
+		const controlBarHtml = `
+			<div class="rm-pagination-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+				<div style="font-size: 12px; font-weight: 700; color: #417d81; display: flex; align-items: center; gap: 8px;">
+					<span>🌳 ${reportTitle} (Zone → Region → District → SOL)</span>
+					<span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700;">${fmtNum(data.length)} Branches Total</span>
+				</div>
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<button type="button" class="btn btn-xs generic-tree-expand-all" style="background: rgba(65, 125, 129, 0.1); color: #417d81; border: 1px solid rgba(65, 125, 129, 0.3); font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
+						📂 Expand All
+					</button>
+					<button type="button" class="btn btn-xs generic-tree-collapse-all" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
+						📁 Collapse All
+					</button>
+				</div>
+			</div>
+		`;
+
+		const tableHtml = `
+			<style>
+				.generic-tree-row { transition: background-color 0.15s ease-in-out; }
+				.generic-tree-row:hover { background-color: #f0fdfa !important; }
+			</style>
+			${controlBarHtml}
+			<div style="max-height: 650px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+				<table class="table table-sm table-hover" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
+					<thead>
+						<tr style="background: #417d81; color: #ffffff; position: sticky; top: 0; z-index: 2;">
+							<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Z / R / D / SOL Name</th>
+							<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Code / ID</th>
+							<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Level</th>
+							${metricCols.map(col => `<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">${col.label}</th>`).join('')}
+						</tr>
+					</thead>
+					<tbody>${treeRowsHtml}</tbody>
+					<tfoot>
+						<tr style="background: rgba(65, 125, 129, 0.08); color: #1e293b; font-weight: 700; position: sticky; bottom: 0; z-index: 2; border-top: 2px solid #417d81;">
+							<td colspan="3" style="padding: 10px 12px; text-align: left; font-size: 12px; color: #417d81;">GRAND TOTAL (${fmtNum(data.length)} BRANCHES)</td>
+							${metricCols.map(col => {
+								const val = grandTotal[col.key] || 0;
+								const formatted = col.format === 'amt' ? fmtAmt(val) : fmtNum(val);
+								const style = col.style || '';
+								return `<td style="padding: 10px 12px; text-align: right; font-size: 12px; font-weight: 800; ${style}">${formatted}</td>`;
+							}).join('')}
+						</tr>
+					</tfoot>
+				</table>
+			</div>
+		`;
+
+		tableContainer.html(tableHtml).show();
+
+		tableContainer.off("click", ".generic-tree-row").on("click", ".generic-tree-row", function () {
+			const nodeId = $(this).data("node-id");
+			const level = parseInt($(this).data("level"));
+			if (level < 4) {
+				reportObj.expandedTreeNodes[nodeId] = !reportObj.expandedTreeNodes[nodeId];
+				self.renderGeneric4LevelTreeTable(tableContainer, reportObj, data, metricCols, reportTitle);
+			}
+		});
+
+		tableContainer.off("click", ".generic-tree-expand-all").on("click", ".generic-tree-expand-all", function () {
+			allNodeIds.forEach(id => reportObj.expandedTreeNodes[id] = true);
+			self.renderGeneric4LevelTreeTable(tableContainer, reportObj, data, metricCols, reportTitle);
+		});
+
+		tableContainer.off("click", ".generic-tree-collapse-all").on("click", ".generic-tree-collapse-all", function () {
+			reportObj.expandedTreeNodes = {};
+			self.renderGeneric4LevelTreeTable(tableContainer, reportObj, data, metricCols, reportTitle);
+		});
 	}
 
 	setupBranchProfilePopup() {
