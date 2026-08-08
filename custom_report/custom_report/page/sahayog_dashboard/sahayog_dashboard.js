@@ -4662,12 +4662,12 @@ class DrishtiDashboard {
 							.modal-table-row:hover { background-color: #f0fdfa !important; cursor: pointer; }
 						</style>
 						<div id="${modalId}" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px;">
-							<div style="background: #ffffff; width: 100%; max-width: 720px; border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden; animation: agentModalPop 0.25s ease-out;">
+							<div style="background: #ffffff; width: 100%; max-width: 980px; border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden; animation: agentModalPop 0.25s ease-out;">
 								
 								<!-- Modal Header -->
 								<div style="background: #417d81; color: #ffffff; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;">
 									<div>
-										<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; opacity: 0.85;">Agent Commission Breakdown</div>
+										<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; opacity: 0.85;">Agent Profile & Commission Breakdown</div>
 										<div style="font-size: 18px; font-weight: 800; margin-top: 2px; display: flex; align-items: center; gap: 10px;">
 											<span>${agentName} (${agentCode})</span>
 											${statusBadge}
@@ -4677,10 +4677,10 @@ class DrishtiDashboard {
 								</div>
 
 								<!-- Modal Body -->
-								<div style="padding: 20px; max-height: 75vh; overflow-y: auto;">
+								<div style="padding: 20px; max-height: 80vh; overflow-y: auto;">
 									<div id="modal-subtable-content">
-										<div style="padding: 30px; text-align: center; color: #417d81; font-weight: 600; font-size: 13px;">
-											⏳ Fetching Product Breakdown for Agent ${agentCode}...
+										<div style="padding: 40px; text-align: center; color: #417d81; font-weight: 600; font-size: 13px;">
+											⏳ Fetching Agent Profile & Product Breakdown for ${agentCode}...
 										</div>
 									</div>
 								</div>
@@ -4832,38 +4832,94 @@ class DrishtiDashboard {
 								`;
 							});
 
-							// Table Footers
-							let monthFootersHtml = targetMonths.map(m => {
-								const mTot = monthTotals[m.label] || 0;
-								return `
-									<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 800;">${fmtAmt(mTot)}</td>
-								`;
-							}).join('');
+							const agentInfo = res.agent_info || {};
+							const bName = agentInfo.branch_name || agentData.branch_name || "-";
+							const bCode = agentInfo.branch_code || agentData.branch_code || "-";
+							const authId = agentInfo.auth_id || agentData.auth_id || "-";
+							const empName = agentInfo.employee || agentData.employee || "-";
+							const phoneNo = agentInfo.phone_number || agentData.phone_number || "-";
+							const agentRole = agentInfo.role || agentData.role || agentData.agent_type || "-";
+
+							const leftProfileCardHtml = `
+								<div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+									<!-- Avatar & Header -->
+									<div style="text-align: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
+										<div style="width: 50px; height: 50px; background: #417d81; color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; margin: 0 auto 8px auto; box-shadow: 0 4px 6px -1px rgba(65, 125, 129, 0.3);">
+											👤
+										</div>
+										<div style="font-size: 14px; font-weight: 800; color: #0f172a; line-height: 1.2;">${agentName}</div>
+										<div style="font-size: 12px; font-weight: 700; color: #417d81; margin-top: 2px;">${agentCode}</div>
+										<div style="margin-top: 6px;">${statusBadge}</div>
+									</div>
+
+									<!-- Agent Metadata Fields -->
+									<div style="display: flex; flex-direction: column; gap: 9px; font-size: 12px;">
+										<div>
+											<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Branch</div>
+											<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${bName} ${bCode !== '-' ? '(' + bCode + ')' : ''}</div>
+										</div>
+										<div>
+											<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Auth ID</div>
+											<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${authId}</div>
+										</div>
+										<div>
+											<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Employee / Manager</div>
+											<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${empName}</div>
+										</div>
+										${phoneNo !== '-' ? `
+										<div>
+											<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Phone Number</div>
+											<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${phoneNo}</div>
+										</div>
+										` : ''}
+										${agentRole !== '-' ? `
+										<div>
+											<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Agent Type</div>
+											<div style="font-weight: 700; color: #417d81; margin-top: 1px;">${agentRole}</div>
+										</div>
+										` : ''}
+									</div>
+
+									<!-- 4-Month Total Accent Card -->
+									<div style="background: rgba(65, 125, 129, 0.08); border: 1px solid rgba(65, 125, 129, 0.25); border-radius: 8px; padding: 10px; margin-top: auto; text-align: center;">
+										<div style="font-size: 10px; font-weight: 700; color: #417d81; text-transform: uppercase;">4-Month Total Commission</div>
+										<div style="font-size: 17px; font-weight: 800; color: #417d81; margin-top: 2px;">${fmtAmt(grand4mTotal)}</div>
+									</div>
+								</div>
+							`;
 
 							const modalBodyHtml = `
-								<!-- 4-Month Trend Bar Chart Card -->
-								${barChartCardHtml}
+								<div style="display: grid; grid-template-columns: 240px 1fr; gap: 16px; align-items: start;">
+									<!-- LEFT BLOCK: Agent Profile Card -->
+									${leftProfileCardHtml}
 
-								<!-- 4-Month Trend Matrix Table -->
-								<div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-									<table class="table table-sm" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
-										<thead>
-											<tr style="background: #417d81; color: #ffffff;">
-												<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
-												<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Product</th>
-												${monthHeadersHtml}
-												<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">4-Mo Total</th>
-											</tr>
-										</thead>
-										<tbody>${rowsHtml}</tbody>
-										<tfoot>
-											<tr style="background: rgba(65, 125, 129, 0.08); font-weight: 800; color: #417d81; border-top: 2px solid #417d81;">
-												<td colspan="2" style="padding: 8px 10px; text-align: right; font-size: 12px;">TOTAL:</td>
-												${monthFootersHtml}
-												<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 800; color: #417d81;">${fmtAmt(grand4mTotal)}</td>
-											</tr>
-										</tfoot>
-									</table>
+									<!-- RIGHT BLOCK: Bar Chart & Table -->
+									<div style="display: flex; flex-direction: column; gap: 14px;">
+										<!-- 4-Month Trend Bar Chart Card -->
+										${barChartCardHtml}
+
+										<!-- 4-Month Trend Matrix Table -->
+										<div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+											<table class="table table-sm" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
+												<thead>
+													<tr style="background: #417d81; color: #ffffff;">
+														<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
+														<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Product</th>
+														${monthHeadersHtml}
+														<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">4-Mo Total</th>
+													</tr>
+												</thead>
+												<tbody>${rowsHtml}</tbody>
+												<tfoot>
+													<tr style="background: rgba(65, 125, 129, 0.08); font-weight: 800; color: #417d81; border-top: 2px solid #417d81;">
+														<td colspan="2" style="padding: 8px 10px; text-align: right; font-size: 12px;">TOTAL:</td>
+														${monthFootersHtml}
+														<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 800; color: #417d81;">${fmtAmt(grand4mTotal)}</td>
+													</tr>
+												</tfoot>
+											</table>
+										</div>
+									</div>
 								</div>
 							`;
 

@@ -5835,7 +5835,20 @@ def get_rm_wise_category_breakdown(rm_id, selected_date=None):
 
     breakdown_list.sort(key=lambda x: x["total_commission"], reverse=True)
 
+    agent_info = frappe.db.get_value(
+        "Agent",
+        {"name": rm_id},
+        ["agent_code", "agent_name", "branch_code", "branch_name", "auth_id", "employee", "agent_status", "phone_number", "role"],
+        as_dict=True
+    ) or frappe.db.get_value(
+        "Agent",
+        {"agent_code": rm_id},
+        ["agent_code", "agent_name", "branch_code", "branch_name", "auth_id", "employee", "agent_status", "phone_number", "role"],
+        as_dict=True
+    ) or {}
+
     return {
+        "agent_info": agent_info,
         "breakdown": breakdown_list,
         "target_months": target_months,
         "month_totals": {k: round(v, 2) for k, v in month_totals.items()},
