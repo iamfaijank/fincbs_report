@@ -4332,7 +4332,7 @@ class DrishtiDashboard {
 								<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
 								<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
 							</div>
-							<input type="text" id="rm-top-search" placeholder="Search RM ID or Name..." style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 220px; outline: none; margin-left: auto;">
+							<input type="text" id="rm-top-search" placeholder="Search Agent Code or Name..." style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 220px; outline: none; margin-left: auto;">
 						</div>
 						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
 							${dashboardInstance.buildMisSkeletonTable("Fetching Agent Wise Commission data...")}
@@ -4407,13 +4407,13 @@ class DrishtiDashboard {
 
 					if (self.filterQuery) {
 						data = data.filter(r => 
-							(r.rm_id || "").toLowerCase().includes(self.filterQuery) ||
-							(r.rm_name || "").toLowerCase().includes(self.filterQuery)
+							(r.agent_code || r.rm_id || "").toLowerCase().includes(self.filterQuery) ||
+							(r.agent_name || r.rm_name || "").toLowerCase().includes(self.filterQuery)
 						);
 					}
 
 					if (data.length === 0) {
-						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">No RM records to display.</div>');
+						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">No Agent records to display.</div>');
 						return;
 					}
 
@@ -4424,15 +4424,15 @@ class DrishtiDashboard {
 					let grandTotalCommission = 0;
 
 					self.tableData.forEach(r => {
-						grandTotalRecords += (r.total_records || 0);
+						grandTotalRecords += (r.total_customer ?? r.total_records ?? 0);
 						grandTotalCommission += (r.total_commission || 0);
 					});
 
 					let rowsHtml = "";
 					data.forEach((row, idx) => {
-						const rmId = row.rm_id || "Unknown";
-						const rmName = row.rm_name || "-";
-						const totRecs = row.total_records || 0;
+						const rmId = row.agent_code || row.rm_id || "Unknown";
+						const rmName = row.agent_name || row.rm_name || "-";
+						const totRecs = row.total_customer ?? row.total_records ?? 0;
 						const totComm = row.total_commission || 0;
 						const isExpanded = !!self.expandedRms[rmId];
 
@@ -4450,7 +4450,7 @@ class DrishtiDashboard {
 							<tr class="rm-detail-row" data-rm-id="${rmId}" style="display: ${isExpanded ? 'table-row' : 'none'}; background: #f8fafc;">
 								<td colspan="5" style="padding: 10px 14px;">
 									<div class="rm-category-container" data-rm-id="${rmId}">
-										<div style="padding: 8px; color: #64748b; font-size: 12px;">Loading Category Breakdown...</div>
+										<div style="padding: 8px; color: #64748b; font-size: 12px;">Loading Product Breakdown...</div>
 									</div>
 								</td>
 							</tr>
@@ -4463,16 +4463,16 @@ class DrishtiDashboard {
 								<thead>
 									<tr style="background: #16a34a; color: #ffffff; position: sticky; top: 0; z-index: 2;">
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: center; width: 45px;">Sr</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">RM ID (Agent Code)</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">RM Name (Agent Name)</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Records</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Agent Code</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Agent Name</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">total Customer</th>
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Commission</th>
 									</tr>
 								</thead>
 								<tbody>${rowsHtml}</tbody>
 								<tfoot>
 									<tr style="background: #dcfce7; color: #14532d; font-weight: 700; position: sticky; bottom: 0; z-index: 2;">
-										<td colspan="3" style="padding: 10px 12px; text-align: right; font-size: 13px;">GRAND TOTAL (${fmtNum(self.tableData.length)} RMs)</td>
+										<td colspan="3" style="padding: 10px 12px; text-align: right; font-size: 13px;">GRAND TOTAL (${fmtNum(self.tableData.length)} AGENTS)</td>
 										<td style="padding: 10px 12px; text-align: right; font-size: 13px;">${fmtNum(grandTotalRecords)}</td>
 										<td style="padding: 10px 12px; text-align: right; font-size: 13px; color: #047857;">${fmtAmt(grandTotalCommission)}</td>
 									</tr>
@@ -4530,7 +4530,7 @@ class DrishtiDashboard {
 					}
 
 					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
-					$container.html('<div style="padding: 8px; color: #16a34a; font-weight: 600; font-size: 12px;">⏳ Fetching Categories for RM ' + rmId + '...</div>');
+					$container.html('<div style="padding: 8px; color: #16a34a; font-weight: 600; font-size: 12px;">⏳ Fetching Product Breakdown for Agent ' + rmId + '...</div>');
 
 					frappe.call({
 						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rm_wise_category_breakdown",
@@ -4543,7 +4543,7 @@ class DrishtiDashboard {
 								self.rmDetails[rmId] = r.message;
 								self.renderRmCategorySubTable(rmId, r.message, $container, dashboardInstance);
 							} else {
-								$container.html('<div style="padding: 8px; color: #64748b; font-weight: 600;">No report categories found for this RM.</div>');
+								$container.html('<div style="padding: 8px; color: #64748b; font-weight: 600;">No product breakdown found for this Agent.</div>');
 							}
 						}
 					});
@@ -4555,48 +4555,53 @@ class DrishtiDashboard {
 					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
 
 					if (!catList || catList.length === 0) {
-						$container.html('<div style="padding: 8px; color: #64748b; font-size: 12px;">No categories found.</div>');
+						$container.html('<div style="padding: 8px; color: #64748b; font-size: 12px;">No product breakdown found.</div>');
 						return;
 					}
 
+					let totalCustSum = 0;
+					let totalCommSum = 0;
+
 					let rowsHtml = "";
 					catList.forEach((c, idx) => {
-						const key = rmId + "::" + c.report_type;
-						const isExp = !!self.expandedRmCategories[key];
+						const prodName = c.product_name || c.report_type || "-";
+						const totCust = c.total_customer ?? c.record_count ?? 0;
+						const totComm = c.total_commission || 0;
+
+						totalCustSum += totCust;
+						totalCommSum += totComm;
+
 						rowsHtml += `
-							<tr class="rm-cat-row" data-rm-id="${rmId}" data-type="${c.report_type}" style="border-bottom: 1px solid #e2e8f0; cursor: pointer; background: ${isExp ? '#eff6ff' : '#fff'};">
+							<tr style="border-bottom: 1px solid #e2e8f0; background: #fff;">
 								<td style="padding: 6px 10px; text-align: center; font-size: 12px; width: 40px;">${idx + 1}</td>
-								<td style="padding: 6px 10px; font-size: 12px; font-weight: 700; color: #1e293b;">
-									<span class="rm-cat-toggle-icon" style="display: inline-block; width: 14px; color: #2563eb;">${isExp ? '▼' : '▶'}</span>
-									<span style="color: #2563eb; text-decoration: underline;">${c.report_type || "-"}</span>
-								</td>
-								<td style="padding: 6px 10px; text-align: right; font-size: 12px;">${fmtNum(c.record_count)}</td>
-								<td style="padding: 6px 10px; text-align: right; font-size: 12px; font-weight: 600; color: #059669;">${fmtAmt(c.total_commission)}</td>
-							</tr>
-							<tr class="rm-cat-cust-row" data-rm-id="${rmId}" data-type="${c.report_type}" style="display: ${isExp ? 'table-row' : 'none'}; background: #f1f5f9;">
-								<td colspan="4" style="padding: 8px 12px;">
-									<div class="rm-cat-cust-container" data-rm-id="${rmId}" data-type="${c.report_type}">
-										<div style="padding: 8px; color: #64748b; font-size: 12px;">Loading Customer Accounts...</div>
-									</div>
-								</td>
+								<td style="padding: 6px 10px; font-size: 12px; font-weight: 700; color: #1e293b;">${prodName}</td>
+								<td style="padding: 6px 10px; text-align: right; font-size: 12px;">${fmtNum(totCust)}</td>
+								<td style="padding: 6px 10px; text-align: right; font-size: 12px; font-weight: 600; color: #059669;">${fmtAmt(totComm)}</td>
 							</tr>
 						`;
 					});
 
 					$container.html(`
 						<div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px;">
-							<div style="font-weight: 700; font-size: 12px; color: #15803d; margin-bottom: 6px;">Report Categories for RM ${rmId} (${catList.length} Categories - Click Category to view Customer Accounts)</div>
+							<div style="font-weight: 700; font-size: 12px; color: #15803d; margin-bottom: 6px;">Product Breakdown for Agent ${rmId} (${catList.length} Products)</div>
 							<div style="max-height: 250px; overflow-y: auto; border: 1px solid #dcfce7; border-radius: 4px;">
 								<table class="table table-sm" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0;">
 									<thead>
 										<tr style="background: #f0fdf4; color: #166534;">
 											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
-											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: left;">Report Type</th>
-											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: right;">Records</th>
+											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: left;">Product</th>
+											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: right;">total Customer</th>
 											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: right;">Total Commission</th>
 										</tr>
 									</thead>
 									<tbody>${rowsHtml}</tbody>
+									<tfoot>
+										<tr style="background: #f8fafc; font-weight: 700; color: #1e293b;">
+											<td colspan="2" style="padding: 6px 10px; text-align: right; font-size: 12px;">Total:</td>
+											<td style="padding: 6px 10px; text-align: right; font-size: 12px;">${fmtNum(totalCustSum)}</td>
+											<td style="padding: 6px 10px; text-align: right; font-size: 12px; color: #059669;">${fmtAmt(totalCommSum)}</td>
+										</tr>
+									</tfoot>
 								</table>
 							</div>
 						</div>
