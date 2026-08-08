@@ -48,9 +48,12 @@ def sahayog_cache(ttl=86400):
                 
             result = func(*filtered_args, **filtered_kwargs)
             
-            # ONLY cache if result is truthy (non-empty list, non-empty dict, non-None)
+            # ONLY cache if result is truthy and not an empty data dictionary
             if result:
-                frappe.cache.set_value(cache_key, result, expires_in_sec=ttl)
+                if isinstance(result, dict) and "data" in result and not result["data"]:
+                    pass
+                else:
+                    frappe.cache.set_value(cache_key, result, expires_in_sec=ttl)
             return result
             
         def clear_cache():
@@ -2043,7 +2046,7 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
     ORDER BY s.circle_office_name, s.region_name, wb.sol_id
     """
 
-    base_query_no_order = query.split("ORDER BY")[0]
+    base_query_no_order = query.rsplit("ORDER BY", 1)[0]
     count_query = f"SELECT COUNT(*) FROM ({base_query_no_order}) sub"
     paginated_query = f"{query} LIMIT {limit} OFFSET {offset}"
 

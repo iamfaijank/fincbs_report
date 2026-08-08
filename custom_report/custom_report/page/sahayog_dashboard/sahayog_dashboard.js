@@ -1557,7 +1557,7 @@ class DrishtiDashboard {
 					};
 
 					// Invalidate cache if date changed
-					if (self.cacheDate && self.cacheDate !== dashboardInstance.state.selectedDate) {
+					if (self.cacheDate && self.cacheDate !== (dashboardInstance.state.selectedDate || frappe.datetime.get_today())) {
 						self.cachedPages = {};
 						self.cacheDate = null;
 						self.currentPage = 1;
@@ -1568,7 +1568,7 @@ class DrishtiDashboard {
 
 					const fetchPageAjax = (pageNum) => {
 						return new Promise((resolve) => {
-							const selDate = dashboardInstance.state.selectedDate;
+							const selDate = dashboardInstance.state.selectedDate || frappe.datetime.get_today();
 
 							// Check memory cache
 							if (self.cachedPages[pageNum] && self.cacheDate === selDate) {
@@ -1584,13 +1584,12 @@ class DrishtiDashboard {
 								const sMeta = sessionStorage.getItem(metaKey);
 								if (sData && sMeta) {
 									const metaObj = JSON.parse(sMeta);
-									if (metaObj.totalRows > self.pageSize) {
-										self.totalRows = metaObj.totalRows;
-										self.totalPages = metaObj.totalPages || Math.ceil(self.totalRows / self.pageSize);
-									}
-									self.cachedPages[pageNum] = JSON.parse(sData);
-									self.cacheDate = selDate;
-									if (self.totalRows > self.pageSize) {
+									const parsedData = JSON.parse(sData);
+									if (Array.isArray(parsedData) && parsedData.length > 0) {
+										self.totalRows = metaObj.totalRows || parsedData.length;
+										self.totalPages = metaObj.totalPages || Math.ceil(self.totalRows / self.pageSize) || 1;
+										self.cachedPages[pageNum] = parsedData;
+										self.cacheDate = selDate;
 										resolve(true);
 										return;
 									}
@@ -1600,17 +1599,14 @@ class DrishtiDashboard {
 							}
 
 							const offset = (pageNum - 1) * self.pageSize;
-							$.ajax({
-								url: "/api/method/custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_cust_wise_avg_balance",
-								type: "POST",
-								data: {
+							frappe.call({
+								method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_cust_wise_avg_balance",
+								args: {
 									selected_date: selDate,
 									limit: self.pageSize,
 									offset: offset,
 								},
-								timeout: 300000,
-								headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
-								success: function (r) {
+								callback: function (r) {
 									if (r.message && r.message.data) {
 										self.totalRows = r.message.total_rows || 0;
 										self.totalPages = Math.ceil(self.totalRows / self.pageSize) || 1;
@@ -1756,7 +1752,8 @@ class DrishtiDashboard {
 						if (next <= self.totalPages && !self.cachedPages[next]) preloadPage(next);
 					});
 
-					if (Object.keys(self.cachedPages).length > 0 && self.cacheDate === dashboardInstance.state.selectedDate) {
+					const selDate = dashboardInstance.state.selectedDate || frappe.datetime.get_today();
+					if (Object.keys(self.cachedPages).length > 0 && self.cacheDate === selDate) {
 						container.find("#cavg-loading").hide();
 						container.find("#cavg-table-container").show();
 						renderPage();
