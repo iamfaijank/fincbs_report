@@ -4711,7 +4711,7 @@ class DrishtiDashboard {
 					$container.html(`
 						<div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px;">
 							<div style="font-weight: 700; font-size: 12px; color: #15803d; margin-bottom: 6px;">Product Breakdown for Agent ${rmId} (${catList.length} Products)</div>
-							<div style="max-height: 250px; overflow-y: auto; border: 1px solid #dcfce7; border-radius: 4px;">
+							<div style="border: 1px solid #dcfce7; border-radius: 4px;">
 								<table class="table table-sm" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0;">
 									<thead>
 										<tr style="background: #f0fdf4; color: #166534; position: sticky; top: 0; z-index: 2; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
