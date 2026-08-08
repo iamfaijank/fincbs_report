@@ -257,7 +257,7 @@ class DrishtiDashboard {
 								<thead><tr>
 									<th style="width: 30px;"><div class="mis-skeleton-pulse" style="width: 14px; height: 14px;"></div></th>
 									<th style="width: 40px; text-align: center;">Sr</th>
-									<th>Zone / Region / Branch</th>
+									<th>Z / R / D / SOL Name</th>
 									<th style="text-align: center; width: 80px;">Branches</th>
 									<th style="text-align: right; width: 100px;">Total Accounts</th>
 									<th style="text-align: right; width: 120px;">Total Collection</th>
@@ -636,7 +636,7 @@ class DrishtiDashboard {
 								<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / Branch</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Z / R / D / SOL Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">Branches</th>
 									${metricCols.map(mc => `<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: ${mc.align}; white-space: nowrap;">${mc.label}</th>`).join('')}
 								</tr></thead>
@@ -1311,7 +1311,7 @@ class DrishtiDashboard {
 									<thead>
 										<tr>
 											<th style="text-align: center; width: 40px;">Sr</th>
-											<th>Zone / Region / Branch</th>
+											<th>Z / R / D / SOL Name</th>
 											<th style="text-align: center;">Branches</th>
 											<th style="text-align: right;">NTB</th>
 											<th style="text-align: right;">EVR</th>
@@ -5688,7 +5688,7 @@ class DrishtiDashboard {
 				<thead><tr>
 					<th style="width: 30px;"><div class="mis-skeleton-pulse" style="width: 14px; height: 14px;"></div></th>
 					<th style="width: 40px; text-align: center;">Sr</th>
-					<th>Zone / Region / Branch</th>
+					<th>Z / R / D / SOL Name</th>
 					<th style="text-align: center; width: 80px;">Branches</th>
 					<th style="text-align: right; width: 100px;">Accounts</th>
 					<th style="text-align: right; width: 120px;">Collection</th>
