@@ -4894,8 +4894,11 @@ class DrishtiDashboard {
 						const leftProfileCardHtml = `
 							<div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
 								<div style="text-align: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
-									<div style="width: 50px; height: 50px; background: #417d81; color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; margin: 0 auto 8px auto; box-shadow: 0 4px 6px -1px rgba(65, 125, 129, 0.3);">
-										👤
+									<div style="width: 54px; height: 54px; background: #417d81; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px auto; box-shadow: 0 4px 10px rgba(65, 125, 129, 0.35);">
+										<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+											<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+											<circle cx="12" cy="7" r="4"></circle>
+										</svg>
 									</div>
 									<div style="font-size: 14px; font-weight: 800; color: #0f172a; line-height: 1.2;">${agentName}</div>
 									<div style="font-size: 12px; font-weight: 700; color: #417d81; margin-top: 2px;">${agentCode}</div>
