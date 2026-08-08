@@ -4505,6 +4505,7 @@ class DrishtiDashboard {
 								total_commission: 0,
 								agent_count: 0,
 								active_count: 0,
+								inactive_count: 0,
 								children: {}
 							};
 							rootNodes.push(zMap[zName]);
@@ -4512,6 +4513,7 @@ class DrishtiDashboard {
 						zMap[zName].total_commission += comm;
 						zMap[zName].agent_count += 1;
 						if (isActive) zMap[zName].active_count += 1;
+						else zMap[zName].inactive_count += 1;
 
 						const rMap = zMap[zName].children;
 						if (!rMap[rName]) {
@@ -4524,12 +4526,14 @@ class DrishtiDashboard {
 								total_commission: 0,
 								agent_count: 0,
 								active_count: 0,
+								inactive_count: 0,
 								children: {}
 							};
 						}
 						rMap[rName].total_commission += comm;
 						rMap[rName].agent_count += 1;
 						if (isActive) rMap[rName].active_count += 1;
+						else rMap[rName].inactive_count += 1;
 
 						const dMap = rMap[rName].children;
 						if (!dMap[dName]) {
@@ -4542,12 +4546,14 @@ class DrishtiDashboard {
 								total_commission: 0,
 								agent_count: 0,
 								active_count: 0,
+								inactive_count: 0,
 								children: {}
 							};
 						}
 						dMap[dName].total_commission += comm;
 						dMap[dName].agent_count += 1;
 						if (isActive) dMap[dName].active_count += 1;
+						else dMap[dName].inactive_count += 1;
 
 						const sMap = dMap[dName].children;
 						if (!sMap[sCode]) {
@@ -4560,12 +4566,14 @@ class DrishtiDashboard {
 								total_commission: 0,
 								agent_count: 0,
 								active_count: 0,
+								inactive_count: 0,
 								children: []
 							};
 						}
 						sMap[sCode].total_commission += comm;
 						sMap[sCode].agent_count += 1;
 						if (isActive) sMap[sCode].active_count += 1;
+						else sMap[sCode].inactive_count += 1;
 
 						sMap[sCode].children.push({
 							id: `a_${agent.agent_code}`,
@@ -4609,15 +4617,22 @@ class DrishtiDashboard {
 							else if (node.level === 4) { typeBadgeBg = "#ccfbf1"; typeBadgeColor = "#115e59"; typeBadgeBorder = "#5eead4"; } // SOL
 							else if (node.level === 5) { typeBadgeBg = "#dcfce7"; typeBadgeColor = "#15803d"; typeBadgeBorder = "#86efac"; } // Agent
 
-							let statusOrCountHtml = "";
+							let activeColHtml = "";
+							let inactiveColHtml = "";
+
 							if (node.level < 5) {
-								statusOrCountHtml = `<span style="font-size: 11px; font-weight: 700; color: #475569;">${fmtNum(node.agent_count)} Agents (${fmtNum(node.active_count)} Active)</span>`;
+								activeColHtml = `<span style="font-size: 12px; font-weight: 700; color: #15803d;">${fmtNum(node.active_count)}</span>`;
+								inactiveColHtml = `<span style="font-size: 12px; font-weight: 700; color: #dc2626;">${fmtNum(node.inactive_count)}</span>`;
 							} else {
 								const st = (node.agent_status || "Inactive").trim().toLowerCase();
 								const isAct = st === "active" || st === "live";
-								statusOrCountHtml = isAct
-									? `<span style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">Active</span>`
-									: `<span style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">Inactive</span>`;
+								if (isAct) {
+									activeColHtml = `<span style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">Active</span>`;
+									inactiveColHtml = `<span style="color: #cbd5e1;">-</span>`;
+								} else {
+									activeColHtml = `<span style="color: #cbd5e1;">-</span>`;
+									inactiveColHtml = `<span style="background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">Inactive</span>`;
+								}
 							}
 
 							let rowBg = '#ffffff';
@@ -4637,7 +4652,8 @@ class DrishtiDashboard {
 									<td style="padding: 8px 12px; text-align: left; font-size: 11px;">
 										<span style="background: ${typeBadgeBg}; color: ${typeBadgeColor}; border: 1px solid ${typeBadgeBorder}; padding: 2px 8px; border-radius: 12px; font-weight: 700;">${node.type}</span>
 									</td>
-									<td style="padding: 8px 12px; text-align: left; font-size: 12px;">${statusOrCountHtml}</td>
+									<td style="padding: 8px 12px; text-align: right;">${activeColHtml}</td>
+									<td style="padding: 8px 12px; text-align: right;">${inactiveColHtml}</td>
 									<td style="padding: 8px 12px; text-align: right; font-size: 13px; font-weight: 800; color: #417d81;">${fmtAmt(node.total_commission)}</td>
 								</tr>
 							`;
@@ -4689,14 +4705,17 @@ class DrishtiDashboard {
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Z / R / D / SOL / Agent Name</th>
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Code / ID</th>
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Level</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Status / Count</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Active Agents</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Inactive Agents</th>
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Commission</th>
 									</tr>
 								</thead>
 								<tbody>${treeRowsHtml}</tbody>
 								<tfoot>
 									<tr style="background: rgba(65, 125, 129, 0.08); color: #1e293b; font-weight: 700; position: sticky; bottom: 0; z-index: 2; border-top: 2px solid #417d81;">
-										<td colspan="4" style="padding: 10px 12px; text-align: left; font-size: 12px; color: #417d81;">GRAND TOTAL (${fmtNum(data.length)} AGENTS ACROSS ALL ZONES)</td>
+										<td colspan="3" style="padding: 10px 12px; text-align: left; font-size: 12px; color: #417d81;">GRAND TOTAL (${fmtNum(data.length)} AGENTS)</td>
+										<td style="padding: 10px 12px; text-align: right; font-size: 12px; color: #15803d; font-weight: 800;">${fmtNum(totalActive)} Active</td>
+										<td style="padding: 10px 12px; text-align: right; font-size: 12px; color: #dc2626; font-weight: 800;">${fmtNum(totalInactive)} Inactive</td>
 										<td style="padding: 10px 12px; text-align: right; font-size: 13px; color: #417d81; font-weight: 800;">${fmtAmt(grandTotalComm)}</td>
 									</tr>
 								</tfoot>
