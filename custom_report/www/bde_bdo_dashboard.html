@@ -371,7 +371,7 @@ currentTab=subtab;
 document.getElementById("main-title").textContent=T[subtab]||subtab;
 document.querySelectorAll(".tab-content").forEach(function(tc){tc.classList.remove("active")});
 document.getElementById("tab-"+subtab).classList.add("active");
-if(!tabStates[subtab])load(subtab,C[subtab]);
+load(subtab,C[subtab]);
 })});
 load("rd_smbg_pending",C.rd_smbg_pending);
 })();
