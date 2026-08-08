@@ -4885,7 +4885,9 @@ class DrishtiDashboard {
 						const bName = agentInfo.branch_name || agentData.branch_name || "-";
 						const bCode = agentInfo.branch_code || agentData.branch_code || "-";
 						const authId = agentInfo.auth_id || agentData.auth_id || "-";
-						const empName = agentInfo.employee || agentData.employee || "-";
+						const empId = agentInfo.employee || agentData.employee || "-";
+						const empName = agentInfo.employee_name || agentData.employee_name || "";
+						const empDisplay = empName ? `${empName} (${empId})` : empId;
 						const phoneNo = agentInfo.phone_number || agentData.phone_number || "-";
 						const agentRole = agentInfo.role || agentData.role || agentData.agent_type || "-";
 
@@ -4911,7 +4913,7 @@ class DrishtiDashboard {
 									</div>
 									<div>
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Employee / Manager</div>
-										<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${empName}</div>
+										<div style="font-weight: 700; color: #1e293b; margin-top: 1px;">${empDisplay}</div>
 									</div>
 									${phoneNo !== '-' ? `
 									<div>
@@ -4973,6 +4975,7 @@ class DrishtiDashboard {
 							branch_name: agentData.branch_name,
 							auth_id: agentData.auth_id,
 							employee: agentData.employee,
+							employee_name: agentData.employee_name,
 							phone_number: agentData.phone_number,
 							role: agentData.role
 						};

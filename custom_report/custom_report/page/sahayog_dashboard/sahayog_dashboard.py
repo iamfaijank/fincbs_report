@@ -5728,8 +5728,7 @@ def get_agent_customer_details(report_type, rm_id, selected_date=None):
 @frappe.whitelist()
 def get_rm_wise_ss_vs_data(selected_date=None):
     """
-    Superfast Zero-CPU SQL Fetching of Agent Code, Name, Status, and Commission directly via MariaDB JSON_EXTRACT.
-    No Python loops, no Python JSON parsing, no Python sorting.
+    Superfast Zero-CPU SQL Fetching of Agent Code, Name, Status, Branch, Auth ID, Employee, and Employee Name.
     """
     json_path = '$.grand_total_commission'
     if selected_date:
@@ -5738,21 +5737,25 @@ def get_rm_wise_ss_vs_data(selected_date=None):
 
     sql_query = f"""
         SELECT 
-            name,
-            agent_code,
-            agent_code AS rm_id,
-            agent_name,
-            agent_name AS rm_name,
-            agent_status,
-            branch_code,
-            branch_name,
-            auth_id,
-            employee,
-            commission_json,
-            CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(commission_json, '{json_path}')), 0) AS DECIMAL(18,2)) AS total_commission
-        FROM `tabAgent`
-        WHERE docstatus < 2
-          AND agent_type IN ('RDDSA', 'DDDSA')
+            A.name,
+            A.agent_code,
+            A.agent_code AS rm_id,
+            A.agent_name,
+            A.agent_name AS rm_name,
+            A.agent_status,
+            A.branch_code,
+            A.branch_name,
+            A.auth_id,
+            A.employee,
+            E.employee_name,
+            A.phone_number,
+            A.role,
+            A.commission_json,
+            CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(A.commission_json, '{json_path}')), 0) AS DECIMAL(18,2)) AS total_commission
+        FROM `tabAgent` A
+        LEFT JOIN `tabEmployee` E ON A.employee = E.name
+        WHERE A.docstatus < 2
+          AND A.agent_type IN ('RDDSA', 'DDDSA')
         ORDER BY total_commission DESC
     """
     data = frappe.db.sql(sql_query, as_dict=True)
@@ -5840,17 +5843,25 @@ def get_rm_wise_category_breakdown(rm_id, selected_date=None):
 
     breakdown_list.sort(key=lambda x: x["total_commission"], reverse=True)
 
-    agent_info = frappe.db.get_value(
-        "Agent",
-        {"name": rm_id},
-        ["agent_code", "agent_name", "branch_code", "branch_name", "auth_id", "employee", "agent_status", "phone_number", "role"],
-        as_dict=True
-    ) or frappe.db.get_value(
-        "Agent",
-        {"agent_code": rm_id},
-        ["agent_code", "agent_name", "branch_code", "branch_name", "auth_id", "employee", "agent_status", "phone_number", "role"],
-        as_dict=True
-    ) or {}
+    agent_info_list = frappe.db.sql("""
+        SELECT 
+            A.agent_code,
+            A.agent_name,
+            A.branch_code,
+            A.branch_name,
+            A.auth_id,
+            A.employee,
+            E.employee_name,
+            A.agent_status,
+            A.phone_number,
+            A.role
+        FROM `tabAgent` A
+        LEFT JOIN `tabEmployee` E ON A.employee = E.name
+        WHERE A.name = %s OR A.agent_code = %s
+        LIMIT 1
+    """, (rm_id, rm_id), as_dict=True)
+
+    agent_info = agent_info_list[0] if agent_info_list else {}
 
     return {
         "agent_info": agent_info,
