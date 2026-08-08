@@ -4658,6 +4658,8 @@ class DrishtiDashboard {
 								0% { opacity: 0; transform: scale(0.95) translateY(10px); }
 								100% { opacity: 1; transform: scale(1) translateY(0); }
 							}
+							.modal-table-row { transition: background-color 0.15s ease-in-out; }
+							.modal-table-row:hover { background-color: #f0fdfa !important; cursor: pointer; }
 						</style>
 						<div id="${modalId}" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px;">
 							<div style="background: #ffffff; width: 100%; max-width: 720px; border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden; animation: agentModalPop 0.25s ease-out;">
@@ -4818,7 +4820,7 @@ class DrishtiDashboard {
 								}).join('');
 
 								rowsHtml += `
-									<tr style="border-bottom: 1px solid #e2e8f0; background: ${totComm > 0 ? '#ffffff' : '#f8fafc'}; transition: background 0.15s;">
+									<tr class="modal-table-row" style="border-bottom: 1px solid #e2e8f0; background: ${totComm > 0 ? '#ffffff' : '#f8fafc'};">
 										<td style="padding: 8px 10px; text-align: center; font-size: 12px; font-weight: 600; color: #64748b; width: 40px;">${idx + 1}</td>
 										<td style="padding: 8px 10px; font-size: 12px; font-weight: 700; color: #1e293b;">${prodName}</td>
 										${monthCellsHtml}
