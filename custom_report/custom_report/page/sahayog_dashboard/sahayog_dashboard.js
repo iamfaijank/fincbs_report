@@ -4320,7 +4320,7 @@ class DrishtiDashboard {
 			},
 			{
 				id: "rm_wise",
-				name: "RM Wise",
+				name: "Agent Wise Commission",
 				tableData: [],
 				render: function (container, dashboardInstance, seq) {
 					const self = this;
@@ -4335,7 +4335,7 @@ class DrishtiDashboard {
 							<input type="text" id="rm-top-search" placeholder="Search RM ID or Name..." style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 220px; outline: none; margin-left: auto;">
 						</div>
 						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
-							${dashboardInstance.buildMisSkeletonTable("Fetching RM Wise data...")}
+							${dashboardInstance.buildMisSkeletonTable("Fetching Agent Wise Commission data...")}
 						</div>
 						<div id="mis-table-container" ${self.tableData && self.tableData.length > 0 ? "" : 'style="display: none;"'}></div>
 					`);
