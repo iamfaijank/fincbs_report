@@ -5728,20 +5728,26 @@ def get_agent_customer_details(report_type, rm_id, selected_date=None):
 @frappe.whitelist()
 @sahayog_cache(ttl=86400)
 def get_rm_wise_ss_vs_data(selected_date=None):
-    """Fetches top-level RM Wise breakdown aggregated by rm_id using raw SQL for T-1."""
+    """Fetches top-level Agent Wise breakdown from tabAgent joined with tabSS and VS Report."""
     effective_date = resolve_ss_vs_date(selected_date)
     
     data = frappe.db.sql("""
         SELECT 
-            rm_id,
-            MAX(rm_name) AS rm_name,
-            COUNT(name) AS total_records,
-            COUNT(DISTINCT report_type) AS total_report_types,
-            SUM(CAST(COALESCE(NULLIF(commission, ''), '0') AS DECIMAL(18,2))) AS total_commission
-        FROM `tabSS and VS Report`
-        WHERE `date` = %s
-        GROUP BY rm_id
-        ORDER BY total_commission DESC, total_records DESC
+            a.agent_code AS agent_code,
+            a.agent_code AS rm_id,
+            a.agent_name AS agent_name,
+            a.agent_name AS rm_name,
+            COUNT(r.name) AS total_customer,
+            COUNT(r.name) AS total_records,
+            COUNT(DISTINCT r.report_type) AS total_report_types,
+            COALESCE(SUM(CAST(COALESCE(NULLIF(r.commission, ''), '0') AS DECIMAL(18,2))), 0) AS total_commission
+        FROM `tabAgent` a
+        LEFT JOIN `tabSS and VS Report` r 
+            ON a.agent_code = r.rm_id 
+           AND r.`date` = %s
+        WHERE a.docstatus < 2
+        GROUP BY a.agent_code, a.agent_name
+        ORDER BY total_commission DESC, total_customer DESC
     """, (effective_date,), as_dict=True)
     
     return {"data": data, "actual_date": effective_date}
@@ -5750,18 +5756,20 @@ def get_rm_wise_ss_vs_data(selected_date=None):
 @frappe.whitelist()
 @sahayog_cache(ttl=86400)
 def get_rm_wise_category_breakdown(rm_id, selected_date=None):
-    """Fetches Report Type category breakdown for a specific rm_id using SQL."""
+    """Fetches Report Type category breakdown for a specific Agent using SQL."""
     effective_date = resolve_ss_vs_date(selected_date)
     
     data = frappe.db.sql("""
         SELECT 
-            report_type,
-            COUNT(name) AS record_count,
-            SUM(CAST(COALESCE(NULLIF(commission, ''), '0') AS DECIMAL(18,2))) AS total_commission
-        FROM `tabSS and VS Report`
-        WHERE `date` = %s AND rm_id = %s
-        GROUP BY report_type
-        ORDER BY total_commission DESC, record_count DESC
+            r.report_type AS report_type,
+            r.report_type AS product_name,
+            COUNT(r.name) AS record_count,
+            COUNT(r.name) AS total_customer,
+            COALESCE(SUM(CAST(COALESCE(NULLIF(r.commission, ''), '0') AS DECIMAL(18,2))), 0) AS total_commission
+        FROM `tabSS and VS Report` r
+        WHERE r.`date` = %s AND r.rm_id = %s
+        GROUP BY r.report_type
+        ORDER BY total_commission DESC, total_customer DESC
     """, (effective_date, rm_id), as_dict=True)
     
     return data
