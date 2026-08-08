@@ -4597,7 +4597,7 @@ class DrishtiDashboard {
 						let html = "";
 						nodes.forEach(node => {
 							const isExpanded = !!self.expandedTreeNodes[node.id];
-							const indent = (node.level - 1) * 22 + 10;
+							const indent = (node.level - 1) * 10 + 10;
 							const hasChildren = node.level < 5;
 
 							let typeBadgeBg = "#e0f2fe";
