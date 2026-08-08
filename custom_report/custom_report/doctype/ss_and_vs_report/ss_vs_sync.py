@@ -1413,3 +1413,31 @@ def get_monthly_status(year: int = None):
 		"year": year,
 		"months": months_data
 	}
+
+
+@frappe.whitelist()
+def cleanup_ss_vs_old_monthly_records():
+	"""
+	Daily Cron / Whitelisted API to cleanup intermediate daily records in tabSS and VS Report.
+	Retains ONLY the maximum (last) date records for each month, and deletes all prior dates.
+	Example: For May (records on 1..31), keeps May 31 and deletes May 1..May 30.
+	"""
+	try:
+		frappe.db.sql("""
+			DELETE FROM `tabSS and VS Report`
+			WHERE `date` NOT IN (
+				SELECT max_date FROM (
+					SELECT MAX(`date`) AS max_date
+					FROM `tabSS and VS Report`
+					GROUP BY YEAR(`date`), MONTH(`date`)
+				) AS keep_dates
+			)
+		""")
+		frappe.db.commit()
+
+		msg = "Successfully cleaned up SS & VS Report daily records. Retained only the last date of each month."
+		frappe.logger("scheduler").info(msg)
+		return {"status": "success", "message": msg}
+	except Exception as e:
+		frappe.log_error(f"Error cleaning up SS & VS monthly records: {str(e)}", "SS & VS Cleanup Error")
+		return {"status": "error", "message": str(e)}

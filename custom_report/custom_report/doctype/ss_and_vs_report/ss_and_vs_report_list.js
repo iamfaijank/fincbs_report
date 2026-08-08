@@ -154,6 +154,30 @@ frappe.listview_settings['SS and VS Report'] = {
 			d.$wrapper.addClass('ss-vs-modern-dialog');
 			d.show();
 		});
+
+		// Add Cleanup button under Actions menu
+		listview.page.add_inner_button(__('Cleanup Monthly Records'), () => {
+			frappe.confirm(
+				__('This will retain ONLY the last date records for each month and delete all prior daily dates. Do you want to proceed?'),
+				() => {
+					frappe.call({
+						method: 'custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.cleanup_ss_vs_old_monthly_records',
+						freeze: true,
+						freeze_message: __('Cleaning up old daily records...'),
+						callback(r) {
+							if (r.message && r.message.status === 'success') {
+								frappe.msgprint({
+									title: __('Cleanup Completed'),
+									indicator: 'green',
+									message: r.message.message
+								});
+								listview.refresh();
+							}
+						}
+					});
+				}
+			);
+		}, __('Actions'));
 	},
 
 	renderMonthWidget(listview) {
