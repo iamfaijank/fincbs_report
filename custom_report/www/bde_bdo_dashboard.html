@@ -211,7 +211,6 @@ var el=document.getElementById(cfg.tid);
 var zd=agg(st);
 var tf=zd.reduce(function(s,z){return s+z.data.branches.length},0);
 var ta=(st.data||[]).length;
-document.getElementById(cfg.cid).textContent=tf+" / "+ta+" branches"+(st.search?" (filtered)":"");
 if(!zd||zd.length===0){el.innerHTML='<div class="empty-state">No data to display.</div>';el.style.display="block";return}
 var mc=cfg.mc.map(function(c){return{key:c.key,label:c.label,align:c.align,fmt:c.am?function(v){return fa(st.fmt,v)}:function(v){return fc(st.fmt,v)}}});
 var gt={};cfg.mc.forEach(function(c){gt[c.key]=0});
@@ -294,7 +293,6 @@ document.getElementById(cfg.lid).style.display="block";
 document.getElementById(cfg.tid).style.display="none";
 document.getElementById(cfg.kid).innerHTML="";
 document.getElementById(cfg.zid).innerHTML="";
-document.getElementById(cfg.cid).textContent="";
 var dp=cfg.did?document.getElementById(cfg.did).value:"";
 if(cfg.did&&!dp){
 var y=new Date();y.setDate(y.getDate()-1);dp=y.toISOString().split("T")[0];
