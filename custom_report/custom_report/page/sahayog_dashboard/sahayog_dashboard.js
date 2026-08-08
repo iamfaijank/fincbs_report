@@ -4714,19 +4714,19 @@ class DrishtiDashboard {
 							<div style="max-height: 250px; overflow-y: auto; border: 1px solid #dcfce7; border-radius: 4px;">
 								<table class="table table-sm" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0;">
 									<thead>
-										<tr style="background: #f0fdf4; color: #166534;">
-											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
-											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: left;">Product</th>
-											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: right;">total Customer</th>
-											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: right;">Total Commission</th>
+										<tr style="background: #f0fdf4; color: #166534; position: sticky; top: 0; z-index: 2; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+											<th style="padding: 6px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center; width: 40px; background: #f0fdf4;">Sr</th>
+											<th style="padding: 6px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left; background: #f0fdf4;">Product</th>
+											<th style="padding: 6px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right; background: #f0fdf4;">total Customer</th>
+											<th style="padding: 6px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right; background: #f0fdf4;">Total Commission</th>
 										</tr>
 									</thead>
 									<tbody>${rowsHtml}</tbody>
 									<tfoot>
-										<tr style="background: #f8fafc; font-weight: 700; color: #1e293b;">
-											<td colspan="2" style="padding: 6px 10px; text-align: right; font-size: 12px;">Total:</td>
-											<td style="padding: 6px 10px; text-align: right; font-size: 12px;">${fmtNum(totalCustSum)}</td>
-											<td style="padding: 6px 10px; text-align: right; font-size: 12px; color: #059669;">${fmtAmt(totalCommSum)}</td>
+										<tr style="background: #f8fafc; font-weight: 700; color: #1e293b; position: sticky; bottom: 0; z-index: 2; border-top: 1px solid #cbd5e1;">
+											<td colspan="2" style="padding: 6px 10px; text-align: right; font-size: 12px; background: #f8fafc;">Total:</td>
+											<td style="padding: 6px 10px; text-align: right; font-size: 12px; background: #f8fafc;">${fmtNum(totalCustSum)}</td>
+											<td style="padding: 6px 10px; text-align: right; font-size: 12px; color: #059669; background: #f8fafc;">${fmtAmt(totalCommSum)}</td>
 										</tr>
 									</tfoot>
 								</table>
