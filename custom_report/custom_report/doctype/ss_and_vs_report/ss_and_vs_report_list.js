@@ -71,8 +71,8 @@ frappe.listview_settings['SS and VS Report'] = {
 						label: __('Report Type'),
 						fieldname: 'report_type',
 						fieldtype: 'Select',
-						options: 'DD SAV\nDD TDA\nRD\nSMBG\nFD 1\nDAM\nFD\nSHARE',
-						default: 'DD SAV',
+						options: 'All Reports\nDD SAV\nDD TDA\nRD\nSMBG\nFD 1\nDAM\nFD\nSHARE',
+						default: 'All Reports',
 						reqd: 1
 					},
 					{
