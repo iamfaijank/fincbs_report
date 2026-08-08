@@ -2108,6 +2108,39 @@ def clean_zone_region(value, prefix):
         return normalized
 
 
+def execute_product_wise_bulk_insert(records: list, chunk_size: int = 5000) -> None:
+    """
+    Direct DB-to-DB bulk INSERT into tabProduct Wise Report table without ORM overhead.
+    Executes chunked raw SQL INSERT queries for maximum performance.
+    """
+    if not records:
+        return
+
+    db_type = getattr(frappe.db, "db_type", "mariadb")
+    row_placeholder = "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+
+    for i in range(0, len(records), chunk_size):
+        chunk = records[i : i + chunk_size]
+        placeholders = ", ".join([row_placeholder] * len(chunk))
+        flattened_params = [val for row in chunk for val in row]
+
+        if db_type == "mariadb":
+            sql = f"""
+            INSERT INTO `tabProduct Wise Report` (
+                `name`, `creation`, `modified`, `modified_by`, `owner`, `docstatus`, `idx`,
+                `zone`, `region`, `product`, `amount`, `date`, `sol_id`, `scheme_code`
+            ) VALUES {placeholders};
+            """
+        else:
+            sql = f"""
+            INSERT INTO "tabProduct Wise Report" (
+                "name", "creation", "modified", "modified_by", "owner", "docstatus", "idx",
+                "zone", "region", "product", "amount", "date", "sol_id", "scheme_code"
+            ) VALUES {placeholders};
+            """
+        frappe.db.sql(sql, flattened_params)
+
+
 @frappe.whitelist()
 @sahayog_cache(ttl=86400)
 def get_product_wise_casa(selected_date=None):
@@ -2466,15 +2499,8 @@ GROUP BY
             "product": "CASA"
         })
 
-        print(f"CASA Sync - Starting bulk insertion of {len(bulk_data)} records into Product Wise Report...", flush=True)
-        
-        fields = [
-            "name", "creation", "modified", "modified_by", "owner", 
-            "docstatus", "idx", "zone", "region", "product", "amount", 
-            "date", "sol_id", "scheme_code"
-        ]
-        
-        frappe.db.bulk_insert("Product Wise Report", fields, bulk_data)
+        print(f"CASA Sync - Starting direct bulk insertion of {len(bulk_data)} records into Product Wise Report...", flush=True)
+        execute_product_wise_bulk_insert(bulk_data, chunk_size=5000)
         frappe.db.commit()
         
         print(f"CASA Sync - Successfully synced and committed {len(bulk_data)} records.", flush=True)
@@ -3005,15 +3031,8 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
             "product": "TDA"
         })
 
-        print(f"TDA Sync - Starting bulk insertion of {len(bulk_data)} records into Product Wise Report...", flush=True)
-        
-        fields = [
-            "name", "creation", "modified", "modified_by", "owner", 
-            "docstatus", "idx", "zone", "region", "product", "amount", 
-            "date", "sol_id", "scheme_code"
-        ]
-        
-        frappe.db.bulk_insert("Product Wise Report", fields, bulk_data)
+        print(f"TDA Sync - Starting direct bulk insertion of {len(bulk_data)} records into Product Wise Report...", flush=True)
+        execute_product_wise_bulk_insert(bulk_data, chunk_size=5000)
         frappe.db.commit()
         
         print(f"TDA Sync - Successfully synced and committed {len(bulk_data)} records.", flush=True)

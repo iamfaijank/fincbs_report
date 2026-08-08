@@ -9,6 +9,43 @@ import psycopg2.extras
 class BookPositionandAccountDetails(Document):
 	pass
 
+def execute_book_position_bulk_insert(records: list, chunk_size: int = 5000) -> None:
+	"""
+	Direct DB-to-DB bulk INSERT into tabBook Position and Account Details table without ORM overhead.
+	Executes chunked raw SQL INSERT queries for maximum performance.
+	"""
+	if not records:
+		return
+
+	db_type = getattr(frappe.db, "db_type", "mariadb")
+	row_placeholder = "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+
+	for i in range(0, len(records), chunk_size):
+		chunk = records[i : i + chunk_size]
+		placeholders = ", ".join([row_placeholder] * len(chunk))
+		flattened_params = [val for row in chunk for val in row]
+
+		if db_type == "mariadb":
+			sql = f"""
+			INSERT INTO `tabBook Position and Account Details` (
+				`name`, `creation`, `modified`, `modified_by`, `owner`, `docstatus`, `idx`,
+				`date`, `sol_id`, `scheme_code`, `scheme_description`, `account_opened`,
+				`account_closed`, `opening_no_of_accounts`, `closing_no_of_accounts`,
+				`opening_balance`, `closing_balance`, `group_name`, `group_subname`
+			) VALUES {placeholders};
+			"""
+		else:
+			sql = f"""
+			INSERT INTO "tabBook Position and Account Details" (
+				"name", "creation", "modified", "modified_by", "owner", "docstatus", "idx",
+				"date", "sol_id", "scheme_code", "scheme_description", "account_opened",
+				"account_closed", "opening_no_of_accounts", "closing_no_of_accounts",
+				"opening_balance", "closing_balance", "group_name", "group_subname"
+			) VALUES {placeholders};
+			"""
+		frappe.db.sql(sql, flattened_params)
+
+
 def send_email_notification(status, sync_date, details_or_error=""):
 	recipients = ["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"]
 	subject = f"Book Position Sync Status - {sync_date}"
@@ -112,6 +149,30 @@ def sync_data(sync_date):
 	start_date = get_first_day(getdate(sync_date))
 
 	query = """
+WITH opening_bal AS (
+    SELECT 
+        g.sol_id,
+        g.schm_code,
+        SUM(e.tran_date_bal) AS opening_balance
+    FROM tbaadm.eab e
+    INNER JOIN tbaadm.gam g ON g.acid = e.acid
+    INNER JOIN tbaadm.sst ss ON ss.sol_id = g.sol_id
+    WHERE ss.set_id BETWEEN '1001' AND '1260'
+      AND %(start_date)s::DATE - 1 BETWEEN e.eod_date AND e.end_eod_date
+    GROUP BY g.sol_id, g.schm_code
+),
+closing_bal AS (
+    SELECT 
+        g.sol_id,
+        g.schm_code,
+        SUM(e.tran_date_bal) AS closing_balance
+    FROM tbaadm.eab e
+    INNER JOIN tbaadm.gam g ON g.acid = e.acid
+    INNER JOIN tbaadm.sst ss ON ss.sol_id = g.sol_id
+    WHERE ss.set_id BETWEEN '1001' AND '1260'
+      AND %(end_date)s::DATE BETWEEN e.eod_date AND e.end_eod_date
+    GROUP BY g.sol_id, g.schm_code
+)
 SELECT 
     gam.sol_id,
     gam.schm_code, 
@@ -133,39 +194,19 @@ SELECT
     COUNT(DISTINCT CASE 
         WHEN gam.acct_opn_date < %(start_date)s::DATE
         AND gam.entity_cre_flg = 'Y' 
-         AND gam.del_flg = 'N'
+        AND gam.del_flg = 'N'
         AND gam.acct_cls_flg = 'N'
         THEN gam.foracid 
     END) AS Opening_Number_of_Accts,
     COUNT(DISTINCT CASE 
-    WHEN gam.acct_opn_date <= %(end_date)s::DATE
-    AND gam.entity_cre_flg = 'Y'
-    AND gam.del_flg = 'N'
-    AND gam.acct_cls_flg = 'N'
-    THEN gam.foracid 
+        WHEN gam.acct_opn_date <= %(end_date)s::DATE
+        AND gam.entity_cre_flg = 'Y'
+        AND gam.del_flg = 'N'
+        AND gam.acct_cls_flg = 'N'
+        THEN gam.foracid 
     END) AS Closing_Number_of_Accounts,
-    COALESCE((
-        SELECT SUM(eab_inner.tran_date_bal)  
-        FROM tbaadm.eab eab_inner
-        WHERE eab_inner.acid IN (
-            SELECT gam_inner.acid 
-            FROM tbaadm.gam gam_inner 
-            WHERE gam_inner.schm_code = gam.schm_code
-              AND gam_inner.sol_id = gam.sol_id
-        )  
-        AND %(start_date)s::DATE - 1 BETWEEN eab_inner.eod_date AND eab_inner.end_eod_date
-    ), 0) AS Opening_Balance,
-    COALESCE((
-        SELECT SUM(eab_inner.tran_date_bal)
-        FROM tbaadm.eab eab_inner
-        WHERE eab_inner.acid IN (
-            SELECT gam_inner.acid 
-            FROM tbaadm.gam gam_inner 
-            WHERE gam_inner.schm_code = gam.schm_code
-              AND gam_inner.sol_id = gam.sol_id 
-        )  
-        AND %(end_date)s::DATE BETWEEN eab_inner.eod_date AND eab_inner.end_eod_date
-    ), 0) AS Closing_Balance,
+    COALESCE(ob.opening_balance, 0) AS Opening_Balance,
+    COALESCE(cb.closing_balance, 0) AS Closing_Balance,
     COALESCE(SUM(CASE 
         WHEN htd.part_tran_type = 'D'
         AND htd.tran_date BETWEEN %(start_date)s::DATE AND %(end_date)s::DATE
@@ -190,10 +231,14 @@ LEFT JOIN
     tbaadm.gsp gsp ON gam.schm_code = gsp.schm_code 
 INNER JOIN 
     tbaadm.sst ss ON ss.sol_id = gam.sol_id   
+LEFT JOIN
+    opening_bal ob ON ob.sol_id = gam.sol_id AND ob.schm_code = gam.schm_code
+LEFT JOIN
+    closing_bal cb ON cb.sol_id = gam.sol_id AND cb.schm_code = gam.schm_code
 WHERE 
     ss.set_id BETWEEN '1001' AND '1260'   
 GROUP BY 
-    gam.sol_id, gam.schm_code, gsp.schm_desc
+    gam.sol_id, gam.schm_code, gsp.schm_desc, ob.opening_balance, cb.closing_balance
 ORDER BY 
     gam.sol_id, gam.schm_code;
 	"""
@@ -202,43 +247,78 @@ ORDER BY
 	try:
 		import time
 		
-		max_retries = 3
-		retry_delay = 5
+		max_retries = 5
 		rows = []
 		
 		for attempt in range(max_retries):
 			try:
 				conn = get_dr_connection()
 				with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+					try:
+						cur.execute("SET statement_timeout = 0;")
+					except Exception:
+						pass
 					cur.execute(query, {"start_date": start_date, "end_date": end_date})
 					rows = cur.fetchall()
 				break # Success, exit retry loop
 			except Exception as e:
-				if "conflict with recovery" in str(e).lower() and attempt < max_retries - 1:
+				err_str = str(e).lower()
+				is_recovery_conflict = any(term in err_str for term in [
+					"conflict with recovery", "canceling statement", "querycanceled",
+					"serializationfailure", "55006", "40001"
+				])
+				if is_recovery_conflict and attempt < max_retries - 1:
+					retry_delay = (attempt + 1) * 3
 					frappe.log_error(f"DR DB Query Conflict (Attempt {attempt + 1}/{max_retries}). Retrying in {retry_delay}s...", "Book Position Sync Retry")
 					if conn:
-						conn.close()
+						try:
+							conn.close()
+						except Exception:
+							pass
 					time.sleep(retry_delay)
 				else:
 					raise # Re-raise if not a recovery conflict or out of retries
 			
 		# Delete existing records for this date
 		frappe.db.delete("Book Position and Account Details", {"date": sync_date})
-		
+
+		from frappe.utils import now_datetime
+		now_time = now_datetime()
+		session_user = getattr(frappe.session, "user", "Administrator") if getattr(frappe, "session", None) else "Administrator"
+
+		# Pre-fetch products map to populate group_name & group_subname
+		products = frappe.get_all("Product", fields=["name", "group_name", "group_subname"])
+		prod_map = {p.name: p for p in products}
+
+		bulk_data = []
 		for row in rows:
-			doc = frappe.new_doc("Book Position and Account Details")
-			doc.date = sync_date
-			doc.sol_id = row['sol_id']
-			doc.scheme_code = row['schm_code']
-			doc.scheme_description = row['schm_desc']
-			doc.account_opened = row['account_opened']
-			doc.account_closed = row['account_closed']
-			doc.opening_no_of_accounts = row['opening_number_of_accts']
-			doc.closing_no_of_accounts = row['closing_number_of_accounts']
-			doc.opening_balance = row['opening_balance']
-			doc.closing_balance = row['closing_balance']
-			doc.insert(ignore_permissions=True)
-			
+			name = frappe.generate_hash(length=16)
+			schm_code = row['schm_code']
+			prod_info = prod_map.get(schm_code, {})
+
+			bulk_data.append((
+				name,
+				now_time,
+				now_time,
+				session_user,
+				session_user,
+				0,
+				0,
+				sync_date,
+				row['sol_id'],
+				schm_code,
+				row['schm_desc'],
+				row['account_opened'],
+				row['account_closed'],
+				row['opening_number_of_accts'],
+				row['closing_number_of_accounts'],
+				row['opening_balance'],
+				row['closing_balance'],
+				prod_info.get('group_name'),
+				prod_info.get('group_subname')
+			))
+
+		execute_book_position_bulk_insert(bulk_data, chunk_size=5000)
 		frappe.db.commit()
 		return "Success"
 	except Exception as e:
