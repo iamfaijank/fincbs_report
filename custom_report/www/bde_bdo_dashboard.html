@@ -297,7 +297,15 @@ document.getElementById(cfg.sid).value="";
 document.getElementById(cfg.eid).textContent="Expand All";
 document.getElementById(cfg.lid).style.display="block";
 document.getElementById(cfg.tid).style.display="none";
+document.getElementById(cfg.kid).innerHTML="";
+document.getElementById(cfg.zid).innerHTML="";
+document.getElementById(cfg.cid).textContent="";
 var dp=cfg.did?document.getElementById(cfg.did).value:"";
+if(cfg.did&&!dp){
+document.getElementById(cfg.lid).style.display="none";
+document.getElementById(cfg.tid).innerHTML='<div style="text-align:center;padding:60px 20px;color:#94a3b8;font-size:14px;">Please select a date and click <b>Refresh</b> to load data.</div>';
+document.getElementById(cfg.tid).style.display="block";
+return}
 var url=BASE+cfg.api+(dp?"?selected_date="+dp:"");
 apiCall(url).then(function(r){
 if(r&&r.message){
@@ -317,10 +325,10 @@ agent_demand:{api:"get_agent_wise_demand_collection_data",arr:true,did:"aw-date"
 var T={rd_smbg_pending:"RD & SMBG Pending",bucket_wise:"Bucket Wise Account MIS",new_account:"New Account Report",staff_demand:"Staff Wise Demand Vs Collection",agent_demand:"Agent Wise Demand Vs Collection"};
 
 Object.keys(C).forEach(function(id){setup(id,C[id])});
-document.getElementById("bk-date").value=todayStr();
-document.getElementById("na-date").value=todayStr();
-document.getElementById("sw-date").value=todayStr();
-document.getElementById("aw-date").value=todayStr();
+document.getElementById("bk-date").value="";
+document.getElementById("na-date").value="";
+document.getElementById("sw-date").value="";
+document.getElementById("aw-date").value="";
 
 function fetchLastDate(){
 fetch("/api/method/"+BASE+"get_last_available_date",{method:"GET",headers:{"Accept":"application/json"},credentials:"same-origin"}).then(function(r){return r.json()}).then(function(r){
