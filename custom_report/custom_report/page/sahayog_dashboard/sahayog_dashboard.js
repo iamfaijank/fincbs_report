@@ -4839,11 +4839,6 @@ class DrishtiDashboard {
 								<!-- 4-Month Trend Bar Chart Card -->
 								${barChartCardHtml}
 
-								<!-- 4 Month Trend KPI Cards -->
-								<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;">
-									${monthCardsHtml}
-								</div>
-
 								<!-- 4-Month Trend Matrix Table -->
 								<div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
 									<table class="table table-sm" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
