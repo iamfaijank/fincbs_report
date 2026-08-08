@@ -5738,6 +5738,7 @@ def get_rm_wise_ss_vs_data(selected_date=None):
             agent_code AS rm_id,
             agent_name,
             agent_name AS rm_name,
+            agent_status,
             commission_json
         FROM `tabAgent`
         WHERE docstatus < 2

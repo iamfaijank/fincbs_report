@@ -4430,6 +4430,11 @@ class DrishtiDashboard {
 					data.forEach((row, idx) => {
 						const agentCode = row.agent_code || row.rm_id || "-";
 						const agentName = row.agent_name || row.rm_name || "-";
+						const agentStatus = (row.agent_status || "Inactive").trim();
+						const isAgentActive = agentStatus.toLowerCase() === "active" || agentStatus.toLowerCase() === "live";
+						const statusBadge = isAgentActive
+							? `<span style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">Active</span>`
+							: `<span style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">Inactive</span>`;
 						const totCust = row.total_customer ?? row.total_records ?? 0;
 						const totComm = row.total_commission || 0;
 						const isExpanded = !!self.expandedRms[agentCode];
@@ -4442,11 +4447,12 @@ class DrishtiDashboard {
 									<span style="color: #16a34a; text-decoration: underline;">${agentCode}</span>
 								</td>
 								<td style="padding: 8px 12px; font-size: 13px; font-weight: 600; color: #334155;">${agentName}</td>
+								<td style="padding: 8px 12px; text-align: center; font-size: 12px;">${statusBadge}</td>
 								<td style="padding: 8px 12px; text-align: right; font-size: 13px; font-weight: 600;">${fmtNum(totCust)}</td>
 								<td style="padding: 8px 12px; text-align: right; font-size: 13px; font-weight: 700; color: #059669;">${fmtAmt(totComm)}</td>
 							</tr>
 							<tr class="rm-detail-row" data-rm-id="${agentCode}" style="display: ${isExpanded ? 'table-row' : 'none'}; background: #f8fafc;">
-								<td colspan="5" style="padding: 10px 14px;">
+								<td colspan="6" style="padding: 10px 14px;">
 									<div class="rm-category-container" data-rm-id="${agentCode}">
 										<div style="padding: 8px; color: #64748b; font-size: 12px;">Loading Product Breakdown...</div>
 									</div>
@@ -4469,6 +4475,7 @@ class DrishtiDashboard {
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: center; width: 45px;">Sr</th>
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Agent Code</th>
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Agent Name</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: center;">Status</th>
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Customer</th>
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Commission</th>
 									</tr>
@@ -4476,7 +4483,7 @@ class DrishtiDashboard {
 								<tbody>${rowsHtml}</tbody>
 								<tfoot>
 									<tr style="background: #dcfce7; color: #14532d; font-weight: 700; position: sticky; bottom: 0; z-index: 2;">
-										<td colspan="3" style="padding: 10px 12px; text-align: right; font-size: 13px;">GRAND TOTAL (${fmtNum(self.tableData.length)} AGENTS)</td>
+										<td colspan="4" style="padding: 10px 12px; text-align: right; font-size: 13px;">GRAND TOTAL (${fmtNum(self.tableData.length)} AGENTS)</td>
 										<td style="padding: 10px 12px; text-align: right; font-size: 13px;">${fmtNum(grandTotalCust)}</td>
 										<td style="padding: 10px 12px; text-align: right; font-size: 13px; color: #047857;">${fmtAmt(grandTotalComm)}</td>
 									</tr>
