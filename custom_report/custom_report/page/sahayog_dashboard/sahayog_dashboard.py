@@ -1308,37 +1308,62 @@ def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
         cursor.execute(query)
         rows = cursor.fetchall()
 
-        sol_ids_found = [str(r[0]) for r in rows] if rows else []
+        sol_ids_found = [str(r[0]).strip() for r in rows] if rows else []
         branch_map = {}
         if sol_ids_found:
             branches_map = get_sahayog_branches_cached()
             for sid in sol_ids_found:
-                if sid in branches_map:
-                    b = branches_map[sid]
-                    branch_map[sid] = {
-                        "zone": b.get("zone") or "",
-                        "region": b.get("region") or "",
-                        "district": b.get("district") or "",
-                        "branch_name": b.get("branch_name") or ""
-                    }
+                b = branches_map.get(sid) or branches_map.get(sid.lstrip('0')) or {}
+                branch_map[sid] = {
+                    "zone": b.get("zone") or "",
+                    "region": b.get("region") or "",
+                    "district": b.get("district") or "",
+                    "branch_name": b.get("branch_name") or ""
+                }
 
         result = []
         for row in rows:
-            sid = str(row[0])
-            sb = branch_map.get(sid, {})
+            sid = str(row[0]).strip()
+            sb = branch_map.get(sid) or {}
             result.append({
                 "sol_id": sid,
                 "sol_desc": row[1] or "",
-                "zone": sb.get("zone", ""),
-                "region": sb.get("region", ""),
-                "district": sb.get("district", ""),
-                "branch_name": sb.get("branch_name", ""),
+                "zone": sb.get("zone") or "",
+                "region": sb.get("region") or "",
+                "district": sb.get("district") or "",
+                "branch_name": sb.get("branch_name") or "",
                 "total_accounts": row[5] or 0,
                 "total_collection": float(row[6]) if row[6] else 0,
                 "pending_accounts": row[7] or 0,
                 "pending_amount": float(row[8]) if row[8] else 0,
                 "pending_instalments": row[9] or 0
             })
+
+        # Apply User Report Permissions filtering
+        user = frappe.session.user
+        perms = get_user_report_permissions(user)
+
+        if perms.get("is_restricted"):
+            if perms.get("sol_ids"):
+                allowed_sols = set(str(s) for s in perms["sol_ids"])
+                result = [r for r in result if str(r.get("sol_id")) in allowed_sols]
+            else:
+                branches_map = get_sahayog_branches_cached()
+                if perms.get("zone_ids"):
+                    all_zones = set(b["zone"] for b in branches_map.values() if b["zone"])
+                    zone_pattern = re.compile(f"({'|'.join(re.escape(zid) for zid in perms['zone_ids'])})")
+                    matched_zones = set(z for z in all_zones if zone_pattern.search(z))
+                    result = [r for r in result if r.get("zone") in matched_zones]
+
+                if not perms.get("all_regions") and perms.get("region_ids"):
+                    all_regions = set(b["region"] for b in branches_map.values() if b["region"])
+                    region_pattern = re.compile(f"({'|'.join(re.escape(rid) for rid in perms['region_ids'])})")
+                    matched_regions = set(r for r in all_regions if region_pattern.search(r))
+                    result = [r for r in result if r.get("region") in matched_regions]
+
+                if not perms.get("zone_ids") and not perms.get("region_ids") and not perms.get("all_regions"):
+                    result = []
+
         return result
     except Exception as e:
         frappe.log_error(f"Error executing RD/SMBG table query: {str(e)}", "RD SMBG Table API")
@@ -1451,8 +1476,10 @@ def get_daily_account_opening_data(selected_date=None):
     from frappe.utils import getdate
     import datetime
 
+    user = frappe.session.user
+    perms = get_user_report_permissions(user)
+
     if not selected_date:
-        # Default to latest date from database or yesterday
         latest = get_latest_branch_category_report_date()
         if latest:
             selected_date = latest
@@ -1467,7 +1494,6 @@ def get_daily_account_opening_data(selected_date=None):
         start_date_str = "2026-07-01"
         end_date_str = "2026-07-09"
 
-    # Fetch local Product mapping to categorize scheme codes
     try:
         products = get_products_cached()
     except Exception:
@@ -1480,7 +1506,6 @@ def get_daily_account_opening_data(selected_date=None):
         gsub = (p.group_subname or "").upper()
         
         category = None
-
         if gname == "CASA":
             if gsub == "SA":
                 category = "SA"
@@ -1500,53 +1525,19 @@ def get_daily_account_opening_data(selected_date=None):
         if category:
             product_map[code] = category
 
+    # Highly optimized direct aggregation query (avoids heavy Cartesian product CROSS JOIN)
     query = """
-    WITH base_schemes AS (
-        SELECT DISTINCT
-            gam.schm_code,
-            gsp.schm_desc
-        FROM tbaadm.gam gam
-        JOIN tbaadm.gsp gsp
-            ON gam.schm_code = gsp.schm_code
-        WHERE gam.schm_type NOT IN ('OAB','OAP')
-    ),
-    base_sol AS (
         SELECT
-            sol.sol_id,
-            sol.region_name,
-            sol.division_name,
-            sol.circle_office_name
-        FROM tbaadm.sol sol
-        JOIN tbaadm.sst sst
-            ON sst.sol_id = sol.sol_id
-        WHERE sst.set_id BETWEEN '1001' AND '1255'
-    )
-    SELECT
-        bs.schm_code,
-        bs.schm_desc,
-        s.sol_id,
-        s.region_name,
-        s.division_name,
-        s.circle_office_name,
-        COUNT(DISTINCT gam.foracid) AS account_opened
-    FROM base_sol s
-    CROSS JOIN base_schemes bs
-    LEFT JOIN tbaadm.gam gam
-           ON gam.sol_id = s.sol_id
-          AND gam.schm_code = bs.schm_code
-          AND gam.acct_opn_date BETWEEN CAST(%s AS DATE) AND CAST(%s AS DATE)
+            TRIM(gam.sol_id) AS sol_id,
+            TRIM(gam.schm_code) AS schm_code,
+            COUNT(DISTINCT gam.foracid) AS account_opened
+        FROM tbaadm.gam gam
+        WHERE gam.acct_opn_date BETWEEN CAST(%s AS DATE) AND CAST(%s AS DATE)
           AND gam.entity_cre_flg = 'Y'
           AND gam.schm_type NOT IN ('OAB','OAP')
-    GROUP BY
-        bs.schm_code,
-        bs.schm_desc,
-        s.sol_id,
-        s.region_name,
-        s.division_name,
-        s.circle_office_name
-    ORDER BY
-        s.sol_id,
-        bs.schm_code
+        GROUP BY
+            TRIM(gam.sol_id),
+            TRIM(gam.schm_code)
     """
 
     conn = get_dr_connection()
@@ -1559,37 +1550,20 @@ def get_daily_account_opening_data(selected_date=None):
         cursor.execute(query, (start_date_str, end_date_str))
         rows = cursor.fetchall()
         
-        if not rows:
-            frappe.throw(f"No Daily Account Opening data found for the selected date: {selected_date}. Please select a different date.")
-        
-        # Look up zones / regions from local Sahayog Branch
-        sol_ids_found = [str(r[2]).strip() for r in rows] if rows else []
-        branch_map = {}
-        if sol_ids_found:
-            branches_map = get_sahayog_branches_cached()
-            for sid in sol_ids_found:
-                if sid in branches_map:
-                    b = branches_map[sid]
-                    branch_map[sid] = {
-                        "zone": b.get("zone") or "",
-                        "region": b.get("region") or "",
-                        "district": b.get("district") or "",
-                        "branch_name": b.get("branch_name") or ""
-                    }
+        branches_map = get_sahayog_branches_cached()
 
         # Group and aggregate raw records by branch
         branch_aggregates = {}
         for row in rows:
-            schm_code = (row[0] or "").strip()
-            sid = str(row[2]).strip()
-            region_name = row[3]
-            circle_office_name = row[5]
-            count = int(row[6]) if row[6] is not None else 0
+            sid = str(row[0]).strip()
+            schm_code = (row[1] or "").strip()
+            count = int(row[2]) if row[2] is not None else 0
             
-            sb = branch_map.get(sid, {})
-            zone = sb.get("zone", circle_office_name or "Unknown Zone")
-            region = sb.get("region", region_name or "Unknown Region")
-            branch_name = sb.get("branch_name", f"Branch {sid}")
+            b = branches_map.get(sid) or branches_map.get(sid.lstrip('0')) or {}
+            zone = b.get("zone") or "Unknown Zone"
+            region = b.get("region") or "Unknown Region"
+            district = b.get("district") or "Unknown District"
+            branch_name = b.get("branch_name") or f"Branch {sid}"
             
             if sid not in branch_aggregates:
                 branch_aggregates[sid] = {
@@ -1597,6 +1571,7 @@ def get_daily_account_opening_data(selected_date=None):
                     "branch_name": branch_name,
                     "zone": zone,
                     "region": region,
+                    "district": district,
                     "ca": 0,
                     "sa": 0,
                     "tasc": 0,
@@ -1604,6 +1579,8 @@ def get_daily_account_opening_data(selected_date=None):
                     "smbg": 0,
                     "dd": 0,
                     "fd": 0,
+                    "ntb": 0,
+                    "evr": 0,
                     "total": 0
                 }
                 
@@ -1621,18 +1598,23 @@ def get_daily_account_opening_data(selected_date=None):
                     
             if cat == "CA":
                 branch_aggregates[sid]["ca"] += count
+                branch_aggregates[sid]["ntb"] += count
                 branch_aggregates[sid]["total"] += count
             elif cat == "SA":
                 branch_aggregates[sid]["sa"] += count
+                branch_aggregates[sid]["ntb"] += count
                 branch_aggregates[sid]["total"] += count
             elif cat == "TASC":
                 branch_aggregates[sid]["tasc"] += count
+                branch_aggregates[sid]["evr"] += count
                 branch_aggregates[sid]["total"] += count
             elif cat == "RD":
                 branch_aggregates[sid]["rd"] += count
+                branch_aggregates[sid]["evr"] += count
                 branch_aggregates[sid]["total"] += count
             elif cat == "SMBG":
                 branch_aggregates[sid]["smbg"] += count
+                branch_aggregates[sid]["evr"] += count
                 branch_aggregates[sid]["total"] += count
             elif cat == "DD":
                 branch_aggregates[sid]["dd"] += count
@@ -1640,8 +1622,22 @@ def get_daily_account_opening_data(selected_date=None):
             elif cat == "FD":
                 branch_aggregates[sid]["fd"] += count
                 branch_aggregates[sid]["total"] += count
-            
-        return list(branch_aggregates.values())
+
+        result = list(branch_aggregates.values())
+
+        # Enforce Report Preference permissions
+        if perms.get("is_restricted"):
+            allowed_zones = perms.get("zones", [])
+            allowed_sol_ids = perms.get("sol_ids", [])
+            if allowed_zones:
+                import re
+                allowed_norm = [re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones]
+                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in allowed_norm]
+            elif allowed_sol_ids:
+                allowed_sols_str = [str(s).strip() for s in allowed_sol_ids]
+                result = [r for r in result if str(r.get("sol_id")).strip() in allowed_sols_str]
+
+        return result
         
     except Exception as e:
         frappe.log_error(f"Error executing Daily Account Opening query: {str(e)}", "Daily Account Opening API")
@@ -1657,8 +1653,11 @@ def get_daily_account_opening_data(selected_date=None):
 @sahayog_cache(ttl=86400)
 def get_ntb_evr_data(selected_date=None):
     from custom_report.db_connection import get_dr_connection
-    from frappe.utils import getdate, get_last_day, add_months
+    from frappe.utils import getdate, add_months
     import datetime
+
+    user = frappe.session.user
+    perms = get_user_report_permissions(user)
 
     if not selected_date:
         selected_date = str(datetime.date.today())
@@ -1775,10 +1774,7 @@ def get_ntb_evr_data(selected_date=None):
         FROM opening_calc_raw
     )
     SELECT
-        s.circle_office_name AS zone,
-        s.region_name AS region,
         wb.sol_id,
-        s.sol_desc AS branch_name,
         wb.schm_code,
         CASE
             WHEN wb.CIF_ID_Opening_Date IS NULL THEN 'NTB'
@@ -1793,8 +1789,8 @@ def get_ntb_evr_data(selected_date=None):
     LEFT JOIN opening_mab_calc om ON om.foracid = wb.foracid
     LEFT JOIN custom.dsamap dsamap ON dsamap.account_number = wb.foracid
     LEFT JOIN tbaadm.get get ON dsamap.rm_id = get.emp_id
-    GROUP BY s.circle_office_name, s.region_name, wb.sol_id, s.sol_desc, wb.schm_code, cif_status
-    ORDER BY s.circle_office_name, s.region_name, wb.sol_id, wb.schm_code, cif_status
+    GROUP BY wb.sol_id, wb.schm_code, cif_status
+    ORDER BY wb.sol_id, wb.schm_code, cif_status
     """
 
     conn = get_dr_connection()
@@ -1807,35 +1803,30 @@ def get_ntb_evr_data(selected_date=None):
         cursor.execute(query)
         rows = cursor.fetchall()
         
-        if not rows:
-            frappe.throw(f"No NTB & EVR data found for the selected date: {selected_date}. Please select a different date.")
+        branches_map = get_sahayog_branches_cached()
 
         branch_map = {}
         for row in rows:
-            raw_zone = row[0] or "Unknown"
-            region = row[1] or "Unknown"
-            sol_id = str(row[2]) if row[2] else ""
-            branch_name = row[3] or sol_id
-            schema = row[4] or ""
-            status = row[5] or ""
-            count = int(row[6]) if row[6] else 0
+            sol_id = str(row[0]).strip() if row[0] else ""
+            schema = row[1] or ""
+            status = row[2] or ""
+            count = int(row[3]) if row[3] else 0
 
-            normalized_zone = re.sub(r"[\s\-]+", "", raw_zone).upper()
-            # Extract number from zone name for display
-            zone_num = re.sub(r"[^0-9]", "", normalized_zone)
-            display_zone = f"ZONE-{zone_num}" if zone_num else normalized_zone
-
-            normalized_region = re.sub(r"[\s\-]+", "", region).upper()
-            # Fix common typos like RIGION -> REGION
-            normalized_region = normalized_region.replace("RIGION", "REGION")
-            # Extract number from region name for display
-            region_num = re.sub(r"[^0-9]", "", normalized_region)
-            display_region = f"REGION-{region_num}" if region_num else normalized_region
+            b = branches_map.get(sol_id) or branches_map.get(sol_id.lstrip('0')) or {}
+            zone = b.get("zone") or "Unknown Zone"
+            region = b.get("region") or "Unknown Region"
+            district = b.get("district") or "Unknown District"
+            branch_name = b.get("branch_name") or f"Branch {sol_id}"
 
             if sol_id not in branch_map:
                 branch_map[sol_id] = {
-                    "zone": display_zone, "region": display_region, "sol_id": sol_id,
-                    "branch_name": branch_name, "ntb": 0, "evr": 0
+                    "sol_id": sol_id,
+                    "branch_name": branch_name,
+                    "zone": zone,
+                    "region": region,
+                    "district": district,
+                    "ntb": 0,
+                    "evr": 0
                 }
             if status == "NTB":
                 branch_map[sol_id]["ntb"] += count
@@ -1843,8 +1834,20 @@ def get_ntb_evr_data(selected_date=None):
                 branch_map[sol_id]["evr"] += count
 
         result = list(branch_map.values())
-        result.sort(key=lambda x: (x["zone"], x["region"], x["sol_id"]))
-        return {"total_rows": len(rows), "data": result}
+
+        if perms.get("is_restricted"):
+            allowed_zones = perms.get("zones", [])
+            allowed_sol_ids = perms.get("sol_ids", [])
+            if allowed_zones:
+                import re
+                allowed_norm = [re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones]
+                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in allowed_norm]
+            elif allowed_sol_ids:
+                allowed_sols_str = [str(s).strip() for s in allowed_sol_ids]
+                result = [r for r in result if str(r.get("sol_id")).strip() in allowed_sols_str]
+
+        result.sort(key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+        return {"total_rows": len(result), "data": result}
 
     except Exception as e:
         frappe.log_error(f"Error executing NTB EVR query: {str(e)}", "NTB EVR API")
@@ -5726,39 +5729,202 @@ def get_agent_customer_details(report_type, rm_id, selected_date=None):
 
 
 @frappe.whitelist()
-@sahayog_cache(ttl=86400)
 def get_rm_wise_ss_vs_data(selected_date=None):
     """
-    Fetches Agent Code and Agent Name directly from tabAgent using raw SQL.
-    Attaches total_customer and total_commission fields matching screenshot.
+    Superfast Zero-CPU SQL Fetching of Agent Code, Name, Status, Branch, Zone, Region, District, Auth ID, Employee details.
+    Respects User Report Permissions (Zone, Region, SOL ID).
     """
-    data = frappe.db.sql("""
+    json_path = '$.grand_total_commission'
+    if selected_date:
+        dt = frappe.utils.getdate(selected_date)
+        json_path = f'$.{dt.year}.{str(dt.month).zfill(2)}.total_commission'
+
+    user = frappe.session.user
+    perms = get_user_report_permissions(user)
+
+    where_clauses = ["A.docstatus < 2", "A.agent_type IN ('RDDSA', 'DDDSA')"]
+    where_args = []
+
+    if perms.get("is_restricted"):
+        if perms.get("sol_ids"):
+            sols = perms.get("sol_ids")
+            where_clauses.append("(A.branch_code IN %s OR B.sol_id IN %s)")
+            where_args.extend([tuple(sols), tuple(sols)])
+        else:
+            branches_map = get_sahayog_branches_cached()
+            if perms.get("zone_ids"):
+                all_zones = set(b["zone"] for b in branches_map.values() if b["zone"])
+                zone_pattern = re.compile(f"({'|'.join(re.escape(zid) for zid in perms['zone_ids'])})")
+                matched_zones = [z for z in all_zones if zone_pattern.search(z)]
+                if matched_zones:
+                    where_clauses.append("B.zone IN %s")
+                    where_args.append(tuple(matched_zones))
+                else:
+                    where_clauses.append("1 = 0")
+
+            if not perms.get("all_regions") and perms.get("region_ids"):
+                all_regions = set(b["region"] for b in branches_map.values() if b["region"])
+                region_pattern = re.compile(f"({'|'.join(re.escape(rid) for rid in perms['region_ids'])})")
+                matched_regions = [r for r in all_regions if region_pattern.search(r)]
+                if matched_regions:
+                    where_clauses.append("B.region IN %s")
+                    where_args.append(tuple(matched_regions))
+                else:
+                    where_clauses.append("1 = 0")
+
+            if not perms.get("zone_ids") and not perms.get("region_ids") and not perms.get("all_regions"):
+                where_clauses.append("1 = 0")
+
+    where_stmt = " AND ".join(where_clauses)
+
+    sql_query = f"""
         SELECT 
-            agent_code,
-            agent_code AS rm_id,
-            agent_name,
-            agent_name AS rm_name
-        FROM `tabAgent`
-        WHERE docstatus < 2
-        ORDER BY agent_code ASC
-    """, as_dict=True)
+            A.name,
+            A.agent_code,
+            A.agent_code AS rm_id,
+            A.agent_name,
+            A.agent_name AS rm_name,
+            A.agent_status,
+            A.branch_code,
+            A.branch_name,
+            B.zone,
+            B.region,
+            B.district,
+            A.auth_id,
+            A.employee,
+            E.employee_name,
+            E.designation AS emp_designation,
+            E.department AS emp_department,
+            E.branch AS emp_branch,
+            E.cell_number AS emp_cell_number,
+            A.phone_number,
+            A.role,
+            A.commission_json,
+            CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(A.commission_json, '{json_path}')), 0) AS DECIMAL(18,2)) AS total_commission
+        FROM `tabAgent` A
+        LEFT JOIN `tabEmployee` E ON A.employee = E.name
+        LEFT JOIN `tabSahayog Branch` B ON (A.branch_code = B.sol_id OR A.branch_code = B.branch_code)
+        WHERE {where_stmt}
+        ORDER BY total_commission DESC
+    """
+    data = frappe.db.sql(sql_query, tuple(where_args) if where_args else None, as_dict=True)
 
-    for row in data:
-        row['total_customer'] = 32
-        row['total_commission'] = 325325.00
-
-    return {"data": data}
+    return {"data": data, "permissions": perms}
 
 
 @frappe.whitelist()
-@sahayog_cache(ttl=86400)
 def get_rm_wise_category_breakdown(rm_id, selected_date=None):
     """
-    Returns Product breakdown for specified agent matching screenshot layout.
+    Returns Product breakdown & 4-Month Trend Matrix for specified agent 100% directly from tabAgent.commission_json.
     """
-    return [
-        {"product_name": "DAM", "report_type": "DAM", "total_customer": 10, "record_count": 10, "total_commission": 353.00},
-        {"product_name": "SMBG", "report_type": "SMBG", "total_customer": 10, "record_count": 10, "total_commission": 3534.00},
-        {"product_name": "RD", "report_type": "RD", "total_customer": 10, "record_count": 10, "total_commission": 24.00},
-        {"product_name": "DD SAV", "report_type": "DD SAV", "total_customer": 2, "record_count": 2, "total_commission": 4244.00}
-    ]
+    if not rm_id:
+        return {}
+
+    raw_json = frappe.db.get_value(
+        "Agent",
+        {"name": rm_id},
+        "commission_json"
+    ) or frappe.db.get_value(
+        "Agent",
+        {"agent_code": rm_id},
+        "commission_json"
+    )
+
+    comm_dict = frappe.parse_json(raw_json) if raw_json else {}
+
+    today = frappe.utils.getdate(selected_date or frappe.utils.nowdate())
+    target_months = []
+    month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+    for i in range(3, -1, -1):
+        dt = frappe.utils.add_months(today, -i)
+        y_str = str(dt.year)
+        m_str = str(dt.month).zfill(2)
+        m_name = f"{month_names[dt.month - 1]} {dt.year}"
+        target_months.append({
+            "year": y_str,
+            "month": m_str,
+            "label": m_name,
+            "is_current": (i == 0)
+        })
+
+    standard_products = ["DAM", "SMBG", "RD", "DD SAV", "FD", "FD 1", "DD TDA", "SHARE"]
+
+    product_matrix = {}
+    for prod in standard_products:
+        product_matrix[prod] = {
+            "product_name": prod,
+            "months": {},
+            "total_commission": 0.0
+        }
+
+    month_totals = {m["label"]: 0.0 for m in target_months}
+    grand_4m_total = 0.0
+
+    for m_info in target_months:
+        yr = m_info["year"]
+        mth = m_info["month"]
+        lbl = m_info["label"]
+
+        if yr in comm_dict and isinstance(comm_dict[yr], dict) and mth in comm_dict[yr] and isinstance(comm_dict[yr][mth], dict):
+            m_data = comm_dict[yr][mth]
+            for prod in standard_products:
+                val = float(m_data.get(prod, 0.0) or 0.0)
+                product_matrix[prod]["months"][lbl] = round(val, 2)
+                product_matrix[prod]["total_commission"] += val
+                month_totals[lbl] += val
+                grand_4m_total += val
+        else:
+            for prod in standard_products:
+                product_matrix[prod]["months"][lbl] = 0.0
+
+    breakdown_list = []
+    for prod in standard_products:
+        p_data = product_matrix[prod]
+        tot = round(p_data["total_commission"], 2)
+        breakdown_list.append({
+            "product_name": prod,
+            "report_type": prod,
+            "months": p_data["months"],
+            "total_commission": tot,
+            "total_customer": 1 if tot > 0 else 0
+        })
+
+    breakdown_list.sort(key=lambda x: x["total_commission"], reverse=True)
+
+    agent_info_list = frappe.db.sql("""
+        SELECT 
+            A.agent_code,
+            A.agent_name,
+            A.branch_code,
+            A.branch_name,
+            B.zone,
+            B.region,
+            B.district,
+            A.auth_id,
+            A.employee,
+            E.employee_name,
+            E.designation AS emp_designation,
+            E.department AS emp_department,
+            E.branch AS emp_branch,
+            E.cell_number AS emp_cell_number,
+            A.agent_status,
+            A.phone_number,
+            A.role
+        FROM `tabAgent` A
+        LEFT JOIN `tabEmployee` E ON A.employee = E.name
+        LEFT JOIN `tabSahayog Branch` B ON (A.branch_code = B.sol_id OR A.branch_code = B.branch_code)
+        WHERE A.name = %s OR A.agent_code = %s
+        LIMIT 1
+    """, (rm_id, rm_id), as_dict=True)
+
+    agent_info = agent_info_list[0] if agent_info_list else {}
+
+    return {
+        "agent_info": agent_info,
+        "breakdown": breakdown_list,
+        "target_months": target_months,
+        "month_totals": {k: round(v, 2) for k, v in month_totals.items()},
+        "grand_4m_total": round(grand_4m_total, 2),
+        "comm_dict": comm_dict
+    }
