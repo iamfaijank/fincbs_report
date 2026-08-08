@@ -1,6 +1,7 @@
 # Copyright (c) 2026, talib and contributors
 # For license information, please see license.txt
 
+import time
 import frappe
 import psycopg2
 import psycopg2.extras
@@ -1243,37 +1244,55 @@ class SSandVSSyncEngine:
 		start_date = get_first_day(self.sync_date)
 		end_date = self.sync_date
 
-		# 1. Establish database connection using existing DR mechanism
-		conn = None
-		try:
-			conn = get_dr_connection()
-		except Exception as e:
-			frappe.log_error(
-				message=f"DR Database connection failed for SS & VS sync: {str(e)}",
-				title="SS & VS Sync Connection Error"
-			)
-			frappe.throw(_("Failed to connect to external PostgreSQL database: {0}").format(str(e)))
-
-		# 2. Execute query
+		# 1 & 2. Establish connection and execute query with recovery conflict retry loop
 		rows = []
-		try:
-			with conn:
-				with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
-					cursor.execute(self.query, {
-						"date": self.sync_date,
-						"start_date": start_date,
-						"end_date": end_date
-					})
-					rows = cursor.fetchall()
-		except Exception as e:
-			frappe.log_error(
-				message=f"SQL Execution error in SS & VS sync ({self.report_type}): {str(e)}",
-				title="SS & VS Sync Query Error"
-			)
-			frappe.throw(_("Error executing SQL query for report: {0}").format(str(e)))
-		finally:
-			if conn:
-				conn.close()
+		max_retries = 5
+
+		for attempt in range(max_retries):
+			conn = None
+			try:
+				conn = get_dr_connection()
+				with conn:
+					with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+						try:
+							cursor.execute("SET statement_timeout = 0;")
+						except Exception:
+							pass
+						cursor.execute(self.query, {
+							"date": self.sync_date,
+							"start_date": start_date,
+							"end_date": end_date
+						})
+						rows = cursor.fetchall()
+				if conn:
+					try:
+						conn.close()
+					except Exception:
+						pass
+				break # Success, exit retry loop
+			except Exception as e:
+				if conn:
+					try:
+						conn.close()
+					except Exception:
+						pass
+
+				err_str = str(e).lower()
+				is_recovery_conflict = any(term in err_str for term in [
+					"conflict with recovery", "canceling statement", "querycanceled",
+					"serializationfailure", "55006", "40001"
+				])
+
+				if is_recovery_conflict and attempt < max_retries - 1:
+					retry_delay = (attempt + 1) * 3
+					frappe.log_error(f"DR DB Query Conflict for {self.report_type} (Attempt {attempt + 1}/{max_retries}). Retrying in {retry_delay}s...", "SS & VS Sync Retry")
+					time.sleep(retry_delay)
+				else:
+					frappe.log_error(
+						message=f"SQL Execution error in SS & VS sync ({self.report_type}): {str(e)}",
+						title="SS & VS Sync Query Error"
+					)
+					frappe.throw(_("Error executing SQL query for report: {0}").format(str(e)))
 
 		self.summary["processed"] = len(rows)
 		if not rows:
