@@ -5728,9 +5728,15 @@ def get_agent_customer_details(report_type, rm_id, selected_date=None):
 @frappe.whitelist()
 def get_rm_wise_ss_vs_data(selected_date=None):
     """
-    Fetches Agent Code, Agent Name, Status, and Commission 100% directly from tabAgent.commission_json using raw SQL.
+    Superfast Zero-CPU SQL Fetching of Agent Code, Name, Status, and Commission directly via MariaDB JSON_EXTRACT.
+    No Python loops, no Python JSON parsing, no Python sorting.
     """
-    data = frappe.db.sql("""
+    json_path = '$.grand_total_commission'
+    if selected_date:
+        dt = frappe.utils.getdate(selected_date)
+        json_path = f'$.{dt.year}.{str(dt.month).zfill(2)}.total_commission'
+
+    sql_query = f"""
         SELECT 
             name,
             agent_code,
@@ -5738,50 +5744,13 @@ def get_rm_wise_ss_vs_data(selected_date=None):
             agent_name,
             agent_name AS rm_name,
             agent_status,
-            commission_json
+            CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(commission_json, '{json_path}')), 0) AS DECIMAL(18,2)) AS total_commission
         FROM `tabAgent`
         WHERE docstatus < 2
           AND agent_type IN ('RDDSA', 'DDDSA')
-        ORDER BY agent_code ASC
-    """, as_dict=True)
-
-    target_year = None
-    target_month = None
-    if selected_date:
-        dt = frappe.utils.getdate(selected_date)
-        target_year = str(dt.year)
-        target_month = str(dt.month).zfill(2)
-
-    for row in data:
-        raw_json = row.pop('commission_json', None)
-        comm_dict = frappe.parse_json(raw_json) if raw_json else {}
-
-        agent_comm = 0.0
-        cust_count = 0
-
-        if comm_dict and isinstance(comm_dict, dict):
-            if target_year and target_month:
-                if target_year in comm_dict and target_month in comm_dict[target_year]:
-                    m_data = comm_dict[target_year][target_month]
-                    agent_comm = float(m_data.get("total_commission", 0.0) or 0.0)
-                    cust_count = len([k for k in m_data.keys() if k != "total_commission"])
-                else:
-                    agent_comm = 0.0
-                    cust_count = 0
-            else:
-                agent_comm = float(comm_dict.get("grand_total_commission", 0.0) or 0.0)
-                cust_count = 0
-                for yr, yr_data in comm_dict.items():
-                    if isinstance(yr_data, dict):
-                        for mth, mth_data in yr_data.items():
-                            if isinstance(mth_data, dict):
-                                cust_count += len([k for k in mth_data.keys() if k != "total_commission"])
-
-        row['total_customer'] = cust_count
-        row['total_commission'] = round(agent_comm, 2)
-
-    # Sort High to Low by Commission
-    data.sort(key=lambda r: (r.get('total_commission', 0.0), r.get('total_customer', 0)), reverse=True)
+        ORDER BY total_commission DESC
+    """
+    data = frappe.db.sql(sql_query, as_dict=True)
 
     return {"data": data}
 
