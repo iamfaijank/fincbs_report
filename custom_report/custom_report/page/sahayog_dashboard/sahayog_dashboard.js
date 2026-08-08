@@ -804,274 +804,31 @@ class DrishtiDashboard {
 				},
 				renderAnalysisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
-					const data = self.tableData || [];
-
-					if (!data || data.length === 0) {
-						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">No data to display.</div>');
-						return;
+					let data = self.tableData || [];
+					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+						data = data.filter(r => self.selectedMisZones.includes(r.zone));
 					}
-
-					if (!self.expandedTreeNodes) self.expandedTreeNodes = {};
-
-					// Build Tree Data (Zone -> Region -> District -> SOL)
-					const rootNodes = [];
-					const zMap = {};
-
-					data.forEach(r => {
-						const zName = (r.zone || "OTHER ZONE").trim();
-						const rName = (r.region || "OTHER REGION").trim();
-						const dName = (r.district || "OTHER DISTRICT").trim();
-						const sCode = (r.sol_id || "-").trim();
-						const sName = (r.branch_name || r.sol_desc || sCode).trim();
-						const solLabel = sCode !== '-' ? `${sName} (${sCode})` : sName;
-
-						const totAccts = r.total_accounts || 0;
-						const totColl = r.total_collection || 0;
-						const pendAccts = r.pending_accounts || 0;
-						const pendAmt = r.pending_amount || 0;
-						const pendInst = r.pending_instalments || 0;
-
-						if (!zMap[zName]) {
-							zMap[zName] = {
-								id: `rd_z_${zName}`,
-								name: zName,
-								code: zName,
-								type: "Zone",
-								level: 1,
-								total_accounts: 0,
-								total_collection: 0,
-								pending_accounts: 0,
-								pending_amount: 0,
-								pending_instalments: 0,
-								children: {}
-							};
-							rootNodes.push(zMap[zName]);
-						}
-						zMap[zName].total_accounts += totAccts;
-						zMap[zName].total_collection += totColl;
-						zMap[zName].pending_accounts += pendAccts;
-						zMap[zName].pending_amount += pendAmt;
-						zMap[zName].pending_instalments += pendInst;
-
-						const rMap = zMap[zName].children;
-						if (!rMap[rName]) {
-							rMap[rName] = {
-								id: `rd_r_${zName}_${rName}`,
-								name: rName,
-								code: rName,
-								type: "Region",
-								level: 2,
-								total_accounts: 0,
-								total_collection: 0,
-								pending_accounts: 0,
-								pending_amount: 0,
-								pending_instalments: 0,
-								children: {}
-							};
-						}
-						rMap[rName].total_accounts += totAccts;
-						rMap[rName].total_collection += totColl;
-						rMap[rName].pending_accounts += pendAccts;
-						rMap[rName].pending_amount += pendAmt;
-						rMap[rName].pending_instalments += pendInst;
-
-						const dMap = rMap[rName].children;
-						if (!dMap[dName]) {
-							dMap[dName] = {
-								id: `rd_d_${zName}_${rName}_${dName}`,
-								name: dName,
-								code: dName,
-								type: "District",
-								level: 3,
-								total_accounts: 0,
-								total_collection: 0,
-								pending_accounts: 0,
-								pending_amount: 0,
-								pending_instalments: 0,
-								children: {}
-							};
-						}
-						dMap[dName].total_accounts += totAccts;
-						dMap[dName].total_collection += totColl;
-						dMap[dName].pending_accounts += pendAccts;
-						dMap[dName].pending_amount += pendAmt;
-						dMap[dName].pending_instalments += pendInst;
-
-						const sMap = dMap[dName].children;
-						if (!sMap[sCode]) {
-							sMap[sCode] = {
-								id: `rd_s_${zName}_${rName}_${dName}_${sCode}`,
-								name: solLabel,
-								code: sCode,
-								type: "SOL",
-								level: 4,
-								total_accounts: totAccts,
-								total_collection: totColl,
-								pending_accounts: pendAccts,
-								pending_amount: pendAmt,
-								pending_instalments: pendInst,
-								children: []
-							};
-						}
-					});
-
-					rootNodes.sort((a, b) => b.pending_amount - a.pending_amount);
-
-					const allNodeIds = [];
-					const collectAllNodeIds = (nodes) => {
-						nodes.forEach(n => {
-							if (n.level < 4) {
-								allNodeIds.push(n.id);
-								let childList = Array.isArray(n.children) ? n.children : Object.values(n.children);
-								collectAllNodeIds(childList);
-							}
-						});
-					};
-					collectAllNodeIds(rootNodes);
-
-					let grandTotal = {
-						total_accounts: 0,
-						total_collection: 0,
-						pending_accounts: 0,
-						pending_amount: 0,
-						pending_instalments: 0
-					};
-					data.forEach(r => {
-						grandTotal.total_accounts += (r.total_accounts || 0);
-						grandTotal.total_collection += (r.total_collection || 0);
-						grandTotal.pending_accounts += (r.pending_accounts || 0);
-						grandTotal.pending_amount += (r.pending_amount || 0);
-						grandTotal.pending_instalments += (r.pending_instalments || 0);
-					});
-
-					const renderTreeRows = (nodes) => {
-						let html = "";
-						nodes.forEach(node => {
-							const isExpanded = !!self.expandedTreeNodes[node.id];
-							const indent = (node.level - 1) * 10 + 10;
-							const hasChildren = node.level < 4;
-
-							let typeBadgeBg = "#e0f2fe";
-							let typeBadgeColor = "#0369a1";
-							let typeBadgeBorder = "#7dd3fc";
-							if (node.level === 1) { typeBadgeBg = "#f3e8ff"; typeBadgeColor = "#7e22ce"; typeBadgeBorder = "#d8b4fe"; } // Zone
-							else if (node.level === 2) { typeBadgeBg = "#e0e7ff"; typeBadgeColor = "#3730a3"; typeBadgeBorder = "#a5b4fc"; } // Region
-							else if (node.level === 3) { typeBadgeBg = "#fef3c7"; typeBadgeColor = "#92400e"; typeBadgeBorder = "#fcd34d"; } // District
-							else if (node.level === 4) { typeBadgeBg = "#ccfbf1"; typeBadgeColor = "#115e59"; typeBadgeBorder = "#5eead4"; } // SOL
-
-							let rowBg = '#ffffff';
-							if (node.level === 1) rowBg = '#f8fafc';
-							else if (node.level === 2) rowBg = '#ffffff';
-							else if (node.level === 3) rowBg = '#f8fafc';
-							else if (node.level === 4) rowBg = '#f0fdfa';
-
-							html += `
-								<tr class="rd-tree-row" data-node-id="${node.id}" data-level="${node.level}" style="cursor: pointer; background: ${rowBg}; border-bottom: 1px solid #e2e8f0;">
-									<td style="padding: 8px 12px; text-align: left; padding-left: ${indent}px; font-weight: ${node.level < 4 ? '700' : '600'}; color: #1e293b;">
-										${hasChildren ? `<span class="tree-toggle-icon" style="display: inline-block; width: 16px; color: #417d81; font-weight: 800;">${isExpanded ? '▼' : '▶'}</span>` : '<span style="display: inline-block; width: 16px; color: #94a3b8;">•</span>'}
-										<span style="color: ${node.level === 4 ? '#417d81' : '#0f172a'};">${node.name}</span>
-									</td>
-									<td style="padding: 8px 12px; text-align: left; font-size: 12px; font-weight: 700; color: #417d81;">${node.code}</td>
-									<td style="padding: 8px 12px; text-align: left; font-size: 11px;">
-										<span style="background: ${typeBadgeBg}; color: ${typeBadgeColor}; border: 1px solid ${typeBadgeBorder}; padding: 2px 8px; border-radius: 12px; font-weight: 700;">${node.type}</span>
-									</td>
-									<td style="padding: 8px 12px; text-align: right; font-size: 12px; font-weight: 600;">${fmtNum(node.total_accounts)}</td>
-									<td style="padding: 8px 12px; text-align: right; font-size: 12px; font-weight: 600; color: #15803d;">${fmtAmt(node.total_collection)}</td>
-									<td style="padding: 8px 12px; text-align: right; font-size: 12px; font-weight: 700; color: #dc2626;">${fmtNum(node.pending_accounts)}</td>
-									<td style="padding: 8px 12px; text-align: right; font-size: 12px; font-weight: 800; color: #dc2626;">${fmtAmt(node.pending_amount)}</td>
-									<td style="padding: 8px 12px; text-align: right; font-size: 12px; font-weight: 600; color: #b91c1c;">${fmtNum(node.pending_instalments)}</td>
-								</tr>
-							`;
-
-							if (hasChildren && isExpanded) {
-								let childNodes = [];
-								if (Array.isArray(node.children)) {
-									childNodes = node.children;
-								} else if (typeof node.children === "object") {
-									childNodes = Object.values(node.children);
-								}
-								childNodes.sort((a, b) => b.pending_amount - a.pending_amount);
-								html += renderTreeRows(childNodes);
-							}
-						});
-						return html;
-					};
-
-					const treeRowsHtml = renderTreeRows(rootNodes);
-
-					const controlBarHtml = `
-						<div class="rm-pagination-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-							<div style="font-size: 12px; font-weight: 700; color: #417d81; display: flex; align-items: center; gap: 8px;">
-								<span>🌳 RD & SMBG Pending (Zone → Region → District → SOL)</span>
-								<span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700;">${fmtNum(data.length)} Branches Total</span>
-							</div>
-							<div style="display: flex; align-items: center; gap: 8px;">
-								<button type="button" class="btn btn-xs rd-tree-expand-all" style="background: rgba(65, 125, 129, 0.1); color: #417d81; border: 1px solid rgba(65, 125, 129, 0.3); font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
-									📂 Expand All
-								</button>
-								<button type="button" class="btn btn-xs rd-tree-collapse-all" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
-									📁 Collapse All
-								</button>
-							</div>
-						</div>
-					`;
-
-					const tableHtml = `
-						<style>
-							.rd-tree-row { transition: background-color 0.15s ease-in-out; }
-							.rd-tree-row:hover { background-color: #f0fdfa !important; }
-						</style>
-						${controlBarHtml}
-						<div style="max-height: 650px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-							<table class="table table-sm table-hover" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
-								<thead>
-									<tr style="background: #417d81; color: #ffffff; position: sticky; top: 0; z-index: 2;">
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Z / R / D / SOL Name</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Code / ID</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Level</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Accounts</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Collection</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Pending Accounts</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Pending Amount</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Pending Instalments</th>
-									</tr>
-								</thead>
-								<tbody>${treeRowsHtml}</tbody>
-								<tfoot>
-									<tr style="background: rgba(65, 125, 129, 0.08); color: #1e293b; font-weight: 700; position: sticky; bottom: 0; z-index: 2; border-top: 2px solid #417d81;">
-										<td colspan="3" style="padding: 10px 12px; text-align: left; font-size: 12px; color: #417d81;">GRAND TOTAL (${fmtNum(data.length)} BRANCHES)</td>
-										<td style="padding: 10px 12px; text-align: right; font-size: 12px;">${fmtNum(grandTotal.total_accounts)}</td>
-										<td style="padding: 10px 12px; text-align: right; font-size: 12px; color: #15803d;">${fmtAmt(grandTotal.total_collection)}</td>
-										<td style="padding: 10px 12px; text-align: right; font-size: 12px; color: #dc2626;">${fmtNum(grandTotal.pending_accounts)}</td>
-										<td style="padding: 10px 12px; text-align: right; font-size: 13px; color: #dc2626; font-weight: 800;">${fmtAmt(grandTotal.pending_amount)}</td>
-										<td style="padding: 10px 12px; text-align: right; font-size: 12px; color: #b91c1c;">${fmtNum(grandTotal.pending_instalments)}</td>
-									</tr>
-								</tfoot>
-							</table>
-						</div>
-					`;
-
-					tableContainer.html(tableHtml).show();
-
-					// Tree Event Handlers
-					tableContainer.off("click", ".rd-tree-row").on("click", ".rd-tree-row", function () {
-						const nodeId = $(this).data("node-id");
-						const level = parseInt($(this).data("level"));
-						if (level < 4) {
-							self.expandedTreeNodes[nodeId] = !self.expandedTreeNodes[nodeId];
-							self.renderAnalysisTable(tableContainer, dashboardInstance);
-						}
-					});
-
-					tableContainer.off("click", ".rd-tree-expand-all").on("click", ".rd-tree-expand-all", function () {
-						allNodeIds.forEach(id => self.expandedTreeNodes[id] = true);
-						self.renderAnalysisTable(tableContainer, dashboardInstance);
-					});
-
-					tableContainer.off("click", ".rd-tree-collapse-all").on("click", ".rd-tree-collapse-all", function () {
-						self.expandedTreeNodes = {};
-						self.renderAnalysisTable(tableContainer, dashboardInstance);
-					});
+					if (self.searchTerm) {
+						const term = self.searchTerm.toLowerCase();
+						data = data.filter(r => (r.branch_name || "").toLowerCase().includes(term) || (r.sol_id || "").toLowerCase().includes(term));
+					}
+					const metricCols = [
+						{ key: "sa", label: "SA ACCOUNTS" },
+						{ key: "ca", label: "CA ACCOUNTS" },
+						{ key: "tasc", label: "TASC ACCOUNTS" },
+						{ key: "rd", label: "RD ACCOUNTS" },
+						{ key: "smbg", label: "SMBG ACCOUNTS" },
+						{ key: "dd", label: "DD ACCOUNTS" },
+						{ key: "fd", label: "FD ACCOUNTS" },
+						{ key: "total", label: "TOTAL OPENED", style: "color: #15803d; font-weight: 800;" }
+					];
+					dashboardInstance.renderGeneric4LevelTreeTable(
+						tableContainer,
+						self,
+						data,
+						metricCols,
+						"Daily Account Opening"
+					);
 				},
 				renderZoneFilterTags: function (container, dashboardInstance) {
 					const self = this;
