@@ -1371,3 +1371,45 @@ class SSandVSSyncEngine:
 		frappe.logger().info(summary_msg)
 
 		return self.summary
+
+
+@frappe.whitelist()
+def get_monthly_status(year: int = None):
+	"""
+	Returns data availability status for all 12 months of the specified year in tabSS and VS Report.
+	Defaults to current year if not specified.
+	"""
+	if not year:
+		year = frappe.utils.now_datetime().year
+	else:
+		year = int(year)
+
+	available = frappe.db.sql("""
+		SELECT 
+			MONTH(`date`) AS month_num,
+			COUNT(name) AS record_count,
+			MAX(`date`) AS latest_date
+		FROM `tabSS and VS Report`
+		WHERE YEAR(`date`) = %s
+		GROUP BY MONTH(`date`)
+	""", (year,), as_dict=True)
+
+	month_map = {r["month_num"]: r for r in available}
+	month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+	months_data = []
+	for i in range(1, 13):
+		info = month_map.get(i)
+		has_data = bool(info and info.get("record_count", 0) > 0)
+		months_data.append({
+			"month_num": i,
+			"month_name": month_names[i - 1],
+			"has_data": has_data,
+			"record_count": info.get("record_count", 0) if info else 0,
+			"latest_date": str(info.get("latest_date")) if info and info.get("latest_date") else None
+		})
+
+	return {
+		"year": year,
+		"months": months_data
+	}

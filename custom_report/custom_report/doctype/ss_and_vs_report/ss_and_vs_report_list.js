@@ -62,6 +62,9 @@ frappe.listview_settings['SS and VS Report'] = {
 	},
 
 	refresh(listview) {
+		// Render top Month Availability Widget
+		this.renderMonthWidget(listview);
+
 		// Add the Sync button to the page actions
 		listview.page.add_inner_button(__('Sync Data'), () => {
 			let d = new frappe.ui.Dialog({
@@ -150,6 +153,86 @@ frappe.listview_settings['SS and VS Report'] = {
 			// Apply css_class to the dialog wrapper modal
 			d.$wrapper.addClass('ss-vs-modern-dialog');
 			d.show();
+		});
+	},
+
+	renderMonthWidget(listview) {
+		const currentYear = new Date().getFullYear();
+		if (!listview._selectedYear) listview._selectedYear = currentYear;
+
+		let $wrapper = listview.page.main.find('.ss-vs-month-widget-wrapper');
+		if (!$wrapper.length) {
+			$wrapper = $(`
+				<div class="ss-vs-month-widget-wrapper" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 14px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);">
+					<div class="ss-vs-month-widget-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+						<div style="font-size: 13px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+							<span>📅 Monthly Data Availability</span>
+							<select class="ss-vs-year-select" style="font-size: 12px; font-weight: 600; padding: 2px 6px; border-radius: 4px; border: 1px solid #cbd5e1; outline: none; background: #f8fafc; cursor: pointer; color: #1e293b;">
+								<option value="${currentYear}">${currentYear}</option>
+								<option value="${currentYear - 1}">${currentYear - 1}</option>
+								<option value="${currentYear - 2}">${currentYear - 2}</option>
+							</select>
+						</div>
+						<button type="button" class="btn btn-xs ss-vs-widget-refresh" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: 4px; cursor: pointer;">⟳ Refresh</button>
+					</div>
+					<div class="ss-vs-month-grid" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px;">
+						<div style="grid-column: span 12; color: #94a3b8; font-size: 11px; text-align: center; padding: 8px;">Loading month cards...</div>
+					</div>
+				</div>
+			`);
+			
+			if (listview.page.main.find('.frappe-list').length) {
+				listview.page.main.find('.frappe-list').before($wrapper);
+			} else {
+				listview.page.main.prepend($wrapper);
+			}
+
+			$wrapper.on('change', '.ss-vs-year-select', function() {
+				listview._selectedYear = parseInt($(this).val());
+				listview.renderMonthWidget(listview);
+			});
+
+			$wrapper.on('click', '.ss-vs-widget-refresh', function() {
+				listview.renderMonthWidget(listview);
+			});
+		}
+
+		frappe.call({
+			method: 'custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.get_monthly_status',
+			args: { year: listview._selectedYear },
+			callback: function(r) {
+				if (r.message && r.message.months) {
+					const months = r.message.months;
+					const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
+
+					let cardsHtml = "";
+					months.forEach(m => {
+						const isGreen = m.has_data;
+						cardsHtml += `
+							<div class="ss-vs-month-card ${isGreen ? 'has-data' : 'no-data'}" data-month="${m.month_num}" 
+								title="${isGreen ? `✓ ${m.month_name} ${listview._selectedYear}: ${fmtNum(m.record_count)} records available (Latest: ${m.latest_date})` : `No data recorded for ${m.month_name} ${listview._selectedYear}`}"
+								style="border-radius: 6px; padding: 6px 2px; text-align: center; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.15s ease-in-out; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; ${isGreen ? 'background: #dcfce7; border: 1px solid #86efac; color: #15803d;' : 'background: #f8fafc; border: 1px solid #e2e8f0; color: #94a3b8;'}">
+								<span>${isGreen ? '✓ ' : ''}${m.month_name}</span>
+								<span style="font-size: 9px; font-weight: 600; ${isGreen ? 'color: #166534;' : 'color: #cbd5e1;'}">${isGreen ? fmtNum(m.record_count) : 'No Data'}</span>
+							</div>
+						`;
+					});
+
+					$wrapper.find('.ss-vs-month-grid').html(cardsHtml);
+
+					// Click on month card to filter listview for that month
+					$wrapper.off('click', '.ss-vs-month-card').on('click', '.ss-vs-month-card', function() {
+						const monthNum = parseInt($(this).data('month'));
+						const year = listview._selectedYear;
+						const startDate = `${year}-${String(monthNum).padStart(2, '0')}-01`;
+						const lastDay = new Date(year, monthNum, 0).getDate();
+						const endDate = `${year}-${String(monthNum).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+						listview.filter_area.remove('date');
+						listview.filter_area.add([['SS and VS Report', 'date', 'Between', [startDate, endDate]]]);
+					});
+				}
+			}
 		});
 	}
 };
