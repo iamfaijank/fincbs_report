@@ -1308,31 +1308,30 @@ def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
         cursor.execute(query)
         rows = cursor.fetchall()
 
-        sol_ids_found = [str(r[0]) for r in rows] if rows else []
+        sol_ids_found = [str(r[0]).strip() for r in rows] if rows else []
         branch_map = {}
         if sol_ids_found:
             branches_map = get_sahayog_branches_cached()
             for sid in sol_ids_found:
-                if sid in branches_map:
-                    b = branches_map[sid]
-                    branch_map[sid] = {
-                        "zone": b.get("zone") or "",
-                        "region": b.get("region") or "",
-                        "district": b.get("district") or "",
-                        "branch_name": b.get("branch_name") or ""
-                    }
+                b = branches_map.get(sid) or branches_map.get(sid.lstrip('0')) or {}
+                branch_map[sid] = {
+                    "zone": b.get("zone") or "",
+                    "region": b.get("region") or "",
+                    "district": b.get("district") or "",
+                    "branch_name": b.get("branch_name") or ""
+                }
 
         result = []
         for row in rows:
-            sid = str(row[0])
-            sb = branch_map.get(sid, {})
+            sid = str(row[0]).strip()
+            sb = branch_map.get(sid) or {}
             result.append({
                 "sol_id": sid,
                 "sol_desc": row[1] or "",
-                "zone": sb.get("zone", ""),
-                "region": sb.get("region", ""),
-                "district": sb.get("district", ""),
-                "branch_name": sb.get("branch_name", ""),
+                "zone": sb.get("zone") or "",
+                "region": sb.get("region") or "",
+                "district": sb.get("district") or "",
+                "branch_name": sb.get("branch_name") or "",
                 "total_accounts": row[5] or 0,
                 "total_collection": float(row[6]) if row[6] else 0,
                 "pending_accounts": row[7] or 0,
