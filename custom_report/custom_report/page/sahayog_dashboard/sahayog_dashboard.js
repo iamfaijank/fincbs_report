@@ -4479,152 +4479,257 @@ class DrishtiDashboard {
 						</div>
 					`;
 
-					// Calculate Paged Window
-					const totalFiltered = data.length;
-					const totalPages = Math.ceil(totalFiltered / self.pageSize) || 1;
-					if (self.currentPage > totalPages) self.currentPage = totalPages;
-					if (self.currentPage < 1) self.currentPage = 1;
+					if (!self.expandedTreeNodes) self.expandedTreeNodes = {};
 
-					const startIndex = (self.currentPage - 1) * self.pageSize;
-					const pagedData = data.slice(startIndex, startIndex + self.pageSize);
+					// Build Tree Data (Zone -> Region -> District -> SOL -> Agent)
+					const rootNodes = [];
+					const zMap = {};
 
-					let rowsHtml = "";
-					pagedData.forEach((row, idx) => {
-						const globalIdx = startIndex + idx + 1;
-						const agentCode = row.agent_code || row.rm_id || "-";
-						const agentName = row.agent_name || row.rm_name || "-";
-						const branchCode = row.branch_code || "-";
-						const zone = row.zone || "-";
-						const region = row.region || "-";
-						const district = row.district || "-";
-						const agentStatus = (row.agent_status || "Inactive").trim();
-						const isAgentActive = agentStatus.toLowerCase() === "active" || agentStatus.toLowerCase() === "live";
-						const statusBadge = isAgentActive
-							? `<span style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">Active</span>`
-							: `<span style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">Inactive</span>`;
-						const totCust = row.total_customer ?? row.total_records ?? 0;
-						const totComm = row.total_commission || 0;
-						const isExpanded = !!self.expandedRms[agentCode];
+					data.forEach(agent => {
+						const zName = (agent.zone || "OTHER ZONE").trim();
+						const rName = (agent.region || "OTHER REGION").trim();
+						const dName = (agent.district || "OTHER DISTRICT").trim();
+						const sCode = (agent.branch_code || "-").trim();
+						const sName = (agent.branch_name || sCode).trim();
+						const solLabel = sCode !== '-' ? `${sName} (${sCode})` : sName;
+						const comm = agent.total_commission || 0;
+						const isActive = (agent.agent_status || "").trim().toLowerCase() === "active";
 
-						rowsHtml += `
-							<tr class="rm-master-row" data-rm-id="${agentCode}" style="cursor: pointer; background: ${isExpanded ? '#f0fdf4' : '#fff'}; border-bottom: 1px solid #e2e8f0;">
-								<td style="padding: 8px 10px; text-align: center; font-size: 12px; font-weight: 600; width: 40px;">${globalIdx}</td>
-								<td style="padding: 8px 10px; font-size: 12px; font-weight: 700; color: #1e293b;">
-									<span class="rm-toggle-icon" style="display: inline-block; width: 14px; color: #417d81;">${isExpanded ? '▼' : '▶'}</span>
-									<span style="color: #417d81; text-decoration: underline;">${agentCode}</span>
-								</td>
-								<td style="padding: 8px 10px; font-size: 12px; font-weight: 600; color: #334155;">${agentName}</td>
-								<td style="padding: 8px 10px; text-align: center; font-size: 12px; font-weight: 700; color: #417d81;">${branchCode}</td>
-								<td style="padding: 8px 10px; font-size: 12px; font-weight: 600; color: #475569;">${zone}</td>
-								<td style="padding: 8px 10px; font-size: 12px; font-weight: 600; color: #475569;">${region}</td>
-								<td style="padding: 8px 10px; font-size: 12px; font-weight: 600; color: #475569;">${district}</td>
-								<td style="padding: 8px 10px; text-align: center; font-size: 11px;">${statusBadge}</td>
-								<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 700; color: #417d81;">${fmtAmt(totComm)}</td>
-							</tr>
-							<tr class="rm-detail-row" data-rm-id="${agentCode}" style="display: ${isExpanded ? 'table-row' : 'none'}; background: #f8fafc;">
-								<td colspan="9" style="padding: 10px 14px;">
-									<div class="rm-category-container" data-rm-id="${agentCode}">
-										<div style="padding: 8px; color: #64748b; font-size: 12px;">Loading Product Breakdown...</div>
-									</div>
-								</td>
-							</tr>
-						`;
+						if (!zMap[zName]) {
+							zMap[zName] = {
+								id: `z_${zName}`,
+								name: zName,
+								code: zName,
+								type: "Zone",
+								level: 1,
+								total_commission: 0,
+								agent_count: 0,
+								active_count: 0,
+								children: {}
+							};
+							rootNodes.push(zMap[zName]);
+						}
+						zMap[zName].total_commission += comm;
+						zMap[zName].agent_count += 1;
+						if (isActive) zMap[zName].active_count += 1;
+
+						const rMap = zMap[zName].children;
+						if (!rMap[rName]) {
+							rMap[rName] = {
+								id: `r_${zName}_${rName}`,
+								name: rName,
+								code: rName,
+								type: "Region",
+								level: 2,
+								total_commission: 0,
+								agent_count: 0,
+								active_count: 0,
+								children: {}
+							};
+						}
+						rMap[rName].total_commission += comm;
+						rMap[rName].agent_count += 1;
+						if (isActive) rMap[rName].active_count += 1;
+
+						const dMap = rMap[rName].children;
+						if (!dMap[dName]) {
+							dMap[dName] = {
+								id: `d_${zName}_${rName}_${dName}`,
+								name: dName,
+								code: dName,
+								type: "District",
+								level: 3,
+								total_commission: 0,
+								agent_count: 0,
+								active_count: 0,
+								children: {}
+							};
+						}
+						dMap[dName].total_commission += comm;
+						dMap[dName].agent_count += 1;
+						if (isActive) dMap[dName].active_count += 1;
+
+						const sMap = dMap[dName].children;
+						if (!sMap[sCode]) {
+							sMap[sCode] = {
+								id: `s_${zName}_${rName}_${dName}_${sCode}`,
+								name: solLabel,
+								code: sCode,
+								type: "SOL",
+								level: 4,
+								total_commission: 0,
+								agent_count: 0,
+								active_count: 0,
+								children: []
+							};
+						}
+						sMap[sCode].total_commission += comm;
+						sMap[sCode].agent_count += 1;
+						if (isActive) sMap[sCode].active_count += 1;
+
+						sMap[sCode].children.push({
+							id: `a_${agent.agent_code}`,
+							name: agent.agent_name,
+							code: agent.agent_code,
+							type: "Agent",
+							level: 5,
+							total_commission: comm,
+							agent_status: agent.agent_status,
+							raw_agent: agent
+						});
 					});
 
-					const paginationBarHtml = `
-						<div class="rm-pagination-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-							<div style="font-size: 12px; font-weight: 600; color: #475569;">
-								Showing <span style="color: #417d81; font-weight: 700;">${startIndex + 1}</span> to <span style="color: #417d81; font-weight: 700;">${Math.min(startIndex + self.pageSize, totalFiltered)}</span> of <span style="color: #417d81; font-weight: 700;">${fmtNum(totalFiltered)}</span> Agents
+					rootNodes.sort((a, b) => b.total_commission - a.total_commission);
+
+					const allNodeIds = [];
+					const collectAllNodeIds = (nodes) => {
+						nodes.forEach(n => {
+							if (n.level < 5) {
+								allNodeIds.push(n.id);
+								let childList = Array.isArray(n.children) ? n.children : Object.values(n.children);
+								collectAllNodeIds(childList);
+							}
+						});
+					};
+					collectAllNodeIds(rootNodes);
+
+					const renderTreeRows = (nodes) => {
+						let html = "";
+						nodes.forEach(node => {
+							const isExpanded = !!self.expandedTreeNodes[node.id];
+							const indent = (node.level - 1) * 22 + 10;
+							const hasChildren = node.level < 5;
+
+							let typeBadgeBg = "#e0f2fe";
+							let typeBadgeColor = "#0369a1";
+							let typeBadgeBorder = "#7dd3fc";
+							if (node.level === 1) { typeBadgeBg = "#f3e8ff"; typeBadgeColor = "#7e22ce"; typeBadgeBorder = "#d8b4fe"; } // Zone
+							else if (node.level === 2) { typeBadgeBg = "#e0e7ff"; typeBadgeColor = "#3730a3"; typeBadgeBorder = "#a5b4fc"; } // Region
+							else if (node.level === 3) { typeBadgeBg = "#fef3c7"; typeBadgeColor = "#92400e"; typeBadgeBorder = "#fcd34d"; } // District
+							else if (node.level === 4) { typeBadgeBg = "#ccfbf1"; typeBadgeColor = "#115e59"; typeBadgeBorder = "#5eead4"; } // SOL
+							else if (node.level === 5) { typeBadgeBg = "#dcfce7"; typeBadgeColor = "#15803d"; typeBadgeBorder = "#86efac"; } // Agent
+
+							let statusOrCountHtml = "";
+							if (node.level < 5) {
+								statusOrCountHtml = `<span style="font-size: 11px; font-weight: 700; color: #475569;">${fmtNum(node.agent_count)} Agents (${fmtNum(node.active_count)} Active)</span>`;
+							} else {
+								const st = (node.agent_status || "Inactive").trim().toLowerCase();
+								const isAct = st === "active" || st === "live";
+								statusOrCountHtml = isAct
+									? `<span style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">Active</span>`
+									: `<span style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">Inactive</span>`;
+							}
+
+							let rowBg = '#ffffff';
+							if (node.level === 1) rowBg = '#f8fafc';
+							else if (node.level === 2) rowBg = '#ffffff';
+							else if (node.level === 3) rowBg = '#f8fafc';
+							else if (node.level === 4) rowBg = '#ffffff';
+							else if (node.level === 5) rowBg = '#f0fdfa';
+
+							html += `
+								<tr class="tree-master-row" data-node-id="${node.id}" data-level="${node.level}" data-agent-code="${node.code}" style="cursor: pointer; background: ${rowBg}; border-bottom: 1px solid #e2e8f0;">
+									<td style="padding: 8px 12px; text-align: left; padding-left: ${indent}px; font-weight: ${node.level < 5 ? '700' : '600'}; color: #1e293b;">
+										${hasChildren ? `<span class="tree-toggle-icon" style="display: inline-block; width: 16px; color: #417d81; font-weight: 800;">${isExpanded ? '▼' : '▶'}</span>` : '<span style="display: inline-block; width: 16px; color: #94a3b8;">•</span>'}
+										<span style="color: ${node.level === 5 ? '#417d81' : '#0f172a'}; ${node.level === 5 ? 'text-decoration: underline; font-weight: 700;' : ''}">${node.name}</span>
+									</td>
+									<td style="padding: 8px 12px; text-align: left; font-size: 12px; font-weight: 700; color: #417d81;">${node.code}</td>
+									<td style="padding: 8px 12px; text-align: left; font-size: 11px;">
+										<span style="background: ${typeBadgeBg}; color: ${typeBadgeColor}; border: 1px solid ${typeBadgeBorder}; padding: 2px 8px; border-radius: 12px; font-weight: 700;">${node.type}</span>
+									</td>
+									<td style="padding: 8px 12px; text-align: left; font-size: 12px;">${statusOrCountHtml}</td>
+									<td style="padding: 8px 12px; text-align: right; font-size: 13px; font-weight: 800; color: #417d81;">${fmtAmt(node.total_commission)}</td>
+								</tr>
+							`;
+
+							if (hasChildren && isExpanded) {
+								let childNodes = [];
+								if (Array.isArray(node.children)) {
+									childNodes = node.children;
+								} else if (typeof node.children === "object") {
+									childNodes = Object.values(node.children);
+								}
+								childNodes.sort((a, b) => b.total_commission - a.total_commission);
+								html += renderTreeRows(childNodes);
+							}
+						});
+						return html;
+					};
+
+					const treeRowsHtml = renderTreeRows(rootNodes);
+
+					const controlBarHtml = `
+						<div class="rm-pagination-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+							<div style="font-size: 12px; font-weight: 700; color: #417d81; display: flex; align-items: center; gap: 8px;">
+								<span>🌳 Hierarchical Drill-Down (Zone → Region → District → SOL → Agent)</span>
+								<span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700;">${fmtNum(data.length)} Agents Total</span>
 							</div>
-							<div style="display: flex; align-items: center; gap: 10px;">
-								<div style="display: flex; align-items: center; gap: 4px;">
-									<label style="font-size: 11px; font-weight: 600; color: #64748b; margin: 0;">Per Page:</label>
-									<select class="rm-page-size-select" style="font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; border: 1px solid #cbd5e1; outline: none; background: #f8fafc; cursor: pointer; color: #417d81;">
-										<option value="50" ${self.pageSize === 50 ? 'selected' : ''}>50</option>
-										<option value="100" ${self.pageSize === 100 ? 'selected' : ''}>100</option>
-										<option value="250" ${self.pageSize === 250 ? 'selected' : ''}>250</option>
-										<option value="500" ${self.pageSize === 500 ? 'selected' : ''}>500</option>
-									</select>
-								</div>
-								<div style="display: flex; align-items: center; gap: 4px;">
-									<button type="button" class="btn btn-xs rm-page-first" ${self.currentPage <= 1 ? 'disabled' : ''} style="background: #f1f5f9; color: #334155; font-weight: 700; border-radius: 4px; padding: 2px 6px;">« First</button>
-									<button type="button" class="btn btn-xs rm-page-prev" ${self.currentPage <= 1 ? 'disabled' : ''} style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 2px 6px;">‹ Prev</button>
-									<span style="font-size: 12px; font-weight: 700; padding: 0 6px; color: #417d81;">Page ${self.currentPage} of ${totalPages}</span>
-									<button type="button" class="btn btn-xs rm-page-next" ${self.currentPage >= totalPages ? 'disabled' : ''} style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 2px 6px;">Next ›</button>
-									<button type="button" class="btn btn-xs rm-page-last" ${self.currentPage >= totalPages ? 'disabled' : ''} style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 2px 6px;">Last »</button>
-								</div>
+							<div style="display: flex; align-items: center; gap: 8px;">
+								<button type="button" class="btn btn-xs rm-tree-expand-all" style="background: rgba(65, 125, 129, 0.1); color: #417d81; border: 1px solid rgba(65, 125, 129, 0.3); font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
+									📂 Expand All
+								</button>
+								<button type="button" class="btn btn-xs rm-tree-collapse-all" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
+									📁 Collapse All
+								</button>
 							</div>
 						</div>
 					`;
 
 					const tableHtml = `
 						<style>
-							.rm-master-row { transition: background-color 0.15s ease-in-out; }
-							.rm-master-row:hover { background-color: #f1f5f9 !important; }
-							.rm-sub-product-row { transition: background-color 0.15s ease-in-out; }
-							.rm-sub-product-row:hover { background-color: #ecfdf5 !important; }
+							.tree-master-row { transition: background-color 0.15s ease-in-out; }
+							.tree-master-row:hover { background-color: #f0fdfa !important; }
 						</style>
 						${kpiCardsHtml}
-						${paginationBarHtml}
+						${controlBarHtml}
 						<div style="max-height: 650px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
 							<table class="table table-sm table-hover" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
 								<thead>
 									<tr style="background: #417d81; color: #ffffff; position: sticky; top: 0; z-index: 2;">
-										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
-										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Agent Code</th>
-										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Agent Name</th>
-										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center;">Branch Code</th>
-										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Zone</th>
-										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Region</th>
-										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">District</th>
-										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center;">Status</th>
-										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">Total Commission</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Z / R / D / SOL / Agent Name</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Code / ID</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Level</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Status / Count</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Commission</th>
 									</tr>
 								</thead>
-								<tbody>${rowsHtml}</tbody>
+								<tbody>${treeRowsHtml}</tbody>
 								<tfoot>
 									<tr style="background: rgba(65, 125, 129, 0.08); color: #1e293b; font-weight: 700; position: sticky; bottom: 0; z-index: 2; border-top: 2px solid #417d81;">
-										<td colspan="8" style="padding: 10px 10px; text-align: right; font-size: 12px; color: #417d81;">GRAND TOTAL (${fmtNum(self.tableData.length)} AGENTS)</td>
-										<td style="padding: 10px 10px; text-align: right; font-size: 12px; color: #417d81; font-weight: 800;">${fmtAmt(grandTotalComm)}</td>
+										<td colspan="4" style="padding: 10px 12px; text-align: left; font-size: 12px; color: #417d81;">GRAND TOTAL (${fmtNum(data.length)} AGENTS ACROSS ALL ZONES)</td>
+										<td style="padding: 10px 12px; text-align: right; font-size: 13px; color: #417d81; font-weight: 800;">${fmtAmt(grandTotalComm)}</td>
 									</tr>
 								</tfoot>
 							</table>
-						</div>
-						<div style="margin-top: 8px;">
-							${paginationBarHtml}
 						</div>
 					`;
 
 					tableContainer.html(tableHtml);
 
-					// Pagination Event Handlers
-					tableContainer.off("change", ".rm-page-size-select").on("change", ".rm-page-size-select", function () {
-						self.pageSize = parseInt($(this).val());
-						self.currentPage = 1;
-						self.renderRmWiseTable(tableContainer, dashboardInstance);
-					});
+					// Tree Click Event Handlers
+					tableContainer.off("click", ".tree-master-row").on("click", ".tree-master-row", function () {
+						const nodeId = $(this).data("node-id");
+						const level = parseInt($(this).data("level"));
 
-					tableContainer.off("click", ".rm-page-first").on("click", ".rm-page-first", function () {
-						self.currentPage = 1;
-						self.renderRmWiseTable(tableContainer, dashboardInstance);
-					});
-
-					tableContainer.off("click", ".rm-page-prev").on("click", ".rm-page-prev", function () {
-						if (self.currentPage > 1) {
-							self.currentPage--;
+						if (level < 5) {
+							self.expandedTreeNodes[nodeId] = !self.expandedTreeNodes[nodeId];
 							self.renderRmWiseTable(tableContainer, dashboardInstance);
+						} else {
+							const agentCode = $(this).data("agent-code");
+							const agentData = self.tableData.find(a => (a.agent_code || a.rm_id) === agentCode);
+							if (agentData) {
+								self.openAgentModal(agentData, dashboardInstance);
+							}
 						}
 					});
 
-					tableContainer.off("click", ".rm-page-next").on("click", ".rm-page-next", function () {
-						if (self.currentPage < totalPages) {
-							self.currentPage++;
-							self.renderRmWiseTable(tableContainer, dashboardInstance);
-						}
+					tableContainer.off("click", ".rm-tree-expand-all").on("click", ".rm-tree-expand-all", function () {
+						allNodeIds.forEach(id => self.expandedTreeNodes[id] = true);
+						self.renderRmWiseTable(tableContainer, dashboardInstance);
 					});
 
-					tableContainer.off("click", ".rm-page-last").on("click", ".rm-page-last", function () {
-						self.currentPage = totalPages;
+					tableContainer.off("click", ".rm-tree-collapse-all").on("click", ".rm-tree-collapse-all", function () {
+						self.expandedTreeNodes = {};
 						self.renderRmWiseTable(tableContainer, dashboardInstance);
 					});
 
