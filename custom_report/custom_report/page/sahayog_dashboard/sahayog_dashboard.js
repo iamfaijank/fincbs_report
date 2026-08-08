@@ -4626,22 +4626,178 @@ class DrishtiDashboard {
 						}
 					});
 
-					// Master RM Row Click Event
+					// Master RM Row Click Event -> Opens Glassmorphic Backdrop-Blurred Modal Popup
 					tableContainer.off("click", ".rm-master-row").on("click", ".rm-master-row", function (e) {
 						e.stopPropagation();
 						const rmId = $(this).data("rm-id");
-						self.expandedRms[rmId] = !self.expandedRms[rmId];
-						const isExp = self.expandedRms[rmId];
+						const rowData = pagedData.find(r => (r.agent_code || r.rm_id) === rmId) || { agent_code: rmId, agent_name: rmId };
+						self.openAgentModal(rowData, dashboardInstance);
+					});
+				},
 
-						$(this).css("background", isExp ? "#f0fdf4" : "#fff");
-						$(this).find(".rm-toggle-icon").text(isExp ? "▼" : "▶");
+				openAgentModal: function (agentData, dashboardInstance) {
+					const self = this;
+					const agentCode = agentData.agent_code || agentData.rm_id || "-";
+					const agentName = agentData.agent_name || agentData.rm_name || "-";
+					const agentStatus = (agentData.agent_status || "Inactive").trim();
+					const isAgentActive = agentStatus.toLowerCase() === "active" || agentStatus.toLowerCase() === "live";
 
-						const $detailRow = tableContainer.find(`.rm-detail-row[data-rm-id="${rmId}"]`);
-						if (isExp) {
-							$detailRow.show();
-							self.loadAndRenderRmCategoryDetails(rmId, tableContainer, dashboardInstance);
-						} else {
-							$detailRow.hide();
+					const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
+					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
+
+					const modalId = "agent-breakdown-modal-backdrop";
+					$(`#${modalId}`).remove();
+
+					const statusBadge = isAgentActive
+						? `<span style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 3px 10px; border-radius: 14px; font-size: 11px; font-weight: 700;">Active</span>`
+						: `<span style="background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; padding: 3px 10px; border-radius: 14px; font-size: 11px; font-weight: 700;">Inactive</span>`;
+
+					const modalHtml = `
+						<style>
+							@keyframes agentModalPop {
+								0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+								100% { opacity: 1; transform: scale(1) translateY(0); }
+							}
+						</style>
+						<div id="${modalId}" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px;">
+							<div style="background: #ffffff; width: 100%; max-width: 720px; border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden; animation: agentModalPop 0.25s ease-out;">
+								
+								<!-- Modal Header -->
+								<div style="background: #417d81; color: #ffffff; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;">
+									<div>
+										<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; opacity: 0.85;">Agent Commission Breakdown</div>
+										<div style="font-size: 18px; font-weight: 800; margin-top: 2px; display: flex; align-items: center; gap: 10px;">
+											<span>${agentName} (${agentCode})</span>
+											${statusBadge}
+										</div>
+									</div>
+									<button type="button" id="close-agent-modal" style="background: rgba(255,255,255,0.15); border: none; color: #ffffff; font-size: 20px; font-weight: 700; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s;">✕</button>
+								</div>
+
+								<!-- Modal Body -->
+								<div style="padding: 20px; max-height: 75vh; overflow-y: auto;">
+									<div id="modal-subtable-content">
+										<div style="padding: 30px; text-align: center; color: #417d81; font-weight: 600; font-size: 13px;">
+											⏳ Fetching Product Breakdown for Agent ${agentCode}...
+										</div>
+									</div>
+								</div>
+
+								<!-- Modal Footer -->
+								<div style="padding: 12px 20px; background: #f8fafc; border-top: 1px solid #e2e8f0; text-align: right;">
+									<button type="button" id="close-agent-modal-btn" class="btn btn-sm" style="background: #417d81; color: #ffffff; font-weight: 700; border-radius: 6px; padding: 6px 16px;">Close</button>
+								</div>
+							</div>
+						</div>
+					`;
+
+					$("body").append(modalHtml);
+
+					const closeModal = () => {
+						$(`#${modalId}`).fadeOut(150, function () { $(this).remove(); });
+					};
+
+					$(`#${modalId}`).on("click", function (e) {
+						if (e.target.id === modalId) closeModal();
+					});
+					$("#close-agent-modal, #close-agent-modal-btn").on("click", closeModal);
+
+					$(document).off("keydown.agentModal").on("keydown.agentModal", function (e) {
+						if (e.key === "Escape") {
+							closeModal();
+							$(document).off("keydown.agentModal");
+						}
+					});
+
+					// Fetch Product Breakdown Data
+					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rm_wise_category_breakdown",
+						args: {
+							rm_id: agentCode,
+							selected_date: t1_date
+						},
+						callback: function (r) {
+							const catList = r.message || [];
+							if (catList.length === 0) {
+								$("#modal-subtable-content").html('<div style="padding: 20px; text-align: center; color: #64748b; font-weight: 600;">No product breakdown data found.</div>');
+								return;
+							}
+
+							let totalCustSum = 0;
+							let totalCommSum = 0;
+							let activeProductsCount = 0;
+
+							catList.forEach(c => {
+								const totCust = c.total_customer ?? c.record_count ?? 0;
+								const totComm = c.total_commission || 0;
+								totalCustSum += totCust;
+								totalCommSum += totComm;
+								if (totComm > 0) activeProductsCount++;
+							});
+
+							let rowsHtml = "";
+							catList.forEach((c, idx) => {
+								const prodName = c.product_name || c.report_type || "-";
+								const totCust = c.total_customer ?? c.record_count ?? 0;
+								const totComm = c.total_commission || 0;
+								const sharePct = totalCommSum > 0 ? ((totComm / totalCommSum) * 100).toFixed(1) : "0.0";
+
+								rowsHtml += `
+									<tr style="border-bottom: 1px solid #e2e8f0; background: ${totComm > 0 ? '#ffffff' : '#f8fafc'}; transition: background 0.15s;">
+										<td style="padding: 10px 14px; text-align: center; font-size: 13px; font-weight: 600; color: #64748b; width: 45px;">${idx + 1}</td>
+										<td style="padding: 10px 14px; font-size: 13px; font-weight: 700; color: #1e293b;">${prodName}</td>
+										<td style="padding: 10px 14px; text-align: right; font-size: 13px; font-weight: 600; color: #334155;">${fmtNum(totCust)}</td>
+										<td style="padding: 10px 14px; text-align: right; font-size: 13px; font-weight: 700; color: #417d81;">${fmtAmt(totComm)}</td>
+										<td style="padding: 10px 14px; text-align: right; font-size: 12px; font-weight: 700; color: #64748b;">${sharePct}%</td>
+									</tr>
+								`;
+							});
+
+							const modalBodyHtml = `
+								<!-- Mini Summary Cards Inside Modal -->
+								<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+									<div style="background: #f0fdfa; border: 1px solid rgba(65, 125, 129, 0.25); border-radius: 8px; padding: 10px 14px;">
+										<div style="font-size: 11px; font-weight: 700; color: #417d81; text-transform: uppercase;">Total Customers</div>
+										<div style="font-size: 18px; font-weight: 800; color: #417d81; margin-top: 2px;">${fmtNum(totalCustSum)}</div>
+									</div>
+									<div style="background: #f0fdfa; border: 1px solid rgba(65, 125, 129, 0.25); border-radius: 8px; padding: 10px 14px;">
+										<div style="font-size: 11px; font-weight: 700; color: #417d81; text-transform: uppercase;">Total Commission</div>
+										<div style="font-size: 18px; font-weight: 800; color: #417d81; margin-top: 2px;">${fmtAmt(totalCommSum)}</div>
+									</div>
+									<div style="background: #f0fdfa; border: 1px solid rgba(65, 125, 129, 0.25); border-radius: 8px; padding: 10px 14px;">
+										<div style="font-size: 11px; font-weight: 700; color: #417d81; text-transform: uppercase;">Active Products</div>
+										<div style="font-size: 18px; font-weight: 800; color: #417d81; margin-top: 2px;">${activeProductsCount} / ${catList.length}</div>
+									</div>
+								</div>
+
+								<!-- Product Breakdown Table -->
+								<div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+									<table class="table table-sm" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
+										<thead>
+											<tr style="background: #417d81; color: #ffffff;">
+												<th style="padding: 10px 14px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center; width: 45px;">Sr</th>
+												<th style="padding: 10px 14px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Product Name</th>
+												<th style="padding: 10px 14px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">Total Customer</th>
+												<th style="padding: 10px 14px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">Total Commission</th>
+												<th style="padding: 10px 14px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">Share %</th>
+											</tr>
+										</thead>
+										<tbody>${rowsHtml}</tbody>
+										<tfoot>
+											<tr style="background: rgba(65, 125, 129, 0.08); font-weight: 800; color: #417d81; border-top: 2px solid #417d81;">
+												<td colspan="2" style="padding: 10px 14px; text-align: right; font-size: 13px;">GRAND TOTAL:</td>
+												<td style="padding: 10px 14px; text-align: right; font-size: 13px;">${fmtNum(totalCustSum)}</td>
+												<td style="padding: 10px 14px; text-align: right; font-size: 13px;">${fmtAmt(totalCommSum)}</td>
+												<td style="padding: 10px 14px; text-align: right; font-size: 13px;">100.0%</td>
+											</tr>
+										</tfoot>
+									</table>
+								</div>
+							`;
+
+							$("#modal-subtable-content").html(modalBodyHtml);
 						}
 					});
 				},
