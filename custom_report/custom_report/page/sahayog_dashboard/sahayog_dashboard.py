@@ -1476,8 +1476,10 @@ def get_daily_account_opening_data(selected_date=None):
     from frappe.utils import getdate
     import datetime
 
+    user = frappe.session.user
+    perms = get_user_report_permissions(user)
+
     if not selected_date:
-        # Default to latest date from database or yesterday
         latest = get_latest_branch_category_report_date()
         if latest:
             selected_date = latest
@@ -1492,7 +1494,6 @@ def get_daily_account_opening_data(selected_date=None):
         start_date_str = "2026-07-01"
         end_date_str = "2026-07-09"
 
-    # Fetch local Product mapping to categorize scheme codes
     try:
         products = get_products_cached()
     except Exception:
@@ -1505,7 +1506,6 @@ def get_daily_account_opening_data(selected_date=None):
         gsub = (p.group_subname or "").upper()
         
         category = None
-
         if gname == "CASA":
             if gsub == "SA":
                 category = "SA"
@@ -1525,53 +1525,19 @@ def get_daily_account_opening_data(selected_date=None):
         if category:
             product_map[code] = category
 
+    # Highly optimized direct aggregation query (avoids heavy Cartesian product CROSS JOIN)
     query = """
-    WITH base_schemes AS (
-        SELECT DISTINCT
-            gam.schm_code,
-            gsp.schm_desc
-        FROM tbaadm.gam gam
-        JOIN tbaadm.gsp gsp
-            ON gam.schm_code = gsp.schm_code
-        WHERE gam.schm_type NOT IN ('OAB','OAP')
-    ),
-    base_sol AS (
         SELECT
-            sol.sol_id,
-            sol.region_name,
-            sol.division_name,
-            sol.circle_office_name
-        FROM tbaadm.sol sol
-        JOIN tbaadm.sst sst
-            ON sst.sol_id = sol.sol_id
-        WHERE sst.set_id BETWEEN '1001' AND '1255'
-    )
-    SELECT
-        bs.schm_code,
-        bs.schm_desc,
-        s.sol_id,
-        s.region_name,
-        s.division_name,
-        s.circle_office_name,
-        COUNT(DISTINCT gam.foracid) AS account_opened
-    FROM base_sol s
-    CROSS JOIN base_schemes bs
-    LEFT JOIN tbaadm.gam gam
-           ON gam.sol_id = s.sol_id
-          AND gam.schm_code = bs.schm_code
-          AND gam.acct_opn_date BETWEEN CAST(%s AS DATE) AND CAST(%s AS DATE)
+            TRIM(gam.sol_id) AS sol_id,
+            TRIM(gam.schm_code) AS schm_code,
+            COUNT(DISTINCT gam.foracid) AS account_opened
+        FROM tbaadm.gam gam
+        WHERE gam.acct_opn_date BETWEEN CAST(%s AS DATE) AND CAST(%s AS DATE)
           AND gam.entity_cre_flg = 'Y'
           AND gam.schm_type NOT IN ('OAB','OAP')
-    GROUP BY
-        bs.schm_code,
-        bs.schm_desc,
-        s.sol_id,
-        s.region_name,
-        s.division_name,
-        s.circle_office_name
-    ORDER BY
-        s.sol_id,
-        bs.schm_code
+        GROUP BY
+            TRIM(gam.sol_id),
+            TRIM(gam.schm_code)
     """
 
     conn = get_dr_connection()
@@ -1584,37 +1550,20 @@ def get_daily_account_opening_data(selected_date=None):
         cursor.execute(query, (start_date_str, end_date_str))
         rows = cursor.fetchall()
         
-        if not rows:
-            frappe.throw(f"No Daily Account Opening data found for the selected date: {selected_date}. Please select a different date.")
-        
-        # Look up zones / regions from local Sahayog Branch
-        sol_ids_found = [str(r[2]).strip() for r in rows] if rows else []
-        branch_map = {}
-        if sol_ids_found:
-            branches_map = get_sahayog_branches_cached()
-            for sid in sol_ids_found:
-                if sid in branches_map:
-                    b = branches_map[sid]
-                    branch_map[sid] = {
-                        "zone": b.get("zone") or "",
-                        "region": b.get("region") or "",
-                        "district": b.get("district") or "",
-                        "branch_name": b.get("branch_name") or ""
-                    }
+        branches_map = get_sahayog_branches_cached()
 
         # Group and aggregate raw records by branch
         branch_aggregates = {}
         for row in rows:
-            schm_code = (row[0] or "").strip()
-            sid = str(row[2]).strip()
-            region_name = row[3]
-            circle_office_name = row[5]
-            count = int(row[6]) if row[6] is not None else 0
+            sid = str(row[0]).strip()
+            schm_code = (row[1] or "").strip()
+            count = int(row[2]) if row[2] is not None else 0
             
-            sb = branch_map.get(sid, {})
-            zone = sb.get("zone", circle_office_name or "Unknown Zone")
-            region = sb.get("region", region_name or "Unknown Region")
-            branch_name = sb.get("branch_name", f"Branch {sid}")
+            b = branches_map.get(sid) or branches_map.get(sid.lstrip('0')) or {}
+            zone = b.get("zone") or "Unknown Zone"
+            region = b.get("region") or "Unknown Region"
+            district = b.get("district") or "Unknown District"
+            branch_name = b.get("branch_name") or f"Branch {sid}"
             
             if sid not in branch_aggregates:
                 branch_aggregates[sid] = {
@@ -1622,6 +1571,7 @@ def get_daily_account_opening_data(selected_date=None):
                     "branch_name": branch_name,
                     "zone": zone,
                     "region": region,
+                    "district": district,
                     "ca": 0,
                     "sa": 0,
                     "tasc": 0,
@@ -1629,6 +1579,8 @@ def get_daily_account_opening_data(selected_date=None):
                     "smbg": 0,
                     "dd": 0,
                     "fd": 0,
+                    "ntb": 0,
+                    "evr": 0,
                     "total": 0
                 }
                 
@@ -1646,18 +1598,23 @@ def get_daily_account_opening_data(selected_date=None):
                     
             if cat == "CA":
                 branch_aggregates[sid]["ca"] += count
+                branch_aggregates[sid]["ntb"] += count
                 branch_aggregates[sid]["total"] += count
             elif cat == "SA":
                 branch_aggregates[sid]["sa"] += count
+                branch_aggregates[sid]["ntb"] += count
                 branch_aggregates[sid]["total"] += count
             elif cat == "TASC":
                 branch_aggregates[sid]["tasc"] += count
+                branch_aggregates[sid]["evr"] += count
                 branch_aggregates[sid]["total"] += count
             elif cat == "RD":
                 branch_aggregates[sid]["rd"] += count
+                branch_aggregates[sid]["evr"] += count
                 branch_aggregates[sid]["total"] += count
             elif cat == "SMBG":
                 branch_aggregates[sid]["smbg"] += count
+                branch_aggregates[sid]["evr"] += count
                 branch_aggregates[sid]["total"] += count
             elif cat == "DD":
                 branch_aggregates[sid]["dd"] += count
@@ -1665,8 +1622,22 @@ def get_daily_account_opening_data(selected_date=None):
             elif cat == "FD":
                 branch_aggregates[sid]["fd"] += count
                 branch_aggregates[sid]["total"] += count
-            
-        return list(branch_aggregates.values())
+
+        result = list(branch_aggregates.values())
+
+        # Enforce Report Preference permissions
+        if perms.get("is_restricted"):
+            allowed_zones = perms.get("zones", [])
+            allowed_sol_ids = perms.get("sol_ids", [])
+            if allowed_zones:
+                import re
+                allowed_norm = [re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones]
+                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in allowed_norm]
+            elif allowed_sol_ids:
+                allowed_sols_str = [str(s).strip() for s in allowed_sol_ids]
+                result = [r for r in result if str(r.get("sol_id")).strip() in allowed_sols_str]
+
+        return result
         
     except Exception as e:
         frappe.log_error(f"Error executing Daily Account Opening query: {str(e)}", "Daily Account Opening API")
