@@ -5729,11 +5729,50 @@ def get_agent_customer_details(report_type, rm_id, selected_date=None):
 def get_rm_wise_ss_vs_data(selected_date=None):
     """
     Superfast Zero-CPU SQL Fetching of Agent Code, Name, Status, Branch, Zone, Region, District, Auth ID, Employee details.
+    Respects User Report Permissions (Zone, Region, SOL ID).
     """
     json_path = '$.grand_total_commission'
     if selected_date:
         dt = frappe.utils.getdate(selected_date)
         json_path = f'$.{dt.year}.{str(dt.month).zfill(2)}.total_commission'
+
+    user = frappe.session.user
+    perms = get_user_report_permissions(user)
+
+    where_clauses = ["A.docstatus < 2", "A.agent_type IN ('RDDSA', 'DDDSA')"]
+    where_args = []
+
+    if perms.get("is_restricted"):
+        if perms.get("sol_ids"):
+            sols = perms.get("sol_ids")
+            where_clauses.append("(A.branch_code IN %s OR B.sol_id IN %s)")
+            where_args.extend([tuple(sols), tuple(sols)])
+        else:
+            branches_map = get_sahayog_branches_cached()
+            if perms.get("zone_ids"):
+                all_zones = set(b["zone"] for b in branches_map.values() if b["zone"])
+                zone_pattern = re.compile(f"({'|'.join(re.escape(zid) for zid in perms['zone_ids'])})")
+                matched_zones = [z for z in all_zones if zone_pattern.search(z)]
+                if matched_zones:
+                    where_clauses.append("B.zone IN %s")
+                    where_args.append(tuple(matched_zones))
+                else:
+                    where_clauses.append("1 = 0")
+
+            if not perms.get("all_regions") and perms.get("region_ids"):
+                all_regions = set(b["region"] for b in branches_map.values() if b["region"])
+                region_pattern = re.compile(f"({'|'.join(re.escape(rid) for rid in perms['region_ids'])})")
+                matched_regions = [r for r in all_regions if region_pattern.search(r)]
+                if matched_regions:
+                    where_clauses.append("B.region IN %s")
+                    where_args.append(tuple(matched_regions))
+                else:
+                    where_clauses.append("1 = 0")
+
+            if not perms.get("zone_ids") and not perms.get("region_ids") and not perms.get("all_regions"):
+                where_clauses.append("1 = 0")
+
+    where_stmt = " AND ".join(where_clauses)
 
     sql_query = f"""
         SELECT 
@@ -5762,13 +5801,12 @@ def get_rm_wise_ss_vs_data(selected_date=None):
         FROM `tabAgent` A
         LEFT JOIN `tabEmployee` E ON A.employee = E.name
         LEFT JOIN `tabSahayog Branch` B ON (A.branch_code = B.sol_id OR A.branch_code = B.branch_code)
-        WHERE A.docstatus < 2
-          AND A.agent_type IN ('RDDSA', 'DDDSA')
+        WHERE {where_stmt}
         ORDER BY total_commission DESC
     """
-    data = frappe.db.sql(sql_query, as_dict=True)
+    data = frappe.db.sql(sql_query, tuple(where_args) if where_args else None, as_dict=True)
 
-    return {"data": data}
+    return {"data": data, "permissions": perms}
 
 
 @frappe.whitelist()
