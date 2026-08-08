@@ -2126,7 +2126,7 @@ def execute_product_wise_bulk_insert(records: list, chunk_size: int = 5000) -> N
 
         if db_type == "mariadb":
             sql = f"""
-            INSERT INTO `tabProduct Wise Report` (
+            INSERT IGNORE INTO `tabProduct Wise Report` (
                 `name`, `creation`, `modified`, `modified_by`, `owner`, `docstatus`, `idx`,
                 `zone`, `region`, `product`, `amount`, `date`, `sol_id`, `scheme_code`
             ) VALUES {placeholders};
@@ -2136,7 +2136,7 @@ def execute_product_wise_bulk_insert(records: list, chunk_size: int = 5000) -> N
             INSERT INTO "tabProduct Wise Report" (
                 "name", "creation", "modified", "modified_by", "owner", "docstatus", "idx",
                 "zone", "region", "product", "amount", "date", "sol_id", "scheme_code"
-            ) VALUES {placeholders};
+            ) VALUES {placeholders} ON CONFLICT DO NOTHING;
             """
         frappe.db.sql(sql, flattened_params)
 

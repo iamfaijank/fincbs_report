@@ -27,7 +27,7 @@ def execute_book_position_bulk_insert(records: list, chunk_size: int = 5000) -> 
 
 		if db_type == "mariadb":
 			sql = f"""
-			INSERT INTO `tabBook Position and Account Details` (
+			INSERT IGNORE INTO `tabBook Position and Account Details` (
 				`name`, `creation`, `modified`, `modified_by`, `owner`, `docstatus`, `idx`,
 				`date`, `sol_id`, `scheme_code`, `scheme_description`, `account_opened`,
 				`account_closed`, `opening_no_of_accounts`, `closing_no_of_accounts`,
@@ -41,7 +41,7 @@ def execute_book_position_bulk_insert(records: list, chunk_size: int = 5000) -> 
 				"date", "sol_id", "scheme_code", "scheme_description", "account_opened",
 				"account_closed", "opening_no_of_accounts", "closing_no_of_accounts",
 				"opening_balance", "closing_balance", "group_name", "group_subname"
-			) VALUES {placeholders};
+			) VALUES {placeholders} ON CONFLICT DO NOTHING;
 			"""
 		frappe.db.sql(sql, flattened_params)
 

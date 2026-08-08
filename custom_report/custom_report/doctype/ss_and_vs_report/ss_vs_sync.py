@@ -1206,9 +1206,11 @@ def execute_ss_vs_bulk_insert(fields: list, records: list, chunk_size: int = 500
 	if db_type == "mariadb":
 		escaped_fields = ", ".join(f"`{f}`" for f in fields)
 		table_name = "`tabSS and VS Report`"
+		sql_prefix = f"INSERT IGNORE INTO {table_name}"
 	else:
 		escaped_fields = ", ".join(f'"{f}"' for f in fields)
 		table_name = '"tabSS and VS Report"'
+		sql_prefix = f"INSERT INTO {table_name}"
 
 	row_placeholder = "(" + ", ".join(["%s"] * len(fields)) + ")"
 
@@ -1217,7 +1219,11 @@ def execute_ss_vs_bulk_insert(fields: list, records: list, chunk_size: int = 500
 		placeholders = ", ".join([row_placeholder] * len(chunk))
 		flattened_params = [val for row in chunk for val in row]
 
-		sql = f"INSERT INTO {table_name} ({escaped_fields}) VALUES {placeholders};"
+		if db_type == "mariadb":
+			sql = f"{sql_prefix} ({escaped_fields}) VALUES {placeholders};"
+		else:
+			sql = f"{sql_prefix} ({escaped_fields}) VALUES {placeholders} ON CONFLICT DO NOTHING;"
+
 		frappe.db.sql(sql, flattened_params)
 
 
@@ -1310,7 +1316,7 @@ class SSandVSSyncEngine:
 			try:
 				# Map row columns to DocType fields
 				doc_data = {
-					"name": frappe.generate_hash(length=10),
+					"name": frappe.generate_hash(length=16),
 					"owner": user,
 					"modified_by": user,
 					"creation": now_time,
