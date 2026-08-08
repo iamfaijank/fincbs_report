@@ -4494,6 +4494,9 @@ class DrishtiDashboard {
 						const agentCode = row.agent_code || row.rm_id || "-";
 						const agentName = row.agent_name || row.rm_name || "-";
 						const branchCode = row.branch_code || "-";
+						const zone = row.zone || "-";
+						const region = row.region || "-";
+						const district = row.district || "-";
 						const agentStatus = (row.agent_status || "Inactive").trim();
 						const isAgentActive = agentStatus.toLowerCase() === "active" || agentStatus.toLowerCase() === "live";
 						const statusBadge = isAgentActive
@@ -4505,19 +4508,22 @@ class DrishtiDashboard {
 
 						rowsHtml += `
 							<tr class="rm-master-row" data-rm-id="${agentCode}" style="cursor: pointer; background: ${isExpanded ? '#f0fdf4' : '#fff'}; border-bottom: 1px solid #e2e8f0;">
-								<td style="padding: 8px 12px; text-align: center; font-size: 13px; font-weight: 600; width: 50px;">${globalIdx}</td>
-								<td style="padding: 8px 12px; font-size: 13px; font-weight: 700; color: #1e293b;">
-									<span class="rm-toggle-icon" style="display: inline-block; width: 16px; color: #417d81;">${isExpanded ? '▼' : '▶'}</span>
+								<td style="padding: 8px 10px; text-align: center; font-size: 12px; font-weight: 600; width: 40px;">${globalIdx}</td>
+								<td style="padding: 8px 10px; font-size: 12px; font-weight: 700; color: #1e293b;">
+									<span class="rm-toggle-icon" style="display: inline-block; width: 14px; color: #417d81;">${isExpanded ? '▼' : '▶'}</span>
 									<span style="color: #417d81; text-decoration: underline;">${agentCode}</span>
 								</td>
-								<td style="padding: 8px 12px; font-size: 13px; font-weight: 600; color: #334155;">${agentName}</td>
-								<td style="padding: 8px 12px; text-align: center; font-size: 12px; font-weight: 700; color: #417d81;">${branchCode}</td>
-								<td style="padding: 8px 12px; text-align: center; font-size: 12px;">${statusBadge}</td>
-								<td style="padding: 8px 12px; text-align: right; font-size: 13px; font-weight: 600;">${fmtNum(totCust)}</td>
-								<td style="padding: 8px 12px; text-align: right; font-size: 13px; font-weight: 700; color: #417d81;">${fmtAmt(totComm)}</td>
+								<td style="padding: 8px 10px; font-size: 12px; font-weight: 600; color: #334155;">${agentName}</td>
+								<td style="padding: 8px 10px; text-align: center; font-size: 12px; font-weight: 700; color: #417d81;">${branchCode}</td>
+								<td style="padding: 8px 10px; font-size: 12px; font-weight: 600; color: #475569;">${zone}</td>
+								<td style="padding: 8px 10px; font-size: 12px; font-weight: 600; color: #475569;">${region}</td>
+								<td style="padding: 8px 10px; font-size: 12px; font-weight: 600; color: #475569;">${district}</td>
+								<td style="padding: 8px 10px; text-align: center; font-size: 11px;">${statusBadge}</td>
+								<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 600;">${fmtNum(totCust)}</td>
+								<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 700; color: #417d81;">${fmtAmt(totComm)}</td>
 							</tr>
 							<tr class="rm-detail-row" data-rm-id="${agentCode}" style="display: ${isExpanded ? 'table-row' : 'none'}; background: #f8fafc;">
-								<td colspan="7" style="padding: 10px 14px;">
+								<td colspan="10" style="padding: 10px 14px;">
 									<div class="rm-category-container" data-rm-id="${agentCode}">
 										<div style="padding: 8px; color: #64748b; font-size: 12px;">Loading Product Breakdown...</div>
 									</div>
@@ -4542,7 +4548,7 @@ class DrishtiDashboard {
 									</select>
 								</div>
 								<div style="display: flex; align-items: center; gap: 4px;">
-									<button type="button" class="btn btn-xs rm-page-first" ${self.currentPage <= 1 ? 'disabled' : ''} style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 2px 6px;">« First</button>
+									<button type="button" class="btn btn-xs rm-page-first" ${self.currentPage <= 1 ? 'disabled' : ''} style="background: #f1f5f9; color: #334155; font-weight: 700; border-radius: 4px; padding: 2px 6px;">« First</button>
 									<button type="button" class="btn btn-xs rm-page-prev" ${self.currentPage <= 1 ? 'disabled' : ''} style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 2px 6px;">‹ Prev</button>
 									<span style="font-size: 12px; font-weight: 700; padding: 0 6px; color: #417d81;">Page ${self.currentPage} of ${totalPages}</span>
 									<button type="button" class="btn btn-xs rm-page-next" ${self.currentPage >= totalPages ? 'disabled' : ''} style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 2px 6px;">Next ›</button>
@@ -4565,21 +4571,24 @@ class DrishtiDashboard {
 							<table class="table table-sm table-hover" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
 								<thead>
 									<tr style="background: #417d81; color: #ffffff; position: sticky; top: 0; z-index: 2;">
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: center; width: 50px;">Sr</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Agent Code</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Agent Name</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: center;">Branch Code</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: center;">Status</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Customer</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Commission</th>
+										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
+										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Agent Code</th>
+										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Agent Name</th>
+										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center;">Branch Code</th>
+										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Zone</th>
+										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Region</th>
+										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">District</th>
+										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center;">Status</th>
+										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">Total Customer</th>
+										<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">Total Commission</th>
 									</tr>
 								</thead>
 								<tbody>${rowsHtml}</tbody>
 								<tfoot>
 									<tr style="background: rgba(65, 125, 129, 0.08); color: #1e293b; font-weight: 700; position: sticky; bottom: 0; z-index: 2; border-top: 2px solid #417d81;">
-										<td colspan="5" style="padding: 10px 12px; text-align: right; font-size: 13px; color: #417d81;">GRAND TOTAL (${fmtNum(self.tableData.length)} AGENTS)</td>
-										<td style="padding: 10px 12px; text-align: right; font-size: 13px;">${fmtNum(grandTotalCust)}</td>
-										<td style="padding: 10px 12px; text-align: right; font-size: 13px; color: #417d81; font-weight: 800;">${fmtAmt(grandTotalComm)}</td>
+										<td colspan="8" style="padding: 10px 10px; text-align: right; font-size: 12px; color: #417d81;">GRAND TOTAL (${fmtNum(self.tableData.length)} AGENTS)</td>
+										<td style="padding: 10px 10px; text-align: right; font-size: 12px;">${fmtNum(grandTotalCust)}</td>
+										<td style="padding: 10px 10px; text-align: right; font-size: 12px; color: #417d81; font-weight: 800;">${fmtAmt(grandTotalComm)}</td>
 									</tr>
 								</tfoot>
 							</table>
