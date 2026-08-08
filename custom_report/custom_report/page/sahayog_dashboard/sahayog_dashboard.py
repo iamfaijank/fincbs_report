@@ -5726,10 +5726,9 @@ def get_agent_customer_details(report_type, rm_id, selected_date=None):
 
 
 @frappe.whitelist()
-@sahayog_cache(ttl=86400)
 def get_rm_wise_ss_vs_data(selected_date=None):
     """
-    Fetches Agent Code, Agent Name, and Commission 100% directly from tabAgent.commission_json using raw SQL.
+    Fetches Agent Code, Agent Name, Status, and Commission 100% directly from tabAgent.commission_json using raw SQL.
     """
     data = frappe.db.sql("""
         SELECT 
@@ -5785,7 +5784,6 @@ def get_rm_wise_ss_vs_data(selected_date=None):
 
 
 @frappe.whitelist()
-@sahayog_cache(ttl=86400)
 def get_rm_wise_category_breakdown(rm_id, selected_date=None):
     """
     Returns Product breakdown for specified agent 100% directly from tabAgent.commission_json.
