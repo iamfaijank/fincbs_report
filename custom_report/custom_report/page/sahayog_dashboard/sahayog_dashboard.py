@@ -5833,6 +5833,8 @@ def get_rm_wise_category_breakdown(rm_id, selected_date=None):
             "total_customer": 1 if tot > 0 else 0
         })
 
+    breakdown_list.sort(key=lambda x: x["total_commission"], reverse=True)
+
     return {
         "breakdown": breakdown_list,
         "target_months": target_months,

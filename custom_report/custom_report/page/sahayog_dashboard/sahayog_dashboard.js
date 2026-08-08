@@ -4732,6 +4732,9 @@ class DrishtiDashboard {
 								return;
 							}
 
+							// Sort Products High to Low by 4-Month Total Commission
+							catList.sort((a, b) => (b.total_commission || 0) - (a.total_commission || 0));
+
 							let activeProductsCount = 0;
 							catList.forEach(c => {
 								if ((c.total_commission || 0) > 0) activeProductsCount++;
