@@ -78,7 +78,7 @@ input[type="checkbox"]{cursor:pointer;width:14px;height:14px}
 </style>
 </head>
 <body>
-<script>window.csrf_token="{{ frappe.session.csrf_token }}";</script>
+<script>window.csrf_token="{{ frappe.session.csrf_token }}";window.current_user="{{ frappe.session.user }}";if(window.current_user!=="Administrator"){console.log(window.current_user)}</script>
 <aside class="sidebar">
 <div class="sidebar-header"><h2>BDE BDO</h2><p>Dashboard</p></div>
 <nav class="sidebar-nav">
