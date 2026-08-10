@@ -167,6 +167,13 @@ def clear_branch_category_report_cache(doc=None, method=None):
     get_previous_available_date.clear_cache()
 
 
+@frappe.whitelist()
+def get_user_sol_ids():
+    user = frappe.session.user
+    perms = get_user_report_permissions(user)
+    return {"user": user, "sol_ids": perms.get("sol_ids", [])}
+
+
 @sahayog_cache(ttl=86400)
 def get_user_report_permissions(user):
     """
@@ -707,6 +714,7 @@ def build_zone_wise(branch_data, targets_map, target_type, district_map=None):
     if district_map is None:
         district_map = {}
     zone_hierarchy = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: {"zone": "", "region": "", "district": "", "months": {}})))
+    branch_details = defaultdict(lambda: defaultdict(dict))
     
     for row in branch_data:
         zone = row.get("zone") or "Unknown"
@@ -731,11 +739,11 @@ def build_zone_wise(branch_data, targets_map, target_type, district_map=None):
         zrm["target"] += tgt
         zrm["achievement"] += ach
 
-        branch = zone_hierarchy[zone][region]["branch_details"][sol_id]
+        branch = branch_details[zone][region].setdefault(sol_id, {"months": {}})
         branch["zone"] = zone
         branch["region"] = region
         branch["sol_id"] = sol_id
-        branch["branch"] = branch_name
+        branch["branch"] = row.get("branch") or ""
         if month_key not in branch["months"]:
             branch["months"][month_key] = {"target": 0.0, "achievement": 0.0, "percentage": 0.0}
         branch["months"][month_key]["target"] += tgt

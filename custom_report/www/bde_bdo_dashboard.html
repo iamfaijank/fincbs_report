@@ -78,7 +78,7 @@ input[type="checkbox"]{cursor:pointer;width:14px;height:14px}
 </style>
 </head>
 <body>
-<script>window.csrf_token="{{ frappe.session.csrf_token }}";window.current_user="{{ frappe.session.user }}";if(window.current_user!=="Administrator"){console.log(window.current_user)}</script>
+<script>window.csrf_token="{{ frappe.session.csrf_token }}";window.current_user="{{ frappe.session.user }}";if(window.current_user!=="Administrator"){console.log(window.current_user);fetch("/api/method/custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_user_sol_ids",{method:"GET",headers:{"Accept":"application/json"},credentials:"same-origin"}).then(function(r){return r.json()}).then(function(r){if(r&&r.message){console.log(r.message.sol_ids)}}).catch(function(){})}</script>
 <aside class="sidebar">
 <div class="sidebar-header"><h2>BDE BDO</h2><p>Dashboard</p></div>
 <nav class="sidebar-nav">
