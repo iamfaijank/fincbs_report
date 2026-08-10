@@ -78,7 +78,7 @@ input[type="checkbox"]{cursor:pointer;width:14px;height:14px}
 </style>
 </head>
 <body>
-<script>window.csrf_token="{{ frappe.session.csrf_token }}";window.current_user="{{ frappe.session.user }}";window.userZone=null;window.userRegion=null;window.userSolIds=[];if(window.current_user!=="Administrator"){console.log(window.current_user);fetch("/api/method/custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_user_sol_ids",{method:"GET",headers:{"Accept":"application/json"},credentials:"same-origin"}).then(function(r){return r.json()}).then(function(r){if(r&&r.message){window.userSolIds=r.message.sol_ids||[];window.userZone=r.message.employee_zone||null;window.userRegion=r.message.employee_region||null;console.log("employee_sol_id:",r.message.employee_sol_id);console.log("zone:",r.message.employee_zone);console.log("region:",r.message.employee_region);console.log("sol_ids:",r.message.sol_ids)}}).catch(function(){})}</script>
+<script>window.csrf_token="{{ frappe.session.csrf_token }}";window.current_user="{{ frappe.session.user }}";window.userZone=null;window.userRegion=null;window.userSolIds=[];window.employeeSolId=null;if(window.current_user!=="Administrator"){console.log(window.current_user);fetch("/api/method/custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_user_sol_ids",{method:"GET",headers:{"Accept":"application/json"},credentials:"same-origin"}).then(function(r){return r.json()}).then(function(r){if(r&&r.message){window.userSolIds=r.message.sol_ids||[];window.userZone=r.message.employee_zone||null;window.userRegion=r.message.employee_region||null;window.employeeSolId=r.message.employee_sol_id||null;console.log("employee_sol_id:",r.message.employee_sol_id);console.log("zone:",r.message.employee_zone);console.log("region:",r.message.employee_region);console.log("sol_ids:",r.message.sol_ids)}}).catch(function(){})}</script>
 <aside class="sidebar">
 <div class="sidebar-header"><h2>BDE BDO</h2><p>Dashboard</p></div>
 <nav class="sidebar-nav">
@@ -196,6 +196,7 @@ function agg(st){
 var data=st.data||[];
 if(window.current_user!=="Administrator"&&window.userZone){data=data.filter(function(r){return r.zone===window.userZone})}
 if(window.current_user!=="Administrator"&&window.userRegion){data=data.filter(function(r){return r.region===window.userRegion})}
+if(window.current_user!=="Administrator"&&window.employeeSolId){data=data.filter(function(r){return r.sol_id===window.employeeSolId})}
 var term=(st.search||"").trim();
 if(term){var terms=term.split(",").map(function(t){return t.trim().toLowerCase()}).filter(Boolean);data=data.filter(function(r){var br=(r.branch_name||r.sol_desc||"").toLowerCase();var id=(r.sol_id||"").toLowerCase();return terms.some(function(t){return br.indexOf(t)>-1||id.indexOf(t)>-1})})}
 if(st.sz&&st.sz.length>0){data=data.filter(function(r){return st.sz.indexOf(r.zone)>-1})}
