@@ -36,7 +36,7 @@ def download_netwin_statement(branch_code, ac_code, ac_no, start_date, end_date,
 
 		# Convert string dates to datetime objects
 		start_date_obj = datetime.strptime(start_date, "%Y-%m-%d")
-		end_date_obj = datetime.strptime(end_date, "%Y-%m-%d")
+		end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
 
 		# Fetch connection details from "Netwin Settings" Single DocType
 		settings = frappe.get_single("Netwin Settings")
@@ -178,7 +178,7 @@ def download_netwin_statement(branch_code, ac_code, ac_no, start_date, end_date,
 			  AND FORBRANCH = :branch_code 
 			  AND ACMASTCODE = :acmastcode 
 			  AND tdate BETWEEN :start_date AND :end_date
-			  AND POST = 1
+			  AND (POST = 1 OR POST IS NULL)
 			  AND (cncled != 1 OR cncled IS NULL)
 			ORDER BY ctrnno
 			""",
