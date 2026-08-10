@@ -51,12 +51,13 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1b263b;min-height:
 .kpi-label{font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
 .kpi-value{font-size:clamp(16px,2vw,22px);font-weight:800;line-height:1.2;word-break:break-word}
 .table-scroll{max-height:550px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;background:white}
-.data-table{width:100%;border-collapse:separate;border-spacing:0}
+.data-table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
 .data-table thead{position:sticky;top:0;z-index:2}
 .data-table thead th{background:linear-gradient(180deg,#3d7579 0%,#346569 100%);color:white;padding:10px 14px;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;text-align:left;white-space:nowrap;border-bottom:2px solid #2d5559}
 .data-table th:first-child,.data-table td:first-child{text-align:center;width:36px}
 .data-table th:nth-child(2),.data-table td:nth-child(2){text-align:center;width:40px}
 .data-table th.num,.data-table td.num{text-align:right}
+.data-table th.center,.data-table td.center{text-align:center}
 .data-table tfoot{position:sticky;bottom:0;z-index:2}
 .data-table tfoot tr{box-shadow:0 -2px 6px rgba(0,0,0,.1)}
 .data-table tfoot td{background:#1e293b;color:white;font-weight:700;padding:10px 14px;font-size:13px}
@@ -226,7 +227,7 @@ rh+='<td><input type="checkbox" class="rc" data-cid="zone::'+z.zone+'"'+(zc?" ch
 rh+='<td>'+sr+"</td>";
 rh+='<td><span class="toggle-icon">'+(ze?"\u25BC":"\u25B6")+"</span>"+z.zone+"</td>";
 rh+='<td style="text-align:center;color:#0d9488;">'+z.data.branches.length+"</td>";
-mc.forEach(function(c){rh+='<td class="num" style="font-weight:700;">'+c.fmt(z.data.a[c.key])+"</td>"});
+mc.forEach(function(c){rh+='<td class="'+c.align+'" style="font-weight:700;">'+c.fmt(z.data.a[c.key])+"</td>"});
 rh+="</tr>";
 z.regions.forEach(function(rg){
 var rk=z.zone+"::"+rg.region;var re=st.rz[rk];var rc=st.cr[rk];
@@ -234,7 +235,7 @@ rh+='<tr class="region-row'+(rc?" row-checked":"")+'" data-zone="'+z.zone+'" dat
 rh+='<td><input type="checkbox" class="rc" data-cid="'+rk+'"'+(rc?" checked":"")+"/></td><td></td>";
 rh+='<td style="padding-left:30px;"><span class="toggle-icon">'+(re?"\u25BC":"\u25B6")+"</span>"+rg.region+"</td>";
 rh+='<td style="text-align:center;color:#0d9488;font-weight:600;">'+rg.branches.length+"</td>";
-mc.forEach(function(c){rh+='<td class="num" style="font-weight:500;">'+c.fmt(rg.a[c.key])+"</td>"});
+mc.forEach(function(c){rh+='<td class="'+c.align+'" style="font-weight:500;">'+c.fmt(rg.a[c.key])+"</td>"});
 rh+="</tr>";
 rg.branches.forEach(function(b,bi){
 var show=ze&&st.rz[rk];var bg=bi%2===0?"#ffffff":"#f1f5f9";var bid=b.sol_id||"b_"+bi;var bc=st.cr[bid];
@@ -245,12 +246,15 @@ if(b.rm_id)lb+=" | "+b.rm_id+" - "+(b.rm_name||"");
 if(b.auth_id)lb+=" | "+b.auth_id+" - "+(b.auth_name||"")+(b.designation?" ("+b.designation+")":"");
 rh+='<td style="padding-left:50px;">'+lb+"</td>";
 rh+='<td style="text-align:center;color:#94a3b8;">1</td>';
-mc.forEach(function(c){rh+='<td class="num">'+c.fmt(b[c.key])+"</td>"});
+mc.forEach(function(c){rh+='<td class="'+c.align+'">'+c.fmt(b[c.key])+"</td>"});
 rh+="</tr>"})})});
 var th=mc.map(function(c){return'<th class="'+c.align+'">'+c.label+"</th>"}).join("");
 var tf2=mc.map(function(c){return'<td class="'+c.align+'">'+c.fmt(gt[c.key])+"</td>"}).join("");
 var tb=zd.reduce(function(s,z){return s+z.data.branches.length},0);
-el.innerHTML='<div class="table-scroll"><table class="data-table"><thead><tr><th><input type="checkbox" class="ca"/></th><th>Sr</th><th>Zone / Region / Branch</th><th style="text-align:center;">Branches</th>'+th+'</tr></thead><tbody>'+rh+'</tbody><tfoot><tr><td></td><td></td><td style="text-align:left;">TOTAL</td><td style="text-align:center;">'+tb+"</td>"+tf2+"</tr></tfoot></table></div>";
+var cg='<colgroup><col style="width:36px"/><col style="width:40px"/><col/><col style="width:80px"/>';
+mc.forEach(function(){cg+='<col style="width:'+Math.floor(900/mc.length)+'px"/>'});
+cg+='</colgroup>';
+el.innerHTML='<div class="table-scroll"><table class="data-table">'+cg+'<thead><tr><th><input type="checkbox" class="ca"/></th><th>Sr</th><th>Zone / Region / Branch</th><th style="text-align:center;">Branches</th>'+th+'</tr></thead><tbody>'+rh+'</tbody><tfoot><tr><td></td><td></td><td style="text-align:left;">TOTAL</td><td style="text-align:center;">'+tb+"</td>"+tf2+"</tr></tfoot></table></div>";
 el.style.display="block";
 el.onclick=function(e){
 var zr=e.target.closest(".zone-row");var rr=e.target.closest(".region-row");var cb=e.target.closest('input[type="checkbox"]');
@@ -318,7 +322,7 @@ document.getElementById(cfg.lid).style.display="none";
 }
 
 var C={
-rd_smbg_pending:{api:"get_rd_smbg_pending_table_data",arr:true,did:null,sid:"rd-search",eid:"rd-expand",rid:"rd-refetch",cid:"rd-count",zid:"rd-zones",kid:"rd-kpi",lid:"rd-loading",tid:"rd-table",mc:[{key:"total_accounts",label:"Total Accounts",align:"right",am:false},{key:"total_collection",label:"Total Collection",align:"right",am:true},{key:"pending_accounts",label:"Pending Accounts",align:"right",am:false},{key:"pending_instalments",label:"Pending Inst.",align:"right",am:false},{key:"pending_amount",label:"Pending Amount",align:"right",am:true}],kf:[{key:"total_accounts",label:"Total Accounts",color:"#3b82f6",bg:"#eff6ff",icon:"\uD83D\uDCCA",am:false},{key:"total_collection",label:"Total Collection",color:"#10b981",bg:"#ecfdf5",icon:"\uD83D\uDCB0",am:true},{key:"pending_accounts",label:"Pending Accounts",color:"#f59e0b",bg:"#fffbeb",icon:"\u23F3",am:false},{key:"pending_instalments",label:"Pending Instalments",color:"#f97316",bg:"#fff7ed",icon:"\uD83D\uDCC5",am:false},{key:"pending_amount",label:"Pending Amount",color:"#ef4444",bg:"#fef2f2",icon:"\uD83D\uDD34",am:true}]},
+rd_smbg_pending:{api:"get_rd_smbg_pending_table_data",arr:true,did:null,sid:"rd-search",eid:"rd-expand",rid:"rd-refetch",cid:"rd-count",zid:"rd-zones",kid:"rd-kpi",lid:"rd-loading",tid:"rd-table",mc:[{key:"total_accounts",label:"Total Accounts",align:"center",am:false},{key:"total_collection",label:"Total Collection",align:"center",am:true},{key:"pending_accounts",label:"Pending Accounts",align:"center",am:false},{key:"pending_instalments",label:"Pending Inst.",align:"center",am:false},{key:"pending_amount",label:"Pending Amount",align:"center",am:true}],kf:[{key:"total_accounts",label:"Total Accounts",color:"#3b82f6",bg:"#eff6ff",icon:"\uD83D\uDCCA",am:false},{key:"total_collection",label:"Total Collection",color:"#10b981",bg:"#ecfdf5",icon:"\uD83D\uDCB0",am:true},{key:"pending_accounts",label:"Pending Accounts",color:"#f59e0b",bg:"#fffbeb",icon:"\u23F3",am:false},{key:"pending_instalments",label:"Pending Instalments",color:"#f97316",bg:"#fff7ed",icon:"\uD83D\uDCC5",am:false},{key:"pending_amount",label:"Pending Amount",color:"#ef4444",bg:"#fef2f2",icon:"\uD83D\uDD34",am:true}]},
 bucket_wise:{api:"get_bucket_wise_account_mis_data",arr:false,did:"bk-date",sid:"bk-search",eid:"bk-expand",rid:"bk-refetch",cid:"bk-count",zid:"bk-zones",kid:"bk-kpi",lid:"bk-loading",tid:"bk-table",mc:[{key:"Excess",label:"Excess",align:"right",am:false},{key:"A",label:"Bucket A",align:"right",am:false},{key:"B",label:"Bucket B",align:"right",am:false},{key:"C",label:"Bucket C",align:"right",am:false},{key:"D",label:"Bucket D",align:"right",am:false},{key:"DEFAULT",label:"Default",align:"right",am:false},{key:"grand_total",label:"Grand Total",align:"right",am:false}],kf:[{key:"grand_total",label:"Grand Total",color:"#3b82f6",bg:"#eff6ff",icon:"\uD83D\uDCCA",am:false},{key:"A",label:"Bucket A",color:"#10b981",bg:"#ecfdf5",icon:"\u24B6",am:false},{key:"B",label:"Bucket B",color:"#f59e0b",bg:"#fffbeb",icon:"\u24B7",am:false},{key:"C",label:"Bucket C",color:"#f97316",bg:"#fff7ed",icon:"\u24B8",am:false},{key:"D",label:"Bucket D (NPA)",color:"#ef4444",bg:"#fef2f2",icon:"\u24B9",am:false},{key:"DEFAULT",label:"Default",color:"#6366f1",bg:"#eef2ff",icon:"\uD83D\uDCCB",am:false},{key:"Excess",label:"Excess",color:"#14b8a6",bg:"#f0fdfa",icon:"\u2705",am:false}]},
 new_account:{api:"get_new_account_report_data",arr:true,did:"na-date",sid:"na-search",eid:"na-expand",rid:"na-refetch",zid:"na-zones",kid:"na-kpi",lid:"na-loading",tid:"na-table",mc:[{key:"new_ac",label:"New Accounts",align:"right",am:false},{key:"deposit_amount",label:"Deposit Amount",align:"right",am:true}],kf:[{key:"new_ac",label:"New Accounts",color:"#3b82f6",bg:"#eff6ff",icon:"\uD83D\uDCCA",am:false},{key:"deposit_amount",label:"Total Deposit Amt",color:"#10b981",bg:"#ecfdf5",icon:"\uD83D\uDCB0",am:true},{key:"deposit_amount",label:"Avg Deposit/AC",color:"#8b5cf6",bg:"#f5f3ff",icon:"\uD83D\uDCC8",am:true,type:"avg",num:"deposit_amount",den:"new_ac"},{key:"sol_id",label:"Active Branches",color:"#f59e0b",bg:"#fffbeb",icon:"\uD83C\uDFE2",type:"unique"},{key:"auth_id",label:"Active Authorizers",color:"#ef4444",bg:"#fef2f2",icon:"\uD83D\uDC64",type:"unique"}]},
 staff_demand:{api:"get_staff_wise_demand_collection_data",arr:true,did:"sw-date",sid:"sw-search",eid:"sw-expand",rid:"sw-refetch",zid:"sw-zones",kid:"sw-kpi",lid:"sw-loading",tid:"sw-table",mc:[{key:"monthly_demand_amount",label:"Demand Amount",align:"right",am:true},{key:"monthly_collection",label:"Collection",align:"right",am:true}],kf:[{key:"monthly_demand_amount",label:"Total Demand",color:"#3b82f6",bg:"#eff6ff",icon:"\uD83D\uDCCA",am:true},{key:"monthly_collection",label:"Total Collection",color:"#10b981",bg:"#ecfdf5",icon:"\uD83D\uDCB0",am:true},{key:"monthly_collection",label:"Collection %",color:"#8b5cf6",bg:"#f5f3ff",icon:"\uD83D\uDCC8",am:true,type:"avg",num:"monthly_collection",den:"monthly_demand_amount"},{key:"sol_id",label:"Active Branches",color:"#f59e0b",bg:"#fffbeb",icon:"\uD83C\uDFE2",type:"unique"},{key:"auth_id",label:"Active Authorizers",color:"#ef4444",bg:"#fef2f2",icon:"\uD83D\uDC64",type:"unique"}]},
