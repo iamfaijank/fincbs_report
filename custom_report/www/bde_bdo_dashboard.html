@@ -108,7 +108,7 @@ input[type="checkbox"]{cursor:pointer;width:14px;height:14px}
 <input type="text" id="rd-search" placeholder="Search branch or SOL ID..."/>
 <button class="btn btn-secondary" id="rd-expand">Expand All</button>
 <button class="btn btn-secondary" id="rd-refetch">Refetch</button>
-<div class="format-toggle"><button class="btn active" data-fmt="number">Numbers</button><button class="btn" data-fmt="words">Words</button></div>
+<div class="format-toggle"><button class="btn" data-fmt="number">Numbers</button><button class="btn active" data-fmt="words">Words</button></div>
 </div>
 <div style="margin-bottom:10px;font-size:12px;color:#64748b;font-weight:600;">Last Available Date: <span id="rd-lastdate" style="color:#417d81;">--</span></div>
 <div class="zone-filter-row" id="rd-zones"></div>
@@ -124,7 +124,7 @@ input[type="checkbox"]{cursor:pointer;width:14px;height:14px}
 <input type="date" id="bk-date"/>
 <button class="btn btn-secondary" id="bk-expand">Expand All</button>
 <button class="btn btn-secondary" id="bk-refetch">Refetch</button>
-<div class="format-toggle"><button class="btn active" data-fmt="number">Numbers</button><button class="btn" data-fmt="words">Words</button></div>
+<div class="format-toggle"><button class="btn" data-fmt="number">Numbers</button><button class="btn active" data-fmt="words">Words</button></div>
 </div>
 <div style="margin-bottom:10px;font-size:12px;color:#64748b;font-weight:600;">Last Available Date: <span id="bk-lastdate" style="color:#417d81;">--</span></div>
 <div class="zone-filter-row" id="bk-zones"></div>
@@ -140,7 +140,7 @@ input[type="checkbox"]{cursor:pointer;width:14px;height:14px}
 <input type="date" id="na-date"/>
 <button class="btn btn-secondary" id="na-expand">Expand All</button>
 <button class="btn btn-secondary" id="na-refetch">Refetch</button>
-<div class="format-toggle"><button class="btn active" data-fmt="number">Numbers</button><button class="btn" data-fmt="words">Words</button></div>
+<div class="format-toggle"><button class="btn" data-fmt="number">Numbers</button><button class="btn active" data-fmt="words">Words</button></div>
 </div>
 <div style="margin-bottom:10px;font-size:12px;color:#64748b;font-weight:600;">Last Available Date: <span id="na-lastdate" style="color:#417d81;">--</span></div>
 <div class="zone-filter-row" id="na-zones"></div>
@@ -156,7 +156,7 @@ input[type="checkbox"]{cursor:pointer;width:14px;height:14px}
 <input type="date" id="sw-date"/>
 <button class="btn btn-secondary" id="sw-expand">Expand All</button>
 <button class="btn btn-secondary" id="sw-refetch">Refetch</button>
-<div class="format-toggle"><button class="btn active" data-fmt="number">Numbers</button><button class="btn" data-fmt="words">Words</button></div>
+<div class="format-toggle"><button class="btn" data-fmt="number">Numbers</button><button class="btn active" data-fmt="words">Words</button></div>
 </div>
 <div style="margin-bottom:10px;font-size:12px;color:#64748b;font-weight:600;">Last Available Date: <span id="sw-lastdate" style="color:#417d81;">--</span></div>
 <div class="zone-filter-row" id="sw-zones"></div>
@@ -172,7 +172,7 @@ input[type="checkbox"]{cursor:pointer;width:14px;height:14px}
 <input type="date" id="aw-date"/>
 <button class="btn btn-secondary" id="aw-expand">Expand All</button>
 <button class="btn btn-secondary" id="aw-refetch">Refetch</button>
-<div class="format-toggle"><button class="btn active" data-fmt="number">Numbers</button><button class="btn" data-fmt="words">Words</button></div>
+<div class="format-toggle"><button class="btn" data-fmt="number">Numbers</button><button class="btn active" data-fmt="words">Words</button></div>
 </div>
 <div style="margin-bottom:10px;font-size:12px;color:#64748b;font-weight:600;">Last Available Date: <span id="aw-lastdate" style="color:#417d81;">--</span></div>
 <div class="zone-filter-row" id="aw-zones"></div>
@@ -189,7 +189,7 @@ var BASE="custom_report.www.bde_bdo_dashboard.";
 function apiCall(m){return fetch("/api/method/"+m,{method:"GET",headers:{"Accept":"application/json"},credentials:"same-origin"}).then(function(r){return r.json()})}
 function todayStr(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 var tabStates={};
-function gs(id){if(!tabStates[id])tabStates[id]={fmt:"number",data:[],fz:{},rz:{},cr:{},search:"",expand:false,sz:[]};return tabStates[id]}
+function gs(id){if(!tabStates[id])tabStates[id]={fmt:"words",data:[],fz:{},rz:{},cr:{},search:"",expand:false,sz:[]};return tabStates[id]}
 function fc(s,v){if(!v&&v!==0)return"0";if(s==="words"){if(v>=10000000)return(v/10000000).toFixed(2)+" Cr";if(v>=100000)return(v/100000).toFixed(2)+" L";if(v>=1000)return(v/1000).toFixed(2)+" K"}return new Intl.NumberFormat("en-IN").format(v)}
 function fa(s,v){if(!v||v===0)return"\u20B90";if(s==="words"){if(v>=10000000)return"\u20B9"+(v/10000000).toFixed(2)+" Cr";if(v>=100000)return"\u20B9"+(v/100000).toFixed(2)+" L";if(v>=1000)return"\u20B9"+(v/1000).toFixed(2)+" K"}return"\u20B9"+new Intl.NumberFormat("en-IN").format(Math.round(v))}
 
