@@ -1,681 +1,390 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>BDE BDO Dashboard</title>
-		<link rel="icon" type="image/png" href="/assets/custom_report/frontend/favicon.png" />
-		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-		<style>
-			* { margin: 0; padding: 0; box-sizing: border-box; }
-			body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #1b263b; min-height: 100vh; display: flex; }
-			.sidebar { width: 240px; background: #0f172a; color: white; min-height: 100vh; flex-shrink: 0; display: flex; flex-direction: column; }
-			.sidebar-header { padding: 20px; border-bottom: 1px solid #1e293b; }
-			.sidebar-header h2 { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
-			.sidebar-header p { font-size: 11px; color: #94a3b8; }
-			.sidebar-nav { padding: 12px 0; flex: 1; }
-			.sidebar-nav-label { padding: 8px 20px; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
-			.sidebar-nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 13px; font-weight: 500; color: #cbd5e1; cursor: pointer; transition: all 0.15s; border-left: 3px solid transparent; }
-			.sidebar-nav-item:hover { background: rgba(65,125,129,0.15); color: white; }
-			.sidebar-nav-item.active { background: rgba(65,125,129,0.2); color: #5eead4; border-left-color: #5eead4; font-weight: 600; }
-			.sidebar-nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
-			.sidebar-nav-item .dropdown-icon { margin-left: auto; font-size: 10px; transition: transform 0.2s; }
-			.sidebar-nav-item.expanded .dropdown-icon { transform: rotate(180deg); }
-			.sidebar-sub-menu { display: none; padding-left: 30px; }
-			.sidebar-sub-menu.expanded { display: block; }
-			.sidebar-sub-item { padding: 8px 20px; font-size: 12px; font-weight: 500; color: #94a3b8; cursor: pointer; transition: all 0.15s; border-left: 3px solid transparent; }
-			.sidebar-sub-item:hover { background: rgba(65,125,129,0.1); color: #cbd5e1; }
-			.sidebar-sub-item.active { background: rgba(65,125,129,0.15); color: #5eead4; border-left-color: #5eead4; font-weight: 600; }
-			.main-content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-			.main-header { background: linear-gradient(135deg, #417d81 0%, #346569 100%); color: white; padding: 16px 24px; }
-			.main-header h1 { font-size: 18px; font-weight: 700; }
-			.main-body { padding: 20px 24px; flex: 1; overflow: auto; }
-			.controls-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
-			.controls-bar input[type="text"] { padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; min-width: 220px; background: white; color: #1b263b; font-size: 13px; outline: none; font-family: 'Inter', sans-serif; }
-			.controls-bar input[type="text"]:focus { border-color: #417d81; box-shadow: 0 0 0 2px rgba(65,125,129,0.15); }
-			.btn { padding: 6px 14px; font-size: 12px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
-			.btn-secondary { background: #e2e8f0; color: #475569; }
-			.btn-secondary:hover { background: #cbd5e1; }
-			.format-toggle { display: flex; gap: 0; margin-left: auto; }
-			.format-toggle .btn { border-radius: 0; }
-			.format-toggle .btn:first-child { border-radius: 6px 0 0 6px; }
-			.format-toggle .btn:last-child { border-radius: 0 6px 6px 0; }
-			.format-toggle .btn.active { background: #417d81; color: white; }
-			.format-toggle .btn:not(.active) { background: #e2e8f0; color: #475569; }
-			.records-count { font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 14px; border-radius: 6px; white-space: nowrap; }
-			.zone-filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-			.zone-filter-tag { padding: 5px 14px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: white; color: #475569; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
-			.zone-filter-tag:hover { border-color: #417d81; }
-			.zone-filter-tag.active { background: #417d81; color: white; border-color: #417d81; }
-			.kpi-container { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
-			.kpi-card { flex: 1 1 180px; min-width: 150px; border-radius: 10px; padding: 16px 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); min-height: 100px; }
-			.kpi-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-			.kpi-icon { font-size: 20px; flex-shrink: 0; }
-			.kpi-label { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
-			.kpi-value { font-size: clamp(18px, 2.2vw, 24px); font-weight: 800; line-height: 1.2; word-break: break-word; }
-			.table-scroll { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 8px; background: white; }
-			.data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
-			.data-table thead { position: sticky; top: 0; z-index: 2; }
-			.data-table thead th { background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: white; padding: 10px 14px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; border-bottom: 2px solid #2d5559; }
-			.data-table th:first-child, .data-table td:first-child { text-align: center; width: 36px; }
-			.data-table th:nth-child(2), .data-table td:nth-child(2) { text-align: center; width: 44px; }
-			.data-table th.num, .data-table td.num { text-align: right; }
-			.data-table tfoot { position: sticky; bottom: 0; z-index: 2; }
-			.data-table tfoot tr { box-shadow: 0 -2px 6px rgba(0,0,0,0.1); }
-			.data-table tfoot td { background: #1e293b; color: white; font-weight: 700; padding: 10px 14px; font-size: 14px; }
-			.data-table tbody tr { transition: background-color 0.15s; border-bottom: 1px solid #e2e8f0; }
-			.data-table tbody tr:hover { background: #dcfce7 !important; }
-			.data-table tbody tr.row-checked { background: #bbf7d0 !important; }
-			.zone-row { background: #f1f5f9; cursor: pointer; }
-			.zone-row td { font-weight: 700; color: #0f172a; font-size: 14px; padding: 10px 14px; }
-			.region-row { background: #f8fafc; cursor: pointer; }
-			.region-row td { font-weight: 600; color: #334155; font-size: 14px; padding: 8px 14px; }
-			.branch-row td { color: #475569; font-size: 14px; padding: 6px 14px; font-weight: 500; }
-			.toggle-icon { cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b; }
-			.region-row .toggle-icon { color: #94a3b8; }
-			input[type="checkbox"] { cursor: pointer; width: 14px; height: 14px; }
-			.loading-container { text-align: center; padding: 60px 20px; }
-			.spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #417d81; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
-			@keyframes spin { to { transform: rotate(360deg); } }
-			.loading-text { font-weight: 600; color: #417d81; font-size: 14px; }
-			.empty-state { padding: 40px; text-align: center; color: #64748b; font-weight: 600; }
-			@media (max-width: 768px) {
-				body { flex-direction: column; }
-				.sidebar { width: 100%; min-height: auto; flex-direction: row; overflow-x: auto; }
-				.sidebar-header { display: none; }
-				.sidebar-nav { display: flex; padding: 0; }
-				.sidebar-nav-label { display: none; }
-				.sidebar-nav-item { border-left: none; border-bottom: 3px solid transparent; padding: 12px 16px; white-space: nowrap; }
-				.sidebar-nav-item.active { border-bottom-color: #5eead4; border-left-color: transparent; }
-				.kpi-card { flex: 1 1 140px; min-width: 120px; padding: 12px 14px; min-height: 80px; }
-				.kpi-value { font-size: 16px; }
-				.controls-bar { flex-direction: column; align-items: stretch; }
-				.format-toggle { margin-left: 0; }
-			}
-		</style>
-	</head>
-	<body>
-		<script>
-			window.csrf_token = "{{ frappe.session.csrf_token }}";
-		</script>
-		<aside class="sidebar">
-			<div class="sidebar-header">
-				<h2>BDE BDO</h2>
-				<p>Dashboard</p>
-			</div>
-			<nav class="sidebar-nav">
-				<div class="sidebar-nav-label">MIS Reports</div>
-				<div class="sidebar-nav-item active" data-tab="rd_smbg_pending">
-					<span class="icon">&#128202;</span>
-					<span>RD &amp; SMBG Pending</span>
-				</div>
-				<div class="sidebar-nav-item" data-tab="dd_tracker">
-					<span class="icon">&#128196;</span>
-					<span>DD Tracker Report</span>
-					<span class="dropdown-icon">&#9660;</span>
-				</div>
-				<div class="sidebar-sub-menu" id="dd-tracker-submenu">
-					<div class="sidebar-sub-item" data-subtab="bucket_wise">Bucket Wise Account MIS</div>
-					<div class="sidebar-sub-item" data-subtab="new_account">New Account Report</div>
-					<div class="sidebar-sub-item" data-subtab="staff_demand_collection">Staff Wise Demand Vs Collection Report</div>
-					<div class="sidebar-sub-item" data-subtab="agent_demand_collection">Agent Wise Demand Vs Collection Report</div>
-				</div>
-			</nav>
-		</aside>
-		<div class="main-content">
-			<div class="main-header">
-				<h1 id="main-header-title">RD &amp; SMBG Pending</h1>
-			</div>
-			<div class="main-body" id="tab-content-rd_smbg_pending">
-				<div class="controls-bar">
-					<input type="text" id="search-input" placeholder="Search branch or SOL ID..." />
-					<button class="btn btn-secondary" id="expand-toggle">&#9660; Expand All</button>
-					<button class="btn btn-secondary" id="refetch-btn">&#10227; Refetch</button>
-					<div class="format-toggle">
-						<button class="btn active" data-format="number">Numbers</button>
-						<button class="btn" data-format="words">Words</button>
-					</div>
-					<div class="records-count" id="records-count"></div>
-				</div>
-				<div class="zone-filter-row" id="zone-filter-row"></div>
-				<div class="kpi-container" id="kpi-container"></div>
-				<div id="loading" class="loading-container">
-					<div class="spinner"></div>
-					<div class="loading-text">Fetching latest RD &amp; SMBG data...</div>
-				</div>
-				<div id="table-container" style="display: none;"></div>
-			</div>
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BDE BDO Dashboard</title>
+<link rel="icon" type="image/png" href="/assets/custom_report/frontend/favicon.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#1b263b;min-height:100vh;display:flex}
+.sidebar{width:240px;background:#0f172a;color:white;min-height:100vh;flex-shrink:0;display:flex;flex-direction:column}
+.sidebar-header{padding:20px;border-bottom:1px solid #1e293b}
+.sidebar-header h2{font-size:16px;font-weight:700;margin-bottom:2px}
+.sidebar-header p{font-size:11px;color:#94a3b8}
+.sidebar-nav{padding:12px 0;flex:1}
+.sidebar-nav-label{padding:8px 20px;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px}
+.sidebar-nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;font-weight:500;color:#cbd5e1;cursor:pointer;transition:all .15s;border-left:3px solid transparent}
+.sidebar-nav-item:hover{background:rgba(65,125,129,.15);color:white}
+.sidebar-nav-item.active{background:rgba(65,125,129,.2);color:#5eead4;border-left-color:#5eead4;font-weight:600}
+.sidebar-nav-item .icon{font-size:16px;width:20px;text-align:center}
+.sidebar-nav-item .arrow{margin-left:auto;font-size:10px;transition:transform .2s}
+.sidebar-nav-item.expanded .arrow{transform:rotate(180deg)}
+.sidebar-sub-menu{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.sidebar-sub-menu.expanded{max-height:300px}
+.sidebar-sub-item{padding:8px 20px 8px 50px;font-size:12px;font-weight:500;color:#94a3b8;cursor:pointer;transition:all .15s;border-left:3px solid transparent}
+.sidebar-sub-item:hover{background:rgba(65,125,129,.1);color:#cbd5e1}
+.sidebar-sub-item.active{color:#5eead4;border-left-color:#5eead4;font-weight:600}
+.main-content{flex:1;display:flex;flex-direction:column;min-width:0}
+.main-header{background:linear-gradient(135deg,#417d81 0%,#346569 100%);color:white;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+.main-header h1{font-size:18px;font-weight:700}
+.main-body{padding:20px 24px;flex:1;overflow:auto}
+.tab-content{display:none}.tab-content.active{display:block}
+.controls-bar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.controls-bar input[type="text"]{padding:6px 12px;border:1px solid #cbd5e1;border-radius:6px;min-width:200px;background:white;color:#1b263b;font-size:13px;outline:none;font-family:'Inter',sans-serif}
+.controls-bar input[type="text"]:focus{border-color:#417d81;box-shadow:0 0 0 2px rgba(65,125,129,.15)}
+.controls-bar input[type="date"]{padding:6px 12px;border:1px solid #cbd5e1;border-radius:6px;background:white;color:#1b263b;font-size:13px;outline:none;font-family:'Inter',sans-serif}
+.btn{padding:6px 14px;font-size:12px;font-weight:600;border:none;border-radius:6px;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif}
+.btn-secondary{background:#e2e8f0;color:#475569}.btn-secondary:hover{background:#cbd5e1}
+.format-toggle{display:flex;gap:0;margin-left:auto}
+.format-toggle .btn{border-radius:0}.format-toggle .btn:first-child{border-radius:6px 0 0 6px}.format-toggle .btn:last-child{border-radius:0 6px 6px 0}
+.format-toggle .btn.active{background:#417d81;color:white}.format-toggle .btn:not(.active){background:#e2e8f0;color:#475569}
+.records-count{font-size:13px;font-weight:700;color:#417d81;background:rgba(65,125,129,.08);padding:6px 14px;border-radius:6px;white-space:nowrap}
+.zone-filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.zone-filter-tag{padding:5px 14px;font-size:12px;font-weight:600;border:1px solid #cbd5e1;border-radius:9999px;background:white;color:#475569;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif}
+.zone-filter-tag:hover{border-color:#417d81}.zone-filter-tag.active{background:#417d81;color:white;border-color:#417d81}
+.kpi-container{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.kpi-card{flex:1 1 160px;min-width:130px;border-radius:10px;padding:14px 16px;box-shadow:0 2px 4px rgba(0,0,0,.04);min-height:90px}
+.kpi-card-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.kpi-icon{font-size:18px;flex-shrink:0}
+.kpi-label{font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.kpi-value{font-size:clamp(16px,2vw,22px);font-weight:800;line-height:1.2;word-break:break-word}
+.table-scroll{max-height:550px;overflow:auto;border:1px solid #e2e8f0;border-radius:8px;background:white}
+.data-table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
+.data-table thead{position:sticky;top:0;z-index:2}
+.data-table thead th{background:linear-gradient(180deg,#3d7579 0%,#346569 100%);color:white;padding:10px 14px;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;text-align:left;white-space:nowrap;border-bottom:2px solid #2d5559}
+.data-table th:first-child,.data-table td:first-child{text-align:center;width:36px}
+.data-table th:nth-child(2),.data-table td:nth-child(2){text-align:center;width:40px}
+.data-table th.num,.data-table td.num{text-align:right}
+.data-table th.center,.data-table td.center{text-align:center}
+.data-table tfoot{position:sticky;bottom:0;z-index:2}
+.data-table tfoot tr{box-shadow:0 -2px 6px rgba(0,0,0,.1)}
+.data-table tfoot td{background:#1e293b;color:white;font-weight:700;padding:10px 14px;font-size:13px}
+.data-table tbody tr{transition:background-color .15s;border-bottom:1px solid #e2e8f0}
+.data-table tbody tr:hover{background:#dcfce7 !important}
+.data-table tbody tr.row-checked{background:#bbf7d0 !important}
+.zone-row{background:#f1f5f9;cursor:pointer}.zone-row td{font-weight:700;color:#0f172a;font-size:13px;padding:10px 14px}
+.region-row{background:#f8fafc;cursor:pointer}.region-row td{font-weight:600;color:#334155;font-size:13px;padding:8px 14px}
+.branch-row td{color:#475569;font-size:13px;padding:6px 14px;font-weight:500}
+.toggle-icon{cursor:pointer;margin-right:6px;font-size:11px;color:#64748b}
+.region-row .toggle-icon{color:#94a3b8}
+input[type="checkbox"]{cursor:pointer;width:14px;height:14px}
+.loading-container{text-align:center;padding:60px 20px}
+.spinner{width:40px;height:40px;border:4px solid #e2e8f0;border-top-color:#417d81;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-weight:600;color:#417d81;font-size:14px}
+.empty-state{padding:40px;text-align:center;color:#64748b;font-weight:600}
+@media(max-width:768px){body{flex-direction:column}.sidebar{width:100%;min-height:auto;flex-direction:row;overflow-x:auto}.sidebar-header{display:none}.sidebar-nav{display:flex;padding:0}.sidebar-nav-label{display:none}.sidebar-nav-item{border-left:none;border-bottom:3px solid transparent;padding:12px 16px;white-space:nowrap}.sidebar-nav-item.active{border-bottom-color:#5eead4;border-left-color:transparent}.sidebar-sub-menu{display:none}.kpi-card{flex:1 1 130px;min-width:110px;padding:10px 12px}.kpi-value{font-size:15px}.controls-bar{flex-direction:column;align-items:stretch}.format-toggle{margin-left:0}}
+</style>
+</head>
+<body>
+<script>window.csrf_token="{{ frappe.session.csrf_token }}";window.current_user="{{ frappe.session.user }}";window.userZone=null;window.userRegion=null;window.userSolIds=[];window.employeeSolId=null;if(window.current_user!=="Administrator"){console.log(window.current_user);fetch("/api/method/custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_user_sol_ids",{method:"GET",headers:{"Accept":"application/json"},credentials:"same-origin"}).then(function(r){return r.json()}).then(function(r){if(r&&r.message){window.userSolIds=r.message.sol_ids||[];window.userZone=r.message.employee_zone||null;window.userRegion=r.message.employee_region||null;window.employeeSolId=r.message.employee_sol_id||null;console.log("employee_sol_id:",r.message.employee_sol_id);console.log("zone:",r.message.employee_zone);console.log("region:",r.message.employee_region);console.log("sol_ids:",r.message.sol_ids)}}).catch(function(){})}</script>
+<aside class="sidebar">
+<div class="sidebar-header"><h2>BDE BDO</h2><p>Dashboard</p></div>
+<nav class="sidebar-nav">
+<div class="sidebar-nav-label">MIS Reports</div>
+<div class="sidebar-nav-item active" data-tab="rd_smbg_pending">
+<span class="icon">&#128202;</span><span>RD &amp; SMBG Pending</span>
+</div>
+<div class="sidebar-nav-item" data-tab="dd_tracker">
+<span class="icon">&#128196;</span><span>DD Tracker Report</span>
+<span class="arrow">&#9660;</span>
+</div>
+<div class="sidebar-sub-menu" id="dd-tracker-submenu">
+<div class="sidebar-sub-item active" data-subtab="bucket_wise">Bucket Wise Account MIS</div>
+<div class="sidebar-sub-item" data-subtab="new_account">New Account Report</div>
+<div class="sidebar-sub-item" data-subtab="staff_demand">Staff Wise Demand Vs Collection</div>
+<div class="sidebar-sub-item" data-subtab="agent_demand">Agent Wise Demand Vs Collection</div>
+</div>
+</nav>
+</aside>
+<div class="main-content">
+<div class="main-header"><h1 id="main-title">RD &amp; SMBG Pending</h1><a href="/app/sahayog-home" style="color:white;text-decoration:none;font-size:20px;" title="Home">&#127968;</a></div>
 
-			<!-- DD Tracker Reports Content Sections -->
-			<div class="main-body" id="tab-content-dd-bucket_wise" style="display: none;">
-				<div class="controls-bar">
-					<input type="text" id="search-input-bucket" placeholder="Search branch or SOL ID..." />
-					<button class="btn btn-secondary" id="expand-toggle-bucket">&#9660; Expand All</button>
-					<button class="btn btn-secondary" id="refetch-btn-bucket">&#10227; Refetch</button>
-					<div class="format-toggle">
-						<button class="btn active" data-format="number">Numbers</button>
-						<button class="btn" data-format="words">Words</button>
-					</div>
-					<div class="records-count" id="records-count-bucket"></div>
-				</div>
-				<div class="zone-filter-row" id="zone-filter-row-bucket"></div>
-				<div class="kpi-container" id="kpi-container-bucket"></div>
-				<div id="loading-bucket" class="loading-container">
-					<div class="spinner"></div>
-					<div class="loading-text">Fetching Bucket Wise Account MIS data...</div>
-				</div>
-				<div id="table-container-bucket" style="display: none;"></div>
-			</div>
+<!-- 1. RD & SMBG Pending -->
+<div class="main-body tab-content active" id="tab-rd_smbg_pending">
+<div class="controls-bar">
+<input type="text" id="rd-search" placeholder="Search branch or SOL ID..."/>
+<button class="btn btn-secondary" id="rd-expand">Expand All</button>
+<button class="btn btn-secondary" id="rd-refetch">Refetch</button>
+<div class="format-toggle"><button class="btn" data-fmt="number">Numbers</button><button class="btn active" data-fmt="words">Words</button></div>
+</div>
+<div style="margin-bottom:10px;font-size:12px;color:#64748b;font-weight:600;">Last Available Date: <span id="rd-lastdate" style="color:#417d81;">--</span></div>
+<div class="zone-filter-row" id="rd-zones"></div>
+<div class="kpi-container" id="rd-kpi"></div>
+<div id="rd-loading" class="loading-container"><div class="spinner"></div><div class="loading-text">Fetching RD &amp; SMBG data...</div></div>
+<div id="rd-table" style="display:none"></div>
+</div>
 
-			<div class="main-body" id="tab-content-dd-new_account" style="display: none;">
-				<div class="controls-bar">
-					<input type="text" id="search-input-new" placeholder="Search branch or SOL ID..." />
-					<button class="btn btn-secondary" id="expand-toggle-new">&#9660; Expand All</button>
-					<button class="btn btn-secondary" id="refetch-btn-new">&#10227; Refetch</button>
-					<div class="format-toggle">
-						<button class="btn active" data-format="number">Numbers</button>
-						<button class="btn" data-format="words">Words</button>
-					</div>
-					<div class="records-count" id="records-count-new"></div>
-				</div>
-				<div class="zone-filter-row" id="zone-filter-row-new"></div>
-				<div class="kpi-container" id="kpi-container-new"></div>
-				<div id="loading-new" class="loading-container">
-					<div class="spinner"></div>
-					<div class="loading-text">Fetching New Account Report data...</div>
-				</div>
-				<div id="table-container-new" style="display: none;"></div>
-			</div>
+<!-- 2. Bucket Wise -->
+<div class="main-body tab-content" id="tab-bucket_wise">
+<div class="controls-bar">
+<input type="text" id="bk-search" placeholder="Search branch or SOL ID..."/>
+<input type="date" id="bk-date"/>
+<button class="btn btn-secondary" id="bk-expand">Expand All</button>
+<button class="btn btn-secondary" id="bk-refetch">Refetch</button>
+<div class="format-toggle"><button class="btn" data-fmt="number">Numbers</button><button class="btn active" data-fmt="words">Words</button></div>
+</div>
+<div style="margin-bottom:10px;font-size:12px;color:#64748b;font-weight:600;">Last Available Date: <span id="bk-lastdate" style="color:#417d81;">--</span></div>
+<div class="zone-filter-row" id="bk-zones"></div>
+<div class="kpi-container" id="bk-kpi"></div>
+<div id="bk-loading" class="loading-container"><div class="spinner"></div><div class="loading-text">Fetching Bucket Wise data...</div></div>
+<div id="bk-table" style="display:none"></div>
+</div>
 
-			<div class="main-body" id="tab-content-dd-staff_demand_collection" style="display: none;">
-				<div class="controls-bar">
-					<input type="text" id="search-input-staff" placeholder="Search branch, staff name..." />
-					<button class="btn btn-secondary" id="expand-toggle-staff">&#9660; Expand All</button>
-					<button class="btn btn-secondary" id="refetch-btn-staff">&#10227; Refetch</button>
-					<div class="format-toggle">
-						<button class="btn active" data-format="number">Numbers</button>
-						<button class="btn" data-format="words">Words</button>
-					</div>
-					<div class="records-count" id="records-count-staff"></div>
-				</div>
-				<div class="zone-filter-row" id="zone-filter-row-staff"></div>
-				<div class="kpi-container" id="kpi-container-staff"></div>
-				<div id="loading-staff" class="loading-container">
-					<div class="spinner"></div>
-					<div class="loading-text">Fetching Staff Wise Demand Vs Collection data...</div>
-				</div>
-				<div id="table-container-staff" style="display: none;"></div>
-			</div>
+<!-- 3. New Account -->
+<div class="main-body tab-content" id="tab-new_account">
+<div class="controls-bar">
+<input type="text" id="na-search" placeholder="Search branch or SOL ID..."/>
+<input type="date" id="na-date"/>
+<button class="btn btn-secondary" id="na-expand">Expand All</button>
+<button class="btn btn-secondary" id="na-refetch">Refetch</button>
+<div class="format-toggle"><button class="btn" data-fmt="number">Numbers</button><button class="btn active" data-fmt="words">Words</button></div>
+</div>
+<div style="margin-bottom:10px;font-size:12px;color:#64748b;font-weight:600;">Last Available Date: <span id="na-lastdate" style="color:#417d81;">--</span></div>
+<div class="zone-filter-row" id="na-zones"></div>
+<div class="kpi-container" id="na-kpi"></div>
+<div id="na-loading" class="loading-container"><div class="spinner"></div><div class="loading-text">Fetching New Account data...</div></div>
+<div id="na-table" style="display:none"></div>
+</div>
 
-			<div class="main-body" id="tab-content-dd-agent_demand_collection" style="display: none;">
-				<div class="controls-bar">
-					<input type="text" id="search-input-agent" placeholder="Search branch, agent, authorizer..." />
-					<button class="btn btn-secondary" id="expand-toggle-agent">&#9660; Expand All</button>
-					<button class="btn btn-secondary" id="refetch-btn-agent">&#10227; Refetch</button>
-					<div class="format-toggle">
-						<button class="btn active" data-format="number">Numbers</button>
-						<button class="btn" data-format="words">Words</button>
-					</div>
-					<div class="records-count" id="records-count-agent"></div>
-				</div>
-				<div class="zone-filter-row" id="zone-filter-row-agent"></div>
-				<div class="kpi-container" id="kpi-container-agent"></div>
-				<div id="loading-agent" class="loading-container">
-					<div class="spinner"></div>
-					<div class="loading-text">Fetching Agent Wise Demand Vs Collection data...</div>
-				</div>
-				<div id="table-container-agent" style="display: none;"></div>
-			</div>
-		</div>
+<!-- 4. Staff Wise -->
+<div class="main-body tab-content" id="tab-staff_demand">
+<div class="controls-bar">
+<input type="text" id="sw-search" placeholder="Search branch, staff..."/>
+<input type="date" id="sw-date"/>
+<button class="btn btn-secondary" id="sw-expand">Expand All</button>
+<button class="btn btn-secondary" id="sw-refetch">Refetch</button>
+<div class="format-toggle"><button class="btn" data-fmt="number">Numbers</button><button class="btn active" data-fmt="words">Words</button></div>
+</div>
+<div style="margin-bottom:10px;font-size:12px;color:#64748b;font-weight:600;">Last Available Date: <span id="sw-lastdate" style="color:#417d81;">--</span></div>
+<div class="zone-filter-row" id="sw-zones"></div>
+<div class="kpi-container" id="sw-kpi"></div>
+<div id="sw-loading" class="loading-container"><div class="spinner"></div><div class="loading-text">Fetching Staff Wise data...</div></div>
+<div id="sw-table" style="display:none"></div>
+</div>
 
-		<script>
-			(function () {
-				const state = {
-					formatMode: "number",
-					tableData: [],
-					filterOptions: null,
-					expandedZones: {},
-					expandedRegions: {},
-					checkedRows: {},
-					searchTerm: "",
-					allExpanded: false,
-					selectedZones: [],
-				};
+<!-- 5. Agent Wise -->
+<div class="main-body tab-content" id="tab-agent_demand">
+<div class="controls-bar">
+<input type="text" id="aw-search" placeholder="Search branch, agent..."/>
+<input type="date" id="aw-date"/>
+<button class="btn btn-secondary" id="aw-expand">Expand All</button>
+<button class="btn btn-secondary" id="aw-refetch">Refetch</button>
+<div class="format-toggle"><button class="btn" data-fmt="number">Numbers</button><button class="btn active" data-fmt="words">Words</button></div>
+</div>
+<div style="margin-bottom:10px;font-size:12px;color:#64748b;font-weight:600;">Last Available Date: <span id="aw-lastdate" style="color:#417d81;">--</span></div>
+<div class="zone-filter-row" id="aw-zones"></div>
+<div class="kpi-container" id="aw-kpi"></div>
+<div id="aw-loading" class="loading-container"><div class="spinner"></div><div class="loading-text">Fetching Agent Wise data...</div></div>
+<div id="aw-table" style="display:none"></div>
+</div>
 
-				function fmtCount(val) {
-					if (!val && val !== 0) return "0";
-					if (state.formatMode === "words") {
-						if (val >= 10000000) return (val / 10000000).toFixed(2) + " Cr";
-						if (val >= 100000) return (val / 100000).toFixed(2) + " L";
-						if (val >= 1000) return (val / 1000).toFixed(2) + " K";
-					}
-					return new Intl.NumberFormat("en-IN").format(val);
-				}
+</div>
 
-				function fmtAmt(val) {
-					if (!val || val === 0) return "\u20B90";
-					if (state.formatMode === "words") {
-						if (val >= 10000000) return "\u20B9" + (val / 10000000).toFixed(2) + " Cr";
-						if (val >= 100000) return "\u20B9" + (val / 100000).toFixed(2) + " L";
-						if (val >= 1000) return "\u20B9" + (val / 1000).toFixed(2) + " K";
-					}
-					return "\u20B9" + new Intl.NumberFormat("en-IN").format(Math.round(val));
-				}
+<script>
+(function(){
+var BASE="custom_report.www.bde_bdo_dashboard.";
+function apiCall(m){return fetch("/api/method/"+m,{method:"GET",headers:{"Accept":"application/json"},credentials:"same-origin"}).then(function(r){return r.json()})}
+function todayStr(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+var tabStates={};
+function gs(id){if(!tabStates[id])tabStates[id]={fmt:"words",data:[],fz:{},rz:{},cr:{},search:"",expand:false,sz:[]};return tabStates[id]}
+function fc(s,v){if(!v&&v!==0)return"0";if(s==="words"){if(v>=10000000)return(v/10000000).toFixed(2)+" Cr";if(v>=100000)return(v/100000).toFixed(2)+" L";if(v>=1000)return(v/1000).toFixed(2)+" K"}return new Intl.NumberFormat("en-IN").format(v)}
+function fa(s,v){if(!v||v===0)return"\u20B90";if(s==="words"){if(v>=10000000)return"\u20B9"+(v/10000000).toFixed(2)+" Cr";if(v>=100000)return"\u20B9"+(v/100000).toFixed(2)+" L";if(v>=1000)return"\u20B9"+(v/1000).toFixed(2)+" K"}return"\u20B9"+new Intl.NumberFormat("en-IN").format(Math.round(v))}
 
-				function renderKPI() {
-					const data = state.tableData || [];
-					const totalAccounts = data.reduce((s, r) => s + (r.total_accounts || 0), 0);
-					const totalCollection = data.reduce((s, r) => s + (r.total_collection || 0), 0);
-					const pendingAccounts = data.reduce((s, r) => s + (r.pending_accounts || 0), 0);
-					const pendingInstalments = data.reduce((s, r) => s + (r.pending_instalments || 0), 0);
-					const pendingAmount = data.reduce((s, r) => s + (r.pending_amount || 0), 0);
-					const cards = [
-						{ label: "Total Accounts", value: fmtCount(totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "\uD83D\uDCCA" },
-						{ label: "Total Collection", value: fmtAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "\uD83D\uDCB0" },
-						{ label: "Pending Accounts", value: fmtCount(pendingAccounts), color: "#f59e0b", bg: "#fffbeb", icon: "\u23F3" },
-						{ label: "Pending Instalments", value: fmtCount(pendingInstalments), color: "#f97316", bg: "#fff7ed", icon: "\uD83D\uDCC5" },
-						{ label: "Pending Amount", value: fmtAmt(pendingAmount), color: "#ef4444", bg: "#fef2f2", icon: "\uD83D\uDD34" },
-					];
-					document.getElementById("kpi-container").innerHTML = cards
-						.map(
-							(c) =>
-								'<div class="kpi-card" style="background:' + c.bg + ";border-left:4px solid " + c.color + ';">' +
-								'<div class="kpi-card-header"><span class="kpi-icon">' + c.icon + '</span><span class="kpi-label">' + c.label + '</span></div>' +
-								'<div class="kpi-value" style="color:' + c.color + ';">' + c.value + '</div></div>'
-						)
-						.join("");
-				}
+function agg(st){
+var data=st.data||[];
+if(window.current_user!=="Administrator"&&window.userZone){data=data.filter(function(r){return r.zone===window.userZone})}
+if(window.current_user!=="Administrator"&&window.userRegion){data=data.filter(function(r){return r.region===window.userRegion})}
+if(window.current_user!=="Administrator"&&window.employeeSolId){data=data.filter(function(r){return r.sol_id===window.employeeSolId})}
+var term=(st.search||"").trim();
+if(term){var terms=term.split(",").map(function(t){return t.trim().toLowerCase()}).filter(Boolean);data=data.filter(function(r){var br=(r.branch_name||r.sol_desc||"").toLowerCase();var id=(r.sol_id||"").toLowerCase();return terms.some(function(t){return br.indexOf(t)>-1||id.indexOf(t)>-1})})}
+if(st.sz&&st.sz.length>0){data=data.filter(function(r){return st.sz.indexOf(r.zone)>-1})}
+var zm={};
+data.forEach(function(row){
+var z=row.zone||"Unknown",rg=row.region||"Unknown";
+if(!zm[z])zm[z]={zone:z,regions:{},branches:[],a:{}};
+if(!zm[z].regions[rg])zm[z].regions[rg]={region:rg,branches:[],a:{}};
+zm[z].branches.push(row);zm[z].regions[rg].branches.push(row);
+Object.keys(row).forEach(function(k){if(["sol_id","sol_desc","zone","region","district","branch_name","rm_id","rm_name","auth_id","auth_name","designation"].indexOf(k)>-1)return;if(typeof row[k]==="number"){if(!zm[z].a[k])zm[z].a[k]=0;if(!zm[z].regions[rg].a[k])zm[z].regions[rg].a[k]=0;zm[z].a[k]+=row[k]||0;zm[z].regions[rg].a[k]+=row[k]||0}})});
+return Object.keys(zm).sort(function(a,b){return(parseInt(a.replace(/\D/g,""))||0)-(parseInt(b.replace(/\D/g,""))||0)}).map(function(zn){var zd=zm[zn];var regs=Object.keys(zd.regions).sort(function(a,b){return(parseInt(a.replace(/\D/g,""))||0)-(parseInt(b.replace(/\D/g,""))||0)}).map(function(rn){return zd.regions[rn]});return{zone:zn,data:zd,regions:regs}})}
 
-				function aggregateByZone() {
-					let data = state.tableData || [];
-					const term = (state.searchTerm || "").trim();
-					if (term) {
-						const terms = term.split(",").map((t) => t.trim().toLowerCase()).filter((t) => t);
-						data = data.filter((row) => {
-							const br = (row.branch_name || row.sol_desc || "").toLowerCase();
-							const id = (row.sol_id || "").toLowerCase();
-							return terms.some((t) => br.includes(t) || id.includes(t));
-						});
-					}
-					if (state.selectedZones && state.selectedZones.length > 0) {
-						data = data.filter((row) => state.selectedZones.includes(row.zone));
-					}
-					const zoneMap = {};
-					data.forEach((row) => {
-						const zone = row.zone || "Unknown";
-						const region = row.region || "Unknown";
-						if (!zoneMap[zone]) zoneMap[zone] = { zone: zone, regions: {}, branches: [], total_accounts: 0, total_collection: 0, pending_accounts: 0, pending_amount: 0, pending_instalments: 0 };
-						if (!zoneMap[zone].regions[region]) zoneMap[zone].regions[region] = { region: region, branches: [], total_accounts: 0, total_collection: 0, pending_accounts: 0, pending_amount: 0, pending_instalments: 0 };
-						zoneMap[zone].branches.push(row);
-						zoneMap[zone].regions[region].branches.push(row);
-						["total_accounts", "total_collection", "pending_accounts", "pending_amount", "pending_instalments"].forEach((k) => {
-							zoneMap[zone][k] += row[k] || 0;
-							zoneMap[zone].regions[region][k] += row[k] || 0;
-						});
-					});
-					const sorted = Object.keys(zoneMap)
-						.sort((a, b) => (parseInt(a.replace(/\D/g, "")) || 0) - (parseInt(b.replace(/\D/g, "")) || 0))
-						.map((zn) => {
-							const zd = zoneMap[zn];
-							const regions = Object.keys(zd.regions)
-								.sort((a, b) => (parseInt(a.replace(/\D/g, "")) || 0) - (parseInt(b.replace(/\D/g, "")) || 0))
-								.map((rn) => zd.regions[rn]);
-							return { zone: zn, data: zd, regions: regions };
-						});
-					return sorted;
-				}
+function renderTbl(st,cfg){
+var el=document.getElementById(cfg.tid);
+var zd=agg(st);
+var tf=zd.reduce(function(s,z){return s+z.data.branches.length},0);
+var ta=(st.data||[]).length;
+if(!zd||zd.length===0){el.innerHTML='<div class="empty-state">No data to display.</div>';el.style.display="block";return}
+var mc=cfg.mc.map(function(c){return{key:c.key,label:c.label,align:c.align,compute:c.compute||null,fmt:c.am?function(v){return fa(st.fmt,v)}:function(v){return fc(st.fmt,v)}}});
+var gt={};cfg.mc.forEach(function(c){gt[c.key]=0});
+zd.forEach(function(z){cfg.mc.forEach(function(c){gt[c.key]+=z.data.a[c.key]||0})});
+var sr=0,rh="";
+zd.forEach(function(z){
+sr++;var ze=st.fz[z.zone];var zc=st.cr["zone::"+z.zone];
+rh+='<tr class="zone-row'+(zc?" row-checked":"")+'" data-zone="'+z.zone+'">';
+rh+='<td><input type="checkbox" class="rc" data-cid="zone::'+z.zone+'"'+(zc?" checked":"")+"/></td>";
+rh+='<td>'+sr+"</td>";
+rh+='<td><span class="toggle-icon">'+(ze?"\u25BC":"\u25B6")+"</span>"+z.zone+"</td>";
+rh+='<td style="text-align:center;color:#0d9488;">'+z.data.branches.length+"</td>";
+mc.forEach(function(c){rh+='<td class="'+c.align+'" style="font-weight:700;">'+(c.compute?c.compute(z.data.a):c.fmt(z.data.a[c.key]))+"</td>"});
+rh+="</tr>";
+z.regions.forEach(function(rg){
+var rk=z.zone+"::"+rg.region;var re=st.rz[rk];var rc=st.cr[rk];
+rh+='<tr class="region-row'+(rc?" row-checked":"")+'" data-zone="'+z.zone+'" data-region="'+rg.region+'" style="display:'+(ze?"table-row":"none")+';">';
+rh+='<td><input type="checkbox" class="rc" data-cid="'+rk+'"'+(rc?" checked":"")+"/></td><td></td>";
+rh+='<td style="padding-left:30px;"><span class="toggle-icon">'+(re?"\u25BC":"\u25B6")+"</span>"+rg.region+"</td>";
+rh+='<td style="text-align:center;color:#0d9488;font-weight:600;">'+rg.branches.length+"</td>";
+mc.forEach(function(c){rh+='<td class="'+c.align+'" style="font-weight:500;">'+(c.compute?c.compute(rg.a):c.fmt(rg.a[c.key]))+"</td>"});
+rh+="</tr>";
+rg.branches.forEach(function(b,bi){
+var show=ze&&st.rz[rk];var bg=bi%2===0?"#ffffff":"#f1f5f9";var bid=b.sol_id||"b_"+bi;var bc=st.cr[bid];
+rh+='<tr class="branch-row'+(bc?" row-checked":"")+'" data-zone="'+z.zone+'" data-region="'+rg.region+'" style="display:'+(show?"table-row":"none")+';background:'+bg+';">';
+rh+='<td><input type="checkbox" class="rc" data-cid="'+bid+'"'+(bc?" checked":"")+"/></td><td></td>";
+var lb=b.sol_id+" - "+(b.branch_name||b.sol_desc||"");
+if(b.rm_id)lb+=" | "+b.rm_id+" - "+(b.rm_name||"");
+if(b.auth_id)lb+=" | "+b.auth_id+" - "+(b.auth_name||"")+(b.designation?" ("+b.designation+")":"");
+rh+='<td style="padding-left:50px;">'+lb+"</td>";
+rh+='<td style="text-align:center;color:#94a3b8;">1</td>';
+mc.forEach(function(c){rh+='<td class="'+c.align+'">'+(c.compute?c.compute(b):c.fmt(b[c.key]))+"</td>"});
+rh+="</tr>"})})});
+var th=mc.map(function(c){return'<th class="'+c.align+'">'+c.label+"</th>"}).join("");
+var tf2=mc.map(function(c){return'<td class="'+c.align+'">'+(c.compute?c.compute(gt):c.fmt(gt[c.key]))+"</td>"}).join("");
+var tb=zd.reduce(function(s,z){return s+z.data.branches.length},0);
+var cg='<colgroup><col style="width:36px"/><col style="width:40px"/><col/><col style="width:80px"/>';
+mc.forEach(function(){cg+='<col style="width:'+Math.floor(900/mc.length)+'px"/>'});
+cg+='</colgroup>';
+el.innerHTML='<div class="table-scroll"><table class="data-table">'+cg+'<thead><tr><th><input type="checkbox" class="ca"/></th><th>Sr</th><th>Zone / Region / Branch</th><th style="text-align:center;">Branches</th>'+th+'</tr></thead><tbody>'+rh+'</tbody><tfoot><tr><td></td><td></td><td style="text-align:left;">TOTAL</td><td style="text-align:center;">'+tb+"</td>"+tf2+"</tr></tfoot></table></div>";
+el.style.display="block";
+el.onclick=function(e){
+var zr=e.target.closest(".zone-row");var rr=e.target.closest(".region-row");var cb=e.target.closest('input[type="checkbox"]');
+if(cb){st.cr[cb.dataset.cid]=cb.checked;cb.closest("tr").classList.toggle("row-checked",cb.checked);return}
+if(zr){var zone=zr.dataset.zone;st.fz[zone]=!st.fz[zone];var sh=st.fz[zone];zr.querySelector(".toggle-icon").textContent=sh?"\u25BC":"\u25B6";el.querySelectorAll('.region-row[data-zone="'+zone+'"]').forEach(function(r){r.style.display=sh?"table-row":"none";var rg=r.dataset.region;if(st.rz[zone+"::"+rg]){el.querySelectorAll('.branch-row[data-zone="'+zone+'"][data-region="'+rg+'"]').forEach(function(b){b.style.display="table-row"})}});if(!sh){el.querySelectorAll('.branch-row[data-zone="'+zone+'"]').forEach(function(b){b.style.display="none"})}return}
+if(rr){e.stopPropagation();var z2=rr.dataset.zone;var rg2=rr.dataset.region;var rk2=z2+"::"+rg2;st.rz[rk2]=!st.rz[rk2];var sh2=st.rz[rk2];rr.querySelector(".toggle-icon").textContent=sh2?"\u25BC":"\u25B6";el.querySelectorAll('.branch-row[data-zone="'+z2+'"][data-region="'+rg2+'"]').forEach(function(b){b.style.display=sh2?"table-row":"none"})}};
+var ca=el.querySelector(".ca");
+if(ca){ca.onchange=function(){var c=this.checked;el.querySelectorAll(".rc").forEach(function(cb){cb.checked=c;st.cr[cb.dataset.cid]=c;cb.closest("tr").classList.toggle("row-checked",c)})}}}
 
-				function renderTable() {
-					const container = document.getElementById("table-container");
-					const zoneData = aggregateByZone();
-					const totalFiltered = zoneData.reduce((s, z) => s + z.data.branches.length, 0);
-					const totalAll = (state.tableData || []).length;
-					document.getElementById("records-count").textContent = totalFiltered + " / " + totalAll + " branches" + (state.searchTerm ? " (filtered)" : "");
+function renderZF(st,cfg){
+var el=document.getElementById(cfg.zid);
+if(!st.data||st.data.length===0){el.style.display="none";return}
+var zones=[].concat.apply([],st.data.map(function(r){return r.zone})).filter(Boolean).filter(function(v,i,a){return a.indexOf(v)===i}).sort();
+if(zones.length===0){el.style.display="none";return}
+var as=st.sz.length===0;
+var h='<span style="font-weight:600;color:#475569;font-size:13px;white-space:nowrap;">Zone:</span>';
+h+='<button class="zone-filter-tag'+(as?" active":'')+'" data-zone="all">All</button>';
+zones.forEach(function(z){var a=st.sz.indexOf(z)>-1;h+='<button class="zone-filter-tag'+(a?" active":'')+'" data-zone="'+z+'">'+z+"</button>"});
+el.innerHTML=h;el.style.display="flex"}
 
-					if (!zoneData || zoneData.length === 0) {
-						container.innerHTML = '<div class="empty-state">No data to display.</div>';
-						container.style.display = "block";
-						return;
-					}
+function renderKPI(st,cfg){
+var zones=agg(st);
+var d=[];
+zones.forEach(function(z){z.regions.forEach(function(rg){rg.branches.forEach(function(b){d.push(b)})})});
+var ag={};
+cfg.kf.forEach(function(f){
+if(f.type==="unique"){ag[f.key+"_u"]={};ag[f.key]=0}
+else if(f.type==="avg"){ag[f.key+"_n"]=0;ag[f.key+"_d"]=0;ag[f.key]=0}
+else{ag[f.key]=0}});
+d.forEach(function(r){cfg.kf.forEach(function(f){
+if(f.type==="unique"){var v=r[f.key];if(v)ag[f.key+"_u"][v]=1}
+else if(f.type==="avg"){ag[f.key+"_n"]+=parseFloat(r[f.num])||0;ag[f.key+"_d"]+=parseFloat(r[f.den])||0}
+else{ag[f.key]+=r[f.key]||0}})});
+cfg.kf.forEach(function(f){if(f.type==="unique"){ag[f.key]=Object.keys(ag[f.key+"_u"]).length}else if(f.type==="avg"){ag[f.key]=ag[f.key+"_d"]>0?ag[f.key+"_n"]/ag[f.key+"_d"]:0}});
+var h=cfg.kf.map(function(f){var v=f.am?fa(st.fmt,ag[f.key]):fc(st.fmt,ag[f.key]);return'<div class="kpi-card" style="background:'+f.bg+';border-left:4px solid '+f.color+';"><div class="kpi-card-header"><span class="kpi-icon">'+f.icon+'</span><span class="kpi-label">'+f.label+'</span></div><div class="kpi-value" style="color:'+f.color+';">'+v+"</div></div>"}).join("");
+document.getElementById(cfg.kid).innerHTML=h}
 
-					const metricCols = [
-						{ key: "total_accounts", label: "Total Accounts", align: "right", fmt: fmtCount },
-						{ key: "total_collection", label: "Total Collection", align: "right", fmt: fmtAmt },
-						{ key: "pending_accounts", label: "Pending Accounts", align: "right", fmt: fmtCount },
-						{ key: "pending_instalments", label: "Pending Inst.", align: "right", fmt: fmtCount },
-						{ key: "pending_amount", label: "Pending Amount", align: "right", fmt: fmtAmt },
-					];
+function setup(tabId,cfg){
+var st=gs(tabId);
+document.getElementById(cfg.sid).addEventListener("input",function(){clearTimeout(window["_s_"+tabId]);window["_s_"+tabId]=setTimeout(function(){st.search=document.getElementById(cfg.sid).value.toLowerCase().trim();if(st.data)renderTbl(st,cfg)},300)});
+document.getElementById(cfg.eid).addEventListener("click",function(){st.expand=!st.expand;var ex=st.expand;agg(st).forEach(function(z){st.fz[z.zone]=ex;z.regions.forEach(function(r){st.rz[z.zone+"::"+r.region]=ex})});this.textContent=ex?"Collapse All":"Expand All";renderTbl(st,cfg)});
+document.getElementById(cfg.rid).addEventListener("click",function(){load(tabId,cfg)});
+document.getElementById(cfg.zid).addEventListener("click",function(e){var t=e.target.closest(".zone-filter-tag");if(!t)return;var z=t.dataset.zone;if(z==="all"){st.sz=[]}else{var i=st.sz.indexOf(z);if(i>-1)st.sz.splice(i,1);else st.sz.push(z)}renderZF(st,cfg);renderTbl(st,cfg)});
+document.querySelectorAll("#tab-"+tabId+" .format-toggle .btn").forEach(function(b){b.addEventListener("click",function(){st.fmt=this.dataset.fmt;document.querySelectorAll("#tab-"+tabId+" .format-toggle .btn").forEach(function(x){x.classList.toggle("active",x.dataset.fmt===st.fmt)});renderKPI(st,cfg);if(st.data&&st.data.length>0)renderTbl(st,cfg)})});
+}
 
-					const grandTotal = { total_accounts: 0, total_collection: 0, pending_accounts: 0, pending_amount: 0, pending_instalments: 0 };
-					zoneData.forEach((z) => {
-						["total_accounts", "total_collection", "pending_accounts", "pending_amount", "pending_instalments"].forEach((k) => {
-							grandTotal[k] += z.data[k] || 0;
-						});
-					});
+function load(tabId,cfg){
+var st=gs(tabId);
+st.data=[];st.fz={};st.rz={};st.cr={};st.search="";st.expand=false;st.sz=[];
+document.getElementById(cfg.sid).value="";
+document.getElementById(cfg.eid).textContent="Expand All";
+document.getElementById(cfg.lid).style.display="block";
+document.getElementById(cfg.tid).style.display="none";
+document.getElementById(cfg.kid).innerHTML="";
+document.getElementById(cfg.zid).innerHTML="";
+var dp=cfg.did?document.getElementById(cfg.did).value:"";
+if(cfg.did&&!dp){
+var y=new Date();y.setDate(y.getDate()-1);dp=y.toISOString().split("T")[0];
+document.getElementById(cfg.did).value=dp}
+var url=BASE+cfg.api+(dp?"?selected_date="+dp:"");
+apiCall(url).then(function(r){
+if(r&&r.message){
+var d=cfg.arr?r.message:(r.message.summary||[]);
+st.data=d;renderKPI(st,cfg);renderZF(st,cfg);renderTbl(st,cfg)}
+document.getElementById(cfg.lid).style.display="none";
+}).catch(function(){document.getElementById(cfg.lid).style.display="none"});
+}
 
-					let sr = 0;
-					let rowsHtml = "";
-					zoneData.forEach((z) => {
-						sr++;
-						const ze = state.expandedZones[z.zone];
-						const zc = state.checkedRows["zone::" + z.zone];
-						rowsHtml += '<tr class="zone-row' + (zc ? " row-checked" : "") + '" data-zone="' + z.zone + '">';
-						rowsHtml += '<td><input type="checkbox" class="row-check" data-check-id="zone::' + z.zone + '"' + (zc ? " checked" : "") + "/></td>";
-						rowsHtml += "<td>" + sr + "</td>";
-						rowsHtml += '<td><span class="toggle-icon">' + (ze ? "\u25BC" : "\u25B6") + "</span>" + z.zone + "</td>";
-						rowsHtml += '<td style="text-align:center;color:#0d9488;">' + z.data.branches.length + "</td>";
-						metricCols.forEach((mc) => {
-							rowsHtml += '<td class="num" style="font-weight:700;">' + mc.fmt(z.data[mc.key]) + "</td>";
-						});
-						rowsHtml += "</tr>";
+var C={
+rd_smbg_pending:{api:"get_rd_smbg_pending_table_data",arr:true,did:null,sid:"rd-search",eid:"rd-expand",rid:"rd-refetch",cid:"rd-count",zid:"rd-zones",kid:"rd-kpi",lid:"rd-loading",tid:"rd-table",mc:[{key:"total_accounts",label:"Total Accounts",align:"center",am:false},{key:"total_collection",label:"Total Collection",align:"center",am:true},{key:"pending_accounts",label:"Pending Accounts",align:"center",am:false},{key:"pending_instalments",label:"Pending Inst.",align:"center",am:false},{key:"pending_amount",label:"Pending Amount",align:"center",am:true}],kf:[{key:"total_accounts",label:"Accounts",color:"#3b82f6",bg:"#eff6ff",icon:"\uD83D\uDCCA",am:false},{key:"total_collection",label:"Collection",color:"#10b981",bg:"#ecfdf5",icon:"\uD83D\uDCB0",am:true},{key:"pending_accounts",label:"Pending Accounts",color:"#f59e0b",bg:"#fffbeb",icon:"\u23F3",am:false},{key:"pending_instalments",label:"Pending Inst.",color:"#f97316",bg:"#fff7ed",icon:"\uD83D\uDCC5",am:false},{key:"pending_amount",label:"Pending Amount",color:"#ef4444",bg:"#fef2f2",icon:"\uD83D\uDD34",am:true}]},
+bucket_wise:{api:"get_bucket_wise_account_mis_data",arr:false,did:"bk-date",sid:"bk-search",eid:"bk-expand",rid:"bk-refetch",cid:"bk-count",zid:"bk-zones",kid:"bk-kpi",lid:"bk-loading",tid:"bk-table",mc:[{key:"A",label:"A",align:"right",am:false},{key:"B",label:"B",align:"right",am:false},{key:"C",label:"C",align:"right",am:false},{key:"D",label:"D",align:"right",am:false},{key:"Excess",label:"Excess",align:"right",am:false},{key:"DEFAULT",label:"Default",align:"right",am:false},{key:"grand_total",label:"Grand Total",align:"right",am:false}],kf:[{key:"grand_total",label:"Grand Total",color:"#3b82f6",bg:"#eff6ff",icon:"\uD83D\uDCCA",am:false},{key:"A",label:"A",color:"#10b981",bg:"#ecfdf5",icon:"\u24B6",am:false},{key:"B",label:"B",color:"#f59e0b",bg:"#fffbeb",icon:"\u24B7",am:false},{key:"C",label:"C",color:"#f97316",bg:"#fff7ed",icon:"\u24B8",am:false},{key:"D",label:"D (NPA)",color:"#ef4444",bg:"#fef2f2",icon:"\u24B9",am:false},{key:"Excess",label:"Excess",color:"#14b8a6",bg:"#f0fdfa",icon:"\u2705",am:false},{key:"DEFAULT",label:"Default",color:"#6366f1",bg:"#eef2ff",icon:"\uD83D\uDCCB",am:false}]},
+new_account:{api:"get_new_account_report_data",arr:true,did:"na-date",sid:"na-search",eid:"na-expand",rid:"na-refetch",zid:"na-zones",kid:"na-kpi",lid:"na-loading",tid:"na-table",mc:[{key:"new_ac",label:"New Accounts",align:"right",am:false},{key:"deposit_amount",label:"Deposit Amount",align:"right",am:true}],kf:[{key:"new_ac",label:"New Accounts",color:"#3b82f6",bg:"#eff6ff",icon:"\uD83D\uDCCA",am:false},{key:"deposit_amount",label:"Deposit Amt",color:"#10b981",bg:"#ecfdf5",icon:"\uD83D\uDCB0",am:true},{key:"deposit_amount",label:"Avg Deposit/AC",color:"#8b5cf6",bg:"#f5f3ff",icon:"\uD83D\uDCC8",am:true,type:"avg",num:"deposit_amount",den:"new_ac"},{key:"sol_id",label:"Active Branches",color:"#f59e0b",bg:"#fffbeb",icon:"\uD83C\uDFE2",type:"unique"},{key:"auth_id",label:"Active Authorizers",color:"#ef4444",bg:"#fef2f2",icon:"\uD83D\uDC64",type:"unique"}]},
+staff_demand:{api:"get_staff_wise_demand_collection_data",arr:true,did:"sw-date",sid:"sw-search",eid:"sw-expand",rid:"sw-refetch",zid:"sw-zones",kid:"sw-kpi",lid:"sw-loading",tid:"sw-table",mc:[{key:"monthly_demand_amount",label:"Demand Amount",align:"right",am:true},{key:"monthly_collection",label:"Collection",align:"right",am:true},{key:"collection_pct",label:"Collection %",align:"center",compute:function(r){var d=parseFloat(r.monthly_demand_amount)||0;var c=parseFloat(r.monthly_collection)||0;return d>0?((c/d)*100).toFixed(1)+"%":"0%"}}],kf:[{key:"monthly_demand_amount",label:"Demand",color:"#3b82f6",bg:"#eff6ff",icon:"\uD83D\uDCCA",am:true},{key:"monthly_collection",label:"Collection",color:"#10b981",bg:"#ecfdf5",icon:"\uD83D\uDCB0",am:true},{key:"monthly_collection",label:"Collection %",color:"#8b5cf6",bg:"#f5f3ff",icon:"\uD83D\uDCC8",am:true,type:"avg",num:"monthly_collection",den:"monthly_demand_amount"},{key:"sol_id",label:"Active Branches",color:"#f59e0b",bg:"#fffbeb",icon:"\uD83C\uDFE2",type:"unique"},{key:"auth_id",label:"Active Authorizers",color:"#ef4444",bg:"#fef2f2",icon:"\uD83D\uDC64",type:"unique"}]},
+agent_demand:{api:"get_agent_wise_demand_collection_data",arr:true,did:"aw-date",sid:"aw-search",eid:"aw-expand",rid:"aw-refetch",zid:"aw-zones",kid:"aw-kpi",lid:"aw-loading",tid:"aw-table",mc:[{key:"monthly_demand_amount",label:"Demand Amount",align:"right",am:true},{key:"monthly_collection",label:"Collection",align:"right",am:true},{key:"collection_pct",label:"Collection %",align:"center",compute:function(r){var d=parseFloat(r.monthly_demand_amount)||0;var c=parseFloat(r.monthly_collection)||0;return d>0?((c/d)*100).toFixed(1)+"%":"0%"}}],kf:[{key:"monthly_demand_amount",label:"Demand",color:"#3b82f6",bg:"#eff6ff",icon:"\uD83D\uDCCA",am:true},{key:"monthly_collection",label:"Collection",color:"#10b981",bg:"#ecfdf5",icon:"\uD83D\uDCB0",am:true},{key:"monthly_collection",label:"Collection %",color:"#8b5cf6",bg:"#f5f3ff",icon:"\uD83D\uDCC8",am:true,type:"avg",num:"monthly_collection",den:"monthly_demand_amount"},{key:"sol_id",label:"Active Branches",color:"#f59e0b",bg:"#fffbeb",icon:"\uD83C\uDFE2",type:"unique"},{key:"agent_code",label:"Active Agents",color:"#ef4444",bg:"#fef2f2",icon:"\uD83D\uDC64",type:"unique"}]}
+};
+var T={rd_smbg_pending:"RD & SMBG Pending",bucket_wise:"Bucket Wise Account MIS",new_account:"New Account Report",staff_demand:"Staff Wise Demand Vs Collection",agent_demand:"Agent Wise Demand Vs Collection"};
 
-						z.regions.forEach((region) => {
-							const rk = z.zone + "::" + region.region;
-							const re = state.expandedRegions[rk];
-							const rc = state.checkedRows[rk];
-							rowsHtml += '<tr class="region-row' + (rc ? " row-checked" : "") + '" data-zone="' + z.zone + '" data-region="' + region.region + '" style="display:' + (ze ? "table-row" : "none") + ';">';
-							rowsHtml += '<td><input type="checkbox" class="row-check" data-check-id="' + rk + '"' + (rc ? " checked" : "") + "/></td>";
-							rowsHtml += "<td></td>";
-							rowsHtml += '<td style="padding-left:30px;"><span class="toggle-icon">' + (re ? "\u25BC" : "\u25B6") + "</span>" + region.region + "</td>";
-							rowsHtml += '<td style="text-align:center;color:#0d9488;font-weight:600;">' + region.branches.length + "</td>";
-							metricCols.forEach((mc) => {
-								rowsHtml += '<td class="num" style="font-weight:500;">' + mc.fmt(region[mc.key]) + "</td>";
-							});
-							rowsHtml += "</tr>";
+Object.keys(C).forEach(function(id){setup(id,C[id])});
+document.getElementById("bk-date").value="";
+document.getElementById("na-date").value="";
+document.getElementById("sw-date").value="";
+document.getElementById("aw-date").value="";
 
-							region.branches.forEach((branch, bi) => {
-								const show = ze && state.expandedRegions[rk];
-								const bg = bi % 2 === 0 ? "#ffffff" : "#f1f5f9";
-								const bid = branch.sol_id || "b_" + bi;
-								const bc = state.checkedRows[bid];
-								rowsHtml += '<tr class="branch-row' + (bc ? " row-checked" : "") + '" data-zone="' + z.zone + '" data-region="' + region.region + '" style="display:' + (show ? "table-row" : "none") + ";background:" + bg + ';">';
-								rowsHtml += '<td><input type="checkbox" class="row-check" data-check-id="' + bid + '"' + (bc ? " checked" : "") + "/></td>";
-								rowsHtml += "<td></td>";
-								rowsHtml += '<td style="padding-left:50px;">' + branch.sol_id + " - " + (branch.branch_name || branch.sol_desc) + "</td>";
-								rowsHtml += '<td style="text-align:center;color:#94a3b8;">1</td>';
-								metricCols.forEach((mc) => {
-									rowsHtml += '<td class="num">' + mc.fmt(branch[mc.key]) + "</td>";
-								});
-								rowsHtml += "</tr>";
-							});
-						});
-					});
+function fetchLastDate(){
+fetch("/api/method/"+BASE+"get_last_available_date",{method:"GET",headers:{"Accept":"application/json"},credentials:"same-origin"}).then(function(r){return r.json()}).then(function(r){
+var ld=r&&r.message&&r.message.last_date;
+if(ld){
+document.getElementById("rd-lastdate").textContent=ld;
+document.getElementById("bk-lastdate").textContent=ld;
+document.getElementById("na-lastdate").textContent=ld;
+document.getElementById("sw-lastdate").textContent=ld;
+document.getElementById("aw-lastdate").textContent=ld;
+}}).catch(function(){})}
+fetchLastDate();
 
-					const theadCells = metricCols.map((mc) => '<th class="' + mc.align + '">' + mc.label + "</th>").join("");
-					const tfootCells = metricCols.map((mc) => '<td class="' + mc.align + '">' + mc.fmt(grandTotal[mc.key]) + "</td>").join("");
-					const totalBranches = zoneData.reduce((s, z) => s + z.data.branches.length, 0);
-
-					container.innerHTML =
-						'<div class="table-scroll"><table class="data-table">' +
-						"<thead><tr>" +
-						'<th><input type="checkbox" class="check-all" /></th>' +
-						"<th>Sr</th>" +
-						"<th>Zone / Region / Branch</th>" +
-						'<th style="text-align:center;">Branches</th>' +
-						theadCells +
-						"</tr></thead>" +
-						"<tbody>" + rowsHtml + "</tbody>" +
-						"<tfoot><tr>" +
-						"<td></td><td></td>" +
-						'<td style="text-align:left;">TOTAL</td>' +
-						'<td style="text-align:center;">' + totalBranches + "</td>" +
-						tfootCells +
-						"</tr></tfoot></table></div>";
-
-					container.style.display = "block";
-					attachTableEvents();
-				}
-
-				function renderZoneFilters() {
-					const container = document.getElementById("zone-filter-row");
-					if (!state.tableData || state.tableData.length === 0) {
-						container.style.display = "none";
-						return;
-					}
-					const permittedZones = (state.filterOptions && state.filterOptions.zones) || [];
-					let zones = permittedZones.length > 0 ? permittedZones : [...new Set(state.tableData.map((r) => r.zone).filter(Boolean))].sort();
-					if (zones.length === 0) {
-						container.style.display = "none";
-						return;
-					}
-					const allSelected = state.selectedZones.length === 0;
-					let html = '<span style="font-weight:600;color:#475569;font-size:13px;white-space:nowrap;">Zone:</span>';
-					html += '<button class="zone-filter-tag' + (allSelected ? " active" : "") + '" data-zone="all">All</button>';
-					zones.forEach((zone) => {
-						const active = state.selectedZones.includes(zone);
-						html += '<button class="zone-filter-tag' + (active ? " active" : "") + '" data-zone="' + zone + '">' + zone + "</button>";
-					});
-					container.innerHTML = html;
-					container.style.display = "flex";
-				}
-
-				function attachTableEvents() {
-					const tc = document.getElementById("table-container");
-					tc.onclick = function (e) {
-						const zoneRow = e.target.closest(".zone-row");
-						const regionRow = e.target.closest(".region-row");
-						const checkbox = e.target.closest('input[type="checkbox"]');
-
-						if (checkbox) {
-							const checkId = checkbox.dataset.checkId;
-							state.checkedRows[checkId] = checkbox.checked;
-							checkbox.closest("tr").classList.toggle("row-checked", checkbox.checked);
-							return;
-						}
-
-						if (zoneRow) {
-							const zone = zoneRow.dataset.zone;
-							state.expandedZones[zone] = !state.expandedZones[zone];
-							const show = state.expandedZones[zone];
-							zoneRow.querySelector(".toggle-icon").textContent = show ? "\u25BC" : "\u25B6";
-							tc.querySelectorAll('.region-row[data-zone="' + zone + '"]').forEach((rr) => {
-								rr.style.display = show ? "table-row" : "none";
-								const r = rr.dataset.region;
-								if (state.expandedRegions[zone + "::" + r]) {
-									tc.querySelectorAll('.branch-row[data-zone="' + zone + '"][data-region="' + r + '"]').forEach((br) => {
-										br.style.display = "table-row";
-									});
-								}
-							});
-							if (!show) {
-								tc.querySelectorAll('.branch-row[data-zone="' + zone + '"]').forEach((br) => {
-									br.style.display = "none";
-								});
-							}
-							return;
-						}
-
-						if (regionRow) {
-							e.stopPropagation();
-							const zone = regionRow.dataset.zone;
-							const region = regionRow.dataset.region;
-							const rk = zone + "::" + region;
-							state.expandedRegions[rk] = !state.expandedRegions[rk];
-							const show = state.expandedRegions[rk];
-							regionRow.querySelector(".toggle-icon").textContent = show ? "\u25BC" : "\u25B6";
-							tc.querySelectorAll('.branch-row[data-zone="' + zone + '"][data-region="' + region + '"]').forEach((br) => {
-								br.style.display = show ? "table-row" : "none";
-							});
-						}
-					};
-
-					const checkAll = tc.querySelector(".check-all");
-					if (checkAll) {
-						checkAll.onchange = function () {
-							const checked = this.checked;
-							tc.querySelectorAll(".row-check").forEach((cb) => {
-								cb.checked = checked;
-								state.checkedRows[cb.dataset.checkId] = checked;
-								cb.closest("tr").classList.toggle("row-checked", checked);
-							});
-						};
-					}
-				}
-
-				function apiCall(method) {
-					return fetch("/api/method/" + method, {
-						method: "GET",
-						headers: { "Accept": "application/json" },
-						credentials: "same-origin",
-					}).then((res) => res.json());
-				}
-
-				function fetchData() {
-					state.tableData = [];
-					state.filterOptions = null;
-					state.selectedZones = [];
-					state.expandedZones = {};
-					state.expandedRegions = {};
-					state.checkedRows = {};
-					state.searchTerm = "";
-					state.allExpanded = false;
-					document.getElementById("search-input").value = "";
-					document.getElementById("expand-toggle").textContent = "\u25BC Expand All";
-					document.getElementById("loading").style.display = "block";
-					document.getElementById("table-container").style.display = "none";
-
-					apiCall("custom_report.www.bde_bdo_dashboard.get_mis_filter_options")
-						.then((r) => {
-							if (r.message) {
-								state.filterOptions = r.message;
-								return apiCall("custom_report.www.bde_bdo_dashboard.get_rd_smbg_pending_table_data");
-							}
-						})
-						.then((r2) => {
-							if (r2 && r2.message) {
-								let data = r2.message;
-								const pz = state.filterOptions && state.filterOptions.zones;
-								if (pz && pz.length > 0) {
-									data = data.filter((row) => pz.includes(row.zone));
-								}
-								state.tableData = data;
-								renderKPI();
-								renderZoneFilters();
-								renderTable();
-							}
-							document.getElementById("loading").style.display = "none";
-						})
-						.catch(() => {
-							document.getElementById("loading").style.display = "none";
-						});
-				}
-
-				document.getElementById("search-input").addEventListener("input", function () {
-					clearTimeout(window._searchTimeout);
-					window._searchTimeout = setTimeout(() => {
-						state.searchTerm = this.value.toLowerCase().trim();
-						if (state.tableData) renderTable();
-					}, 300);
-				});
-
-				document.getElementById("expand-toggle").addEventListener("click", function () {
-					state.allExpanded = !state.allExpanded;
-					const expand = state.allExpanded;
-					const zoneData = aggregateByZone();
-					zoneData.forEach((z) => {
-						state.expandedZones[z.zone] = expand;
-						z.regions.forEach((r) => {
-							state.expandedRegions[z.zone + "::" + r.region] = expand;
-						});
-					});
-					this.textContent = expand ? "\u25B2 Collapse All" : "\u25BC Expand All";
-					renderTable();
-				});
-
-				document.getElementById("refetch-btn").addEventListener("click", fetchData);
-
-				document.querySelectorAll(".format-toggle .btn").forEach((btn) => {
-					btn.addEventListener("click", function () {
-						state.formatMode = this.dataset.format;
-						document.querySelectorAll(".format-toggle .btn").forEach((b) => {
-							b.classList.toggle("active", b.dataset.format === state.formatMode);
-						});
-						renderKPI();
-						if (state.tableData && state.tableData.length > 0) renderTable();
-					});
-				});
-
-				document.getElementById("zone-filter-row").addEventListener("click", function (e) {
-					const tag = e.target.closest(".zone-filter-tag");
-					if (!tag) return;
-					const zone = tag.dataset.zone;
-					if (zone === "all") {
-						state.selectedZones = [];
-					} else {
-						const idx = state.selectedZones.indexOf(zone);
-						if (idx > -1) state.selectedZones.splice(idx, 1);
-						else state.selectedZones.push(zone);
-					}
-					renderZoneFilters();
-					renderTable();
-				});
-
-				fetchData();
-			})();
-
-			// Sidebar navigation handling
-			document.querySelectorAll('.sidebar-nav-item').forEach(item => {
-				item.addEventListener('click', function(e) {
-					const tab = this.dataset.tab;
-					
-					// Toggle dropdown for DD Tracker
-					if (tab === 'dd_tracker') {
-						e.stopPropagation();
-						this.classList.toggle('expanded');
-						const submenu = document.getElementById('dd-tracker-submenu');
-						submenu.classList.toggle('expanded');
-						return;
-					}
-					
-					// Handle other tabs
-					document.querySelectorAll('.sidebar-nav-item').forEach(i => i.classList.remove('active'));
-					document.querySelectorAll('.sidebar-sub-item').forEach(i => i.classList.remove('active'));
-					this.classList.add('active');
-					
-					// Hide all tab contents
-					document.querySelectorAll('[id^="tab-content-"]').forEach(tc => tc.style.display = 'none');
-					
-					// Show selected tab and update header
-					const contentEl = document.getElementById('tab-content-' + tab);
-					if (contentEl) {
-						contentEl.style.display = 'block';
-						// Update header title
-						if (tab === 'rd_smbg_pending') {
-							document.getElementById('main-header-title').textContent = 'RD & SMBG Pending';
-						}
-					}
-				});
-			});
-
-			// Submenu item click handling
-			document.querySelectorAll('.sidebar-sub-item').forEach(item => {
-				item.addEventListener('click', function(e) {
-					e.stopPropagation();
-					const subtab = this.dataset.subtab;
-					const reportName = this.textContent;
-					
-					// Update active states
-					document.querySelectorAll('.sidebar-nav-item').forEach(i => i.classList.remove('active'));
-					document.querySelectorAll('.sidebar-sub-item').forEach(i => i.classList.remove('active'));
-					this.classList.add('active');
-					
-					// Hide all tab contents
-					document.querySelectorAll('[id^="tab-content-"]').forEach(tc => tc.style.display = 'none');
-					
-					// Update header title
-					document.getElementById('main-header-title').textContent = reportName;
-					
-					// Show selected subtab content
-					const contentEl = document.getElementById('tab-content-dd-' + subtab);
-					if (contentEl) {
-						contentEl.style.display = 'block';
-						// TODO: Load data for this report if not already loaded
-					} else {
-						// Placeholder for not yet implemented subtabs
-						alert('This report is under development: ' + reportName);
-					}
-				});
-			});
-		</script>
-	</body>
+var currentTab="rd_smbg_pending";
+document.querySelectorAll(".sidebar-nav-item").forEach(function(item){
+item.addEventListener("click",function(){
+var tab=this.dataset.tab;
+if(tab==="dd_tracker"){
+this.classList.toggle("expanded");
+document.getElementById("dd-tracker-submenu").classList.toggle("expanded");
+return}
+document.querySelectorAll(".sidebar-nav-item").forEach(function(i){i.classList.remove("active")});
+this.classList.add("active");
+document.querySelectorAll(".sidebar-sub-item").forEach(function(i){i.classList.remove("active")});
+currentTab=tab;
+document.getElementById("main-title").textContent=T[tab]||tab;
+document.querySelectorAll(".tab-content").forEach(function(tc){tc.classList.remove("active")});
+document.getElementById("tab-"+tab).classList.add("active");
+if(!tabStates[tab])load(tab,C[tab]);
+})});
+document.querySelectorAll(".sidebar-sub-item").forEach(function(item){
+item.addEventListener("click",function(e){
+e.stopPropagation();
+document.querySelectorAll(".sidebar-nav-item").forEach(function(i){i.classList.remove("active")});
+document.querySelector('[data-tab="dd_tracker"]').classList.add("active");
+document.querySelector('[data-tab="dd_tracker"]').classList.add("expanded");
+document.getElementById("dd-tracker-submenu").classList.add("expanded");
+document.querySelectorAll(".sidebar-sub-item").forEach(function(i){i.classList.remove("active")});
+this.classList.add("active");
+var subtab=this.dataset.subtab;
+currentTab=subtab;
+document.getElementById("main-title").textContent=T[subtab]||subtab;
+document.querySelectorAll(".tab-content").forEach(function(tc){tc.classList.remove("active")});
+document.getElementById("tab-"+subtab).classList.add("active");
+load(subtab,C[subtab]);
+})});
+load("rd_smbg_pending",C.rd_smbg_pending);
+})();
+</script>
+</body>
 </html>

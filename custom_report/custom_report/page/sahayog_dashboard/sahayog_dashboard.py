@@ -170,6 +170,27 @@ def clear_branch_category_report_cache(doc=None, method=None):
     get_previous_available_date.clear_cache()
 
 
+@frappe.whitelist()
+def get_user_sol_ids():
+    user = frappe.session.user
+    perms = get_user_report_permissions(user)
+    sol_ids = list(perms.get("sol_ids", []))
+    employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
+    employee_zone = None
+    employee_region = None
+    if employee_sol:
+        branches_map = get_sahayog_branches_cached()
+        emp_branch = branches_map.get(str(employee_sol), {})
+        employee_zone = emp_branch.get("zone")
+        employee_region = emp_branch.get("region")
+        if employee_sol not in sol_ids:
+            sol_ids.append(employee_sol)
+        if employee_region and not sol_ids:
+            region_sol_ids = [sid for sid, b in branches_map.items() if b.get("region") == employee_region]
+            sol_ids = region_sol_ids
+    return {"user": user, "sol_ids": sol_ids, "employee_sol_id": employee_sol, "employee_zone": employee_zone, "employee_region": employee_region}
+
+
 @sahayog_cache(ttl=86400)
 def get_user_report_permissions(user):
     """
@@ -710,6 +731,7 @@ def build_zone_wise(branch_data, targets_map, target_type, district_map=None):
     if district_map is None:
         district_map = {}
     zone_hierarchy = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: {"zone": "", "region": "", "district": "", "months": {}})))
+    branch_details = defaultdict(lambda: defaultdict(dict))
     
     for row in branch_data:
         zone = row.get("zone") or "Unknown"
@@ -734,7 +756,15 @@ def build_zone_wise(branch_data, targets_map, target_type, district_map=None):
         zrm["target"] += tgt
         zrm["achievement"] += ach
 
-
+        branch = branch_details[zone][region].setdefault(sol_id, {"months": {}})
+        branch["zone"] = zone
+        branch["region"] = region
+        branch["sol_id"] = sol_id
+        branch["branch"] = row.get("branch") or ""
+        if month_key not in branch["months"]:
+            branch["months"][month_key] = {"target": 0.0, "achievement": 0.0, "percentage": 0.0}
+        branch["months"][month_key]["target"] += tgt
+        branch["months"][month_key]["achievement"] += ach
     
     zone_wise = []
     def zone_sort_key(z):
