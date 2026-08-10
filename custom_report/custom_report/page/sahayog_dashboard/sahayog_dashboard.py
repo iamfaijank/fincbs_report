@@ -173,9 +173,19 @@ def get_user_sol_ids():
     perms = get_user_report_permissions(user)
     sol_ids = list(perms.get("sol_ids", []))
     employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
-    if employee_sol and employee_sol not in sol_ids:
-        sol_ids.append(employee_sol)
-    return {"user": user, "sol_ids": sol_ids, "employee_sol_id": employee_sol}
+    employee_zone = None
+    employee_region = None
+    if employee_sol:
+        branches_map = get_sahayog_branches_cached()
+        emp_branch = branches_map.get(str(employee_sol), {})
+        employee_zone = emp_branch.get("zone")
+        employee_region = emp_branch.get("region")
+        if employee_sol not in sol_ids:
+            sol_ids.append(employee_sol)
+        if employee_region and not sol_ids:
+            region_sol_ids = [sid for sid, b in branches_map.items() if b.get("region") == employee_region]
+            sol_ids = region_sol_ids
+    return {"user": user, "sol_ids": sol_ids, "employee_sol_id": employee_sol, "employee_zone": employee_zone, "employee_region": employee_region}
 
 
 @sahayog_cache(ttl=86400)
