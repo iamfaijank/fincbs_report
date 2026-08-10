@@ -227,7 +227,7 @@ rh+='<td><input type="checkbox" class="rc" data-cid="zone::'+z.zone+'"'+(zc?" ch
 rh+='<td>'+sr+"</td>";
 rh+='<td><span class="toggle-icon">'+(ze?"\u25BC":"\u25B6")+"</span>"+z.zone+"</td>";
 rh+='<td style="text-align:center;color:#0d9488;">'+z.data.branches.length+"</td>";
-mc.forEach(function(c){rh+='<td class="'+c.align+'" style="font-weight:700;">'+(c.compute?c.compute(z.data):c.fmt(z.data.a[c.key]))+"</td>"});
+mc.forEach(function(c){rh+='<td class="'+c.align+'" style="font-weight:700;">'+(c.compute?c.compute(z.data.a):c.fmt(z.data.a[c.key]))+"</td>"});
 rh+="</tr>";
 z.regions.forEach(function(rg){
 var rk=z.zone+"::"+rg.region;var re=st.rz[rk];var rc=st.cr[rk];
