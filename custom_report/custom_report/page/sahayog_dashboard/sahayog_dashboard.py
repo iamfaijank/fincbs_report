@@ -171,7 +171,11 @@ def clear_branch_category_report_cache(doc=None, method=None):
 def get_user_sol_ids():
     user = frappe.session.user
     perms = get_user_report_permissions(user)
-    return {"user": user, "sol_ids": perms.get("sol_ids", [])}
+    sol_ids = list(perms.get("sol_ids", []))
+    employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
+    if employee_sol and employee_sol not in sol_ids:
+        sol_ids.append(employee_sol)
+    return {"user": user, "sol_ids": sol_ids, "employee_sol_id": employee_sol}
 
 
 @sahayog_cache(ttl=86400)
