@@ -24,7 +24,8 @@
   {
    "fieldname": "date",
    "fieldtype": "Date",
-   "label": "Date"
+   "label": "Date",
+   "search_index": 1
   },
   {
    "fieldname": "report_type",
@@ -38,7 +39,8 @@
   {
    "fieldname": "rm_id",
    "fieldtype": "Data",
-   "label": "RM ID"
+   "label": "RM ID",
+   "search_index": 1
   },
   {
    "fieldname": "rm_name",

@@ -208,6 +208,10 @@ scheduler_events = {
 			# 07:35 AM IST - Sync SHARE Report for T-1 (Yesterday) date
 			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_share_daily"
 		],
+		"45 7 * * *": [
+			# 07:45 AM IST - Daily Cleanup of SS & VS Report daily records (retains ONLY last date of each month)
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.cleanup_ss_vs_old_monthly_records"
+		],
 		# Daily Sahayog Dashboard and Financial Tracker Synchronizations starting at 08:00 AM IST
 		"0 8 * * *": [
 			# 08:00 AM IST - Daily Sahayog Dashboard Achievement Sync

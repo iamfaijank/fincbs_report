@@ -257,7 +257,7 @@ class DrishtiDashboard {
 								<thead><tr>
 									<th style="width: 30px;"><div class="mis-skeleton-pulse" style="width: 14px; height: 14px;"></div></th>
 									<th style="width: 40px; text-align: center;">Sr</th>
-									<th>Zone / Region / Branch</th>
+									<th>Z / R / D / SOL Name</th>
 									<th style="text-align: center; width: 80px;">Branches</th>
 									<th style="text-align: right; width: 100px;">Total Accounts</th>
 									<th style="text-align: right; width: 120px;">Total Collection</th>
@@ -636,7 +636,7 @@ class DrishtiDashboard {
 								<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / Branch</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Z / R / D / SOL Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">Branches</th>
 									${metricCols.map(mc => `<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: ${mc.align}; white-space: nowrap;">${mc.label}</th>`).join('')}
 								</tr></thead>
@@ -804,138 +804,31 @@ class DrishtiDashboard {
 				},
 				renderAnalysisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
-					const zoneData = self.aggregateByZone();
-					const totalFilteredBranches = zoneData.reduce((s, z) => s + z.data.branches.length, 0);
-					const totalAllBranches = [...new Set((self.tableData || []).map(r => r.sol_id))].length;
-					const $badge = tableContainer.parent().find("#mis-records-count");
-					$badge.text(totalFilteredBranches + " / " + totalAllBranches + " branches" + (self.searchTerm ? " (filtered)" : ""));
-					if (totalFilteredBranches === totalAllBranches && !self.searchTerm) $badge.hide(); else $badge.show();
-					if (!zoneData || zoneData.length === 0) {
-						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">No data to display.</div>');
-						return;
+					let data = self.tableData || [];
+					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+						data = data.filter(r => self.selectedMisZones.includes(r.zone));
 					}
-					const grandTotal = { ca: 0, sa: 0, tasc: 0, rd: 0, smbg: 0, dd: 0, fd: 0, total: 0 };
-					zoneData.forEach(z => {
-						grandTotal.ca += z.data.ca; grandTotal.sa += z.data.sa; grandTotal.tasc += z.data.tasc;
-						grandTotal.rd += z.data.rd; grandTotal.smbg += z.data.smbg; grandTotal.dd += z.data.dd;
-						grandTotal.fd += z.data.fd; grandTotal.total += z.data.total;
-					});
+					if (self.searchTerm) {
+						const term = self.searchTerm.toLowerCase();
+						data = data.filter(r => (r.branch_name || "").toLowerCase().includes(term) || (r.sol_id || "").toLowerCase().includes(term));
+					}
 					const metricCols = [
-						{ key: "ca", label: "CA", align: "right" }, { key: "sa", label: "SA", align: "right" },
-						{ key: "tasc", label: "TASC", align: "right" }, { key: "rd", label: "RD", align: "right" },
-						{ key: "smbg", label: "SMBG", align: "right" }, { key: "dd", label: "DD", align: "right" },
-						{ key: "fd", label: "FD", align: "right" },
-						{ key: "ca_sa_tasc", label: "CA+SA+TASC", align: "right", calc: (r) => (r.ca || 0) + (r.sa || 0) + (r.tasc || 0) },
-						{ key: "rd_smbg_dd_fd", label: "RD+SMBG+DD+FD", align: "right", calc: (r) => (r.rd || 0) + (r.smbg || 0) + (r.dd || 0) + (r.fd || 0) },
-						{ key: "total", label: "TOTAL", align: "right" }
+						{ key: "sa", label: "SA ACCOUNTS" },
+						{ key: "ca", label: "CA ACCOUNTS" },
+						{ key: "tasc", label: "TASC ACCOUNTS" },
+						{ key: "rd", label: "RD ACCOUNTS" },
+						{ key: "smbg", label: "SMBG ACCOUNTS" },
+						{ key: "dd", label: "DD ACCOUNTS" },
+						{ key: "fd", label: "FD ACCOUNTS" },
+						{ key: "total", label: "TOTAL OPENED", style: "color: #15803d; font-weight: 800;" }
 					];
-					let sr = 0, rowsHtml = "";
-					zoneData.forEach(z => {
-						sr++;
-						const zoneExpanded = self.expandedZones[z.zone];
-						const zoneRow = z.data;
-						const zoneChecked = self.checkedRows["zone::" + z.zone];
-						rowsHtml += `<tr class="mis-zone-row${zoneChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-check-id="zone::${z.zone}" style="cursor: pointer; background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
-							<td style="padding: 10px 14px; text-align: center; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="zone::${z.zone}" ${zoneChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
-							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; width: 40px; font-size: 14px;">${sr}</td>
-							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;"><span class="mis-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>${z.zone}</td>
-							<td style="padding: 10px 14px; font-weight: 700; color: #0d9488; text-align: center; font-size: 14px;">${zoneRow.branches.length}</td>
-							${metricCols.map(mc => { const val = mc.calc ? mc.calc(zoneRow) : zoneRow[mc.key]; return `<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: ${mc.align}; white-space: nowrap; font-size: 14px;">${new Intl.NumberFormat("en-IN").format(val)}</td>`; }).join('')}
-						</tr>`;
-						z.regions.forEach(region => {
-							const regionKey = z.zone + "::" + region.region;
-							const regionExpanded = self.expandedRegions[regionKey];
-							const regionChecked = self.checkedRows[regionKey];
-							rowsHtml += `<tr class="mis-region-row${regionChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region.region}" data-check-id="${regionKey}" style="display: ${zoneExpanded ? "table-row" : "none"}; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-								<td style="padding: 8px 14px; text-align: center; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${regionKey}" ${regionChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
-								<td style="padding: 8px 14px; color: #64748b; text-align: center;"></td>
-								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; padding-left: 30px; font-weight: 600;"><span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${region.region}</td>
-								<td style="padding: 8px 14px; color: #0d9488; text-align: center; font-weight: 600;">${region.branches.length}</td>
-								${metricCols.map(mc => { const val = mc.calc ? mc.calc(region) : region[mc.key]; return `<td style="padding: 8px 14px; color: #334155; text-align: ${mc.align}; white-space: nowrap; font-weight: 500;">${new Intl.NumberFormat("en-IN").format(val)}</td>`; }).join('')}
-							</tr>`;
-							region.branches.forEach((branch, bi) => {
-								const showBranch = zoneExpanded && self.expandedRegions[regionKey];
-								const branchBg = bi % 2 === 0 ? "#ffffff" : "#f1f5f9";
-								rowsHtml += `<tr class="mis-branch-row" data-zone="${z.zone}" data-region="${region.region}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0;">
-									<td style="padding: 6px 14px; text-align: center; vertical-align: middle;"><input type="checkbox" class="mis-row-check" style="cursor: pointer; width: 14px; height: 14px;"></td>
-									<td style="padding: 6px 14px; color: #94a3b8; text-align: center;"></td>
-									<td style="padding: 6px 14px; color: #475569; white-space: nowrap; padding-left: 50px; font-weight: 500;">${branch.sol_id} - ${branch.branch_name || branch.sol_id}</td>
-									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; font-weight: 500;">1</td>
-									${metricCols.map(mc => { const val = mc.calc ? mc.calc(branch) : branch[mc.key]; return `<td style="padding: 6px 14px; color: #475569; text-align: ${mc.align}; white-space: nowrap; font-weight: 500;">${new Intl.NumberFormat("en-IN").format(val)}</td>`; }).join('')}
-								</tr>`;
-							});
-						});
-					});
-					tableContainer.html(`
-						<style>#mis-analysis-table-dao { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; }
-						#mis-analysis-table-dao thead { position: sticky; top: 0; z-index: 2; }
-						#mis-analysis-table-dao tfoot { position: sticky; bottom: 0; z-index: 2; }
-						#mis-analysis-table-dao tbody tr { transition: background-color 0.2s ease; border-bottom: 1px solid #e2e8f0; }
-						#mis-analysis-table-dao tbody tr:hover { background: #dcfce7 !important; }
-						#mis-analysis-table-dao tbody tr.mis-row-checked { background: #bbf7d0 !important; }
-						#mis-analysis-table-dao tbody tr.mis-zone-row.mis-row-checked,
-						#mis-analysis-table-dao tbody tr.mis-region-row.mis-row-checked,
-						#mis-analysis-table-dao tbody tr.mis-branch-row.mis-row-checked { background: #86efac !important; }
-						#mis-scroll-area-dao { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }</style>
-						<div id="mis-scroll-area-dao"><table id="mis-analysis-table-dao">
-							<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
-								<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: center; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
-								<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
-								<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: left;">Zone / Region / Branch</th>
-								<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: center;">Branches</th>
-								${metricCols.map(mc => `<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: ${mc.align};">${mc.label}</th>`).join('')}
-							</tr></thead>
-							<tbody>${rowsHtml}</tbody>
-							<tfoot><tr style="background: #e2e8f0; color: #0f172a;">
-								<td style="padding: 10px 14px; text-align: center;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></td>
-								<td style="padding: 10px 14px;"></td>
-								<td style="padding: 10px 14px; font-weight: 700; font-size: 14px;">Grand Total</td>
-								<td style="padding: 10px 14px; text-align: center; font-weight: 700; color: #0d9488;">${totalFilteredBranches}</td>
-								${metricCols.map(mc => { const val = mc.calc ? mc.calc(grandTotal) : grandTotal[mc.key]; return `<td style="padding: 10px 14px; font-weight: 700; text-align: ${mc.align};">${new Intl.NumberFormat("en-IN").format(val)}</td>`; }).join('')}
-							</tr></tfoot>
-						</table></div>
-					`);
-					tableContainer.show();
-					tableContainer.off("click", ".mis-zone-row").on("click", ".mis-zone-row", function (e) {
-						if ($(e.target).is("input[type='checkbox']")) return;
-						const zone = $(this).data("zone");
-						self.expandedZones[zone] = !self.expandedZones[zone];
-						const show = self.expandedZones[zone];
-						const $regRows = tableContainer.find(`.mis-region-row[data-zone="${zone}"]`);
-						const $brRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"]`);
-						if (show) {
-							$regRows.stop(true, true).slideDown(200);
-							$regRows.each(function () {
-								const reg = $(this).data("region");
-								if (self.expandedRegions[zone + "::" + reg]) {
-									tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${reg}"]`).stop(true, true).slideDown(200);
-								}
-							});
-						} else {
-							$regRows.stop(true, true).slideUp(150);
-							$brRows.stop(true, true).slideUp(150);
-						}
-						$(this).find(".mis-zone-toggle").text(show ? "▼" : "▶");
-					});
-					tableContainer.off("click", ".mis-region-row").on("click", ".mis-region-row", function (e) {
-						if ($(e.target).is("input[type='checkbox']")) return;
-						e.stopPropagation();
-						const zone = $(this).data("zone");
-						const region = $(this).data("region");
-						const regionKey = zone + "::" + region;
-						self.expandedRegions[regionKey] = !self.expandedRegions[regionKey];
-						const show = self.expandedRegions[regionKey];
-						const $branchRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"]`);
-						if (show) { $branchRows.stop(true, true).slideDown(200); } else { $branchRows.stop(true, true).slideUp(150); }
-						$(this).find(".mis-region-toggle").text(show ? "▼" : "▶");
-					});
-					tableContainer.off("change", ".mis-row-check").on("change", ".mis-row-check", function () {
-						$(this).closest("tr").toggleClass("mis-row-checked", $(this).prop("checked"));
-					});
-					tableContainer.off("change", ".mis-check-all").on("change", ".mis-check-all", function () {
-						const checked = $(this).prop("checked");
-						tableContainer.find(".mis-row-check").each(function () { $(this).prop("checked", checked).trigger("change"); });
-					});
+					dashboardInstance.renderGeneric4LevelTreeTable(
+						tableContainer,
+						self,
+						data,
+						metricCols,
+						"Daily Account Opening"
+					);
 				},
 				renderZoneFilterTags: function (container, dashboardInstance) {
 					const self = this;
@@ -1079,156 +972,18 @@ class DrishtiDashboard {
 					`);
 
 					const renderTable = (data) => {
-						const fmtCount = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
-
-						const zoneMap = {};
-						data.forEach(r => {
-							const zone = r.zone || "Unknown";
-							const region = r.region || "Unknown";
-							const solId = r.sol_id;
-							if (!zoneMap[zone]) zoneMap[zone] = { zone, regions: {} };
-							if (!zoneMap[zone].regions[region]) zoneMap[zone].regions[region] = { region, branches: [] };
-							zoneMap[zone].regions[region].branches.push(r);
-						});
-
-						const sortedZones = Object.keys(zoneMap).sort((a, b) => {
-							const numA = parseInt(a.replace(/\D/g, "")) || 0;
-							const numB = parseInt(b.replace(/\D/g, "")) || 0;
-							return numA - numB;
-						});
-
-						let sr = 0, rowsHtml = "";
-						const grandTotal = { ntb: 0, evr: 0, total: 0, branches: 0 };
-
-						sortedZones.forEach(zoneName => {
-							const zd = zoneMap[zoneName];
-							const zoneData = { ntb: 0, evr: 0, total: 0, branches: 0 };
-							const sortedRegions = Object.keys(zd.regions).sort((a, b) => {
-								const numA = parseInt(a.replace(/\D/g, "")) || 0;
-								const numB = parseInt(b.replace(/\D/g, "")) || 0;
-								return numA - numB;
-							});
-
-							sortedRegions.forEach(rn => {
-								const rd = zd.regions[rn];
-								rd.branches.forEach(b => {
-									zoneData.ntb += b.ntb || 0;
-									zoneData.evr += b.evr || 0;
-									zoneData.total += (b.ntb || 0) + (b.evr || 0);
-								});
-								zoneData.branches += rd.branches.length;
-							});
-
-							sr++;
-							const zoneExpanded = self.expandedZones[zoneName];
-							grandTotal.ntb += zoneData.ntb;
-							grandTotal.evr += zoneData.evr;
-							grandTotal.total += zoneData.total;
-							grandTotal.branches += zoneData.branches;
-
-							rowsHtml += `<tr class="ntb-zone-row" data-zone="${zoneName}" style="cursor: pointer; background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
-								<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; width: 40px; font-size: 14px;">${sr}</td>
-								<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;"><span class="ntb-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>${zoneName}</td>
-								<td style="padding: 10px 14px; font-weight: 700; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px;">${zoneData.branches}</td>
-								<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: right; white-space: nowrap; font-size: 14px;">${fmtCount(zoneData.ntb)}</td>
-								<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: right; white-space: nowrap; font-size: 14px;">${fmtCount(zoneData.evr)}</td>
-								<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: right; white-space: nowrap; font-size: 14px;">${fmtCount(zoneData.total)}</td>
-							</tr>`;
-
-							sortedRegions.forEach(rn => {
-								const rd = zd.regions[rn];
-								const regionKey = zoneName + "::" + rn;
-								const regionExpanded = self.expandedRegions[regionKey];
-								const regionData = { ntb: 0, evr: 0, total: 0 };
-								rd.branches.forEach(b => {
-									regionData.ntb += b.ntb || 0;
-									regionData.evr += b.evr || 0;
-									regionData.total += (b.ntb || 0) + (b.evr || 0);
-								});
-
-								rowsHtml += `<tr class="ntb-region-row" data-zone="${zoneName}" data-region="${rn}" style="display: ${zoneExpanded ? "table-row" : "none"}; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-									<td style="padding: 8px 14px; color: #64748b; text-align: center;"></td>
-									<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 30px; font-weight: 600;"><span class="ntb-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${rn}</td>
-									<td style="padding: 8px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${rd.branches.length}</td>
-									<td style="padding: 8px 14px; color: #334155; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(regionData.ntb)}</td>
-									<td style="padding: 8px 14px; color: #334155; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(regionData.evr)}</td>
-									<td style="padding: 8px 14px; color: #334155; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(regionData.total)}</td>
-								</tr>`;
-
-								rd.branches.forEach((b, bi) => {
-									const showBranch = zoneExpanded && regionExpanded;
-									const branchBg = bi % 2 === 0 ? "#ffffff" : "#f1f5f9";
-									rowsHtml += `<tr class="ntb-branch-row" data-zone="${zoneName}" data-region="${rn}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0;">
-										<td style="padding: 6px 14px; color: #94a3b8; text-align: center;"></td>
-										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 50px; font-weight: 500;">${b.sol_id} - ${b.branch_name}</td>
-										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
-										<td style="padding: 6px 14px; color: #475569; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(b.ntb)}</td>
-										<td style="padding: 6px 14px; color: #475569; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(b.evr)}</td>
-										<td style="padding: 6px 14px; color: #475569; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount((b.ntb || 0) + (b.evr || 0))}</td>
-									</tr>`;
-								});
-							});
-						});
-
-						container.find("#ntb-evr-table-container").html(`
-								<table id="ntb-evr-table">
-									<thead>
-										<tr>
-											<th style="text-align: center; width: 40px;">Sr</th>
-											<th>Zone / Region / Branch</th>
-											<th style="text-align: center;">Branches</th>
-											<th style="text-align: right;">NTB</th>
-											<th style="text-align: right;">EVR</th>
-											<th style="text-align: right;">Total</th>
-										</tr>
-									</thead>
-									<tbody>${rowsHtml}</tbody>
-									<tfoot>
-										<tr>
-											<td></td>
-											<td style="font-size: 14px;">TOTAL</td>
-											<td style="text-align: center; font-size: 14px;">${grandTotal.branches}</td>
-											<td style="text-align: right; font-size: 14px;">${fmtCount(grandTotal.ntb)}</td>
-											<td style="text-align: right; font-size: 14px;">${fmtCount(grandTotal.evr)}</td>
-											<td style="text-align: right; font-size: 14px;">${fmtCount(grandTotal.total)}</td>
-										</tr>
-									</tfoot>
-								</table>
-						`);
-
-						container.find("#ntb-evr-table-container").off("click", ".ntb-zone-row").on("click", ".ntb-zone-row", function (e) {
-							if ($(e.target).closest(".ntb-region-row, .ntb-region-toggle").length) return;
-							const zone = $(this).data("zone");
-							self.expandedZones[zone] = !self.expandedZones[zone];
-							const show = self.expandedZones[zone];
-							const $regionRows = container.find(`.ntb-region-row[data-zone="${zone}"]`);
-							const $branchRows = container.find(`.ntb-branch-row[data-zone="${zone}"]`);
-							if (show) {
-								$regionRows.stop(true, true).slideDown(200);
-								$regionRows.each(function () {
-									const r = $(this).data("region");
-									if (self.expandedRegions[zone + "::" + r]) {
-										container.find(`.ntb-branch-row[data-zone="${zone}"][data-region="${r}"]`).stop(true, true).slideDown(200);
-									}
-								});
-							} else {
-								$branchRows.stop(true, true).slideUp(150);
-								$regionRows.stop(true, true).slideUp(200);
-							}
-							$(this).find(".ntb-zone-toggle").text(show ? "▼" : "▶");
-						});
-
-						container.find("#ntb-evr-table-container").off("click", ".ntb-region-row").on("click", ".ntb-region-row", function (e) {
-							e.stopPropagation();
-							const zone = $(this).data("zone");
-							const region = $(this).data("region");
-							const regionKey = zone + "::" + region;
-							self.expandedRegions[regionKey] = !self.expandedRegions[regionKey];
-							const show = self.expandedRegions[regionKey];
-							const $branchRows = container.find(`.ntb-branch-row[data-zone="${zone}"][data-region="${region}"]`);
-							if (show) { $branchRows.stop(true, true).slideDown(200); } else { $branchRows.stop(true, true).slideUp(150); }
-							$(this).find(".ntb-region-toggle").text(show ? "▼" : "▶");
-						});
+						const metricCols = [
+							{ key: "ntb", label: "NTB" },
+							{ key: "evr", label: "EVR" },
+							{ key: "total", label: "TOTAL ACCOUNTS", calc: (r) => (r.ntb || 0) + (r.evr || 0) }
+						];
+						dashboardInstance.renderGeneric4LevelTreeTable(
+							container.find("#ntb-evr-table-container"),
+							self,
+							data,
+							metricCols,
+							"CASA NTB & EVR"
+						);
 					};
 
 					const fetchData = () => {
@@ -1557,7 +1312,7 @@ class DrishtiDashboard {
 					};
 
 					// Invalidate cache if date changed
-					if (self.cacheDate && self.cacheDate !== dashboardInstance.state.selectedDate) {
+					if (self.cacheDate && self.cacheDate !== (dashboardInstance.state.selectedDate || frappe.datetime.get_today())) {
 						self.cachedPages = {};
 						self.cacheDate = null;
 						self.currentPage = 1;
@@ -1568,7 +1323,7 @@ class DrishtiDashboard {
 
 					const fetchPageAjax = (pageNum) => {
 						return new Promise((resolve) => {
-							const selDate = dashboardInstance.state.selectedDate;
+							const selDate = dashboardInstance.state.selectedDate || frappe.datetime.get_today();
 
 							// Check memory cache
 							if (self.cachedPages[pageNum] && self.cacheDate === selDate) {
@@ -1584,13 +1339,12 @@ class DrishtiDashboard {
 								const sMeta = sessionStorage.getItem(metaKey);
 								if (sData && sMeta) {
 									const metaObj = JSON.parse(sMeta);
-									if (metaObj.totalRows > self.pageSize) {
-										self.totalRows = metaObj.totalRows;
-										self.totalPages = metaObj.totalPages || Math.ceil(self.totalRows / self.pageSize);
-									}
-									self.cachedPages[pageNum] = JSON.parse(sData);
-									self.cacheDate = selDate;
-									if (self.totalRows > self.pageSize) {
+									const parsedData = JSON.parse(sData);
+									if (Array.isArray(parsedData) && parsedData.length > 0) {
+										self.totalRows = metaObj.totalRows || parsedData.length;
+										self.totalPages = metaObj.totalPages || Math.ceil(self.totalRows / self.pageSize) || 1;
+										self.cachedPages[pageNum] = parsedData;
+										self.cacheDate = selDate;
 										resolve(true);
 										return;
 									}
@@ -1600,17 +1354,14 @@ class DrishtiDashboard {
 							}
 
 							const offset = (pageNum - 1) * self.pageSize;
-							$.ajax({
-								url: "/api/method/custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_cust_wise_avg_balance",
-								type: "POST",
-								data: {
+							frappe.call({
+								method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_cust_wise_avg_balance",
+								args: {
 									selected_date: selDate,
 									limit: self.pageSize,
 									offset: offset,
 								},
-								timeout: 300000,
-								headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
-								success: function (r) {
+								callback: function (r) {
 									if (r.message && r.message.data) {
 										self.totalRows = r.message.total_rows || 0;
 										self.totalPages = Math.ceil(self.totalRows / self.pageSize) || 1;
@@ -1756,7 +1507,8 @@ class DrishtiDashboard {
 						if (next <= self.totalPages && !self.cachedPages[next]) preloadPage(next);
 					});
 
-					if (Object.keys(self.cachedPages).length > 0 && self.cacheDate === dashboardInstance.state.selectedDate) {
+					const selDate = dashboardInstance.state.selectedDate || frappe.datetime.get_today();
+					if (Object.keys(self.cachedPages).length > 0 && self.cacheDate === selDate) {
 						container.find("#cavg-loading").hide();
 						container.find("#cavg-table-container").show();
 						renderPage();
@@ -2573,7 +2325,7 @@ class DrishtiDashboard {
 								<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / District / Branch</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Z / R / D / SOL Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">Branches</th>
 									${buckets.map(b => `<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">${b}</th>`).join('')}
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">Grand Total</th>
@@ -3140,7 +2892,7 @@ class DrishtiDashboard {
 								<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / District / Branch</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Z / R / D / SOL Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 120px;">Auth ID</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 180px;">Auth Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 150px;">Designation</th>
@@ -3682,7 +3434,7 @@ class DrishtiDashboard {
 								<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / District / Branch</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Z / R / D / SOL Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 120px;">Auth ID</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 180px;">Auth Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 150px;">Designation</th>
@@ -4238,7 +3990,7 @@ class DrishtiDashboard {
 								<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Zone / Region / District / Branch</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Z / R / D / SOL Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 120px;">Agent Code</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 180px;">Agent Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 120px;">Auth ID</th>
@@ -4322,397 +4074,8 @@ class DrishtiDashboard {
 				}
 			},
 			{
-				id: "agent_wise",
-				name: "Agent Wise",
-				tableData: [],
-				render: function (container, dashboardInstance, seq) {
-					const self = this;
-					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
-					container.html(`
-						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
-							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
-							<div style="display: inline-flex; border-radius: 4px; overflow: hidden; border: 1px solid #cbd5e1;">
-								<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
-								<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
-							</div>
-						</div>
-						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
-							${dashboardInstance.buildMisSkeletonTable("Fetching Agent Wise data...")}
-						</div>
-						<div id="mis-table-container" ${self.tableData && self.tableData.length > 0 ? "" : 'style="display: none;"'}></div>
-					`);
-
-					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function () {
-						self.tableData = [];
-						dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
-						self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
-					});
-
-					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
-						const format = $(this).data("format");
-						dashboardInstance.state.formatMode = format;
-						container.find(".mis-format-btn").removeClass("active").css({ background: "#e2e8f0", color: "#475569" });
-						$(this).addClass("active").css({ background: "#417d81", color: "white" });
-						self.renderAgentWiseTable(container.find("#mis-table-container"), dashboardInstance);
-					});
-
-					if (self.tableData && self.tableData.length > 0) {
-						self.renderAgentWiseTable(container.find("#mis-table-container"), dashboardInstance);
-						container.find("#mis-controls, #mis-table-container").show();
-						container.find("#mis-loading").hide();
-						return;
-					}
-
-					frappe.call({
-						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_agent_wise_ss_vs_data",
-						args: {
-							selected_date: t1_date
-						},
-						callback: function (r) {
-							if (dashboardInstance._misRenderSeq !== seq) return;
-							const msg = r.message;
-							if (msg && msg.data) {
-								self.tableData = msg.data;
-								self.actualDate = msg.actual_date;
-							} else {
-								self.tableData = Array.isArray(msg) ? msg : [];
-								self.actualDate = t1_date;
-							}
-							self.renderAgentWiseTable(container.find("#mis-table-container"), dashboardInstance);
-							container.find("#mis-loading").hide();
-							container.find("#mis-controls, #mis-table-container").show();
-						}
-					});
-				},
-				agentDetails: {},
-				expandedTypes: {},
-				renderAgentWiseTable: function (tableContainer, dashboardInstance) {
-					const self = this;
-					const data = self.tableData || [];
-					if (!self.agentDetails) self.agentDetails = {};
-					if (!self.expandedTypes) self.expandedTypes = {};
-
-					if (data.length === 0) {
-						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">No data to display.</div>');
-						return;
-					}
-
-					let sr = 0;
-					let grandTotalRecords = 0;
-					let grandTotalAgents = 0;
-					let grandTotalCommission = 0;
-
-					const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
-					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
-
-					let rowsHtml = "";
-					data.forEach(row => {
-						sr++;
-						const rType = row.report_type || "Unknown";
-						const totAgents = row.total_agents || 0;
-						const totRecs = row.total_records || 0;
-						const totComm = row.total_commission || 0;
-						const isExpanded = !!self.expandedTypes[rType];
-
-						grandTotalAgents += totAgents;
-						grandTotalRecords += totRecs;
-						grandTotalCommission += totComm;
-
-						rowsHtml += `
-							<tr class="agent-type-row" data-type="${rType}" style="border-bottom: 1px solid #e2e8f0; cursor: pointer; background: ${isExpanded ? '#f0fdf4' : '#fff'};">
-								<td style="padding: 10px 12px; text-align: center; font-size: 13px; font-weight: 600;">${sr}</td>
-								<td style="padding: 10px 12px; font-size: 13px; font-weight: 700; color: #1e293b;">
-									<span class="type-toggle-icon" style="display: inline-block; width: 16px; color: #417d81;">${isExpanded ? '▼' : '▶'}</span>
-									<span style="color: #417d81; text-decoration: underline;">${rType}</span>
-								</td>
-								<td style="padding: 10px 12px; text-align: right; font-size: 13px; font-weight: 600;">${fmtNum(totAgents)}</td>
-								<td style="padding: 10px 12px; text-align: right; font-size: 13px;">${fmtNum(totRecs)}</td>
-								<td style="padding: 10px 12px; text-align: right; font-size: 13px; font-weight: 700; color: #10b981;">${fmtAmt(totComm)}</td>
-							</tr>
-							<tr class="agent-detail-row" data-type="${rType}" style="display: ${isExpanded ? 'table-row' : 'none'}; background: #f8fafc;">
-								<td colspan="5" style="padding: 12px; border-bottom: 2px solid #cbd5e1;">
-									<div class="agent-detail-container" data-type="${rType}">
-										<div style="padding: 10px; color: #64748b; font-size: 12px; font-weight: 600;">Loading Agent Details...</div>
-									</div>
-								</td>
-							</tr>
-						`;
-					});
-
-					const tableHtml = `
-						<div style="max-height: 600px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
-							<table class="table table-bordered" style="width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 0;">
-								<thead>
-									<tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
-										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: center; width: 50px;">Sr</th>
-										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: left;">Report Type (Click to Drill Down)</th>
-										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: right;">Total Agents</th>
-										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: right;">Total Records</th>
-										<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; text-align: right;">Total Commission</th>
-									</tr>
-								</thead>
-								<tbody>${rowsHtml}</tbody>
-								<tfoot>
-									<tr style="background: #1e293b; color: #ffffff; font-weight: 700;">
-										<td style="padding: 10px 12px; text-align: center;"></td>
-										<td style="padding: 10px 12px; text-align: left;">TOTAL</td>
-										<td style="padding: 10px 12px; text-align: right;">${fmtNum(grandTotalAgents)}</td>
-										<td style="padding: 10px 12px; text-align: right;">${fmtNum(grandTotalRecords)}</td>
-										<td style="padding: 10px 12px; text-align: right; color: #34d399;">${fmtAmt(grandTotalCommission)}</td>
-									</tr>
-								</tfoot>
-							</table>
-						</div>
-					`;
-					let noticeHtml = "";
-					const reqDate = dashboardInstance.state.selectedDate || frappe.datetime.add_days(frappe.datetime.get_today(), -1);
-					if (self.actualDate && self.actualDate !== reqDate) {
-						noticeHtml = `
-							<div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 8px 14px; font-size: 12px; color: #1e40af; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-								<span>ℹ Data for <strong>${reqDate}</strong> was not found in SS & VS Report. Displaying latest available records from <strong>${self.actualDate}</strong>.</span>
-							</div>
-						`;
-					}
-					tableContainer.html(noticeHtml + tableHtml);
-
-					// Render details for already expanded types
-					Object.keys(self.expandedTypes).forEach(rType => {
-						if (self.expandedTypes[rType]) {
-							self.loadAndRenderAgentDetails(rType, tableContainer, dashboardInstance);
-						}
-					});
-
-					// Attach Row Click Handler
-					tableContainer.off("click", ".agent-type-row").on("click", ".agent-type-row", function () {
-						const rType = $(this).data("type");
-						self.expandedTypes[rType] = !self.expandedTypes[rType];
-						const isExp = self.expandedTypes[rType];
-						
-						$(this).css("background", isExp ? "#f0fdf4" : "#fff");
-						$(this).find(".type-toggle-icon").text(isExp ? "▼" : "▶");
-						
-						const $detailRow = tableContainer.find(`.agent-detail-row[data-type="${rType}"]`);
-						if (isExp) {
-							$detailRow.show();
-							self.loadAndRenderAgentDetails(rType, tableContainer, dashboardInstance);
-						} else {
-							$detailRow.hide();
-						}
-					});
-				},
-
-				loadAndRenderAgentDetails: function (rType, tableContainer, dashboardInstance) {
-					const self = this;
-					const $container = tableContainer.find(`.agent-detail-container[data-type="${rType}"]`);
-					if (!$container.length) return;
-
-					if (self.agentDetails[rType]) {
-						self.renderAgentSubTable(rType, self.agentDetails[rType], $container, dashboardInstance);
-						return;
-					}
-
-					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
-					$container.html('<div style="padding: 12px; color: #417d81; font-weight: 600; font-size: 12px;">⏳ Fetching Agent Wise details for ' + rType + '...</div>');
-
-					frappe.call({
-						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_agent_wise_details",
-						args: {
-							report_type: rType,
-							selected_date: t1_date
-						},
-						callback: function (r) {
-							if (r.message) {
-								self.agentDetails[rType] = r.message;
-								self.renderAgentSubTable(rType, r.message, $container, dashboardInstance);
-							} else {
-								$container.html('<div style="padding: 12px; color: #64748b; font-weight: 600;">No agent records found.</div>');
-							}
-						}
-					});
-				},
-
-				customerDetails: {},
-				expandedAgents: {},
-				renderAgentSubTable: function (rType, agentList, $container, dashboardInstance) {
-					const self = this;
-					if (!self.customerDetails) self.customerDetails = {};
-					if (!self.expandedAgents) self.expandedAgents = {};
-
-					const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
-					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
-
-					const buildRows = (list) => {
-						if (!list || list.length === 0) {
-							return '<tr><td colspan="5" style="text-align: center; padding: 12px; color: #64748b;">No agents found.</td></tr>';
-						}
-						let html = "";
-						list.forEach((a, idx) => {
-							const key = rType + "::" + a.rm_id;
-							const isExpanded = !!self.expandedAgents[key];
-							html += `
-								<tr class="agent-row-item" data-rm-id="${a.rm_id}" data-type="${rType}" style="border-bottom: 1px solid #e2e8f0; cursor: pointer; background: ${isExpanded ? '#eff6ff' : '#fff'};">
-									<td style="padding: 6px 10px; text-align: center; font-size: 12px; width: 40px;">${idx + 1}</td>
-									<td style="padding: 6px 10px; font-size: 12px; font-weight: 600; color: #1e293b;">
-										<span class="agent-toggle-icon" style="display: inline-block; width: 14px; color: #2563eb;">${isExpanded ? '▼' : '▶'}</span>
-										<span style="color: #2563eb; text-decoration: underline;">${a.rm_id || "-"}</span>
-									</td>
-									<td style="padding: 6px 10px; font-size: 12px; color: #334155; font-weight: 600;">${a.rm_name || "-"}</td>
-									<td style="padding: 6px 10px; text-align: right; font-size: 12px;">${fmtNum(a.record_count)}</td>
-									<td style="padding: 6px 10px; text-align: right; font-size: 12px; font-weight: 600; color: #10b981;">${fmtAmt(a.total_commission)}</td>
-								</tr>
-								<tr class="customer-detail-row" data-rm-id="${a.rm_id}" data-type="${rType}" style="display: ${isExpanded ? 'table-row' : 'none'}; background: #f1f5f9;">
-									<td colspan="5" style="padding: 8px 12px;">
-										<div class="customer-detail-container" data-rm-id="${a.rm_id}" data-type="${rType}">
-											<div style="padding: 8px; color: #64748b; font-size: 12px;">Loading Customer Accounts...</div>
-										</div>
-									</td>
-								</tr>
-							`;
-						});
-						return html;
-					};
-
-					$container.html(`
-						<div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px;">
-							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-								<span style="font-weight: 700; font-size: 13px; color: #334155;">Agent Details for ${rType} (${fmtNum(agentList.length)} Agents - Click Agent to view Customer Accounts)</span>
-								<input type="text" class="agent-search-input" data-type="${rType}" placeholder="Search RM ID or Name..." style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 220px; outline: none;">
-							</div>
-							<div style="max-height: 380px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 4px;">
-								<table class="table table-sm table-striped" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0;">
-									<thead>
-										<tr style="background: #f1f5f9; color: #475569; position: sticky; top: 0; z-index: 1;">
-											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
-											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: left;">RM ID (Agent Code)</th>
-											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: left;">RM Name (Agent Name)</th>
-											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: right;">Records</th>
-											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: right;">Total Commission</th>
-										</tr>
-									</thead>
-									<tbody class="agent-rows-body" data-type="${rType}">${buildRows(agentList)}</tbody>
-								</table>
-							</div>
-						</div>
-					`);
-
-					// Render details for expanded agents
-					Object.keys(self.expandedAgents).forEach(key => {
-						if (self.expandedAgents[key] && key.startsWith(rType + "::")) {
-							const rmId = key.split("::")[1];
-							self.loadAndRenderCustomerDetails(rType, rmId, $container, dashboardInstance);
-						}
-					});
-
-					// Agent Search Filter Handler (with 300ms Debounce)
-					let searchTimeout = null;
-					$container.off("input", ".agent-search-input").on("input", ".agent-search-input", function () {
-						const $input = $(this);
-						clearTimeout(searchTimeout);
-						searchTimeout = setTimeout(() => {
-							const query = $input.val().toLowerCase().trim();
-							const filtered = agentList.filter(a => 
-								(a.rm_id || "").toLowerCase().includes(query) ||
-								(a.rm_name || "").toLowerCase().includes(query)
-							);
-							$container.find(`.agent-rows-body[data-type="${rType}"]`).html(buildRows(filtered));
-						}, 300);
-					});
-
-					// Agent Row Click Handler for Customer Accounts Drilldown
-					$container.off("click", ".agent-row-item").on("click", ".agent-row-item", function (e) {
-						e.stopPropagation();
-						const rmId = $(this).data("rm-id");
-						const key = rType + "::" + rmId;
-						self.expandedAgents[key] = !self.expandedAgents[key];
-						const isExp = self.expandedAgents[key];
-
-						$(this).css("background", isExp ? "#eff6ff" : "#fff");
-						$(this).find(".agent-toggle-icon").text(isExp ? "▼" : "▶");
-
-						const $detailRow = $container.find(`.customer-detail-row[data-rm-id="${rmId}"][data-type="${rType}"]`);
-						if (isExp) {
-							$detailRow.show();
-							self.loadAndRenderCustomerDetails(rType, rmId, $container, dashboardInstance);
-						} else {
-							$detailRow.hide();
-						}
-					});
-				},
-
-				loadAndRenderCustomerDetails: function (rType, rmId, $container, dashboardInstance) {
-					const self = this;
-					const key = rType + "::" + rmId;
-					const $custContainer = $container.find(`.customer-detail-container[data-rm-id="${rmId}"][data-type="${rType}"]`);
-					if (!$custContainer.length) return;
-
-					if (self.customerDetails[key]) {
-						self.renderCustomerSubTable(self.customerDetails[key], $custContainer, dashboardInstance);
-						return;
-					}
-
-					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
-					$custContainer.html('<div style="padding: 8px; color: #2563eb; font-weight: 600; font-size: 11px;">⏳ Loading Customer Accounts...</div>');
-
-					frappe.call({
-						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_agent_customer_details",
-						args: {
-							report_type: rType,
-							rm_id: rmId,
-							selected_date: t1_date
-						},
-						callback: function (r) {
-							if (r.message) {
-								self.customerDetails[key] = r.message;
-								self.renderCustomerSubTable(r.message, $custContainer, dashboardInstance);
-							} else {
-								$custContainer.html('<div style="padding: 8px; color: #64748b; font-weight: 600; font-size: 11px;">No customer accounts found.</div>');
-							}
-						}
-					});
-				},
-
-				renderCustomerSubTable: function (customerList, $custContainer, dashboardInstance) {
-					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
-
-					if (!customerList || customerList.length === 0) {
-						$custContainer.html('<div style="padding: 8px; color: #64748b; font-size: 11px;">No customer accounts found.</div>');
-						return;
-					}
-
-					const rowsHtml = customerList.map((c, idx) => `
-						<tr style="border-bottom: 1px solid #e2e8f0; background: #fff;">
-							<td style="padding: 5px 8px; text-align: center; font-size: 11px; width: 35px;">${idx + 1}</td>
-							<td style="padding: 5px 8px; font-size: 11px; font-weight: 700; color: #0f172a;">${c.foracid || "-"}</td>
-							<td style="padding: 5px 8px; font-size: 11px; font-weight: 600; color: #1e293b;">${c.acct_name || "-"}</td>
-							<td style="padding: 5px 8px; font-size: 11px; color: #475569;">${c.operative_account_number || "-"}</td>
-							<td style="padding: 5px 8px; text-align: right; font-size: 11px; font-weight: 600; color: #10b981;">${fmtAmt(c.commission)}</td>
-						</tr>
-					`).join("");
-
-					$custContainer.html(`
-						<div style="background: #f8fafc; border: 1px solid #bfdbfe; border-radius: 4px; padding: 8px;">
-							<div style="font-weight: 700; font-size: 11px; color: #1e40af; margin-bottom: 6px;">Customer Accounts (${customerList.length} Accounts)</div>
-							<div style="max-height: 200px; overflow-y: auto; border: 1px solid #dbeafe; border-radius: 4px;">
-								<table class="table table-sm" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0;">
-									<thead>
-										<tr style="background: #e0f2fe; color: #0369a1;">
-											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: center; width: 35px;">Sr</th>
-											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: left;">Foracid (Account No)</th>
-											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: left;">Customer Name (acct_name)</th>
-											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: left;">Agent Operative Account</th>
-											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: right;">Commission</th>
-										</tr>
-									</thead>
-									<tbody>${rowsHtml}</tbody>
-								</table>
-							</div>
-						</div>
-					`);
-				}
-			},
-			{
 				id: "rm_wise",
-				name: "RM Wise",
+				name: "Agent Wise Commission",
 				tableData: [],
 				render: function (container, dashboardInstance, seq) {
 					const self = this;
@@ -4724,10 +4087,10 @@ class DrishtiDashboard {
 								<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
 								<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
 							</div>
-							<input type="text" id="rm-top-search" placeholder="Search RM ID or Name..." style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 220px; outline: none; margin-left: auto;">
+							<input type="text" id="rm-top-search" placeholder="Search Agent Code or Name..." style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 220px; outline: none; margin-left: auto;">
 						</div>
 						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
-							${dashboardInstance.buildMisSkeletonTable("Fetching RM Wise data...")}
+							${dashboardInstance.buildMisSkeletonTable("Fetching Agent Wise Commission data...")}
 						</div>
 						<div id="mis-table-container" ${self.tableData && self.tableData.length > 0 ? "" : 'style="display: none;"'}></div>
 					`);
@@ -4794,95 +4157,355 @@ class DrishtiDashboard {
 					let data = self.tableData || [];
 					if (!self.rmDetails) self.rmDetails = {};
 					if (!self.expandedRms) self.expandedRms = {};
-					if (!self.customerDetails) self.customerDetails = {};
-					if (!self.expandedRmCategories) self.expandedRmCategories = {};
+
+					// State pagination
+					if (!self.currentPage) self.currentPage = 1;
+					if (!self.pageSize) self.pageSize = 50;
 
 					if (self.filterQuery) {
 						data = data.filter(r => 
-							(r.rm_id || "").toLowerCase().includes(self.filterQuery) ||
-							(r.rm_name || "").toLowerCase().includes(self.filterQuery)
+							(r.agent_code || r.rm_id || "").toLowerCase().includes(self.filterQuery) ||
+							(r.agent_name || r.rm_name || "").toLowerCase().includes(self.filterQuery)
 						);
 					}
 
+					// Always sort High to Low by Commission
+					data.sort((a, b) => (b.total_commission || 0) - (a.total_commission || 0));
+
 					if (data.length === 0) {
-						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">No RM records to display.</div>');
+						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">No Agent records to display.</div>');
 						return;
 					}
 
 					const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
 					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
 
-					let grandTotalRecords = 0;
-					let grandTotalCommission = 0;
+					let grandTotalCust = 0;
+					let grandTotalComm = 0;
+					let totalActive = 0;
+					let totalInactive = 0;
 
 					self.tableData.forEach(r => {
-						grandTotalRecords += (r.total_records || 0);
-						grandTotalCommission += (r.total_commission || 0);
+						grandTotalCust += (r.total_customer ?? r.total_records ?? 0);
+						grandTotalComm += (r.total_commission || 0);
+
+						const st = (r.agent_status || "Inactive").trim().toLowerCase();
+						if (st === "active" || st === "live") {
+							totalActive++;
+						} else {
+							totalInactive++;
+						}
 					});
 
-					let rowsHtml = "";
-					data.forEach((row, idx) => {
-						const rmId = row.rm_id || "Unknown";
-						const rmName = row.rm_name || "-";
-						const totRecs = row.total_records || 0;
-						const totComm = row.total_commission || 0;
-						const isExpanded = !!self.expandedRms[rmId];
+					const kpiCardsHtml = `
+						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 14px;">
+							<!-- Card 1: Active Agents (Green Card) -->
+							<div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: space-between;">
+								<div>
+									<div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.5px;">Total Active Agents</div>
+									<div style="font-size: 22px; font-weight: 800; color: #15803d; margin-top: 2px;">${fmtNum(totalActive)}</div>
+								</div>
+								<div style="background: #dcfce7; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+									🟢
+								</div>
+							</div>
 
-						rowsHtml += `
-							<tr class="rm-master-row" data-rm-id="${rmId}" style="cursor: pointer; background: ${isExpanded ? '#f0fdf4' : '#fff'}; border-bottom: 1px solid #e2e8f0;">
-								<td style="padding: 8px 12px; text-align: center; font-size: 13px; font-weight: 600; width: 45px;">${idx + 1}</td>
-								<td style="padding: 8px 12px; font-size: 13px; font-weight: 700; color: #1e293b;">
-									<span class="rm-toggle-icon" style="display: inline-block; width: 16px; color: #16a34a;">${isExpanded ? '▼' : '▶'}</span>
-									<span style="color: #16a34a; text-decoration: underline;">${rmId}</span>
-								</td>
-								<td style="padding: 8px 12px; font-size: 13px; font-weight: 600; color: #334155;">${rmName}</td>
-								<td style="padding: 8px 12px; text-align: right; font-size: 13px;">${fmtNum(totRecs)}</td>
-								<td style="padding: 8px 12px; text-align: right; font-size: 13px; font-weight: 700; color: #059669;">${fmtAmt(totComm)}</td>
-							</tr>
-							<tr class="rm-detail-row" data-rm-id="${rmId}" style="display: ${isExpanded ? 'table-row' : 'none'}; background: #f8fafc;">
-								<td colspan="5" style="padding: 10px 14px;">
-									<div class="rm-category-container" data-rm-id="${rmId}">
-										<div style="padding: 8px; color: #64748b; font-size: 12px;">Loading Category Breakdown...</div>
-									</div>
-								</td>
-							</tr>
-						`;
+							<!-- Card 2: Inactive Agents (Red Card) -->
+							<div style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: space-between;">
+								<div>
+									<div style="font-size: 11px; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px;">Total Inactive Agents</div>
+									<div style="font-size: 22px; font-weight: 800; color: #dc2626; margin-top: 2px;">${fmtNum(totalInactive)}</div>
+								</div>
+								<div style="background: #fee2e2; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+									🔴
+								</div>
+							</div>
+
+							<!-- Card 3: Total Commission (Primary Theme Card) -->
+							<div style="background: rgba(65, 125, 129, 0.05); border: 1px solid rgba(65, 125, 129, 0.3); border-radius: 8px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: space-between;">
+								<div>
+									<div style="font-size: 11px; font-weight: 700; color: #417d81; text-transform: uppercase; letter-spacing: 0.5px;">Total Commission</div>
+									<div style="font-size: 22px; font-weight: 800; color: #417d81; margin-top: 2px;">${fmtAmt(grandTotalComm)}</div>
+								</div>
+								<div style="background: rgba(65, 125, 129, 0.12); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+									💰
+								</div>
+							</div>
+						</div>
+					`;
+
+					if (!self.expandedTreeNodes) self.expandedTreeNodes = {};
+
+					// Build Tree Data (Zone -> Region -> District -> SOL -> Agent)
+					const rootNodes = [];
+					const zMap = {};
+
+					data.forEach(agent => {
+						const zName = (agent.zone || "OTHER ZONE").trim();
+						const rName = (agent.region || "OTHER REGION").trim();
+						const dName = (agent.district || "OTHER DISTRICT").trim();
+						const sCode = (agent.branch_code || "-").trim();
+						const sName = (agent.branch_name || sCode).trim();
+						const solLabel = sCode !== '-' ? `${sName} (${sCode})` : sName;
+						const comm = agent.total_commission || 0;
+						const isActive = (agent.agent_status || "").trim().toLowerCase() === "active";
+
+						if (!zMap[zName]) {
+							zMap[zName] = {
+								id: `z_${zName}`,
+								name: zName,
+								code: zName,
+								type: "Zone",
+								level: 1,
+								total_commission: 0,
+								agent_count: 0,
+								active_count: 0,
+								inactive_count: 0,
+								children: {}
+							};
+							rootNodes.push(zMap[zName]);
+						}
+						zMap[zName].total_commission += comm;
+						zMap[zName].agent_count += 1;
+						if (isActive) zMap[zName].active_count += 1;
+						else zMap[zName].inactive_count += 1;
+
+						const rMap = zMap[zName].children;
+						if (!rMap[rName]) {
+							rMap[rName] = {
+								id: `r_${zName}_${rName}`,
+								name: rName,
+								code: rName,
+								type: "Region",
+								level: 2,
+								total_commission: 0,
+								agent_count: 0,
+								active_count: 0,
+								inactive_count: 0,
+								children: {}
+							};
+						}
+						rMap[rName].total_commission += comm;
+						rMap[rName].agent_count += 1;
+						if (isActive) rMap[rName].active_count += 1;
+						else rMap[rName].inactive_count += 1;
+
+						const dMap = rMap[rName].children;
+						if (!dMap[dName]) {
+							dMap[dName] = {
+								id: `d_${zName}_${rName}_${dName}`,
+								name: dName,
+								code: dName,
+								type: "District",
+								level: 3,
+								total_commission: 0,
+								agent_count: 0,
+								active_count: 0,
+								inactive_count: 0,
+								children: {}
+							};
+						}
+						dMap[dName].total_commission += comm;
+						dMap[dName].agent_count += 1;
+						if (isActive) dMap[dName].active_count += 1;
+						else dMap[dName].inactive_count += 1;
+
+						const sMap = dMap[dName].children;
+						if (!sMap[sCode]) {
+							sMap[sCode] = {
+								id: `s_${zName}_${rName}_${dName}_${sCode}`,
+								name: solLabel,
+								code: sCode,
+								type: "SOL",
+								level: 4,
+								total_commission: 0,
+								agent_count: 0,
+								active_count: 0,
+								inactive_count: 0,
+								children: []
+							};
+						}
+						sMap[sCode].total_commission += comm;
+						sMap[sCode].agent_count += 1;
+						if (isActive) sMap[sCode].active_count += 1;
+						else sMap[sCode].inactive_count += 1;
+
+						sMap[sCode].children.push({
+							id: `a_${agent.agent_code}`,
+							name: agent.agent_name,
+							code: agent.agent_code,
+							type: "Agent",
+							level: 5,
+							total_commission: comm,
+							agent_status: agent.agent_status,
+							raw_agent: agent
+						});
 					});
+
+					rootNodes.sort((a, b) => b.total_commission - a.total_commission);
+
+					const allNodeIds = [];
+					const collectAllNodeIds = (nodes) => {
+						nodes.forEach(n => {
+							if (n.level < 5) {
+								allNodeIds.push(n.id);
+								let childList = Array.isArray(n.children) ? n.children : Object.values(n.children);
+								collectAllNodeIds(childList);
+							}
+						});
+					};
+					collectAllNodeIds(rootNodes);
+
+					const renderTreeRows = (nodes) => {
+						let html = "";
+						nodes.forEach(node => {
+							const isExpanded = !!self.expandedTreeNodes[node.id];
+							const indent = (node.level - 1) * 10 + 10;
+							const hasChildren = node.level < 5;
+
+							let typeBadgeBg = "#e0f2fe";
+							let typeBadgeColor = "#0369a1";
+							let typeBadgeBorder = "#7dd3fc";
+							if (node.level === 1) { typeBadgeBg = "#f3e8ff"; typeBadgeColor = "#7e22ce"; typeBadgeBorder = "#d8b4fe"; } // Zone
+							else if (node.level === 2) { typeBadgeBg = "#e0e7ff"; typeBadgeColor = "#3730a3"; typeBadgeBorder = "#a5b4fc"; } // Region
+							else if (node.level === 3) { typeBadgeBg = "#fef3c7"; typeBadgeColor = "#92400e"; typeBadgeBorder = "#fcd34d"; } // District
+							else if (node.level === 4) { typeBadgeBg = "#ccfbf1"; typeBadgeColor = "#115e59"; typeBadgeBorder = "#5eead4"; } // SOL
+							else if (node.level === 5) { typeBadgeBg = "#dcfce7"; typeBadgeColor = "#15803d"; typeBadgeBorder = "#86efac"; } // Agent
+
+							let activeColHtml = "";
+							let inactiveColHtml = "";
+
+							if (node.level < 5) {
+								activeColHtml = `<span style="font-size: 12px; font-weight: 700; color: #15803d;">${fmtNum(node.active_count)}</span>`;
+								inactiveColHtml = `<span style="font-size: 12px; font-weight: 700; color: #dc2626;">${fmtNum(node.inactive_count)}</span>`;
+							} else {
+								const st = (node.agent_status || "Inactive").trim().toLowerCase();
+								const isAct = st === "active" || st === "live";
+								if (isAct) {
+									activeColHtml = `<span style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">Active</span>`;
+									inactiveColHtml = `<span style="color: #cbd5e1;">-</span>`;
+								} else {
+									activeColHtml = `<span style="color: #cbd5e1;">-</span>`;
+									inactiveColHtml = `<span style="background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">Inactive</span>`;
+								}
+							}
+
+							let rowBg = '#ffffff';
+							if (node.level === 1) rowBg = '#f8fafc';
+							else if (node.level === 2) rowBg = '#ffffff';
+							else if (node.level === 3) rowBg = '#f8fafc';
+							else if (node.level === 4) rowBg = '#ffffff';
+							else if (node.level === 5) rowBg = '#f0fdfa';
+
+							html += `
+								<tr class="tree-master-row" data-node-id="${node.id}" data-level="${node.level}" data-agent-code="${node.code}" style="cursor: pointer; background: ${rowBg}; border-bottom: 1px solid #e2e8f0;">
+									<td style="padding: 8px 12px; text-align: left; padding-left: ${indent}px; font-weight: ${node.level < 5 ? '700' : '600'}; color: #1e293b;">
+										${hasChildren ? `<span class="tree-toggle-icon" style="display: inline-block; width: 16px; color: #417d81; font-weight: 800;">${isExpanded ? '▼' : '▶'}</span>` : '<span style="display: inline-block; width: 16px; color: #94a3b8;">•</span>'}
+										<span style="color: ${node.level === 5 ? '#417d81' : '#0f172a'}; ${node.level === 5 ? 'text-decoration: underline; font-weight: 700;' : ''}">${node.name}</span>
+									</td>
+									<td style="padding: 8px 12px; text-align: left; font-size: 12px; font-weight: 700; color: #417d81;">${node.code}</td>
+									<td style="padding: 8px 12px; text-align: left; font-size: 11px;">
+										<span style="background: ${typeBadgeBg}; color: ${typeBadgeColor}; border: 1px solid ${typeBadgeBorder}; padding: 2px 8px; border-radius: 12px; font-weight: 700;">${node.type}</span>
+									</td>
+									<td style="padding: 8px 12px; text-align: right;">${activeColHtml}</td>
+									<td style="padding: 8px 12px; text-align: right;">${inactiveColHtml}</td>
+									<td style="padding: 8px 12px; text-align: right; font-size: 13px; font-weight: 800; color: #417d81;">${fmtAmt(node.total_commission)}</td>
+								</tr>
+							`;
+
+							if (hasChildren && isExpanded) {
+								let childNodes = [];
+								if (Array.isArray(node.children)) {
+									childNodes = node.children;
+								} else if (typeof node.children === "object") {
+									childNodes = Object.values(node.children);
+								}
+								childNodes.sort((a, b) => b.total_commission - a.total_commission);
+								html += renderTreeRows(childNodes);
+							}
+						});
+						return html;
+					};
+
+					const treeRowsHtml = renderTreeRows(rootNodes);
+
+					const controlBarHtml = `
+						<div class="rm-pagination-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+							<div style="font-size: 12px; font-weight: 700; color: #417d81; display: flex; align-items: center; gap: 8px;">
+								<span>🌳 Hierarchical Drill-Down (Zone → Region → District → SOL → Agent)</span>
+								<span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700;">${fmtNum(data.length)} Agents Total</span>
+							</div>
+							<div style="display: flex; align-items: center; gap: 8px;">
+								<button type="button" class="btn btn-xs rm-tree-expand-all" style="background: rgba(65, 125, 129, 0.1); color: #417d81; border: 1px solid rgba(65, 125, 129, 0.3); font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
+									📂 Expand All
+								</button>
+								<button type="button" class="btn btn-xs rm-tree-collapse-all" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
+									📁 Collapse All
+								</button>
+							</div>
+						</div>
+					`;
 
 					const tableHtml = `
-						<div style="max-height: 700px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+						<style>
+							.tree-master-row { transition: background-color 0.15s ease-in-out; }
+							.tree-master-row:hover { background-color: #f0fdfa !important; }
+						</style>
+						${kpiCardsHtml}
+						${controlBarHtml}
+						<div style="max-height: 650px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
 							<table class="table table-sm table-hover" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
 								<thead>
-									<tr style="background: #16a34a; color: #ffffff; position: sticky; top: 0; z-index: 2;">
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: center; width: 45px;">Sr</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">RM ID (Agent Code)</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">RM Name (Agent Name)</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Records</th>
+									<tr style="background: #417d81; color: #ffffff; position: sticky; top: 0; z-index: 2;">
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Z / R / D / SOL / Agent Name</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Code / ID</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Level</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Active Agents</th>
+										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Inactive Agents</th>
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Commission</th>
 									</tr>
 								</thead>
-								<tbody>${rowsHtml}</tbody>
+								<tbody>${treeRowsHtml}</tbody>
 								<tfoot>
-									<tr style="background: #dcfce7; color: #14532d; font-weight: 700; position: sticky; bottom: 0; z-index: 2;">
-										<td colspan="3" style="padding: 10px 12px; text-align: right; font-size: 13px;">GRAND TOTAL (${fmtNum(self.tableData.length)} RMs)</td>
-										<td style="padding: 10px 12px; text-align: right; font-size: 13px;">${fmtNum(grandTotalRecords)}</td>
-										<td style="padding: 10px 12px; text-align: right; font-size: 13px; color: #047857;">${fmtAmt(grandTotalCommission)}</td>
+									<tr style="background: rgba(65, 125, 129, 0.08); color: #1e293b; font-weight: 700; position: sticky; bottom: 0; z-index: 2; border-top: 2px solid #417d81;">
+										<td colspan="3" style="padding: 10px 12px; text-align: left; font-size: 12px; color: #417d81;">GRAND TOTAL (${fmtNum(data.length)} AGENTS)</td>
+										<td style="padding: 10px 12px; text-align: right; font-size: 12px; color: #15803d; font-weight: 800;">${fmtNum(totalActive)} Active</td>
+										<td style="padding: 10px 12px; text-align: right; font-size: 12px; color: #dc2626; font-weight: 800;">${fmtNum(totalInactive)} Inactive</td>
+										<td style="padding: 10px 12px; text-align: right; font-size: 13px; color: #417d81; font-weight: 800;">${fmtAmt(grandTotalComm)}</td>
 									</tr>
 								</tfoot>
 							</table>
 						</div>
 					`;
 
-					let noticeHtml = "";
-					const reqDate = dashboardInstance.state.selectedDate || frappe.datetime.add_days(frappe.datetime.get_today(), -1);
-					if (self.actualDate && self.actualDate !== reqDate) {
-						noticeHtml = `
-							<div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 8px 14px; font-size: 12px; color: #1e40af; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-								<span>ℹ Data for <strong>${reqDate}</strong> was not found in SS & VS Report. Displaying latest available records from <strong>${self.actualDate}</strong>.</span>
-							</div>
-						`;
-					}
-					tableContainer.html(noticeHtml + tableHtml);
+					tableContainer.html(tableHtml);
+
+					// Tree Click Event Handlers
+					tableContainer.off("click", ".tree-master-row").on("click", ".tree-master-row", function () {
+						const nodeId = $(this).data("node-id");
+						const level = parseInt($(this).data("level"));
+
+						if (level < 5) {
+							self.expandedTreeNodes[nodeId] = !self.expandedTreeNodes[nodeId];
+							self.renderRmWiseTable(tableContainer, dashboardInstance);
+						} else {
+							const agentCode = $(this).data("agent-code");
+							const agentData = self.tableData.find(a => (a.agent_code || a.rm_id) === agentCode);
+							if (agentData) {
+								self.openAgentModal(agentData, dashboardInstance);
+							}
+						}
+					});
+
+					tableContainer.off("click", ".rm-tree-expand-all").on("click", ".rm-tree-expand-all", function () {
+						allNodeIds.forEach(id => self.expandedTreeNodes[id] = true);
+						self.renderRmWiseTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".rm-tree-collapse-all").on("click", ".rm-tree-collapse-all", function () {
+						self.expandedTreeNodes = {};
+						self.renderRmWiseTable(tableContainer, dashboardInstance);
+					});
 
 					// Render category details for expanded RMs
 					Object.keys(self.expandedRms).forEach(rmId => {
@@ -4891,24 +4514,446 @@ class DrishtiDashboard {
 						}
 					});
 
-					// Master RM Row Click Event
+					// Master RM Row Click Event -> Opens Glassmorphic Backdrop-Blurred Modal Popup
 					tableContainer.off("click", ".rm-master-row").on("click", ".rm-master-row", function (e) {
 						e.stopPropagation();
 						const rmId = $(this).data("rm-id");
-						self.expandedRms[rmId] = !self.expandedRms[rmId];
-						const isExp = self.expandedRms[rmId];
+						const rowData = pagedData.find(r => (r.agent_code || r.rm_id) === rmId) || { agent_code: rmId, agent_name: rmId };
+						self.openAgentModal(rowData, dashboardInstance);
+					});
+				},
 
-						$(this).css("background", isExp ? "#f0fdf4" : "#fff");
-						$(this).find(".rm-toggle-icon").text(isExp ? "▼" : "▶");
+				parseAgentCommissionJson: function (comm_dict_or_str, selectedDate) {
+					let comm_dict = comm_dict_or_str;
+					if (typeof comm_dict_or_str === "string") {
+						try { comm_dict = JSON.parse(comm_dict_or_str); } catch (e) { comm_dict = {}; }
+					}
+					if (!comm_dict || typeof comm_dict !== "object") comm_dict = {};
 
-						const $detailRow = tableContainer.find(`.rm-detail-row[data-rm-id="${rmId}"]`);
-						if (isExp) {
-							$detailRow.show();
-							self.loadAndRenderRmCategoryDetails(rmId, tableContainer, dashboardInstance);
+					const today = selectedDate ? new Date(selectedDate) : new Date();
+					const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+					const targetMonths = [];
+
+					for (let i = 3; i >= 0; i--) {
+						const dt = new Date(today.getFullYear(), today.getMonth() - i, 1);
+						const yStr = String(dt.getFullYear());
+						const mStr = String(dt.getMonth() + 1).padStart(2, '0');
+						const mName = `${monthNames[dt.getMonth()]} ${dt.getFullYear()}`;
+						targetMonths.push({
+							year: yStr,
+							month: mStr,
+							label: mName,
+							is_current: (i === 0)
+						});
+					}
+
+					const standardProducts = ["DAM", "SMBG", "RD", "DD SAV", "FD", "FD 1", "DD TDA", "SHARE"];
+					const productMatrix = {};
+					standardProducts.forEach(prod => {
+						productMatrix[prod] = { product_name: prod, months: {}, total_commission: 0 };
+					});
+
+					const monthTotals = {};
+					targetMonths.forEach(m => monthTotals[m.label] = 0);
+					let grand4mTotal = 0;
+
+					targetMonths.forEach(mInfo => {
+						const yr = mInfo.year;
+						const mth = mInfo.month;
+						const lbl = mInfo.label;
+
+						if (comm_dict[yr] && comm_dict[yr][mth]) {
+							const mData = comm_dict[yr][mth];
+							standardProducts.forEach(prod => {
+								const val = parseFloat(mData[prod] || 0);
+								productMatrix[prod].months[lbl] = val;
+								productMatrix[prod].total_commission += val;
+								monthTotals[lbl] += val;
+								grand4mTotal += val;
+							});
 						} else {
-							$detailRow.hide();
+							standardProducts.forEach(prod => {
+								productMatrix[prod].months[lbl] = 0;
+							});
 						}
 					});
+
+					const breakdownList = standardProducts.map(prod => {
+						const pData = productMatrix[prod];
+						return {
+							product_name: prod,
+							report_type: prod,
+							months: pData.months,
+							total_commission: pData.total_commission,
+							total_customer: pData.total_commission > 0 ? 1 : 0
+						};
+					});
+
+					breakdownList.sort((a, b) => b.total_commission - a.total_commission);
+
+					return {
+						breakdown: breakdownList,
+						target_months: targetMonths,
+						month_totals: monthTotals,
+						grand_4m_total: grand4mTotal,
+						comm_dict: comm_dict
+					};
+				},
+
+				openAgentModal: function (agentData, dashboardInstance) {
+					const self = this;
+					const agentCode = agentData.agent_code || agentData.rm_id || "-";
+					const agentName = agentData.agent_name || agentData.rm_name || "-";
+					const agentStatus = (agentData.agent_status || "Inactive").trim();
+					const isAgentActive = agentStatus.toLowerCase() === "active" || agentStatus.toLowerCase() === "live";
+
+					const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
+					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
+
+					const modalId = "agent-breakdown-modal-backdrop";
+					$(`#${modalId}`).remove();
+
+					const statusBadge = isAgentActive
+						? `<span style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 3px 10px; border-radius: 14px; font-size: 11px; font-weight: 700;">Active</span>`
+						: `<span style="background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; padding: 3px 10px; border-radius: 14px; font-size: 11px; font-weight: 700;">Inactive</span>`;
+
+					const modalHtml = `
+						<style>
+							@keyframes agentModalPop {
+								0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+								100% { opacity: 1; transform: scale(1) translateY(0); }
+							}
+							.modal-table-row { transition: background-color 0.15s ease-in-out; }
+							.modal-table-row:hover { background-color: #f0fdfa !important; cursor: pointer; }
+						</style>
+						<div id="${modalId}" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px;">
+							<div style="background: #ffffff; width: 100%; max-width: 980px; border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden; animation: agentModalPop 0.25s ease-out;">
+								
+								<!-- Modal Header -->
+								<div style="background: #417d81; color: #ffffff; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;">
+									<div>
+										<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; opacity: 0.85;">Agent Profile & Commission Breakdown</div>
+										<div style="font-size: 18px; font-weight: 800; margin-top: 2px; display: flex; align-items: center; gap: 10px;">
+											<span>${agentName} (${agentCode})</span>
+											${statusBadge}
+										</div>
+									</div>
+									<button type="button" id="close-agent-modal" style="background: rgba(255,255,255,0.15); border: none; color: #ffffff; font-size: 20px; font-weight: 700; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s;">✕</button>
+								</div>
+
+								<!-- Modal Body -->
+								<div style="padding: 20px; max-height: 80vh; overflow-y: auto;">
+									<div id="modal-subtable-content">
+										<div style="padding: 40px; text-align: center; color: #417d81; font-weight: 600; font-size: 13px;">
+											⏳ Fetching Agent Profile & Product Breakdown for ${agentCode}...
+										</div>
+									</div>
+								</div>
+
+								<!-- Modal Footer -->
+								<div style="padding: 12px 20px; background: #f8fafc; border-top: 1px solid #e2e8f0; text-align: right;">
+									<button type="button" id="close-agent-modal-btn" class="btn btn-sm" style="background: #417d81; color: #ffffff; font-weight: 700; border-radius: 6px; padding: 6px 16px;">Close</button>
+								</div>
+							</div>
+						</div>
+					`;
+
+					$("body").append(modalHtml);
+
+					const closeModal = () => {
+						$(`#${modalId}`).fadeOut(150, function () { $(this).remove(); });
+					};
+
+					$(`#${modalId}`).on("click", function (e) {
+						if (e.target.id === modalId) closeModal();
+					});
+					$("#close-agent-modal, #close-agent-modal-btn").on("click", closeModal);
+
+					$(document).off("keydown.agentModal").on("keydown.agentModal", function (e) {
+						if (e.key === "Escape") {
+							closeModal();
+							$(document).off("keydown.agentModal");
+						}
+					});
+
+					const renderModalContent = (res) => {
+						const catList = res.breakdown || [];
+						const targetMonths = res.target_months || [];
+						const monthTotals = res.month_totals || {};
+						const grand4mTotal = res.grand_4m_total || 0;
+
+						if (catList.length === 0) {
+							$("#modal-subtable-content").html('<div style="padding: 20px; text-align: center; color: #64748b; font-weight: 600;">No product breakdown data found.</div>');
+							return;
+						}
+
+						catList.sort((a, b) => (b.total_commission || 0) - (a.total_commission || 0));
+
+						let maxMonthVal = 0;
+						targetMonths.forEach(m => {
+							const val = monthTotals[m.label] || 0;
+							if (val > maxMonthVal) maxMonthVal = val;
+						});
+						if (maxMonthVal === 0) maxMonthVal = 1;
+
+						let barChartItemsHtml = targetMonths.map(m => {
+							const val = monthTotals[m.label] || 0;
+							const pctHeight = Math.max(Math.round((val / maxMonthVal) * 85), val > 0 ? 8 : 2);
+							const isCurrent = m.is_current;
+							const barBg = isCurrent
+								? "linear-gradient(180deg, #22c55e 0%, #15803d 100%)"
+								: "linear-gradient(180deg, #417d81 0%, #2b5558 100%)";
+							const labelColor = isCurrent ? "#15803d" : "#417d81";
+
+							return `
+								<div style="flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; position: relative;">
+									<div style="font-size: 11px; font-weight: 800; color: ${val > 0 ? labelColor : '#94a3b8'}; margin-bottom: 4px; white-space: nowrap;">
+										${val > 0 ? fmtAmt(val) : '₹0'}
+									</div>
+									<div style="width: 75%; max-width: 48px; height: ${pctHeight}%; background: ${barBg}; border-radius: 6px 6px 0 0; transition: height 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.08);" title="${m.label}: ${fmtAmt(val)}"></div>
+									<div style="font-size: 11px; font-weight: 700; color: ${isCurrent ? '#15803d' : '#475569'}; margin-top: 8px; text-transform: uppercase;">
+										${m.label} ${isCurrent ? '⚡' : ''}
+									</div>
+								</div>
+							`;
+						}).join('');
+
+						const barChartCardHtml = `
+							<div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+								<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+									<div style="font-size: 12px; font-weight: 800; color: #417d81; text-transform: uppercase; letter-spacing: 0.5px;">
+										📈 4-Month Commission Trend Bar Chart
+									</div>
+									<div style="font-size: 11px; font-weight: 700; color: #64748b;">
+										Grand 4-Month Total: <span style="color: #417d81; font-weight: 800;">${fmtAmt(grand4mTotal)}</span>
+									</div>
+								</div>
+								<div style="height: 150px; display: flex; align-items: flex-end; gap: 16px; padding: 12px 20px 0 20px; background: #f8fafc; border-radius: 6px; border: 1px solid #f1f5f9;">
+									${barChartItemsHtml}
+								</div>
+							</div>
+						`;
+
+						let monthHeadersHtml = targetMonths.map(m => `
+							<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right; ${m.is_current ? 'background: #35676a;' : ''}">${m.label}</th>
+						`).join('');
+
+						let rowsHtml = "";
+						catList.forEach((c, idx) => {
+							const prodName = c.product_name || c.report_type || "-";
+							const totComm = c.total_commission || 0;
+
+							let monthCellsHtml = targetMonths.map(m => {
+								const mVal = (c.months && c.months[m.label]) || 0;
+								return `
+									<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: ${mVal > 0 ? '700' : '500'}; color: ${mVal > 0 ? (m.is_current ? '#15803d' : '#334155') : '#94a3b8'};">
+										${mVal > 0 ? fmtAmt(mVal) : '-'}
+									</td>
+								`;
+							}).join('');
+
+							rowsHtml += `
+								<tr class="modal-table-row" style="border-bottom: 1px solid #e2e8f0; background: ${totComm > 0 ? '#ffffff' : '#f8fafc'};">
+									<td style="padding: 8px 10px; text-align: center; font-size: 12px; font-weight: 600; color: #64748b; width: 40px;">${idx + 1}</td>
+									<td style="padding: 8px 10px; font-size: 12px; font-weight: 700; color: #1e293b;">${prodName}</td>
+									${monthCellsHtml}
+									<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 800; color: #417d81;">${fmtAmt(totComm)}</td>
+								</tr>
+							`;
+						});
+
+						let monthFootersHtml = targetMonths.map(m => {
+							const mTot = monthTotals[m.label] || 0;
+							return `
+								<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 800;">${fmtAmt(mTot)}</td>
+							`;
+						}).join('');
+
+						const agentInfo = res.agent_info || {};
+						const bName = agentInfo.branch_name || agentData.branch_name || "-";
+						const bCode = agentInfo.branch_code || agentData.branch_code || "-";
+						const bZone = agentInfo.zone || agentData.zone || "";
+						const bRegion = agentInfo.region || agentData.region || "";
+						const bDistrict = agentInfo.district || agentData.district || "";
+						const authId = agentInfo.auth_id || agentData.auth_id || "-";
+						const empId = agentInfo.employee || agentData.employee || "-";
+						const empName = agentInfo.employee_name || agentData.employee_name || "";
+						const empDesignation = agentInfo.emp_designation || agentData.emp_designation || "";
+						const empDept = agentInfo.emp_department || agentData.emp_department || "";
+						const empBranch = agentInfo.emp_branch || agentData.emp_branch || "";
+						const empCell = agentInfo.emp_cell_number || agentData.emp_cell_number || "";
+						const phoneNo = agentInfo.phone_number || agentData.phone_number || "-";
+						const agentRole = agentInfo.role || agentData.role || agentData.agent_type || "-";
+
+						const leftColumnCardsHtml = `
+							<div style="display: flex; flex-direction: column; gap: 14px;">
+								<!-- CARD 1: AGENT PROFILE CARD -->
+								<div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+									<div style="font-size: 11px; font-weight: 800; color: #417d81; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+										<span>Agent Profile</span>
+										${statusBadge}
+									</div>
+									<div style="display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 10px;">
+										<div style="width: 44px; height: 44px; background: #417d81; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 3px 6px rgba(65, 125, 129, 0.3);">
+											<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+												<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+												<circle cx="12" cy="7" r="4"></circle>
+											</svg>
+										</div>
+										<div>
+											<div style="font-size: 13px; font-weight: 800; color: #0f172a; line-height: 1.2;">${agentName}</div>
+											<div style="font-size: 11px; font-weight: 700; color: #417d81; margin-top: 2px;">${agentCode} ${agentRole !== '-' ? '(' + agentRole + ')' : ''}</div>
+										</div>
+									</div>
+									<div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
+										<div>
+											<span style="color: #64748b; font-weight: 600;">Branch:</span>
+											<strong style="color: #1e293b;">${bName} ${bCode !== '-' ? '(' + bCode + ')' : ''}</strong>
+										</div>
+										${bZone ? `
+										<div>
+											<span style="color: #64748b; font-weight: 600;">Zone:</span>
+											<strong style="color: #1e293b;">${bZone}</strong>
+										</div>
+										` : ''}
+										${bRegion ? `
+										<div>
+											<span style="color: #64748b; font-weight: 600;">Region:</span>
+											<strong style="color: #1e293b;">${bRegion}</strong>
+										</div>
+										` : ''}
+										${bDistrict ? `
+										<div>
+											<span style="color: #64748b; font-weight: 600;">District:</span>
+											<strong style="color: #1e293b;">${bDistrict}</strong>
+										</div>
+										` : ''}
+										<div>
+											<span style="color: #64748b; font-weight: 600;">Auth ID:</span>
+											<strong style="color: #1e293b;">${authId}</strong>
+										</div>
+										${phoneNo !== '-' ? `
+										<div>
+											<span style="color: #64748b; font-weight: 600;">Phone:</span>
+											<strong style="color: #1e293b;">${phoneNo}</strong>
+										</div>
+										` : ''}
+									</div>
+								</div>
+
+								<!-- CARD 2: ASSIGNED EMPLOYEE / MANAGER CARD -->
+								${empId !== '-' ? `
+								<div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+									<div style="font-size: 11px; font-weight: 800; color: #334155; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+										<span>Assigned Employee</span>
+										<span style="background: #e2e8f0; color: #334155; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: 700;">ID: ${empId}</span>
+									</div>
+									<div style="display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 10px;">
+										<div style="width: 44px; height: 44px; background: #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 3px 6px rgba(51, 65, 85, 0.3);">
+											<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+												<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+												<circle cx="9" cy="7" r="4"></circle>
+												<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+												<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+											</svg>
+										</div>
+										<div>
+											<div style="font-size: 13px; font-weight: 800; color: #0f172a; line-height: 1.2;">${empName || empId}</div>
+											<div style="font-size: 11px; font-weight: 700; color: #64748b; margin-top: 2px;">${empDesignation || 'Branch Manager'}</div>
+										</div>
+									</div>
+									<div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
+										${empDept ? `
+										<div>
+											<span style="color: #64748b; font-weight: 600;">Department:</span>
+											<strong style="color: #1e293b;">${empDept}</strong>
+										</div>
+										` : ''}
+										${empBranch ? `
+										<div>
+											<span style="color: #64748b; font-weight: 600;">Emp Branch:</span>
+											<strong style="color: #1e293b;">${empBranch}</strong>
+										</div>
+										` : ''}
+										${empCell ? `
+										<div>
+											<span style="color: #64748b; font-weight: 600;">Contact:</span>
+											<strong style="color: #1e293b;">${empCell}</strong>
+										</div>
+										` : ''}
+									</div>
+								</div>
+								` : ''}
+
+								<!-- CARD 3: 4-MONTH TOTAL ACCENT CARD -->
+								<div style="background: rgba(65, 125, 129, 0.08); border: 1px solid rgba(65, 125, 129, 0.25); border-radius: 8px; padding: 10px; text-align: center;">
+									<div style="font-size: 10px; font-weight: 700; color: #417d81; text-transform: uppercase;">4-Month Total Commission</div>
+									<div style="font-size: 17px; font-weight: 800; color: #417d81; margin-top: 2px;">${fmtAmt(grand4mTotal)}</div>
+								</div>
+							</div>
+						`;
+
+						const modalBodyHtml = `
+							<div style="display: grid; grid-template-columns: 260px 1fr; gap: 16px; align-items: start;">
+								${leftColumnCardsHtml}
+								<div style="display: flex; flex-direction: column; gap: 14px;">
+									${barChartCardHtml}
+									<div style="border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+										<table class="table table-sm" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
+											<thead>
+												<tr style="background: #417d81; color: #ffffff;">
+													<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
+													<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left;">Product</th>
+													${monthHeadersHtml}
+													<th style="padding: 10px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right;">4-Mo Total</th>
+												</tr>
+											</thead>
+											<tbody>${rowsHtml}</tbody>
+											<tfoot>
+												<tr style="background: rgba(65, 125, 129, 0.08); font-weight: 800; color: #417d81; border-top: 2px solid #417d81;">
+													<td colspan="2" style="padding: 8px 10px; text-align: right; font-size: 12px;">TOTAL:</td>
+													${monthFootersHtml}
+													<td style="padding: 8px 10px; text-align: right; font-size: 12px; font-weight: 800; color: #417d81;">${fmtAmt(grand4mTotal)}</td>
+												</tr>
+											</tfoot>
+										</table>
+									</div>
+								</div>
+							</div>
+						`;
+
+						$("#modal-subtable-content").html(modalBodyHtml);
+					};
+
+					if (agentData.commission_json) {
+						const resInstant = self.parseAgentCommissionJson(agentData.commission_json);
+						resInstant.agent_info = {
+							branch_code: agentData.branch_code,
+							branch_name: agentData.branch_name,
+							zone: agentData.zone,
+							region: agentData.region,
+							district: agentData.district,
+							auth_id: agentData.auth_id,
+							employee: agentData.employee,
+							employee_name: agentData.employee_name,
+							emp_designation: agentData.emp_designation,
+							emp_department: agentData.emp_department,
+							emp_branch: agentData.emp_branch,
+							emp_cell_number: agentData.emp_cell_number,
+							phone_number: agentData.phone_number,
+							role: agentData.role
+						};
+						renderModalContent(resInstant);
+					} else {
+						const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+						frappe.call({
+							method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rm_wise_category_breakdown",
+							args: { rm_id: agentCode, selected_date: t1_date },
+							callback: function (r) {
+								renderModalContent(r.message || {});
+							}
+						});
+					}
 				},
 
 				loadAndRenderRmCategoryDetails: function (rmId, tableContainer, dashboardInstance) {
@@ -4922,7 +4967,7 @@ class DrishtiDashboard {
 					}
 
 					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
-					$container.html('<div style="padding: 8px; color: #16a34a; font-weight: 600; font-size: 12px;">⏳ Fetching Categories for RM ' + rmId + '...</div>');
+					$container.html('<div style="padding: 8px; color: #16a34a; font-weight: 600; font-size: 12px;">⏳ Fetching Product Breakdown for Agent ' + rmId + '...</div>');
 
 					frappe.call({
 						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rm_wise_category_breakdown",
@@ -4935,7 +4980,7 @@ class DrishtiDashboard {
 								self.rmDetails[rmId] = r.message;
 								self.renderRmCategorySubTable(rmId, r.message, $container, dashboardInstance);
 							} else {
-								$container.html('<div style="padding: 8px; color: #64748b; font-weight: 600;">No report categories found for this RM.</div>');
+								$container.html('<div style="padding: 8px; color: #64748b; font-weight: 600;">No product breakdown found for this Agent.</div>');
 							}
 						}
 					});
@@ -4947,48 +4992,53 @@ class DrishtiDashboard {
 					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
 
 					if (!catList || catList.length === 0) {
-						$container.html('<div style="padding: 8px; color: #64748b; font-size: 12px;">No categories found.</div>');
+						$container.html('<div style="padding: 8px; color: #64748b; font-size: 12px;">No product breakdown found.</div>');
 						return;
 					}
 
+					let totalCustSum = 0;
+					let totalCommSum = 0;
+
 					let rowsHtml = "";
 					catList.forEach((c, idx) => {
-						const key = rmId + "::" + c.report_type;
-						const isExp = !!self.expandedRmCategories[key];
+						const prodName = c.product_name || c.report_type || "-";
+						const totCust = c.total_customer ?? c.record_count ?? 0;
+						const totComm = c.total_commission || 0;
+
+						totalCustSum += totCust;
+						totalCommSum += totComm;
+
 						rowsHtml += `
-							<tr class="rm-cat-row" data-rm-id="${rmId}" data-type="${c.report_type}" style="border-bottom: 1px solid #e2e8f0; cursor: pointer; background: ${isExp ? '#eff6ff' : '#fff'};">
+							<tr class="rm-sub-product-row" style="border-bottom: 1px solid #e2e8f0; background: #fff; cursor: pointer;">
 								<td style="padding: 6px 10px; text-align: center; font-size: 12px; width: 40px;">${idx + 1}</td>
-								<td style="padding: 6px 10px; font-size: 12px; font-weight: 700; color: #1e293b;">
-									<span class="rm-cat-toggle-icon" style="display: inline-block; width: 14px; color: #2563eb;">${isExp ? '▼' : '▶'}</span>
-									<span style="color: #2563eb; text-decoration: underline;">${c.report_type || "-"}</span>
-								</td>
-								<td style="padding: 6px 10px; text-align: right; font-size: 12px;">${fmtNum(c.record_count)}</td>
-								<td style="padding: 6px 10px; text-align: right; font-size: 12px; font-weight: 600; color: #059669;">${fmtAmt(c.total_commission)}</td>
-							</tr>
-							<tr class="rm-cat-cust-row" data-rm-id="${rmId}" data-type="${c.report_type}" style="display: ${isExp ? 'table-row' : 'none'}; background: #f1f5f9;">
-								<td colspan="4" style="padding: 8px 12px;">
-									<div class="rm-cat-cust-container" data-rm-id="${rmId}" data-type="${c.report_type}">
-										<div style="padding: 8px; color: #64748b; font-size: 12px;">Loading Customer Accounts...</div>
-									</div>
-								</td>
+								<td style="padding: 6px 10px; font-size: 12px; font-weight: 700; color: #1e293b;">${prodName}</td>
+								<td style="padding: 6px 10px; text-align: right; font-size: 12px;">${fmtNum(totCust)}</td>
+								<td style="padding: 6px 10px; text-align: right; font-size: 12px; font-weight: 600; color: #059669;">${fmtAmt(totComm)}</td>
 							</tr>
 						`;
 					});
 
 					$container.html(`
 						<div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px;">
-							<div style="font-weight: 700; font-size: 12px; color: #15803d; margin-bottom: 6px;">Report Categories for RM ${rmId} (${catList.length} Categories - Click Category to view Customer Accounts)</div>
-							<div style="max-height: 250px; overflow-y: auto; border: 1px solid #dcfce7; border-radius: 4px;">
+							<div style="font-weight: 700; font-size: 12px; color: #15803d; margin-bottom: 6px;">Product Breakdown for Agent ${rmId} (${catList.length} Products)</div>
+							<div style="border: 1px solid #dcfce7; border-radius: 4px;">
 								<table class="table table-sm" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0;">
 									<thead>
-										<tr style="background: #f0fdf4; color: #166534;">
-											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: center; width: 40px;">Sr</th>
-											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: left;">Report Type</th>
-											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: right;">Records</th>
-											<th style="padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; text-align: right;">Total Commission</th>
+										<tr style="background: #f0fdf4; color: #166534; position: sticky; top: 0; z-index: 2; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+											<th style="padding: 6px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: center; width: 40px; background: #f0fdf4;">Sr</th>
+											<th style="padding: 6px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left; background: #f0fdf4;">Product</th>
+											<th style="padding: 6px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right; background: #f0fdf4;">total Customer</th>
+											<th style="padding: 6px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: right; background: #f0fdf4;">Total Commission</th>
 										</tr>
 									</thead>
 									<tbody>${rowsHtml}</tbody>
+									<tfoot>
+										<tr style="background: #f8fafc; font-weight: 700; color: #1e293b; position: sticky; bottom: 0; z-index: 2; border-top: 1px solid #cbd5e1;">
+											<td colspan="2" style="padding: 6px 10px; text-align: right; font-size: 12px; background: #f8fafc;">Total:</td>
+											<td style="padding: 6px 10px; text-align: right; font-size: 12px; background: #f8fafc;">${fmtNum(totalCustSum)}</td>
+											<td style="padding: 6px 10px; text-align: right; font-size: 12px; color: #059669; background: #f8fafc;">${fmtAmt(totalCommSum)}</td>
+										</tr>
+									</tfoot>
 								</table>
 							</div>
 						</div>
@@ -5257,7 +5307,7 @@ class DrishtiDashboard {
 				<thead><tr>
 					<th style="width: 30px;"><div class="mis-skeleton-pulse" style="width: 14px; height: 14px;"></div></th>
 					<th style="width: 40px; text-align: center;">Sr</th>
-					<th>Zone / Region / Branch</th>
+					<th>Z / R / D / SOL Name</th>
 					<th style="text-align: center; width: 80px;">Branches</th>
 					<th style="text-align: right; width: 100px;">Accounts</th>
 					<th style="text-align: right; width: 120px;">Collection</th>
@@ -5276,6 +5326,262 @@ class DrishtiDashboard {
 				</tbody>
 			</table>
 		`;
+	}
+
+	build4LevelTree(data, metricCols) {
+		const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(Math.round(val || 0));
+		const fmtAmt = (val) => {
+			if (!val || val === 0) return "₹0";
+			if (val >= 10000000) return "₹" + (val / 10000000).toFixed(2) + " Cr";
+			if (val >= 100000) return "₹" + (val / 100000).toFixed(2) + " L";
+			if (val >= 1000) return "₹" + (val / 1000).toFixed(2) + " K";
+			return "₹" + new Intl.NumberFormat("en-IN").format(val);
+		};
+
+		if (!data || data.length === 0) return { rootNodes: [], grandTotal: {} };
+
+		const rootNodes = [];
+		const zMap = {};
+		const grandTotal = {};
+
+		metricCols.forEach(col => {
+			grandTotal[col.key] = 0;
+		});
+
+		data.forEach(r => {
+			const zName = (r.zone || "OTHER ZONE").trim();
+			const rName = (r.region || "OTHER REGION").trim();
+			const dName = (r.district || "OTHER DISTRICT").trim();
+			const sCode = (r.sol_id || r.branch_code || "-").trim();
+			const sName = (r.branch_name || r.sol_desc || r.branch || sCode).trim();
+			const solLabel = sCode !== '-' ? `${sName} (${sCode})` : sName;
+
+			if (!zMap[zName]) {
+				zMap[zName] = {
+					id: `z_${zName}`,
+					name: zName,
+					code: zName,
+					type: "Zone",
+					level: 1,
+					children: {}
+				};
+				metricCols.forEach(col => zMap[zName][col.key] = 0);
+				rootNodes.push(zMap[zName]);
+			}
+
+			const rMap = zMap[zName].children;
+			if (!rMap[rName]) {
+				rMap[rName] = {
+					id: `r_${zName}_${rName}`,
+					name: rName,
+					code: rName,
+					type: "Region",
+					level: 2,
+					children: {}
+				};
+				metricCols.forEach(col => rMap[rName][col.key] = 0);
+			}
+
+			const dMap = rMap[rName].children;
+			if (!dMap[dName]) {
+				dMap[dName] = {
+					id: `d_${zName}_${rName}_${dName}`,
+					name: dName,
+					code: dName,
+					type: "District",
+					level: 3,
+					children: {}
+				};
+				metricCols.forEach(col => dMap[dName][col.key] = 0);
+			}
+
+			const sMap = dMap[dName].children;
+			if (!sMap[sCode]) {
+				sMap[sCode] = {
+					id: `s_${zName}_${rName}_${dName}_${sCode}`,
+					name: solLabel,
+					code: sCode,
+					type: "SOL",
+					level: 4,
+					children: []
+				};
+				metricCols.forEach(col => sMap[sCode][col.key] = 0);
+			}
+
+			metricCols.forEach(col => {
+				const val = col.calc ? col.calc(r) : (r[col.key] || 0);
+				zMap[zName][col.key] += val;
+				rMap[rName][col.key] += val;
+				dMap[dName][col.key] += val;
+				sMap[sCode][col.key] += val;
+				grandTotal[col.key] += val;
+			});
+		});
+
+		const sortKey = metricCols[metricCols.length - 1].key;
+		rootNodes.sort((a, b) => (b[sortKey] || 0) - (a[sortKey] || 0));
+
+		return { rootNodes, grandTotal };
+	}
+
+	renderGeneric4LevelTreeTable(tableContainer, reportObj, data, metricCols, reportTitle) {
+		const self = this;
+		const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(Math.round(val || 0));
+		const fmtAmt = (val) => {
+			if (!val || val === 0) return "₹0";
+			if (val >= 10000000) return "₹" + (val / 10000000).toFixed(2) + " Cr";
+			if (val >= 100000) return "₹" + (val / 100000).toFixed(2) + " L";
+			if (val >= 1000) return "₹" + (val / 1000).toFixed(2) + " K";
+			return "₹" + new Intl.NumberFormat("en-IN").format(val);
+		};
+
+		if (!data || data.length === 0) {
+			tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600;">No data to display.</div>');
+			return;
+		}
+
+		if (!reportObj.expandedTreeNodes) reportObj.expandedTreeNodes = {};
+
+		const { rootNodes, grandTotal } = self.build4LevelTree(data, metricCols);
+
+		const allNodeIds = [];
+		const collectAllNodeIds = (nodes) => {
+			nodes.forEach(n => {
+				if (n.level < 4) {
+					allNodeIds.push(n.id);
+					let childList = Array.isArray(n.children) ? n.children : Object.values(n.children);
+					collectAllNodeIds(childList);
+				}
+			});
+		};
+		collectAllNodeIds(rootNodes);
+
+		const renderTreeRows = (nodes) => {
+			let html = "";
+			nodes.forEach(node => {
+				const isExpanded = !!reportObj.expandedTreeNodes[node.id];
+				const indent = (node.level - 1) * 10 + 10;
+				const hasChildren = node.level < 4;
+
+				let typeBadgeBg = "#e0f2fe";
+				let typeBadgeColor = "#0369a1";
+				let typeBadgeBorder = "#7dd3fc";
+				if (node.level === 1) { typeBadgeBg = "#f3e8ff"; typeBadgeColor = "#7e22ce"; typeBadgeBorder = "#d8b4fe"; }
+				else if (node.level === 2) { typeBadgeBg = "#e0e7ff"; typeBadgeColor = "#3730a3"; typeBadgeBorder = "#a5b4fc"; }
+				else if (node.level === 3) { typeBadgeBg = "#fef3c7"; typeBadgeColor = "#92400e"; typeBadgeBorder = "#fcd34d"; }
+				else if (node.level === 4) { typeBadgeBg = "#ccfbf1"; typeBadgeColor = "#115e59"; typeBadgeBorder = "#5eead4"; }
+
+				let rowBg = '#ffffff';
+				if (node.level === 1) rowBg = '#f8fafc';
+				else if (node.level === 2) rowBg = '#ffffff';
+				else if (node.level === 3) rowBg = '#f8fafc';
+				else if (node.level === 4) rowBg = '#f0fdfa';
+
+				html += `
+					<tr class="generic-tree-row" data-node-id="${node.id}" data-level="${node.level}" style="cursor: pointer; background: ${rowBg}; border-bottom: 1px solid #e2e8f0;">
+						<td style="padding: 8px 12px; text-align: left; padding-left: ${indent}px; font-weight: ${node.level < 4 ? '700' : '600'}; color: #1e293b;">
+							${hasChildren ? `<span class="tree-toggle-icon" style="display: inline-block; width: 16px; color: #417d81; font-weight: 800;">${isExpanded ? '▼' : '▶'}</span>` : '<span style="display: inline-block; width: 16px; color: #94a3b8;">•</span>'}
+							<span style="color: ${node.level === 4 ? '#417d81' : '#0f172a'};">${node.name}</span>
+						</td>
+						<td style="padding: 8px 12px; text-align: left; font-size: 12px; font-weight: 700; color: #417d81;">${node.code}</td>
+						<td style="padding: 8px 12px; text-align: left; font-size: 11px;">
+							<span style="background: ${typeBadgeBg}; color: ${typeBadgeColor}; border: 1px solid ${typeBadgeBorder}; padding: 2px 8px; border-radius: 12px; font-weight: 700;">${node.type}</span>
+						</td>
+						${metricCols.map(col => {
+							const val = node[col.key] || 0;
+							const formatted = col.format === 'amt' ? fmtAmt(val) : fmtNum(val);
+							const style = col.style || '';
+							return `<td style="padding: 8px 12px; text-align: right; font-size: 12px; font-weight: 600; ${style}">${formatted}</td>`;
+						}).join('')}
+					</tr>
+				`;
+
+				if (hasChildren && isExpanded) {
+					let childNodes = [];
+					if (Array.isArray(node.children)) {
+						childNodes = node.children;
+					} else if (typeof node.children === "object") {
+						childNodes = Object.values(node.children);
+					}
+					const sortKey = metricCols[metricCols.length - 1].key;
+					childNodes.sort((a, b) => (b[sortKey] || 0) - (a[sortKey] || 0));
+					html += renderTreeRows(childNodes);
+				}
+			});
+			return html;
+		};
+
+		const treeRowsHtml = renderTreeRows(rootNodes);
+
+		const controlBarHtml = `
+			<div class="rm-pagination-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+				<div style="font-size: 12px; font-weight: 700; color: #417d81; display: flex; align-items: center; gap: 8px;">
+					<span>🌳 ${reportTitle} (Zone → Region → District → SOL)</span>
+					<span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700;">${fmtNum(data.length)} Branches Total</span>
+				</div>
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<button type="button" class="btn btn-xs generic-tree-expand-all" style="background: rgba(65, 125, 129, 0.1); color: #417d81; border: 1px solid rgba(65, 125, 129, 0.3); font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
+						📂 Expand All
+					</button>
+					<button type="button" class="btn btn-xs generic-tree-collapse-all" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
+						📁 Collapse All
+					</button>
+				</div>
+			</div>
+		`;
+
+		const tableHtml = `
+			<style>
+				.generic-tree-row { transition: background-color 0.15s ease-in-out; }
+				.generic-tree-row:hover { background-color: #f0fdfa !important; }
+			</style>
+			${controlBarHtml}
+			<div style="max-height: 650px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+				<table class="table table-sm table-hover" style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-family: 'Inter', sans-serif;">
+					<thead>
+						<tr style="background: #417d81; color: #ffffff; position: sticky; top: 0; z-index: 2;">
+							<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Z / R / D / SOL Name</th>
+							<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Code / ID</th>
+							<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Level</th>
+							${metricCols.map(col => `<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">${col.label}</th>`).join('')}
+						</tr>
+					</thead>
+					<tbody>${treeRowsHtml}</tbody>
+					<tfoot>
+						<tr style="background: rgba(65, 125, 129, 0.08); color: #1e293b; font-weight: 700; position: sticky; bottom: 0; z-index: 2; border-top: 2px solid #417d81;">
+							<td colspan="3" style="padding: 10px 12px; text-align: left; font-size: 12px; color: #417d81;">GRAND TOTAL (${fmtNum(data.length)} BRANCHES)</td>
+							${metricCols.map(col => {
+								const val = grandTotal[col.key] || 0;
+								const formatted = col.format === 'amt' ? fmtAmt(val) : fmtNum(val);
+								const style = col.style || '';
+								return `<td style="padding: 10px 12px; text-align: right; font-size: 12px; font-weight: 800; ${style}">${formatted}</td>`;
+							}).join('')}
+						</tr>
+					</tfoot>
+				</table>
+			</div>
+		`;
+
+		tableContainer.html(tableHtml).show();
+
+		tableContainer.off("click", ".generic-tree-row").on("click", ".generic-tree-row", function () {
+			const nodeId = $(this).data("node-id");
+			const level = parseInt($(this).data("level"));
+			if (level < 4) {
+				reportObj.expandedTreeNodes[nodeId] = !reportObj.expandedTreeNodes[nodeId];
+				self.renderGeneric4LevelTreeTable(tableContainer, reportObj, data, metricCols, reportTitle);
+			}
+		});
+
+		tableContainer.off("click", ".generic-tree-expand-all").on("click", ".generic-tree-expand-all", function () {
+			allNodeIds.forEach(id => reportObj.expandedTreeNodes[id] = true);
+			self.renderGeneric4LevelTreeTable(tableContainer, reportObj, data, metricCols, reportTitle);
+		});
+
+		tableContainer.off("click", ".generic-tree-collapse-all").on("click", ".generic-tree-collapse-all", function () {
+			reportObj.expandedTreeNodes = {};
+			self.renderGeneric4LevelTreeTable(tableContainer, reportObj, data, metricCols, reportTitle);
+		});
 	}
 
 	setupBranchProfilePopup() {
@@ -6828,11 +7134,11 @@ class DrishtiDashboard {
 			container.append(`
                 <button class="filter-tag category-tag ${isActive ? "active" : ""}" 
                         data-category="${category}" 
-                        style="--fill-pct: ${pct}%; --fill-color: ${color}26; color: ${color};">
+                        style="--fill-pct: ${pct}%; --fill-color: ${color}26; color: ${color}; border-color: ${color}40;">
                     <span class="category-tag-content">
-                        ${category}
-                        <span class="filter-tag-count">${count}</span>
-                        <span class="category-tag-pct">${pct}%</span>
+                        <span class="category-tag-name" style="color: ${color}; font-weight: 700;">${category}</span>
+                        <span class="filter-tag-count" style="color: ${color}; border-color: ${color}50; background-color: ${color}15;">${count}</span>
+                        <span class="category-tag-pct" style="color: ${color}; font-weight: 700;">${pct}%</span>
                     </span>
                 </button>
             `);
@@ -9279,17 +9585,17 @@ class DrishtiDashboard {
 			};">
                 <td class="cat-name-cell" style="--fill-pct: ${percentage}%; --fill-color: ${config.color}26;">
                     <span class="category-toggle">${isExpanded ? "▼" : "▶"}</span>
-                    <span class="cat-grade" style="background-color: ${config.color};">${
+                    <span class="cat-grade" style="background-color: ${config.color}; font-weight: 800;">${
 						config.grade
 					}</span>
                     <div class="cat-name-wrapper">
-                        <span style="color: ${config.color};">${catName}</span>
-                        <span class="category-percentage-share" style="color: ${this.getPctColor(percentage)}; font-weight: 600;">• ${Math.round(percentage)}%</span>
+                        <span style="color: ${config.color}; font-weight: 700; font-size: 14px;">${catName}</span>
+                        <span class="category-percentage-share" style="color: ${config.color}; font-weight: 700; opacity: 0.85;">• ${Math.round(percentage)}%</span>
                     </div>
                 </td>
-                <td class="perf-band-cell">${config.range}</td>
+                <td class="perf-band-cell" style="color: ${config.color}; font-weight: 700;">${config.range}</td>
                 <td class="count-cell drill-cell" data-category="${catName}" data-month="${latestMonthKey}">
-                    <span class="drill-link">${count}</span>
+                    <span class="drill-link" style="color: ${config.color}; font-weight: 800;">${count}</span>
                 </td>
                 <td class="movement-cell" data-changes='${JSON.stringify(filteredChanges)}'>
                     <div class="movement-summary">
@@ -9302,10 +9608,10 @@ class DrishtiDashboard {
 						}
                     </div>
                 </td>
-                <td class="health-cell">
+                <td class="health-cell" style="color: ${config.color}; font-weight: 700;">
                     <span class="health-indicator" style="background-color: ${
 						config.color
-					};"></span>
+					}; box-shadow: 0 0 6px ${config.color}80;"></span>
                     ${config.health}
                 </td>
             </tr>
@@ -10494,18 +10800,34 @@ class DrishtiDashboard {
                 .category-tag .filter-tag-count {
                     padding: 3px 8px;
                     font-size: 10px;
+                    font-weight: 700;
+                    border: 1px solid currentColor;
+                    border-radius: 9999px;
+                    transition: all 0.2s ease;
+                }
+
+                .category-tag-name {
+                    color: inherit;
+                    font-weight: 700;
                 }
 
                 .category-tag-pct {
                     font-size: 11px;
                     font-weight: 700;
-                    color: #64748b;
+                    color: inherit;
                     line-height: 1;
                     margin-left: auto;
                 }
 
-                .category-tag.active .category-tag-pct {
-                    color: rgba(255, 255, 255, 0.85) !important;
+                .category-tag.active .category-tag-name,
+                .category-tag.active .category-tag-pct,
+                .category-tag.active .filter-tag-count {
+                    color: #ffffff !important;
+                    border-color: rgba(255, 255, 255, 0.4) !important;
+                }
+
+                .category-tag.active .filter-tag-count {
+                    background-color: rgba(255, 255, 255, 0.25) !important;
                 }
 
                 .category-tag-content {

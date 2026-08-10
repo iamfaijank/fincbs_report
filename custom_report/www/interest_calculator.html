@@ -3449,7 +3449,7 @@
 						.split(/\r?\n/)
 						.map((line) => line.trim())
 						.filter(Boolean);
-					const headerIndex = lines.findIndex((line) => /^date\s*,/i.test(line));
+					const headerIndex = lines.findIndex((line) => /^date[\s,;\t]/i.test(line));
 					if (headerIndex === -1) {
 						throw new Error("Statement header row not found");
 					}
@@ -3458,12 +3458,17 @@
 					const headers = this.parseCsvLine(lines[headerIndex]).map((header) =>
 						header.trim().toLowerCase(),
 					);
-					const dateIndex = headers.indexOf("date");
-					const creditIndex = headers.indexOf("credit");
-					const descriptionIndex = headers.indexOf("description");
-					const typeIndex = headers.indexOf("type");
-					if (dateIndex === -1 || creditIndex === -1) {
-						throw new Error("Required statement columns Date and Credit are missing");
+					const dateIndex = headers.findIndex((h) => h === "date" || h.includes("date"));
+					const creditIndex = headers.findIndex(
+						(h) => h === "credit" || h.includes("credit") || h === "cr" || h.includes("cr_amt"),
+					);
+					const debitIndex = headers.findIndex((h) => h === "debit" || h.includes("debit") || h === "dr");
+					const descriptionIndex = headers.findIndex(
+						(h) => h.includes("desc") || h.includes("particular") || h.includes("prtcls"),
+					);
+					const typeIndex = headers.findIndex((h) => h === "type" || h.includes("type"));
+					if (dateIndex === -1) {
+						throw new Error("Required statement column Date is missing");
 					}
 
 					const importedTransactions = [];
@@ -3474,7 +3479,21 @@
 						const parsedDate = this.parseDate(columns[dateIndex]);
 						if (!parsedDate) continue;
 
-						const creditAmount = this.parseTxnAmount(columns[creditIndex]);
+						let creditAmount = creditIndex !== -1 ? this.parseTxnAmount(columns[creditIndex]) : 0;
+						if (!(creditAmount > 0) && typeIndex !== -1) {
+							const txnType = String(columns[typeIndex] || "").trim().toUpperCase();
+							if (["CREDIT", "CR", "C"].includes(txnType)) {
+								for (let colIdx = 0; colIdx < columns.length; colIdx++) {
+									if (colIdx === dateIndex || colIdx === descriptionIndex || colIdx === typeIndex)
+										continue;
+									const amt = this.parseTxnAmount(columns[colIdx]);
+									if (amt > 0) {
+										creditAmount = amt;
+										break;
+									}
+								}
+							}
+						}
 						if (!(creditAmount > 0)) continue;
 
 						importedTransactions.push({
@@ -3504,16 +3523,33 @@
 					if (!csvTransactions.length) {
 						return dbTransactions;
 					}
+
+					// Preserve ALL Netwin CSV credit transactions 100%
+					const validCsvTxns = csvTransactions.filter((t) => this.parseDate(t?.date) !== null);
+
 					const csvSplitDate = this.parseDate("06/12/2024");
-					return [...csvTransactions, ...dbTransactions]
-						.filter((transaction) => {
-							const txnDate = this.parseDate(transaction?.date);
-							if (!txnDate || !csvSplitDate) return false;
-							return transaction.imported_from_csv
-								? txnDate < csvSplitDate
-								: txnDate >= csvSplitDate;
-						})
-						.sort((a, b) => this.parseDate(a.date) - this.parseDate(b.date));
+					const validDbTxns = dbTransactions.filter((t) => {
+						const txnDate = this.parseDate(t?.date);
+						if (!txnDate || !csvSplitDate) return true;
+						return txnDate > csvSplitDate;
+					});
+
+					// Deduplicate if a transaction exists in both systems
+					const combined = [...validCsvTxns];
+					for (const dbTxn of validDbTxns) {
+						const dbDateStr = this.formatDate(this.toISODate(this.parseDate(dbTxn.date)));
+						const dbAmt = this.parseTxnAmount(dbTxn.amount);
+						const isDuplicate = validCsvTxns.some((csvTxn) => {
+							const csvDateStr = this.formatDate(this.toISODate(this.parseDate(csvTxn.date)));
+							const csvAmt = this.parseTxnAmount(csvTxn.amount);
+							return csvDateStr === dbDateStr && Math.abs(csvAmt - dbAmt) < 0.01;
+						});
+						if (!isDuplicate) {
+							combined.push(dbTxn);
+						}
+					}
+
+					return combined.sort((a, b) => this.parseDate(a.date) - this.parseDate(b.date));
 				},
 				isClosureTransaction(t) {
 					if (!t) return false;
@@ -3920,9 +3956,11 @@
 
 							let importedTransactions = [];
 							if (this.isCsvRequired()) {
+								const startDateApi =
+									this.toApiDate(result.acct_opn_date) || "1990-01-01";
 								importedTransactions = await this.fetchNetwinStatementTransactions(
-									"2001-01-01",
-									"2024-12-06",
+									startDateApi,
+									"2099-12-31",
 								);
 								if (this.statementFetchError) {
 									this.errorMessage = this.statementFetchError;

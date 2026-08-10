@@ -1,6 +1,7 @@
 # Copyright (c) 2026, talib and contributors
 # For license information, please see license.txt
 
+import time
 import frappe
 import psycopg2
 import psycopg2.extras
@@ -1192,6 +1193,40 @@ def sync_share_daily():
 	return _sync_daily_t1_report("SHARE")
 
 
+def execute_ss_vs_bulk_insert(fields: list, records: list, chunk_size: int = 5000) -> None:
+	"""
+	Direct chunked raw SQL bulk INSERT into tabSS and VS Report table without ORM overhead.
+	Bypasses frappe.db.bulk_insert packet size limits by inserting in optimal chunks of 5000.
+	"""
+	if not records or not fields:
+		return
+
+	db_type = getattr(frappe.db, "db_type", "mariadb")
+
+	if db_type == "mariadb":
+		escaped_fields = ", ".join(f"`{f}`" for f in fields)
+		table_name = "`tabSS and VS Report`"
+		sql_prefix = f"INSERT IGNORE INTO {table_name}"
+	else:
+		escaped_fields = ", ".join(f'"{f}"' for f in fields)
+		table_name = '"tabSS and VS Report"'
+		sql_prefix = f"INSERT INTO {table_name}"
+
+	row_placeholder = "(" + ", ".join(["%s"] * len(fields)) + ")"
+
+	for i in range(0, len(records), chunk_size):
+		chunk = records[i : i + chunk_size]
+		placeholders = ", ".join([row_placeholder] * len(chunk))
+		flattened_params = [val for row in chunk for val in row]
+
+		if db_type == "mariadb":
+			sql = f"{sql_prefix} ({escaped_fields}) VALUES {placeholders};"
+		else:
+			sql = f"{sql_prefix} ({escaped_fields}) VALUES {placeholders} ON CONFLICT DO NOTHING;"
+
+		frappe.db.sql(sql, flattened_params)
+
+
 class SSandVSSyncEngine:
 	def __init__(self, report_type: str, sync_date: str):
 		self.report_type = report_type
@@ -1215,37 +1250,57 @@ class SSandVSSyncEngine:
 		start_date = get_first_day(self.sync_date)
 		end_date = self.sync_date
 
-		# 1. Establish database connection using existing DR mechanism
-		conn = None
-		try:
-			conn = get_dr_connection()
-		except Exception as e:
-			frappe.log_error(
-				message=f"DR Database connection failed for SS & VS sync: {str(e)}",
-				title="SS & VS Sync Connection Error"
-			)
-			frappe.throw(_("Failed to connect to external PostgreSQL database: {0}").format(str(e)))
-
-		# 2. Execute query
+		# 1 & 2. Establish connection and execute query with recovery conflict retry loop
 		rows = []
-		try:
-			with conn:
-				with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
-					cursor.execute(self.query, {
-						"date": self.sync_date,
-						"start_date": start_date,
-						"end_date": end_date
-					})
-					rows = cursor.fetchall()
-		except Exception as e:
-			frappe.log_error(
-				message=f"SQL Execution error in SS & VS sync ({self.report_type}): {str(e)}",
-				title="SS & VS Sync Query Error"
-			)
-			frappe.throw(_("Error executing SQL query for report: {0}").format(str(e)))
-		finally:
-			if conn:
-				conn.close()
+		max_retries = 5
+
+		for attempt in range(max_retries):
+			conn = None
+			try:
+				conn = get_dr_connection()
+				with conn:
+					with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+						try:
+							cursor.execute("SET statement_timeout = 0;")
+						except Exception:
+							pass
+						cursor.execute(self.query, {
+							"date": self.sync_date,
+							"start_date": start_date,
+							"end_date": end_date
+						})
+						rows = cursor.fetchall()
+				if conn:
+					try:
+						conn.close()
+					except Exception:
+						pass
+				break # Success, exit retry loop
+			except Exception as e:
+				if conn:
+					try:
+						conn.close()
+					except Exception:
+						pass
+
+				err_str = str(e).lower()
+				is_retriable_error = any(term in err_str for term in [
+					"conflict with recovery", "canceling statement", "querycanceled",
+					"serializationfailure", "server closed the connection", "connection closed",
+					"connection reset", "terminating connection", "broken pipe",
+					"operationalerror", "55006", "40001", "57p01", "57p03"
+				])
+
+				if is_retriable_error and attempt < max_retries - 1:
+					retry_delay = (attempt + 1) * 3
+					frappe.log_error(f"DR DB Query Conflict/Disconnection for {self.report_type} (Attempt {attempt + 1}/{max_retries}): {str(e)}. Retrying in {retry_delay}s...", "SS & VS Sync Retry")
+					time.sleep(retry_delay)
+				else:
+					frappe.log_error(
+						message=f"SQL Execution error in SS & VS sync ({self.report_type}): {str(e)}",
+						title="SS & VS Sync Query Error"
+					)
+					frappe.throw(_("Error executing SQL query for report: {0}").format(str(e)))
 
 		self.summary["processed"] = len(rows)
 		if not rows:
@@ -1263,7 +1318,7 @@ class SSandVSSyncEngine:
 			try:
 				# Map row columns to DocType fields
 				doc_data = {
-					"name": frappe.generate_hash(length=10),
+					"name": frappe.generate_hash(length=16),
 					"owner": user,
 					"modified_by": user,
 					"creation": now_time,
@@ -1298,7 +1353,7 @@ class SSandVSSyncEngine:
 				for d in new_docs
 			]
 
-			frappe.db.bulk_insert("SS and VS Report", insert_fields, values_to_insert, ignore_duplicates=True)
+			execute_ss_vs_bulk_insert(insert_fields, values_to_insert, chunk_size=5000)
 			self.summary["inserted"] = len(new_docs)
 
 		# Final commit
@@ -1316,3 +1371,112 @@ class SSandVSSyncEngine:
 		frappe.logger().info(summary_msg)
 
 		return self.summary
+
+
+@frappe.whitelist()
+def get_monthly_status(year: int = None):
+	"""
+	Returns data availability status for all 12 months of the specified year in tabSS and VS Report.
+	Defaults to current year if not specified.
+	"""
+	if not year:
+		year = frappe.utils.now_datetime().year
+	else:
+		year = int(year)
+
+	available = frappe.db.sql("""
+		SELECT 
+			MONTH(`date`) AS month_num,
+			COUNT(name) AS record_count,
+			MAX(`date`) AS latest_date
+		FROM `tabSS and VS Report`
+		WHERE YEAR(`date`) = %s
+		GROUP BY MONTH(`date`)
+	""", (year,), as_dict=True)
+
+	month_map = {r["month_num"]: r for r in available}
+	month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+	months_data = []
+	for i in range(1, 13):
+		info = month_map.get(i)
+		has_data = bool(info and info.get("record_count", 0) > 0)
+		months_data.append({
+			"month_num": i,
+			"month_name": month_names[i - 1],
+			"has_data": has_data,
+			"record_count": info.get("record_count", 0) if info else 0,
+			"latest_date": str(info.get("latest_date")) if info and info.get("latest_date") else None
+		})
+
+	return {
+		"year": year,
+		"months": months_data
+	}
+
+
+@frappe.whitelist()
+def cleanup_ss_vs_old_monthly_records():
+	"""
+	Daily Cleanup for SS & VS Report with Chunked Deletion (LIMIT 5000) to prevent lock wait timeouts:
+	1. For CURRENT month: Verifies if yesterday's date data is present in tabSS and VS Report.
+	   ONLY if yesterday's data is verified present, deletes prior daily dates (< yesterday) for current month.
+	2. For PAST completed months: Retains ONLY the max (last) date for each past month and deletes prior dates.
+	"""
+	try:
+		# Increase lock wait timeout for this session
+		try:
+			frappe.db.sql("SET SESSION innodb_lock_wait_timeout = 120;")
+		except Exception:
+			pass
+
+		today = frappe.utils.nowdate()
+		yesterday = frappe.utils.add_days(today, -1)
+		
+		# 1. Verify if yesterday's date has data in tabSS and VS Report
+		yesterday_count = frappe.db.count("SS and VS Report", filters={"date": yesterday})
+		
+		# 2. Cleanup current month ONLY if yesterday's date data is present
+		if yesterday_count > 0:
+			dt = frappe.utils.getdate(yesterday)
+			while True:
+				affected = frappe.db.sql("""
+					DELETE FROM `tabSS and VS Report`
+					WHERE YEAR(`date`) = %s
+					  AND MONTH(`date`) = %s
+					  AND `date` < %s
+					LIMIT 5000
+				""", (dt.year, dt.month, yesterday))
+				frappe.db.commit()
+				if not affected:
+					break
+
+		# 3. Cleanup past completed months in chunked iterations
+		current_month_start = frappe.utils.get_first_day(today)
+		
+		# Pre-fetch past max dates to avoid subquery locks
+		past_max_dates = frappe.db.sql_list("""
+			SELECT MAX(`date`)
+			FROM `tabSS and VS Report`
+			WHERE `date` < %s
+			GROUP BY YEAR(`date`), MONTH(`date`)
+		""", (current_month_start,))
+
+		if past_max_dates:
+			while True:
+				affected = frappe.db.sql("""
+					DELETE FROM `tabSS and VS Report`
+					WHERE `date` < %s
+					  AND `date` NOT IN %s
+					LIMIT 5000
+				""", (current_month_start, tuple(past_max_dates)))
+				frappe.db.commit()
+				if not affected:
+					break
+
+		msg = f"SS & VS Cleanup completed. Yesterday ({yesterday}) data verified: {yesterday_count > 0}."
+		frappe.logger("scheduler").info(msg)
+		return {"status": "success", "message": msg, "yesterday_verified": yesterday_count > 0}
+	except Exception as e:
+		frappe.log_error(f"Error cleaning up SS & VS monthly records: {str(e)}", "SS & VS Cleanup Error")
+		return {"status": "error", "message": str(e)}
