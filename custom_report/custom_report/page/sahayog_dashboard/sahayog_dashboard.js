@@ -221,6 +221,7 @@ class DrishtiDashboard {
 				filterOptions: null,
 				expandedZones: {},
 				expandedRegions: {},
+				expandedDistricts: {},
 				checkedRows: {},
 				searchTerm: "",
 				allExpanded: false,
@@ -229,7 +230,7 @@ class DrishtiDashboard {
 					const self = this;
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
-							<input type="text" id="mis-search" placeholder="Search branch or SOL ID..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<input type="text" id="mis-search" placeholder="Search branch, SOL ID or district..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
@@ -303,8 +304,8 @@ class DrishtiDashboard {
 							if (r.message) {
 								self.filterOptions = r.message;
 								const perms = r.message.permissions || {};
-								const solData = r.message.sol_data || [];
-								const useSolIds = (!r.message.zones || r.message.zones.length === 0) && perms.allowed_sol_ids && perms.allowed_sol_ids.length > 0;
+								const hasZoneRegionPerms = (r.message.zones && r.message.zones.length > 0) || (r.message.regions && r.message.regions.length > 0);
+								const useSolIds = !hasZoneRegionPerms && perms.allowed_sol_ids && perms.allowed_sol_ids.length > 0;
 								const solIds = useSolIds ? perms.allowed_sol_ids.join(",") : "";
 
 								console.log("DEBUG: API CALL get_rd_smbg_pending_table_data START", { sol_ids: solIds });
@@ -369,6 +370,9 @@ class DrishtiDashboard {
 							self.expandedZones[z.zone] = expand;
 							z.regions.forEach(r => {
 								self.expandedRegions[z.zone + "::" + r.region] = expand;
+								r.districts.forEach(d => {
+									self.expandedDistricts[z.zone + "::" + r.region + "::" + d.district] = expand;
+								});
 							});
 						});
 						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
@@ -422,6 +426,7 @@ class DrishtiDashboard {
 					self.selectedMisZones = [];
 					self.expandedZones = {};
 					self.expandedRegions = {};
+					self.expandedDistricts = {};
 					self.checkedRows = {};
 					self.searchTerm = "";
 					self.allExpanded = false;
@@ -482,7 +487,8 @@ class DrishtiDashboard {
 						data = data.filter(row => {
 							const br = (row.branch_name || row.sol_desc || "").toLowerCase();
 							const id = (row.sol_id || "").toLowerCase();
-							return terms.some(t => br.includes(t) || id.includes(t));
+							const dt = (row.district || "").toLowerCase();
+							return terms.some(t => br.includes(t) || id.includes(t) || dt.includes(t));
 						});
 					}
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
@@ -492,14 +498,19 @@ class DrishtiDashboard {
 					data.forEach(row => {
 						const zone = row.zone || "Unknown";
 						const region = row.region || "Unknown";
+						const district = row.district || "Unknown";
 						if (!zoneMap[zone]) {
 							zoneMap[zone] = { zone, regions: {}, branches: [], total_accounts: 0, total_collection: 0, pending_accounts: 0, pending_amount: 0, pending_instalments: 0 };
 						}
 						if (!zoneMap[zone].regions[region]) {
-							zoneMap[zone].regions[region] = { region, branches: [], total_accounts: 0, total_collection: 0, pending_accounts: 0, pending_amount: 0, pending_instalments: 0 };
+							zoneMap[zone].regions[region] = { region, districts: {}, branches: [], total_accounts: 0, total_collection: 0, pending_accounts: 0, pending_amount: 0, pending_instalments: 0 };
+						}
+						if (!zoneMap[zone].regions[region].districts[district]) {
+							zoneMap[zone].regions[region].districts[district] = { district, branches: [], total_accounts: 0, total_collection: 0, pending_accounts: 0, pending_amount: 0, pending_instalments: 0 };
 						}
 						zoneMap[zone].branches.push(row);
 						zoneMap[zone].regions[region].branches.push(row);
+						zoneMap[zone].regions[region].districts[district].branches.push(row);
 						zoneMap[zone].total_accounts += row.total_accounts;
 						zoneMap[zone].total_collection += row.total_collection;
 						zoneMap[zone].pending_accounts += row.pending_accounts;
@@ -510,6 +521,11 @@ class DrishtiDashboard {
 						zoneMap[zone].regions[region].pending_accounts += row.pending_accounts;
 						zoneMap[zone].regions[region].pending_amount += row.pending_amount;
 						zoneMap[zone].regions[region].pending_instalments += row.pending_instalments;
+						zoneMap[zone].regions[region].districts[district].total_accounts += row.total_accounts;
+						zoneMap[zone].regions[region].districts[district].total_collection += row.total_collection;
+						zoneMap[zone].regions[region].districts[district].pending_accounts += row.pending_accounts;
+						zoneMap[zone].regions[region].districts[district].pending_amount += row.pending_amount;
+						zoneMap[zone].regions[region].districts[district].pending_instalments += row.pending_instalments;
 					});
 					const sortedZones = Object.keys(zoneMap).sort((a, b) => {
 						const numA = parseInt(a.replace(/\D/g, "")) || 0;
@@ -524,7 +540,12 @@ class DrishtiDashboard {
 							const numB = parseInt(b.replace(/\D/g, "")) || 0;
 							return numA - numB;
 						});
-						const regions = sortedRegions.map(rn => zd.regions[rn]);
+						const regions = sortedRegions.map(rn => {
+							const rd = zd.regions[rn];
+							const sortedDistricts = Object.keys(rd.districts).sort();
+							const districts = sortedDistricts.map(dn => rd.districts[dn]);
+							return { region: rn, data: rd, districts };
+						});
 						result.push({ zone: zoneName, data: zd, regions });
 					});
 					return result;
@@ -591,29 +612,44 @@ class DrishtiDashboard {
 							<td style="padding: 10px 14px; font-weight: 700; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px;">${zoneRow.branches.length}</td>
 							${metricCols.map(mc => `<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: ${mc.align}; white-space: nowrap; font-size: 14px;">${mc.fmt(zoneRow[mc.key])}</td>`).join('')}
 						</tr>`;
-						z.regions.forEach(region => {
-							const regionKey = z.zone + "::" + region.region;
+						z.regions.forEach(regionObj => {
+							const region = regionObj.region;
+							const regionKey = z.zone + "::" + region;
 							const regionExpanded = self.expandedRegions[regionKey];
 							const regionChecked = self.checkedRows[regionKey];
-							rowsHtml += `<tr class="mis-region-row${regionChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region.region}" data-check-id="${z.zone}::${region.region}" style="display: ${zoneExpanded ? "table-row" : "none"}; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-								<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${z.zone}::${region.region}" ${regionChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+							rowsHtml += `<tr class="mis-region-row${regionChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-check-id="${regionKey}" style="display: ${zoneExpanded ? "table-row" : "none"}; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+								<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${regionKey}" ${regionChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 								<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 30px; font-weight: 600;"><span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${region.region}</td>
-								<td style="padding: 8px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${region.branches.length}</td>
-								${metricCols.map(mc => `<td style="padding: 8px 14px; color: #334155; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(region[mc.key])}</td>`).join('')}
+								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 25px; font-weight: 600;"><span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${region}</td>
+								<td style="padding: 8px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${regionObj.data.branches.length}</td>
+								${metricCols.map(mc => `<td style="padding: 8px 14px; color: #334155; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(regionObj.data[mc.key])}</td>`).join('')}
 							</tr>`;
-							region.branches.forEach((branch, bi) => {
-								const showBranch = zoneExpanded && self.expandedRegions[regionKey];
-								const branchBg = bi % 2 === 0 ? "#ffffff" : "#f1f5f9";
-								const solId = branch.sol_id || "branch_" + bi;
-								const branchChecked = self.checkedRows[solId];
-								rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region.region}" data-check-id="${solId}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0;">
-									<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${solId}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
-									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-									<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 50px; font-weight: 500;">${branch.sol_id} - ${branch.branch_name || branch.sol_desc}</td>
-									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
-									${metricCols.map(mc => `<td style="padding: 6px 14px; color: #475569; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(branch[mc.key])}</td>`).join('')}
+							regionObj.districts.forEach(districtObj => {
+								const district = districtObj.district;
+								const districtKey = z.zone + "::" + region + "::" + district;
+								const districtExpanded = self.expandedDistricts[districtKey];
+								const districtChecked = self.checkedRows[districtKey];
+								const showDistrict = zoneExpanded && regionExpanded;
+								rowsHtml += `<tr class="mis-district-row${districtChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${districtKey}" style="display: ${showDistrict ? "table-row" : "none"}; cursor: pointer; background: #fafaf9; border-bottom: 1px solid #e7e5e4;">
+									<td style="padding: 7px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${districtKey}" ${districtChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+									<td style="padding: 7px 14px; color: #78716c; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+									<td style="padding: 7px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}</td>
+									<td style="padding: 7px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${districtObj.branches.length}</td>
+									${metricCols.map(mc => `<td style="padding: 7px 14px; color: #44403c; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(districtObj[mc.key])}</td>`).join('')}
 								</tr>`;
+								districtObj.branches.forEach((branch, bi) => {
+									const showBranch = zoneExpanded && regionExpanded && districtExpanded;
+									const branchBg = bi % 2 === 0 ? "#ffffff" : "#f1f5f9";
+									const solId = branch.sol_id || "branch_" + bi;
+									const branchChecked = self.checkedRows[solId];
+									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${solId}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0;">
+										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${solId}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 500;">${branch.sol_id} - ${branch.branch_name || branch.sol_desc}</td>
+										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
+										${metricCols.map(mc => `<td style="padding: 6px 14px; color: #475569; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(branch[mc.key])}</td>`).join('')}
+									</tr>`;
+								});
 							});
 						});
 					});
@@ -628,6 +664,7 @@ class DrishtiDashboard {
 							#mis-analysis-table tbody tr.mis-row-checked { background: #bbf7d0 !important; }
 							#mis-analysis-table tbody tr.mis-zone-row.mis-row-checked,
 							#mis-analysis-table tbody tr.mis-region-row.mis-row-checked,
+							#mis-analysis-table tbody tr.mis-district-row.mis-row-checked,
 							#mis-analysis-table tbody tr.mis-branch-row.mis-row-checked { background: #86efac !important; }
 							#mis-scroll-area { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
 						</style>
@@ -652,37 +689,70 @@ class DrishtiDashboard {
 						</div>`;
 					tableContainer.html(tableHtml);
 					tableContainer.off("click", ".mis-zone-row").on("click", ".mis-zone-row", function (e) {
-						if ($(e.target).closest(".mis-region-toggle, .mis-region-row, input[type=checkbox]").length) return;
+						if ($(e.target).closest(".mis-region-toggle, .mis-region-row, .mis-district-row, input[type=checkbox]").length) return;
 						const zone = $(this).data("zone");
 						self.expandedZones[zone] = !self.expandedZones[zone];
 						const show = self.expandedZones[zone];
 						const $regionRows = tableContainer.find(`.mis-region-row[data-zone="${zone}"]`);
+						const $districtRows = tableContainer.find(`.mis-district-row[data-zone="${zone}"]`);
 						const $branchRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"]`);
 						if (show) {
 							$regionRows.stop(true, true).slideDown(200);
 							$regionRows.each(function () {
 								const r = $(this).data("region");
 								if (self.expandedRegions[zone + "::" + r]) {
-									tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${r}"]`).stop(true, true).slideDown(200);
+									tableContainer.find(`.mis-district-row[data-zone="${zone}"][data-region="${r}"]`).stop(true, true).slideDown(200);
+									$districtRows.each(function () {
+										const d = $(this).data("district");
+										if (self.expandedDistricts[zone + "::" + r + "::" + d]) {
+											tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${r}"][data-district="${d}"]`).stop(true, true).slideDown(200);
+										}
+									});
 								}
 							});
 						} else {
 							$branchRows.stop(true, true).slideUp(150);
+							$districtRows.stop(true, true).slideUp(150);
 							$regionRows.stop(true, true).slideUp(200);
 						}
 						$(this).find(".mis-zone-toggle").text(show ? "▼" : "▶");
 					});
 					tableContainer.off("click", ".mis-region-row").on("click", ".mis-region-row", function (e) {
-						if ($(e.target).is("input[type=checkbox]")) return;
+						if ($(e.target).closest(".mis-district-toggle, .mis-district-row, input[type=checkbox]").length) return;
 						e.stopPropagation();
 						const zone = $(this).data("zone");
 						const region = $(this).data("region");
 						const regionKey = zone + "::" + region;
 						self.expandedRegions[regionKey] = !self.expandedRegions[regionKey];
 						const show = self.expandedRegions[regionKey];
+						const $districtRows = tableContainer.find(`.mis-district-row[data-zone="${zone}"][data-region="${region}"]`);
 						const $branchRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"]`);
-						if (show) { $branchRows.stop(true, true).slideDown(200); } else { $branchRows.stop(true, true).slideUp(150); }
+						if (show) {
+							$districtRows.stop(true, true).slideDown(200);
+							$districtRows.each(function () {
+								const d = $(this).data("district");
+								if (self.expandedDistricts[zone + "::" + region + "::" + d]) {
+									tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"][data-district="${d}"]`).stop(true, true).slideDown(200);
+								}
+							});
+						} else {
+							$branchRows.stop(true, true).slideUp(150);
+							$districtRows.stop(true, true).slideUp(150);
+						}
 						$(this).find(".mis-region-toggle").text(show ? "▼" : "▶");
+					});
+					tableContainer.off("click", ".mis-district-row").on("click", ".mis-district-row", function (e) {
+						if ($(e.target).is("input[type=checkbox]")) return;
+						e.stopPropagation();
+						const zone = $(this).data("zone");
+						const region = $(this).data("region");
+						const district = $(this).data("district");
+						const districtKey = zone + "::" + region + "::" + district;
+						self.expandedDistricts[districtKey] = !self.expandedDistricts[districtKey];
+						const show = self.expandedDistricts[districtKey];
+						const $branchRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"][data-district="${district}"]`);
+						if (show) { $branchRows.stop(true, true).slideDown(200); } else { $branchRows.stop(true, true).slideUp(150); }
+						$(this).find(".mis-district-toggle").text(show ? "▼" : "▶");
 					});
 					tableContainer.off("change", ".mis-row-check").on("change", ".mis-row-check", function () {
 						const checkId = $(this).data("check-id");
@@ -4148,12 +4218,44 @@ class DrishtiDashboard {
 						}
 					});
 				},
+				checkCommissionPermission: function (dashboardInstance, callback) {
+					if (dashboardInstance.canViewCommission !== undefined) {
+						callback(dashboardInstance.canViewCommission);
+						return;
+					}
+
+					if (frappe.session.user === "Administrator") {
+						dashboardInstance.canViewCommission = true;
+						callback(true);
+						return;
+					}
+
+					frappe.db.get_value("Employee", { user_id: frappe.session.user }, "cxo_level")
+						.then(r => {
+							const cxo = r && r.message ? (r.message.cxo_level !== undefined ? r.message.cxo_level : r.message) : 0;
+							dashboardInstance.canViewCommission = (cint(cxo) === 1);
+							callback(dashboardInstance.canViewCommission);
+						})
+						.catch(err => {
+							console.error("Error checking employee cxo_level:", err);
+							dashboardInstance.canViewCommission = false;
+							callback(false);
+						});
+				},
 				rmDetails: {},
 				expandedRms: {},
 				customerDetails: {},
 				expandedRmCategories: {},
 				renderRmWiseTable: function (tableContainer, dashboardInstance) {
 					const self = this;
+					if (dashboardInstance.canViewCommission === undefined) {
+						self.checkCommissionPermission(dashboardInstance, () => {
+							self.renderRmWiseTable(tableContainer, dashboardInstance);
+						});
+						return;
+					}
+					const canViewComm = !!dashboardInstance.canViewCommission;
+
 					let data = self.tableData || [];
 					if (!self.rmDetails) self.rmDetails = {};
 					if (!self.expandedRms) self.expandedRms = {};
@@ -4197,9 +4299,22 @@ class DrishtiDashboard {
 						}
 					});
 
+					const totalAgents = totalActive + totalInactive;
+
 					const kpiCardsHtml = `
 						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 14px;">
-							<!-- Card 1: Active Agents (Green Card) -->
+							<!-- Card 1: Total Agents (Blue Theme Card) -->
+							<div style="background: #eff6ff; border: 1px solid #93c5fd; border-radius: 8px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: space-between;">
+								<div>
+									<div style="font-size: 11px; font-weight: 700; color: #1e40af; text-transform: uppercase; letter-spacing: 0.5px;">Total Agents</div>
+									<div style="font-size: 22px; font-weight: 800; color: #1d4ed8; margin-top: 2px;">${fmtNum(totalAgents)}</div>
+								</div>
+								<div style="background: #dbeafe; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+									👥
+								</div>
+							</div>
+
+							<!-- Card 2: Active Agents (Green Card) -->
 							<div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: space-between;">
 								<div>
 									<div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.5px;">Total Active Agents</div>
@@ -4210,7 +4325,7 @@ class DrishtiDashboard {
 								</div>
 							</div>
 
-							<!-- Card 2: Inactive Agents (Red Card) -->
+							<!-- Card 3: Inactive Agents (Red Card) -->
 							<div style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: space-between;">
 								<div>
 									<div style="font-size: 11px; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px;">Total Inactive Agents</div>
@@ -4221,7 +4336,8 @@ class DrishtiDashboard {
 								</div>
 							</div>
 
-							<!-- Card 3: Total Commission (Primary Theme Card) -->
+							${canViewComm ? `
+							<!-- Card 4: Total Commission (Primary Theme Card) -->
 							<div style="background: rgba(65, 125, 129, 0.05); border: 1px solid rgba(65, 125, 129, 0.3); border-radius: 8px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: space-between;">
 								<div>
 									<div style="font-size: 11px; font-weight: 700; color: #417d81; text-transform: uppercase; letter-spacing: 0.5px;">Total Commission</div>
@@ -4231,6 +4347,7 @@ class DrishtiDashboard {
 									💰
 								</div>
 							</div>
+							` : ''}
 						</div>
 					`;
 
@@ -4401,7 +4518,7 @@ class DrishtiDashboard {
 								<tr class="tree-master-row" data-node-id="${node.id}" data-level="${node.level}" data-agent-code="${node.code}" style="cursor: pointer; background: ${rowBg}; border-bottom: 1px solid #e2e8f0;">
 									<td style="padding: 8px 12px; text-align: left; padding-left: ${indent}px; font-weight: ${node.level < 5 ? '700' : '600'}; color: #1e293b;">
 										${hasChildren ? `<span class="tree-toggle-icon" style="display: inline-block; width: 16px; color: #417d81; font-weight: 800;">${isExpanded ? '▼' : '▶'}</span>` : '<span style="display: inline-block; width: 16px; color: #94a3b8;">•</span>'}
-										<span style="color: ${node.level === 5 ? '#417d81' : '#0f172a'}; ${node.level === 5 ? 'text-decoration: underline; font-weight: 700;' : ''}">${node.name}</span>
+										<span style="color: ${node.level === 5 && canViewComm ? '#417d81' : '#0f172a'}; ${node.level === 5 && canViewComm ? 'text-decoration: underline; font-weight: 700;' : ''}">${node.name}</span>
 									</td>
 									<td style="padding: 8px 12px; text-align: left; font-size: 12px; font-weight: 700; color: #417d81;">${node.code}</td>
 									<td style="padding: 8px 12px; text-align: left; font-size: 11px;">
@@ -4409,7 +4526,7 @@ class DrishtiDashboard {
 									</td>
 									<td style="padding: 8px 12px; text-align: right;">${activeColHtml}</td>
 									<td style="padding: 8px 12px; text-align: right;">${inactiveColHtml}</td>
-									<td style="padding: 8px 12px; text-align: right; font-size: 13px; font-weight: 800; color: #417d81;">${fmtAmt(node.total_commission)}</td>
+									${canViewComm ? `<td style="padding: 8px 12px; text-align: right; font-size: 13px; font-weight: 800; color: #417d81;">${fmtAmt(node.total_commission)}</td>` : ''}
 								</tr>
 							`;
 
@@ -4462,7 +4579,7 @@ class DrishtiDashboard {
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: left;">Level</th>
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Active Agents</th>
 										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Inactive Agents</th>
-										<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Commission</th>
+										${canViewComm ? `<th style="padding: 10px 12px; font-weight: 700; font-size: 12px; text-transform: uppercase; text-align: right;">Total Commission</th>` : ''}
 									</tr>
 								</thead>
 								<tbody>${treeRowsHtml}</tbody>
@@ -4471,7 +4588,7 @@ class DrishtiDashboard {
 										<td colspan="3" style="padding: 10px 12px; text-align: left; font-size: 12px; color: #417d81;">GRAND TOTAL (${fmtNum(data.length)} AGENTS)</td>
 										<td style="padding: 10px 12px; text-align: right; font-size: 12px; color: #15803d; font-weight: 800;">${fmtNum(totalActive)} Active</td>
 										<td style="padding: 10px 12px; text-align: right; font-size: 12px; color: #dc2626; font-weight: 800;">${fmtNum(totalInactive)} Inactive</td>
-										<td style="padding: 10px 12px; text-align: right; font-size: 13px; color: #417d81; font-weight: 800;">${fmtAmt(grandTotalComm)}</td>
+										${canViewComm ? `<td style="padding: 10px 12px; text-align: right; font-size: 13px; color: #417d81; font-weight: 800;">${fmtAmt(grandTotalComm)}</td>` : ''}
 									</tr>
 								</tfoot>
 							</table>
@@ -4488,7 +4605,7 @@ class DrishtiDashboard {
 						if (level < 5) {
 							self.expandedTreeNodes[nodeId] = !self.expandedTreeNodes[nodeId];
 							self.renderRmWiseTable(tableContainer, dashboardInstance);
-						} else {
+						} else if (canViewComm) {
 							const agentCode = $(this).data("agent-code");
 							const agentData = self.tableData.find(a => (a.agent_code || a.rm_id) === agentCode);
 							if (agentData) {
@@ -9276,12 +9393,13 @@ class DrishtiDashboard {
 						<th rowspan="2">SS SHORTFALL</th>
 						<th rowspan="2">SS ACTIVE</th>
 						<th rowspan="2">SS INACTIVE</th>
-						<th rowspan="2">DD TARGET</th>
-						<th rowspan="2">DD ACHIEVEMENT</th>
-						<th rowspan="2">DD SHORTFALL</th>
-						<th rowspan="2">DD ACTIVE</th>
-						<th rowspan="2">DD INACTIVE</th>
-						<th rowspan="2">ACH %</th>
+						<th rowspan="2">SS Ach %</th>
+						<th rowspan="2">VS TARGET</th>
+						<th rowspan="2">VS ACHIEVEMENT</th>
+						<th rowspan="2">VS SHORTFALL</th>
+						<th rowspan="2">VS ACTIVE</th>
+						<th rowspan="2">VS INACTIVE</th>
+						<th rowspan="2">VS Ach %</th>
 					</tr>
 					<tr class="branch-table-subheader">
 					</tr>
@@ -9324,6 +9442,7 @@ class DrishtiDashboard {
 			const zoneAgentShortfallRaw = zoneTarget - zoneAch;
 			const zoneSsShortfall = Math.abs(zoneSsShortfallRaw);
 			const zoneAgentShortfall = Math.abs(zoneAgentShortfallRaw);
+			const zoneSsPercent = zoneSsTarget > 0 ? ((zoneSsAch / zoneSsTarget) * 100).toFixed(2) : 0;
 			const zonePercent = zoneTarget > 0 ? ((zoneAch / zoneTarget) * 100).toFixed(2) : 0;
 			const isExpanded = this.state.expandedZones[`agent_${zone}`] || false;
 			const zoneDate =
@@ -9346,6 +9465,12 @@ class DrishtiDashboard {
 					<td class="metric-cell amount-cell" style="color: ${zoneSsShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneSsShortfall)}</td>
 					<td class="metric-cell amount-cell">${this.formatNumber(zoneSsActive)}</td>
 					<td class="metric-cell amount-cell">${this.formatNumber(zoneSsInactive)}</td>
+					<td>
+						<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+							<span class="pct-value" style="color: ${this.getPctColor(zoneSsPercent)}; min-width: 45px; text-align: right;">${Math.round(zoneSsPercent)}%</span>
+							${this.renderProgressBar(zoneSsPercent)}
+						</div>
+					</td>
 					<td class="metric-cell amount-cell">${this.formatCurrency(zoneTarget)}</td>
 					<td class="metric-cell amount-cell">${this.formatCurrency(zoneAch)}</td>
 					<td class="metric-cell amount-cell" style="color: ${zoneAgentShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneAgentShortfall)}</td>
@@ -9385,6 +9510,7 @@ class DrishtiDashboard {
 				const rAgentShortfallRaw = rTarget - rAch;
 				const rSsShortfall = Math.abs(rSsShortfallRaw);
 				const rAgentShortfall = Math.abs(rAgentShortfallRaw);
+				const rSsPercent = rSsTarget > 0 ? ((rSsAch / rSsTarget) * 100).toFixed(2) : 0;
 				const rPercent = rTarget > 0 ? ((rAch / rTarget) * 100).toFixed(2) : 0;
 
 				html += `
@@ -9403,6 +9529,12 @@ class DrishtiDashboard {
 						<td class="metric-cell amount-cell" style="color: ${rSsShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rSsShortfall)}</td>
 						<td class="metric-cell amount-cell">${this.formatNumber(rSsActive)}</td>
 						<td class="metric-cell amount-cell">${this.formatNumber(rSsInactive)}</td>
+						<td>
+							<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+								<span class="pct-value" style="color: ${this.getPctColor(rSsPercent)}; min-width: 45px; text-align: right;">${Math.round(rSsPercent)}%</span>
+								${this.renderProgressBar(rSsPercent)}
+							</div>
+						</td>
 						<td class="metric-cell amount-cell">${this.formatCurrency(rTarget)}</td>
 						<td class="metric-cell amount-cell">${this.formatCurrency(rAch)}</td>
 						<td class="metric-cell amount-cell" style="color: ${rAgentShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rAgentShortfall)}</td>
@@ -9419,7 +9551,66 @@ class DrishtiDashboard {
 			});
 		});
 
-		html += `</tbody></table>`;
+		// Calculate overall grand totals across all agent data
+		let totalSsTarget = 0;
+		let totalSsAch = 0;
+		let totalSsActive = 0;
+		let totalSsInactive = 0;
+		let totalVsTarget = 0;
+		let totalVsAch = 0;
+		let totalVsActive = 0;
+		let totalVsInactive = 0;
+
+		agentData.forEach((r) => {
+			totalSsTarget += parseFloat(r.ss_target || 0);
+			totalSsAch += parseFloat(r.ss_achievement || 0);
+			totalSsActive += parseFloat(r.ss_active || 0);
+			totalSsInactive += parseFloat(r.ss_inactive || 0);
+			totalVsTarget += parseFloat(r.target || 0);
+			totalVsAch += parseFloat(r.achievement || 0);
+			totalVsActive += parseFloat(r.active || 0);
+			totalVsInactive += parseFloat(r.inactive || 0);
+		});
+
+		const totalSsShortfallRaw = totalSsTarget - totalSsAch;
+		const totalVsShortfallRaw = totalVsTarget - totalVsAch;
+		const totalSsShortfall = Math.abs(totalSsShortfallRaw);
+		const totalVsShortfall = Math.abs(totalVsShortfallRaw);
+		const totalSsPercent = totalSsTarget > 0 ? ((totalSsAch / totalSsTarget) * 100).toFixed(2) : 0;
+		const totalVsPercent = totalVsTarget > 0 ? ((totalVsAch / totalVsTarget) * 100).toFixed(2) : 0;
+
+		html += `
+				</tbody>
+				<tfoot style="background-color: #264a4d; color: #ffffff; font-weight: bold; border-top: 2px solid #3d7579;">
+					<tr style="height: 40px;">
+						<td></td>
+						<td style="text-align: left; padding-left: 12px; text-transform: uppercase; letter-spacing: 1px;">TOTAL</td>
+						<td class="metric-cell amount-cell" style="color: #ffffff;">${this.formatCurrency(totalSsTarget)}</td>
+						<td class="metric-cell amount-cell" style="color: #ffffff;">${this.formatCurrency(totalSsAch)}</td>
+						<td class="metric-cell amount-cell" style="color: ${totalSsShortfallRaw > 0 ? "#fca5a5" : "#6ee7b7"}; font-weight: 600;">${this.formatCurrency(totalSsShortfall)}</td>
+						<td class="metric-cell amount-cell" style="color: #ffffff;">${this.formatNumber(totalSsActive)}</td>
+						<td class="metric-cell amount-cell" style="color: #ffffff;">${this.formatNumber(totalSsInactive)}</td>
+						<td>
+							<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+								<span class="pct-value" style="color: #ffffff; min-width: 45px; text-align: right;">${Math.round(totalSsPercent)}%</span>
+								${this.renderProgressBar(totalSsPercent)}
+							</div>
+						</td>
+						<td class="metric-cell amount-cell" style="color: #ffffff;">${this.formatCurrency(totalVsTarget)}</td>
+						<td class="metric-cell amount-cell" style="color: #ffffff;">${this.formatCurrency(totalVsAch)}</td>
+						<td class="metric-cell amount-cell" style="color: ${totalVsShortfallRaw > 0 ? "#fca5a5" : "#6ee7b7"}; font-weight: 600;">${this.formatCurrency(totalVsShortfall)}</td>
+						<td class="metric-cell amount-cell" style="color: #ffffff;">${this.formatNumber(totalVsActive)}</td>
+						<td class="metric-cell amount-cell" style="color: #ffffff;">${this.formatNumber(totalVsInactive)}</td>
+						<td>
+							<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+								<span class="pct-value" style="color: #ffffff; min-width: 45px; text-align: right;">${Math.round(totalVsPercent)}%</span>
+								${this.renderProgressBar(totalVsPercent)}
+							</div>
+						</td>
+					</tr>
+				</tfoot>
+			</table>
+		`;
 		return html;
 	}
 
