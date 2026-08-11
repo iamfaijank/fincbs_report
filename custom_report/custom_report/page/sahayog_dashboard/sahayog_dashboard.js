@@ -163,6 +163,54 @@ frappe.pages["sahayog_dashboard"].on_page_hide = function (wrapper) {
 	}
 };
 
+const filterMisTableDataByUserPermissions = function (data, filterOptions) {
+	if (!data || !Array.isArray(data)) return [];
+	if (!filterOptions) return data;
+
+	const perms = filterOptions.permissions || {};
+
+	// If user is not restricted (Admin / HO user), return full cached dataset
+	if (!perms.is_restricted) {
+		return data;
+	}
+
+	const allowedZones = perms.allowed_zones || [];
+	const allowedRegions = perms.allowed_regions || [];
+	const allowedSolIds = (perms.allowed_sol_ids || []).map(s => String(s).trim());
+
+	const hasZonePerms = allowedZones.length > 0;
+	const hasRegionPerms = allowedRegions.length > 0;
+	const hasSolPerms = allowedSolIds.length > 0;
+
+	// 1. Explicit Zone permissions
+	if (hasZonePerms) {
+		let filtered = data.filter(r => r.zone && allowedZones.includes(r.zone));
+		if (hasRegionPerms) {
+			filtered = filtered.filter(r => r.region && allowedRegions.includes(r.region));
+		}
+		return filtered;
+	}
+
+	// 2. Explicit Region permissions
+	if (hasRegionPerms) {
+		return data.filter(r => r.region && allowedRegions.includes(r.region));
+	}
+
+	// 3. Explicit SOL ID permissions (Single or Multiple SOL access)
+	if (hasSolPerms) {
+		const solSet = new Set(allowedSolIds);
+		return data.filter(r => r.sol_id && solSet.has(String(r.sol_id).trim()));
+	}
+
+	// 4. Fallback based on filterOptions.zones
+	if (filterOptions.zones && filterOptions.zones.length > 0) {
+		const zoneSet = new Set(filterOptions.zones);
+		return data.filter(r => r.zone && zoneSet.has(r.zone));
+	}
+
+	return data;
+};
+
 class DrishtiDashboard {
 	constructor(page) {
 		this.page = page;
@@ -286,14 +334,27 @@ class DrishtiDashboard {
 						<div id="mis-table-container"${self.tableData ? "" : ' style="display: none;"'}></div>
 					`);
 
-					if (self.tableData && self.tableData.length > 0) {
+					const applyUserPermissionsAndRender = function () {
+						self.tableData = filterMisTableDataByUserPermissions(self.rawTableData, self.filterOptions);
+						self.loadedUser = frappe.session.user;
+
 						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 						container.find("#mis-records-count").text(`${self.tableData.length} branches`);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 						self.renderZoneFilterTags(container, dashboardInstance);
-						container.find("#mis-controls, #mis-table-container, #mis-kpi-container").show();
 						container.find("#mis-loading").hide();
+						container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
 						self.attachReportEventHandlers(container, dashboardInstance);
+					};
+
+					if (self.loadedUser && self.loadedUser !== frappe.session.user) {
+						self.tableData = [];
+						self.filterOptions = null;
+						self.loadedUser = null;
+					}
+
+					if (self.rawTableData && self.rawTableData.length > 0 && self.filterOptions && self.loadedUser === frappe.session.user) {
+						applyUserPermissionsAndRender();
 						return;
 					}
 
@@ -303,32 +364,24 @@ class DrishtiDashboard {
 							if (dashboardInstance._misRenderSeq !== seq) return;
 							if (r.message) {
 								self.filterOptions = r.message;
-								const perms = r.message.permissions || {};
-								const hasZoneRegionPerms = (r.message.zones && r.message.zones.length > 0) || (r.message.regions && r.message.regions.length > 0);
-								const useSolIds = !hasZoneRegionPerms && perms.allowed_sol_ids && perms.allowed_sol_ids.length > 0;
-								const solIds = useSolIds ? perms.allowed_sol_ids.join(",") : "";
 
-								console.log("DEBUG: API CALL get_rd_smbg_pending_table_data START", { sol_ids: solIds });
+								if (self.rawTableData && self.rawTableData.length > 0) {
+									applyUserPermissionsAndRender();
+									return;
+								}
+
+								console.log("DEBUG: API CALL get_rd_smbg_pending_table_data START (fetching full dataset for server cache)");
 								frappe.call({
 									method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_pending_table_data",
-									args: { sol_ids: solIds },
 									callback: function (r3) {
-										console.log("DEBUG: API CALL get_rd_smbg_pending_table_data RESPONSE", r3.message);
+										console.log("DEBUG: API CALL get_rd_smbg_pending_table_data RESPONSE", r3.message ? r3.message.length : 0);
 										if (dashboardInstance._misRenderSeq !== seq) return;
 										if (r3.message) {
-											let data = r3.message;
-											const pz = self.filterOptions && self.filterOptions.zones;
-											if (pz && pz.length > 0) {
-												data = data.filter(r => pz.includes(r.zone));
-											}
-											self.tableData = data;
-											self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
-											container.find("#mis-records-count").text(`${data.length} branches`);
-											self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
-											self.renderZoneFilterTags(container, dashboardInstance);
+											self.rawTableData = r3.message;
+											applyUserPermissionsAndRender();
+										} else {
+											container.find("#mis-loading").hide();
 										}
-										container.find("#mis-loading").hide();
-										container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
 									}
 								});
 							}
@@ -421,8 +474,10 @@ class DrishtiDashboard {
 				},
 				refetchData: function (container, dashboardInstance) {
 					const self = this;
+					self.rawTableData = [];
 					self.tableData = [];
 					self.filterOptions = null;
+					self.loadedUser = null;
 					self.selectedMisZones = [];
 					self.expandedZones = {};
 					self.expandedRegions = {};
@@ -5344,8 +5399,10 @@ class DrishtiDashboard {
 		// Clear MIS report caches
 		this.misReportsList.forEach((report) => {
 			if (report.type === "group") return;
+			report.rawTableData = [];
 			report.tableData = [];
 			report.filterOptions = null;
+			report.loadedUser = null;
 			report.expandedZones = {};
 			report.expandedRegions = {};
 			report.checkedRows = {};
@@ -6976,6 +7033,11 @@ class DrishtiDashboard {
 		const contentArea = this.mis_container.find("#mis-report-content-area");
 		const titleEl = this.mis_container.find("#mis-report-title");
 		if (report && contentArea.length) {
+			if (report.loadedUser && report.loadedUser !== frappe.session.user) {
+				report.tableData = [];
+				report.filterOptions = null;
+				report.loadedUser = null;
+			}
 			titleEl.text(report.name);
 			if (typeof report.render === "function") {
 				report.render(contentArea, this, seq);
