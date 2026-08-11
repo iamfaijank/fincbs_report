@@ -9276,12 +9276,13 @@ class DrishtiDashboard {
 						<th rowspan="2">SS SHORTFALL</th>
 						<th rowspan="2">SS ACTIVE</th>
 						<th rowspan="2">SS INACTIVE</th>
-						<th rowspan="2">DD TARGET</th>
-						<th rowspan="2">DD ACHIEVEMENT</th>
-						<th rowspan="2">DD SHORTFALL</th>
-						<th rowspan="2">DD ACTIVE</th>
-						<th rowspan="2">DD INACTIVE</th>
-						<th rowspan="2">ACH %</th>
+						<th rowspan="2">SS Ach %</th>
+						<th rowspan="2">VS TARGET</th>
+						<th rowspan="2">VS ACHIEVEMENT</th>
+						<th rowspan="2">VS SHORTFALL</th>
+						<th rowspan="2">VS ACTIVE</th>
+						<th rowspan="2">VS INACTIVE</th>
+						<th rowspan="2">VS Ach %</th>
 					</tr>
 					<tr class="branch-table-subheader">
 					</tr>
@@ -9324,6 +9325,7 @@ class DrishtiDashboard {
 			const zoneAgentShortfallRaw = zoneTarget - zoneAch;
 			const zoneSsShortfall = Math.abs(zoneSsShortfallRaw);
 			const zoneAgentShortfall = Math.abs(zoneAgentShortfallRaw);
+			const zoneSsPercent = zoneSsTarget > 0 ? ((zoneSsAch / zoneSsTarget) * 100).toFixed(2) : 0;
 			const zonePercent = zoneTarget > 0 ? ((zoneAch / zoneTarget) * 100).toFixed(2) : 0;
 			const isExpanded = this.state.expandedZones[`agent_${zone}`] || false;
 			const zoneDate =
@@ -9346,6 +9348,12 @@ class DrishtiDashboard {
 					<td class="metric-cell amount-cell" style="color: ${zoneSsShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneSsShortfall)}</td>
 					<td class="metric-cell amount-cell">${this.formatNumber(zoneSsActive)}</td>
 					<td class="metric-cell amount-cell">${this.formatNumber(zoneSsInactive)}</td>
+					<td>
+						<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+							<span class="pct-value" style="color: ${this.getPctColor(zoneSsPercent)}; min-width: 45px; text-align: right;">${Math.round(zoneSsPercent)}%</span>
+							${this.renderProgressBar(zoneSsPercent)}
+						</div>
+					</td>
 					<td class="metric-cell amount-cell">${this.formatCurrency(zoneTarget)}</td>
 					<td class="metric-cell amount-cell">${this.formatCurrency(zoneAch)}</td>
 					<td class="metric-cell amount-cell" style="color: ${zoneAgentShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneAgentShortfall)}</td>
@@ -9385,6 +9393,7 @@ class DrishtiDashboard {
 				const rAgentShortfallRaw = rTarget - rAch;
 				const rSsShortfall = Math.abs(rSsShortfallRaw);
 				const rAgentShortfall = Math.abs(rAgentShortfallRaw);
+				const rSsPercent = rSsTarget > 0 ? ((rSsAch / rSsTarget) * 100).toFixed(2) : 0;
 				const rPercent = rTarget > 0 ? ((rAch / rTarget) * 100).toFixed(2) : 0;
 
 				html += `
@@ -9403,6 +9412,12 @@ class DrishtiDashboard {
 						<td class="metric-cell amount-cell" style="color: ${rSsShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rSsShortfall)}</td>
 						<td class="metric-cell amount-cell">${this.formatNumber(rSsActive)}</td>
 						<td class="metric-cell amount-cell">${this.formatNumber(rSsInactive)}</td>
+						<td>
+							<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+								<span class="pct-value" style="color: ${this.getPctColor(rSsPercent)}; min-width: 45px; text-align: right;">${Math.round(rSsPercent)}%</span>
+								${this.renderProgressBar(rSsPercent)}
+							</div>
+						</td>
 						<td class="metric-cell amount-cell">${this.formatCurrency(rTarget)}</td>
 						<td class="metric-cell amount-cell">${this.formatCurrency(rAch)}</td>
 						<td class="metric-cell amount-cell" style="color: ${rAgentShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rAgentShortfall)}</td>
