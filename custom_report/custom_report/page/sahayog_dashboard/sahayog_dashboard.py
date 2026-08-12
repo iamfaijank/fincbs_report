@@ -1268,7 +1268,6 @@ def build_agent_wise(selected_date=None):
 
 
 @frappe.whitelist()
-@sahayog_cache(ttl=86400)
 def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from datetime import datetime

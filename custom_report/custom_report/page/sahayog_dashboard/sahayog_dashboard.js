@@ -348,6 +348,7 @@ class DrishtiDashboard {
 					};
 
 					if (self.loadedUser && self.loadedUser !== frappe.session.user) {
+						self.rawTableData = [];
 						self.tableData = [];
 						self.filterOptions = null;
 						self.loadedUser = null;
@@ -370,7 +371,7 @@ class DrishtiDashboard {
 									return;
 								}
 
-								console.log("DEBUG: API CALL get_rd_smbg_pending_table_data START (fetching full dataset for server cache)");
+								console.log("DEBUG: API CALL get_rd_smbg_pending_table_data START");
 								frappe.call({
 									method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_pending_table_data",
 									callback: function (r3) {
