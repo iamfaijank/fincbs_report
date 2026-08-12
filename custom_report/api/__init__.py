@@ -1631,6 +1631,86 @@ def _print_sql_debug(sql_query, params, filter_applied, is_branch_user):
 
 JOBS_REGISTRY = [
 	{
+		"key": "sync_dd_sav_daily",
+		"title": "DD SAV Report Sync",
+		"category": "SS & VS Reports",
+		"schedule_time": "07:00 AM",
+		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_dd_sav_daily",
+		"doctype": "SS and VS Report",
+		"filters": {"report_type": "DD SAV"},
+		"error_title": "sync_dd_sav_daily"
+	},
+	{
+		"key": "sync_dd_tda_daily",
+		"title": "DD TDA Report Sync",
+		"category": "SS & VS Reports",
+		"schedule_time": "07:05 AM",
+		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_dd_tda_daily",
+		"doctype": "SS and VS Report",
+		"filters": {"report_type": "DD TDA"},
+		"error_title": "sync_dd_tda_daily"
+	},
+	{
+		"key": "sync_rd_daily",
+		"title": "RD Report Sync",
+		"category": "SS & VS Reports",
+		"schedule_time": "07:10 AM",
+		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_rd_daily",
+		"doctype": "SS and VS Report",
+		"filters": {"report_type": "RD"},
+		"error_title": "sync_rd_daily"
+	},
+	{
+		"key": "sync_smbg_daily",
+		"title": "SMBG Report Sync",
+		"category": "SS & VS Reports",
+		"schedule_time": "07:15 AM",
+		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_smbg_daily",
+		"doctype": "SS and VS Report",
+		"filters": {"report_type": "SMBG"},
+		"error_title": "sync_smbg_daily"
+	},
+	{
+		"key": "sync_fd_1_daily",
+		"title": "FD 1 Report Sync",
+		"category": "SS & VS Reports",
+		"schedule_time": "07:20 AM",
+		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_fd_1_daily",
+		"doctype": "SS and VS Report",
+		"filters": {"report_type": "FD 1"},
+		"error_title": "sync_fd_1_daily"
+	},
+	{
+		"key": "sync_dam_daily",
+		"title": "DAM Report Sync",
+		"category": "SS & VS Reports",
+		"schedule_time": "07:25 AM",
+		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_dam_daily",
+		"doctype": "SS and VS Report",
+		"filters": {"report_type": "DAM"},
+		"error_title": "sync_dam_daily"
+	},
+	{
+		"key": "sync_fd_daily",
+		"title": "FD Report Sync",
+		"category": "SS & VS Reports",
+		"schedule_time": "07:30 AM",
+		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_fd_daily",
+		"doctype": "SS and VS Report",
+		"filters": {"report_type": "FD"},
+		"error_title": "sync_fd_daily"
+	},
+	{
+		"key": "sync_share_daily",
+		"title": "SHARE Report Sync",
+		"category": "SS & VS Reports",
+		"schedule_time": "07:35 AM",
+		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_share_daily",
+		"doctype": "SS and VS Report",
+		"filters": {"report_type": "SHARE"},
+		"error_title": "sync_share_daily"
+	},
+	{
 		"key": "daily_sync_maturity_tracker",
 		"title": "Maturity Tracker Sync",
 		"category": "Financial Trackers",
@@ -1639,6 +1719,66 @@ JOBS_REGISTRY = [
 		"doctype": "Maturity Tracker",
 		"filters": {},
 		"error_title": "daily_sync_maturity_tracker"
+	},
+	{
+		"key": "cleanup_ss_vs_old_monthly_records",
+		"title": "SS & VS Monthly Cleanup",
+		"category": "System Maintenance",
+		"schedule_time": "07:45 AM",
+		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.cleanup_ss_vs_old_monthly_records",
+		"doctype": None,
+		"filters": {},
+		"error_title": "cleanup_ss_vs_old_monthly_records"
+	},
+	{
+		"key": "daily_sync_cron",
+		"title": "Sahayog Achievement Sync",
+		"category": "Sahayog Dashboard",
+		"schedule_time": "08:00 AM",
+		"method": "custom_report.custom_report.page.sahayog_dashboard.achievement.daily_sync_cron",
+		"doctype": "Branch Category Report",
+		"filters": {},
+		"error_title": "daily_sync_cron"
+	},
+	{
+		"key": "daily_tda_sync",
+		"title": "Sahayog TDA Sync",
+		"category": "Sahayog Dashboard",
+		"schedule_time": "08:10 AM",
+		"method": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_tda_sync",
+		"doctype": "Product Wise Report",
+		"filters": {"product": "TDA"},
+		"error_title": "daily_tda_sync"
+	},
+	{
+		"key": "daily_casa_sync",
+		"title": "Sahayog CASA Sync",
+		"category": "Sahayog Dashboard",
+		"schedule_time": "08:15 AM",
+		"method": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_casa_sync",
+		"doctype": "Product Wise Report",
+		"filters": {"product": "CASA"},
+		"error_title": "daily_casa_sync"
+	},
+	{
+		"key": "daily_sync_book_position",
+		"title": "Book Position & Account Details Sync",
+		"category": "Financial Trackers",
+		"schedule_time": "08:30 AM",
+		"method": "custom_report.custom_report.doctype.book_position_and_account_details.book_position_and_account_details.daily_sync_book_position",
+		"doctype": "Book Position and Account Details",
+		"filters": {},
+		"error_title": "daily_sync_book_position"
+	},
+	{
+		"key": "daily_sync_dd_tracker",
+		"title": "DD Tracker Report Sync",
+		"category": "Financial Trackers",
+		"schedule_time": "08:40 AM",
+		"method": "custom_report.custom_report.doctype.dd_tracker_report.dd_tracker_report.daily_sync_dd_tracker",
+		"doctype": "DD Tracker Report",
+		"filters": {},
+		"error_title": "daily_sync_dd_tracker"
 	}
 ]
 

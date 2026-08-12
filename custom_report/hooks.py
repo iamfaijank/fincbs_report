@@ -177,9 +177,52 @@ doc_events = {
 
 scheduler_events = {
 	"cron": {
+		# Daily T-1 (Yesterday) SS & VS Report Synchronizations starting at 07:00 AM IST with 5-minute intervals
+		"0 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_dd_sav_daily"
+		],
+		"5 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_dd_tda_daily"
+		],
+		"10 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_rd_daily"
+		],
+		"15 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_smbg_daily"
+		],
+		"20 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_fd_1_daily"
+		],
+		"25 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_dam_daily"
+		],
+		"30 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_fd_daily"
+		],
+		"35 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_share_daily"
+		],
 		"40 7 * * *": [
-			# 07:40 AM IST - Daily Maturity Tracker Sync for T-1 (Yesterday) date
 			"custom_report.custom_report.doctype.maturity_tracker.maturity_tracker.daily_sync_maturity_tracker"
+		],
+		"45 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.cleanup_ss_vs_old_monthly_records"
+		],
+		# Daily Sahayog Dashboard and Financial Tracker Synchronizations starting at 08:00 AM IST
+		"0 8 * * *": [
+			"custom_report.custom_report.page.sahayog_dashboard.achievement.daily_sync_cron"
+		],
+		"10 8 * * *": [
+			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_tda_sync"
+		],
+		"15 8 * * *": [
+			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_casa_sync"
+		],
+		"30 8 * * *": [
+			"custom_report.custom_report.doctype.book_position_and_account_details.book_position_and_account_details.daily_sync_book_position"
+		],
+		"40 8 * * *": [
+			"custom_report.custom_report.doctype.dd_tracker_report.dd_tracker_report.daily_sync_dd_tracker"
 		]
 	}
 }
