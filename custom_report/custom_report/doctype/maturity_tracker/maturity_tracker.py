@@ -14,8 +14,8 @@ class MaturityTracker(Document):
 
 
 @frappe.whitelist()
-def sync_maturity_tracker(sync_date=None, from_date=None, to_date=None):
-	selected_date = sync_date or from_date
+def sync_maturity_tracker(sync_date=None, date=None, from_date=None, to_date=None):
+	selected_date = sync_date or date or from_date
 	if not selected_date:
 		selected_date = add_days(getdate(nowdate()), -1)
 
@@ -124,11 +124,14 @@ def sync_maturity_tracker(sync_date=None, from_date=None, to_date=None):
 		conn.close()
 
 	# Clear existing data for this date range to prevent duplicates
-	frappe.db.delete("Maturity Tracker", {"from_date": str(dt_from), "to_date": str(dt_to)})
+	frappe.db.sql("""
+		DELETE FROM `tabMaturity Tracker`
+		WHERE `date` = %s OR (`from_date` = %s AND `to_date` = %s)
+	""", (str(ref_date), str(dt_from), str(dt_to)))
 
 	fields = [
 		"name", "creation", "modified", "modified_by", "owner", "docstatus",
-		"cif_id", "acct_name", "sol_ids", "account_numbers", "account_count",
+		"date", "cif_id", "acct_name", "sol_ids", "account_numbers", "account_count",
 		"maturity_paid", "last_debit_transaction_date", "total_deposit_amount",
 		"deposit_done_flag", "renewal_amount", "division_name", "region_name",
 		"zone", "from_date", "to_date"
@@ -146,6 +149,7 @@ def sync_maturity_tracker(sync_date=None, from_date=None, to_date=None):
 			user,
 			user,
 			0,
+			str(ref_date),
 			row.get("cif_id") or "",
 			row.get("acct_name") or "",
 			row.get("sol_ids") or "",

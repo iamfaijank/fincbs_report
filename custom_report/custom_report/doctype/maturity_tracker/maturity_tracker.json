@@ -5,6 +5,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "date",
   "cif_id",
   "acct_name",
   "sol_ids",
@@ -23,6 +24,13 @@
   "to_date"
  ],
  "fields": [
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Date"
+  },
   {
    "fieldname": "cif_id",
    "fieldtype": "Data",
@@ -124,7 +132,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-12 11:35:00.000000",
+ "modified": "2026-08-12 11:45:00.000000",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Maturity Tracker",
@@ -146,7 +154,7 @@
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
  "search_fields": "cif_id, acct_name, sol_ids",
- "sort_field": "from_date",
+ "sort_field": "date",
  "sort_order": "DESC",
  "states": [],
  "title_field": "acct_name"
