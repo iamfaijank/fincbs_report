@@ -1796,6 +1796,54 @@ def get_automation_sync_status(sync_date=None):
 	failed_count = 0
 	pending_count = 0
 
+	# Pre-fetch counts for SS and VS Report for target_date in 1 single query
+	ss_vs_counts = {}
+	ss_vs_max_dates = {}
+	try:
+		ss_vs_res = frappe.db.sql("""
+			SELECT report_type, COUNT(*) as cnt, MAX(date) as max_d
+			FROM `tabSS and VS Report`
+			GROUP BY report_type
+		""", as_dict=True)
+		for r in ss_vs_res:
+			if r.max_d:
+				ss_vs_max_dates[r.report_type] = r.max_d
+		
+		ss_vs_cur = frappe.db.sql("""
+			SELECT report_type, COUNT(*) as cnt
+			FROM `tabSS and VS Report`
+			WHERE date = %s
+			GROUP BY report_type
+		""", (target_date,), as_dict=True)
+		for r in ss_vs_cur:
+			ss_vs_counts[r.report_type] = r.cnt
+	except Exception:
+		pass
+
+	# Pre-fetch counts for Product Wise Report for target_date in 1 single query
+	product_counts = {}
+	product_max_dates = {}
+	try:
+		prod_res = frappe.db.sql("""
+			SELECT product, COUNT(*) as cnt, MAX(date) as max_d
+			FROM `tabProduct Wise Report`
+			GROUP BY product
+		""", as_dict=True)
+		for r in prod_res:
+			if r.max_d:
+				product_max_dates[r.product] = r.max_d
+
+		prod_cur = frappe.db.sql("""
+			SELECT product, COUNT(*) as cnt
+			FROM `tabProduct Wise Report`
+			WHERE date = %s
+			GROUP BY product
+		""", (target_date,), as_dict=True)
+		for r in prod_cur:
+			product_counts[r.product] = r.cnt
+	except Exception:
+		pass
+
 	for job in JOBS_REGISTRY:
 		job_info = {
 			"key": job["key"],
@@ -1813,7 +1861,11 @@ def get_automation_sync_status(sync_date=None):
 		}
 
 		rec_count = 0
-		if job["doctype"]:
+		if job["doctype"] == "SS and VS Report" and "report_type" in job.get("filters", {}):
+			rec_count = ss_vs_counts.get(job["filters"]["report_type"], 0)
+		elif job["doctype"] == "Product Wise Report" and "product" in job.get("filters", {}):
+			rec_count = product_counts.get(job["filters"]["product"], 0)
+		elif job["doctype"]:
 			try:
 				f = dict(job["filters"])
 				f["date"] = target_date
@@ -1823,7 +1875,18 @@ def get_automation_sync_status(sync_date=None):
 		job_info["records_synced"] = rec_count
 
 		# Latest synced date in DB for this job
-		if job["doctype"]:
+		if rec_count > 0:
+			job_info["latest_date"] = target_date
+			job_info["latest_count"] = rec_count
+		elif job["doctype"] == "SS and VS Report" and "report_type" in job.get("filters", {}):
+			rtype = job["filters"]["report_type"]
+			if rtype in ss_vs_max_dates:
+				job_info["latest_date"] = str(ss_vs_max_dates[rtype])
+		elif job["doctype"] == "Product Wise Report" and "product" in job.get("filters", {}):
+			pname = job["filters"]["product"]
+			if pname in product_max_dates:
+				job_info["latest_date"] = str(product_max_dates[pname])
+		elif job["doctype"]:
 			try:
 				filters_sql = []
 				vals = []
@@ -1832,26 +1895,32 @@ def get_automation_sync_status(sync_date=None):
 					vals.append(v)
 				where_clause = ("WHERE " + " AND ".join(filters_sql)) if filters_sql else ""
 				
-				latest_res = frappe.db.sql(f"""
-					SELECT date, COUNT(*) as cnt
+				max_date_res = frappe.db.sql(f"""
+					SELECT MAX(date) as max_d
 					FROM `tab{job['doctype']}`
 					{where_clause}
-					GROUP BY date
-					ORDER BY date DESC LIMIT 1
 				""", tuple(vals), as_dict=True)
-				if latest_res:
-					job_info["latest_date"] = str(latest_res[0].date)
-					job_info["latest_count"] = latest_res[0].cnt
+				if max_date_res and max_date_res[0].max_d:
+					latest_d = max_date_res[0].max_d
+					job_info["latest_date"] = str(latest_d)
+					filters_count = dict(job["filters"])
+					filters_count["date"] = latest_d
+					try:
+						job_info["latest_count"] = frappe.db.count(job["doctype"], filters_count)
+					except Exception:
+						job_info["latest_count"] = 0
 			except Exception:
 				pass
 
+		start_dt = f"{target_date} 00:00:00"
+		end_dt = f"{target_date} 23:59:59"
 		error_logs = frappe.db.sql("""
 			SELECT name, method, error, creation
 			FROM `tabError Log`
-			WHERE DATE(creation) = %s
+			WHERE creation >= %s AND creation <= %s
 			  AND (method LIKE %s OR method LIKE %s OR error LIKE %s)
 			ORDER BY creation DESC LIMIT 1
-		""", (target_date, f"%{job['method']}%", f"%{job['error_title']}%", f"%{job['error_title']}%"), as_dict=True)
+		""", (start_dt, end_dt, f"%{job['method']}%", f"%{job['error_title']}%", f"%{job['error_title']}%"), as_dict=True)
 
 		if error_logs:
 			job_info["status"] = "Failed"
