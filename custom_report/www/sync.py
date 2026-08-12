@@ -208,8 +208,8 @@ def get_automation_sync_status(sync_date=None):
 			try:
 				f = dict(job["filters"])
 				f["date"] = target_date
-				rec_count = frappe.db.count(job["doctype"], filters=f)
-			except Exception:
+				rec_count = frappe.db.count(job["doctype"], f)
+			except Exception as e:
 				rec_count = 0
 		job_info["records_synced"] = rec_count
 
