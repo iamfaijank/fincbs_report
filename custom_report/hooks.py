@@ -208,6 +208,10 @@ scheduler_events = {
 			# 07:35 AM IST - Sync SHARE Report for T-1 (Yesterday) date
 			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_share_daily"
 		],
+		"40 7 * * *": [
+			# 07:40 AM IST - Daily Maturity Tracker Sync for T-1 (Yesterday) date
+			"custom_report.custom_report.doctype.maturity_tracker.maturity_tracker.daily_sync_maturity_tracker"
+		],
 		"45 7 * * *": [
 			# 07:45 AM IST - Daily Cleanup of SS & VS Report daily records (retains ONLY last date of each month)
 			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.cleanup_ss_vs_old_monthly_records"

@@ -166,3 +166,23 @@ def sync_maturity_tracker(sync_date=None, date=None):
 		frappe.db.commit()
 
 	return f"Successfully synced {total_records} Maturity Tracker records for date {ref_date} (range {dt_from} to {dt_to})."
+
+
+def daily_sync_maturity_tracker():
+	"""
+	Cron job triggered daily at 07:40 AM IST.
+	Syncs Maturity Tracker data for yesterday if enabled in Drishti Settings.
+	"""
+	sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
+	if not sync_enabled:
+		frappe.logger("scheduler").info("Daily Maturity Tracker Sync: Sync is disabled in Drishti Settings. Skipping execution.")
+		return
+
+	yesterday = add_days(getdate(nowdate()), -1)
+	frappe.logger("scheduler").info(f"Daily Maturity Tracker Sync: Starting sync for {yesterday} at 07:40 AM.")
+	try:
+		msg = sync_maturity_tracker(sync_date=yesterday)
+		frappe.logger("scheduler").info(f"Daily Maturity Tracker Sync: {msg}")
+	except Exception as e:
+		frappe.log_error(f"Daily Maturity Tracker Sync Error for {yesterday}: {str(e)}", "Maturity Tracker Sync Error")
+
