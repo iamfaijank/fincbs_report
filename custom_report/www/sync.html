@@ -7,7 +7,6 @@
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@0.321.0/font/lucide.min.css" />
 
 	<style>
 		:root {
@@ -25,6 +24,7 @@
 			--tg-warning: #f59e0b;
 			--tg-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 			--tg-fab-shadow: 0 4px 14px rgba(36, 129, 204, 0.4);
+			--tg-selected: rgba(36, 129, 204, 0.1);
 		}
 
 		[data-theme="dark"] {
@@ -42,9 +42,12 @@
 			--tg-warning: #fbbf24;
 			--tg-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 			--tg-fab-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+			--tg-selected: rgba(82, 136, 193, 0.18);
 		}
 
 		* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+		*::-webkit-scrollbar { width: 0; height: 0; }
+		* { scrollbar-width: none; -ms-overflow-style: none; }
 		body {
 			font-family: 'Inter', system-ui, -apple-system, sans-serif;
 			background-color: var(--tg-bg-page);
@@ -196,51 +199,6 @@
 			color: var(--tg-primary);
 		}
 
-		/* Controls Subheader: Date Presets & Date Picker */
-		.tg-controls-bar {
-			background: var(--tg-bg-card);
-			padding: 0.5rem 0.85rem;
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			gap: 0.5rem;
-			border-bottom: 1px solid var(--tg-border);
-			flex-shrink: 0;
-		}
-		.tg-date-presets {
-			display: flex;
-			align-items: center;
-			gap: 0.25rem;
-			background: var(--tg-bg-subtle);
-			padding: 0.15rem;
-			border-radius: 0.5rem;
-		}
-		.tg-preset-btn {
-			padding: 0.25rem 0.6rem;
-			font-size: 0.7rem;
-			font-weight: 600;
-			border: none;
-			border-radius: 0.35rem;
-			background: transparent;
-			color: var(--tg-text-subtle);
-			cursor: pointer;
-		}
-		.tg-preset-btn.active {
-			background: var(--tg-bg-card);
-			color: var(--tg-text);
-			box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-		}
-		.tg-date-picker {
-			background: var(--tg-bg-subtle);
-			border: 1px solid var(--tg-border);
-			border-radius: 0.5rem;
-			padding: 0.25rem 0.5rem;
-			font-size: 0.72rem;
-			font-weight: 600;
-			color: var(--tg-text);
-			outline: none;
-		}
-
 		/* Telegram Expandable Search Input */
 		.tg-search-container {
 			background: var(--tg-bg-card);
@@ -288,6 +246,7 @@
 			overflow-y: auto;
 			background: var(--tg-bg-card);
 			-webkit-overflow-scrolling: touch;
+			padding-bottom: 5.5rem;
 		}
 
 		/* Telegram Chat Item Row */
@@ -302,6 +261,11 @@
 			position: relative;
 		}
 		.tg-chat-item:active { background: var(--tg-bg-subtle); }
+		.tg-chat-item.selected {
+			background: var(--tg-selected);
+			box-shadow: inset 3px 0 0 var(--tg-primary);
+		}
+		.tg-chat-item.selected .tg-chat-name { color: var(--tg-primary); }
 		.tg-chat-left {
 			display: flex;
 			align-items: center;
@@ -369,6 +333,24 @@
 		}
 		.tg-fab-btn:active { transform: scale(0.95); }
 		.tg-fab-btn:disabled { opacity: 0.5; pointer-events: none; }
+		.tg-fab-center {
+			left: 50%;
+			right: auto;
+			transform: translateX(-50%);
+			padding: 0.6rem 1.1rem;
+			font-size: 0.78rem;
+		}
+		.tg-fab-center:active { transform: translateX(-50%) scale(0.95); }
+		.fab-date-input {
+			position: absolute;
+			inset: 0;
+			width: 100%;
+			height: 100%;
+			opacity: 0;
+			cursor: pointer;
+			border: none;
+			padding: 0;
+		}
 
 		/* Telegram Glassmorphism Bottom Sheet Modal (User Memory Rule Enforced) */
 		.tg-modal-backdrop {
@@ -412,6 +394,72 @@
 			.tg-modal-backdrop { align-items: center; padding: 1rem; }
 			.tg-modal-sheet { border-radius: 1rem; transform: scale(0.95); }
 			.tg-modal-backdrop.open .tg-modal-sheet { transform: scale(1); }
+		}
+		.tg-detail-empty { display: none; }
+
+		/* Desktop: split view - list on left, details as main content */
+		@media (min-width: 900px) {
+			.tg-shell { display: flex; flex-direction: row; height: 100vh; }
+			.tg-app {
+				max-width: none;
+				flex: 0 0 420px;
+				height: 100vh;
+				margin: 0;
+				border-right: 1px solid var(--tg-border);
+				background: var(--tg-bg-card);
+			}
+			.tg-modal-backdrop {
+				position: static;
+				flex: 1;
+				min-width: 0;
+				background: var(--tg-bg-page);
+				opacity: 1;
+				pointer-events: auto;
+				align-items: stretch;
+				justify-content: center;
+				padding: 0;
+				backdrop-filter: none;
+				-webkit-backdrop-filter: none;
+				overflow-y: auto;
+			}
+			.tg-modal-backdrop.open { opacity: 1; pointer-events: auto; }
+			.tg-modal-backdrop .tg-modal-header,
+			.tg-modal-backdrop .tg-modal-body,
+			.tg-modal-backdrop .tg-modal-footer {
+				width: 100%;
+				max-width: 760px;
+				margin-left: auto;
+				margin-right: auto;
+			}
+			.tg-modal-sheet {
+				transform: none !important;
+				display: none;
+				width: 100%;
+				max-width: none;
+				margin: 0;
+				max-height: none;
+				height: 100vh;
+				border: none;
+				border-left: 1px solid var(--tg-border);
+				border-radius: 0;
+				box-shadow: none;
+				background: var(--tg-bg-card);
+			}
+			.tg-modal-backdrop.open .tg-modal-sheet { display: flex; }
+			.tg-modal-grabber { display: none; }
+			.tg-detail-empty {
+				display: flex;
+				flex: 1;
+				align-items: center;
+				justify-content: center;
+				padding: 2rem;
+			}
+			.tg-modal-footer { border-top: 1px solid var(--tg-border); }
+			.tg-fab-center {
+				left: 210px;
+				transform: translateX(-50%);
+			}
+			.tg-fab-center:active { transform: translateX(-50%) scale(0.95); }
 		}
 
 		/* Telegram Sheet Handle Grabber */
@@ -517,6 +565,8 @@
 </head>
 <body>
 
+	<div class="tg-shell">
+
 	<div class="tg-app">
 
 		<!-- Telegram Top Header -->
@@ -535,10 +585,10 @@
 					<span id="txtAutoSync">Auto Sync</span>
 				</button>
 				<button type="button" id="btnSearchToggle" class="tg-icon-btn" title="Search">
-					<i class="icon-lucide-search"></i>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em"><path d="m21 21-4.3-4.3"/><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"/></svg>
 				</button>
 				<button type="button" id="btnThemeToggle" class="tg-icon-btn" title="Theme">
-					<i class="icon-lucide-moon" id="iconTheme"></i>
+					<i id="iconTheme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></i>
 				</button>
 			</div>
 		</header>
@@ -559,24 +609,10 @@
 			</button>
 		</div>
 
-		<!-- Date & Refresh Controls Subheader -->
-		<div class="tg-controls-bar">
-			<div class="tg-date-presets">
-				<button type="button" class="tg-preset-btn" data-preset="yesterday">Yesterday</button>
-				<button type="button" class="tg-preset-btn" data-preset="today">Today</button>
-			</div>
-			<div style="display: flex; align-items: center; gap: 0.4rem;">
-				<input type="date" id="targetDate" class="tg-date-picker" aria-label="Select Date">
-				<button type="button" id="btnRefresh" class="tg-icon-btn" style="color: var(--tg-text-subtle); width: 1.8rem; height: 1.8rem;" title="Refresh">
-					<i class="icon-lucide-rotate-cw" id="iconRefresh" style="font-size: 0.9rem;"></i>
-				</button>
-			</div>
-		</div>
-
 		<!-- Expandable Search Input -->
 		<div class="tg-search-container" id="searchContainer">
 			<div style="position: relative;">
-				<i class="icon-lucide-search" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--tg-text-muted); font-size: 0.8rem;"></i>
+				<i style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--tg-text-muted); font-size: 0.8rem;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em"><path d="m21 21-4.3-4.3"/><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"/></svg></i>
 				<input type="text" id="searchInput" class="tg-search-input" placeholder="Search jobs by title, method or category..." aria-label="Search jobs">
 			</div>
 		</div>
@@ -608,25 +644,33 @@
 			</div>
 		</div>
 
-		<!-- Telegram Floating Action Button (FAB) -->
-		<button type="button" id="btnRunPending" class="tg-fab-btn">
-			<i class="icon-lucide-play" style="font-size: 0.9rem;"></i>
-			<span>Run Pending</span>
+		<!-- Floating Date Selector (Navigation Style) -->
+		<button type="button" class="tg-fab-btn tg-fab-center" title="Select Date">
+			<i style="font-size: 0.95rem;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></i>
+			<span id="fabDateText">-</span>
+			<input type="date" id="fabDate" class="fab-date-input" aria-label="Select Date">
 		</button>
 
 	</div>
 
 	<!-- Telegram Glassmorphism Modal Bottom Sheet (Enforces User Memory Rule) -->
 	<div class="tg-modal-backdrop" id="modalBackdrop">
+		<div class="tg-detail-empty" id="detailEmpty">
+			<div style="text-align: center; color: var(--tg-text-muted);">
+				<i style="font-size: 2rem;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></i>
+				<div style="margin-top: 0.75rem; font-weight: 700; color: var(--tg-text);">No automation selected</div>
+				<div style="font-size: 0.75rem; margin-top: 0.35rem; max-width: 260px;">Click any automation on the left to view its details</div>
+			</div>
+		</div>
 		<div class="tg-modal-sheet">
 			<div class="tg-modal-grabber"></div>
 			<div class="tg-modal-header">
 				<div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0;">
-					<i class="icon-lucide-activity" id="modalStatusIcon" style="font-size: 1.1rem;"></i>
+					<i id="modalStatusIcon" style="font-size: 1.1rem;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></i>
 					<h2 style="font-size: 0.9rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="modalTitle">Job Details</h2>
 				</div>
 				<button type="button" id="btnModalClose" class="tg-icon-btn" style="color: var(--tg-text-subtle);" aria-label="Close">
-					<i class="icon-lucide-x"></i>
+					<i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></i>
 				</button>
 			</div>
 			<div class="tg-modal-body">
@@ -672,15 +716,16 @@
 				</div>
 			</div>
 			<div class="tg-modal-footer">
-				<button type="button" class="tg-run-btn" style="padding: 0.5rem 1.25rem;" id="btnModalClose2">Close</button>
-				<button type="button" class="tg-fab-btn" style="position: static; padding: 0.5rem 1.25rem; font-size: 0.78rem;" id="btnModalRunNow">Run Now</button>
+				<button type="button" class="tg-run-btn" style="padding: 0.5rem 1.25rem; width: 100%;" id="btnModalClose2">Close</button>
 			</div>
 		</div>
 	</div>
 
+	</div>
+
 	<!-- Telegram Toast Alert -->
 	<div class="tg-toast" id="toast">
-		<i class="icon-lucide-check-circle" id="toastIcon"></i>
+		<i id="toastIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></i>
 		<span id="toastMsg">Notification</span>
 	</div>
 
@@ -708,14 +753,13 @@
 			const els = {
 				btnAutoSync: document.getElementById('btnAutoSync'),
 				txtAutoSync: document.getElementById('txtAutoSync'),
-				targetDate: document.getElementById('targetDate'),
+				fabDate: document.getElementById('fabDate'),
+				fabDateText: document.getElementById('fabDateText'),
 				btnThemeToggle: document.getElementById('btnThemeToggle'),
 				iconTheme: document.getElementById('iconTheme'),
 				btnSearchToggle: document.getElementById('btnSearchToggle'),
 				searchContainer: document.getElementById('searchContainer'),
 				searchInput: document.getElementById('searchInput'),
-				btnRefresh: document.getElementById('btnRefresh'),
-				iconRefresh: document.getElementById('iconRefresh'),
 				jobListContainer: document.getElementById('jobListContainer'),
 				statTotal: document.getElementById('statTotal'),
 				statSuccess: document.getElementById('statSuccess'),
@@ -725,11 +769,10 @@
 				cntSuccess: document.getElementById('cntSuccess'),
 				cntFailed: document.getElementById('cntFailed'),
 				cntPending: document.getElementById('cntPending'),
-				btnRunPending: document.getElementById('btnRunPending'),
 				modalBackdrop: document.getElementById('modalBackdrop'),
+				detailEmpty: document.getElementById('detailEmpty'),
 				btnModalClose: document.getElementById('btnModalClose'),
 				btnModalClose2: document.getElementById('btnModalClose2'),
-				btnModalRunNow: document.getElementById('btnModalRunNow'),
 				modalTitle: document.getElementById('modalTitle'),
 				modalStatusIcon: document.getElementById('modalStatusIcon'),
 				modalDate: document.getElementById('modalDate'),
@@ -748,8 +791,27 @@
 				toastIcon: document.getElementById('toastIcon')
 			};
 
+			const ICONS = {
+				search: '<path d="m21 21-4.3-4.3"/><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"/>',
+				moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+				sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+				'check-circle': '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>',
+				'check-circle-2': '<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Z"/><path d="m9 12 2 2 4-4"/>',
+				'alert-circle': '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>',
+				clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+				info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+				x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+				activity: '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
+				play: '<polygon points="6 3 20 12 6 21 6 3"/>'
+			};
+			function svgIcon(name) {
+				const paths = ICONS[name] || '';
+				return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em">${paths}</svg>`;
+			}
+			function setIcon(el, name) {
+				if (el) el.innerHTML = svgIcon(name);
+			}
 			function getYesterdayStr() { return new Date(Date.now() - 86400000).toISOString().split('T')[0]; }
-			function getTodayStr() { return new Date().toISOString().split('T')[0]; }
 			function formatDate(dStr) {
 				if (!dStr) return '';
 				const parts = dStr.split(' ')[0].split('-');
@@ -764,7 +826,7 @@
 			function showToast(msg, type = 'info') {
 				if (toastTimer) clearTimeout(toastTimer);
 				els.toastMsg.innerText = msg;
-				els.toastIcon.className = type === 'success' ? 'icon-lucide-check-circle' : type === 'error' ? 'icon-lucide-alert-circle' : 'icon-lucide-info';
+				setIcon(els.toastIcon, type === 'success' ? 'check-circle' : type === 'error' ? 'alert-circle' : 'info');
 				els.toast.classList.add('show');
 				toastTimer = setTimeout(() => els.toast.classList.remove('show'), 3000);
 			}
@@ -772,16 +834,15 @@
 			function applyTheme() {
 				if (state.isDark) {
 					document.documentElement.setAttribute('data-theme', 'dark');
-					els.iconTheme.className = 'icon-lucide-sun';
+					setIcon(els.iconTheme, 'sun');
 				} else {
 					document.documentElement.removeAttribute('data-theme');
-					els.iconTheme.className = 'icon-lucide-moon';
+					setIcon(els.iconTheme, 'moon');
 				}
 			}
 
 			async function fetchStatus() {
 				state.loading = true;
-				els.iconRefresh.classList.add('spin');
 				try {
 					const res = await fetch(`/api/method/custom_report.api.get_automation_sync_status?sync_date=${state.targetDate}`);
 					if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -796,7 +857,6 @@
 					showToast('Failed to load sync status', 'error');
 				} finally {
 					state.loading = false;
-					els.iconRefresh.classList.remove('spin');
 				}
 			}
 
@@ -844,24 +904,10 @@
 				}
 			}
 
-			async function runPending() {
-				const pending = state.jobs.filter(j => ['pending', 'failed'].includes((j.status || '').toLowerCase()));
-				if (pending.length === 0) {
-					showToast('No pending jobs to run', 'info');
-					return;
-				}
-				showToast(`Running ${pending.length} pending job(s)...`, 'info');
-				els.btnRunPending.disabled = true;
-				for (const job of pending) {
-					await runJob(job.key);
-				}
-				els.btnRunPending.disabled = false;
-				showToast('Pending jobs execution completed!', 'success');
-			}
-
 			function render() {
 				els.txtAutoSync.innerText = state.autoSyncEnabled ? 'Auto Sync On' : 'Auto Sync Off';
-				els.targetDate.value = state.targetDate;
+				els.fabDate.value = state.targetDate;
+				els.fabDateText.innerText = formatDate(state.targetDate);
 
 				const total = state.jobs.length;
 				const success = state.jobs.filter(j => (j.status || '').toLowerCase() === 'success').length;
@@ -902,14 +948,14 @@
 				els.jobListContainer.innerHTML = filtered.map(job => {
 					const st = (job.status || '').toLowerCase();
 					const isRunning = !!state.runningJobs[job.key];
-					const iconClass = st === 'success' ? 'icon-lucide-check-circle-2' : st === 'failed' ? 'icon-lucide-alert-circle' : 'icon-lucide-clock';
+					const iconName = st === 'success' ? 'check-circle-2' : st === 'failed' ? 'alert-circle' : 'clock';
 					const latestSub = (job.latest_date && job.records_synced === 0) ? ` • Last: ${formatDate(job.latest_date)} (${formatNum(job.latest_count)})` : '';
 
 					return `
-						<div class="tg-chat-item" data-key="${job.key}">
+						<div class="tg-chat-item${state.activeModalJob && state.activeModalJob.key === job.key ? ' selected' : ''}" data-key="${job.key}">
 							<div class="tg-chat-left">
 								<div class="tg-chat-avatar ${st}">
-									<i class="${iconClass}"></i>
+									${svgIcon(iconName)}
 								</div>
 								<div class="tg-chat-info">
 									<div class="tg-chat-top-line">
@@ -922,20 +968,31 @@
 									</div>
 								</div>
 							</div>
-							<button type="button" class="tg-run-btn" data-action="run" data-key="${job.key}" ${isRunning ? 'disabled' : ''}>
+							${st === 'success'
+							? `<span class="tg-run-btn" style="opacity: 0.55; cursor: default; color: var(--tg-success);">Synced</span>`
+							: `<button type="button" class="tg-run-btn" data-action="run" data-key="${job.key}" ${isRunning ? 'disabled' : ''}>
 								${isRunning ? '...' : 'Run'}
-							</button>
+							</button>`}
 						</div>
 					`;
 				}).join('');
+			}
+
+			function highlightSelected(key) {
+				document.querySelectorAll('.tg-chat-item.selected').forEach(el => el.classList.remove('selected'));
+				const sel = document.querySelector(`.tg-chat-item[data-key="${key}"]`);
+				if (sel) sel.classList.add('selected');
+			}
+			function clearSelected() {
+				document.querySelectorAll('.tg-chat-item.selected').forEach(el => el.classList.remove('selected'));
 			}
 
 			function openModal(job) {
 				state.activeModalJob = job;
 				const st = (job.status || '').toLowerCase();
 				els.modalTitle.innerText = job.title;
-				els.modalStatusIcon.className = st === 'success' ? 'icon-lucide-check-circle-2' : st === 'failed' ? 'icon-lucide-alert-circle' : 'icon-lucide-clock';
 				els.modalStatusIcon.style.color = st === 'success' ? 'var(--tg-success)' : st === 'failed' ? 'var(--tg-danger)' : 'var(--tg-warning)';
+				setIcon(els.modalStatusIcon, st === 'success' ? 'check-circle-2' : st === 'failed' ? 'alert-circle' : 'clock');
 				els.modalDate.innerText = formatDate(job.target_date);
 				els.modalStatus.innerText = job.status;
 				els.modalStatus.style.color = st === 'success' ? 'var(--tg-success)' : st === 'failed' ? 'var(--tg-danger)' : 'var(--tg-warning)';
@@ -959,15 +1016,20 @@
 				}
 
 				els.modalBackdrop.classList.add('open');
+				if (els.detailEmpty) els.detailEmpty.style.display = 'none';
+				highlightSelected(job.key);
 			}
 			function closeModal() {
 				els.modalBackdrop.classList.remove('open');
 				state.activeModalJob = null;
+				if (els.detailEmpty) els.detailEmpty.style.display = '';
+				clearSelected();
 			}
 
 			els.btnAutoSync.addEventListener('click', toggleAutoSync);
-			els.targetDate.addEventListener('change', (e) => {
+			els.fabDate.addEventListener('change', (e) => {
 				state.targetDate = e.target.value;
+				els.fabDateText.innerText = formatDate(state.targetDate);
 				fetchStatus();
 			});
 			els.btnThemeToggle.addEventListener('click', () => {
@@ -979,20 +1041,12 @@
 				els.searchContainer.classList.toggle('open');
 				if (els.searchContainer.classList.contains('open')) els.searchInput.focus();
 			});
-			els.btnRefresh.addEventListener('click', fetchStatus);
 			els.searchInput.addEventListener('input', (e) => {
 				state.searchQuery = e.target.value;
 				render();
 			});
 
-			document.querySelectorAll('.tg-preset-btn').forEach(btn => {
-				btn.addEventListener('click', () => {
-					document.querySelectorAll('.tg-preset-btn').forEach(b => b.classList.remove('active'));
-					btn.classList.add('active');
-					state.targetDate = btn.dataset.preset === 'today' ? getTodayStr() : getYesterdayStr();
-					fetchStatus();
-				});
-			});
+			
 
 			document.querySelectorAll('.tg-tab').forEach(tab => {
 				tab.addEventListener('click', () => {
@@ -1026,13 +1080,6 @@
 				if (e.key === 'Escape' && els.modalBackdrop.classList.contains('open')) closeModal();
 			});
 
-			els.btnModalRunNow.addEventListener('click', () => {
-				if (state.activeModalJob) {
-					runJob(state.activeModalJob.key);
-					closeModal();
-				}
-			});
-
 			els.btnCopyMethod.addEventListener('click', (e) => {
 				e.preventDefault();
 				if (state.activeModalJob && state.activeModalJob.method) {
@@ -1047,8 +1094,6 @@
 					showToast('Traceback copied to clipboard!', 'success');
 				}
 			});
-
-			els.btnRunPending.addEventListener('click', runPending);
 
 			applyTheme();
 			state.targetDate = getYesterdayStr();

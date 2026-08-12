@@ -1144,58 +1144,62 @@ def daily_sync_all_ss_vs_reports():
 	return sync_all_reports(sync_date=yesterday)
 
 
-def _sync_daily_t1_report(report_type: str):
+def _sync_daily_t1_report(report_type: str, sync_date=None):
 	"""
-	Helper method to calculate yesterday's date (T-1) and execute synchronization for the given report type.
+	Helper method to execute synchronization for the given report type.
+	When sync_date is None it behaves as the scheduled cron: it syncs yesterday's
+	(T-1) data and respects the auto-sync toggle in Drishti Settings.
+	Manual runs (sync_date provided) bypass the toggle and sync exactly that date.
 	"""
-	sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
-	if not sync_enabled:
-		frappe.logger("scheduler").info(f"SS & VS Daily Sync Cron ({report_type}): Sync is disabled in Drishti Settings. Skipping execution.")
-		return
+	if sync_date is None:
+		sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
+		if not sync_enabled:
+			frappe.logger("scheduler").info(f"SS & VS Daily Sync Cron ({report_type}): Sync is disabled in Drishti Settings. Skipping execution.")
+			return
+		sync_date = frappe.utils.add_days(frappe.utils.nowdate(), -1)
 
-	yesterday = frappe.utils.add_days(frappe.utils.nowdate(), -1)
-	engine = SSandVSSyncEngine(report_type, yesterday)
+	engine = SSandVSSyncEngine(report_type, sync_date)
 	return engine.execute()
 
 
-def sync_dd_sav_daily():
+def sync_dd_sav_daily(sync_date=None):
 	"""Cron scheduled at 07:00 AM IST daily - Syncs DD SAV report for T-1 (Yesterday) date."""
-	return _sync_daily_t1_report("DD SAV")
+	return _sync_daily_t1_report("DD SAV", sync_date)
 
 
-def sync_dd_tda_daily():
+def sync_dd_tda_daily(sync_date=None):
 	"""Cron scheduled at 07:05 AM IST daily - Syncs DD TDA report for T-1 (Yesterday) date."""
-	return _sync_daily_t1_report("DD TDA")
+	return _sync_daily_t1_report("DD TDA", sync_date)
 
 
-def sync_rd_daily():
+def sync_rd_daily(sync_date=None):
 	"""Cron scheduled at 07:10 AM IST daily - Syncs RD report for T-1 (Yesterday) date."""
-	return _sync_daily_t1_report("RD")
+	return _sync_daily_t1_report("RD", sync_date)
 
 
-def sync_smbg_daily():
+def sync_smbg_daily(sync_date=None):
 	"""Cron scheduled at 07:15 AM IST daily - Syncs SMBG report for T-1 (Yesterday) date."""
-	return _sync_daily_t1_report("SMBG")
+	return _sync_daily_t1_report("SMBG", sync_date)
 
 
-def sync_fd_1_daily():
+def sync_fd_1_daily(sync_date=None):
 	"""Cron scheduled at 07:20 AM IST daily - Syncs FD 1 report for T-1 (Yesterday) date."""
-	return _sync_daily_t1_report("FD 1")
+	return _sync_daily_t1_report("FD 1", sync_date)
 
 
-def sync_dam_daily():
+def sync_dam_daily(sync_date=None):
 	"""Cron scheduled at 07:25 AM IST daily - Syncs DAM report for T-1 (Yesterday) date."""
-	return _sync_daily_t1_report("DAM")
+	return _sync_daily_t1_report("DAM", sync_date)
 
 
-def sync_fd_daily():
+def sync_fd_daily(sync_date=None):
 	"""Cron scheduled at 07:30 AM IST daily - Syncs FD report for T-1 (Yesterday) date."""
-	return _sync_daily_t1_report("FD")
+	return _sync_daily_t1_report("FD", sync_date)
 
 
-def sync_share_daily():
+def sync_share_daily(sync_date=None):
 	"""Cron scheduled at 07:35 AM IST daily - Syncs SHARE report for T-1 (Yesterday) date."""
-	return _sync_daily_t1_report("SHARE")
+	return _sync_daily_t1_report("SHARE", sync_date)
 
 
 def execute_ss_vs_bulk_insert(fields: list, records: list, chunk_size: int = 5000) -> None:

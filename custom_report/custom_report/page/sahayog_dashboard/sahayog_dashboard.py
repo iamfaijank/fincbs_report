@@ -4991,60 +4991,88 @@ def clear_product_wise_report():
         return False
 
 
-def daily_tda_sync():
-    from frappe.utils import cint
-    sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
-    if not sync_enabled:
-        frappe.logger("scheduler").info("Daily TDA Sync: Sync is disabled in Drishti Settings. Skipping execution.")
-        return
+def daily_tda_sync(sync_date=None):
+    is_manual = sync_date is not None
+    if not is_manual:
+        from frappe.utils import cint
+        sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
+        if not sync_enabled:
+            frappe.logger("scheduler").info("Daily TDA Sync: Sync is disabled in Drishti Settings. Skipping execution.")
+            return
 
-    import datetime
-    yesterday = datetime.date.today() - datetime.timedelta(days=1)
-    date_str = yesterday.strftime("%Y-%m-%d")
-    
+        import datetime
+        sync_date = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    else:
+        sync_date = str(sync_date)
+
     try:
-        count = get_product_wise_tda(date_str)
-        subject = f"Daily TDA Sync Report - {date_str}"
-        message = f"Daily TDA Sync completed successfully for date {date_str}.<br>Total records synced: {count}"
+        count = get_product_wise_tda(sync_date)
+        if not is_manual:
+            subject = f"Daily TDA Sync Report - {sync_date}"
+            message = f"Daily TDA Sync completed successfully for date {sync_date}.<br>Total records synced: {count}"
     except Exception as e:
-        subject = f"Daily TDA Sync Failed - {date_str}"
-        message = f"Daily TDA Sync failed for date {date_str}.<br>Error: {str(e)}"
         frappe.log_error(message=frappe.get_traceback(), title="Daily TDA Sync Scheduler Failed")
-        
-    frappe.sendmail(
-        recipients=["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"],
-        subject=subject,
-        message=message,
-        delayed=False
-    )
+        if not is_manual:
+            subject = f"Daily TDA Sync Failed - {sync_date}"
+            message = f"Daily TDA Sync failed for date {sync_date}.<br>Error: {str(e)}"
+            frappe.sendmail(
+                recipients=["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"],
+                subject=subject,
+                message=message,
+                delayed=False
+            )
+        raise
+
+    if not is_manual:
+        frappe.sendmail(
+            recipients=["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"],
+            subject=subject,
+            message=message,
+            delayed=False
+        )
+    return count
 
 
-def daily_casa_sync():
-    from frappe.utils import cint
-    sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
-    if not sync_enabled:
-        frappe.logger("scheduler").info("Daily CASA Sync: Sync is disabled in Drishti Settings. Skipping execution.")
-        return
+def daily_casa_sync(sync_date=None):
+    is_manual = sync_date is not None
+    if not is_manual:
+        from frappe.utils import cint
+        sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
+        if not sync_enabled:
+            frappe.logger("scheduler").info("Daily CASA Sync: Sync is disabled in Drishti Settings. Skipping execution.")
+            return
 
-    import datetime
-    yesterday = datetime.date.today() - datetime.timedelta(days=1)
-    date_str = yesterday.strftime("%Y-%m-%d")
-    
+        import datetime
+        sync_date = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    else:
+        sync_date = str(sync_date)
+
     try:
-        count = get_product_wise_casa(date_str)
-        subject = f"Daily CASA Sync Report - {date_str}"
-        message = f"Daily CASA Sync completed successfully for date {date_str}.<br>Total records synced: {count}"
+        count = get_product_wise_casa(sync_date)
+        if not is_manual:
+            subject = f"Daily CASA Sync Report - {sync_date}"
+            message = f"Daily CASA Sync completed successfully for date {sync_date}.<br>Total records synced: {count}"
     except Exception as e:
-        subject = f"Daily CASA Sync Failed - {date_str}"
-        message = f"Daily CASA Sync failed for date {date_str}.<br>Error: {str(e)}"
         frappe.log_error(message=frappe.get_traceback(), title="Daily CASA Sync Scheduler Failed")
-        
-    frappe.sendmail(
-        recipients=["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"],
-        subject=subject,
-        message=message,
-        delayed=False
-    )
+        if not is_manual:
+            subject = f"Daily CASA Sync Failed - {sync_date}"
+            message = f"Daily CASA Sync failed for date {sync_date}.<br>Error: {str(e)}"
+            frappe.sendmail(
+                recipients=["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"],
+                subject=subject,
+                message=message,
+                delayed=False
+            )
+        raise
+
+    if not is_manual:
+        frappe.sendmail(
+            recipients=["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"],
+            subject=subject,
+            message=message,
+            delayed=False
+        )
+    return count
 
 @frappe.whitelist()
 def get_raw_demand_collection_data(selected_date=None):

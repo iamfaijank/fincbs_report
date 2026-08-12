@@ -121,25 +121,30 @@ def send_email_notification(status, sync_date, details_or_error=""):
 	except Exception as e:
 		frappe.log_error(f"Book Position Daily Sync Email Error: {e}", "Email Error")
 
-def daily_sync_book_position():
-	from frappe.utils import cint
-	sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
-	if not sync_enabled:
-		frappe.logger("scheduler").info("Daily Book Position Sync: Sync is disabled in Drishti Settings. Skipping execution.")
+def daily_sync_book_position(sync_date=None):
+	if sync_date is None:
+		from frappe.utils import cint
+		sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
+		if not sync_enabled:
+			frappe.logger("scheduler").info("Daily Book Position Sync: Sync is disabled in Drishti Settings. Skipping execution.")
+			return
+
+		# Sync data for yesterday (today - 1 day)
+		from frappe.utils import add_days, today
+		sync_date = add_days(today(), -1)
+		frappe.log_error("Starting Daily Book Position Sync for: " + sync_date, "Book Position Sync")
+		try:
+			sync_data(sync_date)
+			count = frappe.db.count("Book Position and Account Details", {"date": sync_date})
+			frappe.log_error("Successfully synced Book Position for: " + sync_date, "Book Position Sync")
+			send_email_notification("Success", sync_date, str(count))
+		except Exception as e:
+			frappe.log_error("Failed to sync Book Position: " + str(e), "Book Position Sync Error")
+			send_email_notification("Failed", sync_date, str(e))
 		return
 
-	# Sync data for yesterday (today - 1 day)
-	from frappe.utils import add_days, today
-	yesterday = add_days(today(), -1)
-	frappe.log_error("Starting Daily Book Position Sync for: " + yesterday, "Book Position Sync")
-	try:
-		sync_data(yesterday)
-		count = frappe.db.count("Book Position and Account Details", {"date": yesterday})
-		frappe.log_error("Successfully synced Book Position for: " + yesterday, "Book Position Sync")
-		send_email_notification("Success", yesterday, str(count))
-	except Exception as e:
-		frappe.log_error("Failed to sync Book Position: " + str(e), "Book Position Sync Error")
-		send_email_notification("Failed", yesterday, str(e))
+	sync_data(str(sync_date))
+	return frappe.db.count("Book Position and Account Details", {"date": str(sync_date)})
 
 @frappe.whitelist()
 def sync_data(sync_date):

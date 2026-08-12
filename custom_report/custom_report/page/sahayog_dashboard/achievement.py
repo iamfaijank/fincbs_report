@@ -726,32 +726,37 @@ def get_current_month_sync_status():
 
 
 
-def daily_sync_cron():
+def daily_sync_cron(sync_date=None):
     """
     Cron job triggered daily at 8:00 AM.
     Syncs the achievement data for yesterday if enabled in Drishti Settings.
+    When sync_date is provided (manual run) it syncs exactly that date and bypasses
+    the auto-sync toggle and email notifications.
     """
     from frappe.utils import getdate, today, add_days, cint
     
     # 1. Check if sync is enabled in Drishti Settings
-    sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
-    if not sync_enabled:
-        frappe.logger("scheduler").info("Daily Sync Cron: Sync is disabled in Drishti Settings. Skipping execution.")
+    if sync_date is None:
+        sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
+        if not sync_enabled:
+            frappe.logger("scheduler").info("Daily Sync Cron: Sync is disabled in Drishti Settings. Skipping execution.")
+            return
+
+        today_date = getdate(today())
+        sync_date = add_days(today_date, -1)
+        frappe.logger("scheduler").info(f"Daily Sync Cron: Triggering sync for {sync_date} at 8:00 AM.")
+
+        try:
+            saved_count = generate_and_save_branch_category_report(sync_date)
+            frappe.logger("scheduler").info(f"Daily Sync Cron: Successfully synced {saved_count} records for {sync_date}.")
+            send_sync_status_email(sync_date, "Success", "Sync completed successfully.", saved_count)
+        except Exception as e:
+            error_msg = frappe.get_traceback() or str(e)
+            frappe.logger("scheduler").error(f"Daily Sync Cron Error for {sync_date}: {e}")
+            send_sync_status_email(sync_date, "Failed", error_msg)
         return
-        
-    today_date = getdate(today())
-    yesterday = add_days(today_date, -1)
-    
-    frappe.logger("scheduler").info(f"Daily Sync Cron: Triggering sync for {yesterday} at 8:00 AM.")
-    
-    try:
-        saved_count = generate_and_save_branch_category_report(yesterday)
-        frappe.logger("scheduler").info(f"Daily Sync Cron: Successfully synced {saved_count} records for {yesterday}.")
-        send_sync_status_email(yesterday, "Success", "Sync completed successfully.", saved_count)
-    except Exception as e:
-        error_msg = frappe.get_traceback() or str(e)
-        frappe.logger("scheduler").error(f"Daily Sync Cron Error for {yesterday}: {e}")
-        send_sync_status_email(yesterday, "Failed", error_msg)
+
+    return generate_and_save_branch_category_report(sync_date)
 
 
 def send_sync_status_email(sync_date, status, details_or_error, saved_count=0):

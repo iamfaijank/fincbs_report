@@ -1920,6 +1920,8 @@ def get_automation_sync_status(sync_date=None):
 
 @frappe.whitelist(allow_guest=True)
 def trigger_manual_sync(job_key, sync_date=None):
+	import inspect
+
 	job = next((j for j in JOBS_REGISTRY if j["key"] == job_key), None)
 	if not job:
 		frappe.throw(_("Invalid job key specified."))
@@ -1931,7 +1933,17 @@ def trigger_manual_sync(job_key, sync_date=None):
 		mod = __import__(module_name, fromlist=[func_name])
 		fn = getattr(mod, func_name)
 
-		res = fn()
+		if sync_date:
+			params = inspect.signature(fn).parameters
+			kwargs = {}
+			if "sync_date" in params:
+				kwargs["sync_date"] = str(sync_date)
+			elif "date" in params:
+				kwargs["date"] = str(sync_date)
+			res = fn(**kwargs) if kwargs else fn()
+		else:
+			res = fn()
+
 		frappe.db.commit()
 		return {"status": "success", "message": f"Successfully executed {job['title']}.", "result": str(res)}
 	except Exception as e:

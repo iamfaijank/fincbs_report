@@ -221,25 +221,31 @@ def send_maturity_tracker_email_notification(status, sync_date, details_or_error
 		frappe.log_error(f"Maturity Tracker Email Error: {e}", "Email Error")
 
 
-def daily_sync_maturity_tracker():
+def daily_sync_maturity_tracker(sync_date=None):
 	"""
 	Cron job triggered daily at 07:40 AM IST.
 	Syncs Maturity Tracker data for yesterday if enabled in Drishti Settings.
+	When sync_date is provided (manual run) it syncs exactly that date and bypasses
+	the auto-sync toggle and email notifications.
 	"""
-	sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
-	if not sync_enabled:
-		frappe.logger("scheduler").info("Daily Maturity Tracker Sync: Sync is disabled in Drishti Settings. Skipping execution.")
+	if sync_date is None:
+		sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
+		if not sync_enabled:
+			frappe.logger("scheduler").info("Daily Maturity Tracker Sync: Sync is disabled in Drishti Settings. Skipping execution.")
+			return
+
+		sync_date = add_days(getdate(nowdate()), -1)
+		frappe.logger("scheduler").info(f"Daily Maturity Tracker Sync: Starting sync for {sync_date} at 07:40 AM.")
+		try:
+			msg = sync_maturity_tracker(sync_date=sync_date)
+			count = frappe.db.count("Maturity Tracker", {"date": str(sync_date)})
+			frappe.logger("scheduler").info(f"Daily Maturity Tracker Sync: {msg}")
+			send_maturity_tracker_email_notification("Success", str(sync_date), details_or_error=msg, record_count=count)
+		except Exception as e:
+			error_msg = str(e)
+			frappe.log_error(f"Daily Maturity Tracker Sync Error for {sync_date}: {error_msg}", "Maturity Tracker Sync Error")
+			send_maturity_tracker_email_notification("Failed", str(sync_date), details_or_error=error_msg)
 		return
 
-	yesterday = add_days(getdate(nowdate()), -1)
-	frappe.logger("scheduler").info(f"Daily Maturity Tracker Sync: Starting sync for {yesterday} at 07:40 AM.")
-	try:
-		msg = sync_maturity_tracker(sync_date=yesterday)
-		count = frappe.db.count("Maturity Tracker", {"date": str(yesterday)})
-		frappe.logger("scheduler").info(f"Daily Maturity Tracker Sync: {msg}")
-		send_maturity_tracker_email_notification("Success", str(yesterday), details_or_error=msg, record_count=count)
-	except Exception as e:
-		error_msg = str(e)
-		frappe.log_error(f"Daily Maturity Tracker Sync Error for {yesterday}: {error_msg}", "Maturity Tracker Sync Error")
-		send_maturity_tracker_email_notification("Failed", str(yesterday), details_or_error=error_msg)
+	return sync_maturity_tracker(sync_date=str(sync_date))
 
