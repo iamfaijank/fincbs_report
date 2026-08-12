@@ -58,6 +58,8 @@
 		.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 		.custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
 		[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; }
+		.no-scrollbar::-webkit-scrollbar { display: none; }
+		.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 	</style>
 
 	<script>
@@ -67,100 +69,107 @@
 </head>
 {% raw %}
 <body class="antialiased h-screen overflow-hidden text-gray-900 dark:text-gray-100 selection:bg-gray-200 dark:selection:bg-gray-800">
-	<div id="app" class="flex flex-col h-screen w-full max-w-5xl mx-auto px-4 sm:px-6 relative pb-20">
+	<div id="app" class="flex flex-col h-screen w-full max-w-5xl mx-auto px-3 sm:px-6 relative">
 
-		<!-- Minimal Page Header -->
-		<header class="py-5 border-b border-gray-100 dark:border-gray-800/60 flex items-center justify-between shrink-0">
-			<div class="flex items-center gap-3">
-				<div class="w-7 h-7 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-bold text-xs flex items-center justify-center shadow-xs">
-					ST
+		<!-- Mobile & Desktop Responsive Header -->
+		<header class="py-4 sm:py-5 border-b border-gray-100 dark:border-gray-800/60 shrink-0 space-y-3 sm:space-y-0">
+			<div class="flex items-center justify-between gap-2">
+				<!-- Brand Logo & Title -->
+				<div class="flex items-center gap-2.5 min-w-0">
+					<div class="w-7 h-7 rounded-lg bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
+						ST
+					</div>
+					<div class="min-w-0">
+						<h1 class="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 tracking-tight truncate">Automation Sync Tracker</h1>
+						<p class="text-[10px] sm:text-[11px] text-gray-400 font-medium truncate">Sahayog Bench</p>
+					</div>
 				</div>
-				<div>
-					<h1 class="text-xs font-bold text-gray-900 dark:text-gray-100 tracking-tight">Automation Sync Tracker</h1>
-					<p class="text-[11px] text-gray-400 font-medium">Sahayog Multi-State Bench</p>
+
+				<!-- Right Actions: Date Picker & Theme Toggle -->
+				<div class="flex items-center gap-2 shrink-0">
+					<input type="date" v-model="targetDate" @change="fetchStatus" class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg px-2 py-1 text-[11px] sm:text-xs text-gray-700 dark:text-gray-300 outline-none font-semibold cursor-pointer max-w-[130px] sm:max-w-none" />
+
+					<button @click="toggleTheme" class="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition rounded-lg border border-gray-200/50 dark:border-gray-800/50">
+						<i :class="isDark ? 'icon-lucide-sun' : 'icon-lucide-moon'" class="text-xs sm:text-sm"></i>
+					</button>
 				</div>
 			</div>
 
-			<div class="flex items-center gap-3">
-				<!-- Drishti Auto Sync Master Switch -->
-				<button @click="toggleAutoSync" class="flex items-center gap-2 px-2.5 py-1 rounded-full border text-xs transition" :class="autoSyncEnabled ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/60' : 'bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'">
+			<!-- Mobile Sub-Header: Auto Sync Toggle -->
+			<div class="flex items-center justify-between text-xs pt-1 sm:pt-0">
+				<button @click="toggleAutoSync" class="flex items-center gap-2 px-2.5 py-1 rounded-full border text-[11px] transition" :class="autoSyncEnabled ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/60' : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'">
 					<span class="w-1.5 h-1.5 rounded-full" :class="autoSyncEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'"></span>
-					<span class="font-semibold text-[11px]">{{ autoSyncEnabled ? 'Auto Sync Active' : 'Auto Sync Off' }}</span>
+					<span class="font-semibold text-[10px] sm:text-[11px] whitespace-nowrap">{{ autoSyncEnabled ? 'Auto Sync Active' : 'Auto Sync Off' }}</span>
 				</button>
 
-				<!-- Target Date -->
-				<input type="date" v-model="targetDate" @change="fetchStatus" class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg px-2.5 py-1 text-xs text-gray-700 dark:text-gray-300 outline-none font-semibold cursor-pointer" />
-
-				<!-- Theme Toggle -->
-				<button @click="toggleTheme" class="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition">
-					<i :class="isDark ? 'icon-lucide-sun' : 'icon-lucide-moon'" class="text-sm"></i>
+				<button @click="fetchStatus" :disabled="loading" class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition flex items-center gap-1">
+					<i class="icon-lucide-rotate-cw text-[10px]" :class="{ 'animate-spin': loading }"></i>
+					<span>Refresh</span>
 				</button>
 			</div>
 		</header>
 
 		<!-- Main Workspace Area -->
-		<main class="flex-1 overflow-y-auto py-5 space-y-5 custom-scrollbar">
+		<main class="flex-1 overflow-y-auto py-4 space-y-4 custom-scrollbar pb-28">
 
-			<!-- Minimal Stats Strip (Dynamic Computed Values) -->
-			<div class="grid grid-cols-4 gap-3 p-4 rounded-xl bg-gray-50/60 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800/80">
-				<div>
+			<!-- Mobile Responsive Stats Grid (2 cols on Mobile, 4 cols on Desktop) -->
+			<div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 p-3 sm:p-4 rounded-xl bg-gray-50/60 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800/80">
+				<div class="p-1">
 					<span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">TOTAL JOBS</span>
-					<span class="text-lg font-black text-gray-900 dark:text-gray-100">{{ summary.total_jobs }}</span>
+					<span class="text-base sm:text-lg font-black text-gray-900 dark:text-gray-100">{{ summary.total_jobs }}</span>
 				</div>
-				<div>
+				<div class="p-1">
 					<span class="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">SUCCESS</span>
-					<span class="text-lg font-black text-emerald-600 dark:text-emerald-400">{{ summary.success_count }}</span>
+					<span class="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400">{{ summary.success_count }}</span>
 				</div>
-				<div>
+				<div class="p-1">
 					<span class="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 block">FAILED</span>
-					<span class="text-lg font-black text-rose-600 dark:text-rose-400">{{ summary.failed_count }}</span>
+					<span class="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400">{{ summary.failed_count }}</span>
 				</div>
-				<div>
+				<div class="p-1">
 					<span class="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 block">PENDING</span>
-					<span class="text-lg font-black text-amber-600 dark:text-amber-400">{{ summary.pending_count }}</span>
+					<span class="text-base sm:text-lg font-black text-amber-600 dark:text-amber-400">{{ summary.pending_count }}</span>
 				</div>
 			</div>
 
-			<!-- Filter Search Bar -->
-			<div class="flex items-center justify-between gap-4 pt-1">
-				<div class="relative flex-1 max-w-xs">
-					<i class="icon-lucide-search absolute left-2.5 top-2 text-xs text-gray-400"></i>
-					<input type="text" v-model="searchQuery" placeholder="Filter automations by name..." class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg pl-8 pr-3 py-1 text-xs text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-none focus:border-gray-900 dark:focus:border-gray-100 transition" />
-				</div>
-
-				<button @click="fetchStatus" :disabled="loading" class="px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-800 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition flex items-center gap-1.5">
-					<i class="icon-lucide-rotate-cw text-xs" :class="{ 'animate-spin': loading }"></i>
-					<span>Refresh Status</span>
-				</button>
+			<!-- Search Filter Input -->
+			<div class="relative">
+				<i class="icon-lucide-search absolute left-3 top-2.5 text-xs text-gray-400"></i>
+				<input type="text" v-model="searchQuery" placeholder="Search automations..." class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-none focus:border-gray-900 dark:focus:border-gray-100 transition" />
 			</div>
 
-			<!-- Linear Job List (Displays all 15 jobs) -->
-			<div class="divide-y divide-gray-100 dark:divide-gray-800/60 border-t border-b border-gray-100 dark:border-gray-800/60">
-				<div v-for="job in filteredJobs" :key="job.key" @click="openModal(job)" class="py-3 px-2 flex items-center justify-between gap-4 hover:bg-gray-50/70 dark:hover:bg-gray-900/50 transition cursor-pointer group">
+			<!-- Fully Responsive Mobile & Desktop Job Cards List -->
+			<div class="space-y-2 divide-y divide-gray-100 dark:divide-gray-800/60 border-t border-b border-gray-100 dark:border-gray-800/60 pt-2">
+				<div v-for="job in filteredJobs" :key="job.key" @click="openModal(job)" class="pt-3 pb-2 px-1 hover:bg-gray-50/70 dark:hover:bg-gray-900/50 transition cursor-pointer group space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-4">
 					
-					<!-- Left: Status dot + Title -->
-					<div class="flex items-center gap-3 min-w-0 flex-1">
-						<span class="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" :class="getStatusDotClass(job.status)"></span>
-
-						<div class="min-w-0 flex-1">
-							<div class="flex items-center gap-2">
-								<h3 class="text-xs font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition truncate">{{ job.title }}</h3>
-								<span class="text-[10px] text-gray-400 font-normal shrink-0">• {{ job.category }}</span>
+					<!-- Top/Left: Status Dot + Job Title + Run Button (Mobile Optimized) -->
+					<div class="flex items-center justify-between gap-3 min-w-0 flex-1">
+						<div class="flex items-center gap-2.5 min-w-0 flex-1">
+							<span class="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" :class="getStatusDotClass(job.status)"></span>
+							<div class="min-w-0 flex-1">
+								<h3 class="text-xs font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition truncate leading-snug">{{ job.title }}</h3>
+								<p class="text-[10px] text-gray-400 font-mono truncate hidden sm:block mt-0.5">{{ job.method }}</p>
 							</div>
-							<p class="text-[11px] text-gray-400 truncate font-mono mt-0.5">{{ job.method }}</p>
 						</div>
+
+						<!-- Run Button (Visible on far right on Mobile & Desktop) -->
+						<button @click.stop="runJob(job)" :disabled="runningJobs[job.key]" class="px-2.5 py-1 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-[11px] font-bold text-gray-800 dark:text-gray-200 transition shrink-0 disabled:opacity-50 sm:hidden">
+							{{ runningJobs[job.key] ? '...' : 'Run' }}
+						</button>
 					</div>
 
-					<!-- Center: Schedule & Count -->
-					<div class="flex items-center gap-6 text-xs text-gray-400 shrink-0">
-						<span class="font-mono text-[11px] font-medium text-gray-500 dark:text-gray-400">{{ job.schedule_time }}</span>
-						<span class="text-gray-700 dark:text-gray-300 font-semibold text-[11px]">{{ job.records_synced }} recs</span>
-						<span class="text-[11px] font-bold" :class="getStatusTextColor(job.status)">{{ job.status }}</span>
-					</div>
+					<!-- Bottom/Center Details: Category, Schedule Time, Records Count, Status -->
+					<div class="flex items-center justify-between sm:justify-end gap-3 text-[11px] text-gray-500 dark:text-gray-400 pt-1 sm:pt-0 border-t border-gray-100/60 dark:border-gray-800/40 sm:border-0">
+						<span class="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded font-medium truncate max-w-[120px]">{{ job.category }}</span>
+						
+						<div class="flex items-center gap-3 shrink-0">
+							<span class="font-mono text-gray-400 text-[10px] sm:text-[11px]">{{ job.schedule_time }}</span>
+							<span class="font-bold text-gray-700 dark:text-gray-300 text-[10px] sm:text-[11px]">{{ job.records_synced }} recs</span>
+							<span class="font-bold text-[10px] sm:text-[11px]" :class="getStatusTextColor(job.status)">{{ job.status }}</span>
+						</div>
 
-					<!-- Right: Action Button -->
-					<div class="flex items-center gap-2 shrink-0" @click.stop>
-						<button @click="runJob(job)" :disabled="runningJobs[job.key]" class="px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-[11px] font-bold text-gray-800 dark:text-gray-200 transition disabled:opacity-50">
+						<!-- Run Button (Desktop only) -->
+						<button @click.stop="runJob(job)" :disabled="runningJobs[job.key]" class="hidden sm:inline-block px-3 py-1 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-[11px] font-bold text-gray-800 dark:text-gray-200 transition shrink-0 disabled:opacity-50">
 							{{ runningJobs[job.key] ? 'Running...' : 'Run' }}
 						</button>
 					</div>
@@ -174,70 +183,72 @@
 
 		</main>
 
-		<!-- Floating Minimalist Bottom Navigation Dock -->
-		<div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 p-1.5 rounded-2xl bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border border-gray-200 dark:border-gray-800 shadow-2xl">
+		<!-- 100% Mobile & Desktop Responsive Floating Bottom Navigation Dock -->
+		<div class="fixed bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 z-40 max-w-[calc(100vw-1.25rem)] w-auto flex items-center justify-between gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-2xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200 dark:border-gray-800 shadow-2xl overflow-x-auto no-scrollbar">
 			<!-- Status Filter Pills -->
-			<button v-for="tab in statusTabs" :key="tab.id" @click="selectedTab = tab.id" :class="selectedTab === tab.id ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'" class="px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1.5">
-				<span>{{ tab.label }}</span>
-				<span class="text-[10px] px-1.5 py-0.2 rounded-full font-bold" :class="selectedTab === tab.id ? 'bg-gray-800 text-gray-200 dark:bg-gray-200 dark:text-gray-800' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'">{{ getTabCount(tab.id) }}</span>
-			</button>
+			<div class="flex items-center gap-1 shrink-0">
+				<button v-for="tab in statusTabs" :key="tab.id" @click="selectedTab = tab.id" :class="selectedTab === tab.id ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'" class="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs transition flex items-center gap-1 text-nowrap">
+					<span>{{ tab.label }}</span>
+					<span class="text-[9px] sm:text-[10px] px-1 py-0.2 rounded-full font-bold" :class="selectedTab === tab.id ? 'bg-gray-800 text-gray-200 dark:bg-gray-200 dark:text-gray-800' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'">{{ getTabCount(tab.id) }}</span>
+				</button>
+			</div>
 
-			<div class="w-px h-4 bg-gray-200 dark:bg-gray-800 mx-1"></div>
+			<div class="w-px h-4 bg-gray-200 dark:bg-gray-800 shrink-0 mx-0.5"></div>
 
 			<!-- Quick Run Pending Action -->
-			<button @click="triggerAllPending" :disabled="syncingAll" class="px-3.5 py-1.5 rounded-xl bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 text-xs font-bold flex items-center gap-1.5 shadow-xs transition disabled:opacity-50">
-				<i class="icon-lucide-play text-[10px]" :class="{ 'animate-spin': syncingAll }"></i>
+			<button @click="triggerAllPending" :disabled="syncingAll" class="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 text-[11px] sm:text-xs font-bold flex items-center gap-1 shadow-xs transition disabled:opacity-50 shrink-0 whitespace-nowrap">
+				<i class="icon-lucide-play text-[9px] sm:text-[10px]" :class="{ 'animate-spin': syncingAll }"></i>
 				<span>Run Pending</span>
 			</button>
 		</div>
 
 		<!-- Glassmorphism Popup Modal (Enforces User Memory Rule) -->
-		<div v-if="activeJobModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 frappe-modal-backdrop" @click.self="activeJobModal = null">
-			<div class="bg-white dark:bg-gray-900 w-full max-w-lg rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col max-h-[80vh] animate-in fade-in zoom-in-95 duration-150">
+		<div v-if="activeJobModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 frappe-modal-backdrop" @click.self="activeJobModal = null">
+			<div class="bg-white dark:bg-gray-900 w-full max-w-lg rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150">
 				
 				<!-- Modal Header -->
 				<div class="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
-					<div class="flex items-center gap-2.5">
-						<span class="w-2.5 h-2.5 rounded-full" :class="getStatusDotClass(activeJobModal.status)"></span>
-						<h2 class="text-xs font-semibold text-gray-900 dark:text-gray-100">{{ activeJobModal.title }}</h2>
+					<div class="flex items-center gap-2.5 min-w-0">
+						<span class="w-2.5 h-2.5 rounded-full shrink-0" :class="getStatusDotClass(activeJobModal.status)"></span>
+						<h2 class="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{{ activeJobModal.title }}</h2>
 					</div>
-					<button @click="activeJobModal = null" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition">
+					<button @click="activeJobModal = null" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition p-1">
 						<i class="icon-lucide-x text-sm"></i>
 					</button>
 				</div>
 
 				<!-- Modal Body -->
-				<div class="p-5 overflow-y-auto space-y-4 text-xs custom-scrollbar flex-1">
-					<div class="grid grid-cols-3 gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+				<div class="p-4 sm:p-5 overflow-y-auto space-y-4 text-xs custom-scrollbar flex-1">
+					<div class="grid grid-cols-3 gap-2.5 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
 						<div>
 							<span class="text-gray-400 block text-[10px]">Date</span>
-							<span class="font-mono font-medium">{{ activeJobModal.target_date }}</span>
+							<span class="font-mono font-bold text-[11px]">{{ activeJobModal.target_date }}</span>
 						</div>
 						<div>
 							<span class="text-gray-400 block text-[10px]">Status</span>
-							<span class="font-medium" :class="getStatusTextColor(activeJobModal.status)">{{ activeJobModal.status }}</span>
+							<span class="font-bold text-[11px]" :class="getStatusTextColor(activeJobModal.status)">{{ activeJobModal.status }}</span>
 						</div>
 						<div>
 							<span class="text-gray-400 block text-[10px]">Records</span>
-							<span class="font-mono font-medium">{{ activeJobModal.records_synced }}</span>
+							<span class="font-mono font-bold text-[11px]">{{ activeJobModal.records_synced }}</span>
 						</div>
 					</div>
 
 					<div>
-						<span class="text-gray-400 block mb-1 text-[10px] uppercase font-semibold">Python Hook</span>
-						<div class="p-2.5 rounded bg-gray-50 dark:bg-gray-800 font-mono text-[11px] text-gray-700 dark:text-gray-300 break-all select-all">
+						<span class="text-gray-400 block mb-1 text-[10px] uppercase font-bold">Python Hook</span>
+						<div class="p-2.5 rounded bg-gray-50 dark:bg-gray-800 font-mono text-[10px] sm:text-[11px] text-gray-700 dark:text-gray-300 break-all select-all">
 							{{ activeJobModal.method }}
 						</div>
 					</div>
 
 					<div v-if="activeJobModal.error_message">
-						<span class="text-rose-500 block mb-1 text-[10px] uppercase font-semibold">Log / Traceback</span>
-						<div class="p-3 rounded bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 font-mono text-[11px] overflow-x-auto max-h-40 whitespace-pre-wrap select-all">
+						<span class="text-rose-500 block mb-1 text-[10px] uppercase font-bold">Log / Traceback</span>
+						<div class="p-3 rounded bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 font-mono text-[10px] sm:text-[11px] overflow-x-auto max-h-40 whitespace-pre-wrap select-all">
 							{{ activeJobModal.error_message }}
 						</div>
 					</div>
 					<div v-else class="text-gray-400 text-xs">
-						No errors logged.
+						No errors logged for this execution.
 					</div>
 				</div>
 
@@ -246,8 +257,8 @@
 					<button @click="activeJobModal = null" class="px-3 py-1 rounded text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
 						Close
 					</button>
-					<button @click="runJob(activeJobModal)" :disabled="runningJobs[activeJobModal.key]" class="px-3 py-1 rounded bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 text-xs font-semibold transition disabled:opacity-50">
-						{{ runningJobs[activeJobModal.key] ? 'Running...' : 'Run Now' }}
+					<button @click="runJob(activeJobModal)" :disabled="runningJobs[activeJobModal.key]" class="px-3 py-1 rounded bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 text-xs font-bold transition disabled:opacity-50">
+						{{ runningJobs[activeJobModal.key] ? 'Executing...' : 'Run Now' }}
 					</button>
 				</div>
 
@@ -270,7 +281,6 @@
 				const targetDate = ref(initialData.sync_date || new Date(Date.now() - 86400000).toISOString().split('T')[0]);
 				const jobs = ref(initialData.jobs || []);
 
-				// Dynamic Computed Summary Stats
 				const summary = computed(() => {
 					const total = jobs.value.length;
 					const success = jobs.value.filter(j => j.status === 'Success').length;
