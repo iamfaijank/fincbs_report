@@ -731,10 +731,10 @@ def daily_sync_cron():
     Cron job triggered daily at 8:00 AM.
     Syncs the achievement data for yesterday if enabled in Drishti Settings.
     """
-    from frappe.utils import getdate, today, add_days
+    from frappe.utils import getdate, today, add_days, cint
     
     # 1. Check if sync is enabled in Drishti Settings
-    sync_enabled = frappe.db.get_single_value("Drishti Settings", "auto_sync")
+    sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
     if not sync_enabled:
         frappe.logger("scheduler").info("Daily Sync Cron: Sync is disabled in Drishti Settings. Skipping execution.")
         return

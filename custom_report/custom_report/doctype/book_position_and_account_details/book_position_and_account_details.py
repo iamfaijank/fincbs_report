@@ -122,7 +122,8 @@ def send_email_notification(status, sync_date, details_or_error=""):
 		frappe.log_error(f"Book Position Daily Sync Email Error: {e}", "Email Error")
 
 def daily_sync_book_position():
-	sync_enabled = frappe.db.get_single_value("Drishti Settings", "auto_sync")
+	from frappe.utils import cint
+	sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
 	if not sync_enabled:
 		frappe.logger("scheduler").info("Daily Book Position Sync: Sync is disabled in Drishti Settings. Skipping execution.")
 		return

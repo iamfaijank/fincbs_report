@@ -6,7 +6,7 @@ import frappe
 import psycopg2
 import psycopg2.extras
 from custom_report.db_connection import get_dr_connection
-from frappe.utils import get_first_day
+from frappe.utils import get_first_day, cint
 from frappe import _
 
 # Configurations for the 8 commission reports.
@@ -1135,6 +1135,11 @@ def daily_sync_all_ss_vs_reports():
 	"""
 	Scheduled cron function to directly sync all SS & VS reports for yesterday.
 	"""
+	sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
+	if not sync_enabled:
+		frappe.logger("scheduler").info("SS & VS Daily Sync All Cron: Sync is disabled in Drishti Settings. Skipping execution.")
+		return
+
 	yesterday = frappe.utils.add_days(frappe.utils.nowdate(), -1)
 	return sync_all_reports(sync_date=yesterday)
 
@@ -1143,7 +1148,7 @@ def _sync_daily_t1_report(report_type: str):
 	"""
 	Helper method to calculate yesterday's date (T-1) and execute synchronization for the given report type.
 	"""
-	sync_enabled = frappe.db.get_single_value("Drishti Settings", "auto_sync")
+	sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
 	if not sync_enabled:
 		frappe.logger("scheduler").info(f"SS & VS Daily Sync Cron ({report_type}): Sync is disabled in Drishti Settings. Skipping execution.")
 		return
@@ -1423,6 +1428,11 @@ def cleanup_ss_vs_old_monthly_records():
 	   ONLY if yesterday's data is verified present, deletes prior daily dates (< yesterday) for current month.
 	2. For PAST completed months: Retains ONLY the max (last) date for each past month and deletes prior dates.
 	"""
+	sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
+	if not sync_enabled:
+		frappe.logger("scheduler").info("SS & VS Monthly Cleanup Cron: Sync is disabled in Drishti Settings. Skipping execution.")
+		return
+
 	try:
 		# Increase lock wait timeout for this session
 		try:
