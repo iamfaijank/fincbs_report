@@ -11,6 +11,7 @@ import json
 import gzip
 from datetime import datetime
 from urllib.parse import quote
+from frappe.utils import getdate, nowdate, add_days, cint
 from custom_report.db_utils import get_pg_connection
 
 
@@ -1626,3 +1627,151 @@ def _print_sql_debug(sql_query, params, filter_applied, is_branch_user):
     
     print(f"{Colors.BRIGHT_MAGENTA}{border}{Colors.RESET}\n")
     _log_process(f"{border}\n")
+
+
+JOBS_REGISTRY = [
+	{
+		"key": "daily_sync_maturity_tracker",
+		"title": "Maturity Tracker Sync",
+		"category": "Financial Trackers",
+		"schedule_time": "07:40 AM",
+		"method": "custom_report.custom_report.doctype.maturity_tracker.maturity_tracker.daily_sync_maturity_tracker",
+		"doctype": "Maturity Tracker",
+		"filters": {},
+		"error_title": "daily_sync_maturity_tracker"
+	}
+]
+
+
+@frappe.whitelist(allow_guest=True)
+def get_automation_sync_status(sync_date=None):
+	if not sync_date:
+		sync_date = str(add_days(getdate(nowdate()), -1))
+
+	target_date = str(getdate(sync_date))
+	auto_sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
+
+	result_jobs = []
+	success_count = 0
+	failed_count = 0
+	pending_count = 0
+
+	for job in JOBS_REGISTRY:
+		job_info = {
+			"key": job["key"],
+			"title": job["title"],
+			"category": job["category"],
+			"schedule_time": job["schedule_time"],
+			"method": job["method"],
+			"target_date": target_date,
+			"records_synced": 0,
+			"latest_date": None,
+			"latest_count": 0,
+			"status": "Pending",
+			"error_message": "",
+			"last_execution": None
+		}
+
+		rec_count = 0
+		if job["doctype"]:
+			try:
+				f = dict(job["filters"])
+				f["date"] = target_date
+				rec_count = frappe.db.count(job["doctype"], f)
+			except Exception:
+				rec_count = 0
+		job_info["records_synced"] = rec_count
+
+		# Latest synced date in DB for this job
+		if job["doctype"]:
+			try:
+				filters_sql = []
+				vals = []
+				for k, v in job["filters"].items():
+					filters_sql.append(f"`{k}` = %s")
+					vals.append(v)
+				where_clause = ("WHERE " + " AND ".join(filters_sql)) if filters_sql else ""
+				
+				latest_res = frappe.db.sql(f"""
+					SELECT date, COUNT(*) as cnt
+					FROM `tab{job['doctype']}`
+					{where_clause}
+					GROUP BY date
+					ORDER BY date DESC LIMIT 1
+				""", tuple(vals), as_dict=True)
+				if latest_res:
+					job_info["latest_date"] = str(latest_res[0].date)
+					job_info["latest_count"] = latest_res[0].cnt
+			except Exception:
+				pass
+
+		error_logs = frappe.db.sql("""
+			SELECT name, method, error, creation
+			FROM `tabError Log`
+			WHERE DATE(creation) = %s
+			  AND (method LIKE %s OR method LIKE %s OR error LIKE %s)
+			ORDER BY creation DESC LIMIT 1
+		""", (target_date, f"%{job['method']}%", f"%{job['error_title']}%", f"%{job['error_title']}%"), as_dict=True)
+
+		if error_logs:
+			job_info["status"] = "Failed"
+			job_info["error_message"] = error_logs[0].error or "Execution error logged."
+			job_info["last_execution"] = str(error_logs[0].creation)
+			failed_count += 1
+		elif rec_count > 0 or job["doctype"] is None:
+			job_info["status"] = "Success"
+			success_count += 1
+		else:
+			job_info["status"] = "Pending"
+			job_info["error_message"] = f"No synced records found for date {target_date}"
+			pending_count += 1
+
+		result_jobs.append(job_info)
+
+	total_jobs = len(JOBS_REGISTRY)
+	success_rate = round((success_count / total_jobs * 100), 1) if total_jobs > 0 else 0.0
+
+	return {
+		"sync_date": target_date,
+		"auto_sync_enabled": bool(auto_sync_enabled),
+		"summary": {
+			"total_jobs": total_jobs,
+			"success_count": success_count,
+			"failed_count": failed_count,
+			"disabled_count": 0,
+			"pending_count": pending_count,
+			"success_rate": success_rate
+		},
+		"jobs": result_jobs
+	}
+
+
+@frappe.whitelist(allow_guest=True)
+def trigger_manual_sync(job_key, sync_date=None):
+	job = next((j for j in JOBS_REGISTRY if j["key"] == job_key), None)
+	if not job:
+		frappe.throw(_("Invalid job key specified."))
+
+	method_path = job["method"]
+	module_name, func_name = method_path.rsplit(".", 1)
+
+	try:
+		mod = __import__(module_name, fromlist=[func_name])
+		fn = getattr(mod, func_name)
+
+		res = fn()
+		frappe.db.commit()
+		return {"status": "success", "message": f"Successfully executed {job['title']}.", "result": str(res)}
+	except Exception as e:
+		frappe.db.rollback()
+		frappe.log_error(f"Manual Sync Execution Error for {job['title']}: {str(e)}", f"{job['title']} Manual Error")
+		return {"status": "error", "message": f"Error executing {job['title']}: {str(e)}"}
+
+
+@frappe.whitelist(allow_guest=True)
+def toggle_drishti_auto_sync(enabled):
+	val = 1 if cint(enabled) else 0
+	frappe.db.set_single_value("Drishti Settings", "auto_sync", val)
+	frappe.db.commit()
+	return {"status": "success", "auto_sync_enabled": bool(val)}
+

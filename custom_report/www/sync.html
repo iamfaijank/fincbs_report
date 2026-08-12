@@ -420,7 +420,7 @@
 				const fetchStatus = async () => {
 					loading.value = true;
 					try {
-						const res = await fetch(`/api/method/custom_report.www.sync.get_automation_sync_status?sync_date=${targetDate.value}`);
+						const res = await fetch(`/api/method/custom_report.api.get_automation_sync_status?sync_date=${targetDate.value}`);
 						const data = await res.json();
 						if (data.message) {
 							jobs.value = data.message.jobs || [];
@@ -440,7 +440,7 @@
 				const toggleAutoSync = async () => {
 					const newVal = !autoSyncEnabled.value;
 					try {
-						const res = await fetch(`/api/method/custom_report.www.sync.toggle_drishti_auto_sync`, {
+						const res = await fetch(`/api/method/custom_report.api.toggle_drishti_auto_sync`, {
 							method: 'POST',
 							headers: { 'Content-Type': 'application/json', 'X-Frappe-CSRF-Token': window.csrf_token || '' },
 							body: JSON.stringify({ enabled: newVal })
@@ -458,7 +458,7 @@
 				const runJob = async (job) => {
 					runningJobs.value[job.key] = true;
 					try {
-						const res = await fetch(`/api/method/custom_report.www.sync.trigger_manual_sync`, {
+						const res = await fetch(`/api/method/custom_report.api.trigger_manual_sync`, {
 							method: 'POST',
 							headers: { 'Content-Type': 'application/json', 'X-Frappe-CSRF-Token': window.csrf_token || '' },
 							body: JSON.stringify({ job_key: job.key, sync_date: targetDate.value })
