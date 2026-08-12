@@ -266,8 +266,7 @@
 					{ id: 'all', label: 'All' },
 					{ id: 'Success', label: 'Success' },
 					{ id: 'Failed', label: 'Failed' },
-					{ id: 'Pending', label: 'Pending' },
-					{ id: 'Disabled', label: 'Disabled' }
+					{ id: 'Pending', label: 'Pending' }
 				];
 
 				const toggleTheme = () => {
@@ -365,14 +364,12 @@
 				const getStatusDotClass = (status) => {
 					if (status === 'Success') return 'bg-emerald-500';
 					if (status === 'Failed') return 'bg-rose-500';
-					if (status === 'Disabled') return 'bg-gray-300 dark:bg-gray-600';
 					return 'bg-amber-500';
 				};
 
 				const getStatusTextColor = (status) => {
 					if (status === 'Success') return 'text-emerald-600 dark:text-emerald-400';
 					if (status === 'Failed') return 'text-rose-600 dark:text-rose-400';
-					if (status === 'Disabled') return 'text-gray-400';
 					return 'text-amber-600 dark:text-amber-400';
 				};
 

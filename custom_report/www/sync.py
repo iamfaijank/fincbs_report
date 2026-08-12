@@ -2,7 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import getdate, nowdate, add_days, cint, now_datetime
+from frappe.utils import getdate, nowdate, add_days, cint
 from frappe import _
 
 no_cache = 1
@@ -180,7 +180,6 @@ def get_automation_sync_status(sync_date=None):
 	result_jobs = []
 	success_count = 0
 	failed_count = 0
-	disabled_count = 0
 	pending_count = 0
 
 	for job in JOBS_REGISTRY:
@@ -197,49 +196,43 @@ def get_automation_sync_status(sync_date=None):
 			"last_execution": None
 		}
 
-		if not auto_sync_enabled:
-			job_info["status"] = "Disabled"
-			job_info["error_message"] = "Disabled globally in Drishti Settings (auto_sync = 0)"
-			disabled_count += 1
+		# Always calculate actual execution status regardless of global auto_sync setting
+		rec_count = 0
+		if job["doctype"]:
+			try:
+				f = dict(job["filters"])
+				f["date"] = target_date
+				rec_count = frappe.db.count(job["doctype"], filters=f)
+			except Exception:
+				rec_count = 0
+		job_info["records_synced"] = rec_count
+
+		# Check Error Logs for target_date
+		error_logs = frappe.db.sql("""
+			SELECT name, method, error, creation
+			FROM `tabError Log`
+			WHERE DATE(creation) = %s
+			  AND (method LIKE %s OR error LIKE %s OR title LIKE %s)
+			ORDER BY creation DESC LIMIT 1
+		""", (target_date, f"%{job['error_title']}%", f"%{job['error_title']}%", f"%{job['error_title']}%"), as_dict=True)
+
+		if error_logs:
+			job_info["status"] = "Failed"
+			job_info["error_message"] = error_logs[0].error or "Execution error logged."
+			job_info["last_execution"] = str(error_logs[0].creation)
+			failed_count += 1
+		elif rec_count > 0 or job["doctype"] is None:
+			job_info["status"] = "Success"
+			success_count += 1
 		else:
-			# 1. Check database count for this target_date
-			rec_count = 0
-			if job["doctype"]:
-				try:
-					f = dict(job["filters"])
-					f["date"] = target_date
-					rec_count = frappe.db.count(job["doctype"], filters=f)
-				except Exception:
-					rec_count = 0
-			job_info["records_synced"] = rec_count
-
-			# 2. Check Error Logs for target_date
-			error_logs = frappe.db.sql("""
-				SELECT name, method, error, creation
-				FROM `tabError Log`
-				WHERE DATE(creation) = %s
-				  AND (method LIKE %s OR error LIKE %s OR title LIKE %s)
-				ORDER BY creation DESC LIMIT 1
-			""", (target_date, f"%{job['error_title']}%", f"%{job['error_title']}%", f"%{job['error_title']}%"), as_dict=True)
-
-			if error_logs:
-				job_info["status"] = "Failed"
-				job_info["error_message"] = error_logs[0].error or "Execution error logged."
-				job_info["last_execution"] = str(error_logs[0].creation)
-				failed_count += 1
-			elif rec_count > 0 or job["doctype"] is None:
-				job_info["status"] = "Success"
-				success_count += 1
-			else:
-				job_info["status"] = "Pending"
-				job_info["error_message"] = f"No synced records found for date {target_date}"
-				pending_count += 1
+			job_info["status"] = "Pending"
+			job_info["error_message"] = f"No synced records found for date {target_date}"
+			pending_count += 1
 
 		result_jobs.append(job_info)
 
 	total_jobs = len(JOBS_REGISTRY)
-	active_jobs = total_jobs - disabled_count
-	success_rate = round((success_count / active_jobs * 100), 1) if active_jobs > 0 else 0.0
+	success_rate = round((success_count / total_jobs * 100), 1) if total_jobs > 0 else 0.0
 
 	return {
 		"sync_date": target_date,
@@ -248,7 +241,7 @@ def get_automation_sync_status(sync_date=None):
 			"total_jobs": total_jobs,
 			"success_count": success_count,
 			"failed_count": failed_count,
-			"disabled_count": disabled_count,
+			"disabled_count": 0,
 			"pending_count": pending_count,
 			"success_rate": success_rate
 		},
