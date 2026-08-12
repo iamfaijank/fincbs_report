@@ -53,7 +53,13 @@
 		.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 		[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
 	</style>
+
+	<script>
+		window.csrf_token = "{{ csrf_token }}";
+		window.initial_auto_sync = {{ auto_sync_enabled|default('true')|lower }};
+	</script>
 </head>
+{% raw %}
 <body class="antialiased h-screen overflow-hidden text-slate-800">
 	<div id="app" class="flex h-screen w-full">
 
@@ -416,7 +422,7 @@
 				const loading = ref(false);
 				const syncingAll = ref(false);
 				const isDark = ref(localStorage.getItem('theme') === 'dark');
-				const autoSyncEnabled = ref({{ auto_sync_enabled|default('true') }});
+				const autoSyncEnabled = ref(window.initial_auto_sync !== undefined ? window.initial_auto_sync : true);
 				const targetDate = ref(new Date(Date.now() - 86400000).toISOString().split('T')[0]);
 				const searchQuery = ref('');
 				const selectedTab = ref('all');
@@ -592,4 +598,5 @@
 		}).mount('#app');
 	</script>
 </body>
+{% endraw %}
 </html>
