@@ -6,36 +6,22 @@ frappe.listview_settings['Maturity Tracker'] = {
 				title: __('Sync Maturity Tracker Data'),
 				fields: [
 					{
-						label: __('From Date'),
-						fieldname: 'from_date',
+						label: __('Select Date'),
+						fieldname: 'sync_date',
 						fieldtype: 'Date',
 						reqd: 1,
-						default: yesterday
-					},
-					{
-						label: __('To Date'),
-						fieldname: 'to_date',
-						fieldtype: 'Date',
-						reqd: 1,
-						default: yesterday
+						default: yesterday,
+						description: __('Data will be automatically synced from the 1st of that month to the selected date. Today and future dates are disabled.')
 					}
 				],
 				primary_action_label: __('Sync Now'),
 				primary_action(values) {
 					let today = frappe.datetime.get_today();
-					if (values.from_date >= today || values.to_date >= today) {
+					if (values.sync_date >= today) {
 						frappe.msgprint({
 							title: __('Invalid Date'),
 							indicator: 'red',
 							message: __('Today and future dates cannot be selected. Please select past dates only.')
-						});
-						return;
-					}
-					if (values.from_date > values.to_date) {
-						frappe.msgprint({
-							title: __('Invalid Date Range'),
-							indicator: 'red',
-							message: __('From Date cannot be greater than To Date.')
 						});
 						return;
 					}
@@ -44,11 +30,10 @@ frappe.listview_settings['Maturity Tracker'] = {
 					frappe.call({
 						method: 'custom_report.custom_report.doctype.maturity_tracker.maturity_tracker.sync_maturity_tracker',
 						args: {
-							from_date: values.from_date,
-							to_date: values.to_date
+							sync_date: values.sync_date
 						},
 						freeze: true,
-						freeze_message: __('Connecting to DR Database & Syncing Maturity Tracker...'),
+						freeze_message: __('Connecting to DR Database & Syncing Month Data...'),
 						callback: function(r) {
 							if (!r.exc) {
 								frappe.msgprint({

@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import getdate, nowdate, now, flt, cint
+from frappe.utils import getdate, nowdate, now, flt, cint, get_first_day, get_last_day, add_days
 from frappe import _
 import psycopg2.extras
 from custom_report.db_connection import get_dr_connection
@@ -14,20 +14,29 @@ class MaturityTracker(Document):
 
 
 @frappe.whitelist()
-def sync_maturity_tracker(from_date=None, to_date=None):
-	if not from_date or not to_date:
-		frappe.throw(_("From Date and To Date are mandatory."))
+def sync_maturity_tracker(sync_date=None, from_date=None, to_date=None):
+	selected_date = sync_date or from_date
+	if not selected_date:
+		selected_date = add_days(getdate(nowdate()), -1)
 
-	dt_from = getdate(from_date)
-	dt_to = getdate(to_date)
+	ref_date = getdate(selected_date)
 	today = getdate(nowdate())
+	yesterday = add_days(today, -1)
 
 	# Rule: Today and future dates CANNOT be selected!
-	if dt_from >= today or dt_to >= today:
+	if ref_date >= today:
 		frappe.throw(_("Today and future dates cannot be selected. Please select past dates only."))
 
-	if dt_from > dt_to:
-		frappe.throw(_("From Date cannot be greater than To Date."))
+	# Automatically calculate month start date (1st of selected month)
+	dt_from = get_first_day(ref_date)
+	month_end = get_last_day(ref_date)
+
+	# If the month is a past completed month, sync till end of month.
+	# For current month in progress, sync till selected date (or yesterday).
+	if month_end < today:
+		dt_to = month_end
+	else:
+		dt_to = min(ref_date, yesterday)
 
 	query = """
 	WITH debit_cte AS (
@@ -167,4 +176,4 @@ def sync_maturity_tracker(from_date=None, to_date=None):
 			)
 		frappe.db.commit()
 
-	return f"Successfully synced {total_records} Maturity Tracker records for date range {dt_from} to {dt_to}."
+	return f"Successfully synced {total_records} Maturity Tracker records for range {dt_from} to {dt_to}."
