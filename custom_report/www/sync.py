@@ -196,6 +196,8 @@ def get_automation_sync_status(sync_date=None):
 			"method": job["method"],
 			"target_date": target_date,
 			"records_synced": 0,
+			"latest_date": None,
+			"latest_count": 0,
 			"status": "Pending",
 			"error_message": "",
 			"last_execution": None
@@ -210,6 +212,29 @@ def get_automation_sync_status(sync_date=None):
 			except Exception:
 				rec_count = 0
 		job_info["records_synced"] = rec_count
+
+		# Latest synced date in DB for this job
+		if job["doctype"]:
+			try:
+				filters_sql = []
+				vals = []
+				for k, v in job["filters"].items():
+					filters_sql.append(f"`{k}` = %s")
+					vals.append(v)
+				where_clause = ("WHERE " + " AND ".join(filters_sql)) if filters_sql else ""
+				
+				latest_res = frappe.db.sql(f"""
+					SELECT date, COUNT(*) as cnt
+					FROM `tab{job['doctype']}`
+					{where_clause}
+					GROUP BY date
+					ORDER BY date DESC LIMIT 1
+				""", tuple(vals), as_dict=True)
+				if latest_res:
+					job_info["latest_date"] = str(latest_res[0].date)
+					job_info["latest_count"] = latest_res[0].cnt
+			except Exception:
+				pass
 
 		error_logs = frappe.db.sql("""
 			SELECT name, method, error, creation
