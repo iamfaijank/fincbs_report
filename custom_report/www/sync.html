@@ -138,29 +138,26 @@
 				<input type="text" v-model="searchQuery" placeholder="Search automations..." class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-none focus:border-gray-900 dark:focus:border-gray-100 transition" />
 			</div>
 
-			<!-- Fully Responsive Mobile & Desktop Job Cards List -->
+			<!-- Clean List (Only Job Title & Category, NO method path) -->
 			<div class="space-y-2 divide-y divide-gray-100 dark:divide-gray-800/60 border-t border-b border-gray-100 dark:border-gray-800/60 pt-2">
 				<div v-for="job in filteredJobs" :key="job.key" @click="openModal(job)" class="pt-3 pb-2 px-1 hover:bg-gray-50/70 dark:hover:bg-gray-900/50 transition cursor-pointer group space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-4">
 					
-					<!-- Top/Left: Status Dot + Job Title + Run Button (Mobile Optimized) -->
+					<!-- Top/Left: Status Dot + Job Title (Clean Title Only) + Run Button on Mobile -->
 					<div class="flex items-center justify-between gap-3 min-w-0 flex-1">
 						<div class="flex items-center gap-2.5 min-w-0 flex-1">
 							<span class="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" :class="getStatusDotClass(job.status)"></span>
-							<div class="min-w-0 flex-1">
-								<h3 class="text-xs font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition truncate leading-snug">{{ job.title }}</h3>
-								<p class="text-[10px] text-gray-400 font-mono truncate hidden sm:block mt-0.5">{{ job.method }}</p>
-							</div>
+							<h3 class="text-xs font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition truncate leading-snug">{{ job.title }}</h3>
 						</div>
 
-						<!-- Run Button (Visible on far right on Mobile & Desktop) -->
+						<!-- Run Button (Mobile) -->
 						<button @click.stop="runJob(job)" :disabled="runningJobs[job.key]" class="px-2.5 py-1 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-[11px] font-bold text-gray-800 dark:text-gray-200 transition shrink-0 disabled:opacity-50 sm:hidden">
 							{{ runningJobs[job.key] ? '...' : 'Run' }}
 						</button>
 					</div>
 
-					<!-- Bottom/Center Details: Category, Schedule Time, Records Count, Status -->
+					<!-- Bottom/Right Details: Category, Schedule Time, Records Count, Status -->
 					<div class="flex items-center justify-between sm:justify-end gap-3 text-[11px] text-gray-500 dark:text-gray-400 pt-1 sm:pt-0 border-t border-gray-100/60 dark:border-gray-800/40 sm:border-0">
-						<span class="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded font-medium truncate max-w-[120px]">{{ job.category }}</span>
+						<span class="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded font-medium truncate max-w-[130px]">{{ job.category }}</span>
 						
 						<div class="flex items-center gap-3 shrink-0">
 							<span class="font-mono text-gray-400 text-[10px] sm:text-[11px]">{{ job.schedule_time }}</span>
@@ -168,7 +165,7 @@
 							<span class="font-bold text-[10px] sm:text-[11px]" :class="getStatusTextColor(job.status)">{{ job.status }}</span>
 						</div>
 
-						<!-- Run Button (Desktop only) -->
+						<!-- Run Button (Desktop) -->
 						<button @click.stop="runJob(job)" :disabled="runningJobs[job.key]" class="hidden sm:inline-block px-3 py-1 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-[11px] font-bold text-gray-800 dark:text-gray-200 transition shrink-0 disabled:opacity-50">
 							{{ runningJobs[job.key] ? 'Running...' : 'Run' }}
 						</button>
