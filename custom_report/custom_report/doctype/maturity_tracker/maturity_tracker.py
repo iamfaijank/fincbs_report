@@ -168,6 +168,59 @@ def sync_maturity_tracker(sync_date=None, date=None):
 	return f"Successfully synced {total_records} Maturity Tracker records for date {ref_date} (range {dt_from} to {dt_to})."
 
 
+def send_maturity_tracker_email_notification(status, sync_date, details_or_error="", record_count=0):
+	recipients = ["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"]
+	if status == "Success":
+		subject = f"✅ Maturity Tracker Sync Successful - {sync_date}"
+		message = f"""
+		<p>Hello,</p>
+		<p>The daily automated sync for <b>Maturity Tracker</b> has completed successfully.</p>
+		<table border="1" cellpadding="6" style="border-collapse: collapse; border-color: #cbd5e1;">
+			<tr style="background-color: #f8fafc;">
+				<th>Parameter</th>
+				<th>Value</th>
+			</tr>
+			<tr>
+				<td><b>Sync Date</b></td>
+				<td>{sync_date}</td>
+			</tr>
+			<tr>
+				<td><b>Status</b></td>
+				<td style="color: green; font-weight: bold;">SUCCESS</td>
+			</tr>
+			<tr>
+				<td><b>Records Synced</b></td>
+				<td>{record_count}</td>
+			</tr>
+			<tr>
+				<td><b>Execution Time</b></td>
+				<td>{frappe.utils.now_datetime().strftime('%d-%m-%Y %I:%M %p')}</td>
+			</tr>
+		</table>
+		<br>
+		<p>Regards,<br>Sahayog System Automation</p>
+		"""
+	else:
+		subject = f"❌ Maturity Tracker Sync Failed - {sync_date}"
+		message = f"""
+		<p>Hello,</p>
+		<p>The daily automated sync for <b>Maturity Tracker</b> for date <b>{sync_date}</b> encountered an error:</p>
+		<pre style="color: red;">{details_or_error}</pre>
+		<br>
+		<p>Regards,<br>Sahayog System Automation</p>
+		"""
+
+	try:
+		frappe.sendmail(
+			recipients=recipients,
+			subject=subject,
+			message=message,
+			delayed=False
+		)
+	except Exception as e:
+		frappe.log_error(f"Maturity Tracker Email Error: {e}", "Email Error")
+
+
 def daily_sync_maturity_tracker():
 	"""
 	Cron job triggered daily at 07:40 AM IST.
@@ -182,7 +235,11 @@ def daily_sync_maturity_tracker():
 	frappe.logger("scheduler").info(f"Daily Maturity Tracker Sync: Starting sync for {yesterday} at 07:40 AM.")
 	try:
 		msg = sync_maturity_tracker(sync_date=yesterday)
+		count = frappe.db.count("Maturity Tracker", {"date": str(yesterday)})
 		frappe.logger("scheduler").info(f"Daily Maturity Tracker Sync: {msg}")
+		send_maturity_tracker_email_notification("Success", str(yesterday), details_or_error=msg, record_count=count)
 	except Exception as e:
-		frappe.log_error(f"Daily Maturity Tracker Sync Error for {yesterday}: {str(e)}", "Maturity Tracker Sync Error")
+		error_msg = str(e)
+		frappe.log_error(f"Daily Maturity Tracker Sync Error for {yesterday}: {error_msg}", "Maturity Tracker Sync Error")
+		send_maturity_tracker_email_notification("Failed", str(yesterday), details_or_error=error_msg)
 
