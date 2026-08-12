@@ -14,8 +14,8 @@ class MaturityTracker(Document):
 
 
 @frappe.whitelist()
-def sync_maturity_tracker(sync_date=None, date=None, from_date=None, to_date=None):
-	selected_date = sync_date or date or from_date
+def sync_maturity_tracker(sync_date=None, date=None):
+	selected_date = sync_date or date
 	if not selected_date:
 		selected_date = add_days(getdate(nowdate()), -1)
 
@@ -45,9 +45,6 @@ def sync_maturity_tracker(sync_date=None, date=None, from_date=None, to_date=Non
 	        g.acct_name,
 	        STRING_AGG(DISTINCT g.foracid, ', ') AS account_numbers,
 	        STRING_AGG(DISTINCT g.sol_id, ', ') AS sol_ids,
-	        STRING_AGG(DISTINCT s.division_name, ', ') AS division_name,
-	        STRING_AGG(DISTINCT s.region_name, ', ') AS region_name,
-	        STRING_AGG(DISTINCT s.circle_office_name, ', ') AS circle_office_name,
 	        COUNT(DISTINCT g.acid) AS account_count,
 	        SUM(h.tran_amt) AS total_debit_amount,
 	        MAX(h.tran_date) AS last_debit_transaction_date
@@ -104,10 +101,7 @@ def sync_maturity_tracker(sync_date=None, date=None, from_date=None, to_date=Non
 	        WHEN COALESCE(dep.total_deposit_amount, 0) > d.total_debit_amount
 	            THEN d.total_debit_amount
 	        ELSE COALESCE(dep.total_deposit_amount, 0)
-	    END AS renewal_amount,
-	    d.division_name,
-	    d.region_name,
-	    d.circle_office_name AS zone
+	    END AS renewal_amount
 	FROM debit_cte d
 	LEFT JOIN deposit_cte dep
 	    ON d.cif_id = dep.cif_id
@@ -123,18 +117,14 @@ def sync_maturity_tracker(sync_date=None, date=None, from_date=None, to_date=Non
 	finally:
 		conn.close()
 
-	# Clear existing data for this date range to prevent duplicates
-	frappe.db.sql("""
-		DELETE FROM `tabMaturity Tracker`
-		WHERE `date` = %s OR (`from_date` = %s AND `to_date` = %s)
-	""", (str(ref_date), str(dt_from), str(dt_to)))
+	# Clear existing data for this date to prevent duplicates
+	frappe.db.delete("Maturity Tracker", {"date": str(ref_date)})
 
 	fields = [
 		"name", "creation", "modified", "modified_by", "owner", "docstatus",
 		"date", "cif_id", "acct_name", "sol_ids", "account_numbers", "account_count",
 		"maturity_paid", "last_debit_transaction_date", "total_deposit_amount",
-		"deposit_done_flag", "renewal_amount", "division_name", "region_name",
-		"zone", "from_date", "to_date"
+		"deposit_done_flag", "renewal_amount"
 	]
 
 	now_str = now()
@@ -159,12 +149,7 @@ def sync_maturity_tracker(sync_date=None, date=None, from_date=None, to_date=Non
 			row.get("last_debit_transaction_date"),
 			flt(row.get("total_deposit_amount") or 0.0),
 			row.get("deposit_done_flag") or "No",
-			flt(row.get("renewal_amount") or 0.0),
-			row.get("division_name") or "",
-			row.get("region_name") or "",
-			row.get("zone") or "",
-			str(dt_from),
-			str(dt_to)
+			flt(row.get("renewal_amount") or 0.0)
 		))
 
 	total_records = len(values)
@@ -180,4 +165,4 @@ def sync_maturity_tracker(sync_date=None, date=None, from_date=None, to_date=Non
 			)
 		frappe.db.commit()
 
-	return f"Successfully synced {total_records} Maturity Tracker records for range {dt_from} to {dt_to}."
+	return f"Successfully synced {total_records} Maturity Tracker records for date {ref_date} (range {dt_from} to {dt_to})."

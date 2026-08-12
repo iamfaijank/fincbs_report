@@ -11,17 +11,12 @@
   "sol_ids",
   "account_numbers",
   "account_count",
+  "column_break_ktmx",
   "maturity_paid",
   "last_debit_transaction_date",
-  "column_break_ktmx",
   "total_deposit_amount",
   "deposit_done_flag",
-  "renewal_amount",
-  "division_name",
-  "region_name",
-  "zone",
-  "from_date",
-  "to_date"
+  "renewal_amount"
  ],
  "fields": [
   {
@@ -62,6 +57,10 @@
    "label": "Account Count"
   },
   {
+   "fieldname": "column_break_ktmx",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "maturity_paid",
    "fieldtype": "Currency",
    "in_list_view": 1,
@@ -72,10 +71,6 @@
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "Last Debit Transaction Date"
-  },
-  {
-   "fieldname": "column_break_ktmx",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "total_deposit_amount",
@@ -95,44 +90,12 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Renewal Amount"
-  },
-  {
-   "fieldname": "division_name",
-   "fieldtype": "Data",
-   "in_standard_filter": 1,
-   "label": "Division Name"
-  },
-  {
-   "fieldname": "region_name",
-   "fieldtype": "Data",
-   "in_standard_filter": 1,
-   "label": "Region Name"
-  },
-  {
-   "fieldname": "zone",
-   "fieldtype": "Data",
-   "in_standard_filter": 1,
-   "label": "Zone"
-  },
-  {
-   "fieldname": "from_date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "From Date"
-  },
-  {
-   "fieldname": "to_date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "To Date"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-12 11:45:00.000000",
+ "modified": "2026-08-12 11:51:00.000000",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Maturity Tracker",
