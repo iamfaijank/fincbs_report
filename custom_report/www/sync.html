@@ -3,22 +3,30 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-	<title>Sync Tracker</title>
+	<title>Automation Sync Tracker</title>
 	<link rel="icon" type="image/png" href="/assets/custom_report/frontend/favicon.png" />
 	
-	<!-- Frappe UI Standard Assets -->
+	<!-- Fonts & Icons -->
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@0.321.0/font/lucide.min.css" />
+
+	<!-- Frappe UI & Utility Assets -->
 	<link rel="stylesheet" crossorigin href="/assets/custom_report/frontend/assets/frappe-ui-D1rk2b8Q.css">
 	<link rel="stylesheet" crossorigin href="/assets/custom_report/frontend/assets/index-DAwpjTq1.css">
 	<script src="https://cdn.tailwindcss.com"></script>
 	<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@0.321.0/font/lucide.min.css" />
 
 	<script>
 		tailwind.config = {
 			darkMode: ['class', '[data-theme="dark"]'],
 			theme: {
 				extend: {
-					fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+					fontFamily: {
+						sans: ['Inter', 'system-ui', 'sans-serif'],
+						mono: ['JetBrains Mono', 'monospace']
+					},
 					colors: {
 						gray: { 50: '#f9fafb', 100: '#f3f4f6', 200: '#e5e7eb', 300: '#d1d5db', 400: '#9ca3af', 500: '#6b7280', 600: '#4b5563', 700: '#374151', 800: '#1f2937', 900: '#111827', 950: '#030712' }
 					}
@@ -50,8 +58,10 @@
 			color: var(--text-primary);
 			-webkit-font-smoothing: antialiased;
 		}
+		/* Glassmorphism Backdrop Filter standard & WebKit fallback */
 		.frappe-modal-backdrop {
 			background: rgba(0, 0, 0, 0.45);
+			-webkit-backdrop-filter: blur(12px);
 			backdrop-filter: blur(12px);
 		}
 		.custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -60,6 +70,11 @@
 		[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; }
 		.no-scrollbar::-webkit-scrollbar { display: none; }
 		.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+		/* Toast Animations */
+		.toast-enter-active, .toast-leave-active { transition: all 0.25s ease; }
+		.toast-enter-from { opacity: 0; transform: translateY(-12px) scale(0.95); }
+		.toast-leave-to { opacity: 0; transform: translateY(-12px) scale(0.95); }
 	</style>
 
 	<script>
@@ -70,6 +85,22 @@
 {% raw %}
 <body class="antialiased h-screen overflow-hidden text-gray-900 dark:text-gray-100 selection:bg-gray-200 dark:selection:bg-gray-800">
 	<div id="app" class="flex flex-col h-screen w-full max-w-5xl mx-auto px-3 sm:px-6 relative">
+
+		<!-- Toast Alert Notification -->
+		<transition name="toast">
+			<div v-if="toast.show" :class="[
+				'fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl shadow-2xl text-xs font-semibold flex items-center gap-2.5 border backdrop-blur-md transition-all duration-200 max-w-sm',
+				toast.type === 'success' ? 'bg-emerald-950/90 text-emerald-200 border-emerald-800/80' :
+				toast.type === 'error' ? 'bg-rose-950/90 text-rose-200 border-rose-800/80' :
+				'bg-gray-900/90 text-gray-100 border-gray-700/80'
+			]">
+				<i :class="toast.type === 'success' ? 'icon-lucide-check-circle text-emerald-400' : toast.type === 'error' ? 'icon-lucide-alert-circle text-rose-400' : 'icon-lucide-info text-blue-400'" class="text-sm shrink-0"></i>
+				<span class="truncate">{{ toast.message }}</span>
+				<button @click="toast.show = false" type="button" class="ml-auto text-gray-400 hover:text-white p-0.5" aria-label="Close Toast">
+					<i class="icon-lucide-x text-xs"></i>
+				</button>
+			</div>
+		</transition>
 
 		<!-- Mobile & Desktop Responsive Header -->
 		<header class="py-4 sm:py-5 border-b border-gray-100 dark:border-gray-800/60 shrink-0">
@@ -87,7 +118,7 @@
 
 				<!-- Center: Auto Sync Toggle Badge (Strictly Centered) -->
 				<div class="shrink-0 flex justify-center">
-					<button @click="toggleAutoSync" class="flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] transition shadow-xs" :class="autoSyncEnabled ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/60' : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'">
+					<button type="button" @click="toggleAutoSync" :disabled="togglingAutoSync" class="flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] transition shadow-xs disabled:opacity-50" :class="autoSyncEnabled ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/60' : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'" title="Click to toggle Auto Sync status">
 						<span class="w-1.5 h-1.5 rounded-full" :class="autoSyncEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'"></span>
 						<span class="font-semibold text-[10px] sm:text-[11px] whitespace-nowrap">{{ autoSyncEnabled ? 'Auto Sync Active' : 'Auto Sync Off' }}</span>
 					</button>
@@ -97,17 +128,17 @@
 				<div class="flex items-center justify-end gap-2 flex-1 shrink-0">
 					<!-- Quick Date Preset Buttons -->
 					<div class="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg text-[10px] font-bold">
-						<button @click="setDatePreset('yesterday')" :class="targetDate === yesterdayStr ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400'" class="px-2 py-0.5 rounded-md transition">
+						<button type="button" @click="setDatePreset('yesterday')" :class="targetDate === yesterdayStr ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400'" class="px-2 py-0.5 rounded-md transition">
 							Yesterday
 						</button>
-						<button @click="setDatePreset('today')" :class="targetDate === todayStr ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400'" class="px-2 py-0.5 rounded-md transition">
+						<button type="button" @click="setDatePreset('today')" :class="targetDate === todayStr ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400'" class="px-2 py-0.5 rounded-md transition">
 							Today
 						</button>
 					</div>
 
-					<input type="date" v-model="targetDate" @change="fetchStatus" class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg px-2 py-1 text-[11px] sm:text-xs text-gray-700 dark:text-gray-300 outline-none font-semibold cursor-pointer max-w-[120px] sm:max-w-none" />
+					<input type="date" v-model="targetDate" @change="fetchStatus" aria-label="Select Target Sync Date" class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg px-2 py-1 text-[11px] sm:text-xs text-gray-700 dark:text-gray-300 outline-none font-semibold cursor-pointer max-w-[120px] sm:max-w-none" />
 
-					<button @click="toggleTheme" class="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition rounded-lg border border-gray-200/50 dark:border-gray-800/50">
+					<button type="button" @click="toggleTheme" aria-label="Toggle Light/Dark Theme" title="Toggle Theme" class="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition rounded-lg border border-gray-200/50 dark:border-gray-800/50">
 						<i :class="isDark ? 'icon-lucide-sun' : 'icon-lucide-moon'" class="text-xs sm:text-sm"></i>
 					</button>
 				</div>
@@ -141,21 +172,24 @@
 			<div class="flex items-center justify-between gap-3">
 				<div class="relative flex-1">
 					<i class="icon-lucide-search absolute left-3 top-2.5 text-xs text-gray-400"></i>
-					<input type="text" v-model="searchQuery" placeholder="Search automations..." class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-none focus:border-gray-900 dark:focus:border-gray-100 transition" />
+					<input type="text" v-model="searchQuery" placeholder="Search automations..." aria-label="Search automations" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg pl-8 pr-7 py-1.5 text-xs text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-none focus:border-gray-900 dark:focus:border-gray-100 transition" />
+					<button v-if="searchQuery" type="button" @click="searchQuery = ''" class="absolute right-2.5 top-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" aria-label="Clear Search">
+						<i class="icon-lucide-x text-xs"></i>
+					</button>
 				</div>
 
 				<div class="flex items-center gap-2 shrink-0">
 					<span class="text-[11px] font-mono text-gray-400">Viewing: <strong class="text-gray-700 dark:text-gray-200 font-bold">{{ formatDate(targetDate) }}</strong></span>
-					<button @click="fetchStatus" :disabled="loading" class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition flex items-center gap-1">
+					<button type="button" @click="fetchStatus" :disabled="loading" class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition flex items-center gap-1">
 						<i class="icon-lucide-rotate-cw text-[10px]" :class="{ 'animate-spin': loading }"></i>
 						<span>Refresh</span>
 					</button>
 				</div>
 			</div>
 
-			<!-- Clean List (No Category Tag, Ultra Minimalist) -->
+			<!-- Clean List -->
 			<div class="space-y-2 divide-y divide-gray-100 dark:divide-gray-800/60 border-t border-b border-gray-100 dark:border-gray-800/60 pt-2">
-				<div v-for="job in filteredJobs" :key="job.key" @click="openModal(job)" class="pt-3 pb-2 px-1 hover:bg-gray-50/70 dark:hover:bg-gray-900/50 transition cursor-pointer group space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-4">
+				<div v-for="job in filteredJobs" :key="job.key" @click="openModal(job)" class="pt-3 pb-2 px-1 hover:bg-gray-50/70 dark:hover:bg-gray-900/50 transition cursor-pointer group space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-4 rounded-lg">
 					
 					<!-- Top/Left: Status Dot + Job Title + Run Button on Mobile -->
 					<div class="flex items-center justify-between gap-3 min-w-0 flex-1">
@@ -165,7 +199,7 @@
 						</div>
 
 						<!-- Run Button (Mobile) -->
-						<button @click.stop="runJob(job)" :disabled="runningJobs[job.key]" class="px-2.5 py-1 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-[11px] font-bold text-gray-800 dark:text-gray-200 transition shrink-0 disabled:opacity-50 sm:hidden">
+						<button type="button" @click.stop="runJob(job)" :disabled="runningJobs[job.key]" class="px-2.5 py-1 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-[11px] font-bold text-gray-800 dark:text-gray-200 transition shrink-0 disabled:opacity-50 sm:hidden">
 							{{ runningJobs[job.key] ? '...' : 'Run' }}
 						</button>
 					</div>
@@ -182,15 +216,16 @@
 						</div>
 
 						<!-- Run Button (Desktop) -->
-						<button @click.stop="runJob(job)" :disabled="runningJobs[job.key]" class="hidden sm:inline-block px-3 py-1 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-[11px] font-bold text-gray-800 dark:text-gray-200 transition shrink-0 disabled:opacity-50">
+						<button type="button" @click.stop="runJob(job)" :disabled="runningJobs[job.key]" class="hidden sm:inline-block px-3 py-1 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-[11px] font-bold text-gray-800 dark:text-gray-200 transition shrink-0 disabled:opacity-50">
 							{{ runningJobs[job.key] ? 'Running...' : 'Run' }}
 						</button>
 					</div>
 
 				</div>
 
-				<div v-if="filteredJobs.length === 0" class="py-10 text-center text-xs text-gray-400">
-					No matching automation jobs found.
+				<div v-if="filteredJobs.length === 0" class="py-12 text-center text-xs text-gray-400 flex flex-col items-center gap-2">
+					<i class="icon-lucide-inbox text-2xl text-gray-300 dark:text-gray-700"></i>
+					<span>No matching automation jobs found.</span>
 				</div>
 			</div>
 
@@ -200,7 +235,7 @@
 		<div class="fixed bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 z-40 max-w-[calc(100vw-1.25rem)] w-auto flex items-center justify-between gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-2xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200 dark:border-gray-800 shadow-2xl overflow-x-auto no-scrollbar">
 			<!-- Status Filter Pills -->
 			<div class="flex items-center gap-1 shrink-0">
-				<button v-for="tab in statusTabs" :key="tab.id" @click="selectedTab = tab.id" :class="selectedTab === tab.id ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'" class="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs transition flex items-center gap-1 text-nowrap">
+				<button type="button" v-for="tab in statusTabs" :key="tab.id" @click="selectedTab = tab.id" :class="selectedTab === tab.id ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'" class="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs transition flex items-center gap-1 text-nowrap">
 					<span>{{ tab.label }}</span>
 					<span class="text-[9px] sm:text-[10px] px-1 py-0.2 rounded-full font-bold" :class="selectedTab === tab.id ? 'bg-gray-800 text-gray-200 dark:bg-gray-200 dark:text-gray-800' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'">{{ getTabCount(tab.id) }}</span>
 				</button>
@@ -209,14 +244,14 @@
 			<div class="w-px h-4 bg-gray-200 dark:bg-gray-800 shrink-0 mx-0.5"></div>
 
 			<!-- Quick Run Pending Action -->
-			<button @click="triggerAllPending" :disabled="syncingAll" class="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 text-[11px] sm:text-xs font-bold flex items-center gap-1 shadow-xs transition disabled:opacity-50 shrink-0 whitespace-nowrap">
+			<button type="button" @click="triggerAllPending" :disabled="syncingAll" class="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 text-[11px] sm:text-xs font-bold flex items-center gap-1 shadow-xs transition disabled:opacity-50 shrink-0 whitespace-nowrap">
 				<i class="icon-lucide-play text-[9px] sm:text-[10px]" :class="{ 'animate-spin': syncingAll }"></i>
 				<span>Run Pending</span>
 			</button>
 		</div>
 
 		<!-- Glassmorphism Popup Modal (Enforces User Memory Rule) -->
-		<div v-if="activeJobModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 frappe-modal-backdrop" @click.self="activeJobModal = null">
+		<div v-if="activeJobModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 frappe-modal-backdrop" @click.self="activeJobModal = null" @keydown.esc="activeJobModal = null">
 			<div class="bg-white dark:bg-gray-900 w-full max-w-lg rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150">
 				
 				<!-- Modal Header -->
@@ -225,7 +260,7 @@
 						<span class="w-2.5 h-2.5 rounded-full shrink-0" :class="getStatusDotClass(activeJobModal.status)"></span>
 						<h2 class="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{{ activeJobModal.title }}</h2>
 					</div>
-					<button @click="activeJobModal = null" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition p-1">
+					<button type="button" @click="activeJobModal = null" aria-label="Close modal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition p-1">
 						<i class="icon-lucide-x text-sm"></i>
 					</button>
 				</div>
@@ -250,7 +285,7 @@
 					<!-- Category Info in Modal -->
 					<div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 text-[11px]">
 						<span class="text-gray-400 block text-[10px]">Category</span>
-						<span class="font-bold text-gray-800 dark:text-gray-200">{{ activeJobModal.category }}</span>
+						<span class="font-bold text-gray-800 dark:text-gray-200">{{ activeJobModal.category || 'General' }}</span>
 					</div>
 
 					<!-- Latest Sync Info -->
@@ -261,15 +296,25 @@
 					</div>
 
 					<div>
-						<span class="text-gray-400 block mb-1 text-[10px] uppercase font-bold">Python Hook</span>
+						<div class="flex items-center justify-between mb-1">
+							<span class="text-gray-400 text-[10px] uppercase font-bold">Python Hook</span>
+							<button type="button" @click="copyToClipboard(activeJobModal.method, 'Python Hook')" class="text-[10px] text-blue-500 hover:underline flex items-center gap-1">
+								<i class="icon-lucide-copy text-[10px]"></i> Copy
+							</button>
+						</div>
 						<div class="p-2.5 rounded bg-gray-50 dark:bg-gray-800 font-mono text-[10px] sm:text-[11px] text-gray-700 dark:text-gray-300 break-all select-all">
 							{{ activeJobModal.method }}
 						</div>
 					</div>
 
 					<div v-if="activeJobModal.error_message">
-						<span class="text-rose-500 block mb-1 text-[10px] uppercase font-bold">Log / Traceback</span>
-						<div class="p-3 rounded bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 font-mono text-[10px] sm:text-[11px] overflow-x-auto max-h-40 whitespace-pre-wrap select-all">
+						<div class="flex items-center justify-between mb-1">
+							<span class="text-rose-500 text-[10px] uppercase font-bold">Log / Traceback</span>
+							<button type="button" @click="copyToClipboard(activeJobModal.error_message, 'Traceback')" class="text-[10px] text-rose-500 hover:underline flex items-center gap-1">
+								<i class="icon-lucide-copy text-[10px]"></i> Copy Traceback
+							</button>
+						</div>
+						<div class="p-3 rounded bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 font-mono text-[10px] sm:text-[11px] overflow-x-auto max-h-40 whitespace-pre-wrap select-all border border-rose-200/50 dark:border-rose-900/50">
 							{{ activeJobModal.error_message }}
 						</div>
 					</div>
@@ -280,11 +325,12 @@
 
 				<!-- Modal Footer -->
 				<div class="p-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end gap-2 shrink-0">
-					<button @click="activeJobModal = null" class="px-3 py-1 rounded text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+					<button type="button" @click="activeJobModal = null" class="px-3 py-1.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
 						Close
 					</button>
-					<button @click="runJob(activeJobModal)" :disabled="runningJobs[activeJobModal.key]" class="px-3 py-1 rounded bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 text-xs font-bold transition disabled:opacity-50">
-						{{ runningJobs[activeJobModal.key] ? 'Executing...' : 'Run Now' }}
+					<button type="button" @click="runJob(activeJobModal)" :disabled="runningJobs[activeJobModal.key]" class="px-3.5 py-1.5 rounded bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 text-xs font-bold transition disabled:opacity-50 flex items-center gap-1.5">
+						<i v-if="runningJobs[activeJobModal.key]" class="icon-lucide-rotate-cw text-[10px] animate-spin"></i>
+						<span>{{ runningJobs[activeJobModal.key] ? 'Executing...' : 'Run Now' }}</span>
 					</button>
 				</div>
 
@@ -294,14 +340,26 @@
 	</div>
 
 	<script>
-		const { createApp, ref, computed, onMounted } = Vue;
+		const { createApp, ref, computed, onMounted, onUnmounted, watch } = Vue;
 
 		createApp({
 			setup() {
 				const loading = ref(false);
 				const syncingAll = ref(false);
+				const togglingAutoSync = ref(false);
 				const isDark = ref(localStorage.getItem('theme') === 'dark');
 				
+				// Toast notification state
+				const toast = ref({ show: false, message: '', type: 'info' });
+				let toastTimer = null;
+				const showToast = (message, type = 'info', duration = 3000) => {
+					if (toastTimer) clearTimeout(toastTimer);
+					toast.value = { show: true, message, type };
+					toastTimer = setTimeout(() => {
+						toast.value.show = false;
+					}, duration);
+				};
+
 				const now = new Date();
 				const todayStr = now.toISOString().split('T')[0];
 				const yesterdayObj = new Date(now.getTime() - 86400000);
@@ -362,8 +420,18 @@
 				};
 
 				const formatNumber = (num) => {
-					if (!num) return '0';
+					if (!num && num !== 0) return '0';
 					return Number(num).toLocaleString('en-IN');
+				};
+
+				const copyToClipboard = async (text, label = 'Content') => {
+					if (!text) return;
+					try {
+						await navigator.clipboard.writeText(text);
+						showToast(`${label} copied to clipboard!`, 'success');
+					} catch (err) {
+						showToast('Failed to copy text', 'error');
+					}
 				};
 
 				const printConsoleSummary = (jobList, targetD) => {
@@ -410,9 +478,11 @@
 					isDark.value = !isDark.value;
 					if (isDark.value) {
 						document.documentElement.setAttribute('data-theme', 'dark');
+						document.documentElement.classList.add('dark');
 						localStorage.setItem('theme', 'dark');
 					} else {
 						document.documentElement.removeAttribute('data-theme');
+						document.documentElement.classList.remove('dark');
 						localStorage.setItem('theme', 'light');
 					}
 				};
@@ -421,6 +491,7 @@
 					loading.value = true;
 					try {
 						const res = await fetch(`/api/method/custom_report.api.get_automation_sync_status?sync_date=${targetDate.value}`);
+						if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 						const data = await res.json();
 						if (data.message) {
 							jobs.value = data.message.jobs || [];
@@ -432,12 +503,14 @@
 						}
 					} catch (e) {
 						console.error('[Sync Tracker Log] Fetch Error:', e);
+						showToast('Failed to load sync status', 'error');
 					} finally {
 						loading.value = false;
 					}
 				};
 
 				const toggleAutoSync = async () => {
+					togglingAutoSync.value = true;
 					const newVal = !autoSyncEnabled.value;
 					try {
 						const res = await fetch(`/api/method/custom_report.api.toggle_drishti_auto_sync`, {
@@ -445,43 +518,59 @@
 							headers: { 'Content-Type': 'application/json', 'X-Frappe-CSRF-Token': window.csrf_token || '' },
 							body: JSON.stringify({ enabled: newVal })
 						});
+						if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 						const data = await res.json();
 						if (data.message && data.message.status === 'success') {
 							autoSyncEnabled.value = data.message.auto_sync_enabled;
+							showToast(`Auto Sync is now ${autoSyncEnabled.value ? 'Active' : 'Disabled'}`, 'success');
 							await fetchStatus();
 						}
 					} catch (e) {
 						console.error('[Sync Tracker Log] AutoSync Error:', e);
+						showToast('Failed to toggle Auto Sync', 'error');
+					} finally {
+						togglingAutoSync.value = false;
 					}
 				};
 
 				const runJob = async (job) => {
-					runningJobs.value[job.key] = true;
+					if (!job || !job.key) return;
+					runningJobs.value = { ...runningJobs.value, [job.key]: true };
 					try {
 						const res = await fetch(`/api/method/custom_report.api.trigger_manual_sync`, {
 							method: 'POST',
 							headers: { 'Content-Type': 'application/json', 'X-Frappe-CSRF-Token': window.csrf_token || '' },
 							body: JSON.stringify({ job_key: job.key, sync_date: targetDate.value })
 						});
+						if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 						const data = await res.json();
 						if (data.message) {
-							alert(data.message.message || 'Completed.');
+							showToast(data.message.message || `${job.title} execution triggered`, 'success');
 							await fetchStatus();
 						}
 					} catch (e) {
-						alert('Execution error: ' + e.message);
+						showToast(`Execution error: ${e.message}`, 'error');
 					} finally {
-						runningJobs.value[job.key] = false;
+						const updated = { ...runningJobs.value };
+						delete updated[job.key];
+						runningJobs.value = updated;
 					}
 				};
 
 				const triggerAllPending = async () => {
 					syncingAll.value = true;
 					const pendingList = (jobs.value || []).filter(j => (j.status || '').toLowerCase() === 'pending' || (j.status || '').toLowerCase() === 'failed');
+					if (pendingList.length === 0) {
+						showToast('No pending or failed jobs to run', 'info');
+						syncingAll.value = false;
+						return;
+					}
+					showToast(`Running ${pendingList.length} pending automation job(s)...`, 'info');
 					for (const job of pendingList) {
 						await runJob(job);
 					}
 					syncingAll.value = false;
+					showToast('All pending jobs completed!', 'success');
 					await fetchStatus();
 				};
 
@@ -489,7 +578,7 @@
 					return (jobs.value || []).filter(job => {
 						if (selectedTab.value !== 'all' && (job.status || '').toLowerCase() !== selectedTab.value.toLowerCase()) return false;
 						if (searchQuery.value) {
-							const q = searchQuery.value.toLowerCase();
+							const q = searchQuery.value.toLowerCase().trim();
 							return (job.title || '').toLowerCase().includes(q) || (job.method || '').toLowerCase().includes(q) || (job.category || '').toLowerCase().includes(q);
 						}
 						return true;
@@ -519,10 +608,18 @@
 					activeJobModal.value = job;
 				};
 
+				const handleKeyDown = (e) => {
+					if (e.key === 'Escape' && activeJobModal.value) {
+						activeJobModal.value = null;
+					}
+				};
+
 				onMounted(() => {
 					if (isDark.value) {
 						document.documentElement.setAttribute('data-theme', 'dark');
+						document.documentElement.classList.add('dark');
 					}
+					window.addEventListener('keydown', handleKeyDown);
 					if (jobs.value && jobs.value.length > 0) {
 						printConsoleSummary(jobs.value, targetDate.value);
 					} else {
@@ -530,9 +627,13 @@
 					}
 				});
 
+				onUnmounted(() => {
+					window.removeEventListener('keydown', handleKeyDown);
+				});
+
 				return {
-					loading, syncingAll, isDark, autoSyncEnabled, targetDate, todayStr, yesterdayStr, searchQuery, selectedTab, activeJobModal,
-					runningJobs, summary, jobs, statusTabs, filteredJobs, getTabCount, setDatePreset, formatDate, formatNumber, toggleTheme, fetchStatus,
+					loading, syncingAll, togglingAutoSync, isDark, autoSyncEnabled, targetDate, todayStr, yesterdayStr, searchQuery, selectedTab, activeJobModal,
+					runningJobs, summary, jobs, statusTabs, filteredJobs, toast, getTabCount, setDatePreset, formatDate, formatNumber, copyToClipboard, toggleTheme, fetchStatus,
 					toggleAutoSync, runJob, triggerAllPending, getStatusDotClass, getStatusTextColor, openModal
 				};
 			}
