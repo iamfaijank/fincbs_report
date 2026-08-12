@@ -308,17 +308,28 @@
 				const yesterdayStr = yesterdayObj.toISOString().split('T')[0];
 
 				const initialRaw = window.initial_sync_data;
-				const initialData = typeof initialRaw === 'string' ? JSON.parse(initialRaw) : (initialRaw || {});
+				let initialData = {};
+				try {
+					initialData = typeof initialRaw === 'string' ? JSON.parse(initialRaw) : (initialRaw || {});
+				} catch(e) {
+					console.error('Error parsing initial_sync_data:', e);
+				}
+
+				console.log('[Sync Tracker Log] Raw Initial Data:', initialRaw);
+				console.log('[Sync Tracker Log] Parsed Initial Data:', initialData);
+
 				const autoSyncEnabled = ref(initialData.auto_sync_enabled !== undefined ? initialData.auto_sync_enabled : true);
 				const targetDate = ref(initialData.sync_date || yesterdayStr);
 				const jobs = ref(initialData.jobs || []);
 
 				const summary = computed(() => {
-					const total = jobs.value.length;
-					const success = jobs.value.filter(j => j.status === 'Success').length;
-					const failed = jobs.value.filter(j => j.status === 'Failed').length;
-					const pending = jobs.value.filter(j => j.status === 'Pending').length;
+					const jobList = jobs.value || [];
+					const total = jobList.length;
+					const success = jobList.filter(j => (j.status || '').toLowerCase() === 'success').length;
+					const failed = jobList.filter(j => (j.status || '').toLowerCase() === 'failed').length;
+					const pending = jobList.filter(j => (j.status || '').toLowerCase() === 'pending').length;
 					const rate = total > 0 ? Math.round((success / total) * 100) : 0;
+					
 					return {
 						total_jobs: total,
 						success_count: success,
@@ -373,15 +384,19 @@
 
 				const fetchStatus = async () => {
 					loading.value = true;
+					console.log('[Sync Tracker Log] Fetching status for date:', targetDate.value);
 					try {
 						const res = await fetch(`/api/method/custom_report.www.sync.get_automation_sync_status?sync_date=${targetDate.value}`);
 						const data = await res.json();
+						console.log('[Sync Tracker Log] API Response:', data);
 						if (data.message) {
-							jobs.value = data.message.jobs;
+							jobs.value = data.message.jobs || [];
 							autoSyncEnabled.value = data.message.auto_sync_enabled;
+							console.log('[Sync Tracker Log] Updated Jobs Count:', jobs.value.length);
+							console.log('[Sync Tracker Log] Calculated Summary:', summary.value);
 						}
 					} catch (e) {
-						console.error('Error fetching status:', e);
+						console.error('[Sync Tracker Log] Fetch Error:', e);
 					} finally {
 						loading.value = false;
 					}
@@ -401,7 +416,7 @@
 							await fetchStatus();
 						}
 					} catch (e) {
-						console.error('Error toggling auto sync:', e);
+						console.error('[Sync Tracker Log] AutoSync Error:', e);
 					}
 				};
 
@@ -427,7 +442,7 @@
 
 				const triggerAllPending = async () => {
 					syncingAll.value = true;
-					const pendingList = jobs.value.filter(j => j.status === 'Pending' || j.status === 'Failed');
+					const pendingList = (jobs.value || []).filter(j => (j.status || '').toLowerCase() === 'pending' || (j.status || '').toLowerCase() === 'failed');
 					for (const job of pendingList) {
 						await runJob(job);
 					}
@@ -436,30 +451,32 @@
 				};
 
 				const filteredJobs = computed(() => {
-					return jobs.value.filter(job => {
-						if (selectedTab.value !== 'all' && job.status !== selectedTab.value) return false;
+					return (jobs.value || []).filter(job => {
+						if (selectedTab.value !== 'all' && (job.status || '').toLowerCase() !== selectedTab.value.toLowerCase()) return false;
 						if (searchQuery.value) {
 							const q = searchQuery.value.toLowerCase();
-							return job.title.toLowerCase().includes(q) || job.method.toLowerCase().includes(q) || job.category.toLowerCase().includes(q);
+							return (job.title || '').toLowerCase().includes(q) || (job.method || '').toLowerCase().includes(q) || (job.category || '').toLowerCase().includes(q);
 						}
 						return true;
 					});
 				});
 
 				const getTabCount = (tabId) => {
-					if (tabId === 'all') return jobs.value.length;
-					return jobs.value.filter(j => j.status === tabId).length;
+					if (tabId === 'all') return jobs.value ? jobs.value.length : 0;
+					return (jobs.value || []).filter(j => (j.status || '').toLowerCase() === tabId.toLowerCase()).length;
 				};
 
 				const getStatusDotClass = (status) => {
-					if (status === 'Success') return 'bg-emerald-500';
-					if (status === 'Failed') return 'bg-rose-500';
+					const s = (status || '').toLowerCase();
+					if (s === 'success') return 'bg-emerald-500';
+					if (s === 'failed') return 'bg-rose-500';
 					return 'bg-amber-500';
 				};
 
 				const getStatusTextColor = (status) => {
-					if (status === 'Success') return 'text-emerald-600 dark:text-emerald-400';
-					if (status === 'Failed') return 'text-rose-600 dark:text-rose-400';
+					const s = (status || '').toLowerCase();
+					if (s === 'success') return 'text-emerald-600 dark:text-emerald-400';
+					if (s === 'failed') return 'text-rose-600 dark:text-rose-400';
 					return 'text-amber-600 dark:text-amber-400';
 				};
 
@@ -471,6 +488,8 @@
 					if (isDark.value) {
 						document.documentElement.setAttribute('data-theme', 'dark');
 					}
+					console.log('[Sync Tracker Log] Mounted. Initial Jobs Length:', jobs.value.length);
+					console.log('[Sync Tracker Log] Initial Summary:', summary.value);
 					if (!jobs.value || jobs.value.length === 0) {
 						fetchStatus();
 					}
