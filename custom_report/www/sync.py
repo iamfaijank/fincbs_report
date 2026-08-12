@@ -16,7 +16,7 @@ JOBS_REGISTRY = [
 		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_dd_sav_daily",
 		"doctype": "SS and VS Report",
 		"filters": {"report_type": "DD SAV"},
-		"error_title": "SS & VS"
+		"error_title": "sync_dd_sav_daily"
 	},
 	{
 		"key": "sync_dd_tda_daily",
@@ -26,7 +26,7 @@ JOBS_REGISTRY = [
 		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_dd_tda_daily",
 		"doctype": "SS and VS Report",
 		"filters": {"report_type": "DD TDA"},
-		"error_title": "SS & VS"
+		"error_title": "sync_dd_tda_daily"
 	},
 	{
 		"key": "sync_rd_daily",
@@ -36,7 +36,7 @@ JOBS_REGISTRY = [
 		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_rd_daily",
 		"doctype": "SS and VS Report",
 		"filters": {"report_type": "RD"},
-		"error_title": "SS & VS"
+		"error_title": "sync_rd_daily"
 	},
 	{
 		"key": "sync_smbg_daily",
@@ -46,7 +46,7 @@ JOBS_REGISTRY = [
 		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_smbg_daily",
 		"doctype": "SS and VS Report",
 		"filters": {"report_type": "SMBG"},
-		"error_title": "SS & VS"
+		"error_title": "sync_smbg_daily"
 	},
 	{
 		"key": "sync_fd_1_daily",
@@ -56,7 +56,7 @@ JOBS_REGISTRY = [
 		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_fd_1_daily",
 		"doctype": "SS and VS Report",
 		"filters": {"report_type": "FD 1"},
-		"error_title": "SS & VS"
+		"error_title": "sync_fd_1_daily"
 	},
 	{
 		"key": "sync_dam_daily",
@@ -66,7 +66,7 @@ JOBS_REGISTRY = [
 		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_dam_daily",
 		"doctype": "SS and VS Report",
 		"filters": {"report_type": "DAM"},
-		"error_title": "SS & VS"
+		"error_title": "sync_dam_daily"
 	},
 	{
 		"key": "sync_fd_daily",
@@ -76,7 +76,7 @@ JOBS_REGISTRY = [
 		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_fd_daily",
 		"doctype": "SS and VS Report",
 		"filters": {"report_type": "FD"},
-		"error_title": "SS & VS"
+		"error_title": "sync_fd_daily"
 	},
 	{
 		"key": "sync_share_daily",
@@ -86,7 +86,7 @@ JOBS_REGISTRY = [
 		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_share_daily",
 		"doctype": "SS and VS Report",
 		"filters": {"report_type": "SHARE"},
-		"error_title": "SS & VS"
+		"error_title": "sync_share_daily"
 	},
 	{
 		"key": "daily_sync_maturity_tracker",
@@ -96,7 +96,7 @@ JOBS_REGISTRY = [
 		"method": "custom_report.custom_report.doctype.maturity_tracker.maturity_tracker.daily_sync_maturity_tracker",
 		"doctype": "Maturity Tracker",
 		"filters": {},
-		"error_title": "Maturity Tracker"
+		"error_title": "daily_sync_maturity_tracker"
 	},
 	{
 		"key": "cleanup_ss_vs_old_monthly_records",
@@ -106,7 +106,7 @@ JOBS_REGISTRY = [
 		"method": "custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.cleanup_ss_vs_old_monthly_records",
 		"doctype": None,
 		"filters": {},
-		"error_title": "SS & VS Cleanup"
+		"error_title": "cleanup_ss_vs_old_monthly_records"
 	},
 	{
 		"key": "daily_sync_cron",
@@ -116,7 +116,7 @@ JOBS_REGISTRY = [
 		"method": "custom_report.custom_report.page.sahayog_dashboard.achievement.daily_sync_cron",
 		"doctype": "Branch Category Report",
 		"filters": {},
-		"error_title": "Branch Category"
+		"error_title": "daily_sync_cron"
 	},
 	{
 		"key": "daily_tda_sync",
@@ -126,7 +126,7 @@ JOBS_REGISTRY = [
 		"method": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_tda_sync",
 		"doctype": "Product Wise Report",
 		"filters": {"product": "TDA"},
-		"error_title": "TDA Sync"
+		"error_title": "daily_tda_sync"
 	},
 	{
 		"key": "daily_casa_sync",
@@ -136,7 +136,7 @@ JOBS_REGISTRY = [
 		"method": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_casa_sync",
 		"doctype": "Product Wise Report",
 		"filters": {"product": "CASA"},
-		"error_title": "CASA Sync"
+		"error_title": "daily_casa_sync"
 	},
 	{
 		"key": "daily_sync_book_position",
@@ -146,7 +146,7 @@ JOBS_REGISTRY = [
 		"method": "custom_report.custom_report.doctype.book_position_and_account_details.book_position_and_account_details.daily_sync_book_position",
 		"doctype": "Book Position and Account Details",
 		"filters": {},
-		"error_title": "Book Position"
+		"error_title": "daily_sync_book_position"
 	},
 	{
 		"key": "daily_sync_dd_tracker",
@@ -156,7 +156,7 @@ JOBS_REGISTRY = [
 		"method": "custom_report.custom_report.doctype.dd_tracker_report.dd_tracker_report.daily_sync_dd_tracker",
 		"doctype": "DD Tracker Report",
 		"filters": {},
-		"error_title": "DD Tracker"
+		"error_title": "daily_sync_dd_tracker"
 	}
 ]
 
@@ -209,7 +209,7 @@ def get_automation_sync_status(sync_date=None):
 				f = dict(job["filters"])
 				f["date"] = target_date
 				rec_count = frappe.db.count(job["doctype"], f)
-			except Exception as e:
+			except Exception:
 				rec_count = 0
 		job_info["records_synced"] = rec_count
 
@@ -240,9 +240,9 @@ def get_automation_sync_status(sync_date=None):
 			SELECT name, method, error, creation
 			FROM `tabError Log`
 			WHERE DATE(creation) = %s
-			  AND (method LIKE %s OR error LIKE %s)
+			  AND (method LIKE %s OR method LIKE %s OR error LIKE %s)
 			ORDER BY creation DESC LIMIT 1
-		""", (target_date, f"%{job['error_title']}%", f"%{job['error_title']}%"), as_dict=True)
+		""", (target_date, f"%{job['method']}%", f"%{job['error_title']}%", f"%{job['error_title']}%"), as_dict=True)
 
 		if error_logs:
 			job_info["status"] = "Failed"
