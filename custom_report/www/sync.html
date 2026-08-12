@@ -64,7 +64,12 @@
 
 	<script>
 		window.csrf_token = "{{ csrf_token }}";
-		window.initial_sync_data = {{ initial_sync_data|safe }};
+		try {
+			var rawData = {{ initial_sync_data|tojson|safe }};
+			window.initial_sync_data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+		} catch (e) {
+			window.initial_sync_data = {};
+		}
 	</script>
 </head>
 {% raw %}
