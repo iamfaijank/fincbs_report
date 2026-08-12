@@ -211,9 +211,9 @@ def get_automation_sync_status(sync_date=None):
 			SELECT name, method, error, creation
 			FROM `tabError Log`
 			WHERE DATE(creation) = %s
-			  AND (method LIKE %s OR error LIKE %s OR title LIKE %s)
+			  AND (method LIKE %s OR error LIKE %s)
 			ORDER BY creation DESC LIMIT 1
-		""", (target_date, f"%{job['error_title']}%", f"%{job['error_title']}%", f"%{job['error_title']}%"), as_dict=True)
+		""", (target_date, f"%{job['error_title']}%", f"%{job['error_title']}%"), as_dict=True)
 
 		if error_logs:
 			job_info["status"] = "Failed"
