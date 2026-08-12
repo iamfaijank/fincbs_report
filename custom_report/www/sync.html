@@ -62,7 +62,7 @@
 
 	<script>
 		window.csrf_token = "{{ csrf_token }}";
-		window.initial_auto_sync = {{ auto_sync_enabled|default('true')|lower }};
+		window.initial_sync_data = {{ initial_sync_data|safe }};
 	</script>
 </head>
 {% raw %}
@@ -175,6 +175,10 @@
 					</div>
 
 				</div>
+
+				<div v-if="filteredJobs.length === 0" class="py-8 text-center text-xs text-gray-400">
+					No matching jobs found.
+				</div>
 			</div>
 
 		</main>
@@ -252,15 +256,17 @@
 				const loading = ref(false);
 				const syncingAll = ref(false);
 				const isDark = ref(localStorage.getItem('theme') === 'dark');
-				const autoSyncEnabled = ref(window.initial_auto_sync !== undefined ? window.initial_auto_sync : true);
-				const targetDate = ref(new Date(Date.now() - 86400000).toISOString().split('T')[0]);
+				
+				const initialData = window.initial_sync_data || {};
+				const autoSyncEnabled = ref(initialData.auto_sync_enabled !== undefined ? initialData.auto_sync_enabled : true);
+				const targetDate = ref(initialData.sync_date || new Date(Date.now() - 86400000).toISOString().split('T')[0]);
+				const summary = ref(initialData.summary || { total_jobs: 15, success_count: 0, failed_count: 0, disabled_count: 0, pending_count: 0, success_rate: 0 });
+				const jobs = ref(initialData.jobs || []);
+
 				const searchQuery = ref('');
 				const selectedTab = ref('all');
 				const activeJobModal = ref(null);
 				const runningJobs = ref({});
-
-				const summary = ref({ total_jobs: 15, success_count: 0, failed_count: 0, disabled_count: 0, pending_count: 0, success_rate: 0 });
-				const jobs = ref([]);
 
 				const statusTabs = [
 					{ id: 'all', label: 'All' },
@@ -283,7 +289,7 @@
 				const fetchStatus = async () => {
 					loading.value = true;
 					try {
-						const res = await fetch(`/api/method/custom_report.custom_report.www.sync.get_automation_sync_status?sync_date=${targetDate.value}`);
+						const res = await fetch(`/api/method/custom_report.www.sync.get_automation_sync_status?sync_date=${targetDate.value}`);
 						const data = await res.json();
 						if (data.message) {
 							summary.value = data.message.summary;
@@ -300,7 +306,7 @@
 				const toggleAutoSync = async () => {
 					const newVal = !autoSyncEnabled.value;
 					try {
-						const res = await fetch(`/api/method/custom_report.custom_report.www.sync.toggle_drishti_auto_sync`, {
+						const res = await fetch(`/api/method/custom_report.www.sync.toggle_drishti_auto_sync`, {
 							method: 'POST',
 							headers: { 'Content-Type': 'application/json', 'X-Frappe-CSRF-Token': window.csrf_token || '' },
 							body: JSON.stringify({ enabled: newVal })
@@ -318,7 +324,7 @@
 				const runJob = async (job) => {
 					runningJobs.value[job.key] = true;
 					try {
-						const res = await fetch(`/api/method/custom_report.custom_report.www.sync.trigger_manual_sync`, {
+						const res = await fetch(`/api/method/custom_report.www.sync.trigger_manual_sync`, {
 							method: 'POST',
 							headers: { 'Content-Type': 'application/json', 'X-Frappe-CSRF-Token': window.csrf_token || '' },
 							body: JSON.stringify({ job_key: job.key, sync_date: targetDate.value })
@@ -381,7 +387,9 @@
 					if (isDark.value) {
 						document.documentElement.setAttribute('data-theme', 'dark');
 					}
-					fetchStatus();
+					if (!jobs.value || jobs.value.length === 0) {
+						fetchStatus();
+					}
 				});
 
 				return {

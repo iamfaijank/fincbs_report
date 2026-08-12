@@ -166,6 +166,7 @@ def get_context(context):
 	context.csrf_token = frappe.sessions.get_csrf_token()
 	context.site_name = frappe.local.site
 	context.auto_sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
+	context.initial_sync_data = frappe.as_json(get_automation_sync_status())
 	return context
 
 
@@ -196,7 +197,6 @@ def get_automation_sync_status(sync_date=None):
 			"last_execution": None
 		}
 
-		# Always calculate actual execution status regardless of global auto_sync setting
 		rec_count = 0
 		if job["doctype"]:
 			try:
@@ -207,7 +207,6 @@ def get_automation_sync_status(sync_date=None):
 				rec_count = 0
 		job_info["records_synced"] = rec_count
 
-		# Check Error Logs for target_date
 		error_logs = frappe.db.sql("""
 			SELECT name, method, error, creation
 			FROM `tabError Log`
@@ -262,7 +261,6 @@ def trigger_manual_sync(job_key, sync_date=None):
 		mod = __import__(module_name, fromlist=[func_name])
 		fn = getattr(mod, func_name)
 
-		# Execute function
 		res = fn()
 		frappe.db.commit()
 		return {"status": "success", "message": f"Successfully executed {job['title']}.", "result": str(res)}
