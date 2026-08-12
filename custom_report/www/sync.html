@@ -686,6 +686,11 @@
 
 	<script>
 		window.csrf_token = "{{ csrf_token }}";
+		try {
+			window.initialData = {{ initial_sync_data | safe }};
+		} catch (e) {
+			window.initialData = null;
+		}
 
 		(function() {
 			let state = {
@@ -1047,7 +1052,15 @@
 
 			applyTheme();
 			state.targetDate = getYesterdayStr();
-			fetchStatus();
+			
+			if (window.initialData && Array.isArray(window.initialData.jobs) && window.initialData.jobs.length > 0) {
+				state.jobs = window.initialData.jobs;
+				state.autoSyncEnabled = !!window.initialData.auto_sync_enabled;
+				if (window.initialData.sync_date) state.targetDate = window.initialData.sync_date;
+				render();
+			} else {
+				fetchStatus();
+			}
 		})();
 	</script>
 </body>

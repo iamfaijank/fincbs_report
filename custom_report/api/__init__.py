@@ -1796,19 +1796,9 @@ def get_automation_sync_status(sync_date=None):
 	failed_count = 0
 	pending_count = 0
 
-	# Pre-fetch counts for SS and VS Report for target_date in 1 single query
+	# Pre-fetch counts for SS and VS Report for target_date in 1 single fast indexed query
 	ss_vs_counts = {}
-	ss_vs_max_dates = {}
 	try:
-		ss_vs_res = frappe.db.sql("""
-			SELECT report_type, COUNT(*) as cnt, MAX(date) as max_d
-			FROM `tabSS and VS Report`
-			GROUP BY report_type
-		""", as_dict=True)
-		for r in ss_vs_res:
-			if r.max_d:
-				ss_vs_max_dates[r.report_type] = r.max_d
-		
 		ss_vs_cur = frappe.db.sql("""
 			SELECT report_type, COUNT(*) as cnt
 			FROM `tabSS and VS Report`
@@ -1820,19 +1810,9 @@ def get_automation_sync_status(sync_date=None):
 	except Exception:
 		pass
 
-	# Pre-fetch counts for Product Wise Report for target_date in 1 single query
+	# Pre-fetch counts for Product Wise Report for target_date in 1 single fast indexed query
 	product_counts = {}
-	product_max_dates = {}
 	try:
-		prod_res = frappe.db.sql("""
-			SELECT product, COUNT(*) as cnt, MAX(date) as max_d
-			FROM `tabProduct Wise Report`
-			GROUP BY product
-		""", as_dict=True)
-		for r in prod_res:
-			if r.max_d:
-				product_max_dates[r.product] = r.max_d
-
 		prod_cur = frappe.db.sql("""
 			SELECT product, COUNT(*) as cnt
 			FROM `tabProduct Wise Report`
@@ -1841,6 +1821,20 @@ def get_automation_sync_status(sync_date=None):
 		""", (target_date,), as_dict=True)
 		for r in prod_cur:
 			product_counts[r.product] = r.cnt
+	except Exception:
+		pass
+
+	# Pre-fetch error logs for target_date in 1 single indexed query
+	start_dt = f"{target_date} 00:00:00"
+	end_dt = f"{target_date} 23:59:59"
+	all_error_logs = []
+	try:
+		all_error_logs = frappe.db.sql("""
+			SELECT method, error, creation
+			FROM `tabError Log`
+			WHERE creation >= %s AND creation <= %s
+			ORDER BY creation DESC
+		""", (start_dt, end_dt), as_dict=True)
 	except Exception:
 		pass
 
@@ -1861,10 +1855,12 @@ def get_automation_sync_status(sync_date=None):
 		}
 
 		rec_count = 0
-		if job["doctype"] == "SS and VS Report" and "report_type" in job.get("filters", {}):
-			rec_count = ss_vs_counts.get(job["filters"]["report_type"], 0)
-		elif job["doctype"] == "Product Wise Report" and "product" in job.get("filters", {}):
-			rec_count = product_counts.get(job["filters"]["product"], 0)
+		if job["doctype"] == "SS and VS Report":
+			rtype = job.get("filters", {}).get("report_type")
+			rec_count = ss_vs_counts.get(rtype, 0) if rtype else 0
+		elif job["doctype"] == "Product Wise Report":
+			pname = job.get("filters", {}).get("product")
+			rec_count = product_counts.get(pname, 0) if pname else 0
 		elif job["doctype"]:
 			try:
 				f = dict(job["filters"])
@@ -1874,58 +1870,25 @@ def get_automation_sync_status(sync_date=None):
 				rec_count = 0
 		job_info["records_synced"] = rec_count
 
-		# Latest synced date in DB for this job
 		if rec_count > 0:
 			job_info["latest_date"] = target_date
 			job_info["latest_count"] = rec_count
-		elif job["doctype"] == "SS and VS Report" and "report_type" in job.get("filters", {}):
-			rtype = job["filters"]["report_type"]
-			if rtype in ss_vs_max_dates:
-				job_info["latest_date"] = str(ss_vs_max_dates[rtype])
-		elif job["doctype"] == "Product Wise Report" and "product" in job.get("filters", {}):
-			pname = job["filters"]["product"]
-			if pname in product_max_dates:
-				job_info["latest_date"] = str(product_max_dates[pname])
-		elif job["doctype"]:
-			try:
-				filters_sql = []
-				vals = []
-				for k, v in job["filters"].items():
-					filters_sql.append(f"`{k}` = %s")
-					vals.append(v)
-				where_clause = ("WHERE " + " AND ".join(filters_sql)) if filters_sql else ""
-				
-				max_date_res = frappe.db.sql(f"""
-					SELECT MAX(date) as max_d
-					FROM `tab{job['doctype']}`
-					{where_clause}
-				""", tuple(vals), as_dict=True)
-				if max_date_res and max_date_res[0].max_d:
-					latest_d = max_date_res[0].max_d
-					job_info["latest_date"] = str(latest_d)
-					filters_count = dict(job["filters"])
-					filters_count["date"] = latest_d
-					try:
-						job_info["latest_count"] = frappe.db.count(job["doctype"], filters_count)
-					except Exception:
-						job_info["latest_count"] = 0
-			except Exception:
-				pass
 
-		start_dt = f"{target_date} 00:00:00"
-		end_dt = f"{target_date} 23:59:59"
-		error_logs = frappe.db.sql("""
-			SELECT name, method, error, creation
-			FROM `tabError Log`
-			WHERE creation >= %s AND creation <= %s
-			  AND (method LIKE %s OR method LIKE %s OR error LIKE %s)
-			ORDER BY creation DESC LIMIT 1
-		""", (start_dt, end_dt, f"%{job['method']}%", f"%{job['error_title']}%", f"%{job['error_title']}%"), as_dict=True)
+		# Match pre-fetched error logs without hitting DB in loop
+		job_method = job.get("method", "")
+		error_title = job.get("error_title", "")
+		error_log = None
+		for l in all_error_logs:
+			lm = l.get("method") or ""
+			le = l.get("error") or ""
+			if (job_method and job_method in lm) or (error_title and (error_title in lm or error_title in le)):
+				error_log = l
+				break
 
-		if error_logs:
+		if error_log:
 			job_info["status"] = "Failed"
-			job_info["error_message"] = error_logs[0].error or "Execution error logged."
-			job_info["last_execution"] = str(error_logs[0].creation)
+			job_info["error_message"] = error_log.get("error") or "Execution error logged."
+			job_info["last_execution"] = str(error_log.get("creation"))
 			failed_count += 1
 		elif rec_count > 0 or job["doctype"] is None:
 			job_info["status"] = "Success"

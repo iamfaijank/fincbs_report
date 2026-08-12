@@ -15,6 +15,13 @@ def get_context(context):
 		context.csrf_token = getattr(frappe.session, "csrf_token", "") or ""
 	context.site_name = getattr(frappe.local, "site", "")
 	context.auto_sync_enabled = cint(frappe.db.get_single_value("Drishti Settings", "auto_sync"))
-	context.initial_sync_data = "{}"
-	return context
 
+	try:
+		from custom_report.api import get_automation_sync_status
+		data = get_automation_sync_status()
+		context.initial_sync_data = frappe.as_json(data)
+	except Exception as e:
+		frappe.log_error(f"Error building sync context: {str(e)}")
+		context.initial_sync_data = "{}"
+
+	return context
