@@ -1289,36 +1289,121 @@ def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
 
     query = f"""
     WITH main_data AS (
-        SELECT g.acid, g.sol_id, s.sol_desc, t.maturity_date, t.last_repayment_date,
-               s.division_name, s.region_name, s.circle_office_name
+        SELECT   
+            g.acid,
+            g.sol_id,
+            s.sol_desc,
+            g.cif_id,
+            g.schm_code,
+            p.schm_desc,
+            g.foracid,
+            g.acct_name,
+            a.address_line1,
+            a.address_line2,
+            s.division_name,
+            s.region_name,
+            s.circle_office_name,
+            pe.phonenolocalcode,
+            g.acct_opn_date,
+            t.maturity_date,
+            t.last_repayment_date,
+            d.rm_id,
+            g2.emp_name AS rm_name,
+            t.deposit_amount,
+            g.clr_bal_amt,
+            t.deposit_period_mths,
+            t.deposit_period_days
         FROM tbaadm.gam g
-        JOIN tbaadm.tam t ON g.acid = t.acid
-        JOIN tbaadm.sol s ON g.sol_id = s.sol_id
-        WHERE g.schm_code IN ('2005','2010','2011','2012','2013','2014','2015','2016')
+        JOIN tbaadm.tam t
+            ON g.acid = t.acid
+        JOIN tbaadm.gsp p
+            ON g.schm_code = p.schm_code
+        JOIN tbaadm.sol s
+            ON g.sol_id = s.sol_id
+        JOIN crmuser.address a
+            ON g.cif_id = a.orgkey
+        LEFT JOIN custom.dsamap d
+            ON g.foracid = d.account_number
+        LEFT JOIN custom.dsaauth d2
+            ON d.rm_id = d2.user_id
+        LEFT JOIN tbaadm.get g2
+            ON d2.user_id = g2.emp_id
+        LEFT JOIN (
+            SELECT
+                orgkey,
+                phonenolocalcode
+            FROM crmuser.phoneemail
+            WHERE preferredflag = 'Y'
+              AND phoneoremail = 'PHONE'
+        ) pe
+            ON a.orgkey = pe.orgkey
+        WHERE
+            g.schm_code IN ('2005','2010','2011','2012','2013','2014','2015','2016')
             AND g.entity_cre_flg = 'Y'
             AND g.del_flg = 'N'
             AND g.acct_cls_flg = 'N'
+            AND a.preferredaddress = 'Y'
             AND t.maturity_date >= DATE '{ref_date}'{sol_filter}
     ),
     tdt_summary AS (
-        SELECT acid,
-               COALESCE(SUM(tran_amt), 0) AS total_instalment_paid,
-               COALESCE(SUM(flow_amt) - SUM(tran_amt), 0) AS pending_amount,
-               COUNT(CASE WHEN flow_amt > 0 THEN 1 END) - COUNT(CASE WHEN tran_amt > 0 THEN 1 END) AS pending_instalments
+        SELECT
+            acid,
+            COUNT(*) AS total_records,
+            COUNT(
+                CASE
+                    WHEN value_date IS NOT NULL
+                     AND value_date <= DATE '{ref_date}'
+                    THEN 1
+                END
+            ) AS completed_up_to_today,
+            COUNT(
+                CASE
+                    WHEN flow_amt > 0
+                    THEN 1
+                END
+            ) AS total_instalments,
+            COUNT(
+                CASE
+                    WHEN tran_amt > 0
+                    THEN 1
+                END
+            ) AS total_instalments_paid_count,
+            COUNT(
+                CASE
+                    WHEN flow_amt > 0
+                    THEN 1
+                END
+            ) -
+            COUNT(
+                CASE
+                    WHEN tran_amt > 0
+                    THEN 1
+                END
+            ) AS pending_instalments,
+            SUM(flow_amt) AS total_amount_paid,
+            SUM(tran_amt) AS total_instalment_paid,
+            SUM(flow_amt) - SUM(tran_amt) AS pending_amount
         FROM tbaadm.tdt
-        WHERE flow_code = 'NI'
+        WHERE
+            flow_code = 'NI'
             AND (flow_amt > 0 OR tran_amt > 0)
             AND flow_date <= DATE '{ref_date}'
         GROUP BY acid
     )
-    SELECT m.sol_id, m.sol_desc, m.division_name, m.region_name, m.circle_office_name,
-           COUNT(*) AS total_accounts,
-           COALESCE(SUM(t.total_instalment_paid), 0) AS total_collection,
-           COALESCE(SUM(CASE WHEN t.pending_amount > 0 THEN 1 ELSE 0 END), 0) AS pending_accounts,
-           COALESCE(SUM(t.pending_amount), 0) AS pending_amount,
-           COALESCE(SUM(t.pending_instalments), 0) AS pending_instalments
+    SELECT
+        m.sol_id,
+        m.sol_desc,
+        m.division_name,
+        m.region_name,
+        m.circle_office_name,
+        COUNT(*) AS total_accounts,
+        COALESCE(SUM(t.total_instalment_paid), 0) AS total_collection,
+        COALESCE(SUM(CASE WHEN t.pending_amount > 0 THEN 1 ELSE 0 END), 0) AS pending_accounts,
+        COALESCE(SUM(t.pending_amount), 0) AS pending_amount,
+        COALESCE(SUM(t.pending_instalments), 0) AS pending_instalments
     FROM main_data m
-    LEFT JOIN tdt_summary t ON m.acid = t.acid
+    LEFT JOIN tdt_summary t
+        ON m.acid = t.acid
     WHERE NOT (
         COALESCE(t.pending_instalments, 0) > 24
         AND m.last_repayment_date < (DATE '{ref_date}' - INTERVAL '1 year')
