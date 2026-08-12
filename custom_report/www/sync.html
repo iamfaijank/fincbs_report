@@ -3,211 +3,254 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-	<title>Automation Sync Tracker - Drishti</title>
+	<title>Automation Sync Tracker - Frappe UI</title>
 	<link rel="icon" type="image/png" href="/assets/custom_report/frontend/favicon.png" />
-	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+	
+	<!-- Frappe UI Standard Assets & Fonts -->
+	<link rel="stylesheet" crossorigin href="/assets/custom_report/frontend/assets/frappe-ui-D1rk2b8Q.css">
+	<link rel="stylesheet" crossorigin href="/assets/custom_report/frontend/assets/index-DAwpjTq1.css">
 	<script src="https://cdn.tailwindcss.com"></script>
 	<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@0.321.0/font/lucide.min.css" />
+
 	<style>
-		body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
-		.glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); }
-		.glass-modal { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.12); }
-		.custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-		.custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); }
-		.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.5); border-radius: 4px; }
-		.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.8); }
+		:root {
+			--bg-base: #f8fafc;
+			--bg-sidebar: #f1f5f9;
+			--bg-card: #ffffff;
+			--border-color: #e2e8f0;
+			--text-main: #0f172a;
+			--text-muted: #64748b;
+		}
+		[data-theme="dark"] {
+			--bg-base: #0f172a;
+			--bg-sidebar: #1e293b;
+			--bg-card: #1e293b;
+			--border-color: #334155;
+			--text-main: #f8fafc;
+			--text-muted: #94a3b8;
+		}
+		body {
+			font-family: 'Inter', system-ui, -apple-system, sans-serif;
+			background-color: var(--bg-base);
+			color: var(--text-main);
+		}
+		.frappe-card {
+			background-color: var(--bg-card);
+			border: 1px solid var(--border-color);
+			box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+		}
+		.frappe-sidebar {
+			background-color: var(--bg-sidebar);
+			border-right: 1px solid var(--border-color);
+		}
+		.frappe-modal-backdrop {
+			background: rgba(15, 23, 42, 0.55);
+			backdrop-filter: blur(12px);
+		}
+		.custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+		.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+		.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+		[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
 	</style>
 </head>
-<body class="antialiased h-screen overflow-hidden">
+<body class="antialiased h-screen overflow-hidden text-slate-800">
 	<div id="app" class="flex h-screen w-full">
-		<!-- Sidebar -->
-		<aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
-			<div class="p-5 border-b border-slate-800 flex items-center gap-3">
-				<div class="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-400">
-					<i class="icon-lucide-activity text-xl"></i>
+
+		<!-- Sidebar (Frappe UI Style) -->
+		<aside class="w-64 frappe-sidebar flex flex-col shrink-0">
+			<!-- Header / Logo -->
+			<div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-lg bg-slate-900 dark:bg-slate-100 flex items-center justify-center text-white dark:text-slate-900 font-black text-xs">
+						D
+					</div>
+					<div>
+						<h2 class="text-xs font-bold text-slate-900 dark:text-slate-100 leading-tight">Drishti Workspace</h2>
+						<p class="text-[11px] text-slate-500 dark:text-slate-400">Automation Tracker</p>
+					</div>
 				</div>
-				<div>
-					<h2 class="text-sm font-bold text-slate-100 leading-tight">Drishti Automation</h2>
-					<p class="text-xs text-slate-400">Sync Tracker & Monitor</p>
-				</div>
+
+				<button @click="toggleTheme" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition">
+					<i :class="isDark ? 'icon-lucide-sun' : 'icon-lucide-moon'" class="text-sm"></i>
+				</button>
 			</div>
 
-			<div class="flex-1 overflow-y-auto p-3 space-y-6 custom-scrollbar">
-				<!-- Navigation Links -->
+			<!-- Navigation items -->
+			<div class="flex-1 overflow-y-auto p-3 space-y-5 custom-scrollbar">
 				<div>
-					<div class="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Navigation</div>
-					<nav class="space-y-1">
-						<a href="/sync" class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-teal-500/10 text-teal-400 font-semibold text-xs border border-teal-500/20">
+					<div class="px-3 pb-1.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Views</div>
+					<nav class="space-y-0.5">
+						<a href="/sync" class="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-semibold text-xs shadow-xs">
 							<i class="icon-lucide-refresh-cw text-sm"></i>
-							<span>Automation Tracker</span>
+							<span>Automation Syncs</span>
 						</a>
-						<a href="/drishti" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200 text-xs transition">
+						<a href="/drishti" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800 text-xs font-medium transition">
 							<i class="icon-lucide-layout-dashboard text-sm"></i>
 							<span>Sahayog Dashboard</span>
 						</a>
-						<a href="/app/drishti-settings" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200 text-xs transition">
+						<a href="/app/drishti-settings" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800 text-xs font-medium transition">
 							<i class="icon-lucide-settings text-sm"></i>
 							<span>Drishti Settings</span>
 						</a>
 					</nav>
 				</div>
 
-				<!-- Categories Filter -->
+				<!-- Categories Navigation -->
 				<div>
-					<div class="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Categories</div>
-					<nav class="space-y-1">
-						<button @click="selectedCategory = ''" :class="selectedCategory === '' ? 'bg-slate-800 text-slate-200 font-semibold' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'" class="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition">
+					<div class="px-3 pb-1.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Categories</div>
+					<nav class="space-y-0.5">
+						<button @click="selectedCategory = ''" :class="selectedCategory === '' ? 'bg-slate-200/80 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50'" class="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition">
 							<span>All Categories</span>
-							<span class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">{{ jobs.length }}</span>
+							<span class="text-[10px] bg-slate-300/60 dark:bg-slate-800 px-1.5 py-0.2 rounded font-semibold text-slate-600 dark:text-slate-400">{{ jobs.length }}</span>
 						</button>
-						<button v-for="cat in categories" :key="cat" @click="selectedCategory = cat" :class="selectedCategory === cat ? 'bg-slate-800 text-teal-400 font-semibold' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'" class="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition">
+						<button v-for="cat in categories" :key="cat" @click="selectedCategory = cat" :class="selectedCategory === cat ? 'bg-slate-200/80 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50'" class="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition">
 							<span class="truncate">{{ cat }}</span>
-							<span class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">{{ jobs.filter(j => j.category === cat).length }}</span>
+							<span class="text-[10px] bg-slate-300/60 dark:bg-slate-800 px-1.5 py-0.2 rounded font-semibold text-slate-600 dark:text-slate-400">{{ jobs.filter(j => j.category === cat).length }}</span>
 						</button>
 					</nav>
 				</div>
 
-				<!-- Global Control -->
-				<div class="p-3 rounded-xl bg-slate-800/60 border border-slate-700/50 space-y-3">
+				<!-- Master Drishti Auto Sync Switch -->
+				<div class="frappe-card p-3.5 rounded-xl space-y-3">
 					<div class="flex items-center justify-between">
-						<span class="text-xs font-semibold text-slate-300">Global Auto Sync</span>
-						<span :class="autoSyncEnabled ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'" class="text-[10px] px-2 py-0.5 rounded-full border font-bold">
-							{{ autoSyncEnabled ? 'ENABLED' : 'DISABLED' }}
+						<span class="text-xs font-bold text-slate-800 dark:text-slate-200">Drishti Auto Sync</span>
+						<span :class="autoSyncEnabled ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-300 dark:border-slate-700'" class="text-[10px] px-2 py-0.5 rounded-full border font-bold">
+							{{ autoSyncEnabled ? 'ACTIVE' : 'OFF' }}
 						</span>
 					</div>
-					<p class="text-[11px] text-slate-400 leading-normal">
-						{{ autoSyncEnabled ? 'All daily morning cron automations are active.' : 'All morning automations are paused.' }}
+					<p class="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
+						{{ autoSyncEnabled ? 'Daily 07:00 AM - 08:40 AM morning automations enabled.' : 'All morning cron tasks are currently disabled.' }}
 					</p>
-					<button @click="toggleAutoSync" class="w-full py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition" :class="autoSyncEnabled ? 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30' : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30'">
-						<i :class="autoSyncEnabled ? 'icon-lucide-power' : 'icon-lucide-play'"></i>
+					<button @click="toggleAutoSync" class="w-full py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition border" :class="autoSyncEnabled ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'">
+						<i :class="autoSyncEnabled ? 'icon-lucide-power' : 'icon-lucide-play'" class="text-xs"></i>
 						<span>{{ autoSyncEnabled ? 'Disable Auto Sync' : 'Enable Auto Sync' }}</span>
 					</button>
 				</div>
 			</div>
 
 			<!-- Footer -->
-			<div class="p-3 border-t border-slate-800 text-[11px] text-slate-500 flex justify-between items-center">
-				<span>Sahayog Multi-State</span>
-				<span class="text-slate-400 font-mono">v1.0.0</span>
+			<div class="p-3 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-400 flex justify-between items-center">
+				<span>Sahayog Bench</span>
+				<span class="font-mono text-slate-500">Frappe UI</span>
 			</div>
 		</aside>
 
-		<!-- Main Workspace Area -->
-		<main class="flex-1 flex flex-col min-w-0 bg-slate-950 overflow-hidden">
-			<!-- Page Header -->
-			<header class="h-16 px-6 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md flex items-center justify-between shrink-0">
-				<div class="flex items-center gap-3">
-					<h1 class="text-base font-bold text-slate-100">Automation Tracker</h1>
-					<span class="text-xs text-slate-500 font-medium">/</span>
-					<span class="text-xs text-slate-400 font-medium">{{ targetDate }}</span>
+		<!-- Main Workspace Content -->
+		<main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+			<!-- Header -->
+			<header class="h-14 px-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between shrink-0">
+				<div class="flex items-center gap-2 text-xs">
+					<span class="font-bold text-slate-900 dark:text-slate-100">Automations</span>
+					<span class="text-slate-400">/</span>
+					<span class="font-medium text-slate-500 dark:text-slate-400">Sync Status Overview</span>
 				</div>
 
 				<div class="flex items-center gap-3">
-					<!-- Date Selector -->
-					<div class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300">
+					<!-- Target Date Selector -->
+					<div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs">
 						<i class="icon-lucide-calendar text-slate-400"></i>
-						<span class="text-slate-400 font-medium">Date:</span>
-						<input type="date" v-model="targetDate" @change="fetchStatus" class="bg-transparent text-slate-200 outline-none text-xs cursor-pointer" />
+						<span class="text-slate-500 dark:text-slate-400 font-medium">Target Date:</span>
+						<input type="date" v-model="targetDate" @change="fetchStatus" class="bg-transparent text-slate-800 dark:text-slate-200 font-semibold outline-none text-xs cursor-pointer" />
 					</div>
 
 					<!-- Refresh Button -->
-					<button @click="fetchStatus" :disabled="loading" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-2 border border-slate-700 transition disabled:opacity-50">
+					<button @click="fetchStatus" :disabled="loading" class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 shadow-xs transition disabled:opacity-50">
 						<i class="icon-lucide-rotate-cw text-xs" :class="{ 'animate-spin': loading }"></i>
 						<span>Refresh</span>
 					</button>
 
-					<!-- Run All Button -->
-					<button @click="triggerAllPending" :disabled="syncingAll" class="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold flex items-center gap-2 shadow-lg shadow-teal-900/30 transition disabled:opacity-50">
-						<i class="icon-lucide-play-circle text-sm" :class="{ 'animate-spin': syncingAll }"></i>
+					<!-- Run Pending Syncs Button -->
+					<button @click="triggerAllPending" :disabled="syncingAll" class="px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 text-xs font-bold flex items-center gap-1.5 shadow-xs transition disabled:opacity-50">
+						<i class="icon-lucide-play-circle text-xs" :class="{ 'animate-spin': syncingAll }"></i>
 						<span>Run Pending Syncs</span>
 					</button>
 				</div>
 			</header>
 
-			<!-- Content Body -->
+			<!-- Page Body -->
 			<div class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
 
-				<!-- Summary Stats Cards -->
+				<!-- Frappe UI Stat Cards Grid -->
 				<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-					<!-- Card 1: Total -->
-					<div class="glass-panel p-4 rounded-xl space-y-2">
+					<!-- Total -->
+					<div class="frappe-card p-4 rounded-xl space-y-1.5">
 						<div class="flex items-center justify-between text-slate-400 text-xs">
-							<span class="font-medium">TOTAL JOBS</span>
-							<i class="icon-lucide-layers text-slate-500"></i>
+							<span class="font-semibold uppercase tracking-wider text-[10px]">TOTAL CRONS</span>
+							<i class="icon-lucide-layers text-slate-400"></i>
 						</div>
-						<div class="text-2xl font-black text-slate-100">{{ summary.total_jobs || 15 }}</div>
-						<p class="text-[11px] text-slate-400">Scheduled Daily Automations</p>
+						<div class="text-2xl font-black text-slate-900 dark:text-slate-100">{{ summary.total_jobs || 15 }}</div>
+						<p class="text-[11px] text-slate-500 dark:text-slate-400">Scheduled Jobs</p>
 					</div>
 
-					<!-- Card 2: Success -->
-					<div class="glass-panel p-4 rounded-xl space-y-2 border-emerald-500/20">
-						<div class="flex items-center justify-between text-emerald-400 text-xs">
-							<span class="font-semibold">SUCCEEDED</span>
-							<i class="icon-lucide-check-circle2 text-emerald-400"></i>
+					<!-- Succeeded -->
+					<div class="frappe-card p-4 rounded-xl space-y-1.5 border-l-4 border-l-emerald-500">
+						<div class="flex items-center justify-between text-emerald-600 dark:text-emerald-400 text-xs">
+							<span class="font-semibold uppercase tracking-wider text-[10px]">SUCCEEDED</span>
+							<i class="icon-lucide-check-circle2"></i>
 						</div>
-						<div class="text-2xl font-black text-emerald-400">{{ summary.success_count || 0 }}</div>
-						<p class="text-[11px] text-emerald-400/80">{{ summary.success_rate || 0 }}% Success Rate</p>
+						<div class="text-2xl font-black text-emerald-600 dark:text-emerald-400">{{ summary.success_count || 0 }}</div>
+						<p class="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 font-medium">{{ summary.success_rate || 0 }}% Success Rate</p>
 					</div>
 
-					<!-- Card 3: Failed -->
-					<div class="glass-panel p-4 rounded-xl space-y-2 border-rose-500/20">
-						<div class="flex items-center justify-between text-rose-400 text-xs">
-							<span class="font-semibold">FAILED</span>
-							<i class="icon-lucide-x-circle text-rose-400"></i>
+					<!-- Failed -->
+					<div class="frappe-card p-4 rounded-xl space-y-1.5 border-l-4 border-l-rose-500">
+						<div class="flex items-center justify-between text-rose-600 dark:text-rose-400 text-xs">
+							<span class="font-semibold uppercase tracking-wider text-[10px]">FAILED</span>
+							<i class="icon-lucide-x-circle"></i>
 						</div>
-						<div class="text-2xl font-black text-rose-400">{{ summary.failed_count || 0 }}</div>
-						<p class="text-[11px] text-rose-400/80">Logged Errors</p>
+						<div class="text-2xl font-black text-rose-600 dark:text-rose-400">{{ summary.failed_count || 0 }}</div>
+						<p class="text-[11px] text-rose-600/80 dark:text-rose-400/80 font-medium">Logged Errors</p>
 					</div>
 
-					<!-- Card 4: Pending -->
-					<div class="glass-panel p-4 rounded-xl space-y-2 border-amber-500/20">
-						<div class="flex items-center justify-between text-amber-400 text-xs">
-							<span class="font-semibold">PENDING</span>
-							<i class="icon-lucide-clock text-amber-400"></i>
+					<!-- Pending -->
+					<div class="frappe-card p-4 rounded-xl space-y-1.5 border-l-4 border-l-amber-500">
+						<div class="flex items-center justify-between text-amber-600 dark:text-amber-400 text-xs">
+							<span class="font-semibold uppercase tracking-wider text-[10px]">PENDING</span>
+							<i class="icon-lucide-clock"></i>
 						</div>
-						<div class="text-2xl font-black text-amber-400">{{ summary.pending_count || 0 }}</div>
-						<p class="text-[11px] text-amber-400/80">Awaiting Run</p>
+						<div class="text-2xl font-black text-amber-600 dark:text-amber-400">{{ summary.pending_count || 0 }}</div>
+						<p class="text-[11px] text-amber-600/80 dark:text-amber-400/80 font-medium">Awaiting Execution</p>
 					</div>
 
-					<!-- Card 5: Auto Sync Status -->
-					<div class="glass-panel p-4 rounded-xl space-y-2" :class="autoSyncEnabled ? 'border-teal-500/30' : 'border-slate-800'">
-						<div class="flex items-center justify-between text-xs" :class="autoSyncEnabled ? 'text-teal-400' : 'text-slate-400'">
-							<span class="font-semibold">AUTO SYNC</span>
-							<i class="icon-lucide-zap" :class="autoSyncEnabled ? 'text-teal-400' : 'text-slate-500'"></i>
+					<!-- Drishti Master Setting -->
+					<div class="frappe-card p-4 rounded-xl space-y-1.5">
+						<div class="flex items-center justify-between text-xs text-slate-500">
+							<span class="font-semibold uppercase tracking-wider text-[10px]">AUTO SYNC</span>
+							<i class="icon-lucide-zap"></i>
 						</div>
-						<div class="text-lg font-bold" :class="autoSyncEnabled ? 'text-teal-400' : 'text-slate-400'">
+						<div class="text-lg font-bold" :class="autoSyncEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'">
 							{{ autoSyncEnabled ? 'ENABLED' : 'DISABLED' }}
 						</div>
-						<p class="text-[11px] text-slate-400">Drishti Master Setting</p>
+						<p class="text-[11px] text-slate-400">Master Setting</p>
 					</div>
 				</div>
 
-				<!-- Controls Bar: Tabs, Search & Grouping -->
+				<!-- Control Bar: Tabs, Search, Grouping -->
 				<div class="flex flex-wrap items-center justify-between gap-4 pt-2">
 					<!-- Status Filter Tabs -->
-					<div class="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
-						<button v-for="tab in statusTabs" :key="tab.id" @click="selectedTab = tab.id" :class="selectedTab === tab.id ? 'bg-slate-800 text-slate-100 font-semibold shadow-sm' : 'text-slate-400 hover:text-slate-200'" class="px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5">
+					<div class="flex items-center gap-1 bg-slate-200/70 dark:bg-slate-800 p-1 rounded-xl">
+						<button v-for="tab in statusTabs" :key="tab.id" @click="selectedTab = tab.id" :class="selectedTab === tab.id ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'" class="px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1.5">
 							<span>{{ tab.label }}</span>
-							<span class="px-1.5 py-0.2 rounded-full text-[10px]" :class="selectedTab === tab.id ? 'bg-slate-700 text-slate-200' : 'bg-slate-800/80 text-slate-400'">{{ getTabCount(tab.id) }}</span>
+							<span class="px-1.5 py-0.2 rounded-full text-[10px]" :class="selectedTab === tab.id ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300' : 'bg-slate-300/60 dark:bg-slate-700 text-slate-600 dark:text-slate-400'">{{ getTabCount(tab.id) }}</span>
 						</button>
 					</div>
 
 					<div class="flex items-center gap-3">
 						<!-- Search Box -->
 						<div class="relative">
-							<i class="icon-lucide-search absolute left-3 top-2.5 text-xs text-slate-500"></i>
-							<input type="text" v-model="searchQuery" placeholder="Search automations..." class="w-56 bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-teal-500/50 transition" />
+							<i class="icon-lucide-search absolute left-3 top-2.5 text-xs text-slate-400"></i>
+							<input type="text" v-model="searchQuery" placeholder="Search automations..." class="w-56 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 outline-none focus:border-slate-900 dark:focus:border-slate-100 transition" />
 						</div>
 
 						<!-- Grouping Select -->
-						<div class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300">
+						<div class="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300">
 							<i class="icon-lucide-layers text-slate-400"></i>
-							<span class="text-slate-400">Group by:</span>
-							<select v-model="groupBy" class="bg-transparent text-slate-200 outline-none text-xs font-medium cursor-pointer">
-								<option value="status" class="bg-slate-900">Status</option>
-								<option value="category" class="bg-slate-900">Category</option>
-								<option value="schedule" class="bg-slate-900">Schedule Time</option>
+							<span class="text-slate-500 dark:text-slate-400">Group:</span>
+							<select v-model="groupBy" class="bg-transparent text-slate-800 dark:text-slate-200 font-bold outline-none text-xs cursor-pointer">
+								<option value="status" class="bg-white dark:bg-slate-900">Status</option>
+								<option value="category" class="bg-white dark:bg-slate-900">Category</option>
+								<option value="schedule" class="bg-white dark:bg-slate-900">Schedule Time</option>
 							</select>
 						</div>
 					</div>
@@ -217,46 +260,46 @@
 				<div class="space-y-6">
 					<div v-for="group in groupedJobs" :key="group.key" class="space-y-2">
 						<!-- Group Header -->
-						<div class="flex items-center justify-between px-1 py-1 text-xs font-semibold text-slate-400 border-b border-slate-800/80">
+						<div class="flex items-center justify-between px-1 py-1 text-xs font-bold text-slate-500 border-b border-slate-200 dark:border-slate-800">
 							<div class="flex items-center gap-2">
-								<span class="text-slate-200 font-bold uppercase tracking-wider text-[11px]">{{ group.key }}</span>
-								<span class="bg-slate-800 px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-400">{{ group.jobs.length }}</span>
+								<span class="text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[11px]">{{ group.key }}</span>
+								<span class="bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-600 dark:text-slate-400">{{ group.jobs.length }}</span>
 							</div>
 						</div>
 
 						<!-- Job Rows List -->
 						<div class="space-y-2">
-							<div v-for="job in group.jobs" :key="job.key" @click="openModal(job)" class="glass-panel p-3.5 rounded-xl border border-slate-800 hover:border-slate-700 transition cursor-pointer flex flex-wrap items-center justify-between gap-4 group">
+							<div v-for="job in group.jobs" :key="job.key" @click="openModal(job)" class="frappe-card p-3.5 rounded-xl hover:border-slate-400 dark:hover:border-slate-600 transition cursor-pointer flex flex-wrap items-center justify-between gap-4 group">
 								
-								<!-- Left: Status Icon & Title -->
+								<!-- Left: Status Badge & Title -->
 								<div class="flex items-center gap-3.5 min-w-0 flex-1">
-									<!-- Status Icon -->
+									<!-- Status Dot/Icon -->
 									<div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" :class="getStatusBadgeClass(job.status)">
 										<i :class="getStatusIcon(job.status)" class="text-sm"></i>
 									</div>
 
 									<div class="min-w-0 flex-1">
 										<div class="flex items-center gap-2.5">
-											<h3 class="text-xs font-bold text-slate-100 group-hover:text-teal-400 transition truncate">{{ job.title }}</h3>
-											<span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/50 shrink-0">{{ job.category }}</span>
+											<h3 class="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition truncate">{{ job.title }}</h3>
+											<span class="text-[10px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60 shrink-0 font-medium">{{ job.category }}</span>
 										</div>
-										<p class="text-[11px] text-slate-400 truncate mt-0.5 font-mono">{{ job.method }}</p>
+										<p class="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 font-mono">{{ job.method }}</p>
 									</div>
 								</div>
 
 								<!-- Center: Schedule & Records -->
-								<div class="flex items-center gap-6 text-xs text-slate-400 shrink-0">
+								<div class="flex items-center gap-6 text-xs text-slate-500 shrink-0">
 									<!-- Schedule Time -->
-									<div class="flex items-center gap-1.5 bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-800">
-										<i class="icon-lucide-clock text-slate-500 text-xs"></i>
-										<span class="font-mono text-slate-300 text-[11px]">{{ job.schedule_time }}</span>
+									<div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
+										<i class="icon-lucide-clock text-slate-400 text-xs"></i>
+										<span class="font-mono text-slate-700 dark:text-slate-300 text-[11px] font-semibold">{{ job.schedule_time }}</span>
 									</div>
 
 									<!-- Records Synced -->
 									<div class="flex items-center gap-1.5">
-										<i class="icon-lucide-database text-slate-500 text-xs"></i>
-										<span class="font-bold text-slate-200">{{ job.records_synced }}</span>
-										<span class="text-[11px] text-slate-500">records</span>
+										<i class="icon-lucide-database text-slate-400 text-xs"></i>
+										<span class="font-bold text-slate-900 dark:text-slate-100">{{ job.records_synced }}</span>
+										<span class="text-[11px] text-slate-400">records</span>
 									</div>
 
 									<!-- Status Label Badge -->
@@ -267,11 +310,11 @@
 
 								<!-- Right: Action Buttons -->
 								<div class="flex items-center gap-2 shrink-0" @click.stop>
-									<button @click="runJob(job)" :disabled="runningJobs[job.key]" class="px-3 py-1.5 rounded-lg bg-teal-600/20 hover:bg-teal-600 text-teal-300 hover:text-white border border-teal-500/30 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50">
+									<button @click="runJob(job)" :disabled="runningJobs[job.key]" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition disabled:opacity-50">
 										<i class="icon-lucide-play text-xs" :class="{ 'animate-spin': runningJobs[job.key] }"></i>
 										<span>{{ runningJobs[job.key] ? 'Running...' : 'Run Now' }}</span>
 									</button>
-									<button @click="openModal(job)" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700 transition">
+									<button @click="openModal(job)" class="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 transition">
 										<i class="icon-lucide-info text-xs"></i>
 									</button>
 								</div>
@@ -284,22 +327,22 @@
 			</div>
 		</main>
 
-		<!-- Detail & Traceback Popup Modal with Blurred Backdrop (Enforces User Memory Rule) -->
-		<div v-if="activeJobModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(16px);" @click.self="activeJobModal = null">
-			<div class="glass-modal w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-700/80 overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150">
+		<!-- Detail Popup Modal with Glassmorphic Backdrop (Matching User Memory Rule) -->
+		<div v-if="activeJobModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 frappe-modal-backdrop" @click.self="activeJobModal = null">
+			<div class="frappe-card w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-300 dark:border-slate-700 overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150">
 				
 				<!-- Modal Header -->
-				<div class="p-5 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between shrink-0">
+				<div class="p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between shrink-0">
 					<div class="flex items-center gap-3">
 						<div class="w-9 h-9 rounded-xl flex items-center justify-center" :class="getStatusBadgeClass(activeJobModal.status)">
 							<i :class="getStatusIcon(activeJobModal.status)" class="text-base"></i>
 						</div>
 						<div>
-							<h2 class="text-sm font-bold text-slate-100">{{ activeJobModal.title }}</h2>
-							<p class="text-xs text-slate-400 font-mono">{{ activeJobModal.schedule_time }} IST • {{ activeJobModal.category }}</p>
+							<h2 class="text-sm font-bold text-slate-900 dark:text-slate-100">{{ activeJobModal.title }}</h2>
+							<p class="text-xs text-slate-500 dark:text-slate-400 font-mono">{{ activeJobModal.schedule_time }} IST • {{ activeJobModal.category }}</p>
 						</div>
 					</div>
-					<button @click="activeJobModal = null" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 flex items-center justify-center transition">
+					<button @click="activeJobModal = null" class="w-8 h-8 rounded-lg bg-slate-200/80 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 flex items-center justify-center transition">
 						<i class="icon-lucide-x text-sm"></i>
 					</button>
 				</div>
@@ -307,53 +350,53 @@
 				<!-- Modal Body -->
 				<div class="p-6 overflow-y-auto space-y-6 custom-scrollbar flex-1">
 					<!-- Info Grid -->
-					<div class="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">
+					<div class="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-slate-100/70 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs">
 						<div>
-							<span class="text-slate-500 font-medium block">Target Date</span>
-							<span class="text-slate-200 font-bold font-mono">{{ activeJobModal.target_date }}</span>
+							<span class="text-slate-500 dark:text-slate-400 font-medium block">Target Date</span>
+							<span class="text-slate-900 dark:text-slate-100 font-bold font-mono">{{ activeJobModal.target_date }}</span>
 						</div>
 						<div>
-							<span class="text-slate-500 font-medium block">Status</span>
+							<span class="text-slate-500 dark:text-slate-400 font-medium block">Status</span>
 							<span class="font-bold" :class="getStatusTextColor(activeJobModal.status)">{{ activeJobModal.status }}</span>
 						</div>
 						<div>
-							<span class="text-slate-500 font-medium block">Records Synced</span>
-							<span class="text-slate-200 font-bold font-mono">{{ activeJobModal.records_synced }}</span>
+							<span class="text-slate-500 dark:text-slate-400 font-medium block">Records Synced</span>
+							<span class="text-slate-900 dark:text-slate-100 font-bold font-mono">{{ activeJobModal.records_synced }}</span>
 						</div>
 					</div>
 
 					<!-- Method Path -->
 					<div>
-						<label class="text-xs font-semibold text-slate-400 block mb-1.5">Python Method Hook Path</label>
-						<div class="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-teal-400 break-all select-all">
+						<label class="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1.5">Python Method Hook Path</label>
+						<div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-blue-600 dark:text-blue-400 break-all select-all">
 							{{ activeJobModal.method }}
 						</div>
 					</div>
 
 					<!-- Error Traceback Log (if any) -->
 					<div v-if="activeJobModal.error_message">
-						<label class="text-xs font-semibold text-rose-400 block mb-1.5 flex items-center gap-1.5">
+						<label class="text-xs font-bold text-rose-600 dark:text-rose-400 block mb-1.5 flex items-center gap-1.5">
 							<i class="icon-lucide-alert-triangle text-xs"></i>
 							<span>Error Log / Traceback Details</span>
 						</label>
-						<div class="p-4 rounded-xl bg-rose-950/30 border border-rose-500/30 text-xs font-mono text-rose-300 overflow-x-auto max-h-48 custom-scrollbar whitespace-pre-wrap select-all">
+						<div class="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-xs font-mono text-rose-700 dark:text-rose-300 overflow-x-auto max-h-48 custom-scrollbar whitespace-pre-wrap select-all">
 							{{ activeJobModal.error_message }}
 						</div>
 					</div>
-					<div v-else class="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/20 text-xs text-emerald-300 flex items-center gap-2">
+					<div v-else class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-700 dark:text-emerald-300 flex items-center gap-2 font-medium">
 						<i class="icon-lucide-check-circle text-sm"></i>
-						<span>No error logged for this execution.</span>
+						<span>No execution errors logged.</span>
 					</div>
 				</div>
 
 				<!-- Modal Footer -->
-				<div class="p-4 border-t border-slate-800 bg-slate-900/80 flex items-center justify-between shrink-0">
-					<span class="text-xs text-slate-500">Scheduled Daily via Frappe Hooks</span>
+				<div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between shrink-0">
+					<span class="text-xs text-slate-500">Daily Cron Task</span>
 					<div class="flex items-center gap-2">
-						<button @click="activeJobModal = null" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+						<button @click="activeJobModal = null" class="px-4 py-2 rounded-xl bg-slate-200/80 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition">
 							Close
 						</button>
-						<button @click="runJob(activeJobModal)" :disabled="runningJobs[activeJobModal.key]" class="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold flex items-center gap-2 shadow-lg shadow-teal-900/30 transition disabled:opacity-50">
+						<button @click="runJob(activeJobModal)" :disabled="runningJobs[activeJobModal.key]" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 text-xs font-bold flex items-center gap-2 shadow-xs transition disabled:opacity-50">
 							<i class="icon-lucide-play text-xs" :class="{ 'animate-spin': runningJobs[activeJobModal.key] }"></i>
 							<span>{{ runningJobs[activeJobModal.key] ? 'Executing...' : 'Run Sync Now' }}</span>
 						</button>
@@ -372,8 +415,9 @@
 			setup() {
 				const loading = ref(false);
 				const syncingAll = ref(false);
+				const isDark = ref(localStorage.getItem('theme') === 'dark');
 				const autoSyncEnabled = ref({{ auto_sync_enabled|default('true') }});
-				const targetDate = ref('{{ default_date|default("") }}' || new Date(Date.now() - 86400000).toISOString().split('T')[0]);
+				const targetDate = ref(new Date(Date.now() - 86400000).toISOString().split('T')[0]);
 				const searchQuery = ref('');
 				const selectedTab = ref('all');
 				const selectedCategory = ref('');
@@ -392,6 +436,17 @@
 					{ id: 'Disabled', label: 'Disabled' }
 				];
 
+				const toggleTheme = () => {
+					isDark.value = !isDark.value;
+					if (isDark.value) {
+						document.documentElement.setAttribute('data-theme', 'dark');
+						localStorage.setItem('theme', 'dark');
+					} else {
+						document.documentElement.removeAttribute('data-theme');
+						localStorage.setItem('theme', 'light');
+					}
+				};
+
 				const categories = computed(() => {
 					return [...new Set(jobs.value.map(j => j.category))];
 				});
@@ -407,7 +462,7 @@
 							autoSyncEnabled.value = data.message.auto_sync_enabled;
 						}
 					} catch (e) {
-						console.error('Error fetching sync status:', e);
+						console.error('Error fetching status:', e);
 					} finally {
 						loading.value = false;
 					}
@@ -503,17 +558,17 @@
 				};
 
 				const getStatusBadgeClass = (status) => {
-					if (status === 'Success') return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
-					if (status === 'Failed') return 'bg-rose-500/10 text-rose-400 border-rose-500/30';
-					if (status === 'Disabled') return 'bg-slate-800 text-slate-500 border-slate-700';
-					return 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+					if (status === 'Success') return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800';
+					if (status === 'Failed') return 'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800';
+					if (status === 'Disabled') return 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
+					return 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800';
 				};
 
 				const getStatusTextColor = (status) => {
-					if (status === 'Success') return 'text-emerald-400';
-					if (status === 'Failed') return 'text-rose-400';
+					if (status === 'Success') return 'text-emerald-600 dark:text-emerald-400';
+					if (status === 'Failed') return 'text-rose-600 dark:text-rose-400';
 					if (status === 'Disabled') return 'text-slate-500';
-					return 'text-amber-400';
+					return 'text-amber-600 dark:text-amber-400';
 				};
 
 				const openModal = (job) => {
@@ -521,13 +576,16 @@
 				};
 
 				onMounted(() => {
+					if (isDark.value) {
+						document.documentElement.setAttribute('data-theme', 'dark');
+					}
 					fetchStatus();
 				});
 
 				return {
-					loading, syncingAll, autoSyncEnabled, targetDate, searchQuery, selectedTab, selectedCategory, groupBy,
-					activeJobModal, runningJobs, summary, jobs, statusTabs, categories, groupedJobs, getTabCount,
-					fetchStatus, toggleAutoSync, runJob, triggerAllPending, getStatusIcon, getStatusBadgeClass,
+					loading, syncingAll, isDark, autoSyncEnabled, targetDate, searchQuery, selectedTab, selectedCategory,
+					groupBy, activeJobModal, runningJobs, summary, jobs, statusTabs, categories, groupedJobs, getTabCount,
+					toggleTheme, fetchStatus, toggleAutoSync, runJob, triggerAllPending, getStatusIcon, getStatusBadgeClass,
 					getStatusTextColor, openModal
 				};
 			}
