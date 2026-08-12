@@ -1,644 +1,1051 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-	<title>Automation Sync Tracker</title>
-	<link rel="icon" type="image/png" href="/assets/custom_report/frontend/favicon.png" />
-	
-	<!-- Fonts & Icons -->
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>{{ title or "Automation Sync Tracker" }}</title>
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@0.321.0/font/lucide.min.css" />
-
-	<!-- Frappe UI & Utility Assets -->
-	<link rel="stylesheet" crossorigin href="/assets/custom_report/frontend/assets/frappe-ui-D1rk2b8Q.css">
-	<link rel="stylesheet" crossorigin href="/assets/custom_report/frontend/assets/index-DAwpjTq1.css">
-	<script src="https://cdn.tailwindcss.com"></script>
-	<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-
-	<script>
-		tailwind.config = {
-			darkMode: ['class', '[data-theme="dark"]'],
-			theme: {
-				extend: {
-					fontFamily: {
-						sans: ['Inter', 'system-ui', 'sans-serif'],
-						mono: ['JetBrains Mono', 'monospace']
-					},
-					colors: {
-						gray: { 50: '#f9fafb', 100: '#f3f4f6', 200: '#e5e7eb', 300: '#d1d5db', 400: '#9ca3af', 500: '#6b7280', 600: '#4b5563', 700: '#374151', 800: '#1f2937', 900: '#111827', 950: '#030712' }
-					}
-				}
-			}
-		}
-	</script>
 
 	<style>
 		:root {
-			--bg-page: #ffffff;
+			--bg-page: #f8fafc;
 			--bg-card: #ffffff;
-			--border-subtle: #f3f4f6;
-			--border-main: #e5e7eb;
-			--text-primary: #111827;
-			--text-muted: #6b7280;
+			--bg-subtle: #f1f5f9;
+			--border-color: #e2e8f0;
+			--text-primary: #0f172a;
+			--text-secondary: #475569;
+			--text-muted: #94a3b8;
+			--accent: #2563eb;
+			--accent-hover: #1d4ed8;
+			--success: #10b981;
+			--danger: #ef4444;
+			--warning: #f59e0b;
+			--shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+			--shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 		}
+
 		[data-theme="dark"] {
 			--bg-page: #0b0f19;
 			--bg-card: #111827;
-			--border-subtle: #1f2937;
-			--border-main: #374151;
-			--text-primary: #f9fafb;
-			--text-muted: #9ca3af;
+			--bg-subtle: #1f2937;
+			--border-color: #374151;
+			--text-primary: #f8fafc;
+			--text-secondary: #cbd5e1;
+			--text-muted: #64748b;
+			--accent: #3b82f6;
+			--accent-hover: #60a5fa;
 		}
+
+		* { box-sizing: border-box; margin: 0; padding: 0; }
 		body {
 			font-family: 'Inter', system-ui, -apple-system, sans-serif;
 			background-color: var(--bg-page);
 			color: var(--text-primary);
+			line-height: 1.5;
 			-webkit-font-smoothing: antialiased;
+			height: 100vh;
+			overflow: hidden;
 		}
-		/* Glassmorphism Backdrop Filter standard & WebKit fallback */
-		.frappe-modal-backdrop {
+
+		/* Layout & Container */
+		.app-container {
+			display: flex;
+			flex-direction: column;
+			height: 100vh;
+			max-width: 1024px;
+			margin: 0 auto;
+			padding: 0 1rem;
+			position: relative;
+		}
+
+		/* Header */
+		header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 1.25rem 0;
+			border-bottom: 1px solid var(--border-color);
+			flex-shrink: 0;
+			gap: 0.75rem;
+		}
+		.brand {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+		}
+		.brand-logo {
+			width: 2rem;
+			height: 2rem;
+			border-radius: 0.5rem;
+			background: var(--text-primary);
+			color: var(--bg-card);
+			font-weight: 800;
+			font-size: 0.75rem;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		.brand-text h1 { font-size: 0.95rem; font-weight: 700; line-height: 1.2; }
+		.brand-text p { font-size: 0.7rem; color: var(--text-muted); font-weight: 500; }
+
+		/* Auto Sync Toggle Pill */
+		.auto-sync-btn {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			padding: 0.35rem 0.85rem;
+			border-radius: 9999px;
+			font-size: 0.75rem;
+			font-weight: 600;
+			border: 1px solid var(--border-color);
+			background: var(--bg-subtle);
+			color: var(--text-secondary);
+			cursor: pointer;
+			transition: all 0.2s ease;
+		}
+		.auto-sync-btn.active {
+			background: rgba(16, 185, 129, 0.1);
+			color: var(--success);
+			border-color: rgba(16, 185, 129, 0.3);
+		}
+		.status-dot-pulse {
+			width: 0.4rem;
+			height: 0.4rem;
+			border-radius: 50%;
+			background: currentColor;
+		}
+		.auto-sync-btn.active .status-dot-pulse {
+			animation: pulse 1.5s infinite;
+		}
+
+		/* Header Actions */
+		.header-actions {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+		}
+		.preset-btn-group {
+			display: flex;
+			background: var(--bg-subtle);
+			padding: 0.15rem;
+			border-radius: 0.5rem;
+			gap: 0.25rem;
+		}
+		.preset-btn {
+			padding: 0.25rem 0.6rem;
+			font-size: 0.7rem;
+			font-weight: 600;
+			border: none;
+			border-radius: 0.35rem;
+			background: transparent;
+			color: var(--text-secondary);
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+		.preset-btn.active {
+			background: var(--bg-card);
+			color: var(--text-primary);
+			box-shadow: var(--shadow-sm);
+		}
+		.date-input {
+			background: var(--bg-card);
+			border: 1px solid var(--border-color);
+			border-radius: 0.5rem;
+			padding: 0.35rem 0.6rem;
+			font-size: 0.75rem;
+			font-weight: 600;
+			color: var(--text-primary);
+			outline: none;
+			cursor: pointer;
+		}
+		.icon-btn {
+			padding: 0.45rem;
+			border-radius: 0.5rem;
+			border: 1px solid var(--border-color);
+			background: var(--bg-card);
+			color: var(--text-muted);
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: all 0.15s ease;
+		}
+		.icon-btn:hover { color: var(--text-primary); }
+
+		/* Main Content */
+		main {
+			flex: 1;
+			overflow-y: auto;
+			padding: 1rem 0 7rem 0;
+		}
+
+		/* Stats Grid */
+		.stats-grid {
+			display: grid;
+			grid-template-columns: repeat(4, 1fr);
+			gap: 0.75rem;
+			padding: 1rem;
+			border-radius: 0.75rem;
+			background: var(--bg-card);
+			border: 1px solid var(--border-color);
+			margin-bottom: 1rem;
+		}
+		.stat-card span { display: block; }
+		.stat-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+		.stat-val { font-size: 1.25rem; font-weight: 800; color: var(--text-primary); margin-top: 0.15rem; }
+		.stat-val.success { color: var(--success); }
+		.stat-val.danger { color: var(--danger); }
+		.stat-val.warning { color: var(--warning); }
+
+		/* Toolbar: Search & Refresh */
+		.toolbar {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.75rem;
+			margin-bottom: 1rem;
+		}
+		.search-box {
+			position: relative;
+			flex: 1;
+		}
+		.search-box i {
+			position: absolute;
+			left: 0.75rem;
+			top: 50%;
+			transform: translateY(-50%);
+			font-size: 0.8rem;
+			color: var(--text-muted);
+		}
+		.search-input {
+			width: 100%;
+			background: var(--bg-card);
+			border: 1px solid var(--border-color);
+			border-radius: 0.5rem;
+			padding: 0.45rem 0.75rem 0.45rem 2.1rem;
+			font-size: 0.8rem;
+			color: var(--text-primary);
+			outline: none;
+			transition: border-color 0.2s;
+		}
+		.search-input:focus { border-color: var(--text-primary); }
+
+		/* Job List */
+		.job-list {
+			border: 1px solid var(--border-color);
+			border-radius: 0.75rem;
+			background: var(--bg-card);
+			overflow: hidden;
+		}
+		.job-item {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 0.85rem 1rem;
+			border-bottom: 1px solid var(--border-color);
+			cursor: pointer;
+			transition: background 0.15s ease;
+		}
+		.job-item:last-child { border-bottom: none; }
+		.job-item:hover { background: var(--bg-subtle); }
+		.job-left {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+			min-width: 0;
+			flex: 1;
+		}
+		.status-dot {
+			width: 0.6rem;
+			height: 0.6rem;
+			border-radius: 50%;
+			flex-shrink: 0;
+		}
+		.status-dot.success { background: var(--success); }
+		.status-dot.failed { background: var(--danger); }
+		.status-dot.pending { background: var(--warning); }
+
+		.job-title {
+			font-size: 0.8rem;
+			font-weight: 700;
+			color: var(--text-primary);
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		.job-right {
+			display: flex;
+			align-items: center;
+			gap: 1rem;
+			font-size: 0.75rem;
+			color: var(--text-secondary);
+			flex-shrink: 0;
+		}
+		.job-time { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--text-muted); }
+		.job-recs { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--text-primary); text-align: right; }
+		.job-status-text { font-size: 0.7rem; font-weight: 700; text-transform: capitalize; }
+		.job-status-text.success { color: var(--success); }
+		.job-status-text.failed { color: var(--danger); }
+		.job-status-text.pending { color: var(--warning); }
+
+		.btn-run {
+			padding: 0.3rem 0.75rem;
+			font-size: 0.7rem;
+			font-weight: 700;
+			border-radius: 0.375rem;
+			border: 1px solid var(--border-color);
+			background: var(--bg-card);
+			color: var(--text-primary);
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+		.btn-run:hover { background: var(--text-primary); color: var(--bg-card); }
+		.btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
+
+		/* Floating Dock */
+		.floating-dock {
+			position: fixed;
+			bottom: 1.25rem;
+			left: 50%;
+			transform: translateX(-50%);
+			z-index: 40;
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			padding: 0.4rem 0.6rem;
+			border-radius: 1rem;
+			background: var(--bg-card);
+			border: 1px solid var(--border-color);
+			box-shadow: var(--shadow-lg);
+			backdrop-filter: blur(16px);
+			-webkit-backdrop-filter: blur(16px);
+		}
+		.filter-tab {
+			padding: 0.35rem 0.75rem;
+			border-radius: 0.6rem;
+			font-size: 0.75rem;
+			font-weight: 600;
+			border: none;
+			background: transparent;
+			color: var(--text-secondary);
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			gap: 0.35rem;
+			transition: all 0.15s ease;
+		}
+		.filter-tab.active {
+			background: var(--text-primary);
+			color: var(--bg-card);
+		}
+		.tab-badge {
+			font-size: 0.65rem;
+			padding: 0.05rem 0.35rem;
+			border-radius: 9999px;
+			background: var(--bg-subtle);
+			color: var(--text-secondary);
+		}
+		.filter-tab.active .tab-badge {
+			background: rgba(255,255,255,0.2);
+			color: inherit;
+		}
+		.btn-run-all {
+			padding: 0.35rem 0.85rem;
+			border-radius: 0.6rem;
+			font-size: 0.75rem;
+			font-weight: 700;
+			border: none;
+			background: var(--text-primary);
+			color: var(--bg-card);
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			gap: 0.35rem;
+			transition: all 0.15s ease;
+		}
+		.btn-run-all:disabled { opacity: 0.5; cursor: not-allowed; }
+
+		/* Glassmorphism Modal (User Memory Rule Enforced) */
+		.modal-backdrop {
+			position: fixed;
+			inset: 0;
+			z-index: 50;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 1rem;
 			background: rgba(0, 0, 0, 0.45);
 			-webkit-backdrop-filter: blur(12px);
 			backdrop-filter: blur(12px);
+			opacity: 0;
+			pointer-events: none;
+			transition: opacity 0.2s ease;
 		}
-		.custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-		.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-		.custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
-		[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; }
-		.no-scrollbar::-webkit-scrollbar { display: none; }
-		.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+		.modal-backdrop.open {
+			opacity: 1;
+			pointer-events: auto;
+		}
+		.modal-card {
+			background: var(--bg-card);
+			border: 1px solid var(--border-color);
+			border-radius: 1rem;
+			width: 100%;
+			max-width: 500px;
+			max-height: 85vh;
+			display: flex;
+			flex-direction: column;
+			box-shadow: var(--shadow-lg);
+			transform: scale(0.95);
+			transition: transform 0.2s ease;
+			overflow: hidden;
+		}
+		.modal-backdrop.open .modal-card {
+			transform: scale(1);
+		}
+		.modal-header {
+			padding: 1rem 1.25rem;
+			border-bottom: 1px solid var(--border-color);
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+		}
+		.modal-body {
+			padding: 1.25rem;
+			overflow-y: auto;
+			display: flex;
+			flex-direction: column;
+			gap: 1rem;
+			font-size: 0.75rem;
+		}
+		.modal-footer {
+			padding: 0.85rem 1.25rem;
+			border-top: 1px solid var(--border-color);
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			gap: 0.5rem;
+		}
+		.info-grid {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: 0.5rem;
+			background: var(--bg-subtle);
+			padding: 0.75rem;
+			border-radius: 0.5rem;
+		}
+		.code-box {
+			background: var(--bg-subtle);
+			padding: 0.6rem;
+			border-radius: 0.5rem;
+			font-family: 'JetBrains Mono', monospace;
+			font-size: 0.7rem;
+			word-break: break-all;
+			user-select: all;
+		}
+		.error-box {
+			background: rgba(239, 68, 68, 0.1);
+			color: var(--danger);
+			border: 1px solid rgba(239, 68, 68, 0.2);
+			padding: 0.75rem;
+			border-radius: 0.5rem;
+			font-family: 'JetBrains Mono', monospace;
+			font-size: 0.7rem;
+			white-space: pre-wrap;
+			max-height: 160px;
+			overflow-y: auto;
+		}
 
-		/* Toast Animations */
-		.toast-enter-active, .toast-leave-active { transition: all 0.25s ease; }
-		.toast-enter-from { opacity: 0; transform: translateY(-12px) scale(0.95); }
-		.toast-leave-to { opacity: 0; transform: translateY(-12px) scale(0.95); }
+		/* Toast Notification */
+		.toast {
+			position: fixed;
+			top: 1rem;
+			right: 1rem;
+			z-index: 60;
+			padding: 0.6rem 1rem;
+			border-radius: 0.75rem;
+			font-size: 0.75rem;
+			font-weight: 600;
+			background: var(--text-primary);
+			color: var(--bg-card);
+			box-shadow: var(--shadow-lg);
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			transform: translateY(-20px);
+			opacity: 0;
+			transition: all 0.25s ease;
+			pointer-events: none;
+		}
+		.toast.show {
+			transform: translateY(0);
+			opacity: 1;
+			pointer-events: auto;
+		}
+
+		@media (max-width: 640px) {
+			.stats-grid { grid-template-columns: repeat(2, 1fr); }
+			.preset-btn-group { display: none; }
+			.job-time { display: none; }
+		}
+		@keyframes pulse {
+			0%, 100% { opacity: 1; }
+			50% { opacity: 0.4; }
+		}
+		.spin { animation: spin 1s linear infinite; }
+		@keyframes spin { 100% { transform: rotate(360deg); } }
 	</style>
-
-	<script>
-		window.csrf_token = "{{ csrf_token }}";
-		window.initial_sync_data = {{ (initial_sync_data or '{}') | safe }};
-	</script>
 </head>
-{% raw %}
-<body class="antialiased h-screen overflow-hidden text-gray-900 dark:text-gray-100 selection:bg-gray-200 dark:selection:bg-gray-800">
-	<div id="app" class="flex flex-col h-screen w-full max-w-5xl mx-auto px-3 sm:px-6 relative">
+<body>
 
-		<!-- Toast Alert Notification -->
-		<transition name="toast">
-			<div v-if="toast.show" :class="[
-				'fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl shadow-2xl text-xs font-semibold flex items-center gap-2.5 border backdrop-blur-md transition-all duration-200 max-w-sm',
-				toast.type === 'success' ? 'bg-emerald-950/90 text-emerald-200 border-emerald-800/80' :
-				toast.type === 'error' ? 'bg-rose-950/90 text-rose-200 border-rose-800/80' :
-				'bg-gray-900/90 text-gray-100 border-gray-700/80'
-			]">
-				<i :class="toast.type === 'success' ? 'icon-lucide-check-circle text-emerald-400' : toast.type === 'error' ? 'icon-lucide-alert-circle text-rose-400' : 'icon-lucide-info text-blue-400'" class="text-sm shrink-0"></i>
-				<span class="truncate">{{ toast.message }}</span>
-				<button @click="toast.show = false" type="button" class="ml-auto text-gray-400 hover:text-white p-0.5" aria-label="Close Toast">
-					<i class="icon-lucide-x text-xs"></i>
-				</button>
+	<div class="app-container">
+
+		<!-- Header -->
+		<header>
+			<div class="brand">
+				<div class="brand-logo">ST</div>
+				<div class="brand-text">
+					<h1>Automation Sync Tracker</h1>
+					<p>Sahayog Bench</p>
+				</div>
 			</div>
-		</transition>
 
-		<!-- Mobile & Desktop Responsive Header -->
-		<header class="py-4 sm:py-5 border-b border-gray-100 dark:border-gray-800/60 shrink-0">
-			<div class="flex items-center justify-between gap-2">
-				<!-- Left: Brand Logo & Title -->
-				<div class="flex items-center gap-2.5 min-w-0 flex-1">
-					<div class="w-7 h-7 rounded-lg bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
-						ST
-					</div>
-					<div class="min-w-0 hidden sm:block">
-						<h1 class="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 tracking-tight truncate">Automation Sync Tracker</h1>
-						<p class="text-[10px] sm:text-[11px] text-gray-400 font-medium truncate">Sahayog Bench</p>
-					</div>
+			<button type="button" id="btnAutoSync" class="auto-sync-btn" title="Toggle Auto Sync">
+				<span class="status-dot-pulse"></span>
+				<span id="txtAutoSync">Checking...</span>
+			</button>
+
+			<div class="header-actions">
+				<div class="preset-btn-group">
+					<button type="button" class="preset-btn" data-preset="yesterday">Yesterday</button>
+					<button type="button" class="preset-btn" data-preset="today">Today</button>
 				</div>
-
-				<!-- Center: Auto Sync Toggle Badge (Strictly Centered) -->
-				<div class="shrink-0 flex justify-center">
-					<button type="button" @click="toggleAutoSync" :disabled="togglingAutoSync" class="flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] transition shadow-xs disabled:opacity-50" :class="autoSyncEnabled ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/60' : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'" title="Click to toggle Auto Sync status">
-						<span class="w-1.5 h-1.5 rounded-full" :class="autoSyncEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'"></span>
-						<span class="font-semibold text-[10px] sm:text-[11px] whitespace-nowrap">{{ autoSyncEnabled ? 'Auto Sync Active' : 'Auto Sync Off' }}</span>
-					</button>
-				</div>
-
-				<!-- Right Actions: Date Presets, Date Picker & Theme Toggle -->
-				<div class="flex items-center justify-end gap-2 flex-1 shrink-0">
-					<!-- Quick Date Preset Buttons -->
-					<div class="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg text-[10px] font-bold">
-						<button type="button" @click="setDatePreset('yesterday')" :class="targetDate === yesterdayStr ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400'" class="px-2 py-0.5 rounded-md transition">
-							Yesterday
-						</button>
-						<button type="button" @click="setDatePreset('today')" :class="targetDate === todayStr ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400'" class="px-2 py-0.5 rounded-md transition">
-							Today
-						</button>
-					</div>
-
-					<input type="date" v-model="targetDate" @change="fetchStatus" aria-label="Select Target Sync Date" class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg px-2 py-1 text-[11px] sm:text-xs text-gray-700 dark:text-gray-300 outline-none font-semibold cursor-pointer max-w-[120px] sm:max-w-none" />
-
-					<button type="button" @click="toggleTheme" aria-label="Toggle Light/Dark Theme" title="Toggle Theme" class="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition rounded-lg border border-gray-200/50 dark:border-gray-800/50">
-						<i :class="isDark ? 'icon-lucide-sun' : 'icon-lucide-moon'" class="text-xs sm:text-sm"></i>
-					</button>
-				</div>
+				<input type="date" id="targetDate" class="date-input" aria-label="Select Date">
+				<button type="button" id="btnThemeToggle" class="icon-btn" title="Toggle Theme" aria-label="Toggle Theme">
+					<i class="icon-lucide-moon" id="iconTheme"></i>
+				</button>
 			</div>
 		</header>
 
-		<!-- Main Workspace Area -->
-		<main class="flex-1 overflow-y-auto py-4 space-y-4 custom-scrollbar pb-28">
-
-			<!-- Mobile Responsive Stats Grid (2 cols on Mobile, 4 cols on Desktop) -->
-			<div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 p-3 sm:p-4 rounded-xl bg-gray-50/60 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800/80">
-				<div class="p-1">
-					<span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">TOTAL JOBS</span>
-					<span class="text-base sm:text-lg font-black text-gray-900 dark:text-gray-100">{{ summary.total_jobs }}</span>
+		<!-- Main Workspace -->
+		<main>
+			<!-- Stats Summary -->
+			<div class="stats-grid">
+				<div class="stat-card">
+					<span class="stat-label">TOTAL JOBS</span>
+					<span class="stat-val" id="statTotal">0</span>
 				</div>
-				<div class="p-1">
-					<span class="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">SUCCESS</span>
-					<span class="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400">{{ summary.success_count }}</span>
+				<div class="stat-card">
+					<span class="stat-label">SUCCESS</span>
+					<span class="stat-val success" id="statSuccess">0</span>
 				</div>
-				<div class="p-1">
-					<span class="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 block">FAILED</span>
-					<span class="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400">{{ summary.failed_count }}</span>
+				<div class="stat-card">
+					<span class="stat-label">FAILED</span>
+					<span class="stat-val danger" id="statFailed">0</span>
 				</div>
-				<div class="p-1">
-					<span class="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 block">PENDING</span>
-					<span class="text-base sm:text-lg font-black text-amber-600 dark:text-amber-400">{{ summary.pending_count }}</span>
-				</div>
-			</div>
-
-			<!-- Search Filter Input & Date Viewing Indicator -->
-			<div class="flex items-center justify-between gap-3">
-				<div class="relative flex-1">
-					<i class="icon-lucide-search absolute left-3 top-2.5 text-xs text-gray-400"></i>
-					<input type="text" v-model="searchQuery" placeholder="Search automations..." aria-label="Search automations" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg pl-8 pr-7 py-1.5 text-xs text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-none focus:border-gray-900 dark:focus:border-gray-100 transition" />
-					<button v-if="searchQuery" type="button" @click="searchQuery = ''" class="absolute right-2.5 top-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" aria-label="Clear Search">
-						<i class="icon-lucide-x text-xs"></i>
-					</button>
-				</div>
-
-				<div class="flex items-center gap-2 shrink-0">
-					<span class="text-[11px] font-mono text-gray-400">Viewing: <strong class="text-gray-700 dark:text-gray-200 font-bold">{{ formatDate(targetDate) }}</strong></span>
-					<button type="button" @click="fetchStatus" :disabled="loading" class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition flex items-center gap-1">
-						<i class="icon-lucide-rotate-cw text-[10px]" :class="{ 'animate-spin': loading }"></i>
-						<span>Refresh</span>
-					</button>
+				<div class="stat-card">
+					<span class="stat-label">PENDING</span>
+					<span class="stat-val warning" id="statPending">0</span>
 				</div>
 			</div>
 
-			<!-- Clean List -->
-			<div class="space-y-2 divide-y divide-gray-100 dark:divide-gray-800/60 border-t border-b border-gray-100 dark:border-gray-800/60 pt-2">
-				<div v-for="job in filteredJobs" :key="job.key" @click="openModal(job)" class="pt-3 pb-2 px-1 hover:bg-gray-50/70 dark:hover:bg-gray-900/50 transition cursor-pointer group space-y-2 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-4 rounded-lg">
-					
-					<!-- Top/Left: Status Dot + Job Title + Run Button on Mobile -->
-					<div class="flex items-center justify-between gap-3 min-w-0 flex-1">
-						<div class="flex items-center gap-2.5 min-w-0 flex-1">
-							<span class="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" :class="getStatusDotClass(job.status)"></span>
-							<h3 class="text-xs font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition truncate leading-snug">{{ job.title }}</h3>
-						</div>
-
-						<!-- Run Button (Mobile) -->
-						<button type="button" @click.stop="runJob(job)" :disabled="runningJobs[job.key]" class="px-2.5 py-1 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-[11px] font-bold text-gray-800 dark:text-gray-200 transition shrink-0 disabled:opacity-50 sm:hidden">
-							{{ runningJobs[job.key] ? '...' : 'Run' }}
-						</button>
-					</div>
-
-					<!-- Bottom/Right Details: Schedule Time, Formatted Records Count, Status -->
-					<div class="flex items-center justify-between sm:justify-end gap-3 text-[11px] text-gray-500 dark:text-gray-400 pt-1 sm:pt-0 border-t border-gray-100/60 dark:border-gray-800/40 sm:border-0">
-						<div class="flex items-center gap-3 shrink-0">
-							<span class="font-mono text-gray-400 text-[10px] sm:text-[11px]">{{ job.schedule_time }}</span>
-							<div class="flex flex-col items-end leading-tight">
-								<span class="font-bold text-gray-800 dark:text-gray-200 text-[11px] sm:text-[12px] font-mono">{{ formatNumber(job.records_synced) }} recs</span>
-								<span v-if="job.latest_date && job.records_synced === 0" class="text-[9px] text-gray-400 font-mono">Last: {{ formatDate(job.latest_date) }} ({{ formatNumber(job.latest_count) }})</span>
-							</div>
-							<span class="font-bold text-[10px] sm:text-[11px]" :class="getStatusTextColor(job.status)">{{ job.status }}</span>
-						</div>
-
-						<!-- Run Button (Desktop) -->
-						<button type="button" @click.stop="runJob(job)" :disabled="runningJobs[job.key]" class="hidden sm:inline-block px-3 py-1 rounded border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-[11px] font-bold text-gray-800 dark:text-gray-200 transition shrink-0 disabled:opacity-50">
-							{{ runningJobs[job.key] ? 'Running...' : 'Run' }}
-						</button>
-					</div>
-
+			<!-- Search & Viewing Toolbar -->
+			<div class="toolbar">
+				<div class="search-box">
+					<i class="icon-lucide-search"></i>
+					<input type="text" id="searchInput" class="search-input" placeholder="Search automations..." aria-label="Search automations">
 				</div>
-
-				<div v-if="filteredJobs.length === 0" class="py-12 text-center text-xs text-gray-400 flex flex-col items-center gap-2">
-					<i class="icon-lucide-inbox text-2xl text-gray-300 dark:text-gray-700"></i>
-					<span>No matching automation jobs found.</span>
-				</div>
-			</div>
-
-		</main>
-
-		<!-- 100% Mobile & Desktop Responsive Floating Bottom Navigation Dock -->
-		<div class="fixed bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 z-40 max-w-[calc(100vw-1.25rem)] w-auto flex items-center justify-between gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-2xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200 dark:border-gray-800 shadow-2xl overflow-x-auto no-scrollbar">
-			<!-- Status Filter Pills -->
-			<div class="flex items-center gap-1 shrink-0">
-				<button type="button" v-for="tab in statusTabs" :key="tab.id" @click="selectedTab = tab.id" :class="selectedTab === tab.id ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'" class="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs transition flex items-center gap-1 text-nowrap">
-					<span>{{ tab.label }}</span>
-					<span class="text-[9px] sm:text-[10px] px-1 py-0.2 rounded-full font-bold" :class="selectedTab === tab.id ? 'bg-gray-800 text-gray-200 dark:bg-gray-200 dark:text-gray-800' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'">{{ getTabCount(tab.id) }}</span>
+				<button type="button" id="btnRefresh" class="icon-btn" title="Refresh Data" aria-label="Refresh Data">
+					<i class="icon-lucide-rotate-cw" id="iconRefresh"></i>
 				</button>
 			</div>
 
-			<div class="w-px h-4 bg-gray-200 dark:bg-gray-800 shrink-0 mx-0.5"></div>
-
-			<!-- Quick Run Pending Action -->
-			<button type="button" @click="triggerAllPending" :disabled="syncingAll" class="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 text-[11px] sm:text-xs font-bold flex items-center gap-1 shadow-xs transition disabled:opacity-50 shrink-0 whitespace-nowrap">
-				<i class="icon-lucide-play text-[9px] sm:text-[10px]" :class="{ 'animate-spin': syncingAll }"></i>
-				<span>Run Pending</span>
-			</button>
-		</div>
-
-		<!-- Glassmorphism Popup Modal (Enforces User Memory Rule) -->
-		<div v-if="activeJobModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 frappe-modal-backdrop" @click.self="activeJobModal = null" @keydown.esc="activeJobModal = null">
-			<div class="bg-white dark:bg-gray-900 w-full max-w-lg rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150">
-				
-				<!-- Modal Header -->
-				<div class="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
-					<div class="flex items-center gap-2.5 min-w-0">
-						<span class="w-2.5 h-2.5 rounded-full shrink-0" :class="getStatusDotClass(activeJobModal.status)"></span>
-						<h2 class="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{{ activeJobModal.title }}</h2>
-					</div>
-					<button type="button" @click="activeJobModal = null" aria-label="Close modal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition p-1">
-						<i class="icon-lucide-x text-sm"></i>
-					</button>
+			<!-- Job List Container -->
+			<div class="job-list" id="jobListContainer">
+				<div style="padding: 2.5rem; text-align: center; color: var(--text-muted); font-size: 0.8rem;">
+					Loading automations...
 				</div>
-
-				<!-- Modal Body -->
-				<div class="p-4 sm:p-5 overflow-y-auto space-y-4 text-xs custom-scrollbar flex-1">
-					<div class="grid grid-cols-3 gap-2.5 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-						<div>
-							<span class="text-gray-400 block text-[10px]">Date</span>
-							<span class="font-mono font-bold text-[11px]">{{ formatDate(activeJobModal.target_date) }}</span>
-						</div>
-						<div>
-							<span class="text-gray-400 block text-[10px]">Status</span>
-							<span class="font-bold text-[11px]" :class="getStatusTextColor(activeJobModal.status)">{{ activeJobModal.status }}</span>
-						</div>
-						<div>
-							<span class="text-gray-400 block text-[10px]">Records</span>
-							<span class="font-mono font-bold text-[11px]">{{ formatNumber(activeJobModal.records_synced) }}</span>
-						</div>
-					</div>
-
-					<!-- Category Info in Modal -->
-					<div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 text-[11px]">
-						<span class="text-gray-400 block text-[10px]">Category</span>
-						<span class="font-bold text-gray-800 dark:text-gray-200">{{ activeJobModal.category || 'General' }}</span>
-					</div>
-
-					<!-- Latest Sync Info -->
-					<div v-if="activeJobModal.latest_date" class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 text-[11px]">
-						<span class="text-gray-400 block text-[10px]">Latest Database Sync Found</span>
-						<span class="font-bold text-gray-800 dark:text-gray-200 font-mono">{{ formatDate(activeJobModal.latest_date) }}</span>
-						<span class="text-gray-500 font-medium ml-1 font-mono">({{ formatNumber(activeJobModal.latest_count) }} records)</span>
-					</div>
-
-					<div>
-						<div class="flex items-center justify-between mb-1">
-							<span class="text-gray-400 text-[10px] uppercase font-bold">Python Hook</span>
-							<button type="button" @click="copyToClipboard(activeJobModal.method, 'Python Hook')" class="text-[10px] text-blue-500 hover:underline flex items-center gap-1">
-								<i class="icon-lucide-copy text-[10px]"></i> Copy
-							</button>
-						</div>
-						<div class="p-2.5 rounded bg-gray-50 dark:bg-gray-800 font-mono text-[10px] sm:text-[11px] text-gray-700 dark:text-gray-300 break-all select-all">
-							{{ activeJobModal.method }}
-						</div>
-					</div>
-
-					<div v-if="activeJobModal.error_message">
-						<div class="flex items-center justify-between mb-1">
-							<span class="text-rose-500 text-[10px] uppercase font-bold">Log / Traceback</span>
-							<button type="button" @click="copyToClipboard(activeJobModal.error_message, 'Traceback')" class="text-[10px] text-rose-500 hover:underline flex items-center gap-1">
-								<i class="icon-lucide-copy text-[10px]"></i> Copy Traceback
-							</button>
-						</div>
-						<div class="p-3 rounded bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 font-mono text-[10px] sm:text-[11px] overflow-x-auto max-h-40 whitespace-pre-wrap select-all border border-rose-200/50 dark:border-rose-900/50">
-							{{ activeJobModal.error_message }}
-						</div>
-					</div>
-					<div v-else class="text-gray-400 text-xs">
-						No errors logged for this execution.
-					</div>
-				</div>
-
-				<!-- Modal Footer -->
-				<div class="p-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end gap-2 shrink-0">
-					<button type="button" @click="activeJobModal = null" class="px-3 py-1.5 rounded text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-						Close
-					</button>
-					<button type="button" @click="runJob(activeJobModal)" :disabled="runningJobs[activeJobModal.key]" class="px-3.5 py-1.5 rounded bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 text-xs font-bold transition disabled:opacity-50 flex items-center gap-1.5">
-						<i v-if="runningJobs[activeJobModal.key]" class="icon-lucide-rotate-cw text-[10px] animate-spin"></i>
-						<span>{{ runningJobs[activeJobModal.key] ? 'Executing...' : 'Run Now' }}</span>
-					</button>
-				</div>
-
 			</div>
+		</main>
+
+		<!-- Floating Navigation & Action Bar -->
+		<div class="floating-dock">
+			<button type="button" class="filter-tab active" data-tab="all">
+				All <span class="tab-badge" id="cntAll">0</span>
+			</button>
+			<button type="button" class="filter-tab" data-tab="success">
+				Success <span class="tab-badge" id="cntSuccess">0</span>
+			</button>
+			<button type="button" class="filter-tab" data-tab="failed">
+				Failed <span class="tab-badge" id="cntFailed">0</span>
+			</button>
+			<button type="button" class="filter-tab" data-tab="pending">
+				Pending <span class="tab-badge" id="cntPending">0</span>
+			</button>
+
+			<div style="width: 1px; height: 1rem; background: var(--border-color);"></div>
+
+			<button type="button" id="btnRunPending" class="btn-run-all">
+				<i class="icon-lucide-play"></i> Run Pending
+			</button>
 		</div>
 
 	</div>
 
+	<!-- Glassmorphism Popup Modal -->
+	<div class="modal-backdrop" id="modalBackdrop">
+		<div class="modal-card">
+			<div class="modal-header">
+				<div style="display: flex; align-items: center; gap: 0.5rem;">
+					<span class="status-dot" id="modalStatusDot"></span>
+					<h2 style="font-size: 0.85rem; font-weight: 700;" id="modalTitle">Job Details</h2>
+				</div>
+				<button type="button" id="btnModalClose" class="icon-btn" style="border: none; background: transparent;" aria-label="Close">
+					<i class="icon-lucide-x"></i>
+				</button>
+			</div>
+			<div class="modal-body">
+				<div class="info-grid">
+					<div>
+						<span style="color: var(--text-muted); font-size: 0.65rem;">Date</span>
+						<div style="font-weight: 700;" id="modalDate">-</div>
+					</div>
+					<div>
+						<span style="color: var(--text-muted); font-size: 0.65rem;">Status</span>
+						<div style="font-weight: 700;" id="modalStatus">-</div>
+					</div>
+					<div>
+						<span style="color: var(--text-muted); font-size: 0.65rem;">Records</span>
+						<div style="font-weight: 700; font-family: monospace;" id="modalRecs">0</div>
+					</div>
+				</div>
+
+				<div>
+					<span style="color: var(--text-muted); font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">Category</span>
+					<div style="font-weight: 600; margin-top: 0.1rem;" id="modalCategory">-</div>
+				</div>
+
+				<div id="modalLatestBox" style="display: none; background: var(--bg-subtle); padding: 0.6rem; border-radius: 0.5rem;">
+					<span style="color: var(--text-muted); font-size: 0.65rem;">Latest DB Sync Found</span>
+					<div style="font-weight: 700; font-family: monospace;" id="modalLatestVal">-</div>
+				</div>
+
+				<div>
+					<div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
+						<span style="color: var(--text-muted); font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">Python Method</span>
+						<a href="#" id="btnCopyMethod" style="color: var(--accent); font-size: 0.65rem; text-decoration: none;">Copy Method</a>
+					</div>
+					<div class="code-box" id="modalMethod">-</div>
+				</div>
+
+				<div id="modalErrorContainer">
+					<div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
+						<span style="color: var(--danger); font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">Log / Traceback</span>
+						<a href="#" id="btnCopyTraceback" style="color: var(--danger); font-size: 0.65rem; text-decoration: none;">Copy Traceback</a>
+					</div>
+					<div class="error-box" id="modalErrorText">-</div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn-run" style="padding: 0.4rem 1rem;" id="btnModalClose2">Close</button>
+				<button type="button" class="btn-run-all" id="btnModalRunNow">Run Now</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Toast Notification -->
+	<div class="toast" id="toast">
+		<i class="icon-lucide-check-circle" id="toastIcon"></i>
+		<span id="toastMsg">Notification</span>
+	</div>
+
 	<script>
-		const { createApp, ref, computed, onMounted, onUnmounted, watch } = Vue;
+		// Global Window Config from Jinja Context
+		window.csrf_token = "{{ csrf_token }}";
 
-		createApp({
-			setup() {
-				const loading = ref(false);
-				const syncingAll = ref(false);
-				const togglingAutoSync = ref(false);
-				const isDark = ref(localStorage.getItem('theme') === 'dark');
-				
-				// Toast notification state
-				const toast = ref({ show: false, message: '', type: 'info' });
-				let toastTimer = null;
-				const showToast = (message, type = 'info', duration = 3000) => {
-					if (toastTimer) clearTimeout(toastTimer);
-					toast.value = { show: true, message, type };
-					toastTimer = setTimeout(() => {
-						toast.value.show = false;
-					}, duration);
-				};
+		(function() {
+			// State
+			let state = {
+				loading: false,
+				autoSyncEnabled: true,
+				targetDate: getYesterdayStr(),
+				jobs: [],
+				searchQuery: '',
+				activeTab: 'all',
+				activeModalJob: null,
+				runningJobs: {},
+				isDark: localStorage.getItem('theme') === 'dark'
+			};
 
-				const now = new Date();
-				const todayStr = now.toISOString().split('T')[0];
-				const yesterdayObj = new Date(now.getTime() - 86400000);
-				const yesterdayStr = yesterdayObj.toISOString().split('T')[0];
+			// DOM Elements
+			const els = {
+				btnAutoSync: document.getElementById('btnAutoSync'),
+				txtAutoSync: document.getElementById('txtAutoSync'),
+				targetDate: document.getElementById('targetDate'),
+				btnThemeToggle: document.getElementById('btnThemeToggle'),
+				iconTheme: document.getElementById('iconTheme'),
+				btnRefresh: document.getElementById('btnRefresh'),
+				iconRefresh: document.getElementById('iconRefresh'),
+				searchInput: document.getElementById('searchInput'),
+				jobListContainer: document.getElementById('jobListContainer'),
+				statTotal: document.getElementById('statTotal'),
+				statSuccess: document.getElementById('statSuccess'),
+				statFailed: document.getElementById('statFailed'),
+				statPending: document.getElementById('statPending'),
+				cntAll: document.getElementById('cntAll'),
+				cntSuccess: document.getElementById('cntSuccess'),
+				cntFailed: document.getElementById('cntFailed'),
+				cntPending: document.getElementById('cntPending'),
+				btnRunPending: document.getElementById('btnRunPending'),
+				modalBackdrop: document.getElementById('modalBackdrop'),
+				btnModalClose: document.getElementById('btnModalClose'),
+				btnModalClose2: document.getElementById('btnModalClose2'),
+				btnModalRunNow: document.getElementById('btnModalRunNow'),
+				modalTitle: document.getElementById('modalTitle'),
+				modalStatusDot: document.getElementById('modalStatusDot'),
+				modalDate: document.getElementById('modalDate'),
+				modalStatus: document.getElementById('modalStatus'),
+				modalRecs: document.getElementById('modalRecs'),
+				modalCategory: document.getElementById('modalCategory'),
+				modalLatestBox: document.getElementById('modalLatestBox'),
+				modalLatestVal: document.getElementById('modalLatestVal'),
+				modalMethod: document.getElementById('modalMethod'),
+				modalErrorContainer: document.getElementById('modalErrorContainer'),
+				modalErrorText: document.getElementById('modalErrorText'),
+				btnCopyMethod: document.getElementById('btnCopyMethod'),
+				btnCopyTraceback: document.getElementById('btnCopyTraceback'),
+				toast: document.getElementById('toast'),
+				toastMsg: document.getElementById('toastMsg'),
+				toastIcon: document.getElementById('toastIcon')
+			};
 
-				const initialRaw = window.initial_sync_data;
-				let initialData = {};
-				try {
-					initialData = typeof initialRaw === 'string' ? JSON.parse(initialRaw) : (initialRaw || {});
-				} catch(e) {
-					console.error('Error parsing initial_sync_data:', e);
+			function getYesterdayStr() {
+				const d = new Date(Date.now() - 86400000);
+				return d.toISOString().split('T')[0];
+			}
+			function getTodayStr() {
+				return new Date().toISOString().split('T')[0];
+			}
+
+			function formatDate(dStr) {
+				if (!dStr) return '';
+				const parts = dStr.split(' ')[0].split('-');
+				return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : dStr;
+			}
+			function formatNum(num) {
+				if (!num && num !== 0) return '0';
+				return Number(num).toLocaleString('en-IN');
+			}
+
+			let toastTimer = null;
+			function showToast(msg, type = 'info') {
+				if (toastTimer) clearTimeout(toastTimer);
+				els.toastMsg.innerText = msg;
+				els.toastIcon.className = type === 'success' ? 'icon-lucide-check-circle' : type === 'error' ? 'icon-lucide-alert-circle' : 'icon-lucide-info';
+				els.toast.classList.add('show');
+				toastTimer = setTimeout(() => els.toast.classList.remove('show'), 3000);
+			}
+
+			function applyTheme() {
+				if (state.isDark) {
+					document.documentElement.setAttribute('data-theme', 'dark');
+					els.iconTheme.className = 'icon-lucide-sun';
+				} else {
+					document.documentElement.removeAttribute('data-theme');
+					els.iconTheme.className = 'icon-lucide-moon';
 				}
+			}
 
-				const autoSyncEnabled = ref(initialData.auto_sync_enabled !== undefined ? initialData.auto_sync_enabled : true);
-				const targetDate = ref(initialData.sync_date || yesterdayStr);
-				const jobs = ref(initialData.jobs || []);
-				const serverSummary = ref(initialData.summary || null);
-
-				const summary = computed(() => {
-					if (serverSummary.value && serverSummary.value.total_jobs > 0) {
-						return serverSummary.value;
+			// Fetch Data from Python API
+			async function fetchStatus() {
+				state.loading = true;
+				els.iconRefresh.classList.add('spin');
+				try {
+					const res = await fetch(`/api/method/custom_report.api.get_automation_sync_status?sync_date=${state.targetDate}`);
+					if (!res.ok) throw new Error(`HTTP ${res.status}`);
+					const data = await res.json();
+					if (data.message) {
+						state.jobs = data.message.jobs || [];
+						state.autoSyncEnabled = !!data.message.auto_sync_enabled;
+						render();
 					}
-					const jobList = jobs.value || [];
-					const total = jobList.length;
-					const success = jobList.filter(j => (j.status || '').toLowerCase() === 'success').length;
-					const failed = jobList.filter(j => (j.status || '').toLowerCase() === 'failed').length;
-					const pending = jobList.filter(j => (j.status || '').toLowerCase() === 'pending').length;
-					const rate = total > 0 ? Math.round((success / total) * 100) : 0;
-					
-					return {
-						total_jobs: total,
-						success_count: success,
-						failed_count: failed,
-						pending_count: pending,
-						success_rate: rate
-					};
-				});
+				} catch (e) {
+					console.error(e);
+					showToast('Failed to load sync status', 'error');
+				} finally {
+					state.loading = false;
+					els.iconRefresh.classList.remove('spin');
+				}
+			}
 
-				const searchQuery = ref('');
-				const selectedTab = ref('all');
-				const activeJobModal = ref(null);
-				const runningJobs = ref({});
-
-				const statusTabs = [
-					{ id: 'all', label: 'All' },
-					{ id: 'Success', label: 'Success' },
-					{ id: 'Failed', label: 'Failed' },
-					{ id: 'Pending', label: 'Pending' }
-				];
-
-				const formatDate = (dateStr) => {
-					if (!dateStr) return '';
-					const parts = dateStr.split(' ')[0].split('-');
-					if (parts.length === 3) {
-						return `${parts[2]}-${parts[1]}-${parts[0]}`;
-					}
-					return dateStr;
-				};
-
-				const formatNumber = (num) => {
-					if (!num && num !== 0) return '0';
-					return Number(num).toLocaleString('en-IN');
-				};
-
-				const copyToClipboard = async (text, label = 'Content') => {
-					if (!text) return;
-					try {
-						await navigator.clipboard.writeText(text);
-						showToast(`${label} copied to clipboard!`, 'success');
-					} catch (err) {
-						showToast('Failed to copy text', 'error');
-					}
-				};
-
-				const printConsoleSummary = (jobList, targetD) => {
-					console.group(`📊 Automation Sync Tracker Report [${formatDate(targetD)}]`);
-					
-					const withRecords = (jobList || []).filter(j => j.records_synced > 0);
-					const zeroRecords = (jobList || []).filter(j => j.records_synced === 0);
-
-					console.log(`✅ Jobs with Synced Records (${withRecords.length}):`);
-					if (withRecords.length > 0) {
-						console.table(withRecords.map(j => ({
-							Title: j.title,
-							Records: j.records_synced,
-							Status: j.status,
-							Schedule: j.schedule_time
-						})));
-					} else {
-						console.log('   (None)');
-					}
-
-					console.log(`⏳ Jobs with 0 Records (${zeroRecords.length}):`);
-					if (zeroRecords.length > 0) {
-						console.table(zeroRecords.map(j => ({
-							Title: j.title,
-							Records: j.records_synced,
-							LatestInDB: j.latest_date ? `${formatDate(j.latest_date)} (${formatNumber(j.latest_count)} recs)` : 'None',
-							Status: j.status,
-							Schedule: j.schedule_time
-						})));
-					} else {
-						console.log('   (None)');
-					}
-
-					console.groupEnd();
-				};
-
-				const setDatePreset = (preset) => {
-					if (preset === 'yesterday') targetDate.value = yesterdayStr;
-					if (preset === 'today') targetDate.value = todayStr;
-					fetchStatus();
-				};
-
-				const toggleTheme = () => {
-					isDark.value = !isDark.value;
-					if (isDark.value) {
-						document.documentElement.setAttribute('data-theme', 'dark');
-						document.documentElement.classList.add('dark');
-						localStorage.setItem('theme', 'dark');
-					} else {
-						document.documentElement.removeAttribute('data-theme');
-						document.documentElement.classList.remove('dark');
-						localStorage.setItem('theme', 'light');
-					}
-				};
-
-				const fetchStatus = async () => {
-					loading.value = true;
-					try {
-						const res = await fetch(`/api/method/custom_report.api.get_automation_sync_status?sync_date=${targetDate.value}`);
-						if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-						const data = await res.json();
-						if (data.message) {
-							jobs.value = data.message.jobs || [];
-							if (data.message.summary) {
-								serverSummary.value = data.message.summary;
-							}
-							autoSyncEnabled.value = data.message.auto_sync_enabled;
-							printConsoleSummary(jobs.value, targetDate.value);
-						}
-					} catch (e) {
-						console.error('[Sync Tracker Log] Fetch Error:', e);
-						showToast('Failed to load sync status', 'error');
-					} finally {
-						loading.value = false;
-					}
-				};
-
-				const toggleAutoSync = async () => {
-					togglingAutoSync.value = true;
-					const newVal = !autoSyncEnabled.value;
-					try {
-						const res = await fetch(`/api/method/custom_report.api.toggle_drishti_auto_sync`, {
-							method: 'POST',
-							headers: { 'Content-Type': 'application/json', 'X-Frappe-CSRF-Token': window.csrf_token || '' },
-							body: JSON.stringify({ enabled: newVal })
-						});
-						if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-						const data = await res.json();
-						if (data.message && data.message.status === 'success') {
-							autoSyncEnabled.value = data.message.auto_sync_enabled;
-							showToast(`Auto Sync is now ${autoSyncEnabled.value ? 'Active' : 'Disabled'}`, 'success');
-							await fetchStatus();
-						}
-					} catch (e) {
-						console.error('[Sync Tracker Log] AutoSync Error:', e);
-						showToast('Failed to toggle Auto Sync', 'error');
-					} finally {
-						togglingAutoSync.value = false;
-					}
-				};
-
-				const runJob = async (job) => {
-					if (!job || !job.key) return;
-					runningJobs.value = { ...runningJobs.value, [job.key]: true };
-					try {
-						const res = await fetch(`/api/method/custom_report.api.trigger_manual_sync`, {
-							method: 'POST',
-							headers: { 'Content-Type': 'application/json', 'X-Frappe-CSRF-Token': window.csrf_token || '' },
-							body: JSON.stringify({ job_key: job.key, sync_date: targetDate.value })
-						});
-						if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-						const data = await res.json();
-						if (data.message) {
-							showToast(data.message.message || `${job.title} execution triggered`, 'success');
-							await fetchStatus();
-						}
-					} catch (e) {
-						showToast(`Execution error: ${e.message}`, 'error');
-					} finally {
-						const updated = { ...runningJobs.value };
-						delete updated[job.key];
-						runningJobs.value = updated;
-					}
-				};
-
-				const triggerAllPending = async () => {
-					syncingAll.value = true;
-					const pendingList = (jobs.value || []).filter(j => (j.status || '').toLowerCase() === 'pending' || (j.status || '').toLowerCase() === 'failed');
-					if (pendingList.length === 0) {
-						showToast('No pending or failed jobs to run', 'info');
-						syncingAll.value = false;
-						return;
-					}
-					showToast(`Running ${pendingList.length} pending automation job(s)...`, 'info');
-					for (const job of pendingList) {
-						await runJob(job);
-					}
-					syncingAll.value = false;
-					showToast('All pending jobs completed!', 'success');
-					await fetchStatus();
-				};
-
-				const filteredJobs = computed(() => {
-					return (jobs.value || []).filter(job => {
-						if (selectedTab.value !== 'all' && (job.status || '').toLowerCase() !== selectedTab.value.toLowerCase()) return false;
-						if (searchQuery.value) {
-							const q = searchQuery.value.toLowerCase().trim();
-							return (job.title || '').toLowerCase().includes(q) || (job.method || '').toLowerCase().includes(q) || (job.category || '').toLowerCase().includes(q);
-						}
-						return true;
+			async function toggleAutoSync() {
+				const newVal = !state.autoSyncEnabled;
+				try {
+					const res = await fetch(`/api/method/custom_report.api.toggle_drishti_auto_sync`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json', 'X-Frappe-CSRF-Token': window.csrf_token || '' },
+						body: JSON.stringify({ enabled: newVal })
 					});
-				});
-
-				const getTabCount = (tabId) => {
-					if (tabId === 'all') return jobs.value ? jobs.value.length : 0;
-					return (jobs.value || []).filter(j => (j.status || '').toLowerCase() === tabId.toLowerCase()).length;
-				};
-
-				const getStatusDotClass = (status) => {
-					const s = (status || '').toLowerCase();
-					if (s === 'success') return 'bg-emerald-500';
-					if (s === 'failed') return 'bg-rose-500';
-					return 'bg-amber-500';
-				};
-
-				const getStatusTextColor = (status) => {
-					const s = (status || '').toLowerCase();
-					if (s === 'success') return 'text-emerald-600 dark:text-emerald-400';
-					if (s === 'failed') return 'text-rose-600 dark:text-rose-400';
-					return 'text-amber-600 dark:text-amber-400';
-				};
-
-				const openModal = (job) => {
-					activeJobModal.value = job;
-				};
-
-				const handleKeyDown = (e) => {
-					if (e.key === 'Escape' && activeJobModal.value) {
-						activeJobModal.value = null;
-					}
-				};
-
-				onMounted(() => {
-					if (isDark.value) {
-						document.documentElement.setAttribute('data-theme', 'dark');
-						document.documentElement.classList.add('dark');
-					}
-					window.addEventListener('keydown', handleKeyDown);
-					if (jobs.value && jobs.value.length > 0) {
-						printConsoleSummary(jobs.value, targetDate.value);
-					} else {
+					if (!res.ok) throw new Error(`HTTP ${res.status}`);
+					const data = await res.json();
+					if (data.message && data.message.status === 'success') {
+						state.autoSyncEnabled = data.message.auto_sync_enabled;
+						showToast(`Auto Sync ${state.autoSyncEnabled ? 'Enabled' : 'Disabled'}`, 'success');
 						fetchStatus();
 					}
-				});
-
-				onUnmounted(() => {
-					window.removeEventListener('keydown', handleKeyDown);
-				});
-
-				return {
-					loading, syncingAll, togglingAutoSync, isDark, autoSyncEnabled, targetDate, todayStr, yesterdayStr, searchQuery, selectedTab, activeJobModal,
-					runningJobs, summary, jobs, statusTabs, filteredJobs, toast, getTabCount, setDatePreset, formatDate, formatNumber, copyToClipboard, toggleTheme, fetchStatus,
-					toggleAutoSync, runJob, triggerAllPending, getStatusDotClass, getStatusTextColor, openModal
-				};
+				} catch (e) {
+					showToast('Error toggling Auto Sync', 'error');
+				}
 			}
-		}).mount('#app');
+
+			async function runJob(jobKey) {
+				if (!jobKey) return;
+				state.runningJobs[jobKey] = true;
+				render();
+				try {
+					const res = await fetch(`/api/method/custom_report.api.trigger_manual_sync`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json', 'X-Frappe-CSRF-Token': window.csrf_token || '' },
+						body: JSON.stringify({ job_key: jobKey, sync_date: state.targetDate })
+					});
+					if (!res.ok) throw new Error(`HTTP ${res.status}`);
+					const data = await res.json();
+					if (data.message) {
+						showToast(data.message.message || 'Job triggered', 'success');
+						await fetchStatus();
+					}
+				} catch (e) {
+					showToast(`Execution error: ${e.message}`, 'error');
+				} finally {
+					delete state.runningJobs[jobKey];
+					render();
+				}
+			}
+
+			async function runPending() {
+				const pending = state.jobs.filter(j => ['pending', 'failed'].includes((j.status || '').toLowerCase()));
+				if (pending.length === 0) {
+					showToast('No pending jobs to run', 'info');
+					return;
+				}
+				showToast(`Running ${pending.length} pending job(s)...`, 'info');
+				els.btnRunPending.disabled = true;
+				for (const job of pending) {
+					await runJob(job.key);
+				}
+				els.btnRunPending.disabled = false;
+				showToast('Pending jobs execution completed!', 'success');
+			}
+
+			// Render UI
+			function render() {
+				// Auto Sync Button
+				if (state.autoSyncEnabled) {
+					els.btnAutoSync.classList.add('active');
+					els.txtAutoSync.innerText = 'Auto Sync Active';
+				} else {
+					els.btnAutoSync.classList.remove('active');
+					els.txtAutoSync.innerText = 'Auto Sync Off';
+				}
+
+				els.targetDate.value = state.targetDate;
+
+				// Counts
+				const total = state.jobs.length;
+				const success = state.jobs.filter(j => (j.status || '').toLowerCase() === 'success').length;
+				const failed = state.jobs.filter(j => (j.status || '').toLowerCase() === 'failed').length;
+				const pending = state.jobs.filter(j => (j.status || '').toLowerCase() === 'pending').length;
+
+				els.statTotal.innerText = total;
+				els.statSuccess.innerText = success;
+				els.statFailed.innerText = failed;
+				els.statPending.innerText = pending;
+
+				els.cntAll.innerText = total;
+				els.cntSuccess.innerText = success;
+				els.cntFailed.innerText = failed;
+				els.cntPending.innerText = pending;
+
+				// Filter Jobs
+				const q = state.searchQuery.toLowerCase().trim();
+				const filtered = state.jobs.filter(job => {
+					const s = (job.status || '').toLowerCase();
+					if (state.activeTab !== 'all' && s !== state.activeTab) return false;
+					if (q) {
+						return (job.title || '').toLowerCase().includes(q) ||
+							   (job.method || '').toLowerCase().includes(q) ||
+							   (job.category || '').toLowerCase().includes(q);
+					}
+					return true;
+				});
+
+				// Build HTML for Job List
+				if (filtered.length === 0) {
+					els.jobListContainer.innerHTML = `
+						<div style="padding: 2.5rem; text-align: center; color: var(--text-muted); font-size: 0.8rem;">
+							No matching automation jobs found.
+						</div>
+					`;
+					return;
+				}
+
+				els.jobListContainer.innerHTML = filtered.map(job => {
+					const st = (job.status || '').toLowerCase();
+					const isRunning = !!state.runningJobs[job.key];
+					const latestInfo = (job.latest_date && job.records_synced === 0) ?
+						`<div style="font-size:0.65rem; color: var(--text-muted); font-family: monospace;">Last: ${formatDate(job.latest_date)} (${formatNum(job.latest_count)})</div>` : '';
+
+					return `
+						<div class="job-item" data-key="${job.key}">
+							<div class="job-left">
+								<span class="status-dot ${st}"></span>
+								<div class="job-title">${job.title}</div>
+							</div>
+							<div class="job-right">
+								<span class="job-time">${job.schedule_time || ''}</span>
+								<div style="display:flex; flex-direction:column; align-items:flex-end;">
+									<span class="job-recs">${formatNum(job.records_synced)} recs</span>
+									${latestInfo}
+								</div>
+								<span class="job-status-text ${st}">${job.status}</span>
+								<button type="button" class="btn-run" data-action="run" data-key="${job.key}" ${isRunning ? 'disabled' : ''}>
+									${isRunning ? 'Running...' : 'Run'}
+								</button>
+							</div>
+						</div>
+					`;
+				}).join('');
+			}
+
+			// Open Modal
+			function openModal(job) {
+				state.activeModalJob = job;
+				const st = (job.status || '').toLowerCase();
+				els.modalTitle.innerText = job.title;
+				els.modalStatusDot.className = `status-dot ${st}`;
+				els.modalDate.innerText = formatDate(job.target_date);
+				els.modalStatus.innerText = job.status;
+				els.modalStatus.className = `job-status-text ${st}`;
+				els.modalRecs.innerText = formatNum(job.records_synced);
+				els.modalCategory.innerText = job.category || 'General';
+
+				if (job.latest_date) {
+					els.modalLatestBox.style.display = 'block';
+					els.modalLatestVal.innerText = `${formatDate(job.latest_date)} (${formatNum(job.latest_count)} records)`;
+				} else {
+					els.modalLatestBox.style.display = 'none';
+				}
+
+				els.modalMethod.innerText = job.method || '';
+
+				if (job.error_message) {
+					els.modalErrorContainer.style.display = 'block';
+					els.modalErrorText.innerText = job.error_message;
+				} else {
+					els.modalErrorContainer.style.display = 'none';
+				}
+
+				els.modalBackdrop.classList.add('open');
+			}
+			function closeModal() {
+				els.modalBackdrop.classList.remove('open');
+				state.activeModalJob = null;
+			}
+
+			// Event Listeners
+			els.btnAutoSync.addEventListener('click', toggleAutoSync);
+			els.targetDate.addEventListener('change', (e) => {
+				state.targetDate = e.target.value;
+				fetchStatus();
+			});
+			els.btnThemeToggle.addEventListener('click', () => {
+				state.isDark = !state.isDark;
+				localStorage.setItem('theme', state.isDark ? 'dark' : 'light');
+				applyTheme();
+			});
+			els.btnRefresh.addEventListener('click', fetchStatus);
+			els.searchInput.addEventListener('input', (e) => {
+				state.searchQuery = e.target.value;
+				render();
+			});
+
+			// Preset date buttons
+			document.querySelectorAll('.preset-btn').forEach(btn => {
+				btn.addEventListener('click', () => {
+					document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+					btn.classList.add('active');
+					state.targetDate = btn.dataset.preset === 'today' ? getTodayStr() : getYesterdayStr();
+					fetchStatus();
+				});
+			});
+
+			// Filter tabs
+			document.querySelectorAll('.filter-tab').forEach(tab => {
+				tab.addEventListener('click', () => {
+					document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+					tab.classList.add('active');
+					state.activeTab = tab.dataset.tab;
+					render();
+				});
+			});
+
+			// Job list item click & run button click
+			els.jobListContainer.addEventListener('click', (e) => {
+				const runBtn = e.target.closest('[data-action="run"]');
+				if (runBtn) {
+					e.stopPropagation();
+					runJob(runBtn.dataset.key);
+					return;
+				}
+				const item = e.target.closest('.job-item');
+				if (item) {
+					const job = state.jobs.find(j => j.key === item.dataset.key);
+					if (job) openModal(job);
+				}
+			});
+
+			// Modal actions
+			els.btnModalClose.addEventListener('click', closeModal);
+			els.btnModalClose2.addEventListener('click', closeModal);
+			els.modalBackdrop.addEventListener('click', (e) => {
+				if (e.target === els.modalBackdrop) closeModal();
+			});
+			document.addEventListener('keydown', (e) => {
+				if (e.key === 'Escape' && els.modalBackdrop.classList.contains('open')) closeModal();
+			});
+
+			els.btnModalRunNow.addEventListener('click', () => {
+				if (state.activeModalJob) {
+					runJob(state.activeModalJob.key);
+					closeModal();
+				}
+			});
+
+			els.btnCopyMethod.addEventListener('click', (e) => {
+				e.preventDefault();
+				if (state.activeModalJob && state.activeModalJob.method) {
+					navigator.clipboard.writeText(state.activeModalJob.method);
+					showToast('Method copied to clipboard!', 'success');
+				}
+			});
+			els.btnCopyTraceback.addEventListener('click', (e) => {
+				e.preventDefault();
+				if (state.activeModalJob && state.activeModalJob.error_message) {
+					navigator.clipboard.writeText(state.activeModalJob.error_message);
+					showToast('Traceback copied to clipboard!', 'success');
+				}
+			});
+
+			els.btnRunPending.addEventListener('click', runPending);
+
+			// Init
+			applyTheme();
+			state.targetDate = getYesterdayStr();
+			fetchStatus();
+		})();
 	</script>
 </body>
-{% endraw %}
 </html>
