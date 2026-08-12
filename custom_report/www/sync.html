@@ -321,7 +321,6 @@
 				const serverSummary = ref(initialData.summary || null);
 
 				const summary = computed(() => {
-					// Use backend pre-calculated summary if available
 					if (serverSummary.value && serverSummary.value.total_jobs > 0) {
 						return serverSummary.value;
 					}
@@ -367,6 +366,40 @@
 					return Number(num).toLocaleString('en-IN');
 				};
 
+				const printConsoleSummary = (jobList, targetD) => {
+					console.group(`📊 Automation Sync Tracker Report [${formatDate(targetD)}]`);
+					
+					const withRecords = (jobList || []).filter(j => j.records_synced > 0);
+					const zeroRecords = (jobList || []).filter(j => j.records_synced === 0);
+
+					console.log(`✅ Jobs with Synced Records (${withRecords.length}):`);
+					if (withRecords.length > 0) {
+						console.table(withRecords.map(j => ({
+							Title: j.title,
+							Records: j.records_synced,
+							Status: j.status,
+							Schedule: j.schedule_time
+						})));
+					} else {
+						console.log('   (None)');
+					}
+
+					console.log(`⏳ Jobs with 0 Records (${zeroRecords.length}):`);
+					if (zeroRecords.length > 0) {
+						console.table(zeroRecords.map(j => ({
+							Title: j.title,
+							Records: j.records_synced,
+							LatestInDB: j.latest_date ? `${formatDate(j.latest_date)} (${formatNumber(j.latest_count)} recs)` : 'None',
+							Status: j.status,
+							Schedule: j.schedule_time
+						})));
+					} else {
+						console.log('   (None)');
+					}
+
+					console.groupEnd();
+				};
+
 				const setDatePreset = (preset) => {
 					if (preset === 'yesterday') targetDate.value = yesterdayStr;
 					if (preset === 'today') targetDate.value = todayStr;
@@ -395,6 +428,7 @@
 								serverSummary.value = data.message.summary;
 							}
 							autoSyncEnabled.value = data.message.auto_sync_enabled;
+							printConsoleSummary(jobs.value, targetDate.value);
 						}
 					} catch (e) {
 						console.error('[Sync Tracker Log] Fetch Error:', e);
@@ -489,7 +523,9 @@
 					if (isDark.value) {
 						document.documentElement.setAttribute('data-theme', 'dark');
 					}
-					if (!jobs.value || jobs.value.length === 0) {
+					if (jobs.value && jobs.value.length > 0) {
+						printConsoleSummary(jobs.value, targetDate.value);
+					} else {
 						fetchStatus();
 					}
 				});
