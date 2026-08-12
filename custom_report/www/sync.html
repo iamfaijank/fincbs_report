@@ -85,8 +85,18 @@
 					</div>
 				</div>
 
-				<!-- Right Actions: Date Picker & Theme Toggle -->
+				<!-- Right Actions: Date Presets, Date Picker & Theme Toggle -->
 				<div class="flex items-center gap-2 shrink-0">
+					<!-- Quick Date Preset Buttons -->
+					<div class="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg text-[10px] font-bold">
+						<button @click="setDatePreset('yesterday')" :class="targetDate === yesterdayStr ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400'" class="px-2 py-0.5 rounded-md transition">
+							Yesterday
+						</button>
+						<button @click="setDatePreset('today')" :class="targetDate === todayStr ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-xs' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400'" class="px-2 py-0.5 rounded-md transition">
+							Today
+						</button>
+					</div>
+
 					<input type="date" v-model="targetDate" @change="fetchStatus" class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg px-2 py-1 text-[11px] sm:text-xs text-gray-700 dark:text-gray-300 outline-none font-semibold cursor-pointer max-w-[130px] sm:max-w-none" />
 
 					<button @click="toggleTheme" class="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition rounded-lg border border-gray-200/50 dark:border-gray-800/50">
@@ -95,17 +105,20 @@
 				</div>
 			</div>
 
-			<!-- Mobile Sub-Header: Auto Sync Toggle -->
+			<!-- Mobile Sub-Header: Auto Sync Toggle & Date Preset -->
 			<div class="flex items-center justify-between text-xs pt-1 sm:pt-0">
 				<button @click="toggleAutoSync" class="flex items-center gap-2 px-2.5 py-1 rounded-full border text-[11px] transition" :class="autoSyncEnabled ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/60' : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'">
 					<span class="w-1.5 h-1.5 rounded-full" :class="autoSyncEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'"></span>
 					<span class="font-semibold text-[10px] sm:text-[11px] whitespace-nowrap">{{ autoSyncEnabled ? 'Auto Sync Active' : 'Auto Sync Off' }}</span>
 				</button>
 
-				<button @click="fetchStatus" :disabled="loading" class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition flex items-center gap-1">
-					<i class="icon-lucide-rotate-cw text-[10px]" :class="{ 'animate-spin': loading }"></i>
-					<span>Refresh</span>
-				</button>
+				<div class="flex items-center gap-2">
+					<span class="text-[10px] font-mono text-gray-400">Viewing: <strong class="text-gray-700 dark:text-gray-200">{{ targetDate }}</strong></span>
+					<button @click="fetchStatus" :disabled="loading" class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition flex items-center gap-1">
+						<i class="icon-lucide-rotate-cw text-[10px]" :class="{ 'animate-spin': loading }"></i>
+						<span>Refresh</span>
+					</button>
+				</div>
 			</div>
 		</header>
 
@@ -155,15 +168,15 @@
 						</button>
 					</div>
 
-					<!-- Bottom/Right Details: Category, Schedule Time, Records Count, Status -->
+					<!-- Bottom/Right Details: Category, Schedule Time, Formatted Records Count, Status -->
 					<div class="flex items-center justify-between sm:justify-end gap-3 text-[11px] text-gray-500 dark:text-gray-400 pt-1 sm:pt-0 border-t border-gray-100/60 dark:border-gray-800/40 sm:border-0">
 						<span class="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded font-medium truncate max-w-[130px]">{{ job.category }}</span>
 						
 						<div class="flex items-center gap-3 shrink-0">
 							<span class="font-mono text-gray-400 text-[10px] sm:text-[11px]">{{ job.schedule_time }}</span>
 							<div class="flex flex-col items-end leading-tight">
-								<span class="font-bold text-gray-700 dark:text-gray-300 text-[10px] sm:text-[11px]">{{ job.records_synced }} recs</span>
-								<span v-if="job.latest_date && job.records_synced === 0" class="text-[9px] text-gray-400 font-mono">Latest: {{ job.latest_date }} ({{ job.latest_count }})</span>
+								<span class="font-bold text-gray-800 dark:text-gray-200 text-[11px] sm:text-[12px] font-mono">{{ formatNumber(job.records_synced) }} recs</span>
+								<span v-if="job.latest_date && job.records_synced === 0" class="text-[9px] text-gray-400 font-mono">Last: {{ job.latest_date }} ({{ formatNumber(job.latest_count) }})</span>
 							</div>
 							<span class="font-bold text-[10px] sm:text-[11px]" :class="getStatusTextColor(job.status)">{{ job.status }}</span>
 						</div>
@@ -230,15 +243,15 @@
 						</div>
 						<div>
 							<span class="text-gray-400 block text-[10px]">Records</span>
-							<span class="font-mono font-bold text-[11px]">{{ activeJobModal.records_synced }}</span>
+							<span class="font-mono font-bold text-[11px]">{{ formatNumber(activeJobModal.records_synced) }}</span>
 						</div>
 					</div>
 
-					<!-- Latest Sync Info (if target date has 0 recs) -->
+					<!-- Latest Sync Info -->
 					<div v-if="activeJobModal.latest_date" class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 text-[11px]">
 						<span class="text-gray-400 block text-[10px]">Latest Database Sync Found</span>
 						<span class="font-bold text-gray-800 dark:text-gray-200 font-mono">{{ activeJobModal.latest_date }}</span>
-						<span class="text-gray-500 font-medium ml-1 font-mono">({{ activeJobModal.latest_count }} records)</span>
+						<span class="text-gray-500 font-medium ml-1 font-mono">({{ formatNumber(activeJobModal.latest_count) }} records)</span>
 					</div>
 
 					<div>
@@ -283,10 +296,15 @@
 				const syncingAll = ref(false);
 				const isDark = ref(localStorage.getItem('theme') === 'dark');
 				
+				const now = new Date();
+				const todayStr = now.toISOString().split('T')[0];
+				const yesterdayObj = new Date(now.getTime() - 86400000);
+				const yesterdayStr = yesterdayObj.toISOString().split('T')[0];
+
 				const initialRaw = window.initial_sync_data;
 				const initialData = typeof initialRaw === 'string' ? JSON.parse(initialRaw) : (initialRaw || {});
 				const autoSyncEnabled = ref(initialData.auto_sync_enabled !== undefined ? initialData.auto_sync_enabled : true);
-				const targetDate = ref(initialData.sync_date || new Date(Date.now() - 86400000).toISOString().split('T')[0]);
+				const targetDate = ref(initialData.sync_date || yesterdayStr);
 				const jobs = ref(initialData.jobs || []);
 
 				const summary = computed(() => {
@@ -315,6 +333,17 @@
 					{ id: 'Failed', label: 'Failed' },
 					{ id: 'Pending', label: 'Pending' }
 				];
+
+				const formatNumber = (num) => {
+					if (!num) return '0';
+					return Number(num).toLocaleString('en-IN');
+				};
+
+				const setDatePreset = (preset) => {
+					if (preset === 'yesterday') targetDate.value = yesterdayStr;
+					if (preset === 'today') targetDate.value = todayStr;
+					fetchStatus();
+				};
 
 				const toggleTheme = () => {
 					isDark.value = !isDark.value;
@@ -433,8 +462,8 @@
 				});
 
 				return {
-					loading, syncingAll, isDark, autoSyncEnabled, targetDate, searchQuery, selectedTab, activeJobModal,
-					runningJobs, summary, jobs, statusTabs, filteredJobs, getTabCount, toggleTheme, fetchStatus,
+					loading, syncingAll, isDark, autoSyncEnabled, targetDate, todayStr, yesterdayStr, searchQuery, selectedTab, activeJobModal,
+					runningJobs, summary, jobs, statusTabs, filteredJobs, getTabCount, setDatePreset, formatNumber, toggleTheme, fetchStatus,
 					toggleAutoSync, runJob, triggerAllPending, getStatusDotClass, getStatusTextColor, openModal
 				};
 			}
