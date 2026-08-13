@@ -172,6 +172,9 @@ def get_missing_targets_matrix(financial_year: str = None) -> dict:
 
 		matrix.append(row_data)
 
+	total_target_amount = sum(flt(t.get("target") or 0) for t in targets)
+	zones_count = len(set(b.get("zone") or "Unassigned Zone" for b in branches))
+
 	return {
 		"financial_year": financial_year,
 		"available_fys": fy_list,
@@ -179,8 +182,10 @@ def get_missing_targets_matrix(financial_year: str = None) -> dict:
 		"matrix": matrix,
 		"summary": {
 			"total_branches": len(branches),
+			"total_zones": zones_count,
 			"total_missing": total_missing,
 			"total_stored": total_stored,
+			"total_target_amount": total_target_amount,
 		},
 	}
 

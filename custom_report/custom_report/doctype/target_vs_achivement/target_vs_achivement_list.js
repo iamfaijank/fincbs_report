@@ -194,19 +194,8 @@ function show_missing_target_dialog(listview) {
 					</div>
 				</div>
 
-				<div class="missing-target-summary">
-					<div class="missing-summary-card" style="border-left: 4px solid #3b82f6;">
-						<div class="label">Total Branches</div>
-						<div class="val" style="color: #1e3a8a;">${d.summary.total_branches}</div>
-					</div>
-					<div class="missing-summary-card" style="border-left: 4px solid #10b981;">
-						<div class="label">Stored Targets</div>
-						<div class="val" style="color: #065f46;">${d.summary.total_stored}</div>
-					</div>
-					<div class="missing-summary-card" style="border-left: 4px solid #ef4444;">
-						<div class="label">Missing Targets</div>
-						<div class="val" style="color: #991b1b;">${d.summary.total_missing}</div>
-					</div>
+				<div class="missing-target-summary" id="missing-summary-cards-container">
+					${render_summary_cards_html()}
 				</div>
 
 				<div class="missing-table-scroll">
@@ -232,6 +221,31 @@ function show_missing_target_dialog(listview) {
 
 		$container.html(html);
 		attach_events();
+	}
+
+	function render_summary_cards_html() {
+		if (!missing_matrix_data || !missing_matrix_data.summary) return "";
+		const s = missing_matrix_data.summary;
+		const is_zone = active_group_by === "zone";
+
+		return `
+			<div class="missing-summary-card" style="border-left: 4px solid #3b82f6;">
+				<div class="label">${is_zone ? "Total Zones" : "Total Branches"}</div>
+				<div class="val" style="color: #1e3a8a;">${is_zone ? `${s.total_zones} Zones` : `${s.total_branches} Branches`}</div>
+			</div>
+			<div class="missing-summary-card" style="border-left: 4px solid #8b5cf6;">
+				<div class="label">Total Target Sum</div>
+				<div class="val" style="color: #5b21b6;">₹${format_val(s.total_target_amount || 0)}</div>
+			</div>
+			<div class="missing-summary-card" style="border-left: 4px solid #10b981;">
+				<div class="label">Stored Targets</div>
+				<div class="val" style="color: #065f46;">${s.total_stored}</div>
+			</div>
+			<div class="missing-summary-card" style="border-left: 4px solid #ef4444;">
+				<div class="label">Missing Targets</div>
+				<div class="val" style="color: #991b1b;">${s.total_missing}</div>
+			</div>
+		`;
 	}
 
 	function format_val(val) {
@@ -445,6 +459,7 @@ function show_missing_target_dialog(listview) {
 			active_group_by = $(this).data("group");
 			$container.find(".group-view-btn").removeClass("active");
 			$(this).addClass("active");
+			$container.find("#missing-summary-cards-container").html(render_summary_cards_html());
 			$container.find("#missing-matrix-tbody").html(render_matrix_tbody_content(missing_matrix_data.matrix));
 		});
 
