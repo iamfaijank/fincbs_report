@@ -20,6 +20,8 @@ function show_missing_target_dialog(listview) {
 	let selected_fy = null;
 	let missing_matrix_data = null;
 	let current_filter = "all"; // 'all' or 'missing_only'
+	let active_group_by = "branch"; // 'branch' or 'zone'
+	let collapsed_zones = {}; // zone_name -> boolean
 
 	const dialog = new frappe.ui.Dialog({
 		title: '<span style="font-weight: 800; color: #417d81; font-size: 18px;">Target Gap Finder - Missing Targets</span>',
@@ -83,7 +85,7 @@ function show_missing_target_dialog(listview) {
 		const html = `
 			<style>
 				.missing-target-modal { font-family: 'Inter', sans-serif; color: #1e293b; }
-				.missing-target-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; }
+				.missing-target-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; }
 				.missing-target-summary { display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
 				.missing-summary-card { flex: 1; min-width: 140px; background: #ffffff; padding: 8px 14px; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: all 0.2s ease; }
 				.missing-summary-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
@@ -108,26 +110,35 @@ function show_missing_target_dialog(listview) {
 				
 				.filter-pill-btn { padding: 4px 10px; font-size: 11px; font-weight: 600; border-radius: 9999px; border: 1px solid #cbd5e1; background: #fff; color: #475569; cursor: pointer; transition: all 0.2s; }
 				.filter-pill-btn.active { background: #417d81; color: #fff; border-color: #417d81; }
+				.group-view-btn { padding: 4px 10px; font-size: 11px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; color: #475569; cursor: pointer; transition: all 0.2s; }
+				.group-view-btn.active { background: #334155; color: #fff; border-color: #334155; }
+				.zone-group-header-row:hover { background: #264a4d !important; }
 			</style>
 
 			<div class="missing-target-modal">
 				<div class="missing-target-controls">
 					<div style="display: flex; align-items: center; gap: 6px;">
-						<span style="font-weight: 700; font-size: 12px; color: #334155;">Financial Year:</span>
+						<span style="font-weight: 700; font-size: 12px; color: #334155;">FY:</span>
 						<select id="missing-fy-select" style="padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700; color: #417d81; background: white; font-size: 12px;">
 							${fy_options}
 						</select>
 					</div>
 
-					<div style="display: flex; align-items: center; gap: 6px; margin-left: 6px;">
-						<input type="text" id="missing-search-input" placeholder="Search SOL ID, Branch, Zone, Region..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 6px; min-width: 240px; font-size: 12px; outline: none;">
+					<div style="display: flex; align-items: center; gap: 6px; margin-left: 4px;">
+						<input type="text" id="missing-search-input" placeholder="Search SOL ID, Branch, Zone..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 6px; min-width: 200px; font-size: 12px; outline: none;">
+					</div>
+
+					<div style="display: flex; align-items: center; gap: 4px; margin-left: 6px;">
+						<span style="font-weight: 700; font-size: 11px; color: #64748b;">View By:</span>
+						<button class="group-view-btn ${active_group_by === "branch" ? "active" : ""}" data-group="branch">Branch Wise</button>
+						<button class="group-view-btn ${active_group_by === "zone" ? "active" : ""}" data-group="zone">Zone Wise</button>
 					</div>
 
 					<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
-						<button class="filter-pill-btn ${current_filter === "all" ? "active" : ""}" data-filter="all">All Branches (${d.matrix.length})</button>
+						<button class="filter-pill-btn ${current_filter === "all" ? "active" : ""}" data-filter="all">All (${d.matrix.length})</button>
 						<button class="filter-pill-btn ${current_filter === "missing_only" ? "active" : ""}" data-filter="missing_only">Has Missing (${d.matrix.filter((r) => r.missing_count > 0).length})</button>
-						<button id="missing-refresh-btn" style="background: #e2e8f0; color: #334155; border: none; padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer; margin-left: 4px;">⟳ Refresh</button>
-						<button id="missing-bulk-upload-btn" style="background: #417d81; color: #ffffff; border: none; padding: 4px 10px; border-radius: 9999px; font-weight: 700; font-size: 11px; cursor: pointer; margin-left: 4px;">📥 Bulk Upload</button>
+						<button id="missing-refresh-btn" style="background: #e2e8f0; color: #334155; border: none; padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer; margin-left: 2px;">⟳ Refresh</button>
+						<button id="missing-bulk-upload-btn" style="background: #417d81; color: #ffffff; border: none; padding: 4px 10px; border-radius: 9999px; font-weight: 700; font-size: 11px; cursor: pointer; margin-left: 2px;">📥 Bulk Upload</button>
 					</div>
 				</div>
 
@@ -160,7 +171,7 @@ function show_missing_target_dialog(listview) {
 							</tr>
 						</thead>
 						<tbody id="missing-matrix-tbody">
-							${render_matrix_rows(d.matrix)}
+							${render_matrix_tbody_content(d.matrix)}
 						</tbody>
 					</table>
 				</div>
@@ -179,7 +190,7 @@ function show_missing_target_dialog(listview) {
 		return val;
 	}
 
-	function render_matrix_rows(matrix_list) {
+	function get_filtered_matrix(matrix_list) {
 		let filtered = matrix_list;
 		const search_term = ($container.find("#missing-search-input").val() || "")
 			.toLowerCase()
@@ -198,14 +209,74 @@ function show_missing_target_dialog(listview) {
 					r.region.toLowerCase().includes(search_term),
 			);
 		}
+		return filtered;
+	}
 
+	function render_matrix_tbody_content(matrix_list) {
+		const filtered = get_filtered_matrix(matrix_list);
 		if (filtered.length === 0) {
 			return `<tr><td colspan="18" style="padding: 30px; color: #64748b; font-weight: 600;">No branches match current search / filter.</td></tr>`;
 		}
 
-		const months = missing_matrix_data.months;
+		if (active_group_by === "zone") {
+			return render_zone_wise_tbody(filtered);
+		} else {
+			return render_branch_rows_html(filtered);
+		}
+	}
 
-		return filtered
+	function render_zone_wise_tbody(filtered_branches) {
+		const zone_map = {};
+		filtered_branches.forEach((b) => {
+			const z = b.zone || "Unassigned Zone";
+			if (!zone_map[z]) {
+				zone_map[z] = {
+					zone_name: z,
+					branches: [],
+					missing_count: 0,
+					stored_count: 0,
+				};
+			}
+			zone_map[z].branches.push(b);
+			zone_map[z].missing_count += b.missing_count;
+			zone_map[z].stored_count += b.stored_count;
+		});
+
+		let html = "";
+		Object.keys(zone_map).forEach((z_name) => {
+			const z_data = zone_map[z_name];
+			const is_collapsed = !!collapsed_zones[z_name];
+			const icon = is_collapsed ? "►" : "▼";
+			const row_display = is_collapsed ? "display: none;" : "";
+
+			const badge = z_data.missing_count > 0
+				? `<span style="float: right; background: #fee2e2; color: #991b1b; padding: 2px 10px; border-radius: 9999px; font-size: 10px; font-weight: 800;">${z_data.missing_count} Missing</span>`
+				: `<span style="float: right; background: #dcfce7; color: #166534; padding: 2px 10px; border-radius: 9999px; font-size: 10px; font-weight: 800;">Complete</span>`;
+
+			html += `
+				<tr class="zone-group-header-row" data-zone="${z_name}" style="background: #2b5558; color: #ffffff; cursor: pointer; font-weight: 800; border-top: 2px solid #1e3a8a;">
+					<td colspan="18" style="text-align: left; padding: 8px 12px; font-size: 12px; background: #2b5558; color: #ffffff;">
+						<span class="zone-icon" style="display: inline-block; width: 14px;">${icon}</span>
+						<span>📍 ${z_name}</span>
+						<span style="font-weight: 500; font-size: 11px; opacity: 0.85; margin-left: 8px;">(${z_data.branches.length} Branches)</span>
+						${badge}
+					</td>
+				</tr>
+			`;
+
+			const branches_html = render_branch_rows_html(z_data.branches, z_name, row_display);
+			html += branches_html;
+		});
+
+		return html;
+	}
+
+	function render_branch_rows_html(branches_list, zone_attr, row_style) {
+		const months = missing_matrix_data.months;
+		const style_attr = row_style ? `style="${row_style}"` : "";
+		const data_attr = zone_attr ? `data-zone-row="${zone_attr}"` : "";
+
+		return branches_list
 			.map((row, i) => {
 				let month_tds = months
 					.map((m) => {
@@ -239,7 +310,7 @@ function show_missing_target_dialog(listview) {
 						: `<span style="background: #f0fdf4; color: #166534; font-weight: 800; padding: 3px 8px; border-radius: 9999px; font-size: 11px;">Complete</span>`;
 
 				return `
-					<tr style="border-top: 2px solid #cbd5e1; background: #ffffff;">
+					<tr ${data_attr} ${style_attr} style="border-top: 2px solid #cbd5e1; background: #ffffff;">
 						<td rowspan="2" style="vertical-align: middle; font-weight: 700; background: #f8fafc; border-right: 1px solid #e2e8f0;">${i + 1}</td>
 						<td rowspan="2" style="text-align: left; padding-left: 10px; font-weight: 700; color: #0f172a; vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${row.sol_id} - ${row.branch_name}</td>
 						<td rowspan="2" style="color: #64748b; font-weight: 500; vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${row.zone} / ${row.region}</td>
@@ -248,7 +319,7 @@ function show_missing_target_dialog(listview) {
 						<td rowspan="2" style="vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${yearly_td}</td>
 						<td rowspan="2" style="vertical-align: middle; background: #f8fafc;">${missing_badge}</td>
 					</tr>
-					<tr style="background: #ffffff; border-bottom: 1px solid #cbd5e1;">
+					<tr ${data_attr} ${style_attr} style="background: #ffffff; border-bottom: 1px solid #cbd5e1;">
 						<td style="font-weight: 800; color: #1e3a8a; background: #eff6ff; border-right: 1px solid #e2e8f0;">YTD</td>
 						${ytd_tds}
 					</tr>
@@ -263,14 +334,21 @@ function show_missing_target_dialog(listview) {
 		});
 
 		$container.find("#missing-search-input").on("input", function () {
-			$container.find("#missing-matrix-tbody").html(render_matrix_rows(missing_matrix_data.matrix));
+			$container.find("#missing-matrix-tbody").html(render_matrix_tbody_content(missing_matrix_data.matrix));
 		});
 
 		$container.find(".filter-pill-btn").on("click", function () {
 			current_filter = $(this).data("filter");
 			$container.find(".filter-pill-btn").removeClass("active");
 			$(this).addClass("active");
-			$container.find("#missing-matrix-tbody").html(render_matrix_rows(missing_matrix_data.matrix));
+			$container.find("#missing-matrix-tbody").html(render_matrix_tbody_content(missing_matrix_data.matrix));
+		});
+
+		$container.find(".group-view-btn").on("click", function () {
+			active_group_by = $(this).data("group");
+			$container.find(".group-view-btn").removeClass("active");
+			$(this).addClass("active");
+			$container.find("#missing-matrix-tbody").html(render_matrix_tbody_content(missing_matrix_data.matrix));
 		});
 
 		$container.find("#missing-refresh-btn").on("click", function () {
@@ -283,6 +361,22 @@ function show_missing_target_dialog(listview) {
 				reference_doctype: "Target Vs Achivement",
 				import_type: "Insert New Records",
 			});
+		});
+
+		// Zone Accordion Collapse / Expand Toggle
+		$container.off("click", ".zone-group-header-row").on("click", ".zone-group-header-row", function () {
+			const zone_name = $(this).data("zone");
+			collapsed_zones[zone_name] = !collapsed_zones[zone_name];
+			const $rows = $container.find(`tr[data-zone-row="${zone_name}"]`);
+			const $icon = $(this).find(".zone-icon");
+
+			if (collapsed_zones[zone_name]) {
+				$rows.hide();
+				$icon.text("►");
+			} else {
+				$rows.show();
+				$icon.text("▼");
+			}
 		});
 
 		// Click missing badge to quickly add target
