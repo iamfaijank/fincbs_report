@@ -233,10 +233,6 @@ function show_missing_target_dialog(listview) {
 				<div class="label">${is_zone ? "Total Zones" : "Total Branches"}</div>
 				<div class="val" style="color: #1e3a8a;">${is_zone ? `${s.total_zones} Zones` : `${s.total_branches} Branches`}</div>
 			</div>
-			<div class="missing-summary-card" style="border-left: 4px solid #8b5cf6;">
-				<div class="label">Total Target Sum</div>
-				<div class="val" style="color: #5b21b6;">₹${format_val(s.total_target_amount || 0)}</div>
-			</div>
 		`;
 	}
 
