@@ -68,7 +68,7 @@ def get_missing_targets_matrix(financial_year=None):
 	# Fetch all branches from Sahayog Branch
 	branches = frappe.get_all(
 		"Sahayog Branch",
-		fields=["sol_id", "branch_name", "zone", "region"],
+		fields=["sol_id", "branch", "zone", "region"],
 		order_by="sol_id asc",
 	)
 
@@ -101,7 +101,7 @@ def get_missing_targets_matrix(financial_year=None):
 		sol = str(b.sol_id or "").strip()
 		row_data = {
 			"sol_id": sol,
-			"branch_name": b.branch_name or sol,
+			"branch_name": b.branch or sol,
 			"zone": b.zone or "-",
 			"region": b.region or "-",
 			"months": {},
