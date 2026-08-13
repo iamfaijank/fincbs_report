@@ -7126,6 +7126,16 @@ class DrishtiDashboard {
                 </div>
                 <div class="summary-card">
                     <div class="summary-info">
+                        <span class="summary-label">Ach Gap</span>
+                        <span class="summary-value" id="summary-gap-amount">₹0</span>
+                        <span class="summary-subtext danger" id="summary-gap-subtext">0% gap</span>
+                    </div>
+                    <div class="summary-icon-box">
+                        <i class="fa fa-hourglass-half"></i>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-info">
                         <span class="summary-label">Active Zones</span>
                         <span class="summary-value" id="summary-active-zones">6 Zones</span>
                         <span class="summary-subtext success">All zones operational</span>
@@ -8847,13 +8857,13 @@ class DrishtiDashboard {
 			}
 
 			const thStyle = highlightStyle ? "background: #6ca8ac !important; color: #ffffff !important; border-bottom: 2px solid #558a8e !important;" : "background: white; color: #1b263b;";
-			html += `<th colspan="3" style="${thStyle}">${displayYear}${daysLeftIndicator}</th>`;
+			html += `<th colspan="5" style="${thStyle}">${displayYear}${daysLeftIndicator}</th>`;
 		});
 
 		html += '</tr><tr class="zone-table-subheader">';
 
 		months.forEach(() => {
-			html += "<th style=\"background: white; color: #1b263b;\">Target</th><th style=\"background: white; color: #1b263b;\">Ach</th><th style=\"background: white; color: #1b263b;\">ACH %</th>";
+			html += "<th style=\"background: white; color: #1b263b;\">Target</th><th style=\"background: white; color: #1b263b;\">Ach</th><th style=\"background: white; color: #1b263b;\">ACH %</th><th style=\"background: white; color: #1b263b;\">Ach Gap</th><th style=\"background: white; color: #1b263b;\">Ach Gap %</th>";
 		});
 
 		html += "</tr></thead><tbody>";
@@ -9008,6 +9018,8 @@ class DrishtiDashboard {
 			const totalTarget = grandTotals[month.key].target;
 			const totalAchievement = grandTotals[month.key].achievement;
 			const overallPercentage = totalTarget > 0 ? (totalAchievement / totalTarget) * 100 : 0;
+			const totalGap = Math.max(0, totalTarget - totalAchievement);
+			const totalGapPct = totalTarget > 0 ? (totalGap / totalTarget) * 100 : 0;
 
 			const monthDate = new Date(month.date);
 			const monthIndex = monthDate.getMonth();
@@ -9023,6 +9035,13 @@ class DrishtiDashboard {
  					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
  						<span class="pct-value" style="color: ${isCurrentMonth ? "#ffffff !important" : this.getPctColor(overallPercentage)}; min-width: 45px; text-align: right; font-weight: bold;">${Math.round(overallPercentage)}%</span>
  						${this.renderProgressBar(overallPercentage)}
+ 					</div>
+ 				</td>
+                 <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">${this.formatNumber(totalGap)}</td>
+                 <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">
+ 					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+ 						<span class="pct-value" style="color: ${isCurrentMonth ? "#ffffff !important" : this.getPctColor(100 - totalGapPct)}; min-width: 45px; text-align: right; font-weight: bold;">${Math.round(totalGapPct)}%</span>
+ 						${this.renderProgressBar(totalGapPct, isCurrentMonth ? "#ffffff" : this.getPctColor(100 - totalGapPct))}
  					</div>
  				</td>
             `;
@@ -9052,6 +9071,8 @@ class DrishtiDashboard {
 			const mdata = zoneItem.months[month.key];
 
 			if (mdata) {
+				const gapVal = Math.max(0, (mdata.target || 0) - (mdata.achievement || 0));
+				const gapPct = (mdata.target || 0) > 0 ? (gapVal / mdata.target) * 100 : 0;
 				html += `
 			                <td>${this.formatNumber(mdata.target)}</td>
 			                <td>${this.formatNumber(mdata.achievement)}</td>
@@ -9063,9 +9084,18 @@ class DrishtiDashboard {
 									${this.renderProgressBar(mdata.percentage)}
 								</div>
 							</td>
+			                <td>${this.formatNumber(gapVal)}</td>
+			                <td>
+								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+									<span class="pct-value" style="color: ${this.getPctColor(
+										100 - gapPct,
+									)}; min-width: 45px; text-align: right;">${Math.round(gapPct)}%</span>
+									${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
+								</div>
+							</td>
 			            `;
 			} else {
-				html += "<td>-</td><td>-</td><td>-</td>";
+				html += "<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>";
 			}
 		});
 
@@ -9093,6 +9123,8 @@ class DrishtiDashboard {
 			const mdata = regionItem.months[month.key];
 
 			if (mdata) {
+				const gapVal = Math.max(0, (mdata.target || 0) - (mdata.achievement || 0));
+				const gapPct = (mdata.target || 0) > 0 ? (gapVal / mdata.target) * 100 : 0;
 				html += `
 			                <td>${this.formatNumber(mdata.target)}</td>
 			                <td>${this.formatNumber(mdata.achievement)}</td>
@@ -9104,9 +9136,18 @@ class DrishtiDashboard {
 									${this.renderProgressBar(mdata.percentage)}
 								</div>
 							</td>
+			                <td>${this.formatNumber(gapVal)}</td>
+			                <td>
+								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+									<span class="pct-value" style="color: ${this.getPctColor(
+										100 - gapPct,
+									)}; min-width: 45px; text-align: right;">${Math.round(gapPct)}%</span>
+									${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
+								</div>
+							</td>
 			            `;
 			} else {
-				html += "<td>-</td><td>-</td><td>-</td>";
+				html += "<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>";
 			}
 		});
 
@@ -9135,6 +9176,8 @@ class DrishtiDashboard {
 			const mdata = districtItem.months[month.key];
 
 			if (mdata) {
+				const gapVal = Math.max(0, (mdata.target || 0) - (mdata.achievement || 0));
+				const gapPct = (mdata.target || 0) > 0 ? (gapVal / mdata.target) * 100 : 0;
 				html += `
 			                <td>${this.formatNumber(mdata.target)}</td>
 			                <td>${this.formatNumber(mdata.achievement)}</td>
@@ -9146,9 +9189,18 @@ class DrishtiDashboard {
 									${this.renderProgressBar(mdata.percentage)}
 								</div>
 							</td>
+			                <td>${this.formatNumber(gapVal)}</td>
+			                <td>
+								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
+									<span class="pct-value" style="color: ${this.getPctColor(
+										100 - gapPct,
+									)}; min-width: 45px; text-align: right;">${Math.round(gapPct)}%</span>
+									${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
+								</div>
+							</td>
 			            `;
 			} else {
-				html += "<td>-</td><td>-</td><td>-</td>";
+				html += "<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>";
 			}
 		});
 
@@ -10579,9 +10631,9 @@ class DrishtiDashboard {
 		return `hsl(${hue}, 85%, ${lightness})`;
 	}
 
-	renderProgressBar(percentage) {
+	renderProgressBar(percentage, customColor) {
 		const pct = Math.max(0, Math.min(100, percentage || 0));
-		const color = this.getPctColor(pct);
+		const color = customColor || this.getPctColor(pct);
 
 		return `
 			<div class="progress-container-3d">
@@ -10695,7 +10747,25 @@ class DrishtiDashboard {
 		pctEl.css("color", `hsl(${hue}, 85%, ${lightness})`);
 		pctEl.removeClass("success danger");
 
-		// 3. Active Zones - Unique zones in reaggregated data
+		// 3. Gap Calculation & Subtext
+		const gap = totalTarget - totalAch;
+		const gapAmount = gap > 0 ? gap : 0;
+		this.page.main.find("#summary-gap-amount").text("₹" + this.formatCurrency(gapAmount));
+
+		const gapSubtextEl = this.page.main.find("#summary-gap-subtext");
+		if (totalTarget > 0 && gap > 0) {
+			const gapPct = (gap / totalTarget) * 100;
+			gapSubtextEl.text(Math.round(gapPct) + "% gap");
+			gapSubtextEl.css("color", "").removeClass("success muted").addClass("danger");
+		} else if (totalTarget > 0 && gap <= 0) {
+			gapSubtextEl.text("Target Achieved");
+			gapSubtextEl.css("color", "").removeClass("danger muted").addClass("success");
+		} else {
+			gapSubtextEl.text("0% gap");
+			gapSubtextEl.css("color", "").removeClass("danger success").addClass("muted");
+		}
+
+		// 4. Active Zones - Unique zones in reaggregated data
 		const activeZonesCount = reaggregatedZoneData.filter((item) => item.isZoneTotal).length;
 		this.page.main.find("#summary-active-zones").text(activeZonesCount + " Zones");
 	}
@@ -11847,7 +11917,7 @@ class DrishtiDashboard {
                     border-radius: 8px;
                     padding: 4px 12px;
                     flex: 1;
-                    min-width: 200px;
+                    min-width: 170px;
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
