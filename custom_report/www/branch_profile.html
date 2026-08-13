@@ -3352,11 +3352,29 @@
 					const filter = this.state.manpowerFilter;
 					const query = this.state.manpowerSearchQuery.toLowerCase().trim();
 
+					const allowedDesignations = [
+						"Assistant Branch Manager",
+						"Branch Channel Manager",
+						"Business Development Executive",
+						"Block Development Officer",
+						"Branch Manager",
+						"Senior Branch Manager",
+						"Branch Officer",
+						"Customer Service Officer",
+						"Branch Operation Manager",
+						"Branch Sales Manager",
+						"Relationship Officer"
+					].map(d => d.trim().toLowerCase());
+
 					const excludedPrefixes = ['ABPS', 'MCPS', 'NP', 'NT', 'P'];
 					let filteredEmployees = this.state.employees.filter(emp => {
 						// 0. Exclude prefixed IDs
 						const empId = (emp.employee_number || '').toUpperCase();
 						if (excludedPrefixes.some(p => empId.startsWith(p))) return false;
+
+						// 0.5. Designation Filter
+						const empDesignation = (emp.designation || '').trim().toLowerCase();
+						if (!allowedDesignations.includes(empDesignation)) return false;
 
 						// 1. PIP Filter
 						let passPip = true;
