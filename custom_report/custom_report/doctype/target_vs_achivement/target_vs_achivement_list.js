@@ -237,14 +237,6 @@ function show_missing_target_dialog(listview) {
 				<div class="label">Total Target Sum</div>
 				<div class="val" style="color: #5b21b6;">₹${format_val(s.total_target_amount || 0)}</div>
 			</div>
-			<div class="missing-summary-card" style="border-left: 4px solid #10b981;">
-				<div class="label">Stored Targets</div>
-				<div class="val" style="color: #065f46;">${s.total_stored}</div>
-			</div>
-			<div class="missing-summary-card" style="border-left: 4px solid #ef4444;">
-				<div class="label">Missing Targets</div>
-				<div class="val" style="color: #991b1b;">${s.total_missing}</div>
-			</div>
 		`;
 	}
 
