@@ -1371,60 +1371,62 @@
 				branch.</p>
 		</div>
 		<div id="branch-data-container">
-			<section class="bm-card" id="bm-profile">
-				<div class="bm-left">
-					<div class="bm-avatar">
-						<img id="bm-photo" alt="Branch Manager" />
-					</div>
-				</div>
-
-				<div class="bm-right">
-					<div class="bm-title">Branch Manager</div>
-
-					<div class="bm-name" id="bm-name">Loading...</div>
-					<div class="bm-sub">
-						<span id="branch-name">--</span> •
-						<span id="branch-district">--</span>
-					</div>
-
-					<div class="bm-info-grid">
-						<div>
-							<label>BM Date of Joining</label>
-							<span id="bm-doj">--</span>
-						</div>
-						<div>
-							<label>Branch Opening Date</label>
-							<span id="branch-opening-date">--</span>
-						</div>
-						<div>
-							<label>Reporting Person</label>
-							<span id="ch-name">--</span>
-						</div>
-
-						<div>
-							<label>BM Vintage</label>
-							<span id="bm-vintage">--</span>
-						</div>
-						<div>
-							<label>Branch Vintage</label>
-							<span id="branch-vintage">--</span>
-						</div>
-						<div>
-							<label>Reporting Person Mobile</label>
-							<span id="ch-mobile">--</span>
-						</div>
-
-						<div>
-							<label>BM Mobile</label>
-							<span id="bm-mobile">--</span>
-						</div>
-						<div>
-							<label>Branch Email</label>
-							<span id="branch-email">--</span>
+			<div id="bm-profiles-wrapper">
+				<section class="bm-card" id="bm-profile">
+					<div class="bm-left">
+						<div class="bm-avatar">
+							<img id="bm-photo" alt="Branch Manager" />
 						</div>
 					</div>
 
-			</section>
+					<div class="bm-right">
+						<div class="bm-title">Branch Manager</div>
+
+						<div class="bm-name" id="bm-name">Loading...</div>
+						<div class="bm-sub">
+							<span id="branch-name">--</span> •
+							<span id="branch-district">--</span>
+						</div>
+
+						<div class="bm-info-grid">
+							<div>
+								<label>BM Date of Joining</label>
+								<span id="bm-doj">--</span>
+							</div>
+							<div>
+								<label>Branch Opening Date</label>
+								<span id="branch-opening-date">--</span>
+							</div>
+							<div>
+								<label>Reporting Person</label>
+								<span id="ch-name">--</span>
+							</div>
+
+							<div>
+								<label>BM Vintage</label>
+								<span id="bm-vintage">--</span>
+							</div>
+							<div>
+								<label>Branch Vintage</label>
+								<span id="branch-vintage">--</span>
+							</div>
+							<div>
+								<label>Reporting Person Mobile</label>
+								<span id="ch-mobile">--</span>
+							</div>
+
+							<div>
+								<label>BM Mobile</label>
+								<span id="bm-mobile">--</span>
+							</div>
+							<div>
+								<label>Branch Email</label>
+								<span id="branch-email">--</span>
+							</div>
+						</div>
+					</div>
+				</section>
+			</div>
 
 			<div class="details-row">
 				<section class="total-staff-overview-card">
@@ -3106,18 +3108,21 @@
 					const d = this.state.rawData;
 					const branchEmailValue = d._branch_email_value; // Retrieve stored email
 
-					// Header Info
-					this.el.name.textContent = this.value(d.bm_name);
-					this.el.mobile.textContent = this.value(d.bm_mob_no);
-					this.el.vintage.textContent = this.calculateExperience(d.bm_doj);
-					this.el.doj.textContent = this.formatDate(d.bm_doj);
-					this.el.branchOpeningDate.textContent = this.formatDate(d.branch_opening_date);
-					this.el.chName.textContent = this.value(d.ch_name);
-					this.el.branchName.textContent = this.value(d.branch_name);
-					this.el.branchDistrict.textContent = this.value(d.district);
-					this.el.branchVintage.textContent = this.calculateExperience(d.branch_opening_date);
-					this.el.branchEmail.textContent = this.value(branchEmailValue);
-					this.el.chMobile.textContent = this.value(d.ch_mob_no);
+					// Render BM Cards (support multiple BMs stacked vertically)
+					this.renderBmData();
+
+					// Header Info Fallback safety checks
+					if (this.el.name) this.el.name.textContent = this.value(d.bm_name);
+					if (this.el.mobile) this.el.mobile.textContent = this.value(d.bm_mob_no);
+					if (this.el.vintage) this.el.vintage.textContent = this.calculateExperience(d.bm_doj);
+					if (this.el.doj) this.el.doj.textContent = this.formatDate(d.bm_doj);
+					if (this.el.branchOpeningDate) this.el.branchOpeningDate.textContent = this.formatDate(d.branch_opening_date);
+					if (this.el.chName) this.el.chName.textContent = this.value(d.ch_name);
+					if (this.el.branchName) this.el.branchName.textContent = this.value(d.branch_name);
+					if (this.el.branchDistrict) this.el.branchDistrict.textContent = this.value(d.district);
+					if (this.el.branchVintage) this.el.branchVintage.textContent = this.calculateExperience(d.branch_opening_date);
+					if (this.el.branchEmail) this.el.branchEmail.textContent = this.value(branchEmailValue);
+					if (this.el.chMobile) this.el.chMobile.textContent = this.value(d.ch_mob_no);
 
 					// --- Staff Details & Overflow Logic ---
 					const budget = parseInt(d.total_no_of_budgeted_staff) || 0;
@@ -3458,22 +3463,134 @@
 					});
 				},
 
+				renderBmData() {
+					const wrapper = document.getElementById("bm-profiles-wrapper");
+					if (!wrapper) return;
+
+					const d = this.state.rawData || {};
+					const bmList = this.state.bmList || [];
+					const branchEmailValue = d._branch_email_value || "--";
+
+					wrapper.innerHTML = "";
+
+					if (!bmList || bmList.length === 0) {
+						wrapper.innerHTML = `
+							<section class="bm-card">
+								<div class="bm-left">
+									<div class="bm-avatar">
+										<img src="/assets/frappe/images/default-avatar.png" alt="Branch Manager" />
+									</div>
+								</div>
+								<div class="bm-right">
+									<div class="bm-title">Branch Manager</div>
+									<div class="bm-name">${this.value(d.bm_name)}</div>
+									<div class="bm-sub">
+										<span>${this.value(d.branch_name)}</span> •
+										<span>${this.value(d.district)}</span>
+									</div>
+									<div class="bm-info-grid">
+										<div><label>BM Date of Joining</label><span>${this.formatDate(d.bm_doj)}</span></div>
+										<div><label>Branch Opening Date</label><span>${this.formatDate(d.branch_opening_date)}</span></div>
+										<div><label>Reporting Person</label><span>${this.value(d.ch_name)}</span></div>
+										<div><label>BM Vintage</label><span>${this.calculateExperience(d.bm_doj)}</span></div>
+										<div><label>Branch Vintage</label><span>${this.calculateExperience(d.branch_opening_date)}</span></div>
+										<div><label>Reporting Person Mobile</label><span>${this.value(d.ch_mob_no)}</span></div>
+										<div><label>BM Mobile</label><span>${this.value(d.bm_mob_no)}</span></div>
+										<div><label>Branch Email</label><span>${this.value(branchEmailValue)}</span></div>
+									</div>
+								</div>
+							</section>
+						`;
+						return;
+					}
+
+					bmList.forEach((bm) => {
+						const rep = bm.reporting_person || {};
+						const avatarSrc = bm.image || "/assets/frappe/images/default-avatar.png";
+
+						const cardHtml = `
+							<section class="bm-card" style="margin-bottom: 20px;">
+								<div class="bm-left">
+									<div class="bm-avatar">
+										<img src="${avatarSrc}" alt="${bm.employee_name}" />
+									</div>
+								</div>
+								<div class="bm-right">
+									<div class="bm-title">${this.value(bm.designation)}</div>
+									<div class="bm-name">
+										${this.value(bm.employee_name)}
+										${bm.employee_number ? `<span style="font-size: 13px; color: #64748b; font-weight: 500; margin-left: 6px;">(${bm.employee_number})</span>` : ""}
+									</div>
+									<div class="bm-sub">
+										<span>${this.value(d.branch_name)}</span> •
+										<span>${this.value(d.district)}</span>
+									</div>
+									<div class="bm-info-grid">
+										<div>
+											<label>BM Date of Joining</label>
+											<span>${this.formatDate(bm.date_of_joining)}</span>
+										</div>
+										<div>
+											<label>Branch Opening Date</label>
+											<span>${this.formatDate(d.branch_opening_date)}</span>
+										</div>
+										<div>
+											<label>Reporting Person</label>
+											<span>
+												${this.value(rep.employee_name)}
+												${rep.designation && rep.designation !== "--" ? `<div style="font-size: 11px; color: #64748b; font-weight: 500; margin-top: 2px;">${rep.designation}</div>` : ""}
+											</span>
+										</div>
+										<div>
+											<label>BM Vintage</label>
+											<span>${this.calculateExperience(bm.date_of_joining)}</span>
+										</div>
+										<div>
+											<label>Branch Vintage</label>
+											<span>${this.calculateExperience(d.branch_opening_date)}</span>
+										</div>
+										<div>
+											<label>Reporting Person Mobile</label>
+											<span>${this.value(rep.cell_number)}</span>
+										</div>
+										<div>
+											<label>BM Mobile</label>
+											<span>${this.value(bm.cell_number)}</span>
+										</div>
+										<div>
+											<label>Branch Email</label>
+											<span>${this.value(branchEmailValue)}</span>
+										</div>
+									</div>
+								</div>
+							</section>
+						`;
+
+						wrapper.insertAdjacentHTML("beforeend", cardHtml);
+					});
+				},
+
 				async load(solId, branchEmailValue) {
 					try {
-						const [r, bookR] = await Promise.all([
+						const [r, bookR, bmR] = await Promise.all([
 							fetch(`/api/method/custom_report.branch_v1.get_branch_profile_data?sol_id=${solId}`),
-							fetch(`/api/method/custom_report.branch_v1.get_book_position_details?sol_id=${solId}`)
+							fetch(`/api/method/custom_report.branch_v1.get_book_position_details?sol_id=${solId}`),
+							fetch(`/api/method/custom_report.branch_v1.get_bm_details_from_employee?sol_id=${solId}`)
 						]);
 						const j = await r.json();
 						const bookJ = await bookR.json();
+						const bmJ = await bmR.json();
+
 						const d = j.message || {};
 						const bookD = bookJ.message || {};
+						const bmList = (bmJ.message && bmJ.message.data) ? bmJ.message.data : [];
 
 						// Merge new book position data into rawData overriding old mappings
 						Object.assign(d, bookD);
 						
 						d._branch_email_value = branchEmailValue; // Store email in raw data
 						this.state.rawData = d;
+						this.state.bmList = bmList;
 
 						this.render();
 						this.loadEmployeeDetails(solId);

@@ -101,6 +101,98 @@ def get_branch_profile_data(sol_id: str):
         as_dict=True,
     ) or {}
 
+
+@frappe.whitelist()
+def get_bm_details_from_employee(sol_id: str):
+    """
+    Fetch Branch Manager (BM) details for a given SOL ID from Employee DocType.
+    Filters employees by sahayog_branch matching sol_id or branch name, and designation LIKE '%Branch Manager%'.
+    Also fetches Reporting Person details from Employee.reports_to.
+    """
+    if not sol_id:
+        return {"status": "error", "message": "SOL ID is required", "data": []}
+
+    sol_id_str = str(sol_id).strip()
+
+    # Find Sahayog Branch doc name if any
+    branch_doc = frappe.db.get_value("Sahayog Branch", {"sol_id": sol_id_str}, ["name", "branch"], as_dict=True)
+    possible_branch_values = [sol_id_str]
+    if branch_doc:
+        if branch_doc.get("name"):
+            possible_branch_values.append(branch_doc["name"])
+        if branch_doc.get("branch"):
+            possible_branch_values.append(branch_doc["branch"])
+
+    possible_branch_values = list(set(possible_branch_values))
+
+    conditions = ["designation LIKE %(bm_desig)s"]
+    params = {"bm_desig": "%Branch Manager%", "branches": possible_branch_values}
+    conditions.append("(sahayog_branch IN %(branches)s OR sol_id IN %(branches)s)")
+
+    where_clause = " AND ".join(conditions)
+
+    query = f"""
+        SELECT
+            name,
+            employee_name,
+            employee_number,
+            designation,
+            cell_number,
+            date_of_joining,
+            reports_to,
+            image,
+            user_id,
+            sahayog_branch
+        FROM `tabEmployee`
+        WHERE {where_clause}
+        ORDER BY date_of_joining ASC
+    """
+
+    bm_employees = frappe.db.sql(query, params, as_dict=True)
+
+    result = []
+    for emp in bm_employees:
+        reporting_person = {
+            "name": "",
+            "employee_name": "--",
+            "designation": "--",
+            "cell_number": "--",
+        }
+
+        reports_to_id = emp.get("reports_to")
+        if reports_to_id:
+            rep_doc = frappe.db.get_value(
+                "Employee",
+                reports_to_id,
+                ["name", "employee_name", "designation", "cell_number"],
+                as_dict=True,
+            )
+            if rep_doc:
+                reporting_person = {
+                    "name": rep_doc.get("name") or "",
+                    "employee_name": rep_doc.get("employee_name") or "--",
+                    "designation": rep_doc.get("designation") or "--",
+                    "cell_number": rep_doc.get("cell_number") or "--",
+                }
+
+        result.append({
+            "name": emp.get("name"),
+            "employee_name": emp.get("employee_name") or "--",
+            "employee_number": emp.get("employee_number") or "",
+            "designation": emp.get("designation") or "Branch Manager",
+            "cell_number": emp.get("cell_number") or "--",
+            "date_of_joining": str(emp.get("date_of_joining")) if emp.get("date_of_joining") else "",
+            "image": emp.get("image") or "",
+            "reports_to": emp.get("reports_to") or "",
+            "reporting_person": reporting_person,
+        })
+
+    return {
+        "status": "success",
+        "count": len(result),
+        "data": result,
+    }
+
 @frappe.whitelist()
 def get_book_position_details(sol_id: str):
     """
