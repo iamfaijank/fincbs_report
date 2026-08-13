@@ -303,7 +303,11 @@ function show_missing_target_dialog(listview) {
 		});
 
 		let html = "";
-		Object.keys(zone_map).forEach((z_name, idx) => {
+		const sorted_zone_names = Object.keys(zone_map).sort((a, b) =>
+			a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+		);
+
+		sorted_zone_names.forEach((z_name, idx) => {
 			const z_data = zone_map[z_name];
 			const is_collapsed = collapsed_zones[z_name] !== false;
 			const icon = is_collapsed ? "►" : "▼";
