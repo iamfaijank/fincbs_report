@@ -82,11 +82,11 @@ function show_missing_target_dialog(listview) {
 				.missing-summary-card .label { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; }
 				.missing-summary-card .val { font-size: 20px; font-weight: 800; margin-top: 2px; }
 				.missing-table-scroll { max-height: 60vh; overflow: auto; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; }
-				.missing-matrix-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
-				.missing-matrix-table th { position: sticky; top: 0; z-index: 10; background: #346569; color: #ffffff; padding: 8px 6px; font-weight: 700; text-align: center; white-space: nowrap; border-bottom: 2px solid #264a4d; }
-				.missing-matrix-table td { padding: 6px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #f1f5f9; text-align: center; vertical-align: middle; white-space: nowrap; }
+				.missing-matrix-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11px; }
+				.missing-matrix-table th { position: sticky; top: 0; z-index: 10; background: #346569; color: #ffffff; padding: 6px 4px; font-weight: 700; text-align: center; white-space: nowrap; border-bottom: 1px solid #264a4d; border-right: 1px solid rgba(255,255,255,0.1); }
+				.missing-matrix-table td { padding: 5px 4px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #f1f5f9; text-align: center; vertical-align: middle; white-space: nowrap; }
 				.missing-matrix-table tbody tr:hover { background-color: #f0fdf4 !important; }
-				.target-cell-badge { display: inline-block; padding: 3px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; cursor: pointer; text-decoration: none; transition: transform 0.15s; }
+				.target-cell-badge { display: inline-block; padding: 2px 5px; border-radius: 4px; font-size: 10px; font-weight: 700; cursor: pointer; text-decoration: none; transition: transform 0.15s; }
 				.target-cell-badge:hover { transform: scale(1.05); }
 				.target-cell-badge.stored { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
 				.target-cell-badge.missing { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
@@ -133,13 +133,17 @@ function show_missing_target_dialog(listview) {
 					<table class="missing-matrix-table">
 						<thead>
 							<tr>
-								<th style="width: 35px;">Sr</th>
-								<th style="text-align: left; padding-left: 10px;">SOL & Branch</th>
-								<th>Zone / Region</th>
-								${months.map((m) => `<th>${m}</th>`).join("")}
-								<th style="background: #2b5558;">Yearly</th>
-								<th style="background: #2b5558;">YTD</th>
-								<th style="background: #991b1b; color: #fff;">Missing</th>
+								<th rowspan="2" style="width: 35px;">Sr</th>
+								<th rowspan="2" style="text-align: left; padding-left: 10px;">SOL & Branch</th>
+								<th rowspan="2">Zone / Region</th>
+								<th colspan="12" style="background: #2b5558;">Monthly Targets (Apr - Mar)</th>
+								<th colspan="12" style="background: #3e6b6e;">YTD Targets (Apr - Mar)</th>
+								<th rowspan="2" style="background: #264a4d;">Yearly</th>
+								<th rowspan="2" style="background: #991b1b; color: #fff;">Missing</th>
+							</tr>
+							<tr>
+								${months.map((m) => `<th style="background: #346569;">${m}</th>`).join("")}
+								${months.map((m) => `<th style="background: #417d81;">${m}</th>`).join("")}
 							</tr>
 						</thead>
 						<tbody id="missing-matrix-tbody">
@@ -175,7 +179,7 @@ function show_missing_target_dialog(listview) {
 		}
 
 		if (filtered.length === 0) {
-			return `<tr><td colspan="18" style="padding: 30px; color: #64748b; font-weight: 600;">No branches match the current search / filter.</td></tr>`;
+			return `<tr><td colspan="30" style="padding: 30px; color: #64748b; font-weight: 600;">No branches match the current search / filter.</td></tr>`;
 		}
 
 		const format_val = (val) => {
@@ -191,21 +195,28 @@ function show_missing_target_dialog(listview) {
 				let month_tds = missing_matrix_data.months
 					.map((m) => {
 						const cell = row.months[m];
-						if (cell.stored) {
-							return `<td><a class="target-cell-badge stored" href="/app/target-vs-achivement/${cell.name}" target="_blank" title="View Target Record: ${cell.name}">✓ ${format_val(cell.target)}</a></td>`;
+						if (cell && cell.stored) {
+							return `<td><a class="target-cell-badge stored" href="/app/target-vs-achivement/${cell.name}" target="_blank" title="View Monthly Target Record: ${cell.name}">✓ ${format_val(cell.target)}</a></td>`;
 						} else {
-							return `<td><span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="Monthly" data-month="${m}" title="Click to Add Monthly Target for ${m}">✕ Missing</span></td>`;
+							return `<td><span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="Monthly" data-month="${m}" title="Click to Add Monthly Target for ${m}">✕</span></td>`;
 						}
 					})
 					.join("");
 
-				let yearly_td = row.yearly.stored
-					? `<td><a class="target-cell-badge stored" href="/app/target-vs-achivement/${row.yearly.name}" target="_blank" title="View Yearly Target">✓ ${format_val(row.yearly.target)}</a></td>`
-					: `<td><span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="Yearly" data-month="" title="Click to Add Yearly Target">✕ Missing</span></td>`;
+				let ytd_month_tds = missing_matrix_data.months
+					.map((m) => {
+						const cell = row.ytd_months ? row.ytd_months[m] : null;
+						if (cell && cell.stored) {
+							return `<td><a class="target-cell-badge stored" href="/app/target-vs-achivement/${cell.name}" target="_blank" title="View YTD Target Record: ${cell.name}">✓ ${format_val(cell.target)}</a></td>`;
+						} else {
+							return `<td><span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="YTD" data-month="${m}" title="Click to Add YTD Target for ${m}">✕</span></td>`;
+						}
+					})
+					.join("");
 
-				let ytd_td = row.ytd.stored
-					? `<td><a class="target-cell-badge stored" href="/app/target-vs-achivement/${row.ytd.name}" target="_blank" title="View YTD Target">✓ ${format_val(row.ytd.target)}</a></td>`
-					: `<td><span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="YTD" data-month="" title="Click to Add YTD Target">✕ Missing</span></td>`;
+				let yearly_td = row.yearly && row.yearly.stored
+					? `<td><a class="target-cell-badge stored" href="/app/target-vs-achivement/${row.yearly.name}" target="_blank" title="View Yearly Target">✓ ${format_val(row.yearly.target)}</a></td>`
+					: `<td><span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="Yearly" data-month="" title="Click to Add Yearly Target">✕</span></td>`;
 
 				let missing_badge =
 					row.missing_count > 0
@@ -218,8 +229,8 @@ function show_missing_target_dialog(listview) {
 					<td style="text-align: left; padding-left: 10px; font-weight: 700; color: #0f172a;">${row.sol_id} - ${row.branch_name}</td>
 					<td style="color: #64748b; font-weight: 500;">${row.zone} / ${row.region}</td>
 					${month_tds}
+					${ytd_month_tds}
 					${yearly_td}
-					${ytd_td}
 					<td>${missing_badge}</td>
 				</tr>
 			`;
@@ -258,7 +269,7 @@ function show_missing_target_dialog(listview) {
 				financial_year: selected_fy,
 				type: type,
 			};
-			if (type === "Monthly" && month) {
+			if ((type === "Monthly" || type === "YTD") && month) {
 				new_doc_args.month = month;
 			}
 

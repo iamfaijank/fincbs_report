@@ -3,7 +3,7 @@
 
 frappe.ui.form.on("Target Vs Achivement", {
 	type: function (frm) {
-		if (frm.doc.type === "Monthly") {
+		if (frm.doc.type === "Monthly" || frm.doc.type === "YTD") {
 			if (!frm.doc.month) {
 				const current_month = moment().format("MMM").toUpperCase();
 				frm.set_value("month", current_month);

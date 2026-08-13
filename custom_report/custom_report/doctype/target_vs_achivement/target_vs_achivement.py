@@ -13,14 +13,14 @@ class TargetVsAchivement(Document):
 
 		doc_type = self.type.upper()
 
-		if doc_type == "MONTHLY":
+		if doc_type in ("MONTHLY", "YTD"):
 			if not self.month:
-				frappe.throw(_("Month is mandatory for Monthly type"))
+				frappe.throw(_("Month is mandatory for Monthly and YTD types"))
 
-			self.name = f"{self.sol_id}-{self.financial_year}-MONTHLY-{self.month.upper()}"
+			self.name = f"{self.sol_id}-{self.financial_year}-{doc_type}-{self.month.upper()}"
 
-		elif doc_type in ("YEARLY", "YTD"):
-			self.name = f"{self.sol_id}-{self.financial_year}-{doc_type}"
+		elif doc_type == "YEARLY":
+			self.name = f"{self.sol_id}-{self.financial_year}-YEARLY"
 
 		else:
 			frappe.throw(_("Invalid type"))
@@ -35,7 +35,7 @@ class TargetVsAchivement(Document):
 			"type": self.type,
 			"name": ["!=", self.name or ""],
 		}
-		if self.type == "Monthly" and self.month:
+		if self.type in ("Monthly", "YTD") and self.month:
 			filters["month"] = self.month
 
 		existing = frappe.db.exists("Target Vs Achivement", filters)
@@ -87,7 +87,7 @@ def get_missing_targets_matrix(financial_year=None):
 	for t in targets:
 		sol = str(t.sol_id or "").strip()
 		ttype = str(t.type or "").strip()
-		tmonth = str(t.month or "").strip().upper() if ttype == "Monthly" else None
+		tmonth = str(t.month or "").strip().upper() if ttype in ("Monthly", "YTD") else None
 		target_map[(sol, ttype, tmonth)] = {
 			"target": float(t.target or 0),
 			"name": t.name,
@@ -105,8 +105,8 @@ def get_missing_targets_matrix(financial_year=None):
 			"zone": b.zone or "-",
 			"region": b.region or "-",
 			"months": {},
+			"ytd_months": {},
 			"yearly": None,
-			"ytd": None,
 			"missing_count": 0,
 			"stored_count": 0,
 		}
@@ -123,6 +123,18 @@ def get_missing_targets_matrix(financial_year=None):
 				row_data["missing_count"] += 1
 				total_missing += 1
 
+		# YTD targets (Apr to Mar)
+		for m in months:
+			entry_ytd = target_map.get((sol, "YTD", m)) or target_map.get((sol, "YTD", None))
+			if entry_ytd:
+				row_data["ytd_months"][m] = {"stored": True, "target": entry_ytd["target"], "name": entry_ytd["name"]}
+				row_data["stored_count"] += 1
+				total_stored += 1
+			else:
+				row_data["ytd_months"][m] = {"stored": False, "target": 0}
+				row_data["missing_count"] += 1
+				total_missing += 1
+
 		# Yearly target
 		entry_y = target_map.get((sol, "Yearly", None))
 		if entry_y:
@@ -131,17 +143,6 @@ def get_missing_targets_matrix(financial_year=None):
 			total_stored += 1
 		else:
 			row_data["yearly"] = {"stored": False, "target": 0}
-			row_data["missing_count"] += 1
-			total_missing += 1
-
-		# YTD target
-		entry_ytd = target_map.get((sol, "YTD", None))
-		if entry_ytd:
-			row_data["ytd"] = {"stored": True, "target": entry_ytd["target"], "name": entry_ytd["name"]}
-			row_data["stored_count"] += 1
-			total_stored += 1
-		else:
-			row_data["ytd"] = {"stored": False, "target": 0}
 			row_data["missing_count"] += 1
 			total_missing += 1
 
