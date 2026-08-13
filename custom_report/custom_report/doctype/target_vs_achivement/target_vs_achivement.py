@@ -9,6 +9,7 @@ from frappe.utils import flt, getdate, today
 # Module Level Constants
 EXCLUDED_SOL_IDS = ["1000", "1104", "1059", "1081", "1031"]
 FY_MONTHS = ["APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC", "JAN", "FEB", "MAR"]
+ALLOWED_ROLES = ["System Manager", "MIS Admin"]
 
 
 class TargetVsAchivement(Document):
@@ -60,9 +61,20 @@ def get_current_financial_year() -> str:
 	return f"{dt.year - 1}-{dt.year}"
 
 
+def check_user_access():
+	"""Check if current user has System Manager or MIS Admin role."""
+	user_roles = frappe.get_roles()
+	if not any(role in user_roles for role in ALLOWED_ROLES):
+		frappe.throw(
+			_("Access Denied: Only MIS Admin and System Manager can access Missing Target functionality."),
+			frappe.PermissionError,
+		)
+
+
 @frappe.whitelist()
 def get_missing_targets_matrix(financial_year: str = None) -> dict:
 	"""Fetch missing targets matrix report aggregated by branch for Monthly, YTD, and Yearly targets."""
+	check_user_access()
 	if not financial_year:
 		financial_year = get_current_financial_year()
 
@@ -176,8 +188,7 @@ def get_missing_targets_matrix(financial_year: str = None) -> dict:
 @frappe.whitelist()
 def save_quick_target(sol_id: str, financial_year: str, type: str, month: str = None, target: float = 0) -> dict:
 	"""Quick insert or update a Target Vs Achivement record directly from the Missing Targets widget."""
-	if not frappe.has_permission("Target Vs Achivement", "write"):
-		frappe.throw(_("Not permitted to update Target Vs Achivement records."), frappe.PermissionError)
+	check_user_access()
 
 	target_val = flt(target)
 	if target_val <= 0:

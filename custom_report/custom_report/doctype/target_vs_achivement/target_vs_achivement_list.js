@@ -3,16 +3,21 @@
 
 frappe.listview_settings["Target Vs Achivement"] = {
 	onload: function (listview) {
-		listview.page.add_inner_button(__("Missing Target"), function () {
-			show_missing_target_dialog(listview);
-		});
+		const allowed_roles = ["MIS Admin", "System Manager"];
+		const has_access = allowed_roles.some((role) => frappe.user.has_role(role));
 
-		listview.page.add_inner_button(__("Bulk Upload"), function () {
-			frappe.new_doc("Data Import", {
-				reference_doctype: "Target Vs Achivement",
-				import_type: "Insert New Records",
+		if (has_access) {
+			listview.page.add_inner_button(__("Missing Target"), function () {
+				show_missing_target_dialog(listview);
 			});
-		});
+
+			listview.page.add_inner_button(__("Bulk Upload"), function () {
+				frappe.new_doc("Data Import", {
+					reference_doctype: "Target Vs Achivement",
+					import_type: "Insert New Records",
+				});
+			});
+		}
 	},
 };
 
