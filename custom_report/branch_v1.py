@@ -133,14 +133,17 @@ def get_bm_details_from_employee(sol_id: str):
         if bd.get("sol_id"):
             possible_branch_values.append(bd["sol_id"])
 
-    possible_branch_values = list(set(possible_branch_values))
-
     conditions = [
         "designation LIKE %(bm_desig)s",
-        "designation NOT LIKE '%Assistant%'",
-        "designation NOT LIKE '%JLL%'",
+        "designation NOT LIKE %(excl_assist)s",
+        "designation NOT LIKE %(excl_jll)s",
     ]
-    params = {"bm_desig": "%Branch Manager%", "branches": possible_branch_values}
+    params = {
+        "bm_desig": "%Branch Manager%",
+        "excl_assist": "%Assistant%",
+        "excl_jll": "%JLL%",
+        "branches": possible_branch_values,
+    }
     conditions.append("(sahayog_branch IN %(branches)s OR sol_id IN %(branches)s OR branch IN %(branches)s)")
 
     where_clause = " AND ".join(conditions)
