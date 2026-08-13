@@ -112,7 +112,7 @@ function show_missing_target_dialog(listview) {
 				.filter-pill-btn.active { background: #417d81; color: #fff; border-color: #417d81; }
 				.group-view-btn { padding: 4px 10px; font-size: 11px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; color: #475569; cursor: pointer; transition: all 0.2s; }
 				.group-view-btn.active { background: #334155; color: #fff; border-color: #334155; }
-				.zone-group-header-row:hover { background: #264a4d !important; }
+				.zone-summary-row:hover td { background-color: #e2e8f0 !important; }
 			</style>
 
 			<div class="missing-target-modal">
@@ -245,7 +245,7 @@ function show_missing_target_dialog(listview) {
 		});
 
 		let html = "";
-		Object.keys(zone_map).forEach((z_name) => {
+		Object.keys(zone_map).forEach((z_name, idx) => {
 			const z_data = zone_map[z_name];
 			const is_collapsed = collapsed_zones[z_name] !== false;
 			const icon = is_collapsed ? "►" : "▼";
@@ -276,47 +276,39 @@ function show_missing_target_dialog(listview) {
 			});
 
 			const badge = z_data.missing_count > 0
-				? `<span style="float: right; background: #fee2e2; color: #991b1b; padding: 2px 10px; border-radius: 9999px; font-size: 10px; font-weight: 800;">${z_data.missing_count} Missing</span>`
-				: `<span style="float: right; background: #dcfce7; color: #166534; padding: 2px 10px; border-radius: 9999px; font-size: 10px; font-weight: 800;">Complete</span>`;
+				? `<span style="background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 9999px; font-size: 10px; font-weight: 800;">${z_data.missing_count} Missing</span>`
+				: `<span style="background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 9999px; font-size: 10px; font-weight: 800;">Complete</span>`;
 
-			// Zone Collapsible Header
-			html += `
-				<tr class="zone-group-header-row" data-zone="${z_name}" style="background: #2b5558; color: #ffffff; cursor: pointer; font-weight: 800; border-top: 2px solid #1e3a8a;">
-					<td colspan="18" style="text-align: left; padding: 8px 12px; font-size: 12px; background: #2b5558; color: #ffffff;">
-						<span class="zone-icon" style="display: inline-block; width: 14px;">${icon}</span>
-						<span>📍 ${z_name}</span>
-						<span style="font-weight: 500; font-size: 11px; opacity: 0.85; margin-left: 8px;">(${z_data.branches.length} Branches | Yearly Total: ₹${format_val(zone_yearly_total)})</span>
-						${badge}
-					</td>
-				</tr>
-			`;
-
-			// Zone Total Summary Row
-			const monthly_sums_html = months
+			const monthly_sums_tds = months
 				.map((m) => `<td style="font-weight: 800; color: #166534; background: #f0fdf4;">₹${format_val(zone_monthly_totals[m])}</td>`)
 				.join("");
 
-			const ytd_sums_html = months
+			const ytd_sums_tds = months
 				.map((m) => `<td style="font-weight: 800; color: #1e40af; background: #eff6ff;">₹${format_val(zone_ytd_totals[m])}</td>`)
 				.join("");
 
+			// Zone Merged 2-Row Summary (Row 1: Monthly Total, Row 2: YTD Total)
 			html += `
-				<tr data-zone-row="${z_name}" style="${row_display} background: #e2e8f0; border-bottom: 2px solid #94a3b8;">
-					<td rowspan="2" colspan="3" style="text-align: left; padding-left: 12px; font-weight: 800; color: #0f172a; background: #e2e8f0; vertical-align: middle;">
-						📊 ZONE TARGET TOTALS (${z_name})
+				<tr class="zone-group-header-row zone-summary-row" data-zone="${z_name}" style="border-top: 3px solid #346569; background: #f8fafc; cursor: pointer;">
+					<td rowspan="2" style="vertical-align: middle; font-weight: 800; background: #e2e8f0; border-right: 1px solid #cbd5e1;">${idx + 1}</td>
+					<td rowspan="2" style="text-align: left; padding-left: 10px; font-weight: 800; color: #0f172a; vertical-align: middle; background: #e2e8f0; border-right: 1px solid #cbd5e1;">
+						<span class="zone-icon" style="display: inline-block; width: 14px; font-weight: 900;">${icon}</span>
+						<span>📍 ${z_name}</span>
+						<span style="font-weight: 600; font-size: 10px; color: #64748b; display: block; margin-top: 2px;">(${z_data.branches.length} Branches)</span>
 					</td>
-					<td style="font-weight: 800; color: #15803d; background: #dcfce7;">Monthly Sum</td>
-					${monthly_sums_html}
-					<td rowspan="2" style="font-weight: 800; color: #0f172a; background: #cbd5e1; vertical-align: middle;">₹${format_val(zone_yearly_total)}</td>
-					<td rowspan="2" style="background: #e2e8f0; vertical-align: middle;">${badge}</td>
+					<td rowspan="2" style="color: #475569; font-weight: 700; vertical-align: middle; background: #e2e8f0; border-right: 1px solid #cbd5e1;">Zone Total</td>
+					<td style="font-weight: 800; color: #15803d; background: #dcfce7; border-right: 1px solid #cbd5e1;">Monthly</td>
+					${monthly_sums_tds}
+					<td rowspan="2" style="vertical-align: middle; font-weight: 800; color: #0f172a; background: #e2e8f0; border-right: 1px solid #cbd5e1;">₹${format_val(zone_yearly_total)}</td>
+					<td rowspan="2" style="vertical-align: middle; background: #e2e8f0;">${badge}</td>
 				</tr>
-				<tr data-zone-row="${z_name}" style="${row_display} background: #e2e8f0; border-bottom: 2px solid #94a3b8;">
-					<td style="font-weight: 800; color: #1d4ed8; background: #dbeafe;">YTD Sum</td>
-					${ytd_sums_html}
+				<tr class="zone-group-header-row zone-summary-row" data-zone="${z_name}" style="background: #f8fafc; cursor: pointer; border-bottom: 2px solid #cbd5e1;">
+					<td style="font-weight: 800; color: #1d4ed8; background: #dbeafe; border-right: 1px solid #cbd5e1;">YTD</td>
+					${ytd_sums_tds}
 				</tr>
 			`;
 
-			// Individual Branch Rows
+			// Individual Branch Rows for this Zone (Collapsible)
 			const branches_html = render_branch_rows_html(z_data.branches, z_name, row_display);
 			html += branches_html;
 		});
@@ -422,7 +414,7 @@ function show_missing_target_dialog(listview) {
 			const currently_collapsed = collapsed_zones[zone_name] !== false;
 			collapsed_zones[zone_name] = !currently_collapsed;
 			const $rows = $container.find(`tr[data-zone-row="${zone_name}"]`);
-			const $icon = $(this).find(".zone-icon");
+			const $icon = $container.find(`tr[data-zone="${zone_name}"]`).find(".zone-icon");
 
 			if (collapsed_zones[zone_name]) {
 				$rows.hide();
