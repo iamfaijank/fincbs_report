@@ -106,6 +106,16 @@ function show_missing_target_dialog(listview) {
 				.missing-matrix-table tbody tr.ytd-row td { background-color: #dbeafe !important; border-bottom: 3px solid #64748b !important; }
 				.missing-matrix-table tbody tr.ytd-row:hover td { background-color: #bfdbfe !important; }
 
+				/* Excel Row Highlight: applied to tr[data-branch-sol] */
+				.missing-matrix-table tbody tr.branch-hover-highlight td {
+					background-color: #bae6fd !important;
+				}
+				.missing-matrix-table tbody tr.branch-hover-highlight td.branch-name-td {
+					background-color: #38bdf8 !important;
+					color: #0c4a6e !important;
+					font-weight: 800 !important;
+				}
+
 				/* Excel-Style Crosshair Column Header Highlight */
 				.excel-col-header-highlight {
 					background-color: #0284c7 !important;
@@ -118,14 +128,15 @@ function show_missing_target_dialog(listview) {
 
 				/* Excel-Style Crosshair Column Cells Light Highlight */
 				.excel-col-cells-highlight {
-					background-color: #bae6fd !important;
+					background-color: #7dd3fc !important;
 				}
 
 				/* Active Hovered Cell Intense Outline */
 				.excel-active-cell-highlight {
 					outline: 2px solid #0284c7 !important;
 					outline-offset: -1px;
-					z-index: 12;
+					background-color: #38bdf8 !important;
+					z-index: 15;
 				}
 
 				/* Type Capsule Badges - High Visibility Solid Capsules */
@@ -461,59 +472,44 @@ function show_missing_target_dialog(listview) {
 			}
 		});
 
-		// Excel-Style Crosshair Hover (Highlights Branch Row + Month Header + Month Column)
-		$container.off("mouseenter mouseleave", "td, .target-cell-badge, .type-capsule").on({
-			mouseenter: function (e) {
-				const $target = $(e.target);
-				const $td = $target.closest("td");
-				const $row = $target.closest("tr[data-branch-sol]");
-				const sol_id = $row.data("branch-sol") || $row.attr("data-branch-sol");
-				const month = $td.data("month-col") || $td.attr("data-month-col") || $target.data("month");
+		// Excel-Style Crosshair Hover (Pure CSS Class Delegation - Zero Flicker)
+		$container.off("mouseenter mouseleave", "td").on({
+			mouseenter: function () {
+				const $td = $(this);
+				const $row = $td.closest("tr");
+				const sol_id = $row.attr("data-branch-sol");
+				const month = $td.attr("data-month-col");
+				const zone = $row.attr("data-zone");
 
-				// 1. Highlight Row & Branch Name (Excel Row Header)
+				// Clear previous highlights
+				$container.find(".branch-hover-highlight").removeClass("branch-hover-highlight");
+				$container.find(".excel-col-header-highlight").removeClass("excel-col-header-highlight");
+				$container.find(".excel-col-cells-highlight").removeClass("excel-col-cells-highlight");
+				$container.find(".excel-active-cell-highlight").removeClass("excel-active-cell-highlight");
+
+				// 1. Highlight Row Group & Branch Name Cell
 				if (sol_id) {
-					const $group = $container.find(`tr[data-branch-sol="${sol_id}"]`);
-					$group.addClass("branch-hover-highlight");
-					$group.find("td").css("background-color", "#e0f2fe");
-					$group.find(".branch-name-td").css({ "background-color": "#38bdf8", "color": "#0c4a6e", "font-weight": "800" });
+					$container.find(`tr[data-branch-sol="${sol_id}"]`).addClass("branch-hover-highlight");
+				} else if (zone) {
+					$container.find(`tr[data-zone="${zone}"]`).addClass("branch-hover-highlight");
 				}
 
-				// 2. Highlight Month Column Header & Column Cells (Excel Top Column Header)
+				// 2. Highlight Month Column Header & Column Cells
 				if (month) {
 					$container.find(`th[data-month-col="${month}"]`).addClass("excel-col-header-highlight");
 					$container.find(`td[data-month-col="${month}"]`).addClass("excel-col-cells-highlight");
 				}
 
-				// 3. Highlight specific cell
-				if ($td.length) {
-					$td.addClass("excel-active-cell-highlight");
-				}
+				// 3. Highlight active cell
+				$td.addClass("excel-active-cell-highlight");
 			},
-			mouseleave: function (e) {
-				const $target = $(e.target);
-				const $td = $target.closest("td");
-				const $row = $target.closest("tr[data-branch-sol]");
-				const sol_id = $row.data("branch-sol") || $row.attr("data-branch-sol");
-				const month = $td.data("month-col") || $td.attr("data-month-col") || $target.data("month");
-
-				if (sol_id) {
-					const $group = $container.find(`tr[data-branch-sol="${sol_id}"]`);
-					$group.removeClass("branch-hover-highlight");
-					$group.find("td").css("background-color", "");
-					$group.find(".branch-merged-cell").css("background-color", "#f8fafc");
-					$group.find(".branch-name-td").css({ "background-color": "#f8fafc", "color": "#0f172a" });
-				}
-
-				if (month) {
-					$container.find(`th[data-month-col="${month}"]`).removeClass("excel-col-header-highlight");
-					$container.find(`td[data-month-col="${month}"]`).removeClass("excel-col-cells-highlight");
-				}
-
-				if ($td.length) {
-					$td.removeClass("excel-active-cell-highlight");
-				}
+			mouseleave: function () {
+				$container.find(".branch-hover-highlight").removeClass("branch-hover-highlight");
+				$container.find(".excel-col-header-highlight").removeClass("excel-col-header-highlight");
+				$container.find(".excel-col-cells-highlight").removeClass("excel-col-cells-highlight");
+				$container.find(".excel-active-cell-highlight").removeClass("excel-active-cell-highlight");
 			},
-		});
+		}, "td");
 
 		// Click target badge (missing or stored) to open quick entry popup modal
 		$container.off("click", ".target-cell-badge").on("click", ".target-cell-badge", function (e) {
