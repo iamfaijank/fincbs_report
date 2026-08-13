@@ -10510,7 +10510,7 @@ class DrishtiDashboard {
 				highlightStyle = `background: #6ca8ac !important; color: #ffffff !important; border-bottom: 2px solid #558a8e !important;`;
 			}
 
-			header += `<th colspan="4" class="month-col" ${highlightStyle ? `style="${highlightStyle}"` : ""}>${displayYear}${daysLeftIndicator}</th>`;
+			header += `<th colspan="6" class="month-col" ${highlightStyle ? `style="${highlightStyle}"` : ""}>${displayYear}${daysLeftIndicator}</th>`;
 		});
 		header += `</tr><tr class="branch-table-subheader">`;
 
@@ -10520,6 +10520,8 @@ class DrishtiDashboard {
                 <th>Target</th>
                 <th>Ach.</th>
                 <th>ACH %</th>
+                <th>Ach Gap</th>
+                <th>Ach Gap %</th>
             `;
 		});
 
@@ -10568,6 +10570,8 @@ class DrishtiDashboard {
 			const mdata = branch.months[month.key];
 			if (mdata) {
 				const pct = mdata.percentage || 0;
+				const gapVal = Math.max(0, (mdata.target || 0) - (mdata.achievement || 0));
+				const gapPct = (mdata.target || 0) > 0 ? (gapVal / mdata.target) * 100 : 0;
 
 				html += `
                  <td class="metric-cell category-cell">${this.getCategoryBadge(
@@ -10582,9 +10586,16 @@ class DrishtiDashboard {
 						${this.renderProgressBar(pct)}
 					</div>
 				</td>
+                 <td class="metric-cell amount-cell">${this.formatNumber(gapVal)}</td>
+                 <td>
+					<div style="display: flex; align-items: center; gap: 4px; justify-content: center;">
+						<span class="pct-value" style="color: ${this.getPctColor(100 - gapPct)}; min-width: 36px; text-align: right;">${Math.round(gapPct)}%</span>
+						${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
+					</div>
+				</td>
             `;
 			} else {
-				html += "<td>-</td><td>-</td><td>-</td><td>-</td>";
+				html += "<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>";
 			}
 		});
 
