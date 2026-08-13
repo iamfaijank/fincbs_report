@@ -97,15 +97,31 @@ function show_missing_target_dialog(listview) {
 				.missing-matrix-table th { position: sticky; top: 0; z-index: 10; background: #346569; color: #ffffff; padding: 8px 5px; font-weight: 700; text-align: center; white-space: nowrap; border-bottom: 2px solid #264a4d; border-right: 1px solid rgba(255,255,255,0.1); }
 				.missing-matrix-table td { padding: 6px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #f1f5f9; text-align: center; vertical-align: middle; white-space: nowrap; transition: background-color 0.15s ease; }
 				
-				.missing-matrix-table tbody tr { transition: background-color 0.15s ease; }
-				.missing-matrix-table tbody tr:hover { background-color: #f0f9ff !important; }
-				.missing-matrix-table tbody tr:hover td { background-color: #f0f9ff !important; }
+				/* Row Background Highlights */
+				.missing-matrix-table tbody tr.monthly-row { background-color: #f0fdf4 !important; }
+				.missing-matrix-table tbody tr.monthly-row td { background-color: #f0fdf4 !important; }
+				.missing-matrix-table tbody tr.monthly-row:hover td { background-color: #dcfce7 !important; }
+				
+				.missing-matrix-table tbody tr.ytd-row { background-color: #eff6ff !important; }
+				.missing-matrix-table tbody tr.ytd-row td { background-color: #eff6ff !important; }
+				.missing-matrix-table tbody tr.ytd-row:hover td { background-color: #dbeafe !important; }
+
 				.missing-matrix-table tbody td:hover { background-color: #bae6fd !important; }
 				
-				.target-cell-badge { display: inline-flex; align-items: center; justify-content: center; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: 700; cursor: pointer; text-decoration: none; transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-				.target-cell-badge.stored { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+				/* Type Capsule Badges */
+				.type-capsule { display: inline-flex; align-items: center; justify-content: center; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; }
+				.type-capsule.monthly { background: #dcfce7; color: #15803d; border: 1px solid #86efac; box-shadow: 0 1px 2px rgba(21, 128, 61, 0.12); }
+				.type-capsule.ytd { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; box-shadow: 0 1px 2px rgba(29, 78, 216, 0.12); }
+				
+				/* Target Cell Badges: Stored vs Missing Font & Color Differentiation */
+				.target-cell-badge { display: inline-flex; align-items: center; justify-content: center; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: 800; cursor: pointer; text-decoration: none; transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+				
+				/* Stored Target: Bold Dark Green on Soft Emerald Background */
+				.target-cell-badge.stored { background: #dcfce7; color: #14532d; border: 1px solid #86efac; font-weight: 800; }
 				.target-cell-badge.stored:hover { background: #16a34a !important; color: #ffffff !important; border-color: #15803d !important; transform: translateY(-1px) scale(1.12); box-shadow: 0 3px 8px rgba(22, 163, 74, 0.35); }
-				.target-cell-badge.missing { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+				
+				/* Missing Target: High-Contrast Crimson Red Badge */
+				.target-cell-badge.missing { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; font-weight: 800; letter-spacing: 0.2px; }
 				.target-cell-badge.missing:hover { background: #dc2626 !important; color: #ffffff !important; border-color: #b91c1c !important; transform: translateY(-1px) scale(1.15); box-shadow: 0 3px 8px rgba(220, 38, 38, 0.4); }
 				
 				.filter-pill-btn { padding: 4px 10px; font-size: 11px; font-weight: 600; border-radius: 9999px; border: 1px solid #cbd5e1; background: #fff; color: #475569; cursor: pointer; transition: all 0.2s; }
@@ -164,7 +180,7 @@ function show_missing_target_dialog(listview) {
 								<th style="width: 35px;">Sr</th>
 								<th style="text-align: left; padding-left: 10px; min-width: 160px;">SOL & Branch</th>
 								<th style="min-width: 130px;">Zone / Region</th>
-								<th style="width: 70px;">Type</th>
+								<th style="width: 75px;">Type</th>
 								${months.map((m) => `<th>${m}</th>`).join("")}
 								<th style="background: #264a4d;">Yearly</th>
 								<th style="background: #991b1b; color: #fff;">Missing</th>
@@ -289,7 +305,7 @@ function show_missing_target_dialog(listview) {
 
 			// Zone Merged 2-Row Summary (Row 1: Monthly Total, Row 2: YTD Total)
 			html += `
-				<tr class="zone-group-header-row zone-summary-row" data-zone="${z_name}" style="border-top: 3px solid #346569; background: #f8fafc; cursor: pointer;">
+				<tr class="zone-group-header-row zone-summary-row monthly-row" data-zone="${z_name}" style="border-top: 3px solid #346569; background: #f0fdf4; cursor: pointer;">
 					<td rowspan="2" style="vertical-align: middle; font-weight: 800; background: #e2e8f0; border-right: 1px solid #cbd5e1;">${idx + 1}</td>
 					<td rowspan="2" style="text-align: left; padding-left: 10px; font-weight: 800; color: #0f172a; vertical-align: middle; background: #e2e8f0; border-right: 1px solid #cbd5e1;">
 						<span class="zone-icon" style="display: inline-block; width: 14px; font-weight: 900;">${icon}</span>
@@ -297,13 +313,13 @@ function show_missing_target_dialog(listview) {
 						<span style="font-weight: 600; font-size: 10px; color: #64748b; display: block; margin-top: 2px;">(${z_data.branches.length} Branches)</span>
 					</td>
 					<td rowspan="2" style="color: #475569; font-weight: 700; vertical-align: middle; background: #e2e8f0; border-right: 1px solid #cbd5e1;">Zone Total</td>
-					<td style="font-weight: 800; color: #15803d; background: #dcfce7; border-right: 1px solid #cbd5e1;">Monthly</td>
+					<td style="background: #f0fdf4; border-right: 1px solid #cbd5e1;"><span class="type-capsule monthly">Monthly</span></td>
 					${monthly_sums_tds}
 					<td rowspan="2" style="vertical-align: middle; font-weight: 800; color: #0f172a; background: #e2e8f0; border-right: 1px solid #cbd5e1;">₹${format_val(zone_yearly_total)}</td>
 					<td rowspan="2" style="vertical-align: middle; background: #e2e8f0;">${badge}</td>
 				</tr>
-				<tr class="zone-group-header-row zone-summary-row" data-zone="${z_name}" style="background: #f8fafc; cursor: pointer; border-bottom: 2px solid #cbd5e1;">
-					<td style="font-weight: 800; color: #1d4ed8; background: #dbeafe; border-right: 1px solid #cbd5e1;">YTD</td>
+				<tr class="zone-group-header-row zone-summary-row ytd-row" data-zone="${z_name}" style="background: #eff6ff; cursor: pointer; border-bottom: 2px solid #cbd5e1;">
+					<td style="background: #eff6ff; border-right: 1px solid #cbd5e1;"><span class="type-capsule ytd">YTD</span></td>
 					${ytd_sums_tds}
 				</tr>
 			`;
@@ -327,9 +343,9 @@ function show_missing_target_dialog(listview) {
 					.map((m) => {
 						const cell = row.months[m];
 						if (cell && cell.stored) {
-							return `<td><a class="target-cell-badge stored" data-sol="${row.sol_id}" data-type="Monthly" data-month="${m}" data-target="${cell.target}" href="/app/target-vs-achivement/${cell.name}" target="_blank" title="Click to edit Target: ${cell.name}">✓ ${format_val(cell.target)}</a></td>`;
+							return `<td style="background: #f0fdf4;"><a class="target-cell-badge stored" data-sol="${row.sol_id}" data-type="Monthly" data-month="${m}" data-target="${cell.target}" href="/app/target-vs-achivement/${cell.name}" target="_blank" title="Click to edit Target: ${cell.name}">✓ ${format_val(cell.target)}</a></td>`;
 						} else {
-							return `<td><span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="Monthly" data-month="${m}" title="Click to Add Monthly Target for ${m}">✕ Missing</span></td>`;
+							return `<td style="background: #f0fdf4;"><span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="Monthly" data-month="${m}" title="Click to Add Monthly Target for ${m}">✕ Missing</span></td>`;
 						}
 					})
 					.join("");
@@ -338,9 +354,9 @@ function show_missing_target_dialog(listview) {
 					.map((m) => {
 						const cell = row.ytd_months ? row.ytd_months[m] : null;
 						if (cell && cell.stored) {
-							return `<td><a class="target-cell-badge stored" data-sol="${row.sol_id}" data-type="YTD" data-month="${m}" data-target="${cell.target}" href="/app/target-vs-achivement/${cell.name}" target="_blank" title="Click to edit YTD Target: ${cell.name}">✓ ${format_val(cell.target)}</a></td>`;
+							return `<td style="background: #eff6ff;"><a class="target-cell-badge stored" data-sol="${row.sol_id}" data-type="YTD" data-month="${m}" data-target="${cell.target}" href="/app/target-vs-achivement/${cell.name}" target="_blank" title="Click to edit YTD Target: ${cell.name}">✓ ${format_val(cell.target)}</a></td>`;
 						} else {
-							return `<td><span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="YTD" data-month="${m}" title="Click to Add YTD Target for ${m}">✕ Missing</span></td>`;
+							return `<td style="background: #eff6ff;"><span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="YTD" data-month="${m}" title="Click to Add YTD Target for ${m}">✕ Missing</span></td>`;
 						}
 					})
 					.join("");
@@ -351,21 +367,21 @@ function show_missing_target_dialog(listview) {
 
 				let missing_badge =
 					row.missing_count > 0
-						? `<span style="background: #fef2f2; color: #ef4444; font-weight: 800; padding: 3px 8px; border-radius: 9999px; font-size: 11px;">${row.missing_count} Missing</span>`
+						? `<span style="background: #fee2e2; color: #ef4444; font-weight: 800; padding: 3px 8px; border-radius: 9999px; font-size: 11px;">${row.missing_count} Missing</span>`
 						: `<span style="background: #f0fdf4; color: #166534; font-weight: 800; padding: 3px 8px; border-radius: 9999px; font-size: 11px;">Complete</span>`;
 
 				return `
-					<tr ${data_attr} ${style_attr} style="border-top: 2px solid #cbd5e1; background: #ffffff;">
+					<tr ${data_attr} ${style_attr} class="monthly-row" style="border-top: 2px solid #cbd5e1; background: #f0fdf4;">
 						<td rowspan="2" style="vertical-align: middle; font-weight: 700; background: #f8fafc; border-right: 1px solid #e2e8f0;">${i + 1}</td>
 						<td rowspan="2" style="text-align: left; padding-left: 10px; font-weight: 700; color: #0f172a; vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${row.sol_id} - ${row.branch_name}</td>
 						<td rowspan="2" style="color: #64748b; font-weight: 500; vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${row.zone} / ${row.region}</td>
-						<td style="font-weight: 800; color: #417d81; background: #f0fdf4; border-right: 1px solid #e2e8f0;">Monthly</td>
+						<td style="background: #f0fdf4; border-right: 1px solid #e2e8f0;"><span class="type-capsule monthly">Monthly</span></td>
 						${month_tds}
 						<td rowspan="2" style="vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${yearly_td}</td>
 						<td rowspan="2" style="vertical-align: middle; background: #f8fafc;">${missing_badge}</td>
 					</tr>
-					<tr ${data_attr} ${style_attr} style="background: #ffffff; border-bottom: 1px solid #cbd5e1;">
-						<td style="font-weight: 800; color: #1e3a8a; background: #eff6ff; border-right: 1px solid #e2e8f0;">YTD</td>
+					<tr ${data_attr} ${style_attr} class="ytd-row" style="background: #eff6ff; border-bottom: 1px solid #cbd5e1;">
+						<td style="background: #eff6ff; border-right: 1px solid #e2e8f0;"><span class="type-capsule ytd">YTD</span></td>
 						${ytd_tds}
 					</tr>
 				`;
