@@ -125,7 +125,11 @@ def get_bm_details_from_employee(sol_id: str):
 
     possible_branch_values = list(set(possible_branch_values))
 
-    conditions = ["designation LIKE %(bm_desig)s"]
+    conditions = [
+        "designation LIKE %(bm_desig)s",
+        "designation NOT LIKE '%Assistant%'",
+        "designation NOT LIKE '%JLL%'",
+    ]
     params = {"bm_desig": "%Branch Manager%", "branches": possible_branch_values}
     conditions.append("(sahayog_branch IN %(branches)s OR sol_id IN %(branches)s)")
 
