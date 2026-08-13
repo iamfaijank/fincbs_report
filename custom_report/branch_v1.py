@@ -168,13 +168,14 @@ def get_bm_details_from_employee(sol_id: str):
             rep_doc = frappe.db.get_value(
                 "Employee",
                 reports_to_id,
-                ["name", "employee_name", "designation", "cell_number"],
+                ["name", "employee_name", "employee_number", "designation", "cell_number"],
                 as_dict=True,
             )
             if rep_doc:
                 reporting_person = {
                     "name": rep_doc.get("name") or "",
                     "employee_name": rep_doc.get("employee_name") or "--",
+                    "employee_number": rep_doc.get("employee_number") or rep_doc.get("name") or "",
                     "designation": rep_doc.get("designation") or "--",
                     "cell_number": rep_doc.get("cell_number") or "--",
                 }
