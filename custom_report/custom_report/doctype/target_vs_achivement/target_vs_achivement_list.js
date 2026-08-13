@@ -6,6 +6,13 @@ frappe.listview_settings["Target Vs Achivement"] = {
 		listview.page.add_inner_button(__("Missing Target"), function () {
 			show_missing_target_dialog(listview);
 		});
+
+		listview.page.add_inner_button(__("Bulk Upload"), function () {
+			frappe.new_doc("Data Import", {
+				reference_doctype: "Target Vs Achivement",
+				import_type: "Insert New Records",
+			});
+		});
 	},
 };
 
@@ -116,6 +123,7 @@ function show_missing_target_dialog(listview) {
 						<button class="filter-pill-btn ${current_filter === "all" ? "active" : ""}" data-filter="all">All Branches (${d.matrix.length})</button>
 						<button class="filter-pill-btn ${current_filter === "missing_only" ? "active" : ""}" data-filter="missing_only">Has Missing Targets (${d.matrix.filter((r) => r.missing_count > 0).length})</button>
 						<button id="missing-refresh-btn" style="background: #e2e8f0; color: #334155; border: none; padding: 5px 10px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer; margin-left: 6px;">⟳ Refresh</button>
+						<button id="missing-bulk-upload-btn" style="background: #417d81; color: #ffffff; border: none; padding: 5px 12px; border-radius: 9999px; font-weight: 700; font-size: 12px; cursor: pointer; margin-left: 6px;">📥 Bulk Upload</button>
 					</div>
 				</div>
 
@@ -261,6 +269,14 @@ function show_missing_target_dialog(listview) {
 
 		$container.find("#missing-refresh-btn").on("click", function () {
 			load_matrix_data(selected_fy);
+		});
+
+		$container.find("#missing-bulk-upload-btn").on("click", function () {
+			dialog.hide();
+			frappe.new_doc("Data Import", {
+				reference_doctype: "Target Vs Achivement",
+				import_type: "Insert New Records",
+			});
 		});
 
 		// Click missing badge to quickly add target
