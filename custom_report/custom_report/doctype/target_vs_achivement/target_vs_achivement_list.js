@@ -94,7 +94,7 @@ function show_missing_target_dialog(listview) {
 				
 				.missing-table-scroll { max-height: 65vh; overflow: auto; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.03); }
 				.missing-matrix-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11px; }
-				.missing-matrix-table th { position: sticky; top: 0; z-index: 10; background: #346569; color: #ffffff; padding: 8px 5px; font-weight: 700; text-align: center; white-space: nowrap; border-bottom: 2px solid #264a4d; border-right: 1px solid rgba(255,255,255,0.1); }
+				.missing-matrix-table th { position: sticky; top: 0; z-index: 10; background: #346569; color: #ffffff; padding: 8px 5px; font-weight: 700; text-align: center; white-space: nowrap; border-bottom: 2px solid #264a4d; border-right: 1px solid rgba(255,255,255,0.1); transition: all 0.15s ease; }
 				.missing-matrix-table td { padding: 6px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #f1f5f9; text-align: center; vertical-align: middle; white-space: nowrap; transition: background-color 0.15s ease; }
 				
 				/* Row Background Highlights - Vibrant Pre-Applied Alternating Colors */
@@ -106,8 +106,28 @@ function show_missing_target_dialog(listview) {
 				.missing-matrix-table tbody tr.ytd-row td { background-color: #dbeafe !important; border-bottom: 3px solid #64748b !important; }
 				.missing-matrix-table tbody tr.ytd-row:hover td { background-color: #bfdbfe !important; }
 
-				.missing-matrix-table tbody td:hover { background-color: #bae6fd !important; }
-				
+				/* Excel-Style Crosshair Column Header Highlight */
+				.excel-col-header-highlight {
+					background-color: #0284c7 !important;
+					color: #ffffff !important;
+					font-weight: 900 !important;
+					font-size: 12px !important;
+					box-shadow: 0 4px 12px rgba(2, 132, 199, 0.45) !important;
+					border-bottom: 3px solid #0369a1 !important;
+				}
+
+				/* Excel-Style Crosshair Column Cells Light Highlight */
+				.excel-col-cells-highlight {
+					background-color: #bae6fd !important;
+				}
+
+				/* Active Hovered Cell Intense Outline */
+				.excel-active-cell-highlight {
+					outline: 2px solid #0284c7 !important;
+					outline-offset: -1px;
+					z-index: 12;
+				}
+
 				/* Type Capsule Badges - High Visibility Solid Capsules */
 				.type-capsule { display: inline-flex; align-items: center; justify-content: center; padding: 3px 9px; border-radius: 9999px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 				.type-capsule.monthly { background: #15803d; color: #ffffff; border: 1px solid #166534; }
@@ -181,7 +201,7 @@ function show_missing_target_dialog(listview) {
 								<th style="text-align: left; padding-left: 10px; min-width: 160px;">SOL & Branch</th>
 								<th style="min-width: 130px;">Zone / Region</th>
 								<th style="width: 75px;">Type</th>
-								${months.map((m) => `<th>${m}</th>`).join("")}
+								${months.map((m) => `<th data-month-col="${m}">${m}</th>`).join("")}
 								<th style="background: #264a4d;">Yearly</th>
 								<th style="background: #991b1b; color: #fff;">Missing</th>
 							</tr>
@@ -296,11 +316,11 @@ function show_missing_target_dialog(listview) {
 				: `<span style="background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 9999px; font-size: 10px; font-weight: 800;">Complete</span>`;
 
 			const monthly_sums_tds = months
-				.map((m) => `<td style="font-weight: 800; color: #166534; background: #d1fae5;">₹${format_val(zone_monthly_totals[m])}</td>`)
+				.map((m) => `<td data-month-col="${m}" style="font-weight: 800; color: #166534; background: #d1fae5;">₹${format_val(zone_monthly_totals[m])}</td>`)
 				.join("");
 
 			const ytd_sums_tds = months
-				.map((m) => `<td style="font-weight: 800; color: #1e40af; background: #dbeafe;">₹${format_val(zone_ytd_totals[m])}</td>`)
+				.map((m) => `<td data-month-col="${m}" style="font-weight: 800; color: #1e40af; background: #dbeafe;">₹${format_val(zone_ytd_totals[m])}</td>`)
 				.join("");
 
 			// Zone Merged 2-Row Summary (Row 1: Monthly Total, Row 2: YTD Total)
@@ -343,9 +363,9 @@ function show_missing_target_dialog(listview) {
 					.map((m) => {
 						const cell = row.months[m];
 						if (cell && cell.stored) {
-							return `<td style="background: #f0fdf4;"><a class="target-cell-badge stored" data-sol="${row.sol_id}" data-type="Monthly" data-month="${m}" data-target="${cell.target}" href="/app/target-vs-achivement/${cell.name}" target="_blank" title="Click to edit Target: ${cell.name}">✓ ${format_val(cell.target)}</a></td>`;
+							return `<td data-month-col="${m}" style="background: #d1fae5;"><a class="target-cell-badge stored" data-sol="${row.sol_id}" data-type="Monthly" data-month="${m}" data-target="${cell.target}" href="/app/target-vs-achivement/${cell.name}" target="_blank" title="Click to edit Target: ${cell.name}">✓ ${format_val(cell.target)}</a></td>`;
 						} else {
-							return `<td style="background: #f0fdf4;"><span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="Monthly" data-month="${m}" title="Click to Add Monthly Target for ${m}">✕ Missing</span></td>`;
+							return `<td data-month-col="${m}" style="background: #d1fae5;"><span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="Monthly" data-month="${m}" title="Click to Add Monthly Target for ${m}">✕ Missing</span></td>`;
 						}
 					})
 					.join("");
@@ -354,9 +374,9 @@ function show_missing_target_dialog(listview) {
 					.map((m) => {
 						const cell = row.ytd_months ? row.ytd_months[m] : null;
 						if (cell && cell.stored) {
-							return `<td style="background: #eff6ff;"><a class="target-cell-badge stored" data-sol="${row.sol_id}" data-type="YTD" data-month="${m}" data-target="${cell.target}" href="/app/target-vs-achivement/${cell.name}" target="_blank" title="Click to edit YTD Target: ${cell.name}">✓ ${format_val(cell.target)}</a></td>`;
+							return `<td data-month-col="${m}" style="background: #dbeafe;"><a class="target-cell-badge stored" data-sol="${row.sol_id}" data-type="YTD" data-month="${m}" data-target="${cell.target}" href="/app/target-vs-achivement/${cell.name}" target="_blank" title="Click to edit YTD Target: ${cell.name}">✓ ${format_val(cell.target)}</a></td>`;
 						} else {
-							return `<td style="background: #eff6ff;"><span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="YTD" data-month="${m}" title="Click to Add YTD Target for ${m}">✕ Missing</span></td>`;
+							return `<td data-month-col="${m}" style="background: #dbeafe;"><span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="YTD" data-month="${m}" title="Click to Add YTD Target for ${m}">✕ Missing</span></td>`;
 						}
 					})
 					.join("");
@@ -441,27 +461,56 @@ function show_missing_target_dialog(listview) {
 			}
 		});
 
-		// Hover over any capsule / cell in a branch row highlights the ENTIRE branch group (Monthly & YTD rows)
-		$container.off("mouseenter mouseleave", "tr.branch-group-row, tr.branch-group-row td, .type-capsule, .target-cell-badge").on({
-			mouseenter: function () {
-				const $row = $(this).closest("tr[data-branch-sol]");
+		// Excel-Style Crosshair Hover (Highlights Branch Row + Month Header + Month Column)
+		$container.off("mouseenter mouseleave", "td, .target-cell-badge, .type-capsule").on({
+			mouseenter: function (e) {
+				const $target = $(e.target);
+				const $td = $target.closest("td");
+				const $row = $target.closest("tr[data-branch-sol]");
 				const sol_id = $row.data("branch-sol") || $row.attr("data-branch-sol");
+				const month = $td.data("month-col") || $td.attr("data-month-col") || $target.data("month");
+
+				// 1. Highlight Row & Branch Name (Excel Row Header)
 				if (sol_id) {
 					const $group = $container.find(`tr[data-branch-sol="${sol_id}"]`);
 					$group.addClass("branch-hover-highlight");
-					$group.find("td").css("background-color", "#bae6fd");
-					$group.find(".branch-name-td").css({ "background-color": "#7dd3fc", "color": "#0369a1" });
+					$group.find("td").css("background-color", "#e0f2fe");
+					$group.find(".branch-name-td").css({ "background-color": "#38bdf8", "color": "#0c4a6e", "font-weight": "800" });
+				}
+
+				// 2. Highlight Month Column Header & Column Cells (Excel Top Column Header)
+				if (month) {
+					$container.find(`th[data-month-col="${month}"]`).addClass("excel-col-header-highlight");
+					$container.find(`td[data-month-col="${month}"]`).addClass("excel-col-cells-highlight");
+				}
+
+				// 3. Highlight specific cell
+				if ($td.length) {
+					$td.addClass("excel-active-cell-highlight");
 				}
 			},
-			mouseleave: function () {
-				const $row = $(this).closest("tr[data-branch-sol]");
+			mouseleave: function (e) {
+				const $target = $(e.target);
+				const $td = $target.closest("td");
+				const $row = $target.closest("tr[data-branch-sol]");
 				const sol_id = $row.data("branch-sol") || $row.attr("data-branch-sol");
+				const month = $td.data("month-col") || $td.attr("data-month-col") || $target.data("month");
+
 				if (sol_id) {
 					const $group = $container.find(`tr[data-branch-sol="${sol_id}"]`);
 					$group.removeClass("branch-hover-highlight");
 					$group.find("td").css("background-color", "");
 					$group.find(".branch-merged-cell").css("background-color", "#f8fafc");
 					$group.find(".branch-name-td").css({ "background-color": "#f8fafc", "color": "#0f172a" });
+				}
+
+				if (month) {
+					$container.find(`th[data-month-col="${month}"]`).removeClass("excel-col-header-highlight");
+					$container.find(`td[data-month-col="${month}"]`).removeClass("excel-col-cells-highlight");
+				}
+
+				if ($td.length) {
+					$td.removeClass("excel-active-cell-highlight");
 				}
 			},
 		});
