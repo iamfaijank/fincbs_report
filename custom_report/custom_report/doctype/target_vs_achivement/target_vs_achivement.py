@@ -4,10 +4,16 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt
+from frappe.utils import flt, getdate, today
+
+# Module Level Constants
+EXCLUDED_SOL_IDS = ["1000", "1104", "1059", "1081", "1031"]
+FY_MONTHS = ["APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC", "JAN", "FEB", "MAR"]
 
 
 class TargetVsAchivement(Document):
+	"""DocType controller for Target Vs Achivement records."""
+
 	def autoname(self):
 		if not self.sol_id or not self.financial_year or not self.type:
 			frappe.throw(_("SOL ID, Financial Year and Type are mandatory"))
@@ -24,7 +30,7 @@ class TargetVsAchivement(Document):
 			self.name = f"{self.sol_id}-{self.financial_year}-YEARLY"
 
 		else:
-			frappe.throw(_("Invalid type"))
+			frappe.throw(_("Invalid target type specified."))
 
 	def validate(self):
 		self.check_duplicate()
@@ -39,24 +45,28 @@ class TargetVsAchivement(Document):
 		if self.type in ("Monthly", "YTD") and self.month:
 			filters["month"] = self.month
 
-		existing = frappe.db.exists("Target Vs Achivement", filters)
-		if existing:
+		if frappe.db.exists("Target Vs Achivement", filters):
 			frappe.throw(
-				_("Target record already exists for this SOL ID, Financial Year and Period.")
+				_("Target record already exists for SOL ID '{0}', Financial Year '{1}' and Period '{2}'.")
+				.format(self.sol_id, self.financial_year, self.month or self.type)
 			)
 
 
-@frappe.whitelist()
-def get_missing_targets_matrix(financial_year=None):
-	if not financial_year:
-		today_dt = frappe.utils.today()
-		dt = frappe.utils.getdate(today_dt)
-		if dt.month >= 4:
-			financial_year = f"{dt.year}-{dt.year + 1}"
-		else:
-			financial_year = f"{dt.year - 1}-{dt.year}"
+def get_current_financial_year() -> str:
+	"""Calculate current financial year (April to March) string, e.g. '2025-2026'."""
+	dt = getdate(today())
+	if dt.month >= 4:
+		return f"{dt.year}-{dt.year + 1}"
+	return f"{dt.year - 1}-{dt.year}"
 
-	# Available Financial Years list
+
+@frappe.whitelist()
+def get_missing_targets_matrix(financial_year: str = None) -> dict:
+	"""Fetch missing targets matrix report aggregated by branch for Monthly, YTD, and Yearly targets."""
+	if not financial_year:
+		financial_year = get_current_financial_year()
+
+	# Fetch available Financial Years
 	fys = frappe.db.get_all(
 		"Target Vs Achivement",
 		fields=["distinct financial_year"],
@@ -66,36 +76,32 @@ def get_missing_targets_matrix(financial_year=None):
 	if financial_year not in fy_list:
 		fy_list.insert(0, financial_year)
 
-	# Fetch all branches from Sahayog Branch (excluding Head Office 1000 and SOL IDs 1104, 1059, 1081, 1031)
-	excluded_sols = ["1000", "1104", "1059", "1081", "1031"]
+	# Fetch valid branches (excluding Head Office and specified non-store SOL IDs)
 	branches = frappe.get_all(
 		"Sahayog Branch",
 		filters=[
-			["sol_id", "not in", excluded_sols],
+			["sol_id", "not in", EXCLUDED_SOL_IDS],
 			["branch", "not like", "%HEAD OFFICE%"],
 		],
 		fields=["sol_id", "branch", "zone", "region"],
 		order_by="sol_id asc",
 	)
 
-	# Month list in FY sequence: Apr to Mar
-	months = ["APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC", "JAN", "FEB", "MAR"]
-
-	# Fetch all targets for selected FY
+	# Fetch target records for selected Financial Year
 	targets = frappe.get_all(
 		"Target Vs Achivement",
 		filters={"financial_year": financial_year},
 		fields=["sol_id", "type", "month", "target", "name"],
 	)
 
-	# Map: (sol_id, type, month_or_None) -> target_info
+	# Build lookup map: (sol_id, type, month_or_None) -> target_info
 	target_map = {}
 	for t in targets:
 		sol = str(t.sol_id or "").strip()
 		ttype = str(t.type or "").strip()
 		tmonth = str(t.month or "").strip().upper() if ttype in ("Monthly", "YTD") else None
 		target_map[(sol, ttype, tmonth)] = {
-			"target": float(t.target or 0),
+			"target": flt(t.target or 0),
 			"name": t.name,
 		}
 
@@ -117,8 +123,8 @@ def get_missing_targets_matrix(financial_year=None):
 			"stored_count": 0,
 		}
 
-		# Monthly targets (Apr to Mar)
-		for m in months:
+		# Process Monthly targets (APR to MAR)
+		for m in FY_MONTHS:
 			entry = target_map.get((sol, "Monthly", m))
 			if entry:
 				row_data["months"][m] = {"stored": True, "target": entry["target"], "name": entry["name"]}
@@ -129,8 +135,8 @@ def get_missing_targets_matrix(financial_year=None):
 				row_data["missing_count"] += 1
 				total_missing += 1
 
-		# YTD targets (Apr to Mar)
-		for m in months:
+		# Process YTD targets (APR to MAR)
+		for m in FY_MONTHS:
 			entry_ytd = target_map.get((sol, "YTD", m)) or target_map.get((sol, "YTD", None))
 			if entry_ytd:
 				row_data["ytd_months"][m] = {"stored": True, "target": entry_ytd["target"], "name": entry_ytd["name"]}
@@ -141,7 +147,7 @@ def get_missing_targets_matrix(financial_year=None):
 				row_data["missing_count"] += 1
 				total_missing += 1
 
-		# Yearly target
+		# Process Yearly target
 		entry_y = target_map.get((sol, "Yearly", None))
 		if entry_y:
 			row_data["yearly"] = {"stored": True, "target": entry_y["target"], "name": entry_y["name"]}
@@ -157,7 +163,7 @@ def get_missing_targets_matrix(financial_year=None):
 	return {
 		"financial_year": financial_year,
 		"available_fys": fy_list,
-		"months": months,
+		"months": FY_MONTHS,
 		"matrix": matrix,
 		"summary": {
 			"total_branches": len(branches),
@@ -168,7 +174,11 @@ def get_missing_targets_matrix(financial_year=None):
 
 
 @frappe.whitelist()
-def save_quick_target(sol_id, financial_year, type, month=None, target=0):
+def save_quick_target(sol_id: str, financial_year: str, type: str, month: str = None, target: float = 0) -> dict:
+	"""Quick insert or update a Target Vs Achivement record directly from the Missing Targets widget."""
+	if not frappe.has_permission("Target Vs Achivement", "write"):
+		frappe.throw(_("Not permitted to update Target Vs Achivement records."), frappe.PermissionError)
+
 	target_val = flt(target)
 	if target_val <= 0:
 		frappe.throw(_("Target amount must be greater than 0"))
