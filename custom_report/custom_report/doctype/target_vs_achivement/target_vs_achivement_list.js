@@ -247,7 +247,7 @@ function show_missing_target_dialog(listview) {
 		let html = "";
 		Object.keys(zone_map).forEach((z_name) => {
 			const z_data = zone_map[z_name];
-			const is_collapsed = !!collapsed_zones[z_name];
+			const is_collapsed = collapsed_zones[z_name] !== false;
 			const icon = is_collapsed ? "►" : "▼";
 			const row_display = is_collapsed ? "display: none;" : "";
 
@@ -419,7 +419,8 @@ function show_missing_target_dialog(listview) {
 		// Zone Accordion Collapse / Expand Toggle
 		$container.off("click", ".zone-group-header-row").on("click", ".zone-group-header-row", function () {
 			const zone_name = $(this).data("zone");
-			collapsed_zones[zone_name] = !collapsed_zones[zone_name];
+			const currently_collapsed = collapsed_zones[zone_name] !== false;
+			collapsed_zones[zone_name] = !currently_collapsed;
 			const $rows = $container.find(`tr[data-zone-row="${zone_name}"]`);
 			const $icon = $(this).find(".zone-icon");
 
