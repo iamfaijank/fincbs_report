@@ -99,11 +99,11 @@ function show_missing_target_dialog(listview) {
 				
 				/* Row Background Highlights - Vibrant Pre-Applied Alternating Colors */
 				.missing-matrix-table tbody tr.monthly-row { background-color: #d1fae5 !important; }
-				.missing-matrix-table tbody tr.monthly-row td { background-color: #d1fae5 !important; }
+				.missing-matrix-table tbody tr.monthly-row td { background-color: #d1fae5 !important; border-bottom: 1px solid #cbd5e1; }
 				.missing-matrix-table tbody tr.monthly-row:hover td { background-color: #a7f3d0 !important; }
 				
-				.missing-matrix-table tbody tr.ytd-row { background-color: #dbeafe !important; }
-				.missing-matrix-table tbody tr.ytd-row td { background-color: #dbeafe !important; }
+				.missing-matrix-table tbody tr.ytd-row { background-color: #dbeafe !important; border-bottom: 3px solid #64748b !important; }
+				.missing-matrix-table tbody tr.ytd-row td { background-color: #dbeafe !important; border-bottom: 3px solid #64748b !important; }
 				.missing-matrix-table tbody tr.ytd-row:hover td { background-color: #bfdbfe !important; }
 
 				.missing-matrix-table tbody td:hover { background-color: #bae6fd !important; }
@@ -371,17 +371,17 @@ function show_missing_target_dialog(listview) {
 						: `<span style="background: #f0fdf4; color: #166534; font-weight: 800; padding: 3px 8px; border-radius: 9999px; font-size: 11px;">Complete</span>`;
 
 				return `
-					<tr ${data_attr} ${style_attr} class="monthly-row branch-group-row" data-branch-sol="${row.sol_id}" style="border-top: 2px solid #cbd5e1; background: #d1fae5;">
-						<td rowspan="2" class="branch-merged-cell" style="vertical-align: middle; font-weight: 700; background: #f8fafc; border-right: 1px solid #e2e8f0;">${i + 1}</td>
-						<td rowspan="2" class="branch-merged-cell branch-name-td" style="text-align: left; padding-left: 10px; font-weight: 700; color: #0f172a; vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${row.sol_id} - ${row.branch_name}</td>
-						<td rowspan="2" class="branch-merged-cell" style="color: #64748b; font-weight: 500; vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${row.zone} / ${row.region}</td>
-						<td style="background: #d1fae5; border-right: 1px solid #cbd5e1;"><span class="type-capsule monthly">Monthly</span></td>
+					<tr ${data_attr} ${style_attr} class="monthly-row branch-group-row" data-branch-sol="${row.sol_id}" style="border-top: 2px solid #94a3b8; background: #d1fae5;">
+						<td rowspan="2" class="branch-merged-cell" style="vertical-align: middle; font-weight: 700; background: #f8fafc; border-right: 1px solid #cbd5e1; border-bottom: 3px solid #64748b !important;">${i + 1}</td>
+						<td rowspan="2" class="branch-merged-cell branch-name-td" style="text-align: left; padding-left: 10px; font-weight: 700; color: #0f172a; vertical-align: middle; background: #f8fafc; border-right: 1px solid #cbd5e1; border-bottom: 3px solid #64748b !important;">${row.sol_id} - ${row.branch_name}</td>
+						<td rowspan="2" class="branch-merged-cell" style="color: #64748b; font-weight: 500; vertical-align: middle; background: #f8fafc; border-right: 1px solid #cbd5e1; border-bottom: 3px solid #64748b !important;">${row.zone} / ${row.region}</td>
+						<td style="background: #d1fae5; border-right: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1;"><span class="type-capsule monthly">Monthly</span></td>
 						${month_tds}
-						<td rowspan="2" class="branch-merged-cell" style="vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${yearly_td}</td>
-						<td rowspan="2" class="branch-merged-cell" style="vertical-align: middle; background: #f8fafc;">${missing_badge}</td>
+						<td rowspan="2" class="branch-merged-cell" style="vertical-align: middle; background: #f8fafc; border-right: 1px solid #cbd5e1; border-bottom: 3px solid #64748b !important;">${yearly_td}</td>
+						<td rowspan="2" class="branch-merged-cell" style="vertical-align: middle; background: #f8fafc; border-bottom: 3px solid #64748b !important;">${missing_badge}</td>
 					</tr>
-					<tr ${data_attr} ${style_attr} class="ytd-row branch-group-row" data-branch-sol="${row.sol_id}" style="background: #dbeafe; border-bottom: 1px solid #cbd5e1;">
-						<td style="background: #dbeafe; border-right: 1px solid #cbd5e1;"><span class="type-capsule ytd">YTD</span></td>
+					<tr ${data_attr} ${style_attr} class="ytd-row branch-group-row" data-branch-sol="${row.sol_id}" style="background: #dbeafe; border-bottom: 3px solid #64748b !important;">
+						<td style="background: #dbeafe; border-right: 1px solid #cbd5e1; border-bottom: 3px solid #64748b !important;"><span class="type-capsule ytd">YTD</span></td>
 						${ytd_tds}
 					</tr>
 				`;
