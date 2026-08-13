@@ -114,14 +114,24 @@ def get_bm_details_from_employee(sol_id: str):
 
     sol_id_str = str(sol_id).strip()
 
-    # Find Sahayog Branch doc name if any
-    branch_doc = frappe.db.get_value("Sahayog Branch", {"sol_id": sol_id_str}, ["name", "branch"], as_dict=True)
+    # Find Sahayog Branch doc names and details if any
+    branch_docs = frappe.db.get_all(
+        "Sahayog Branch",
+        filters=[["sol_id", "=", sol_id_str]],
+        fields=["name", "branch", "sol_id"],
+    )
+
     possible_branch_values = [sol_id_str]
-    if branch_doc:
-        if branch_doc.get("name"):
-            possible_branch_values.append(branch_doc["name"])
-        if branch_doc.get("branch"):
-            possible_branch_values.append(branch_doc["branch"])
+    for bd in branch_docs:
+        if bd.get("name"):
+            possible_branch_values.append(bd["name"])
+        if bd.get("branch"):
+            possible_branch_values.append(bd["branch"])
+            clean_b = bd["branch"].replace(" BRANCH", "").replace("Branch", "").strip()
+            if clean_b:
+                possible_branch_values.append(clean_b)
+        if bd.get("sol_id"):
+            possible_branch_values.append(bd["sol_id"])
 
     possible_branch_values = list(set(possible_branch_values))
 
@@ -131,7 +141,7 @@ def get_bm_details_from_employee(sol_id: str):
         "designation NOT LIKE '%JLL%'",
     ]
     params = {"bm_desig": "%Branch Manager%", "branches": possible_branch_values}
-    conditions.append("(sahayog_branch IN %(branches)s OR sol_id IN %(branches)s)")
+    conditions.append("(sahayog_branch IN %(branches)s OR sol_id IN %(branches)s OR branch IN %(branches)s)")
 
     where_clause = " AND ".join(conditions)
 
@@ -146,10 +156,11 @@ def get_bm_details_from_employee(sol_id: str):
             reports_to,
             image,
             user_id,
-            sahayog_branch
+            sahayog_branch,
+            status
         FROM `tabEmployee`
         WHERE {where_clause}
-        ORDER BY date_of_joining ASC
+        ORDER BY (status = 'Active') DESC, date_of_joining ASC
     """
 
     bm_employees = frappe.db.sql(query, params, as_dict=True)
