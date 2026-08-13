@@ -371,16 +371,16 @@ function show_missing_target_dialog(listview) {
 						: `<span style="background: #f0fdf4; color: #166534; font-weight: 800; padding: 3px 8px; border-radius: 9999px; font-size: 11px;">Complete</span>`;
 
 				return `
-					<tr ${data_attr} ${style_attr} class="monthly-row" style="border-top: 2px solid #cbd5e1; background: #d1fae5;">
-						<td rowspan="2" style="vertical-align: middle; font-weight: 700; background: #f8fafc; border-right: 1px solid #e2e8f0;">${i + 1}</td>
-						<td rowspan="2" style="text-align: left; padding-left: 10px; font-weight: 700; color: #0f172a; vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${row.sol_id} - ${row.branch_name}</td>
-						<td rowspan="2" style="color: #64748b; font-weight: 500; vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${row.zone} / ${row.region}</td>
+					<tr ${data_attr} ${style_attr} class="monthly-row branch-group-row" data-branch-sol="${row.sol_id}" style="border-top: 2px solid #cbd5e1; background: #d1fae5;">
+						<td rowspan="2" class="branch-merged-cell" style="vertical-align: middle; font-weight: 700; background: #f8fafc; border-right: 1px solid #e2e8f0;">${i + 1}</td>
+						<td rowspan="2" class="branch-merged-cell branch-name-td" style="text-align: left; padding-left: 10px; font-weight: 700; color: #0f172a; vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${row.sol_id} - ${row.branch_name}</td>
+						<td rowspan="2" class="branch-merged-cell" style="color: #64748b; font-weight: 500; vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${row.zone} / ${row.region}</td>
 						<td style="background: #d1fae5; border-right: 1px solid #cbd5e1;"><span class="type-capsule monthly">Monthly</span></td>
 						${month_tds}
-						<td rowspan="2" style="vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${yearly_td}</td>
-						<td rowspan="2" style="vertical-align: middle; background: #f8fafc;">${missing_badge}</td>
+						<td rowspan="2" class="branch-merged-cell" style="vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${yearly_td}</td>
+						<td rowspan="2" class="branch-merged-cell" style="vertical-align: middle; background: #f8fafc;">${missing_badge}</td>
 					</tr>
-					<tr ${data_attr} ${style_attr} class="ytd-row" style="background: #dbeafe; border-bottom: 1px solid #cbd5e1;">
+					<tr ${data_attr} ${style_attr} class="ytd-row branch-group-row" data-branch-sol="${row.sol_id}" style="background: #dbeafe; border-bottom: 1px solid #cbd5e1;">
 						<td style="background: #dbeafe; border-right: 1px solid #cbd5e1;"><span class="type-capsule ytd">YTD</span></td>
 						${ytd_tds}
 					</tr>
@@ -440,6 +440,28 @@ function show_missing_target_dialog(listview) {
 				$icon.text("▼");
 			}
 		});
+
+		// Hover over any capsule / cell in a branch row highlights the ENTIRE branch group
+		$container.off("mouseenter mouseleave", "tr.branch-group-row").on({
+			mouseenter: function () {
+				const sol_id = $(this).data("branch-sol");
+				if (sol_id) {
+					const $group = $container.find(`tr[data-branch-sol="${sol_id}"]`);
+					$group.addClass("branch-hover-highlight");
+					$group.find(".branch-merged-cell").css("background-color", "#e0f2fe");
+					$group.find(".branch-name-td").css({ "background-color": "#bae6fd", "color": "#0369a1" });
+				}
+			},
+			mouseleave: function () {
+				const sol_id = $(this).data("branch-sol");
+				if (sol_id) {
+					const $group = $container.find(`tr[data-branch-sol="${sol_id}"]`);
+					$group.removeClass("branch-hover-highlight");
+					$group.find(".branch-merged-cell").css("background-color", "#f8fafc");
+					$group.find(".branch-name-td").css({ "background-color": "#f8fafc", "color": "#0f172a" });
+				}
+			},
+		}, "tr.branch-group-row");
 
 		// Click target badge (missing or stored) to open quick entry popup modal
 		$container.off("click", ".target-cell-badge").on("click", ".target-cell-badge", function (e) {
