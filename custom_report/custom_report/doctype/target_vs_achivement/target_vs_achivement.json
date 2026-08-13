@@ -10,6 +10,7 @@
   "column_break_1",
   "type",
   "sol_id",
+  "branch",
   "section_break_2",
   "target"
  ],
@@ -21,16 +22,19 @@
    "in_standard_filter": 1,
    "label": "Sol ID",
    "options": "Sahayog Branch",
-   "reqd": 1
+   "reqd": 1,
+   "set_only_once": 1
   },
   {
    "default": "2025-2026",
    "fieldname": "financial_year",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Financial Year",
-   "options": "2025-2026\n2026-2027\n2027-2028",
-   "reqd": 1
+   "options": "2026-2027\n2025-2026\n2027-2028",
+   "reqd": 1,
+   "set_only_once": 1
   },
   {
    "fieldname": "type",
@@ -38,7 +42,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Type",
-   "options": "\nYearly\nMonthly\nYTD"
+   "options": "\nYearly\nMonthly\nYTD",
+   "set_only_once": 1
   },
   {
    "fieldname": "column_break_1",
@@ -64,12 +69,19 @@
    "in_standard_filter": 1,
    "label": "Month",
    "mandatory_depends_on": "eval:doc.type=='Monthly'",
-   "options": "\nJAN\nFEB\nMAR\nAPR\nMAY\nJUN\nJUL\nAUG\nSEP\nOCT\nNOV\nDEC"
+   "options": "\nJAN\nFEB\nMAR\nAPR\nMAY\nJUN\nJUL\nAUG\nSEP\nOCT\nNOV\nDEC",
+   "set_only_once": 1
+  },
+  {
+   "fetch_from": "sol_id.branch",
+   "fieldname": "branch",
+   "fieldtype": "Data",
+   "label": "Branch"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-13 16:11:16.123480",
+ "modified": "2026-08-13 16:21:07.742337",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Target Vs Achivement",
