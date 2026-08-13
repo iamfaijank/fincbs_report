@@ -5,30 +5,13 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "sol_id",
   "financial_year",
-  "type",
   "month",
   "column_break_1",
-  "valid_from",
-  "valid_till",
-  "status",
+  "type",
+  "sol_id",
   "section_break_2",
-  "target",
-  "achievement",
-  "column_break_3",
-  "achievement_percentage",
-  "performance_segment",
-  "variance",
-  "days_remaining",
-  "section_break_4",
-  "enable_segment_notifications",
-  "alert_before_expiry_days",
-  "column_break_5",
-  "bottom_segment_notified",
-  "mid_segment_notified",
-  "next_segment_notified",
-  "top_segment_notified"
+  "target"
  ],
  "fields": [
   {
@@ -62,28 +45,9 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "valid_from",
-   "fieldtype": "Date",
-   "label": "Valid From"
-  },
-  {
-   "fieldname": "valid_till",
-   "fieldtype": "Date",
-   "label": "Valid Till"
-  },
-  {
-   "default": "Inactive",
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Status",
-   "options": "Inactive\nActive\nExpired",
-   "read_only": 1
-  },
-  {
    "fieldname": "section_break_2",
    "fieldtype": "Section Break",
-   "label": "Target & Achievement"
+   "label": "Target Details"
   },
   {
    "fieldname": "target",
@@ -91,94 +55,6 @@
    "in_list_view": 1,
    "label": "Target",
    "precision": "0"
-  },
-  {
-   "fieldname": "achievement",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "label": "Achievement",
-   "precision": "0"
-  },
-  {
-   "fieldname": "column_break_3",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "achievement_percentage",
-   "fieldtype": "Percent",
-   "label": "Achievement %",
-   "read_only": 1
-  },
-  {
-   "fieldname": "performance_segment",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Performance Segment",
-   "options": "\nBottom 25% (0-25%)\nMid 25% (25-50%)\nNext 25% (50-75%)\nTop 25% (75-100%)\nExceeded (>100%)",
-   "read_only": 1
-  },
-  {
-   "fieldname": "variance",
-   "fieldtype": "Currency",
-   "label": "Variance",
-   "precision": "0",
-   "read_only": 1
-  },
-  {
-   "fieldname": "days_remaining",
-   "fieldtype": "Int",
-   "label": "Days Remaining",
-   "read_only": 1
-  },
-  {
-   "collapsible": 1,
-   "fieldname": "section_break_4",
-   "fieldtype": "Section Break",
-   "label": "Notifications"
-  },
-  {
-   "default": "1",
-   "fieldname": "enable_segment_notifications",
-   "fieldtype": "Check",
-   "label": "Enable Notifications"
-  },
-  {
-   "default": "7",
-   "fieldname": "alert_before_expiry_days",
-   "fieldtype": "Int",
-   "label": "Alert Before Expiry (Days)"
-  },
-  {
-   "fieldname": "column_break_5",
-   "fieldtype": "Column Break"
-  },
-  {
-   "default": "0",
-   "fieldname": "bottom_segment_notified",
-   "fieldtype": "Check",
-   "hidden": 1,
-   "label": "25% Notified"
-  },
-  {
-   "default": "0",
-   "fieldname": "mid_segment_notified",
-   "fieldtype": "Check",
-   "hidden": 1,
-   "label": "50% Notified"
-  },
-  {
-   "default": "0",
-   "fieldname": "next_segment_notified",
-   "fieldtype": "Check",
-   "hidden": 1,
-   "label": "75% Notified"
-  },
-  {
-   "default": "0",
-   "fieldname": "top_segment_notified",
-   "fieldtype": "Check",
-   "hidden": 1,
-   "label": "100% Notified"
   },
   {
    "depends_on": "eval:doc.type=='Monthly'",
@@ -193,7 +69,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-04 19:27:09.985728",
+ "modified": "2026-08-13 16:11:16.123480",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Target Vs Achivement",
