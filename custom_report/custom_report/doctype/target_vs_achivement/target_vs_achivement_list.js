@@ -441,27 +441,30 @@ function show_missing_target_dialog(listview) {
 			}
 		});
 
-		// Hover over any capsule / cell in a branch row highlights the ENTIRE branch group
-		$container.off("mouseenter mouseleave", "tr.branch-group-row").on({
+		// Hover over any capsule / cell in a branch row highlights the ENTIRE branch group (Monthly & YTD rows)
+		$container.off("mouseenter mouseleave", "tr.branch-group-row, tr.branch-group-row td, .type-capsule, .target-cell-badge").on({
 			mouseenter: function () {
-				const sol_id = $(this).data("branch-sol");
+				const $row = $(this).closest("tr[data-branch-sol]");
+				const sol_id = $row.data("branch-sol") || $row.attr("data-branch-sol");
 				if (sol_id) {
 					const $group = $container.find(`tr[data-branch-sol="${sol_id}"]`);
 					$group.addClass("branch-hover-highlight");
-					$group.find(".branch-merged-cell").css("background-color", "#e0f2fe");
-					$group.find(".branch-name-td").css({ "background-color": "#bae6fd", "color": "#0369a1" });
+					$group.find("td").css("background-color", "#bae6fd");
+					$group.find(".branch-name-td").css({ "background-color": "#7dd3fc", "color": "#0369a1" });
 				}
 			},
 			mouseleave: function () {
-				const sol_id = $(this).data("branch-sol");
+				const $row = $(this).closest("tr[data-branch-sol]");
+				const sol_id = $row.data("branch-sol") || $row.attr("data-branch-sol");
 				if (sol_id) {
 					const $group = $container.find(`tr[data-branch-sol="${sol_id}"]`);
 					$group.removeClass("branch-hover-highlight");
+					$group.find("td").css("background-color", "");
 					$group.find(".branch-merged-cell").css("background-color", "#f8fafc");
 					$group.find(".branch-name-td").css({ "background-color": "#f8fafc", "color": "#0f172a" });
 				}
 			},
-		}, "tr.branch-group-row");
+		});
 
 		// Click target badge (missing or stored) to open quick entry popup modal
 		$container.off("click", ".target-cell-badge").on("click", ".target-cell-badge", function (e) {
