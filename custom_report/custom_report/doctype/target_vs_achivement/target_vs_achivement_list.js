@@ -97,9 +97,9 @@ function show_missing_target_dialog(listview) {
 				.missing-matrix-table th { position: sticky; top: 0; z-index: 10; background: #346569; color: #ffffff; padding: 8px 5px; font-weight: 700; text-align: center; white-space: nowrap; border-bottom: 2px solid #264a4d; border-right: 1px solid rgba(255,255,255,0.1); }
 				.missing-matrix-table td { padding: 6px 5px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #f1f5f9; text-align: center; vertical-align: middle; white-space: nowrap; transition: background-color 0.15s ease; }
 				
-				/* Row Background Highlights */
-				.missing-matrix-table tbody tr.monthly-row { background-color: #f0fdf4 !important; }
-				.missing-matrix-table tbody tr.monthly-row td { background-color: #f0fdf4 !important; }
+				/* Row Background Highlights - Distinct Pre-Applied Colors */
+				.missing-matrix-table tbody tr.monthly-row { background-color: #ecfdf5 !important; }
+				.missing-matrix-table tbody tr.monthly-row td { background-color: #ecfdf5 !important; }
 				.missing-matrix-table tbody tr.monthly-row:hover td { background-color: #dcfce7 !important; }
 				
 				.missing-matrix-table tbody tr.ytd-row { background-color: #eff6ff !important; }
@@ -108,10 +108,10 @@ function show_missing_target_dialog(listview) {
 
 				.missing-matrix-table tbody td:hover { background-color: #bae6fd !important; }
 				
-				/* Type Capsule Badges */
-				.type-capsule { display: inline-flex; align-items: center; justify-content: center; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; }
-				.type-capsule.monthly { background: #dcfce7; color: #15803d; border: 1px solid #86efac; box-shadow: 0 1px 2px rgba(21, 128, 61, 0.12); }
-				.type-capsule.ytd { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; box-shadow: 0 1px 2px rgba(29, 78, 216, 0.12); }
+				/* Type Capsule Badges - High Visibility Solid Capsules */
+				.type-capsule { display: inline-flex; align-items: center; justify-content: center; padding: 3px 9px; border-radius: 9999px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+				.type-capsule.monthly { background: #15803d; color: #ffffff; border: 1px solid #166534; }
+				.type-capsule.ytd { background: #1d4ed8; color: #ffffff; border: 1px solid #1e40af; }
 				
 				/* Target Cell Badges: Stored vs Missing Font & Color Differentiation */
 				.target-cell-badge { display: inline-flex; align-items: center; justify-content: center; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: 800; cursor: pointer; text-decoration: none; transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
@@ -371,11 +371,11 @@ function show_missing_target_dialog(listview) {
 						: `<span style="background: #f0fdf4; color: #166534; font-weight: 800; padding: 3px 8px; border-radius: 9999px; font-size: 11px;">Complete</span>`;
 
 				return `
-					<tr ${data_attr} ${style_attr} class="monthly-row" style="border-top: 2px solid #cbd5e1; background: #f0fdf4;">
+					<tr ${data_attr} ${style_attr} class="monthly-row" style="border-top: 2px solid #cbd5e1; background: #ecfdf5;">
 						<td rowspan="2" style="vertical-align: middle; font-weight: 700; background: #f8fafc; border-right: 1px solid #e2e8f0;">${i + 1}</td>
 						<td rowspan="2" style="text-align: left; padding-left: 10px; font-weight: 700; color: #0f172a; vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${row.sol_id} - ${row.branch_name}</td>
 						<td rowspan="2" style="color: #64748b; font-weight: 500; vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${row.zone} / ${row.region}</td>
-						<td style="background: #f0fdf4; border-right: 1px solid #e2e8f0;"><span class="type-capsule monthly">Monthly</span></td>
+						<td style="background: #ecfdf5; border-right: 1px solid #e2e8f0;"><span class="type-capsule monthly">Monthly</span></td>
 						${month_tds}
 						<td rowspan="2" style="vertical-align: middle; background: #f8fafc; border-right: 1px solid #e2e8f0;">${yearly_td}</td>
 						<td rowspan="2" style="vertical-align: middle; background: #f8fafc;">${missing_badge}</td>
