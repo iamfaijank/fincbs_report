@@ -66,9 +66,13 @@ def get_missing_targets_matrix(financial_year=None):
 	if financial_year not in fy_list:
 		fy_list.insert(0, financial_year)
 
-	# Fetch all branches from Sahayog Branch
+	# Fetch all branches from Sahayog Branch (excluding Head Office 1000)
 	branches = frappe.get_all(
 		"Sahayog Branch",
+		filters=[
+			["sol_id", "!=", "1000"],
+			["branch", "not like", "%HEAD OFFICE%"],
+		],
 		fields=["sol_id", "branch", "zone", "region"],
 		order_by="sol_id asc",
 	)
