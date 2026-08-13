@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import flt
 
 
 class TargetVsAchivement(Document):
@@ -159,3 +160,36 @@ def get_missing_targets_matrix(financial_year=None):
 			"total_stored": total_stored,
 		},
 	}
+
+
+@frappe.whitelist()
+def save_quick_target(sol_id, financial_year, type, month=None, target=0):
+	target_val = flt(target)
+	if target_val <= 0:
+		frappe.throw(_("Target amount must be greater than 0"))
+
+	filters = {
+		"sol_id": sol_id,
+		"financial_year": financial_year,
+		"type": type,
+	}
+	if type in ("Monthly", "YTD") and month:
+		filters["month"] = month
+
+	doc_name = frappe.db.exists("Target Vs Achivement", filters)
+	if doc_name:
+		doc = frappe.get_doc("Target Vs Achivement", doc_name)
+		doc.target = target_val
+		doc.save(ignore_permissions=True)
+	else:
+		doc = frappe.get_doc({
+			"doctype": "Target Vs Achivement",
+			"sol_id": sol_id,
+			"financial_year": financial_year,
+			"type": type,
+			"month": month if type in ("Monthly", "YTD") else None,
+			"target": target_val,
+		})
+		doc.insert(ignore_permissions=True)
+
+	return {"status": "success", "name": doc.name, "target": doc.target}

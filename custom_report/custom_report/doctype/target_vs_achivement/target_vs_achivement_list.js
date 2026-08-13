@@ -327,7 +327,7 @@ function show_missing_target_dialog(listview) {
 					.map((m) => {
 						const cell = row.months[m];
 						if (cell && cell.stored) {
-							return `<td><a class="target-cell-badge stored" href="/app/target-vs-achivement/${cell.name}" target="_blank" title="View Monthly Target: ${cell.name}">✓ ${format_val(cell.target)}</a></td>`;
+							return `<td><a class="target-cell-badge stored" data-sol="${row.sol_id}" data-type="Monthly" data-month="${m}" data-target="${cell.target}" href="/app/target-vs-achivement/${cell.name}" target="_blank" title="Click to edit Target: ${cell.name}">✓ ${format_val(cell.target)}</a></td>`;
 						} else {
 							return `<td><span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="Monthly" data-month="${m}" title="Click to Add Monthly Target for ${m}">✕ Missing</span></td>`;
 						}
@@ -338,7 +338,7 @@ function show_missing_target_dialog(listview) {
 					.map((m) => {
 						const cell = row.ytd_months ? row.ytd_months[m] : null;
 						if (cell && cell.stored) {
-							return `<td><a class="target-cell-badge stored" href="/app/target-vs-achivement/${cell.name}" target="_blank" title="View YTD Target: ${cell.name}">✓ ${format_val(cell.target)}</a></td>`;
+							return `<td><a class="target-cell-badge stored" data-sol="${row.sol_id}" data-type="YTD" data-month="${m}" data-target="${cell.target}" href="/app/target-vs-achivement/${cell.name}" target="_blank" title="Click to edit YTD Target: ${cell.name}">✓ ${format_val(cell.target)}</a></td>`;
 						} else {
 							return `<td><span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="YTD" data-month="${m}" title="Click to Add YTD Target for ${m}">✕ Missing</span></td>`;
 						}
@@ -346,7 +346,7 @@ function show_missing_target_dialog(listview) {
 					.join("");
 
 				let yearly_td = row.yearly && row.yearly.stored
-					? `<a class="target-cell-badge stored" href="/app/target-vs-achivement/${row.yearly.name}" target="_blank" title="View Yearly Target">✓ ${format_val(row.yearly.target)}</a>`
+					? `<a class="target-cell-badge stored" data-sol="${row.sol_id}" data-type="Yearly" data-month="" data-target="${row.yearly.target}" href="/app/target-vs-achivement/${row.yearly.name}" target="_blank" title="Click to edit Yearly Target">✓ ${format_val(row.yearly.target)}</a>`
 					: `<span class="target-cell-badge missing" data-sol="${row.sol_id}" data-type="Yearly" data-month="" title="Click to Add Yearly Target">✕ Missing</span>`;
 
 				let missing_badge =
@@ -425,22 +425,84 @@ function show_missing_target_dialog(listview) {
 			}
 		});
 
-		// Click missing badge to quickly add target
-		$container.off("click", ".target-cell-badge.missing").on("click", ".target-cell-badge.missing", function () {
-			const sol_id = $(this).data("sol");
-			const type = $(this).data("type");
-			const month = $(this).data("month");
+		// Click target badge (missing or stored) to open quick entry popup modal
+		$container.off("click", ".target-cell-badge").on("click", ".target-cell-badge", function (e) {
+			if (e.ctrlKey || e.metaKey) return; // Allow opening in new tab if ctrl/cmd clicked
+			e.preventDefault();
 
-			const new_doc_args = {
-				sol_id: sol_id,
-				financial_year: selected_fy,
-				type: type,
-			};
-			if ((type === "Monthly" || type === "YTD") && month) {
-				new_doc_args.month = month;
-			}
+			const $badge = $(this);
+			const sol_id = $badge.data("sol");
+			const type = $badge.data("type");
+			const month = $badge.data("month") || "";
+			const current_target = $badge.data("target") || "";
 
-			frappe.new_doc("Target Vs Achivement", new_doc_args);
+			const branch_obj = missing_matrix_data.matrix.find((b) => b.sol_id === sol_id);
+			const branch_title = branch_obj ? `${sol_id} - ${branch_obj.branch_name}` : sol_id;
+
+			const quick_dialog = new frappe.ui.Dialog({
+				title: `<span style="font-weight: 800; color: #417d81; font-size: 16px;">Quick Set Target</span>`,
+				fields: [
+					{
+						fieldtype: "HTML",
+						fieldname: "info_html",
+						options: `
+							<div style="background: #f8fafc; padding: 12px; border-radius: 6px; margin-bottom: 12px; font-size: 12px; border: 1px solid #e2e8f0;">
+								<div style="margin-bottom: 4px;"><strong>Branch:</strong> <span style="color: #0f172a; font-weight: 700;">${branch_title}</span></div>
+								<div style="margin-bottom: 4px;"><strong>Financial Year:</strong> <span style="color: #417d81; font-weight: 700;">${selected_fy}</span></div>
+								<div><strong>Target Type:</strong> <span style="color: #3b82f6; font-weight: 700;">${type} ${month ? `(${month})` : ""}</span></div>
+							</div>
+						`,
+					},
+					{
+						label: __("Target Amount (₹)"),
+						fieldname: "target_amount",
+						fieldtype: "Currency",
+						default: current_target,
+						reqd: 1,
+					},
+				],
+				primary_action_label: __("Save Target"),
+				primary_action: function (values) {
+					const val = flt(values.target_amount);
+					if (!val || val <= 0) {
+						frappe.msgprint(__("Please enter a valid target amount greater than 0."));
+						return;
+					}
+
+					quick_dialog.get_primary_btn().prop("disabled", true).text(__("Saving..."));
+
+					frappe.call({
+						method: "custom_report.custom_report.doctype.target_vs_achivement.target_vs_achivement.save_quick_target",
+						args: {
+							sol_id: sol_id,
+							financial_year: selected_fy,
+							type: type,
+							month: month,
+							target: val,
+						},
+						callback: function (r) {
+							quick_dialog.hide();
+							if (r.message && r.message.status === "success") {
+								frappe.show_alert({
+									message: __("Target saved successfully!"),
+									indicator: "green",
+								});
+								// Instantly reload matrix data to update cell to Green
+								load_matrix_data(selected_fy);
+							}
+						},
+						error: function () {
+							quick_dialog.get_primary_btn().prop("disabled", false).text(__("Save Target"));
+						},
+					});
+				},
+			});
+
+			quick_dialog.show();
+			quick_dialog.$wrapper.find(".modal-dialog").css({
+				"max-width": "420px",
+				"margin-top": "120px",
+			});
 		});
 	}
 
