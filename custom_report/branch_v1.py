@@ -92,14 +92,69 @@ def get_branch_header_data(sol_id: str):
 @frappe.whitelist()
 def get_branch_profile_data(sol_id: str):
     """
-    Fetch Branch Profile Data based on SOL ID
+    Fetch Branch Profile Data based on SOL ID, dynamically overriding BDE, BDO, RO,
+    and Actual Staff Count from Employee DocType.
     """
-    return frappe.db.get_value(
+    profile_data = frappe.db.get_value(
         "Branch Profile Data",
         {"sol_id": sol_id},
         "*",
         as_dict=True,
     ) or {}
+
+    if not sol_id:
+        return profile_data
+
+    sol_id_str = str(sol_id).strip()
+
+    # Find Sahayog Branch doc names and details if any
+    branch_docs = frappe.db.get_all(
+        "Sahayog Branch",
+        filters=[["sol_id", "=", sol_id_str]],
+        fields=["name", "branch", "sol_id"],
+    )
+
+    possible_branch_values = [sol_id_str]
+    for bd in branch_docs:
+        if bd.get("name"):
+            possible_branch_values.append(bd["name"])
+        if bd.get("branch"):
+            possible_branch_values.append(bd["branch"])
+            clean_b = bd["branch"].replace(" BRANCH", "").replace("Branch", "").strip()
+            if clean_b:
+                possible_branch_values.append(clean_b)
+        if bd.get("sol_id"):
+            possible_branch_values.append(bd["sol_id"])
+
+    possible_branch_values = list(set(possible_branch_values))
+
+    counts_query = """
+        SELECT
+            SUM(CASE WHEN designation LIKE %(bde)s THEN 1 ELSE 0 END) as bde_count,
+            SUM(CASE WHEN designation LIKE %(bdo)s THEN 1 ELSE 0 END) as bdo_count,
+            SUM(CASE WHEN designation LIKE %(ro)s THEN 1 ELSE 0 END) as ro_count,
+            COUNT(*) as total_active_staff
+        FROM `tabEmployee`
+        WHERE status = 'Active'
+          AND (sahayog_branch IN %(branches)s OR sol_id IN %(branches)s OR branch IN %(branches)s)
+    """
+    params = {
+        "bde": "%Business Development Executive%",
+        "bdo": "%Block Development Officer%",
+        "ro": "%Relationship Officer%",
+        "branches": possible_branch_values,
+    }
+
+    counts = frappe.db.sql(counts_query, params, as_dict=True)
+    if counts and counts[0]:
+        c = counts[0]
+        profile_data["bde"] = int(c.get("bde_count") or 0)
+        profile_data["bdo"] = int(c.get("bdo_count") or 0)
+        profile_data["ro"] = int(c.get("ro_count") or 0)
+        if "staff_count" not in profile_data or not profile_data.get("staff_count"):
+            profile_data["staff_count"] = int(c.get("total_active_staff") or 0)
+
+    return profile_data
 
 
 @frappe.whitelist()
