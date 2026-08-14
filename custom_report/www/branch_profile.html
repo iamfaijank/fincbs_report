@@ -3334,6 +3334,22 @@
 						const j = await r.json();
 
 						this.state.employees = (j.message && j.message.data) ? j.message.data : [];
+
+						let bdeCount = 0;
+						let bdoCount = 0;
+						let roCount = 0;
+
+						this.state.employees.forEach((emp) => {
+							const desig = (emp.designation || "").toLowerCase().trim();
+							if (desig.includes("business development executive")) bdeCount++;
+							if (desig.includes("block development officer")) bdoCount++;
+							if (desig.includes("relationship officer")) roCount++;
+						});
+
+						if (this.el.bdeChip) this.el.bdeChip.textContent = this.formatIndianNumber(bdeCount);
+						if (this.el.bdoChip) this.el.bdoChip.textContent = this.formatIndianNumber(bdoCount);
+						if (this.el.roChip) this.el.roChip.textContent = this.formatIndianNumber(roCount);
+
 						this.renderManpowerDetails();
 					} catch (e) {
 						console.error("Failed to load employee details", e);

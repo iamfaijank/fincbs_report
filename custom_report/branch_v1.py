@@ -532,6 +532,29 @@ def get_employee_details_by_sol(sol_id: str):
         start_date = get_first_day(today())
         end_date = get_last_day(today())
 
+        sol_id_str = str(sol_id).strip()
+
+        # Find Sahayog Branch doc names and details if any
+        branch_docs = frappe.db.get_all(
+            "Sahayog Branch",
+            filters=[["sol_id", "=", sol_id_str]],
+            fields=["name", "branch", "sol_id"],
+        )
+
+        possible_branch_values = [sol_id_str]
+        for bd in branch_docs:
+            if bd.get("name"):
+                possible_branch_values.append(bd["name"])
+            if bd.get("branch"):
+                possible_branch_values.append(bd["branch"])
+                clean_b = bd["branch"].replace(" BRANCH", "").replace("Branch", "").strip()
+                if clean_b:
+                    possible_branch_values.append(clean_b)
+            if bd.get("sol_id"):
+                possible_branch_values.append(bd["sol_id"])
+
+        possible_branch_values = list(set(possible_branch_values))
+
         # 3. Construct the Query
         # We use a LEFT JOIN to ensure employees are listed even if they have 0 leads.
         # The join condition matches Employee.user_id with Lead.lead_owner.
@@ -563,7 +586,10 @@ def get_employee_details_by_sol(sol_id: str):
                     Case().when(Lead.status == "Converted", 1).else_(0)
                 ).as_("total_converted")
             )
-            .where(Employee.sol_id == sol_id)
+            .where(
+                (Employee.sol_id.isin(possible_branch_values)) |
+                (Employee.sahayog_branch.isin(possible_branch_values))
+            )
             .groupby(Employee.name)
             .orderby(Employee.employee_name)
         )
