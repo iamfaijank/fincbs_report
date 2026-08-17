@@ -2998,8 +2998,12 @@
 				formatAmount(value) {
 					const formatted = this.formatCurrency(value);
 					if (formatted === "--") return "--";
+					if (formatted.startsWith("-")) {
+						return "-₹ " + formatted.substring(1);
+					}
 					return "₹ " + formatted;
 				},
+
 
 				formatDate(d) {
 					if (!d) return "--";
