@@ -4199,6 +4199,616 @@ class DrishtiDashboard {
 					});
 				}
 			},
+			{	id: "maturity_tracker",
+				name: "Maturity Tracker",
+				tableData: [],
+				expandedZones: {},
+				expandedRegions: {},
+				expandedDistricts: {},
+				expandedBranches: {},
+				checkedRows: {},
+				searchTerm: "",
+				allExpanded: false,
+				selectedMisZones: [],
+				render: function (container, dashboardInstance, seq) {
+					const self = this;
+					container.html(`
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="text" id="mis-search" placeholder="Search branch, SOL ID, district or customer..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
+							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
+								<div class="btn-group mis-format-toggle" role="group">
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+								</div>
+							</div>
+							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="mis-records-count"></div>
+						</div>
+						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
+							${dashboardInstance.buildMisSkeletonTable("Loading Maturity Tracker...")}
+						</div>
+						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
+						<div id="mis-kpi-container" ${self.tableData && self.tableData.length ? "" : 'style="display: none;"'}></div>
+						<div id="mis-table-container" ${self.tableData ? "" : 'style="display: none;"'}></div>
+					`);
+
+					if (self.tableData && self.tableData.length > 0) {
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+						container.find("#mis-records-count").text(`${self.tableData.length} records`);
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderZoneFilterTags(container, dashboardInstance);
+						container.find("#mis-controls, #mis-table-container, #mis-kpi-container").show();
+						container.find("#mis-loading").hide();
+						self.attachReportEventHandlers(container, dashboardInstance);
+						return;
+					}
+
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_maturity_tracker_data",
+						args: { selected_date: dashboardInstance.state.selectedDate },
+						callback: function (r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
+							container.find("#mis-loading").hide();
+							if (r.message && r.message.length) {
+								self.tableData = r.message;
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+								container.find("#mis-records-count").text(`${r.message.length} records`);
+								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderZoneFilterTags(container, dashboardInstance);
+							}
+							container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+						}
+					});
+					self.attachReportEventHandlers(container, dashboardInstance);
+				},
+				attachReportEventHandlers: function (container, dashboardInstance) {
+					const self = this;
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
+						const format = $(this).data("format");
+						dashboardInstance.state.formatMode = format;
+						container.find(".mis-format-btn").each(function () {
+							const btn = $(this);
+							const isActive = btn.data("format") === format;
+							btn.css("background", isActive ? "#417d81" : "#e2e8f0");
+							btn.css("color", isActive ? "white" : "#475569");
+						});
+						if (self.tableData && self.tableData.length > 0) {
+							self.switchFormat(format, container, dashboardInstance);
+						}
+					});
+					let searchTimeout;
+					container.off("input", "#mis-search").on("input", "#mis-search", function () {
+						clearTimeout(searchTimeout);
+						searchTimeout = setTimeout(() => {
+							self.searchTerm = $(this).val().toLowerCase().trim();
+							if (self.tableData) {
+								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+							}
+						}, 300);
+					});
+					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function () {
+						self.allExpanded = !self.allExpanded;
+						const expand = self.allExpanded;
+						if (!self.tableData) return;
+						const zoneData = self.aggregateByZone();
+						zoneData.forEach(z => {
+							self.expandedZones[z.zone] = expand;
+							z.regions.forEach(r => {
+								self.expandedRegions[z.zone + "::" + r.region] = expand;
+								r.districts.forEach(d => {
+									self.expandedDistricts[z.zone + "::" + r.region + "::" + d.district] = expand;
+									d.branches.forEach(b => {
+										self.expandedBranches[z.zone + "::" + r.region + "::" + d.district + "::" + b.sol_id] = expand;
+									});
+								});
+							});
+						});
+						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+					});
+					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function () {
+						self.refetchData(container, dashboardInstance);
+					});
+				},
+				renderKPI: function (container, dashboardInstance) {
+					const self = this;
+					const data = self.tableData || [];
+					const totalAccounts = data.reduce((s, r) => s + (parseInt(r.account_count || 0, 10)), 0);
+					const totalPaid = data.reduce((s, r) => s + (parseFloat(r.maturity_paid || 0.0)), 0.0);
+					const totalDeposit = data.reduce((s, r) => s + (parseFloat(r.total_deposit_amount || 0.0)), 0.0);
+					const totalRenewal = data.reduce((s, r) => s + (parseFloat(r.renewal_amount || 0.0)), 0.0);
+					const depositDoneCount = data.filter(r => (r.deposit_done_flag || "").toLowerCase() === "yes").length;
+
+					const fmtAmt = (val) => {
+						if (val === null || val === undefined) return "-";
+						const n = parseFloat(val);
+						if (isNaN(n)) return val;
+						const format = dashboardInstance.state.formatMode || "number";
+						if (format === "words") {
+							if (n >= 10000000) return "₹ " + (n / 10000000).toFixed(2) + " Cr";
+							if (n >= 100000) return "₹ " + (n / 100000).toFixed(2) + " L";
+							if (n >= 1000) return "₹ " + (n / 1000).toFixed(2) + " K";
+						}
+						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+					};
+
+					const fmtCount = (val) => {
+						return new Intl.NumberFormat("en-IN").format(val);
+					};
+
+					const kpiCards = [
+						{ label: "Maturity Paid", value: fmtAmt(totalPaid), color: "#ef4444", bg: "#fef2f2", icon: "💰" },
+						{ label: "Total Deposit Amount", value: fmtAmt(totalDeposit), color: "#10b981", bg: "#ecfdf5", icon: "📊" },
+						{ label: "Renewal Amount", value: fmtAmt(totalRenewal), color: "#3b82f6", bg: "#eff6ff", icon: "📈" },
+						{ label: "Total Accounts", value: fmtCount(totalAccounts), color: "#8b5cf6", bg: "#f5f3ff", icon: "🔢" },
+						{ label: "Deposit Done Count", value: fmtCount(depositDoneCount), color: "#06b6d4", bg: "#ecfeff", icon: "✅" }
+					];
+
+					container.html(`
+						<style>
+							#maturity-tracker-kpi-container { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+							#maturity-tracker-kpi-container .kpi-card { flex: 1 1 180px; min-width: 150px; border-radius: 10px; padding: 16px 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); box-sizing: border-box; min-height: 100px; }
+							#maturity-tracker-kpi-container .kpi-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+							#maturity-tracker-kpi-container .kpi-icon { font-size: 20px; flex-shrink: 0; line-height: 1; }
+							#maturity-tracker-kpi-container .kpi-label { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Inter', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+							#maturity-tracker-kpi-container .kpi-value { font-size: clamp(18px, 2.2vw, 24px); font-weight: 800; font-family: 'Inter', sans-serif; line-height: 1.2; word-break: break-word; }
+							@media (max-width: 768px) { #maturity-tracker-kpi-container .kpi-card { flex: 1 1 140px; min-width: 120px; padding: 12px 14px; min-height: 80px; } #maturity-tracker-kpi-container .kpi-value { font-size: 16px; } }
+							@media (max-width: 480px) { #maturity-tracker-kpi-container .kpi-card { flex: 1 1 100%; min-width: unset; } }
+						</style>
+						<div id="maturity-tracker-kpi-container">
+							${kpiCards.map(card => `<div class="kpi-card" style="background: ${card.bg}; border-left: 4px solid ${card.color};"><div class="kpi-card-header"><span class="kpi-icon">${card.icon}</span><span class="kpi-label">${card.label}</span></div><div class="kpi-value" style="color: ${card.color};">${card.value}</div></div>`).join('')}
+						</div>
+					`);
+				},
+				refetchData: function (container, dashboardInstance) {
+					const self = this;
+					self.tableData = [];
+					self.expandedZones = {};
+					self.expandedRegions = {};
+					self.expandedDistricts = {};
+					self.expandedBranches = {};
+					self.checkedRows = {};
+					self.searchTerm = "";
+					self.allExpanded = false;
+					self.selectedMisZones = [];
+					dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
+					self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
+				},
+				switchFormat: function (format, container, dashboardInstance) {
+					const self = this;
+					if (self.tableData && self.tableData.length > 0) {
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+					}
+					self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+				},
+				renderZoneFilterTags: function (container, dashboardInstance) {
+					const self = this;
+					if (!self.tableData || self.tableData.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					let zones = [...new Set(self.tableData.map(r => r.zone).filter(Boolean))].sort();
+					if (zones.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					const allSelected = self.selectedMisZones.length === 0;
+					let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
+					html += `<button class="mis-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
+					zones.forEach(zone => {
+						const active = self.selectedMisZones.includes(zone);
+						html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
+					});
+					const $row = container.find("#mis-zone-filter-row");
+					$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
+					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
+						const zone = $(this).data("zone");
+						if (zone === "all") {
+							self.selectedMisZones = [];
+						} else {
+							const idx = self.selectedMisZones.indexOf(zone);
+							if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); }
+						}
+						self.renderZoneFilterTags(container, dashboardInstance);
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+					});
+				},
+				aggregateByZone: function () {
+					const self = this;
+					let data = self.tableData || [];
+					const term = (self.searchTerm || "").trim().toLowerCase();
+					if (term) {
+						data = data.filter(row => {
+							const zone = (row.zone || "").toLowerCase();
+							const region = (row.region || "").toLowerCase();
+							const district = (row.district || "").toLowerCase();
+							const sol = (row.sol_desc || row.sol_id || "").toLowerCase();
+							const solId = (row.sol_id || "").toLowerCase();
+							const cif = (row.cif_id || "").toLowerCase();
+							const name = (row.acct_name || "").toLowerCase();
+							return zone.includes(term) || region.includes(term) || district.includes(term) || sol.includes(term) || solId.includes(term) || cif.includes(term) || name.includes(term);
+						});
+					}
+					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+						data = data.filter(row => self.selectedMisZones.includes(row.zone));
+					}
+					const zoneMap = {};
+					data.forEach(row => {
+						const zone = row.zone || "Unknown";
+						const region = row.region || "Unknown";
+						const district = row.district || "Unknown";
+						const solId = row.sol_id || "Unknown";
+						const solDesc = row.sol_desc || row.sol_id || "Unknown";
+
+						if (!zoneMap[zone]) {
+							zoneMap[zone] = { zone, regions: {}, account_count: 0, maturity_paid: 0.0, total_deposit_amount: 0.0, renewal_amount: 0.0, branches_count: new Set() };
+						}
+						if (!zoneMap[zone].regions[region]) {
+							zoneMap[zone].regions[region] = { region, districts: {}, account_count: 0, maturity_paid: 0.0, total_deposit_amount: 0.0, renewal_amount: 0.0, branches_count: new Set() };
+						}
+						if (!zoneMap[zone].regions[region].districts[district]) {
+							zoneMap[zone].regions[region].districts[district] = { district, branches: {}, account_count: 0, maturity_paid: 0.0, total_deposit_amount: 0.0, renewal_amount: 0.0 };
+						}
+						if (!zoneMap[zone].regions[region].districts[district].branches[solId]) {
+							zoneMap[zone].regions[region].districts[district].branches[solId] = {
+								sol_id: solId,
+								sol_desc: solDesc,
+								records: [],
+								account_count: 0,
+								maturity_paid: 0.0,
+								total_deposit_amount: 0.0,
+								renewal_amount: 0.0
+							};
+						}
+
+						const branchObj = zoneMap[zone].regions[region].districts[district].branches[solId];
+						branchObj.records.push(row);
+
+						const acCount = parseInt(row.account_count || 0, 10);
+						const matPaid = parseFloat(row.maturity_paid || 0);
+						const totDep = parseFloat(row.total_deposit_amount || 0);
+						const renAmt = parseFloat(row.renewal_amount || 0);
+
+						branchObj.account_count += acCount;
+						branchObj.maturity_paid += matPaid;
+						branchObj.total_deposit_amount += totDep;
+						branchObj.renewal_amount += renAmt;
+
+						zoneMap[zone].regions[region].districts[district].account_count += acCount;
+						zoneMap[zone].regions[region].districts[district].maturity_paid += matPaid;
+						zoneMap[zone].regions[region].districts[district].total_deposit_amount += totDep;
+						zoneMap[zone].regions[region].districts[district].renewal_amount += renAmt;
+
+						zoneMap[zone].regions[region].account_count += acCount;
+						zoneMap[zone].regions[region].maturity_paid += matPaid;
+						zoneMap[zone].regions[region].total_deposit_amount += totDep;
+						zoneMap[zone].regions[region].renewal_amount += renAmt;
+						zoneMap[zone].regions[region].branches_count.add(solId);
+
+						zoneMap[zone].account_count += acCount;
+						zoneMap[zone].maturity_paid += matPaid;
+						zoneMap[zone].total_deposit_amount += totDep;
+						zoneMap[zone].renewal_amount += renAmt;
+						zoneMap[zone].branches_count.add(solId);
+					});
+
+					const sortedZones = Object.keys(zoneMap).sort();
+					const result = [];
+					sortedZones.forEach(zoneName => {
+						const zd = zoneMap[zoneName];
+						const sortedRegions = Object.keys(zd.regions).sort();
+						const regions = sortedRegions.map(rn => {
+							const rd = zd.regions[rn];
+							const sortedDistricts = Object.keys(rd.districts).sort();
+							const districts = sortedDistricts.map(dn => {
+								const dd = rd.districts[dn];
+								const sortedBranches = Object.keys(dd.branches).sort();
+								const branches = sortedBranches.map(bn => dd.branches[bn]);
+								return { district: dn, data: dd, branches: branches };
+							});
+							return { region: rn, data: rd, districts: districts };
+						});
+						result.push({ zone: zoneName, data: zd, regions: regions });
+					});
+					return result;
+				},
+				checkCxoPermission: function (dashboardInstance, callback) {
+					if (dashboardInstance.canViewCommission !== undefined) {
+						callback(dashboardInstance.canViewCommission);
+						return;
+					}
+
+					if (frappe.session.user === "Administrator") {
+						dashboardInstance.canViewCommission = true;
+						callback(true);
+						return;
+					}
+
+					frappe.db.get_value("Employee", { user_id: frappe.session.user }, "cxo_level")
+						.then(r => {
+							const cxo = r && r.message ? (r.message.cxo_level !== undefined ? r.message.cxo_level : r.message) : 0;
+							dashboardInstance.canViewCommission = (cint(cxo) === 1);
+							callback(dashboardInstance.canViewCommission);
+						})
+						.catch(err => {
+							console.error("Error checking employee cxo_level:", err);
+							dashboardInstance.canViewCommission = false;
+							callback(false);
+						});
+				},
+				renderMisTable: function (tableContainer, dashboardInstance) {
+					const self = this;
+					if (dashboardInstance.canViewCommission === undefined) {
+						self.checkCxoPermission(dashboardInstance, () => {
+							self.renderMisTable(tableContainer, dashboardInstance);
+						});
+						return;
+					}
+					const canViewCif = !!dashboardInstance.canViewCommission;
+					const format = dashboardInstance.state.formatMode || "number";
+
+					const fmtAmt = (val) => {
+						if (val === null || val === undefined) return "-";
+						const n = parseFloat(val);
+						if (isNaN(n)) return val;
+						if (format === "words") {
+							if (n >= 10000000) return "₹ " + (n / 10000000).toFixed(2) + " Cr";
+							if (n >= 100000) return "₹ " + (n / 100000).toFixed(2) + " L";
+							if (n >= 1000) return "₹ " + (n / 1000).toFixed(2) + " K";
+						}
+						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+					};
+
+					const fmtCount = (val) => {
+						if (val === null || val === undefined) return "0";
+						return new Intl.NumberFormat("en-IN").format(val);
+					};
+
+					const zoneData = self.aggregateByZone();
+					const totalFilteredPaid = zoneData.reduce((s, z) => s + z.data.maturity_paid, 0);
+					const totalAllPaid = (self.tableData || []).reduce((s, r) => s + (parseFloat(r.maturity_paid) || 0), 0);
+					const $badge = tableContainer.parent().find("#mis-records-count");
+					$badge.text(fmtAmt(totalFilteredPaid) + " / " + fmtAmt(totalAllPaid) + " paid" + (self.searchTerm ? " (filtered)" : ""));
+					if (totalFilteredPaid === totalAllPaid && !self.searchTerm) $badge.hide(); else $badge.show();
+
+					if (!zoneData || zoneData.length === 0) {
+						tableContainer.html('<div style="padding: 30px; text-align: center; color: #64748b; font-weight: 600; font-family: \'Inter\', sans-serif;">No data to display.</div>');
+						return;
+					}
+
+					const grandTotal = { account_count: 0, maturity_paid: 0.0, total_deposit_amount: 0.0, renewal_amount: 0.0 };
+					zoneData.forEach(z => {
+						grandTotal.account_count += z.data.account_count;
+						grandTotal.maturity_paid += z.data.maturity_paid;
+						grandTotal.total_deposit_amount += z.data.total_deposit_amount;
+						grandTotal.renewal_amount += z.data.renewal_amount;
+					});
+
+					let sr = 0;
+					let rowsHtml = "";
+					zoneData.forEach(z => {
+						sr++;
+						const zoneExpanded = self.expandedZones[z.zone];
+						const zoneRow = z.data;
+						const zoneChecked = self.checkedRows["zone::" + z.zone];
+						
+						rowsHtml += `<tr class="mis-zone-row${zoneChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-check-id="zone::${z.zone}" style="cursor: pointer; background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
+							<td style="padding: 10px 14px; text-align: center; white-space: nowrap; width: 30px; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="zone::${z.zone}" ${zoneChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; width: 40px; font-size: 14px;">${sr}</td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;"><span class="mis-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>${z.zone}</td>
+							<td></td>
+							<td></td>
+							<td></td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; font-size: 14px;">${fmtCount(zoneRow.account_count)}</td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #ef4444; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(zoneRow.maturity_paid)}</td>
+							<td></td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(zoneRow.total_deposit_amount)}</td>
+							<td></td>
+							<td style="padding: 10px 14px; font-weight: 700; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(zoneRow.renewal_amount)}</td>
+						</tr>`;
+
+						z.regions.forEach(regionObj => {
+							const region = regionObj.region;
+							const regionRow = regionObj.data;
+							const regionKey = z.zone + "::" + region;
+							const regionExpanded = self.expandedRegions[regionKey];
+							const regionChecked = self.checkedRows[regionKey];
+							
+							rowsHtml += `<tr class="mis-region-row${regionChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-check-id="${regionKey}" style="display: ${zoneExpanded ? "table-row" : "none"}; cursor: pointer; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+								<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${regionKey}" ${regionChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+								<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 24px; font-weight: 600;"><span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${region}</td>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td style="padding: 8px 14px; color: #334155; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtCount(regionRow.account_count)}</td>
+								<td style="padding: 8px 14px; color: #ef4444; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(regionRow.maturity_paid)}</td>
+								<td></td>
+								<td style="padding: 8px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(regionRow.total_deposit_amount)}</td>
+								<td></td>
+								<td style="padding: 8px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(regionRow.renewal_amount)}</td>
+							</tr>`;
+
+							regionObj.districts.forEach(districtObj => {
+								const district = districtObj.district;
+								const districtKey = z.zone + "::" + region + "::" + district;
+								const districtExpanded = self.expandedDistricts[districtKey];
+								const districtChecked = self.checkedRows[districtKey];
+								const showDistrict = zoneExpanded && regionExpanded;
+
+								rowsHtml += `<tr class="mis-district-row${districtChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${districtKey}" style="display: ${showDistrict ? "table-row" : "none"}; cursor: pointer; background: #fafaf9; border-bottom: 1px solid #e7e5e4;">
+									<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${districtKey}" ${districtChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+									<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}</td>
+									<td></td>
+									<td></td>
+									<td></td>
+									<td style="padding: 8px 14px; color: #44403c; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtCount(districtObj.data.account_count)}</td>
+									<td style="padding: 8px 14px; color: #ef4444; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(districtObj.data.maturity_paid)}</td>
+									<td></td>
+									<td style="padding: 8px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(districtObj.data.total_deposit_amount)}</td>
+									<td></td>
+									<td style="padding: 8px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(districtObj.data.renewal_amount)}</td>
+								</tr>`;
+
+								districtObj.branches.forEach((branch, bnIndex) => {
+									const branchKey = districtKey + "::" + branch.sol_id;
+									const branchExpanded = self.expandedBranches[branchKey];
+									const branchChecked = self.checkedRows[branchKey];
+									const showBranch = zoneExpanded && regionExpanded && districtExpanded;
+
+									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-branch="${branch.sol_id}" data-check-id="${branchKey}" style="display: ${showBranch ? "table-row" : "none"}; cursor: ${canViewCif ? "pointer" : "default"}; background: #ffffff; border-bottom: 1px solid #e2e8f0;">
+										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${branchKey}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 600;">${canViewCif ? `<span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${branchExpanded ? "▼" : "▶"}</span>` : ""}${branch.sol_id} - ${branch.sol_desc}</td>
+										<td></td>
+										<td></td>
+										<td></td>
+										<td style="padding: 6px 14px; color: #475569; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtCount(branch.account_count)}</td>
+										<td style="padding: 6px 14px; color: #ef4444; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(branch.maturity_paid)}</td>
+										<td></td>
+										<td style="padding: 6px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(branch.total_deposit_amount)}</td>
+										<td></td>
+										<td style="padding: 6px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(branch.renewal_amount)}</td>
+									</tr>`;
+
+									if (canViewCif) {
+										branch.records.forEach((rec, ai) => {
+											const showRecord = zoneExpanded && regionExpanded && districtExpanded && branchExpanded;
+											const recBg = ai % 2 === 0 ? "#fafafa" : "#f5f5f5";
+											const recKey = branchKey + "::" + (rec.cif_id || ai);
+											const recChecked = self.checkedRows[recKey];
+											
+											rowsHtml += `<tr class="mis-rec-row${recChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-branch="${branch.sol_id}" data-check-id="${recKey}" style="display: ${showRecord ? "table-row" : "none"}; background: ${recBg}; border-bottom: 1px solid #f1f5f9;">
+												<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${recKey}" ${recChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+												<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+												<td style="padding: 6px 14px; color: #94a3b8; white-space: nowrap; font-size: 14px; padding-left: 78px; font-weight: 500;">└─</td>
+												<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${rec.cif_id || "-"}</td>
+												<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${rec.acct_name || "-"}</td>
+												<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${rec.account_numbers || "-"}</td>
+												<td style="padding: 6px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(rec.account_count)}</td>
+												<td style="padding: 6px 14px; color: #ef4444; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtAmt(rec.maturity_paid)}</td>
+												<td style="padding: 6px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${rec.last_debit_transaction_date || "-"}</td>
+												<td style="padding: 6px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtAmt(rec.total_deposit_amount)}</td>
+												<td style="padding: 6px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${rec.deposit_done_flag || "No"}</td>
+												<td style="padding: 6px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtAmt(rec.renewal_amount)}</td>
+											</tr>`;
+										});
+									}
+								});
+							});
+						});
+					});
+
+					const tableHtml = `
+						<style>
+							#mis-maturity-tracker-table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; }
+							#mis-maturity-tracker-table thead { position: sticky; top: 0; z-index: 2; }
+							#mis-maturity-tracker-table tfoot { position: sticky; bottom: 0; z-index: 2; }
+							#mis-maturity-tracker-table tfoot tr { box-shadow: 0 -2px 6px rgba(0,0,0,0.1); }
+							#mis-maturity-tracker-table tbody tr { transition: background-color 0.2s ease; border-bottom: 1px solid #e2e8f0; }
+							#mis-maturity-tracker-table tbody tr:hover { background: #dcfce7 !important; }
+							#mis-maturity-tracker-table tbody tr.mis-row-checked { background: #bbf7d0 !important; }
+							#mis-maturity-tracker-table tbody tr.mis-zone-row.mis-row-checked,
+							#mis-maturity-tracker-table tbody tr.mis-region-row.mis-row-checked,
+							#mis-maturity-tracker-table tbody tr.mis-district-row.mis-row-checked,
+							#mis-maturity-tracker-table tbody tr.mis-branch-row.mis-row-checked,
+							#mis-maturity-tracker-table tbody tr.mis-rec-row.mis-row-checked { background: #86efac !important; }
+							#mis-scroll-area { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
+						</style>
+						<div id="mis-scroll-area">
+							<table id="mis-maturity-tracker-table">
+								<thead><tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Z / R / D / SOL Name</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 100px;">CIF ID</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 160px;">Customer Name</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 160px;">Account Numbers</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 100px;">Account Count</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 140px;">Maturity Paid</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 120px;">Last Debit Date</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 140px;">Total Deposit</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 100px;">Deposit Done</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 140px;">Renewal Amount</th>
+								</tr></thead>
+								<tbody>${rowsHtml}</tbody>
+								<tfoot><tr style="background: #1e293b; color: #ffffff; font-weight: 700;">
+									<td style="padding: 10px 12px; text-align: center;"></td>
+									<td style="padding: 10px 12px; text-align: center;"></td>
+									<td style="padding: 10px 12px; text-align: left; white-space: nowrap; font-size: 14px;">TOTAL</td>
+									<td></td>
+									<td></td>
+									<td></td>
+									<td style="padding: 10px 12px; text-align: center; white-space: nowrap; font-size: 14px;">${fmtCount(grandTotal.account_count)}</td>
+									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(grandTotal.maturity_paid)}</td>
+									<td></td>
+									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(grandTotal.total_deposit_amount)}</td>
+									<td></td>
+									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(grandTotal.renewal_amount)}</td>
+								</tr></tfoot>
+							</table>
+						</div>`;
+					tableContainer.html(tableHtml);
+
+					// Attach folding handlers
+					tableContainer.off("click", ".mis-zone-row").on("click", ".mis-zone-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						self.expandedZones[zone] = !self.expandedZones[zone];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".mis-region-row").on("click", ".mis-region-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						const region = $(this).data("region");
+						const key = zone + "::" + region;
+						self.expandedRegions[key] = !self.expandedRegions[key];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".mis-district-row").on("click", ".mis-district-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						const region = $(this).data("region");
+						const district = $(this).data("district");
+						const key = zone + "::" + region + "::" + district;
+						self.expandedDistricts[key] = !self.expandedDistricts[key];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".mis-branch-row").on("click", ".mis-branch-row", function (e) {
+						if (!canViewCif) return;
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const zone = $(this).data("zone");
+						const region = $(this).data("region");
+						const district = $(this).data("district");
+						const branch = $(this).data("branch");
+						const key = zone + "::" + region + "::" + district + "::" + branch;
+						self.expandedBranches[key] = !self.expandedBranches[key];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					// Attach checkbox handlers
+					tableContainer.off("change", ".mis-row-check").on("change", ".mis-row-check", function () {
+						const checkId = $(this).data("check-id");
+						const checked = $(this).prop("checked");
+						self.checkedRows[checkId] = checked;
+						const tr = $(this).closest("tr");
+						if (checked) tr.addClass("mis-row-checked"); else tr.removeClass("mis-row-checked");
+					});
+
+					tableContainer.off("change", ".mis-check-all").on("change", ".mis-check-all", function () {
+						const checked = $(this).prop("checked");
+						tableContainer.find(".mis-row-check").each(function () {
+							$(this).prop("checked", checked).trigger("change");
+						});
+					});
+				}
+			},
 			{
 				id: "rm_wise",
 				name: "Agent Wise Commission",

@@ -5793,6 +5793,58 @@ def get_new_account_report_data(selected_date=None):
     return result
 
 
+@frappe.whitelist()
+@sahayog_cache(ttl=86400)
+def get_maturity_tracker_data(selected_date=None):
+    import datetime
+    from frappe.utils import cint
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    user = frappe.session.user
+    is_cxo = False
+    if user == "Administrator":
+        is_cxo = True
+    else:
+        cxo_val = frappe.db.get_value("Employee", {"user_id": user}, "cxo_level")
+        if cxo_val and cint(cxo_val) == 1:
+            is_cxo = True
+
+    records = frappe.db.get_all(
+        "Maturity Tracker",
+        filters={"date": selected_date},
+        fields=[
+            "date", "cif_id", "acct_name", "sol_ids", "account_numbers",
+            "account_count", "maturity_paid", "last_debit_transaction_date",
+            "total_deposit_amount", "deposit_done_flag", "renewal_amount"
+        ]
+    )
+
+    if not records:
+        return []
+
+    branches_map = get_sahayog_branches_cached()
+
+    result = []
+    for r in records:
+        sol_id = str(r.sol_ids or "").split(",")[0].strip()
+        b = branches_map.get(sol_id, {})
+        r["sol_id"] = sol_id
+        r["sol_desc"] = b.get("branch_name", sol_id)
+        r["zone"] = b.get("zone", "Unknown")
+        r["region"] = b.get("region", "Unknown")
+        r["district"] = b.get("district", "Unknown")
+        if not is_cxo:
+            r["cif_id"] = ""
+            r["acct_name"] = ""
+            r["account_numbers"] = ""
+        result.append(r)
+
+    return result
+
+
+
+
 def resolve_ss_vs_date(target_date=None):
     """Finds target_date or the latest available date on/before target_date with data in tabSS and VS Report."""
     if not target_date:
