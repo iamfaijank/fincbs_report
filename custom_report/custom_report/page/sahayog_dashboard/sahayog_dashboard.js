@@ -11284,31 +11284,31 @@ class DrishtiDashboard {
 	}
 
 	formatCurrency(value) {
-		if (!value || value === 0) return "-";
-		const numValue = Math.round(Math.abs(value));
+		if (value === null || value === undefined || value === 0) return "-";
+		const isNegative = value < 0;
+		const absVal = Math.abs(value);
+		const numValue = Math.round(absVal);
 
+		let formatted = "";
 		if (this.state.formatMode === "words") {
 			if (numValue >= 1000000000) {
-				// 100+ Crore
-				return `${(numValue / 10000000).toFixed(2)} Cr`;
+				formatted = `${(numValue / 10000000).toFixed(2)} Cr`;
+			} else if (numValue >= 10000000) {
+				formatted = `${(numValue / 10000000).toFixed(2)} Cr`;
+			} else if (numValue >= 100000) {
+				formatted = `${(numValue / 100000).toFixed(2)} L`;
+			} else if (numValue >= 1000) {
+				formatted = `${(numValue / 1000).toFixed(2)} K`;
+			} else {
+				formatted = numValue.toString();
 			}
-			if (numValue >= 10000000) {
-				// 1+ Crore
-				return `${(numValue / 10000000).toFixed(2)} Cr`;
-			}
-			if (numValue >= 100000) {
-				// 1+ Lakh
-				return `${(numValue / 100000).toFixed(2)} L`;
-			}
-			if (numValue >= 1000) {
-				// 1+ Thousand
-				return `${(numValue / 1000).toFixed(2)} K`;
-			}
-			return numValue.toString();
 		} else {
-			return new Intl.NumberFormat("en-IN").format(numValue);
+			formatted = new Intl.NumberFormat("en-IN").format(numValue);
 		}
+
+		return isNegative ? `-${formatted}` : formatted;
 	}
+
 
 	getPctColor(pct) {
 		const hue = Math.min(120, Math.max(0, (pct / 100) * 120));
@@ -12823,9 +12823,14 @@ class DrishtiDashboard {
 		});
 
 		const fmtAmt = (val) => {
-			if (val === null || val === undefined) return "-";
-			return "₹" + self.formatCurrency(val);
+			if (val === null || val === undefined || val === 0) return "-";
+			const formatted = self.formatCurrency(val);
+			if (formatted.startsWith("-")) {
+				return "-₹" + formatted.substring(1);
+			}
+			return "₹" + formatted;
 		};
+
 
 		const fmtPct = (tgt, ach) => {
 			if (!tgt || tgt <= 0) return "0.00%";
