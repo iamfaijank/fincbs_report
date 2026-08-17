@@ -6076,6 +6076,54 @@ class DrishtiDashboard {
 	}
 
 	buildMisSkeletonTable(label) {
+		const isPta = (label || "").includes("Product Wise TGT VS ACH");
+
+		const headersHtml = isPta ? `
+			<th style="width: 40px; text-align: center;"><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></th>
+			<th style="width: 40px; text-align: center;">Sr</th>
+			<th style="width: 90px; text-align: center;">Level</th>
+			<th>Z / R / D / SOL / Product Group</th>
+			<th style="text-align: right; width: 100px;">Target %</th>
+			<th style="text-align: right; width: 140px;">Target (TGT)</th>
+			<th style="text-align: right; width: 140px;">Achieved (ACH)</th>
+			<th style="text-align: right; width: 100px;">ACH %</th>
+			<th style="text-align: right; width: 140px;">Ach Gap</th>
+			<th style="text-align: right; width: 100px;">Ach Gap %</th>
+		` : `
+			<th style="width: 30px;"><div class="mis-skeleton-pulse" style="width: 14px; height: 14px;"></div></th>
+			<th style="width: 40px; text-align: center;">Sr</th>
+			<th>Z / R / D / SOL Name</th>
+			<th style="text-align: center; width: 80px;">Branches</th>
+			<th style="text-align: right; width: 100px;">Accounts</th>
+			<th style="text-align: right; width: 120px;">Collection</th>
+			<th style="text-align: right; width: 110px;">Pending</th>
+		`;
+
+		const rowsHtml = [1,2,3,4,5,6].map(i => isPta ? `
+			<tr style="background: ${i%2===0 ? '#f8fafc' : '#fff'};">
+				<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
+				<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
+				<td><div class="mis-skeleton-pulse" style="width: 50px; margin: auto;"></div></td>
+				<td><div class="mis-skeleton-pulse" style="width: ${140 + Math.random()*60}px;"></div></td>
+				<td><div class="mis-skeleton-pulse" style="width: 40px; margin-left: auto;"></div></td>
+				<td><div class="mis-skeleton-pulse" style="width: ${70 + Math.random()*30}px; margin-left: auto;"></div></td>
+				<td><div class="mis-skeleton-pulse" style="width: ${70 + Math.random()*30}px; margin-left: auto;"></div></td>
+				<td><div class="mis-skeleton-pulse" style="width: 45px; margin-left: auto;"></div></td>
+				<td><div class="mis-skeleton-pulse" style="width: ${60 + Math.random()*30}px; margin-left: auto;"></div></td>
+				<td><div class="mis-skeleton-pulse" style="width: 45px; margin-left: auto;"></div></td>
+			</tr>
+		` : `
+			<tr style="background: ${i%2===0 ? '#f8fafc' : '#fff'};">
+				<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
+				<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
+				<td><div class="mis-skeleton-pulse" style="width: ${120 + Math.random()*60}px;"></div></td>
+				<td><div class="mis-skeleton-pulse" style="width: 30px; margin: auto;"></div></td>
+				<td><div class="mis-skeleton-pulse" style="width: ${50 + Math.random()*30}px; margin-left: auto;"></div></td>
+				<td><div class="mis-skeleton-pulse" style="width: ${60 + Math.random()*30}px; margin-left: auto;"></div></td>
+				<td><div class="mis-skeleton-pulse" style="width: ${50 + Math.random()*20}px; margin-left: auto;"></div></td>
+			</tr>
+		`).join('');
+
 		return `
 			<style>
 				.mis-skeleton-table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; }
@@ -6089,29 +6137,12 @@ class DrishtiDashboard {
 				<span style="font-weight: 600; color: #417d81; font-size: 13px;">${label || "Fetching data..."}</span>
 			</div>
 			<table class="mis-skeleton-table">
-				<thead><tr>
-					<th style="width: 30px;"><div class="mis-skeleton-pulse" style="width: 14px; height: 14px;"></div></th>
-					<th style="width: 40px; text-align: center;">Sr</th>
-					<th>Z / R / D / SOL Name</th>
-					<th style="text-align: center; width: 80px;">Branches</th>
-					<th style="text-align: right; width: 100px;">Accounts</th>
-					<th style="text-align: right; width: 120px;">Collection</th>
-					<th style="text-align: right; width: 110px;">Pending</th>
-				</tr></thead>
-				<tbody>
-					${[1,2,3,4,5].map(i => `<tr style="background: ${i%2===0 ? '#f8fafc' : '#fff'};">
-						<td><div class="mis-skeleton-pulse" style="width: 14px; height: 14px; margin: auto;"></div></td>
-						<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
-						<td><div class="mis-skeleton-pulse" style="width: ${120 + Math.random()*60}px;"></div></td>
-						<td><div class="mis-skeleton-pulse" style="width: 30px; margin: auto;"></div></td>
-						<td><div class="mis-skeleton-pulse" style="width: ${50 + Math.random()*30}px; margin-left: auto;"></div></td>
-						<td><div class="mis-skeleton-pulse" style="width: ${60 + Math.random()*30}px; margin-left: auto;"></div></td>
-						<td><div class="mis-skeleton-pulse" style="width: ${50 + Math.random()*20}px; margin-left: auto;"></div></td>
-					</tr>`).join('')}
-				</tbody>
+				<thead><tr>${headersHtml}</tr></thead>
+				<tbody>${rowsHtml}</tbody>
 			</table>
 		`;
 	}
+
 
 	build4LevelTree(data, metricCols) {
 		const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(Math.round(val || 0));
@@ -8183,6 +8214,9 @@ class DrishtiDashboard {
                     <button class="tab-btn" data-tab="branch">
                         Branch Wise
                     </button>
+                    <button class="tab-btn" data-tab="product_tgt_ach">
+                        Product Wise TGT VS ACH
+                    </button>
 
                     <!-- Search and Clear Actions -->
                     <div style="margin-left: auto; display: flex; align-items: center; gap: 10px; padding-bottom: 6px;">
@@ -8501,7 +8535,7 @@ class DrishtiDashboard {
 	}
 
 	switchTab(tabId) {
-		if (this.isBranchManager && ["zone", "category", "product", "agent"].includes(tabId)) {
+		if (this.isBranchManager && ["zone", "category", "product", "agent", "product_tgt_ach"].includes(tabId)) {
 			tabId = "branch";
 		}
 
@@ -8700,7 +8734,35 @@ class DrishtiDashboard {
 
 					self.processNewApiResponse();
 					self.updateFilterCounts();
-					self.render();
+					if (self.state.activeTab === "product_tgt_ach") {
+						self.isProductTgtAchLoading = true;
+						const dataContainer = self.page.main.find("#data-container");
+						if (dataContainer.length) {
+							dataContainer.css("opacity", 1);
+							dataContainer.html(self.buildMisSkeletonTable("Loading Product Wise TGT VS ACH..."));
+						}
+						frappe.call({
+							method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_product_wise_tgt_vs_ach_data",
+							args: {
+								financial_year: self.state.financialYear,
+								selected_date: apiDate,
+								target_type: self.normalizeTargetType(self.state.targetType)
+							},
+							callback: (res) => {
+								self.isProductTgtAchLoading = false;
+								self.productTgtAchRawData = res.message || [];
+								self.render();
+							},
+							error: () => {
+								self.isProductTgtAchLoading = false;
+								self.render();
+							}
+						});
+					} else {
+						self.render();
+					}
+
+
 				}
 			},
 			error: (err) => {
@@ -9387,6 +9449,8 @@ class DrishtiDashboard {
 				htmlContent = this.renderAgentWiseTable(this.agentData);
 			} else if (this.state.activeTab === "branch") {
 				htmlContent = this.buildBranchTable(filteredBranches, this.months);
+			} else if (this.state.activeTab === "product_tgt_ach") {
+				htmlContent = this.renderProductWiseTgtVsAchTable(filteredBranches);
 			}
 
 			dataContainer.html(htmlContent);
@@ -9407,7 +9471,10 @@ class DrishtiDashboard {
 				this.attachTotalMovementPopupHandler();
 			} else if (this.state.activeTab === "agent") {
 				this.attachAgentExpandHandlers();
+			} else if (this.state.activeTab === "product_tgt_ach") {
+				this.attachProductTgtAchExpandHandlers();
 			}
+
 
 			dataContainer.css("opacity", 1);
 		}, 200);
@@ -12692,4 +12759,343 @@ class DrishtiDashboard {
 
 		$("head").append(styles);
 	}
+
+	renderProductWiseTgtVsAchTable(filteredBranches) {
+		const self = this;
+		if (self.isProductTgtAchLoading) {
+			return self.buildMisSkeletonTable("Loading Product Wise TGT VS ACH...");
+		}
+		const rawData = self.productTgtAchRawData || [];
+		if (!rawData || rawData.length === 0) {
+
+			return `
+				<div style="text-align: center; padding: 50px; color: #778da9; font-size: 16px; font-family: 'Inter', sans-serif;">
+					<div style="font-size: 48px; margin-bottom: 15px;">📭</div>
+					<div style="font-weight: 600; margin-bottom: 8px;">No Product Wise TGT VS ACH data available</div>
+				</div>
+			`;
+		}
+
+		const allowedSolIds = new Set((filteredBranches || []).map(b => String(b.sol_id || b.sol || "").trim()));
+		const filteredRaw = allowedSolIds.size > 0 
+			? rawData.filter(r => allowedSolIds.has(String(r.sol_id || "").trim()))
+			: rawData;
+
+		const zones = {};
+
+		filteredRaw.forEach(row => {
+			const z = row.zone || "Unknown Zone";
+			const r = row.region || "Unknown Region";
+			const d = row.district || "Unknown District";
+			const solId = String(row.sol_id || "").trim();
+			const bName = row.branch_name || solId;
+			const prod = row.product;
+			const allocPct = parseFloat(row.alloc_pct) || 0;
+			const tgt = parseFloat(row.tgt) || 0;
+			const ach = parseFloat(row.ach) || 0;
+
+			if (!zones[z]) zones[z] = { name: z, tgt: 0, ach: 0, alloc_pcts: {}, regions: {} };
+			zones[z].tgt += tgt;
+			zones[z].ach += ach;
+			zones[z].alloc_pcts[prod] = allocPct;
+
+			if (!zones[z].regions[r]) zones[z].regions[r] = { name: r, tgt: 0, ach: 0, districts: {} };
+			zones[z].regions[r].tgt += tgt;
+			zones[z].regions[r].ach += ach;
+
+			if (!zones[z].regions[r].districts[d]) zones[z].regions[r].districts[d] = { name: d, tgt: 0, ach: 0, sols: {} };
+			zones[z].regions[r].districts[d].tgt += tgt;
+			zones[z].regions[r].districts[d].ach += ach;
+
+			if (!zones[z].regions[r].districts[d].sols[solId]) {
+				zones[z].regions[r].districts[d].sols[solId] = {
+					sol_id: solId,
+					branch_name: bName,
+					tgt: 0,
+					ach: 0,
+					products: {}
+				};
+			}
+			const solObj = zones[z].regions[r].districts[d].sols[solId];
+			solObj.tgt += tgt;
+			solObj.ach += ach;
+			solObj.products[prod] = { product: prod, alloc_pct: allocPct, tgt: tgt, ach: ach };
+		});
+
+		const fmtAmt = (val) => {
+			if (val === null || val === undefined) return "-";
+			return "₹" + self.formatCurrency(val);
+		};
+
+		const fmtPct = (tgt, ach) => {
+			if (!tgt || tgt <= 0) return "0.00%";
+			return ((ach / tgt) * 100).toFixed(2) + "%";
+		};
+
+		const fmtGap = (tgt, ach) => {
+			const gap = tgt - ach;
+			return fmtAmt(gap);
+		};
+
+		const fmtGapPct = (tgt, ach) => {
+			if (!tgt || tgt <= 0) return "0.00%";
+			const gap = tgt - ach;
+			return ((gap / tgt) * 100).toFixed(2) + "%";
+		};
+
+		if (!self.state.expandedPtaZones) self.state.expandedPtaZones = {};
+		if (!self.state.expandedPtaRegions) self.state.expandedPtaRegions = {};
+		if (!self.state.expandedPtaDistricts) self.state.expandedPtaDistricts = {};
+		if (!self.state.expandedPtaSols) self.state.expandedPtaSols = {};
+
+		let grandTgt = 0;
+		let grandAch = 0;
+		let sr = 0;
+		let rowsHtml = "";
+		const zAllocStr = "-";
+
+		Object.keys(zones).sort().forEach(zoneName => {
+			const zObj = zones[zoneName];
+			sr++;
+			grandTgt += zObj.tgt;
+			grandAch += zObj.ach;
+
+			const zoneExpanded = !!self.state.expandedPtaZones[zoneName];
+			const zGapRaw = zObj.tgt - zObj.ach;
+
+			rowsHtml += `
+				<tr class="pta-zone-row" data-zone="${zoneName}" style="cursor: pointer; background: #e2e8f0; font-weight: bold; border-bottom: 2px solid #cbd5e1;">
+					<td style="text-align: center; width: 40px;"><input type="checkbox" class="pta-row-checkbox" style="cursor: pointer; transform: scale(1.1);"></td>
+					<td style="text-align: center; width: 40px;">${sr}</td>
+					<td style="text-align: center; width: 90px;"><span style="background: #0284c7; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Zone</span></td>
+					<td style="text-align: left; padding-left: 10px;">
+						<span class="pta-toggle" style="margin-right: 6px; font-size: 11px; color: #475569;">${zoneExpanded ? "▼" : "▶"}</span>
+						<strong>${zoneName}</strong>
+					</td>
+					<td style="text-align: right; padding-right: 12px; font-weight: 700; color: #0284c7;">${zAllocStr}</td>
+					<td style="text-align: right; padding-right: 12px;">${fmtAmt(zObj.tgt)}</td>
+					<td style="text-align: right; padding-right: 12px;">${fmtAmt(zObj.ach)}</td>
+					<td style="text-align: right; padding-right: 12px;">${fmtPct(zObj.tgt, zObj.ach)}</td>
+					<td style="text-align: right; padding-right: 12px; color: ${zGapRaw > 0 ? '#ef4444' : '#10b981'};">${fmtGap(zObj.tgt, zObj.ach)}</td>
+					<td style="text-align: right; padding-right: 12px; color: ${zGapRaw > 0 ? '#ef4444' : '#10b981'};">${fmtGapPct(zObj.tgt, zObj.ach)}</td>
+				</tr>
+			`;
+
+			Object.keys(zObj.regions).sort().forEach(regName => {
+				const rObj = zObj.regions[regName];
+				const regKey = zoneName + "::" + regName;
+				const regExpanded = !!self.state.expandedPtaRegions[regKey];
+				const showRegion = zoneExpanded;
+				const rGapRaw = rObj.tgt - rObj.ach;
+
+				rowsHtml += `
+					<tr class="pta-region-row" data-key="${regKey}" style="display: ${showRegion ? 'table-row' : 'none'}; cursor: pointer; background: #f1f5f9; font-weight: 600; border-bottom: 1px solid #cbd5e1; border-left: 4px solid #417d81;">
+						<td style="text-align: center;"><input type="checkbox" class="pta-row-checkbox" style="cursor: pointer; transform: scale(1.1);"></td>
+						<td></td>
+						<td style="text-align: center;"><span style="background: #0d9488; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Region</span></td>
+						<td style="text-align: left; padding-left: 28px; color: #334155;">
+							<span class="pta-toggle" style="margin-right: 6px; font-size: 11px; color: #64748b;">${regExpanded ? "▼" : "▶"}</span>
+							${regName}
+						</td>
+						<td style="text-align: right; padding-right: 12px; font-weight: 600; color: #0d9488;">${zAllocStr}</td>
+						<td style="text-align: right; padding-right: 12px;">${fmtAmt(rObj.tgt)}</td>
+						<td style="text-align: right; padding-right: 12px;">${fmtAmt(rObj.ach)}</td>
+						<td style="text-align: right; padding-right: 12px;">${fmtPct(rObj.tgt, rObj.ach)}</td>
+						<td style="text-align: right; padding-right: 12px; color: ${rGapRaw > 0 ? '#ef4444' : '#10b981'};">${fmtGap(rObj.tgt, rObj.ach)}</td>
+						<td style="text-align: right; padding-right: 12px; color: ${rGapRaw > 0 ? '#ef4444' : '#10b981'};">${fmtGapPct(rObj.tgt, rObj.ach)}</td>
+					</tr>
+				`;
+
+				Object.keys(rObj.districts).sort().forEach(distName => {
+					const dObj = rObj.districts[distName];
+					const distKey = regKey + "::" + distName;
+					const distExpanded = !!self.state.expandedPtaDistricts[distKey];
+					const showDist = zoneExpanded && regExpanded;
+					const dGapRaw = dObj.tgt - dObj.ach;
+
+					rowsHtml += `
+						<tr class="pta-district-row" data-key="${distKey}" style="display: ${showDist ? 'table-row' : 'none'}; cursor: pointer; background: #fafaf9; font-weight: 600; border-bottom: 1px solid #e7e5e4;">
+							<td style="text-align: center;"><input type="checkbox" class="pta-row-checkbox" style="cursor: pointer; transform: scale(1.1);"></td>
+							<td></td>
+							<td style="text-align: center;"><span style="background: #d97706; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">District</span></td>
+							<td style="text-align: left; padding-left: 48px; color: #44403c;">
+								<span class="pta-toggle" style="margin-right: 6px; font-size: 11px; color: #78716c;">${distExpanded ? "▼" : "▶"}</span>
+								${distName}
+							</td>
+							<td style="text-align: right; padding-right: 12px; font-weight: 600; color: #d97706;">${zAllocStr}</td>
+							<td style="text-align: right; padding-right: 12px;">${fmtAmt(dObj.tgt)}</td>
+							<td style="text-align: right; padding-right: 12px;">${fmtAmt(dObj.ach)}</td>
+							<td style="text-align: right; padding-right: 12px;">${fmtPct(dObj.tgt, dObj.ach)}</td>
+							<td style="text-align: right; padding-right: 12px; color: ${dGapRaw > 0 ? '#ef4444' : '#10b981'};">${fmtGap(dObj.tgt, dObj.ach)}</td>
+							<td style="text-align: right; padding-right: 12px; color: ${dGapRaw > 0 ? '#ef4444' : '#10b981'};">${fmtGapPct(dObj.tgt, dObj.ach)}</td>
+						</tr>
+					`;
+
+					Object.keys(dObj.sols).sort().forEach(solId => {
+						const solObj = dObj.sols[solId];
+						const solKey = distKey + "::" + solId;
+						const solExpanded = !!self.state.expandedPtaSols[solKey];
+						const showSol = zoneExpanded && regExpanded && distExpanded;
+						const sGapRaw = solObj.tgt - solObj.ach;
+
+						rowsHtml += `
+							<tr class="pta-sol-row" data-key="${solKey}" style="display: ${showSol ? 'table-row' : 'none'}; cursor: pointer; background: #ffffff; border-bottom: 1px solid #e2e8f0;">
+								<td style="text-align: center;"><input type="checkbox" class="pta-row-checkbox" style="cursor: pointer; transform: scale(1.1);"></td>
+								<td></td>
+								<td style="text-align: center;"><span style="background: #4f46e5; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">SOL</span></td>
+								<td style="text-align: left; padding-left: 68px; color: #475569; font-weight: 600;">
+									<span class="pta-toggle" style="margin-right: 6px; font-size: 11px; color: #94a3b8;">${solExpanded ? "▼" : "▶"}</span>
+									${solObj.sol_id} - ${solObj.branch_name}
+								</td>
+								<td style="text-align: right; padding-right: 12px; font-weight: 600; color: #4f46e5;">${zAllocStr}</td>
+								<td style="text-align: right; padding-right: 12px;">${fmtAmt(solObj.tgt)}</td>
+								<td style="text-align: right; padding-right: 12px;">${fmtAmt(solObj.ach)}</td>
+								<td style="text-align: right; padding-right: 12px;">${fmtPct(solObj.tgt, solObj.ach)}</td>
+								<td style="text-align: right; padding-right: 12px; color: ${sGapRaw > 0 ? '#ef4444' : '#10b981'};">${fmtGap(solObj.tgt, solObj.ach)}</td>
+								<td style="text-align: right; padding-right: 12px; color: ${sGapRaw > 0 ? '#ef4444' : '#10b981'};">${fmtGapPct(solObj.tgt, solObj.ach)}</td>
+							</tr>
+						`;
+
+						const productList = ["CASA", "DAM", "DD", "FD", "RD", "SMBG", "SHARE"];
+						productList.forEach((pg, pIdx) => {
+							const pItem = solObj.products[pg] || { product: pg, alloc_pct: 0, tgt: 0, ach: 0 };
+							const showProd = zoneExpanded && regExpanded && distExpanded && solExpanded;
+							const pGapRaw = pItem.tgt - pItem.ach;
+							const bg = pIdx % 2 === 0 ? "#fafafa" : "#f5f5f5";
+							const pAllocStr = (pItem.alloc_pct || 0) > 0 ? pItem.alloc_pct.toFixed(2) + "%" : "-";
+
+							rowsHtml += `
+								<tr class="pta-prod-row" style="display: ${showProd ? 'table-row' : 'none'}; background: ${bg}; border-bottom: 1px solid #f1f5f9;">
+									<td style="text-align: center;"><input type="checkbox" class="pta-row-checkbox" style="cursor: pointer; transform: scale(1.1);"></td>
+									<td></td>
+									<td style="text-align: center;"><span style="background: #64748b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Product</span></td>
+									<td style="text-align: left; padding-left: 88px; color: #64748b; font-weight: 500;">
+										└─ ${pg}
+									</td>
+									<td style="text-align: right; padding-right: 12px; font-weight: 600; color: #475569;">${pAllocStr}</td>
+									<td style="text-align: right; padding-right: 12px;">${fmtAmt(pItem.tgt)}</td>
+									<td style="text-align: right; padding-right: 12px;">${fmtAmt(pItem.ach)}</td>
+									<td style="text-align: right; padding-right: 12px;">${fmtPct(pItem.tgt, pItem.ach)}</td>
+									<td style="text-align: right; padding-right: 12px; color: ${pGapRaw > 0 ? '#ef4444' : '#10b981'};">${fmtGap(pItem.tgt, pItem.ach)}</td>
+									<td style="text-align: right; padding-right: 12px; color: ${pGapRaw > 0 ? '#ef4444' : '#10b981'};">${fmtGapPct(pItem.tgt, pItem.ach)}</td>
+								</tr>
+							`;
+						});
+					});
+				});
+			});
+		});
+
+		const grandGapRaw = grandTgt - grandAch;
+
+		return `
+			<style>
+				#product-tgt-ach-table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: 'Inter', sans-serif; }
+				#product-tgt-ach-table thead { position: sticky; top: 0; z-index: 20; background: #ffffff; }
+				#product-tgt-ach-table tfoot { position: sticky; bottom: 0; z-index: 20; }
+				#product-tgt-ach-table tfoot tr { box-shadow: 0 -2px 6px rgba(0,0,0,0.1); }
+				#product-tgt-ach-table tbody tr:hover { background-color: #dcfce7 !important; }
+				#product-tgt-ach-table tbody tr.pta-row-selected { background-color: #fef3c7 !important; font-weight: 600; }
+			</style>
+			<div style="overflow-x: auto; max-height: 75vh; overflow-y: auto;">
+				<table id="product-tgt-ach-table" class="table table-bordered">
+					<thead>
+						<tr style="background: linear-gradient(180deg, #3d7579 0%, #346569 100%); color: #ffffff;">
+							<th style="width: 40px; text-align: center;"><input type="checkbox" class="pta-select-all" style="cursor: pointer; transform: scale(1.1);" title="Select All"></th>
+							<th style="width: 40px; text-align: center;">Sr</th>
+							<th style="width: 90px; text-align: center;">Level</th>
+							<th style="text-align: left; padding-left: 12px;">Z / R / D / SOL / Product Group</th>
+							<th style="width: 100px; text-align: right; padding-right: 12px;">Target %</th>
+							<th style="width: 140px; text-align: right; padding-right: 12px;">Target (TGT)</th>
+							<th style="width: 140px; text-align: right; padding-right: 12px;">Achieved (ACH)</th>
+							<th style="width: 100px; text-align: right; padding-right: 12px;">ACH %</th>
+							<th style="width: 140px; text-align: right; padding-right: 12px;">Ach Gap</th>
+							<th style="width: 100px; text-align: right; padding-right: 12px;">Ach Gap %</th>
+						</tr>
+					</thead>
+					<tbody>
+						${rowsHtml}
+					</tbody>
+					<tfoot>
+						<tr style="background: #1e293b; color: #ffffff; font-weight: 700;">
+							<td></td>
+							<td></td>
+							<td></td>
+							<td style="text-align: left; padding-left: 12px;">TOTAL</td>
+							<td style="text-align: right; padding-right: 12px; color: #94a3b8;">-</td>
+							<td style="text-align: right; padding-right: 12px;">${fmtAmt(grandTgt)}</td>
+							<td style="text-align: right; padding-right: 12px;">${fmtAmt(grandAch)}</td>
+							<td style="text-align: right; padding-right: 12px;">${fmtPct(grandTgt, grandAch)}</td>
+							<td style="text-align: right; padding-right: 12px; color: ${grandGapRaw > 0 ? '#fca5a5' : '#6ee7b7'};">${fmtGap(grandTgt, grandAch)}</td>
+							<td style="text-align: right; padding-right: 12px; color: ${grandGapRaw > 0 ? '#fca5a5' : '#6ee7b7'};">${fmtGapPct(grandTgt, grandAch)}</td>
+						</tr>
+					</tfoot>
+				</table>
+			</div>
+		`;
+	}
+
+	attachProductTgtAchExpandHandlers() {
+		const self = this;
+		const container = this.page.main.find("#data-container");
+
+		container.off("click", ".pta-row-checkbox").on("click", ".pta-row-checkbox", function (e) {
+			e.stopPropagation();
+		});
+
+		container.off("change", ".pta-row-checkbox").on("change", ".pta-row-checkbox", function (e) {
+			e.stopPropagation();
+			const $tr = $(this).closest("tr");
+			if ($(this).is(":checked")) {
+				$tr.addClass("pta-row-selected");
+			} else {
+				$tr.removeClass("pta-row-selected");
+			}
+		});
+
+		container.off("click", ".pta-select-all").on("click", ".pta-select-all", function (e) {
+			e.stopPropagation();
+		});
+
+		container.off("change", ".pta-select-all").on("change", ".pta-select-all", function (e) {
+			e.stopPropagation();
+			const isChecked = $(this).is(":checked");
+			const $rows = container.find("#product-tgt-ach-table tbody tr");
+			$rows.find(".pta-row-checkbox").prop("checked", isChecked);
+			if (isChecked) {
+				$rows.addClass("pta-row-selected");
+			} else {
+				$rows.removeClass("pta-row-selected");
+			}
+		});
+
+		container.off("click", ".pta-zone-row").on("click", ".pta-zone-row", function (e) {
+			if ($(e.target).is(".pta-row-checkbox")) return;
+			const zone = $(this).data("zone");
+			self.state.expandedPtaZones[zone] = !self.state.expandedPtaZones[zone];
+			self.render();
+		});
+
+		container.off("click", ".pta-region-row").on("click", ".pta-region-row", function (e) {
+			if ($(e.target).is(".pta-row-checkbox")) return;
+			const key = $(this).data("key");
+			self.state.expandedPtaRegions[key] = !self.state.expandedPtaRegions[key];
+			self.render();
+		});
+
+		container.off("click", ".pta-district-row").on("click", ".pta-district-row", function (e) {
+			if ($(e.target).is(".pta-row-checkbox")) return;
+			const key = $(this).data("key");
+			self.state.expandedPtaDistricts[key] = !self.state.expandedPtaDistricts[key];
+			self.render();
+		});
+
+		container.off("click", ".pta-sol-row").on("click", ".pta-sol-row", function (e) {
+			if ($(e.target).is(".pta-row-checkbox")) return;
+			const key = $(this).data("key");
+			self.state.expandedPtaSols[key] = !self.state.expandedPtaSols[key];
+			self.render();
+		});
+	}
+
 }

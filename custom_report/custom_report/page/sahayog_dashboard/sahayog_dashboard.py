@@ -5843,6 +5843,143 @@ def get_maturity_tracker_data(selected_date=None):
     return result
 
 
+@frappe.whitelist()
+@sahayog_cache(ttl=3600)
+def get_product_wise_tgt_vs_ach_data(financial_year=None, selected_date=None, target_type="Monthly"):
+
+    import datetime
+    from collections import defaultdict
+
+    if not financial_year:
+        today_dt = datetime.date.today()
+        if today_dt.month >= 4:
+            financial_year = f"{today_dt.year}-{today_dt.year + 1}"
+        else:
+            financial_year = f"{today_dt.year - 1}-{today_dt.year}"
+
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    def norm_zone(z):
+        return str(z or "").upper().replace("-", "").replace(" ", "").strip()
+
+    # 1. Fetch GL Wise Target Allocation for the financial_year
+    gl_target_name = frappe.db.get_value("GL Wise Target", {"financial_year": financial_year}, "name")
+    if not gl_target_name:
+        gl_target_name = frappe.db.get_value("GL Wise Target", {}, "name", order_by="modified desc")
+
+    zone_allocations = {}
+    if gl_target_name:
+        alloc_records = frappe.get_all(
+            "GL Wise Target Allocation",
+            filters={"parent": gl_target_name},
+            fields=["zone", "casa", "dam", "dd", "fd", "rd", "smbg", "share"]
+        )
+        for a in alloc_records:
+            z_key = norm_zone(a.zone)
+            zone_allocations[z_key] = {
+                "CASA": float(a.casa or 0),
+                "DAM": float(a.dam or 0),
+                "DD": float(a.dd or 0),
+                "FD": float(a.fd or 0),
+                "RD": float(a.rd or 0),
+                "SMBG": float(a.smbg or 0),
+                "SHARE": float(a.share or 0),
+            }
+
+    # 2. Get month for Target Vs Achivement
+    try:
+        dt_obj = datetime.datetime.strptime(str(selected_date), "%Y-%m-%d").date()
+    except Exception:
+        dt_obj = datetime.date.today()
+
+    month_key = dt_obj.strftime("%b").upper()
+
+    # 3. Fetch Overall Targets for each SOL from Target Vs Achivement
+    target_filters = {"type": target_type or "Monthly"}
+    if financial_year:
+        target_filters["financial_year"] = financial_year
+    if (target_type or "Monthly") == "Monthly":
+        target_filters["month"] = month_key
+
+    tva_records = frappe.get_all(
+        "Target Vs Achivement",
+        filters=target_filters,
+        fields=["sol_id", "target"]
+    )
+    if not tva_records and "financial_year" in target_filters:
+        target_filters_fb = {k: v for k, v in target_filters.items() if k != "financial_year"}
+        tva_records = frappe.get_all(
+            "Target Vs Achivement",
+            filters=target_filters_fb,
+            fields=["sol_id", "target"]
+        )
+
+    sol_overall_targets = defaultdict(float)
+    for t in tva_records:
+        sid = str(t.sol_id or "").strip()
+        sol_overall_targets[sid] += float(t.target or 0)
+
+    # 4. Fetch Achievements from Product Wise Report
+    pwr_records = frappe.db.sql("""
+        SELECT sol_id, product, SUM(amount) as amount
+        FROM `tabProduct Wise Report`
+        WHERE date = %s
+        GROUP BY sol_id, product
+    """, (selected_date,), as_dict=True)
+
+    if not pwr_records:
+        latest_date = frappe.db.get_value("Product Wise Report", {}, "date", order_by="date desc")
+        if latest_date:
+            pwr_records = frappe.db.sql("""
+                SELECT sol_id, product, SUM(amount) as amount
+                FROM `tabProduct Wise Report`
+                WHERE date = %s
+                GROUP BY sol_id, product
+            """, (latest_date,), as_dict=True)
+
+    sol_pwr_ach = defaultdict(lambda: defaultdict(float))
+    for r in pwr_records:
+        sid = str(r.sol_id or "").strip()
+        prod = str(r.product or "").strip().upper()
+        sol_pwr_ach[sid][prod] += float(r.amount or 0)
+
+    branches_map = get_sahayog_branches_cached()
+    product_groups = ["CASA", "DAM", "DD", "FD", "RD", "SMBG", "SHARE"]
+
+    result = []
+    for sol_id, b in branches_map.items():
+        zone = b.get("zone", "Unknown")
+        region = b.get("region", "Unknown")
+        district = b.get("district", "Unknown")
+        branch_name = b.get("branch_name", sol_id)
+
+        overall_target = sol_overall_targets.get(sol_id, 0.0)
+        z_alloc = zone_allocations.get(norm_zone(zone), {})
+
+        for pg in product_groups:
+            alloc_pct = z_alloc.get(pg, 0.0)
+            tgt = (overall_target * alloc_pct) / 100.0
+            ach = sol_pwr_ach.get(sol_id, {}).get(pg, 0.0)
+            result.append({
+                "sol_id": sol_id,
+                "branch_name": branch_name,
+                "zone": zone,
+                "region": region,
+                "district": district,
+                "product": pg,
+                "alloc_pct": alloc_pct,
+                "tgt": tgt,
+                "ach": ach
+            })
+
+    return result
+
+
+    return result
+
+
+
 
 
 def resolve_ss_vs_date(target_date=None):
