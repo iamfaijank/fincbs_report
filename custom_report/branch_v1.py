@@ -189,10 +189,12 @@ def get_bm_details_from_employee(sol_id: str):
             possible_branch_values.append(bd["sol_id"])
 
     conditions = [
+        "status = 'Active'",
         "designation LIKE %(bm_desig)s",
         "designation NOT LIKE %(excl_assist)s",
         "designation NOT LIKE %(excl_jll)s",
     ]
+
     params = {
         "bm_desig": "%Branch Manager%",
         "excl_assist": "%Assistant%",
