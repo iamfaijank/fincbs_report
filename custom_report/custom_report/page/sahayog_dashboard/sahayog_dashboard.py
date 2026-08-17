@@ -5494,6 +5494,7 @@ def get_raw_demand_collection_data(selected_date=None):
 @frappe.whitelist()
 @sahayog_cache(ttl=86400)
 def get_agent_wise_demand_collection_data(selected_date=None):
+
     import datetime
     import re
     if not selected_date:
@@ -5541,35 +5542,43 @@ def get_agent_wise_demand_collection_data(selected_date=None):
                 except ValueError:
                     pass
 
-    designation_map = {}
+    emp_map = {}
     if emp_ids:
-        employees = frappe.get_all("Employee", filters={"name": ["in", list(emp_ids)]}, fields=["name", "designation"])
+        employees = frappe.get_all("Employee", filters={"name": ["in", list(emp_ids)]}, fields=["name", "employee_name", "designation"])
         for emp in employees:
-            designation_map[emp.name] = emp.designation or ""
+            emp_map[emp.name] = {
+                "name": emp.employee_name or "",
+                "designation": emp.designation or ""
+            }
 
     summary = {}
     for r in records:
-        sid = r.sol_id
+        sid = str(r.sol_id or "").strip()
         if not sid:
             continue
         br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
-        rm_id = r.agent_code or "Unknown"
-        rm_name = r.agent_name or "Unknown"
-        auth_id = r.auth_id or ""
-        auth_name = r.auth_name or ""
+        rm_id = str(r.agent_code or "").strip() or "Unknown"
 
-        designation = ""
-        if auth_id and auth_id != "Unknown":
-            digits = re.findall(r'\d+', auth_id)
-            if digits:
-                try:
-                    emp_id = str(int(''.join(digits)))
-                    designation = designation_map.get(emp_id, "")
-                except ValueError:
-                    pass
-
-        key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{rm_id}||{rm_name}||{auth_id}||{auth_name}"
+        key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{rm_id}"
         if key not in summary:
+            rm_name = str(r.agent_name or "").strip() or "Unknown"
+            auth_id = str(r.auth_id or "").strip() or ""
+            
+            canonical_name = ""
+            canonical_desig = ""
+            if auth_id and auth_id != "Unknown":
+                digits = re.findall(r'\d+', auth_id)
+                if digits:
+                    try:
+                        emp_id = str(int(''.join(digits)))
+                        emp_info = emp_map.get(emp_id, {})
+                        canonical_name = emp_info.get("name", "")
+                        canonical_desig = emp_info.get("designation", "")
+                    except ValueError:
+                        pass
+
+            final_auth_name = canonical_name if canonical_name else (r.auth_name or "")
+
             summary[key] = {
                 "zone": br["zone"],
                 "region": br["region"],
@@ -5579,8 +5588,8 @@ def get_agent_wise_demand_collection_data(selected_date=None):
                 "rm_id": rm_id,
                 "rm_name": rm_name,
                 "auth_id": auth_id,
-                "auth_name": auth_name,
-                "designation": designation,
+                "auth_name": final_auth_name,
+                "designation": canonical_desig,
                 "monthly_demand_amount": 0.0,
                 "monthly_collection": 0.0
             }
@@ -5600,8 +5609,21 @@ def get_staff_wise_demand_collection_data(selected_date=None):
     if not selected_date:
         selected_date = str(datetime.date.today())
 
-    records = frappe.db.get_all("DD Tracker Report", filters={"date": selected_date}, fields=["sol_id", "auth_id", "auth_name", "monthly_demand", "monthly_collection"])
+    records = frappe.db.get_all(
+        "DD Tracker Report",
+        filters={"date": selected_date},
+        fields=["sol_id", "auth_id", "auth_name", "monthly_demand", "monthly_collection"]
+    )
     
+    if not records:
+        latest_date = frappe.db.get_value("DD Tracker Report", {}, "date", order_by="date desc")
+        if latest_date:
+            records = frappe.db.get_all(
+                "DD Tracker Report",
+                filters={"date": latest_date},
+                fields=["sol_id", "auth_id", "auth_name", "monthly_demand", "monthly_collection"]
+            )
+
     if not records:
         return []
 
@@ -5628,34 +5650,41 @@ def get_staff_wise_demand_collection_data(selected_date=None):
                     emp_ids.add(emp_id)
                 except ValueError:
                     pass
-    
-    designation_map = {}
+
+    emp_map = {}
     if emp_ids:
-        employees = frappe.get_all("Employee", filters={"name": ["in", list(emp_ids)]}, fields=["name", "designation"])
+        employees = frappe.get_all("Employee", filters={"name": ["in", list(emp_ids)]}, fields=["name", "employee_name", "designation"])
         for emp in employees:
-            designation_map[emp.name] = emp.designation or ""
+            emp_map[emp.name] = {
+                "name": emp.employee_name or "",
+                "designation": emp.designation or ""
+            }
 
     summary = {}
     for r in records:
-        sid = r.sol_id
+        sid = str(r.sol_id or "").strip()
         if not sid:
             continue
         br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
-        auth_id = r.auth_id or "Unknown"
-        auth_name = r.auth_name or "Unknown"
+        auth_id = str(r.auth_id or "").strip() or "Unknown"
 
-        designation = ""
-        if auth_id and auth_id != "Unknown":
-            digits = re.findall(r'\d+', auth_id)
-            if digits:
-                try:
-                    emp_id = str(int(''.join(digits)))
-                    designation = designation_map.get(emp_id) or ""
-                except ValueError:
-                    pass
-
-        key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{auth_id}||{auth_name}||{designation}"
+        key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{auth_id}"
         if key not in summary:
+            canonical_name = ""
+            canonical_desig = ""
+            if auth_id and auth_id != "Unknown":
+                digits = re.findall(r'\d+', auth_id)
+                if digits:
+                    try:
+                        emp_id = str(int(''.join(digits)))
+                        emp_info = emp_map.get(emp_id, {})
+                        canonical_name = emp_info.get("name", "")
+                        canonical_desig = emp_info.get("designation", "")
+                    except ValueError:
+                        pass
+
+            final_auth_name = canonical_name if canonical_name else (r.auth_name or "Unknown")
+
             summary[key] = {
                 "zone": br["zone"],
                 "region": br["region"],
@@ -5663,8 +5692,8 @@ def get_staff_wise_demand_collection_data(selected_date=None):
                 "sol_id": sid,
                 "sol_desc": br["branch_name"],
                 "auth_id": auth_id,
-                "auth_name": auth_name,
-                "designation": designation,
+                "auth_name": final_auth_name,
+                "designation": canonical_desig,
                 "monthly_demand_amount": 0.0,
                 "monthly_collection": 0.0
             }
@@ -5674,6 +5703,7 @@ def get_staff_wise_demand_collection_data(selected_date=None):
 
     result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
     return result
+
 
 @frappe.whitelist()
 @sahayog_cache(ttl=86400)
