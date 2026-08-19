@@ -1779,6 +1779,16 @@ JOBS_REGISTRY = [
 		"doctype": "DD Tracker Report",
 		"filters": {},
 		"error_title": "daily_sync_dd_tracker"
+	},
+	{
+		"key": "daily_sync_rd_and_smbg_pending",
+		"title": "RD & SMBG Pending Sync",
+		"category": "Financial Trackers",
+		"schedule_time": "06:45 AM",
+		"method": "custom_report.custom_report.doctype.rd_and_smbg_pending.rd_and_smbg_pending.daily_sync_rd_and_smbg_pending",
+		"doctype": "RD and SMBG Pending",
+		"filters": {},
+		"error_title": "daily_sync_rd_and_smbg_pending"
 	}
 ]
 

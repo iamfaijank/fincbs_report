@@ -208,6 +208,9 @@ scheduler_events = {
 		"45 7 * * *": [
 			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.cleanup_ss_vs_old_monthly_records"
 		],
+		"45 6 * * *": [
+			"custom_report.custom_report.doctype.rd_and_smbg_pending.rd_and_smbg_pending.daily_sync_rd_and_smbg_pending"
+		],
 		# Daily Sahayog Dashboard and Financial Tracker Synchronizations starting at 08:00 AM IST
 		"0 8 * * *": [
 			"custom_report.custom_report.page.sahayog_dashboard.achievement.daily_sync_cron"

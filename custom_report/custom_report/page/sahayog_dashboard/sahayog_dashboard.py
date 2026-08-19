@@ -1275,9 +1275,8 @@ def build_agent_wise(selected_date=None):
 
 @frappe.whitelist()
 def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
-    from custom_report.db_connection import get_dr_connection
     from datetime import datetime
-    import json
+    import re
 
     if selected_date:
         if isinstance(selected_date, str):
@@ -1287,148 +1286,43 @@ def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
     else:
         ref_date = datetime.now().strftime("%Y-%m-%d")
 
-    sol_filter = ""
+    target_date = ref_date
+    has_date_records = frappe.db.exists("RD and SMBG Pending", {"date": target_date})
+    if not has_date_records:
+        latest_date = frappe.db.sql("SELECT MAX(date) FROM `tabRD and SMBG Pending`")[0][0]
+        if latest_date:
+            target_date = str(latest_date)
+
+    conditions = ["`date` = %s"]
+    values = [target_date]
+
     if sol_ids:
-        sol_list = [f"'{s.strip()}'" for s in sol_ids.split(",") if s.strip()]
+        sol_list = [s.strip() for s in sol_ids.split(",") if s.strip()]
         if sol_list:
-            sol_filter = f" AND g.sol_id IN ({','.join(sol_list)})"
+            conditions.append("`sol_id` IN ({})".format(",".join(["%s"] * len(sol_list))))
+            values.extend(sol_list)
+
+    where_clause = " WHERE " + " AND ".join(conditions)
 
     query = f"""
-    WITH main_data AS (
-        SELECT   
-            g.acid,
-            g.sol_id,
-            s.sol_desc,
-            g.cif_id,
-            g.schm_code,
-            p.schm_desc,
-            g.foracid,
-            g.acct_name,
-            a.address_line1,
-            a.address_line2,
-            s.division_name,
-            s.region_name,
-            s.circle_office_name,
-            pe.phonenolocalcode,
-            g.acct_opn_date,
-            t.maturity_date,
-            t.last_repayment_date,
-            d.rm_id,
-            g2.emp_name AS rm_name,
-            t.deposit_amount,
-            g.clr_bal_amt,
-            t.deposit_period_mths,
-            t.deposit_period_days
-        FROM tbaadm.gam g
-        JOIN tbaadm.tam t
-            ON g.acid = t.acid
-        JOIN tbaadm.gsp p
-            ON g.schm_code = p.schm_code
-        JOIN tbaadm.sol s
-            ON g.sol_id = s.sol_id
-        JOIN crmuser.address a
-            ON g.cif_id = a.orgkey
-        LEFT JOIN custom.dsamap d
-            ON g.foracid = d.account_number
-        LEFT JOIN custom.dsaauth d2
-            ON d.rm_id = d2.user_id
-        LEFT JOIN tbaadm.get g2
-            ON d2.user_id = g2.emp_id
-        LEFT JOIN (
-            SELECT
-                orgkey,
-                phonenolocalcode
-            FROM crmuser.phoneemail
-            WHERE preferredflag = 'Y'
-              AND phoneoremail = 'PHONE'
-        ) pe
-            ON a.orgkey = pe.orgkey
-        WHERE
-            g.schm_code IN ('2005','2010','2011','2012','2013','2014','2015','2016')
-            AND g.entity_cre_flg = 'Y'
-            AND g.del_flg = 'N'
-            AND g.acct_cls_flg = 'N'
-            AND a.preferredaddress = 'Y'
-            AND t.maturity_date >= DATE '{ref_date}'{sol_filter}
-    ),
-    tdt_summary AS (
         SELECT
-            acid,
-            COUNT(*) AS total_records,
-            COUNT(
-                CASE
-                    WHEN value_date IS NOT NULL
-                     AND value_date <= DATE '{ref_date}'
-                    THEN 1
-                END
-            ) AS completed_up_to_today,
-            COUNT(
-                CASE
-                    WHEN flow_amt > 0
-                    THEN 1
-                END
-            ) AS total_instalments,
-            COUNT(
-                CASE
-                    WHEN tran_amt > 0
-                    THEN 1
-                END
-            ) AS total_instalments_paid_count,
-            COUNT(
-                CASE
-                    WHEN flow_amt > 0
-                    THEN 1
-                END
-            ) -
-            COUNT(
-                CASE
-                    WHEN tran_amt > 0
-                    THEN 1
-                END
-            ) AS pending_instalments,
-            SUM(flow_amt) AS total_amount_paid,
-            SUM(tran_amt) AS total_instalment_paid,
-            SUM(flow_amt) - SUM(tran_amt) AS pending_amount
-        FROM tbaadm.tdt
-        WHERE
-            flow_code = 'NI'
-            AND (flow_amt > 0 OR tran_amt > 0)
-            AND flow_date <= DATE '{ref_date}'
-        GROUP BY acid
-    )
-    SELECT
-        m.sol_id,
-        m.sol_desc,
-        m.division_name,
-        m.region_name,
-        m.circle_office_name,
-        COUNT(*) AS total_accounts,
-        COALESCE(SUM(t.total_instalment_paid), 0) AS total_collection,
-        COALESCE(SUM(CASE WHEN t.pending_amount > 0 THEN 1 ELSE 0 END), 0) AS pending_accounts,
-        COALESCE(SUM(t.pending_amount), 0) AS pending_amount,
-        COALESCE(SUM(t.pending_instalments), 0) AS pending_instalments
-    FROM main_data m
-    LEFT JOIN tdt_summary t
-        ON m.acid = t.acid
-    WHERE NOT (
-        COALESCE(t.pending_instalments, 0) > 24
-        AND m.last_repayment_date < (DATE '{ref_date}' - INTERVAL '1 year')
-    )
-    GROUP BY m.sol_id, m.sol_desc, m.division_name, m.region_name, m.circle_office_name
-    ORDER BY m.sol_id
+            sol_id,
+            sol_desc,
+            COUNT(*) AS total_accounts,
+            COALESCE(SUM(total_instalment_paid), 0) AS total_collection,
+            COALESCE(SUM(CASE WHEN pending_amount > 0 THEN 1 ELSE 0 END), 0) AS pending_accounts,
+            COALESCE(SUM(pending_amount), 0) AS pending_amount,
+            COALESCE(SUM(pending_instalments), 0) AS pending_instalments
+        FROM `tabRD and SMBG Pending`
+        {where_clause}
+        GROUP BY sol_id, sol_desc
+        ORDER BY sol_id
     """
 
-    conn = get_dr_connection()
-    if not conn:
-        frappe.log_error("Failed to connect to DR database", "RD SMBG Table API")
-        return []
-
     try:
-        cursor = conn.cursor()
-        cursor.execute(query)
-        rows = cursor.fetchall()
+        rows = frappe.db.sql(query, tuple(values), as_dict=True)
 
-        sol_ids_found = [str(r[0]).strip() for r in rows] if rows else []
+        sol_ids_found = [r.sol_id.strip() for r in rows if r.sol_id]
         branch_map = {}
         if sol_ids_found:
             branches_map = get_sahayog_branches_cached()
@@ -1442,21 +1336,21 @@ def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
                 }
 
         result = []
-        for row in rows:
-            sid = str(row[0]).strip()
+        for r in rows:
+            sid = str(r.sol_id).strip()
             sb = branch_map.get(sid) or {}
             result.append({
                 "sol_id": sid,
-                "sol_desc": row[1] or "",
+                "sol_desc": r.sol_desc or "",
                 "zone": sb.get("zone") or "",
                 "region": sb.get("region") or "",
                 "district": sb.get("district") or "",
                 "branch_name": sb.get("branch_name") or "",
-                "total_accounts": row[5] or 0,
-                "total_collection": float(row[6]) if row[6] else 0,
-                "pending_accounts": row[7] or 0,
-                "pending_amount": float(row[8]) if row[8] else 0,
-                "pending_instalments": row[9] or 0
+                "total_accounts": r.total_accounts or 0,
+                "total_collection": float(r.total_collection or 0),
+                "pending_accounts": r.pending_accounts or 0,
+                "pending_amount": float(r.pending_amount or 0),
+                "pending_instalments": r.pending_instalments or 0
             })
 
         # Apply User Report Permissions filtering
@@ -1490,11 +1384,6 @@ def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
     except Exception as e:
         frappe.log_error(f"Error executing RD/SMBG table query: {str(e)}", "RD SMBG Table API")
         return []
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
 
 
 @frappe.whitelist()
