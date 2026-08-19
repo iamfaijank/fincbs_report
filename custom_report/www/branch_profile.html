@@ -2511,6 +2511,14 @@
 					this.hideSuggestions();
 					this.el.searchInput.value = "";
 
+					// Notify parent (Drishti dashboard popup) to update the modal title
+					if (window.parent && window.parent !== window) {
+						window.parent.postMessage(
+							{ type: "branch-profile-sol-change", sol_id: solId },
+							"*"
+						);
+					}
+
 					if (pushState) {
 						const url = new URL(window.location);
 						url.searchParams.set("sol_id", solId);

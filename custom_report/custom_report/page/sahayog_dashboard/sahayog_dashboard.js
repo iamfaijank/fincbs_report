@@ -6413,6 +6413,21 @@ class DrishtiDashboard {
 					minimizable: true,
 				});
 
+				// Update the modal title when a new SOL is selected inside the iframe
+				const onSolChangeMessage = (e) => {
+					if (
+						e.data &&
+						e.data.type === "branch-profile-sol-change" &&
+						e.data.sol_id
+					) {
+						d.set_title("Branch Profile - " + e.data.sol_id);
+					}
+				};
+				window.addEventListener("message", onSolChangeMessage);
+				d.onhide = function () {
+					window.removeEventListener("message", onSolChangeMessage);
+				};
+
 				d.$body.html(`
 					<div id="iframe-loader-${sol_id}" style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 85vh; width: 100%;">
 						<div class="spinner-border text-primary" role="status" style="margin-bottom: 15px; width: 3rem; height: 3rem; animation: spinner-border .75s linear infinite;"></div>
