@@ -1081,6 +1081,7 @@ class DrishtiDashboard {
 				expandedZones: {},
 				expandedRegions: {},
 				selectedMisZones: [],
+				searchTerm: "",
 				render: function (container, dashboardInstance) {
 					const self = this;
 					container.html(`
@@ -1095,6 +1096,9 @@ class DrishtiDashboard {
 							#ntb-evr-table tfoot td { padding: 10px 14px; font-size: 14px; font-weight: 700; color: #ffffff; background: #1e293b; }
 							#ntb-evr-scroll { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
 						</style>
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="text" id="ntb-evr-search" placeholder="Search branch, SOL ID, zone..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+						</div>
 						<div id="ntb-evr-loading" style="width: 100%; margin-top: 10px;">
 							${dashboardInstance.buildMisSkeletonTable("Fetching CASA NTB & EVR data...")}
 						</div>
@@ -1104,6 +1108,10 @@ class DrishtiDashboard {
 
 					const getFilteredData = () => {
 						let data = self.tableData || [];
+						const term = (self.searchTerm || "").toLowerCase().trim();
+						if (term) {
+							data = data.filter(r => (r.sol_id || "").toLowerCase().includes(term) || (r.branch_name || "").toLowerCase().includes(term) || (r.zone || "").toLowerCase().includes(term) || (r.region || "").toLowerCase().includes(term) || (r.district || "").toLowerCase().includes(term));
+						}
 						if (self.selectedMisZones && self.selectedMisZones.length > 0) {
 							data = data.filter(r => self.selectedMisZones.includes(r.zone));
 						}
@@ -1151,6 +1159,14 @@ class DrishtiDashboard {
 					} else {
 						fetchData();
 					}
+					let ntbSearchTimeout = null;
+					container.off("input", "#ntb-evr-search").on("input", "#ntb-evr-search", function () {
+						clearTimeout(ntbSearchTimeout);
+						ntbSearchTimeout = setTimeout(() => {
+							self.searchTerm = $(this).val();
+							self._renderNtbTable();
+						}, 300);
+					});
 				},
 				renderZoneFilterTags: function (container, dashboardInstance) {
 					const self = this;
