@@ -9735,8 +9735,8 @@ class DrishtiDashboard {
                  <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">${this.formatNumber(totalGap)}</td>
                  <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">
  					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
- 						<span class="pct-value" style="color: ${isCurrentMonth ? "#ffffff !important" : this.getPctColor(100 - totalGapPct)}; min-width: 45px; text-align: right; font-weight: bold;">${Math.round(totalGapPct)}%</span>
- 						${this.renderProgressBar(totalGapPct, isCurrentMonth ? "#ffffff" : this.getPctColor(100 - totalGapPct))}
+ 						<span class="pct-value" style="color: #ffffff !important; min-width: 45px; text-align: right; font-weight: bold;">${Math.round(totalGapPct)}%</span>
+ 						${this.renderProgressBar(totalGapPct, this.getPctColor(100 - totalGapPct))}
  					</div>
  				</td>
             `;
