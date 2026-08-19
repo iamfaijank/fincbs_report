@@ -1857,6 +1857,10 @@ class DrishtiDashboard {
 
 					productData.forEach((item) => {
 						const products = item.products || {};
+						let rowAmount = 0;
+						allProducts.forEach((product) => {
+							rowAmount += (products[product] || 0);
+						});
 
 						if (item.type === "zone") {
 							const isExpanded = self.expandedZones[item.path] || false;
@@ -1880,11 +1884,11 @@ class DrishtiDashboard {
 							});
 
 							html += `
-									<td>${dashboardInstance.formatCurrency(item.amount)}</td>
+									<td>${dashboardInstance.formatCurrency(rowAmount)}</td>
 								</tr>
 							`;
 
-							zoneTotalAmount += item.amount;
+							zoneTotalAmount += rowAmount;
 						} else if (item.type === "region") {
 							const isZoneExpanded = self.expandedZones[item.parent_zone] || false;
 							const isExpanded = self.expandedZones[item.path] || false;
@@ -1907,7 +1911,7 @@ class DrishtiDashboard {
 							});
 
 							html += `
-									<td>${dashboardInstance.formatCurrency(item.amount)}</td>
+									<td>${dashboardInstance.formatCurrency(rowAmount)}</td>
 								</tr>
 							`;
 						} else if (item.type === "district") {
@@ -1934,7 +1938,7 @@ class DrishtiDashboard {
 							});
 
 							html += `
-									<td>${dashboardInstance.formatCurrency(item.amount)}</td>
+									<td>${dashboardInstance.formatCurrency(rowAmount)}</td>
 								</tr>
 							`;
 						} else if (item.type === "sol") {
@@ -1960,7 +1964,7 @@ class DrishtiDashboard {
 							});
 
 							html += `
-									<td>${dashboardInstance.formatCurrency(item.amount)}</td>
+									<td>${dashboardInstance.formatCurrency(rowAmount)}</td>
 								</tr>
 							`;
 						}
@@ -10033,6 +10037,11 @@ class DrishtiDashboard {
 			const checked = this.state.checkedProductRows && this.state.checkedProductRows[item.path] ? ' checked' : '';
 			const checkedClass = checked ? ' checked-row' : '';
 
+			let rowAmount = 0;
+			allProducts.forEach((product) => {
+				rowAmount += (products[product] || 0);
+			});
+
 			if (item.type === "zone") {
 				html += `
 					<tr class="zone-total-row product-total-row${checkedClass}" data-path="${item.path}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">
@@ -10048,8 +10057,8 @@ class DrishtiDashboard {
 					productTotals[product] += amount;
 					html += `<td>${this.formatCurrency(amount)}</td>`;
 				});
-				html += `<td>${this.formatCurrency(item.amount)}</td></tr>`;
-				grandTotal += item.amount;
+				html += `<td>${this.formatCurrency(rowAmount)}</td></tr>`;
+				grandTotal += rowAmount;
 			} else if (item.type === "region") {
 				const parentExpanded = this.state.expandedProductRows[item.parent_zone] || false;
 				const show = parentExpanded;
@@ -10066,7 +10075,7 @@ class DrishtiDashboard {
 					const amount = products[product] || 0;
 					html += `<td>${this.formatCurrency(amount)}</td>`;
 				});
-				html += `<td>${this.formatCurrency(item.amount)}</td></tr>`;
+				html += `<td>${this.formatCurrency(rowAmount)}</td></tr>`;
 			} else if (item.type === "district") {
 				const zoneExp = this.state.expandedProductRows[item.parent_zone] || false;
 				const regionExp = this.state.expandedProductRows[item.parent_region] || false;
@@ -10084,7 +10093,7 @@ class DrishtiDashboard {
 					const amount = products[product] || 0;
 					html += `<td>${this.formatCurrency(amount)}</td>`;
 				});
-				html += `<td>${this.formatCurrency(item.amount)}</td></tr>`;
+				html += `<td>${this.formatCurrency(rowAmount)}</td></tr>`;
 			} else if (item.type === "sol") {
 				const zoneExp = this.state.expandedProductRows[item.parent_zone] || false;
 				const regionExp = this.state.expandedProductRows[item.parent_region] || false;
@@ -10100,7 +10109,7 @@ class DrishtiDashboard {
 					const amount = products[product] || 0;
 					html += `<td>${this.formatCurrency(amount)}</td>`;
 				});
-				html += `<td>${this.formatCurrency(item.amount)}</td></tr>`;
+				html += `<td>${this.formatCurrency(rowAmount)}</td></tr>`;
 			}
 		});
 
