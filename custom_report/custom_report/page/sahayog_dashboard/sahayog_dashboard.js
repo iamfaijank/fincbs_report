@@ -1856,11 +1856,19 @@ class DrishtiDashboard {
 					}
 					if (self.searchTerm) {
 						const terms = self.searchTerm.split(",").map(s => s.trim()).filter(Boolean);
-						productData = productData.filter(item => {
-							if (item.type !== "sol") return true;
-							const name = (item.name || "").toLowerCase();
-							return terms.some(t => name.includes(t));
+						const matchedPaths = new Set();
+						productData.forEach(item => {
+							if (item.type === "sol") {
+								const name = (item.name || "").toLowerCase();
+								if (terms.some(t => name.includes(t))) {
+									matchedPaths.add(item.path);
+									matchedPaths.add(item.parent_district);
+									matchedPaths.add(item.parent_region);
+									matchedPaths.add(item.parent_zone);
+								}
+							}
 						});
+						productData = productData.filter(item => matchedPaths.has(item.path));
 					}
 					if (!productData || productData.length === 0) {
 						tableContainer.html(`
