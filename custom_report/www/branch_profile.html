@@ -2301,6 +2301,14 @@
 									<span id="bde-and-productivity">--</span>
 								</td>
 							</tr>
+							<tr>
+								<td class="label-col">
+									<span>RO Productivity</span>
+								</td>
+								<td class="amount-col">
+									<span id="ro-productivity">--</span>
+								</td>
+							</tr>
 						</tbody>
 					</table>
 				</div>
@@ -2946,6 +2954,7 @@
 					totalProductivity: document.getElementById("total-productivity"),
 					bdoAndProductivity: document.getElementById("bdo-and-productivity"),
 					bdeAndProductivity: document.getElementById("bde-and-productivity"),
+					roProductivity: document.getElementById("ro-productivity"),
 					manpowerDetailsTbody: document.getElementById("manpower-details-tbody"),
 					manpowerPipFilter: document.getElementById("manpower-pip-filter"),
 					manpowerSearchInput: document.getElementById("manpower-search-input"),
@@ -3297,6 +3306,7 @@
 					if (this.el.totalProductivity) this.el.totalProductivity.textContent = this.formatAmount(d.total_productivity);
 					if (this.el.bdoAndProductivity) this.el.bdoAndProductivity.textContent = this.formatAmount(d.bdo_and_productivity);
 					if (this.el.bdeAndProductivity) this.el.bdeAndProductivity.textContent = this.formatAmount(d.bde_and_productivity);
+					if (this.el.roProductivity) this.el.roProductivity.textContent = this.formatAmount(d.ro_and_productivity);
 
 
 					this.el.photo.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(d.bm_name || "BM")}&background=097c80&color=fff&size=256`;
