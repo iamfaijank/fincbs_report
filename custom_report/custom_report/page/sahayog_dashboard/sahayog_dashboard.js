@@ -3951,19 +3951,25 @@ class DrishtiDashboard {
 					let data = self.tableData || [];
 					const term = (self.searchTerm || "").trim().toLowerCase();
 					if (term) {
-						data = data.filter(row => {
-							const zone = (row.zone || "").toLowerCase();
-							const region = (row.region || "").toLowerCase();
-							const district = (row.district || "").toLowerCase();
-							const sol = (row.sol_desc || row.sol_id || "").toLowerCase();
-							const solId = (row.sol_id || "").toLowerCase();
-							const rmId = (row.rm_id || "").toLowerCase();
-							const rmName = (row.rm_name || "").toLowerCase();
-							const authId = (row.auth_id || "").toLowerCase();
-							const authName = (row.auth_name || "").toLowerCase();
-							const designation = (row.designation || "").toLowerCase();
-							return zone.includes(term) || region.includes(term) || district.includes(term) || sol.includes(term) || solId.includes(term) || rmId.includes(term) || rmName.includes(term) || authId.includes(term) || authName.includes(term) || designation.includes(term);
-						});
+						const solMatches = data.filter(r => (r.sol_id || "").toLowerCase().includes(term));
+						if (solMatches.length > 0) {
+							const matchedSols = new Set(solMatches.map(r => r.sol_id));
+							data = data.filter(r => matchedSols.has(r.sol_id));
+						} else {
+							data = data.filter(row => {
+								const zone = (row.zone || "").toLowerCase();
+								const region = (row.region || "").toLowerCase();
+								const district = (row.district || "").toLowerCase();
+								const sol = (row.sol_desc || row.sol_id || "").toLowerCase();
+								const solId = (row.sol_id || "").toLowerCase();
+								const rmId = (row.rm_id || "").toLowerCase();
+								const rmName = (row.rm_name || "").toLowerCase();
+								const authId = (row.auth_id || "").toLowerCase();
+								const authName = (row.auth_name || "").toLowerCase();
+								const designation = (row.designation || "").toLowerCase();
+								return zone.includes(term) || region.includes(term) || district.includes(term) || sol.includes(term) || solId.includes(term) || rmId.includes(term) || rmName.includes(term) || authId.includes(term) || authName.includes(term) || designation.includes(term);
+							});
+						}
 					}
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
 						data = data.filter(row => self.selectedMisZones.includes(row.zone));
