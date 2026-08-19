@@ -6682,6 +6682,16 @@ class DrishtiDashboard {
 		return ["Monthly", "YTD", "Yearly"].includes(targetType) ? targetType : "Monthly";
 	}
 
+	getSelectedMonthName(dateStr) {
+		const monthNames = [
+			"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+			"JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
+		];
+		if (this.state.selectedMonth) return this.state.selectedMonth;
+		const d = dateStr ? new Date(dateStr) : new Date();
+		return monthNames[d.getMonth()] || "AUG";
+	}
+
 	setupLegacyStyles() {
 		// --- Font and Style Injection ---
 		const fontLink = document.createElement("link");

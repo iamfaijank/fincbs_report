@@ -698,13 +698,19 @@ def get_targets_map(financial_year, target_type, month_keys, allowed_sol_ids=Non
         ytd_targets = frappe.get_all(
             "Target Vs Achivement",
             filters={**base_filters, "type": "YTD"},
-            fields=["sol_id", "target"]
+            fields=["sol_id", "target", "month"]
         )
         for t in ytd_targets:
             sol_id = str(t.sol_id or "")
             val = float(t.target or 0)
-            for mk in month_keys:
-                targets_map[sol_id][mk] = val
+            t_month = str(t.month or "").strip().upper()
+            if t_month:
+                if t_month in month_keys:
+                    targets_map[sol_id][t_month] += val
+            else:
+                for mk in month_keys:
+                    if not targets_map[sol_id][mk]:
+                        targets_map[sol_id][mk] = val
     
     else:  # Yearly
         yearly_targets = frappe.get_all(
@@ -5977,7 +5983,7 @@ def get_product_wise_tgt_vs_ach_data(financial_year=None, selected_date=None, ta
     target_filters = {"type": target_type or "Monthly"}
     if financial_year:
         target_filters["financial_year"] = financial_year
-    if (target_type or "Monthly") == "Monthly":
+    if (target_type or "Monthly") in ("Monthly", "YTD"):
         target_filters["month"] = month_key
 
     tva_records = frappe.get_all(
