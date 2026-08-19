@@ -174,9 +174,16 @@ const filterMisTableDataByUserPermissions = function (data, filterOptions) {
 		return data;
 	}
 
-	const allowedZones = perms.allowed_zones || [];
-	const allowedRegions = perms.allowed_regions || [];
-	const allowedSolIds = (perms.allowed_sol_ids || []).map(s => String(s).trim());
+	const norm = s => {
+		const str = (s || "").toString().trim();
+		const m = str.match(/\d+/);
+		return m ? parseInt(m[0], 10).toString() : str.replace(/[\s\-]+/g, "").toUpperCase();
+	};
+	const normSol = s => String(s || "").trim().replace(/^0+/, "");
+
+	const allowedZones = (perms.allowed_zones || []).map(norm);
+	const allowedRegions = (perms.allowed_regions || []).map(norm);
+	const allowedSolIds = (perms.allowed_sol_ids || []).map(normSol);
 
 	const hasZonePerms = allowedZones.length > 0;
 	const hasRegionPerms = allowedRegions.length > 0;
@@ -184,28 +191,28 @@ const filterMisTableDataByUserPermissions = function (data, filterOptions) {
 
 	// 1. Explicit Zone permissions
 	if (hasZonePerms) {
-		let filtered = data.filter(r => r.zone && allowedZones.includes(r.zone));
+		let filtered = data.filter(r => r.zone && allowedZones.includes(norm(r.zone)));
 		if (hasRegionPerms) {
-			filtered = filtered.filter(r => r.region && allowedRegions.includes(r.region));
+			filtered = filtered.filter(r => r.region && allowedRegions.includes(norm(r.region)));
 		}
 		return filtered;
 	}
 
 	// 2. Explicit Region permissions
 	if (hasRegionPerms) {
-		return data.filter(r => r.region && allowedRegions.includes(r.region));
+		return data.filter(r => r.region && allowedRegions.includes(norm(r.region)));
 	}
 
 	// 3. Explicit SOL ID permissions (Single or Multiple SOL access)
 	if (hasSolPerms) {
 		const solSet = new Set(allowedSolIds);
-		return data.filter(r => r.sol_id && solSet.has(String(r.sol_id).trim()));
+		return data.filter(r => r.sol_id && solSet.has(normSol(r.sol_id)));
 	}
 
 	// 4. Fallback based on filterOptions.zones
 	if (filterOptions.zones && filterOptions.zones.length > 0) {
-		const zoneSet = new Set(filterOptions.zones);
-		return data.filter(r => r.zone && zoneSet.has(r.zone));
+		const zoneSet = new Set(filterOptions.zones.map(norm));
+		return data.filter(r => r.zone && zoneSet.has(norm(r.zone)));
 	}
 
 	return data;
@@ -375,14 +382,10 @@ class DrishtiDashboard {
 								frappe.call({
 									method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_pending_table_data",
 									callback: function (r3) {
-										console.log("DEBUG: API CALL get_rd_smbg_pending_table_data RESPONSE", r3.message ? r3.message.length : 0);
+										console.log("DEBUG: API CALL get_rd_smbg_pending_table_data RESPONSE", r3 && r3.message ? r3.message.length : 0);
 										if (dashboardInstance._misRenderSeq !== seq) return;
-										if (r3.message) {
-											self.rawTableData = r3.message;
-											applyUserPermissionsAndRender();
-										} else {
-											container.find("#mis-loading").hide();
-										}
+										self.rawTableData = (r3 && r3.message) ? r3.message : [];
+										applyUserPermissionsAndRender();
 									}
 								});
 							}
@@ -4812,7 +4815,7 @@ class DrishtiDashboard {
 			},
 			{
 				id: "rm_wise",
-				name: "Agent Wise Commission",
+				name: "SS & VS Status Report",
 				tableData: [],
 				render: function (container, dashboardInstance, seq) {
 					const self = this;
@@ -4827,7 +4830,7 @@ class DrishtiDashboard {
 							<input type="text" id="rm-top-search" placeholder="Search Agent Code or Name..." style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 220px; outline: none; margin-left: auto;">
 						</div>
 						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
-							${dashboardInstance.buildMisSkeletonTable("Fetching Agent Wise Commission data...")}
+							${dashboardInstance.buildMisSkeletonTable("Fetching SS & VS Status Report data...")}
 						</div>
 						<div id="mis-table-container" ${self.tableData && self.tableData.length > 0 ? "" : 'style="display: none;"'}></div>
 					`);
@@ -8215,7 +8218,7 @@ class DrishtiDashboard {
                     <button class="tab-btn" data-tab="branch">
                         Branch Wise
                     </button>
-                    <button class="tab-btn" data-tab="product_tgt_ach">
+                    <button class="tab-btn" data-tab="product_tgt_ach" style="display: none;">
                         Product Wise TGT VS ACH
                     </button>
 
