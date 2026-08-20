@@ -3241,7 +3241,10 @@ def get_gl_wise_ch_report_data(selected_date=None):
                 product = 'CUGOLD'
             elif group_name == 'CASA' and group_subname == 'CA' and group_subname_category == 'CUWEALTH':
                 product = 'CUWEALTH'
-                
+
+        if product == 'SHARE' or str(row.scheme_code).strip() == '9001':
+            continue
+
         key = (zone, region, district, sid, branch_name, product)
         grouped_map[key] += float(row.amount or 0)
         
