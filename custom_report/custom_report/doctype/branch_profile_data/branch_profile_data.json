@@ -89,6 +89,7 @@
   "rd_smbg_pending",
   "column_break_oycy",
   "bde_and_productivity",
+  "ro_and_productivity",
   "bde_productivity",
   "bdo_productivity",
   "total_less_than_2100_casa",
@@ -445,6 +446,11 @@
    "fieldname": "bde_and_productivity",
    "fieldtype": "Data",
    "label": "BDE / PRODUCTIVITY"
+  },
+  {
+   "fieldname": "ro_and_productivity",
+   "fieldtype": "Data",
+   "label": "RO / PRODUCTIVITY"
   },
   {
    "fieldname": "bdo_and_productivity",

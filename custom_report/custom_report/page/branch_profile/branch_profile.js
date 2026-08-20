@@ -948,6 +948,14 @@ function show_suggestions(input, list) {
 
 		update_url_sol(sol);
 		load_all_data(sol);
+
+		// Notify parent (Drishti dashboard popup) to update the modal title
+		if (window.parent && window.parent !== window) {
+			window.parent.postMessage(
+				{ type: "branch-profile-sol-change", sol_id: sol },
+				"*"
+			);
+		}
 	});
 }
 

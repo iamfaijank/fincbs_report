@@ -1080,6 +1080,8 @@ class DrishtiDashboard {
 				tableData: [],
 				expandedZones: {},
 				expandedRegions: {},
+				selectedMisZones: [],
+				searchTerm: "",
 				render: function (container, dashboardInstance) {
 					const self = this;
 					container.html(`
@@ -1094,11 +1096,27 @@ class DrishtiDashboard {
 							#ntb-evr-table tfoot td { padding: 10px 14px; font-size: 14px; font-weight: 700; color: #ffffff; background: #1e293b; }
 							#ntb-evr-scroll { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
 						</style>
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="text" id="ntb-evr-search" placeholder="Search branch, SOL ID, zone..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+						</div>
 						<div id="ntb-evr-loading" style="width: 100%; margin-top: 10px;">
 							${dashboardInstance.buildMisSkeletonTable("Fetching CASA NTB & EVR data...")}
 						</div>
+						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<div id="ntb-evr-table-container"></div>
 					`);
+
+					const getFilteredData = () => {
+						let data = self.tableData || [];
+						const term = (self.searchTerm || "").toLowerCase().trim();
+						if (term) {
+							data = data.filter(r => (r.sol_id || "").toLowerCase().includes(term) || (r.branch_name || "").toLowerCase().includes(term) || (r.zone || "").toLowerCase().includes(term) || (r.region || "").toLowerCase().includes(term) || (r.district || "").toLowerCase().includes(term));
+						}
+						if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+							data = data.filter(r => self.selectedMisZones.includes(r.zone));
+						}
+						return data;
+					};
 
 					const renderTable = (data) => {
 						const metricCols = [
@@ -1114,6 +1132,7 @@ class DrishtiDashboard {
 							"CASA NTB & EVR"
 						);
 					};
+					self._renderNtbTable = () => renderTable(getFilteredData());
 
 					const fetchData = () => {
 					frappe.call({
@@ -1123,21 +1142,54 @@ class DrishtiDashboard {
 							if (r.message && r.message.data) {
 								self.tableData = r.message.data;
 								self.totalRows = r.message.total_rows || 0;
-								renderTable(self.tableData);
+								renderTable(getFilteredData());
 							} else {
 								container.find("#ntb-evr-table-container").html('<div style="padding: 30px; text-align: center; color: #94a3b8; font-weight: 600;">No data available</div>');
 							}
 							container.find("#ntb-evr-loading").hide();
+							self.renderZoneFilterTags(container, dashboardInstance);
 						}
 					});
 					};
 
 					if (self.tableData && self.tableData.length > 0) {
 						container.find("#ntb-evr-loading").hide();
-						renderTable(self.tableData);
+						renderTable(getFilteredData());
+						self.renderZoneFilterTags(container, dashboardInstance);
 					} else {
 						fetchData();
 					}
+					let ntbSearchTimeout = null;
+					container.off("input", "#ntb-evr-search").on("input", "#ntb-evr-search", function () {
+						clearTimeout(ntbSearchTimeout);
+						ntbSearchTimeout = setTimeout(() => {
+							self.searchTerm = $(this).val();
+							self._renderNtbTable();
+						}, 300);
+					});
+				},
+				renderZoneFilterTags: function (container, dashboardInstance) {
+					const self = this;
+					if (!self.tableData || self.tableData.length === 0) { container.find("#mis-zone-filter-row").hide(); return; }
+					const permittedZones = (self.filterOptions && self.filterOptions.zones) || [];
+					let zones = permittedZones.length > 0 ? permittedZones : [...new Set(self.tableData.map(r => r.zone).filter(Boolean))].sort();
+					if (zones.length === 0) { container.find("#mis-zone-filter-row").hide(); return; }
+					const allSelected = self.selectedMisZones.length === 0;
+					let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
+					html += `<button class="mis-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer;">All</button>`;
+					zones.forEach(zone => {
+						const active = self.selectedMisZones.includes(zone);
+						html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer;">${zone}</button>`;
+					});
+					const $row = container.find("#mis-zone-filter-row");
+					$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
+					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
+						const zone = $(this).data("zone");
+						if (zone === "all") { self.selectedMisZones = []; }
+						else { const idx = self.selectedMisZones.indexOf(zone); if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); } }
+						self.renderZoneFilterTags(container, dashboardInstance);
+						self._renderNtbTable();
+					});
 				},
 			},
 			{
@@ -1150,6 +1202,7 @@ class DrishtiDashboard {
 				cachedPages: {},
 				cacheDate: null,
 				searchTerm: "",
+				selectedMisZones: [],
 				_bgRunning: false,
 				_renderSeq: 0,
 				render: function (container, dashboardInstance) {
@@ -1213,6 +1266,7 @@ class DrishtiDashboard {
 							<button type="button" id="cavg-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px; margin-left: auto;" id="cavg-count"></div>
 						</div>
+						<div id="cavg-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<div id="cavg-loading" style="width: 100%; margin-top: 10px;">
 							${dashboardInstance.buildMisSkeletonTable("Loading page 1...")}
 						</div>
@@ -1431,9 +1485,12 @@ class DrishtiDashboard {
 					const renderPage = () => {
 						initTable();
 						const pageData = self.cachedPages[self.currentPage] || [];
-						const filtered = self.searchTerm
+						let filtered = self.searchTerm
 							? pageData.filter(r => Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm)))
 							: pageData;
+						if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+							filtered = filtered.filter(r => self.selectedMisZones.includes(r.circle_office_name));
+						}
 						appendRows(filtered);
 						applyStickyLeft();
 						updateCount();
@@ -1641,16 +1698,47 @@ class DrishtiDashboard {
 						container.find("#cavg-loading").hide();
 						container.find("#cavg-table-container").show();
 						renderPage();
+						self.renderZoneFilterTags(container, dashboardInstance);
 					} else {
 						fetchPageAjax(1).then(() => {
 							container.find("#cavg-loading").hide();
 							container.find("#cavg-table-container").show();
 							self.currentPage = 1;
 							renderPage();
+							self.renderZoneFilterTags(container, dashboardInstance);
 							startBgFetch(2);
 						});
 					}
-
+					self._renderPage = renderPage;
+				},
+				renderZoneFilterTags: function (container, dashboardInstance) {
+					const self = this;
+					let allLoaded = [];
+					Object.keys(self.cachedPages).forEach(p => {
+						if (Array.isArray(self.cachedPages[p])) allLoaded = allLoaded.concat(self.cachedPages[p]);
+					});
+					if (allLoaded.length === 0) { container.find("#cavg-zone-filter-row").hide(); return; }
+					const permittedZones = (self.filterOptions && self.filterOptions.zones) || [];
+					let zones = permittedZones.length > 0 ? permittedZones : [...new Set(allLoaded.map(r => r.circle_office_name).filter(Boolean))].sort();
+					if (zones.length === 0) { container.find("#cavg-zone-filter-row").hide(); return; }
+					const allSelected = self.selectedMisZones.length === 0;
+					let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
+					html += `<button class="mis-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer;">All</button>`;
+					zones.forEach(zone => {
+						const active = self.selectedMisZones.includes(zone);
+						html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer;">${zone}</button>`;
+					});
+					const $row = container.find("#cavg-zone-filter-row");
+					$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
+					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
+						const zone = $(this).data("zone");
+						if (zone === "all") { self.selectedMisZones = []; }
+						else { const idx = self.selectedMisZones.indexOf(zone); if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); } }
+						self.renderZoneFilterTags(container, dashboardInstance);
+						if (typeof self._renderPage === "function") {
+							self._renderPage();
+						}
+					});
 				},
 			},
 			{
@@ -1768,11 +1856,19 @@ class DrishtiDashboard {
 					}
 					if (self.searchTerm) {
 						const terms = self.searchTerm.split(",").map(s => s.trim()).filter(Boolean);
-						productData = productData.filter(item => {
-							if (item.type !== "sol") return true;
-							const name = (item.name || "").toLowerCase();
-							return terms.some(t => name.includes(t));
+						const matchedPaths = new Set();
+						productData.forEach(item => {
+							if (item.type === "sol") {
+								const name = (item.name || "").toLowerCase();
+								if (terms.some(t => name.includes(t))) {
+									matchedPaths.add(item.path);
+									matchedPaths.add(item.parent_district);
+									matchedPaths.add(item.parent_region);
+									matchedPaths.add(item.parent_zone);
+								}
+							}
 						});
+						productData = productData.filter(item => matchedPaths.has(item.path));
 					}
 					if (!productData || productData.length === 0) {
 						tableContainer.html(`
@@ -3323,17 +3419,23 @@ class DrishtiDashboard {
 					let data = self.tableData || [];
 					const term = (self.searchTerm || "").trim().toLowerCase();
 					if (term) {
-						data = data.filter(row => {
-							const zone = (row.zone || "").toLowerCase();
-							const region = (row.region || "").toLowerCase();
-							const district = (row.district || "").toLowerCase();
-							const sol = (row.sol_desc || row.sol_id || "").toLowerCase();
-							const solId = (row.sol_id || "").toLowerCase();
-							const authId = (row.auth_id || "").toLowerCase();
-							const authName = (row.auth_name || "").toLowerCase();
-							const designation = (row.designation || "").toLowerCase();
-							return zone.includes(term) || region.includes(term) || district.includes(term) || sol.includes(term) || solId.includes(term) || authId.includes(term) || authName.includes(term) || designation.includes(term);
-						});
+						const solMatches = data.filter(r => (r.sol_id || "").toLowerCase().includes(term));
+						if (solMatches.length > 0) {
+							const matchedSols = new Set(solMatches.map(r => r.sol_id));
+							data = data.filter(r => matchedSols.has(r.sol_id));
+						} else {
+							data = data.filter(row => {
+								const zone = (row.zone || "").toLowerCase();
+								const region = (row.region || "").toLowerCase();
+								const district = (row.district || "").toLowerCase();
+								const sol = (row.sol_desc || row.sol_id || "").toLowerCase();
+								const solId = (row.sol_id || "").toLowerCase();
+								const authId = (row.auth_id || "").toLowerCase();
+								const authName = (row.auth_name || "").toLowerCase();
+								const designation = (row.designation || "").toLowerCase();
+								return zone.includes(term) || region.includes(term) || district.includes(term) || sol.includes(term) || solId.includes(term) || authId.includes(term) || authName.includes(term) || designation.includes(term);
+							});
+						}
 					}
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
 						data = data.filter(row => self.selectedMisZones.includes(row.zone));
@@ -3867,19 +3969,25 @@ class DrishtiDashboard {
 					let data = self.tableData || [];
 					const term = (self.searchTerm || "").trim().toLowerCase();
 					if (term) {
-						data = data.filter(row => {
-							const zone = (row.zone || "").toLowerCase();
-							const region = (row.region || "").toLowerCase();
-							const district = (row.district || "").toLowerCase();
-							const sol = (row.sol_desc || row.sol_id || "").toLowerCase();
-							const solId = (row.sol_id || "").toLowerCase();
-							const rmId = (row.rm_id || "").toLowerCase();
-							const rmName = (row.rm_name || "").toLowerCase();
-							const authId = (row.auth_id || "").toLowerCase();
-							const authName = (row.auth_name || "").toLowerCase();
-							const designation = (row.designation || "").toLowerCase();
-							return zone.includes(term) || region.includes(term) || district.includes(term) || sol.includes(term) || solId.includes(term) || rmId.includes(term) || rmName.includes(term) || authId.includes(term) || authName.includes(term) || designation.includes(term);
-						});
+						const solMatches = data.filter(r => (r.sol_id || "").toLowerCase().includes(term));
+						if (solMatches.length > 0) {
+							const matchedSols = new Set(solMatches.map(r => r.sol_id));
+							data = data.filter(r => matchedSols.has(r.sol_id));
+						} else {
+							data = data.filter(row => {
+								const zone = (row.zone || "").toLowerCase();
+								const region = (row.region || "").toLowerCase();
+								const district = (row.district || "").toLowerCase();
+								const sol = (row.sol_desc || row.sol_id || "").toLowerCase();
+								const solId = (row.sol_id || "").toLowerCase();
+								const rmId = (row.rm_id || "").toLowerCase();
+								const rmName = (row.rm_name || "").toLowerCase();
+								const authId = (row.auth_id || "").toLowerCase();
+								const authName = (row.auth_name || "").toLowerCase();
+								const designation = (row.designation || "").toLowerCase();
+								return zone.includes(term) || region.includes(term) || district.includes(term) || sol.includes(term) || solId.includes(term) || rmId.includes(term) || rmName.includes(term) || authId.includes(term) || authName.includes(term) || designation.includes(term);
+							});
+						}
 					}
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
 						data = data.filter(row => self.selectedMisZones.includes(row.zone));
@@ -4821,6 +4929,7 @@ class DrishtiDashboard {
 				id: "rm_wise",
 				name: "SS & VS Status Report",
 				tableData: [],
+				selectedMisZones: [],
 				render: function (container, dashboardInstance, seq) {
 					const self = this;
 					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
@@ -4836,6 +4945,7 @@ class DrishtiDashboard {
 						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
 							${dashboardInstance.buildMisSkeletonTable("Fetching SS & VS Status Report data...")}
 						</div>
+						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<div id="mis-table-container" ${self.tableData && self.tableData.length > 0 ? "" : 'style="display: none;"'}></div>
 					`);
 
@@ -4865,7 +4975,9 @@ class DrishtiDashboard {
 					});
 
 					if (self.tableData && self.tableData.length > 0) {
+						container.find("#mis-table-container").show();
 						self.renderRmWiseTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderZoneFilterTags(container, dashboardInstance);
 						container.find("#mis-controls, #mis-table-container").show();
 						container.find("#mis-loading").hide();
 						return;
@@ -4887,6 +4999,7 @@ class DrishtiDashboard {
 								self.actualDate = t1_date;
 							}
 							self.renderRmWiseTable(container.find("#mis-table-container"), dashboardInstance);
+							self.renderZoneFilterTags(container, dashboardInstance);
 							container.find("#mis-loading").hide();
 							container.find("#mis-controls, #mis-table-container").show();
 						}
@@ -4943,6 +5056,10 @@ class DrishtiDashboard {
 							(r.agent_code || r.rm_id || "").toLowerCase().includes(self.filterQuery) ||
 							(r.agent_name || r.rm_name || "").toLowerCase().includes(self.filterQuery)
 						);
+					}
+
+					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+						data = data.filter(r => self.selectedMisZones.includes((r.zone || "").trim()));
 					}
 
 					// Always sort High to Low by Commission
@@ -5311,6 +5428,39 @@ class DrishtiDashboard {
 						const rmId = $(this).data("rm-id");
 						const rowData = pagedData.find(r => (r.agent_code || r.rm_id) === rmId) || { agent_code: rmId, agent_name: rmId };
 						self.openAgentModal(rowData, dashboardInstance);
+					});
+				},
+
+				renderZoneFilterTags: function(container, dashboardInstance) {
+					const self = this;
+					if (!self.tableData || self.tableData.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					let zones = [...new Set(self.tableData.map(r => (r.zone || "").trim()).filter(Boolean))].sort();
+					if (zones.length === 0) {
+						container.find("#mis-zone-filter-row").hide();
+						return;
+					}
+					const allSelected = self.selectedMisZones.length === 0;
+					let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
+					html += `<button class="mis-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
+					zones.forEach(zone => {
+						const active = self.selectedMisZones.includes(zone);
+						html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
+					});
+					const $row = container.find("#mis-zone-filter-row");
+					$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
+					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
+						const zone = $(this).data("zone");
+						if (zone === "all") {
+							self.selectedMisZones = [];
+						} else {
+							const idx = self.selectedMisZones.indexOf(zone);
+							if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); }
+						}
+						self.renderZoneFilterTags(container, dashboardInstance);
+						self.renderRmWiseTable(container.find("#mis-table-container"), dashboardInstance);
 					});
 				},
 
@@ -6416,6 +6566,21 @@ class DrishtiDashboard {
 					size: "extra-large",
 					minimizable: true,
 				});
+
+				// Update the modal title when a new SOL is selected inside the iframe
+				const onSolChangeMessage = (e) => {
+					if (
+						e.data &&
+						e.data.type === "branch-profile-sol-change" &&
+						e.data.sol_id
+					) {
+						d.set_title("Branch Profile - " + e.data.sol_id);
+					}
+				};
+				window.addEventListener("message", onSolChangeMessage);
+				d.onhide = function () {
+					window.removeEventListener("message", onSolChangeMessage);
+				};
 
 				d.$body.html(`
 					<div id="iframe-loader-${sol_id}" style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 85vh; width: 100%;">
