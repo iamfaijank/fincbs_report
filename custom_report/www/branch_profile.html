@@ -1833,7 +1833,12 @@
 			<section class="staff-detail-section" id="deposit-book-section">
 				<div class="collapsible-section-header" onclick="BranchManagerProfile.toggleDepositBookSection()" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; padding-bottom: 8px;">
 					<h2 style="margin: 0;">Deposit & Book Position</h2>
-					<span id="deposit-book-toggle-icon" style="font-size: 14px; font-weight: 700; color: #64748b; transition: transform 0.2s ease;">▶</span>
+					<div style="display: flex; align-items: center; gap: 8px;" onclick="event.stopPropagation();">
+						<select id="deposit-book-date" style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; background: #fff; color: #1b263b; outline: none;">
+							<option value="">Select Date</option>
+						</select>
+						<span id="deposit-book-toggle-icon" style="font-size: 14px; font-weight: 700; color: #64748b; transition: transform 0.2s ease;">▶</span>
+					</div>
 				</div>
 				<div class="financial-table-container" id="deposit-book-content" style="display: none;">
 					<table class="financial-table">
@@ -1981,7 +1986,12 @@
 			</section>
 
 			<section class="staff-detail-section">
-				<h2>Account Details</h2>
+				<div style="display: flex; align-items: center; justify-content: space-between;">
+					<h2>Account Details</h2>
+					<select id="account-month-filter" style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; background: #fff; color: #1b263b; outline: none;">
+						<option value="">Select Month</option>
+					</select>
+				</div>
 				<div class="financial-table-container">
 					<table class="financial-table">
 						<thead>
@@ -3637,6 +3647,9 @@
 						this.state.rawData = d;
 						this.state.bmList = bmList;
 
+						await this.populateAccountMonthFilter(solId);
+						await this.populateDepositBookDate(solId);
+
 						this.render();
 						this.loadEmployeeDetails(solId);
 
@@ -3651,6 +3664,75 @@
 					} catch (e) {
 						console.error("Profile Load Error:", e);
 						this.el.name.textContent = "Branch Manager data unavailable";
+					}
+				},
+
+				async populateAccountMonthFilter(solId) {
+					const select = document.getElementById("account-month-filter");
+					if (!select) return;
+					try {
+						const res = await fetch(`/api/method/custom_report.branch_v1.get_book_position_months?sol_id=${solId}`);
+						const json = await res.json();
+						const dates = (json.message || []).map(String);
+						if (!dates.length) return;
+						select.innerHTML = '<option value="">All Dates</option>' + dates.map(ds => {
+							const label = ds.slice(0, 7);
+							return `<option value="${ds}">${label}</option>`;
+						}).join('');
+						select.value = '';
+						select.onchange = async () => {
+							const picked = select.value;
+							if (!picked) return;
+							try {
+								const bookRes = await fetch(`/api/method/custom_report.branch_v1.get_book_position_details?sol_id=${solId}&selected_date=${encodeURIComponent(picked)}`);
+								const bookJson = await bookRes.json();
+								const bookD = bookJson.message || {};
+								if (this.state.rawData) {
+									Object.assign(this.state.rawData, bookD);
+								}
+								this.render();
+							} catch (e) {
+								console.error("Month filter load error:", e);
+							}
+						};
+					} catch (e) {
+						console.error("Month filter error:", e);
+					}
+				},
+
+				async populateDepositBookDate(solId) {
+					const select = document.getElementById("deposit-book-date");
+					if (!select) return;
+					try {
+						const res = await fetch(`/api/method/custom_report.branch_v1.get_book_position_months?sol_id=${solId}`);
+						const json = await res.json();
+						const dates = (json.message || []).map(String);
+						if (!dates.length) return;
+						const fmtD = (ds) => {
+							const parts = ds.split("-");
+							return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : ds;
+						};
+						select.innerHTML = '<option value="">All Dates</option>' + dates.map(ds =>
+							`<option value="${ds}">${fmtD(ds)}</option>`
+						).join('');
+						select.value = '';
+						select.onchange = async () => {
+							const picked = select.value;
+							if (!picked) return;
+							try {
+								const bookRes = await fetch(`/api/method/custom_report.branch_v1.get_book_position_details?sol_id=${solId}&selected_date=${encodeURIComponent(picked)}`);
+								const bookJson = await bookRes.json();
+								const bookD = bookJson.message || {};
+								if (this.state.rawData) {
+									Object.assign(this.state.rawData, bookD);
+								}
+								this.render();
+							} catch (e) {
+								console.error("Deposit book date load error:", e);
+							}
+						};
+					} catch (e) {
+						console.error("Deposit book date error:", e);
 					}
 				},
 

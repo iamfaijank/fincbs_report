@@ -270,7 +270,23 @@ def get_bm_details_from_employee(sol_id: str):
     }
 
 @frappe.whitelist()
-def get_book_position_details(sol_id: str):
+def get_book_position_months(sol_id: str):
+    """
+    List available distinct dates for the branch's Book Position and Account Details data.
+    """
+    if not sol_id:
+        return []
+    rows = frappe.db.sql("""
+        SELECT DISTINCT `date`
+        FROM `tabBook Position and Account Details`
+        WHERE sol_id = %s
+        ORDER BY `date` DESC
+    """, (sol_id,))
+    return [str(r[0]) for r in rows]
+
+
+@frappe.whitelist()
+def get_book_position_details(sol_id: str, selected_date: str = None):
     """
     Fetch Book Position data from 'Book Position and Account Details' doctype.
     Sums up closing_balance for specific group_name and group_subname.
@@ -279,12 +295,15 @@ def get_book_position_details(sol_id: str):
         return {}
 
     # Get the latest date for this sol_id
-    latest_date = frappe.db.get_value(
-        "Book Position and Account Details",
-        {"sol_id": sol_id},
-        "date",
-        order_by="date desc"
-    )
+    if selected_date:
+        latest_date = selected_date
+    else:
+        latest_date = frappe.db.get_value(
+            "Book Position and Account Details",
+            {"sol_id": sol_id},
+            "date",
+            order_by="date desc"
+        )
 
     result = {
         "sa_book": 0.0, "ca_book": 0.0, "fd_book": 0.0,
