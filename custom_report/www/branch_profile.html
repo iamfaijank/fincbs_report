@@ -3303,7 +3303,11 @@
 					this.el.ddsDemandVsCollection.textContent = this.formatIndianNumber(parseFloat(d.dds_demand_vs_collection || 0).toFixed(2)) + "%";
 					this.el.smbgDemand.textContent = this.formatAmount(d.smbg_demand);
 					this.el.smbgCollection.textContent = this.formatAmount(d.smbg_collection);
-					this.el.smbgDemandVsCollection.textContent = this.formatIndianNumber(parseFloat(d.smbg_demand_vs_collection || 0).toFixed(2)) + "%";
+					let smbgVsColl = parseFloat(d.smbg_demand_vs_collection || 0);
+					if (smbgVsColl > 0 && smbgVsColl <= 1) {
+						smbgVsColl = smbgVsColl * 100;
+					}
+					this.el.smbgDemandVsCollection.textContent = this.formatIndianNumber(smbgVsColl.toFixed(2)) + "%";
 					this.el.rdDemand.textContent = this.formatAmount(d.rd_demand);
 					this.el.rdSmbgCollection.textContent = this.formatAmount(d.rd_smbg_collection);
 					this.el.rdSmbgPending.textContent = this.formatAmount(d.rd_smbg_pending);
