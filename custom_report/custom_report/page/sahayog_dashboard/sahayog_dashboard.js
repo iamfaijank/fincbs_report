@@ -4432,6 +4432,7 @@ class DrishtiDashboard {
 					const totalDeposit = data.reduce((s, r) => s + (parseFloat(r.total_deposit_amount || 0.0)), 0.0);
 					const totalRenewal = data.reduce((s, r) => s + (parseFloat(r.renewal_amount || 0.0)), 0.0);
 					const depositDoneCount = data.filter(r => (r.deposit_done_flag || "").toLowerCase() === "yes").length;
+					const totalRenewalPerc = totalPaid > 0 ? (totalRenewal / totalPaid * 100).toFixed(2) + "%" : "-";
 
 					const fmtAmt = (val) => {
 						if (val === null || val === undefined) return "-";
@@ -4454,6 +4455,7 @@ class DrishtiDashboard {
 						{ label: "Maturity Paid", value: fmtAmt(totalPaid), color: "#ef4444", bg: "#fef2f2", icon: "💰" },
 						{ label: "Total Deposit Amount", value: fmtAmt(totalDeposit), color: "#10b981", bg: "#ecfdf5", icon: "📊" },
 						{ label: "Renewal Amount", value: fmtAmt(totalRenewal), color: "#3b82f6", bg: "#eff6ff", icon: "📈" },
+						{ label: "Renewal %", value: totalRenewalPerc, color: "#8b5cf6", bg: "#f5f3ff", icon: "📊" },
 						{ label: "Total Accounts", value: fmtCount(totalAccounts), color: "#8b5cf6", bg: "#f5f3ff", icon: "🔢" },
 						{ label: "Deposit Done Count", value: fmtCount(depositDoneCount), color: "#06b6d4", bg: "#ecfeff", icon: "✅" }
 					];
