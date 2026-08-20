@@ -1865,6 +1865,11 @@ class DrishtiDashboard {
 									matchedPaths.add(item.parent_district);
 									matchedPaths.add(item.parent_region);
 									matchedPaths.add(item.parent_zone);
+
+									// Auto-expand parent hierarchy so the matched branch is visible
+									if (item.parent_zone) self.expandedZones[item.parent_zone] = true;
+									if (item.parent_region) self.expandedZones[item.parent_region] = true;
+									if (item.parent_district) self.expandedZones[item.parent_district] = true;
 								}
 							}
 						});
