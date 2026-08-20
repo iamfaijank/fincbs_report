@@ -4436,6 +4436,7 @@ class DrishtiDashboard {
 					const totalDeposit = data.reduce((s, r) => s + (parseFloat(r.total_deposit_amount || 0.0)), 0.0);
 					const totalRenewal = data.reduce((s, r) => s + (parseFloat(r.renewal_amount || 0.0)), 0.0);
 					const depositDoneCount = data.filter(r => (r.deposit_done_flag || "").toLowerCase() === "yes").length;
+					const totalRenewalPerc = totalPaid > 0 ? (totalRenewal / totalPaid * 100).toFixed(2) + "%" : "-";
 
 					const fmtAmt = (val) => {
 						if (val === null || val === undefined) return "-";
@@ -4458,6 +4459,7 @@ class DrishtiDashboard {
 						{ label: "Maturity Paid", value: fmtAmt(totalPaid), color: "#ef4444", bg: "#fef2f2", icon: "💰" },
 						{ label: "Total Deposit Amount", value: fmtAmt(totalDeposit), color: "#10b981", bg: "#ecfdf5", icon: "📊" },
 						{ label: "Renewal Amount", value: fmtAmt(totalRenewal), color: "#3b82f6", bg: "#eff6ff", icon: "📈" },
+						{ label: "Renewal %", value: totalRenewalPerc, color: "#8b5cf6", bg: "#f5f3ff", icon: "📊" },
 						{ label: "Total Accounts", value: fmtCount(totalAccounts), color: "#8b5cf6", bg: "#f5f3ff", icon: "🔢" },
 						{ label: "Deposit Done Count", value: fmtCount(depositDoneCount), color: "#06b6d4", bg: "#ecfeff", icon: "✅" }
 					];
@@ -4682,6 +4684,12 @@ class DrishtiDashboard {
 						return new Intl.NumberFormat("en-IN").format(val);
 					};
 
+					const fmtPerc = (renewal, paid) => {
+						const r = parseFloat(renewal) || 0;
+						const p = parseFloat(paid) || 0;
+						return p > 0 ? (r / p * 100).toFixed(2) + "%" : "-";
+					};
+
 					const zoneData = self.aggregateByZone();
 					const totalFilteredPaid = zoneData.reduce((s, z) => s + z.data.maturity_paid, 0);
 					const totalAllPaid = (self.tableData || []).reduce((s, r) => s + (parseFloat(r.maturity_paid) || 0), 0);
@@ -4722,8 +4730,9 @@ class DrishtiDashboard {
 							<td></td>
 							<td style="padding: 10px 14px; font-weight: 700; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(zoneRow.total_deposit_amount)}</td>
 							<td></td>
-							<td style="padding: 10px 14px; font-weight: 700; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(zoneRow.renewal_amount)}</td>
-						</tr>`;
+<td style="padding: 10px 14px; font-weight: 700; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(zoneRow.renewal_amount)}</td>
+										<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: right; white-space: nowrap; font-size: 14px;">${fmtPerc(zoneRow.renewal_amount, zoneRow.maturity_paid)}</td>
+									</tr>`;
 
 						z.regions.forEach(regionObj => {
 							const region = regionObj.region;
@@ -4745,7 +4754,8 @@ class DrishtiDashboard {
 								<td style="padding: 8px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(regionRow.total_deposit_amount)}</td>
 								<td></td>
 								<td style="padding: 8px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(regionRow.renewal_amount)}</td>
-							</tr>`;
+									<td style="padding: 8px 14px; color: #334155; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtPerc(regionRow.renewal_amount, regionRow.maturity_paid)}</td>
+								</tr>`;
 
 							regionObj.districts.forEach(districtObj => {
 								const district = districtObj.district;
@@ -4767,6 +4777,7 @@ class DrishtiDashboard {
 									<td style="padding: 8px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(districtObj.data.total_deposit_amount)}</td>
 									<td></td>
 									<td style="padding: 8px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(districtObj.data.renewal_amount)}</td>
+									<td style="padding: 8px 14px; color: #44403c; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtPerc(districtObj.data.renewal_amount, districtObj.data.maturity_paid)}</td>
 								</tr>`;
 
 								districtObj.branches.forEach((branch, bnIndex) => {
@@ -4788,6 +4799,7 @@ class DrishtiDashboard {
 										<td style="padding: 6px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(branch.total_deposit_amount)}</td>
 										<td></td>
 										<td style="padding: 6px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(branch.renewal_amount)}</td>
+										<td style="padding: 6px 14px; color: #475569; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtPerc(branch.renewal_amount, branch.maturity_paid)}</td>
 									</tr>`;
 
 									if (canViewCif) {
@@ -4809,8 +4821,9 @@ class DrishtiDashboard {
 												<td style="padding: 6px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${rec.last_debit_transaction_date || "-"}</td>
 												<td style="padding: 6px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtAmt(rec.total_deposit_amount)}</td>
 												<td style="padding: 6px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${rec.deposit_done_flag || "No"}</td>
-												<td style="padding: 6px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtAmt(rec.renewal_amount)}</td>
-											</tr>`;
+<td style="padding: 6px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtAmt(rec.renewal_amount)}</td>
+											<td style="padding: 6px 14px; color: #64748b; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtPerc(rec.renewal_amount, rec.maturity_paid)}</td>
+										</tr>`;
 										});
 									}
 								});
@@ -4849,6 +4862,7 @@ class DrishtiDashboard {
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 140px;">Total Deposit</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 100px;">Deposit Done</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 140px;">Renewal Amount</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 100px;">Renewal %</th>
 								</tr></thead>
 								<tbody>${rowsHtml}</tbody>
 								<tfoot><tr style="background: #1e293b; color: #ffffff; font-weight: 700;">
@@ -4864,6 +4878,7 @@ class DrishtiDashboard {
 									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(grandTotal.total_deposit_amount)}</td>
 									<td></td>
 									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(grandTotal.renewal_amount)}</td>
+									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtPerc(grandTotal.renewal_amount, grandTotal.maturity_paid)}</td>
 								</tr></tfoot>
 							</table>
 						</div>`;
