@@ -285,6 +285,151 @@ def get_book_position_months(sol_id: str):
     return [str(r[0]) for r in rows]
 
 
+def get_smbg_demand_collection_from_dr(sol_id: str, date_str: str = None):
+    if not date_str:
+        from datetime import datetime
+        date_str = datetime.today().strftime('%Y-%m-%d')
+    try:
+        from datetime import datetime
+        dt = datetime.strptime(str(date_str), '%Y-%m-%d')
+        start_date = dt.replace(day=1).strftime('%Y-%m-%d')
+        end_date = date_str
+    except Exception:
+        start_date = "2026-08-01"
+        end_date = "2026-08-18"
+
+    from custom_report.db_connection import get_dr_connection
+    from frappe.utils import flt
+
+    query = """
+WITH account_data AS (
+    SELECT
+        d.rm_id,
+        g.cif_id,
+        g.acct_opn_date,
+        g.acct_cls_date,
+        a2.relationshipopeningdate AS cif_id_opening_date,
+        g2.emp_name AS rm_name,
+        d2.operacc,
+        g.foracid,
+        g.sol_id,  
+        sol.sol_desc,  
+        g.schm_code  
+    FROM
+        custom.dsamap AS d
+    LEFT JOIN
+        tbaadm.gam AS g ON g.foracid = d.account_number
+            AND g.schm_code BETWEEN '2005' AND '2006'
+            AND g.sol_id = %s
+    LEFT JOIN
+        crmuser.accounts AS a2 ON g.cif_id = a2.orgkey
+    LEFT JOIN
+        custom.dsaauth AS d2 ON UPPER(d.rm_id) = UPPER(d2.user_id)
+    LEFT JOIN
+        tbaadm.get AS g2 ON UPPER(d2.user_id) = UPPER(g2.emp_id)
+    LEFT JOIN
+        tbaadm.sol AS sol ON g.sol_id = sol.sol_id
+    WHERE
+        g.foracid IS NOT NULL
+),
+flow_data AS (
+    SELECT
+        g.foracid,
+        SUM(tdt.flow_amt) AS total_flow_amount
+    FROM
+        tbaadm.gam AS g
+    JOIN
+        tbaadm.tdt AS tdt ON tdt.acid = g.acid
+            AND tdt.flow_code = 'NI'
+            AND tdt.flow_date BETWEEN %s AND %s
+    WHERE
+        g.schm_code BETWEEN '2005' AND '2006'
+        AND g.sol_id = %s
+    GROUP BY
+        g.foracid
+),
+tran_data AS (
+    SELECT
+        g.foracid,
+        SUM(dtt.tran_amt) AS total_tran_amt
+    FROM
+        tbaadm.gam AS g
+    JOIN
+        tbaadm.dtt AS dtt ON dtt.acid = g.acid
+            AND dtt.flow_code = 'NI'
+            AND dtt.value_date BETWEEN %s AND %s
+    WHERE
+        g.schm_code BETWEEN '2005' AND '2006'
+        AND g.sol_id = %s
+    GROUP BY
+        g.foracid
+),
+reference_data AS (
+    SELECT
+        ed.referencenumber AS pan_number,
+        da.user_id AS rm_id
+    FROM
+        crmuser.entitydocument AS ed
+    JOIN
+        tbaadm.gam AS g ON ed.orgkey = g.cif_id
+            AND g.sol_id = %s
+    JOIN
+        custom.dsaauth AS da ON g.foracid = da.operacc
+    WHERE
+        ed.doccode = 'PAN'
+)
+SELECT
+    COALESCE(SUM(
+        CASE
+            WHEN ad.acct_cls_date IS NOT NULL
+                 AND ad.acct_cls_date < %s
+            THEN 0
+            ELSE COALESCE(fd.total_flow_amount, 0)
+        END
+    ), 0) AS total_demand,
+    COALESCE(SUM(COALESCE(td.total_tran_amt, 0)), 0) AS total_collection
+FROM
+    account_data AS ad
+LEFT JOIN
+    flow_data AS fd ON ad.foracid = fd.foracid
+LEFT JOIN
+    tran_data AS td ON ad.foracid = td.foracid
+LEFT JOIN
+    reference_data AS rd ON ad.rm_id = rd.rm_id
+LEFT JOIN
+    tbaadm.gam AS g ON ad.foracid = g.foracid
+LEFT JOIN
+    tbaadm.gsp AS gsp ON g.schm_code = gsp.schm_code;
+    """
+
+    total_demand = 0.0
+    total_collection = 0.0
+
+    try:
+        conn = get_dr_connection()
+        with conn.cursor() as cur:
+            cur.execute(query, (
+                sol_id,
+                start_date,
+                end_date,
+                sol_id,
+                start_date,
+                end_date,
+                sol_id,
+                sol_id,
+                start_date
+            ))
+            row = cur.fetchone()
+            if row:
+                total_demand = flt(row[0] or 0)
+                total_collection = flt(row[1] or 0)
+        conn.close()
+    except Exception as e:
+        frappe.log_error(f"Failed to fetch SMBG Demand/Collection from DR for {sol_id}: {str(e)}", "SMBG Demand Collection DR Fetch")
+
+    return total_demand, total_collection
+
+
 def get_rd_demand_collection_from_dr(sol_id: str, date_str: str = None):
     if not date_str:
         from datetime import datetime
@@ -472,7 +617,8 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
         "dam_accounts_opened": 0, "dam_accounts_total": 0,
         "total_accounts_opened": 0, "total_accounts_total": 0,
         
-        "rd_demand": 0.0, "rd_collection": 0.0, "rd_smbg_collection": 0.0
+        "rd_demand": 0.0, "rd_collection": 0.0, "rd_smbg_collection": 0.0,
+        "smbg_demand": 0.0, "smbg_collection": 0.0, "smbg_demand_vs_collection": 0.0
     }
 
     if not latest_date:
@@ -480,6 +626,11 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
         result["rd_demand"] = rd_demand_val
         result["rd_collection"] = rd_collection_val
         result["rd_smbg_collection"] = rd_collection_val
+
+        smbg_demand_val, smbg_collection_val = get_smbg_demand_collection_from_dr(sol_id, None)
+        result["smbg_demand"] = smbg_demand_val
+        result["smbg_collection"] = smbg_collection_val
+        result["smbg_demand_vs_collection"] = (smbg_collection_val / smbg_demand_val * 100.0) if smbg_demand_val > 0 else 0.0
         return result
 
     data = frappe.db.get_list(
@@ -582,6 +733,12 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
     result["rd_demand"] = rd_demand_val
     result["rd_collection"] = rd_collection_val
     result["rd_smbg_collection"] = rd_collection_val
+
+    # Overwrite SMBG demand and collection from Finacle/DR DB
+    smbg_demand_val, smbg_collection_val = get_smbg_demand_collection_from_dr(sol_id, latest_date)
+    result["smbg_demand"] = smbg_demand_val
+    result["smbg_collection"] = smbg_collection_val
+    result["smbg_demand_vs_collection"] = (smbg_collection_val / smbg_demand_val * 100.0) if smbg_demand_val > 0 else 0.0
 
     return result
 
