@@ -3023,10 +3023,10 @@ SELECT
     COALESCE(f.total_tran_amt, 0) AS total_tran_amt,
 --    COALESCE(m.opening_balance, 0) AS opening_balance,
 --    COALESCE(m.closing_balance, 0) AS closing_balance,
-    COALESCE(CEIL(m.opening_balance), 0) AS opening_balance,
-    COALESCE(CEIL(m.closing_balance), 0) AS closing_balance,
-    COALESCE(CEIL(m.opening_mab), 0) AS opening_mab,
-    COALESCE(CEIL(m.closing_mab), 0) AS closing_mab,
+    COALESCE(m.opening_balance, 0) AS opening_balance,
+    COALESCE(m.closing_balance, 0) AS closing_balance,
+    COALESCE(ROUND(m.opening_mab), 0) AS opening_mab,
+    COALESCE(ROUND(m.closing_mab), 0) AS closing_mab,
     COALESCE(m.inc_mab, 0) AS inc_mab,
     COALESCE(f.total_tran_amt, 0)
         + COALESCE(m.inc_mab, 0) AS achivment
