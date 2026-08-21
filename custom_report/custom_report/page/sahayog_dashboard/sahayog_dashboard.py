@@ -3060,6 +3060,23 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
         # Pre-fetch product group_name mappings from DB to emulate Fetch From
         product_map = get_product_group_map_cached()
 
+        # Hardcoded scheme code → product mapping (covers all known codes)
+        SCHM_PRODUCT_MAP = {
+            "1007": "DD", "2004": "DD", "2005": "DD", "2006": "DD", "2007": "DD",
+            "2008": "DD", "2009": "DD", "2012": "DD", "2015": "DD", "2017": "DD",
+            "2020": "DD", "2023": "DD", "2026": "DD", "2029": "DD", "2032": "DD",
+            "2035": "DD",
+            "2001": "FD", "2002": "FD", "2003": "FD",
+            "2010": "FD", "2011": "FD", "2013": "FD", "2014": "FD", "2016": "FD",
+            "2018": "FD", "2019": "FD", "2021": "FD", "2022": "FD", "2024": "FD",
+            "2025": "FD", "2027": "FD", "2028": "FD", "2030": "FD", "2031": "FD",
+            "2033": "FD", "2034": "FD",
+            "2101": "FD", "2102": "FD", "2103": "FD", "2104": "FD", "2105": "FD", "2106": "FD",
+            "2201": "DAM", "2202": "DAM", "2203": "DAM",
+            "9001": "SHARE", "9002": "OTHER",
+            "1002": "CASA", "1011": "CASA", "1102": "CASA", "1103": "CASA", "1104": "CASA",
+        }
+
         for row in rows:
             sol_id = str(row[0]).strip()
             schm_code = str(row[1]).strip()
@@ -3068,7 +3085,7 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
             final_zone = clean_zone_region(row[5] or row[4], "ZONE")
             final_region = clean_zone_region(row[3], "REGION")
             
-            product_group = product_map.get(schm_code)
+            product_group = product_map.get(schm_code) or SCHM_PRODUCT_MAP.get(schm_code) or "TDA"
             
             name = frappe.generate_hash(length=16)
             bulk_data.append((
@@ -3089,9 +3106,10 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
             ))
 
         # Deleting old records for this date and TDA products to prevent duplicates
+        tda_products = ["FD", "DD", "DAM", "SMBG", "RD", "OTHER"]
         frappe.db.delete("Product Wise Report", {
             "date": processed_date,
-            "product": "TDA"
+            "product": ["in", tda_products]
         })
 
         print(f"TDA Sync - Starting direct bulk insertion of {len(bulk_data)} records into Product Wise Report...", flush=True)
