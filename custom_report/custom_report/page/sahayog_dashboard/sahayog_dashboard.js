@@ -10177,7 +10177,7 @@ class DrishtiDashboard {
 			`;
 		}
 
-		const allProducts = this.allProducts.filter(p => p !== "TDA" && p !== "SHARE");
+		const allProducts = this.allProducts.filter(p => p !== "SHARE" && p !== "OTHER");
 
 		let headerHtml = `
 			<style>

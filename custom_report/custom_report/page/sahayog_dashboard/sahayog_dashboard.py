@@ -3062,17 +3062,24 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
 
         # Hardcoded scheme code → product mapping (covers all known codes)
         SCHM_PRODUCT_MAP = {
-            "1007": "DD", "2004": "DD", "2005": "DD", "2006": "DD", "2007": "DD",
+            # DD - Daily Deposit
+            "1007": "DD", "2004": "DD", "2007": "DD",
             "2008": "DD", "2009": "DD", "2012": "DD", "2015": "DD", "2017": "DD",
             "2020": "DD", "2023": "DD", "2026": "DD", "2029": "DD", "2032": "DD",
             "2035": "DD",
+            # FD - Fixed Deposit
             "2001": "FD", "2002": "FD", "2003": "FD",
-            "2010": "FD", "2011": "FD", "2013": "FD", "2014": "FD", "2016": "FD",
             "2018": "FD", "2019": "FD", "2021": "FD", "2022": "FD", "2024": "FD",
             "2025": "FD", "2027": "FD", "2028": "FD", "2030": "FD", "2031": "FD",
             "2033": "FD", "2034": "FD",
             "2101": "FD", "2102": "FD", "2103": "FD", "2104": "FD", "2105": "FD", "2106": "FD",
+            # RD - Recurring Deposit
+            "2010": "RD", "2011": "RD", "2013": "RD", "2014": "RD", "2016": "RD",
+            # DAM
             "2201": "DAM", "2202": "DAM", "2203": "DAM",
+            # SMBG - Sahayog Bachat Gat
+            "2005": "SMBG", "2006": "SMBG",
+            # Others
             "9001": "SHARE", "9002": "OTHER",
             "1002": "CASA", "1011": "CASA", "1102": "CASA", "1103": "CASA", "1104": "CASA",
         }
