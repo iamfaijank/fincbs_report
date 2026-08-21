@@ -256,7 +256,7 @@ def calculate_category(achievement_pct):
 def get_last_available_date_for_month(month_num, year):
     dates = frappe.db.sql("""
         SELECT DISTINCT date 
-        FROM `tabBranch Category Report` 
+        FROM `tabProduct Wise Report` 
         WHERE MONTH(date) = %s AND YEAR(date) = %s
         ORDER BY date DESC
     """, (month_num, year), as_dict=True)
@@ -336,7 +336,7 @@ def get_fy_months_with_dates(financial_year, view="Monthly", selected_date=None,
             if m[1] == ref_month and m[2] == ref_year:
                 if selected_date_obj and selected_date_obj.month == ref_month and selected_date_obj.year == ref_year:
                     if selected_date_obj.weekday() != 6:
-                        exists = frappe.db.exists("Branch Category Report", {"date": selected_date_obj})
+                        exists = frappe.db.exists("Product Wise Report", {"date": selected_date_obj})
                         if exists:
                             result_months.append((m[0], m[1], m[2], str(selected_date_obj)))
                             found = True
@@ -481,8 +481,8 @@ def calculate_category_changes(current_date_data, previous_date_data):
 
 @frappe.whitelist(allow_guest=True)
 def get_latest_branch_category_report_date():
-    """Returns the latest available date from 'Branch Category Report' doctype."""
-    latest_date = frappe.db.get_value("Branch Category Report", {}, "date", order_by="date desc")
+    """Returns the latest available date from 'Product Wise Report' doctype."""
+    latest_date = frappe.db.get_value("Product Wise Report", {}, "date", order_by="date desc")
     if latest_date:
         return str(latest_date)[:10]
     return None
@@ -626,19 +626,66 @@ def get_sahayog_dashboard(
     district_map = {sid: b["district"] or "Unknown District" for sid, b in branches_map.items()}
     
     all_branch_data = []
+    start_year = int(financial_year.split("-")[0])
+
+    def passes_filters(rec, filters):
+        for field, rule in filters.items():
+            val = rec.get(field)
+            op = rule[0]
+            ref = rule[1]
+            if op == "in":
+                if val not in ref: return False
+            elif op == "like":
+                match_str = ref.replace("%", "").lower()
+                if not val or match_str not in str(val).lower(): return False
+        return True
+
     for month_key, month_num, year, eff_date in months:
-        branch_filters = {"date": eff_date}
-        # Apply combined permissions and UI filters
-        branch_filters.update(combined_filters)
+        # Fetch monthly achievements (sum of amount grouped by sol_id, zone, region)
+        monthly_sql = """
+            SELECT 
+                sol_id,
+                zone,
+                region,
+                SUM(amount) as achievement
+            FROM `tabProduct Wise Report`
+            WHERE date = %s AND product NOT IN ('SHARE', 'TDA', 'JLL RD', 'SKBG', 'TASKSILVER', 'TASKWEALTH', 'SAVSIL', 'CUGOLD', 'CUWEALTH')
+            GROUP BY sol_id, zone, region
+        """
+        monthly_data = frappe.db.sql(monthly_sql, (eff_date,), as_dict=True)
         
-        month_data = frappe.get_all(
-            "Branch Category Report",
-            filters=branch_filters,
-            fields=["date", "sol_id", "branch", "zone", "region", "achievement", "yearly_achievement"]
-        )
-        for rec in month_data:
+        # Fetch YTD achievements from start of FY to eff_date
+        ytd_sql = """
+            SELECT 
+                sol_id,
+                SUM(amount) as yearly_achievement
+            FROM `tabProduct Wise Report`
+            WHERE date >= %s AND date <= %s AND product NOT IN ('SHARE', 'TDA', 'JLL RD', 'SKBG', 'TASKSILVER', 'TASKWEALTH', 'SAVSIL', 'CUGOLD', 'CUWEALTH')
+            GROUP BY sol_id
+        """
+        fy_start_date = f"{start_year}-04-01"
+        ytd_data = {r.sol_id: float(r.yearly_achievement or 0) for r in frappe.db.sql(ytd_sql, (fy_start_date, eff_date), as_dict=True)}
+        
+        for rec in monthly_data:
+            sol_id = str(rec.sol_id or "")
+            rec["date"] = eff_date
             rec["month_key"] = month_key
-        all_branch_data.extend(month_data)
+            rec["achievement"] = float(rec.achievement or 0)
+            rec["yearly_achievement"] = ytd_data.get(sol_id, 0.0)
+            
+            # Map branch name and fallback zone/region from Sahayog Branch
+            branch_info = branches_map.get(sol_id) or {}
+            rec["branch"] = branch_info.get("branch_name") or ""
+            
+            if not rec.get("zone") and branch_info.get("zone"):
+                rec["zone"] = branch_info["zone"]
+            if not rec.get("region") and branch_info.get("region"):
+                rec["region"] = branch_info["region"]
+                
+            if not passes_filters(rec, combined_filters):
+                continue
+                
+            all_branch_data.append(rec)
     
     zone_wise = build_zone_wise(all_branch_data, targets_map, target_type, district_map)
     product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type, selected_date)
