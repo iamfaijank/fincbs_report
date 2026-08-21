@@ -688,7 +688,7 @@ def get_sahayog_dashboard(
             all_branch_data.append(rec)
     
     zone_wise = build_zone_wise(all_branch_data, targets_map, target_type, district_map)
-    product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type, selected_date)
+    product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type, selected_date, combined_filters)
     category_wise = build_category_wise(all_branch_data, targets_map, months, target_type)
     branch_wise = build_branch_wise(all_branch_data, targets_map, months, target_type, district_map)
     agent_wise = build_agent_wise(selected_date)
@@ -889,14 +889,36 @@ def build_zone_wise(branch_data, targets_map, target_type, district_map=None):
     return zone_wise
 
 
-def build_product_wise(branch_data, targets_map, target_type, selected_date=None):
+def build_product_wise(branch_data, targets_map, target_type, selected_date=None, combined_filters=None):
     if not selected_date:
         selected_date = frappe.db.get_value("Product Wise Report", {}, "date", order_by="date desc")
 
     if not selected_date:
         return [], []
 
-    raw_data_db = frappe.db.sql("""
+    # Build dynamic WHERE clause from combined_filters
+    where_conditions = ["date = %s"]
+    params = [selected_date]
+
+    if combined_filters:
+        for field, value in combined_filters.items():
+            if isinstance(value, list) and len(value) == 2:
+                operator = value[0]
+                val = value[1]
+                if operator == "in" and isinstance(val, list):
+                    placeholders = ", ".join(["%s"] * len(val))
+                    where_conditions.append(f"{field} IN ({placeholders})")
+                    params.extend(val)
+                elif operator == "like":
+                    where_conditions.append(f"{field} LIKE %s")
+                    params.append(val)
+            elif isinstance(value, str):
+                where_conditions.append(f"{field} = %s")
+                params.append(value)
+
+    where_clause = " AND ".join(where_conditions)
+
+    raw_data_db = frappe.db.sql(f"""
         SELECT
             zone,
             region,
@@ -904,9 +926,9 @@ def build_product_wise(branch_data, targets_map, target_type, selected_date=None
             product,
             SUM(amount) as amount
         FROM `tabProduct Wise Report`
-        WHERE date = %s
+        WHERE {where_clause}
         GROUP BY zone, region, sol_id, product
-    """, (selected_date,), as_dict=True)
+    """, params, as_dict=True)
 
     branches_map = get_sahayog_branches_cached()
     raw_data = []
