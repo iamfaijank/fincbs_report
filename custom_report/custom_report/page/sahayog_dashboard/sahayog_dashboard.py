@@ -649,7 +649,7 @@ def get_sahayog_dashboard(
                 region,
                 SUM(amount) as achievement
             FROM `tabProduct Wise Report`
-            WHERE date = %s
+            WHERE date = %s AND product != 'SHARE'
             GROUP BY sol_id, zone, region
         """
         monthly_data = frappe.db.sql(monthly_sql, (eff_date,), as_dict=True)
@@ -660,7 +660,7 @@ def get_sahayog_dashboard(
                 sol_id,
                 SUM(amount) as yearly_achievement
             FROM `tabProduct Wise Report`
-            WHERE date >= %s AND date <= %s
+            WHERE date >= %s AND date <= %s AND product != 'SHARE'
             GROUP BY sol_id
         """
         fy_start_date = f"{start_year}-04-01"
