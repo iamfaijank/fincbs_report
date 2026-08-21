@@ -3106,7 +3106,7 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
             ))
 
         # Deleting old records for this date and TDA products to prevent duplicates
-        tda_products = ["FD", "DD", "DAM", "SMBG", "RD", "OTHER"]
+        tda_products = ["TDA", "FD", "DD", "DAM", "SMBG", "RD", "OTHER", "SHARE"]
         frappe.db.delete("Product Wise Report", {
             "date": processed_date,
             "product": ["in", tda_products]
