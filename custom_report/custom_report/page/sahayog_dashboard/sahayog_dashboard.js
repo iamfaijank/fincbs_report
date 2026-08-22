@@ -1188,6 +1188,7 @@ class DrishtiDashboard {
 						clearTimeout(ntbSearchTimeout);
 						ntbSearchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val();
+							_autoExpandSearchResults(self, self.tableData);
 							self._renderNtbTable();
 						}, 300);
 					});
