@@ -221,7 +221,6 @@ const filterMisTableDataByUserPermissions = function (data, filterOptions) {
 function _autoExpandSearchResults(self, data) {
 	const term = (self.searchTerm || "").trim();
 	if (!term || !data || !data.length) return;
-	if (!self.expandedZones) return;
 	const terms = term.split(",").map(t => t.trim().toLowerCase()).filter(t => t);
 	data.forEach(row => {
 		const matches = terms.some(t => {
@@ -233,9 +232,25 @@ function _autoExpandSearchResults(self, data) {
 			return br.includes(t) || id.includes(t) || dt.includes(t) || zone.includes(t) || region.includes(t);
 		});
 		if (matches) {
-			if (row.zone) self.expandedZones[row.zone] = true;
-			if (row.zone && row.region && self.expandedRegions) self.expandedRegions[row.zone + "::" + row.region] = true;
-			if (row.zone && row.region && row.district && self.expandedDistricts) self.expandedDistricts[row.zone + "::" + row.region + "::" + row.district] = true;
+			const z = row.zone || "";
+			const r = row.region || "";
+			const d = row.district || "";
+			const s = row.sol_id || "";
+			if (z) {
+				if (self.expandedZones) self.expandedZones[z] = true;
+				if (self.expandedTreeNodes) self.expandedTreeNodes[z] = true;
+			}
+			if (z && r) {
+				if (self.expandedRegions) self.expandedRegions[z + "::" + r] = true;
+				if (self.expandedTreeNodes) self.expandedTreeNodes[`r_${z}_${r}`] = true;
+			}
+			if (z && r && d) {
+				if (self.expandedDistricts) self.expandedDistricts[z + "::" + r + "::" + d] = true;
+				if (self.expandedTreeNodes) self.expandedTreeNodes[`d_${z}_${r}_${d}`] = true;
+			}
+			if (z && r && d && s) {
+				if (self.expandedTreeNodes) self.expandedTreeNodes[`s_${z}_${r}_${d}_${s}`] = true;
+			}
 		}
 	});
 }
