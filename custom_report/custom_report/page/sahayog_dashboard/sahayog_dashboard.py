@@ -1739,14 +1739,21 @@ def get_daily_account_opening_data(selected_date=None):
 
         # Enforce Report Preference permissions
         if perms.get("is_restricted"):
-            allowed_zones = perms.get("zones", [])
-            allowed_sol_ids = perms.get("sol_ids", [])
+            allowed_zones = set(perms.get("zones", []))
+            allowed_regions = set(perms.get("regions", []))
+            allowed_sol_ids = set(perms.get("sol_ids", []))
+
+            import re
             if allowed_zones:
-                import re
-                allowed_norm = [re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones]
-                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in allowed_norm]
-            elif allowed_sol_ids:
-                allowed_sols_str = [str(s).strip() for s in allowed_sol_ids]
+                allowed_zone_norm = {re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones}
+                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in allowed_zone_norm]
+
+            if not perms.get("all_regions") and allowed_regions:
+                allowed_region_norm = {re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions}
+                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in allowed_region_norm]
+
+            if allowed_sol_ids and not allowed_zones and not allowed_regions:
+                allowed_sols_str = {str(s).strip() for s in allowed_sol_ids}
                 result = [r for r in result if str(r.get("sol_id")).strip() in allowed_sols_str]
 
         return result
@@ -1948,14 +1955,21 @@ def get_ntb_evr_data(selected_date=None):
         result = list(branch_map.values())
 
         if perms.get("is_restricted"):
-            allowed_zones = perms.get("zones", [])
-            allowed_sol_ids = perms.get("sol_ids", [])
+            allowed_zones = set(perms.get("zones", []))
+            allowed_regions = set(perms.get("regions", []))
+            allowed_sol_ids = set(perms.get("sol_ids", []))
+
+            import re
             if allowed_zones:
-                import re
-                allowed_norm = [re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones]
-                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in allowed_norm]
-            elif allowed_sol_ids:
-                allowed_sols_str = [str(s).strip() for s in allowed_sol_ids]
+                allowed_zone_norm = {re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones}
+                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in allowed_zone_norm]
+
+            if not perms.get("all_regions") and allowed_regions:
+                allowed_region_norm = {re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions}
+                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in allowed_region_norm]
+
+            if allowed_sol_ids and not allowed_zones and not allowed_regions:
+                allowed_sols_str = {str(s).strip() for s in allowed_sol_ids}
                 result = [r for r in result if str(r.get("sol_id")).strip() in allowed_sols_str]
 
         result.sort(key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
