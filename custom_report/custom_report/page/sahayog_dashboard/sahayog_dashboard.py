@@ -1264,21 +1264,12 @@ def build_agent_wise(selected_date=None, perms=None):
         allowed_zones = set()
         allowed_regions = set()
         
-        # 1. Resolve sol_ids → zones/regions from Sahayog Branch
-        if perms.get("sol_ids"):
-            branches_map = get_sahayog_branches_cached()
-            for sid in perms["sol_ids"]:
-                b = branches_map.get(sid, {})
-                if b.get("zone"):
-                    allowed_zones.add(b["zone"])
-                if b.get("region"):
-                    allowed_regions.add(b["region"])
-        
-        # 2. Add explicit zones from Report Preference
+        # Use explicit zones/regions from Report Preference directly
+        # Do NOT resolve sol_ids here — they may map to different zones/regions
+        # than what the user has explicitly set in Report Preference
         if perms.get("zones"):
             allowed_zones.update(perms["zones"])
         
-        # 3. Add explicit regions from Report Preference
         if not perms.get("all_regions") and perms.get("regions"):
             allowed_regions.update(perms["regions"])
         
