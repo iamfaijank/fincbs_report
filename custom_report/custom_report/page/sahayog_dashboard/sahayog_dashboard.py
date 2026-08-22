@@ -688,10 +688,10 @@ def get_sahayog_dashboard(
             all_branch_data.append(rec)
     
     zone_wise = build_zone_wise(all_branch_data, targets_map, target_type, district_map)
-    product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type, selected_date)
+    product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type, selected_date, combined_filters)
     category_wise = build_category_wise(all_branch_data, targets_map, months, target_type)
     branch_wise = build_branch_wise(all_branch_data, targets_map, months, target_type, district_map)
-    agent_wise = build_agent_wise(selected_date)
+    agent_wise = build_agent_wise(selected_date, perms)
 
     return {
         "financial_year": financial_year,
@@ -889,14 +889,36 @@ def build_zone_wise(branch_data, targets_map, target_type, district_map=None):
     return zone_wise
 
 
-def build_product_wise(branch_data, targets_map, target_type, selected_date=None):
+def build_product_wise(branch_data, targets_map, target_type, selected_date=None, combined_filters=None):
     if not selected_date:
         selected_date = frappe.db.get_value("Product Wise Report", {}, "date", order_by="date desc")
 
     if not selected_date:
         return [], []
 
-    raw_data_db = frappe.db.sql("""
+    # Build dynamic WHERE clause from combined_filters
+    where_conditions = ["date = %s"]
+    params = [selected_date]
+
+    if combined_filters:
+        for field, value in combined_filters.items():
+            if isinstance(value, list) and len(value) == 2:
+                operator = value[0]
+                val = value[1]
+                if operator == "in" and isinstance(val, list):
+                    placeholders = ", ".join(["%s"] * len(val))
+                    where_conditions.append(f"{field} IN ({placeholders})")
+                    params.extend(val)
+                elif operator == "like":
+                    where_conditions.append(f"{field} LIKE %s")
+                    params.append(val)
+            elif isinstance(value, str):
+                where_conditions.append(f"{field} = %s")
+                params.append(value)
+
+    where_clause = " AND ".join(where_conditions)
+
+    raw_data_db = frappe.db.sql(f"""
         SELECT
             zone,
             region,
@@ -904,9 +926,9 @@ def build_product_wise(branch_data, targets_map, target_type, selected_date=None
             product,
             SUM(amount) as amount
         FROM `tabProduct Wise Report`
-        WHERE date = %s
+        WHERE {where_clause}
         GROUP BY zone, region, sol_id, product
-    """, (selected_date,), as_dict=True)
+    """, params, as_dict=True)
 
     branches_map = get_sahayog_branches_cached()
     raw_data = []
@@ -1213,11 +1235,12 @@ def build_branch_wise(branch_data, targets_map, months, target_type, district_ma
     return out
 
 
-def build_agent_wise(selected_date=None):
+def build_agent_wise(selected_date=None, perms=None):
     """
     Build Agent Wise report from 'Agent  Wise Report' doctype.
     Groups by Zone and Region, aggregates target and achievement.
     Uses 'date' field as the date filter.
+    Applies zone/region restrictions from Report Preference.
     """
     if not selected_date:
         selected_date = frappe.utils.today()
@@ -1228,18 +1251,47 @@ def build_agent_wise(selected_date=None):
         latest = frappe.db.get_value("Agent  Wise Report", {}, "date", order_by="date desc")
         if latest:
             selected_date = str(latest)[:10]
+    
+    # Build WHERE clauses with raw SQL for reliable filtering
+    where_clauses = ["zone != ''", "region != ''"]
+    params = []
+    
+    where_clauses.append("date BETWEEN %s AND %s")
+    params.extend([f"{selected_date} 00:00:00", f"{selected_date} 23:59:59"])
+    
+    # Apply zone/region restrictions from Report Preference
+    if perms and perms.get("is_restricted"):
+        allowed_zones = set()
+        allowed_regions = set()
         
-    # Fetch data from Agent  Wise Report doctype
-    agent_data = frappe.get_all(
-        "Agent  Wise Report",
-        fields=["zone", "region", "target", "achievement", "ss_target", "ss_achievement", "ss_active", "ss_inactive", "active", "inactive"],
-        filters={
-            "zone": ["!=", ""], 
-            "region": ["!=", ""],
-            "date": ["between", [f"{selected_date} 00:00:00", f"{selected_date} 23:59:59"]]
-        },
-        limit_page_length=1000
-    )
+        # Use explicit zones/regions from Report Preference directly
+        # Do NOT resolve sol_ids here — they may map to different zones/regions
+        # than what the user has explicitly set in Report Preference
+        if perms.get("zones"):
+            allowed_zones.update(perms["zones"])
+        
+        if not perms.get("all_regions") and perms.get("regions"):
+            allowed_regions.update(perms["regions"])
+        
+        if allowed_zones:
+            placeholders = ", ".join(["%s"] * len(allowed_zones))
+            where_clauses.append(f"zone IN ({placeholders})")
+            params.extend(list(allowed_zones))
+        
+        if allowed_regions:
+            placeholders = ", ".join(["%s"] * len(allowed_regions))
+            where_clauses.append(f"region IN ({placeholders})")
+            params.extend(list(allowed_regions))
+    
+    where_sql = " AND ".join(where_clauses)
+    
+    agent_data = frappe.db.sql(f"""
+        SELECT zone, region, target, achievement, ss_target, ss_achievement,
+               ss_active, ss_inactive, active, inactive
+        FROM `tabAgent  Wise Report`
+        WHERE {where_sql}
+        LIMIT 1000
+    """, params, as_dict=True)
     
     # Group by zone and region
     agent_map = defaultdict(lambda: {
@@ -1687,14 +1739,21 @@ def get_daily_account_opening_data(selected_date=None):
 
         # Enforce Report Preference permissions
         if perms.get("is_restricted"):
-            allowed_zones = perms.get("zones", [])
-            allowed_sol_ids = perms.get("sol_ids", [])
+            allowed_zones = set(perms.get("zones", []))
+            allowed_regions = set(perms.get("regions", []))
+            allowed_sol_ids = set(perms.get("sol_ids", []))
+
+            import re
             if allowed_zones:
-                import re
-                allowed_norm = [re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones]
-                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in allowed_norm]
-            elif allowed_sol_ids:
-                allowed_sols_str = [str(s).strip() for s in allowed_sol_ids]
+                allowed_zone_norm = {re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones}
+                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in allowed_zone_norm]
+
+            if not perms.get("all_regions") and allowed_regions:
+                allowed_region_norm = {re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions}
+                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in allowed_region_norm]
+
+            if allowed_sol_ids and not allowed_zones and not allowed_regions:
+                allowed_sols_str = {str(s).strip() for s in allowed_sol_ids}
                 result = [r for r in result if str(r.get("sol_id")).strip() in allowed_sols_str]
 
         return result
@@ -1710,7 +1769,6 @@ def get_daily_account_opening_data(selected_date=None):
 
 
 @frappe.whitelist()
-@sahayog_cache(ttl=86400)
 def get_ntb_evr_data(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate, add_months
@@ -1896,14 +1954,21 @@ def get_ntb_evr_data(selected_date=None):
         result = list(branch_map.values())
 
         if perms.get("is_restricted"):
-            allowed_zones = perms.get("zones", [])
-            allowed_sol_ids = perms.get("sol_ids", [])
+            allowed_zones = set(perms.get("zones", []))
+            allowed_regions = set(perms.get("regions", []))
+            allowed_sol_ids = set(perms.get("sol_ids", []))
+
+            import re
             if allowed_zones:
-                import re
-                allowed_norm = [re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones]
-                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in allowed_norm]
-            elif allowed_sol_ids:
-                allowed_sols_str = [str(s).strip() for s in allowed_sol_ids]
+                allowed_zone_norm = {re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones}
+                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in allowed_zone_norm]
+
+            if not perms.get("all_regions") and allowed_regions:
+                allowed_region_norm = {re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions}
+                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in allowed_region_norm]
+
+            if allowed_sol_ids and not allowed_zones and not allowed_regions:
+                allowed_sols_str = {str(s).strip() for s in allowed_sol_ids}
                 result = [r for r in result if str(r.get("sol_id")).strip() in allowed_sols_str]
 
         result.sort(key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
@@ -3023,10 +3088,10 @@ SELECT
     COALESCE(f.total_tran_amt, 0) AS total_tran_amt,
 --    COALESCE(m.opening_balance, 0) AS opening_balance,
 --    COALESCE(m.closing_balance, 0) AS closing_balance,
-    COALESCE(CEIL(m.opening_balance), 0) AS opening_balance,
-    COALESCE(CEIL(m.closing_balance), 0) AS closing_balance,
-    COALESCE(CEIL(m.opening_mab), 0) AS opening_mab,
-    COALESCE(CEIL(m.closing_mab), 0) AS closing_mab,
+    COALESCE(m.opening_balance, 0) AS opening_balance,
+    COALESCE(m.closing_balance, 0) AS closing_balance,
+    COALESCE(ROUND(m.opening_mab), 0) AS opening_mab,
+    COALESCE(ROUND(m.closing_mab), 0) AS closing_mab,
     COALESCE(m.inc_mab, 0) AS inc_mab,
     COALESCE(f.total_tran_amt, 0)
         + COALESCE(m.inc_mab, 0) AS achivment
@@ -3060,6 +3125,30 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
         # Pre-fetch product group_name mappings from DB to emulate Fetch From
         product_map = get_product_group_map_cached()
 
+        # Hardcoded scheme code → product mapping (covers all known codes)
+        SCHM_PRODUCT_MAP = {
+            # DD - Daily Deposit
+            "1007": "DD", "2004": "DD", "2007": "DD",
+            "2008": "DD", "2009": "DD", "2017": "DD",
+            # FD - Fixed Deposit
+            "2001": "FD", "2002": "FD", "2003": "FD",
+            "2018": "FD", "2019": "FD", "2020": "FD", "2021": "FD", "2022": "FD",
+            "2023": "FD", "2024": "FD", "2025": "FD", "2026": "FD", "2027": "FD",
+            "2028": "FD", "2029": "FD", "2030": "FD", "2031": "FD",
+            "2032": "FD", "2033": "FD", "2034": "FD", "2035": "FD",
+            "2101": "FD", "2102": "FD", "2103": "FD", "2104": "FD", "2105": "FD", "2106": "FD",
+            # RD - Recurring Deposit
+            "2010": "RD", "2011": "RD", "2012": "RD", "2013": "RD", "2014": "RD",
+            "2015": "RD", "2016": "RD",
+            # DAM
+            "2201": "DAM", "2202": "DAM", "2203": "DAM",
+            # SMBG - Sahayog Bachat Gat
+            "2005": "SMBG", "2006": "SMBG",
+            # Others
+            "9001": "SHARE", "9002": "OTHER",
+            "1002": "CASA", "1011": "CASA", "1102": "CASA", "1103": "CASA", "1104": "CASA",
+        }
+
         for row in rows:
             sol_id = str(row[0]).strip()
             schm_code = str(row[1]).strip()
@@ -3068,7 +3157,7 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
             final_zone = clean_zone_region(row[5] or row[4], "ZONE")
             final_region = clean_zone_region(row[3], "REGION")
             
-            product_group = product_map.get(schm_code)
+            product_group = product_map.get(schm_code) or SCHM_PRODUCT_MAP.get(schm_code) or "TDA"
             
             name = frappe.generate_hash(length=16)
             bulk_data.append((
@@ -3089,9 +3178,10 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
             ))
 
         # Deleting old records for this date and TDA products to prevent duplicates
+        tda_products = ["TDA", "FD", "DD", "DAM", "SMBG", "RD", "OTHER", "SHARE"]
         frappe.db.delete("Product Wise Report", {
             "date": processed_date,
-            "product": "TDA"
+            "product": ["in", tda_products]
         })
 
         print(f"TDA Sync - Starting direct bulk insertion of {len(bulk_data)} records into Product Wise Report...", flush=True)
@@ -3112,10 +3202,11 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
 
 @frappe.whitelist(allow_guest=True)
 @sahayog_cache(ttl=86400)
-def get_gl_wise_ch_report_data(selected_date=None):
+def get_gl_wise_ch_report_data(selected_date=None, user=None):
     """
     Returns the GL Wise CH Report data with hierarchical grouping:
     Zone -> Region -> District -> Sol (Branch Sol ID)
+    Applies sol_id filtering from Report Preference.
     """
     if not selected_date:
         selected_date = frappe.db.get_value("Product Wise Report", {}, "date", order_by="date desc")
@@ -3123,7 +3214,37 @@ def get_gl_wise_ch_report_data(selected_date=None):
     if not selected_date:
         return {"product_wise": [], "all_products": []}
 
-    raw_data_db = frappe.db.sql("""
+    if not user:
+        user = frappe.session.user
+
+    perms = get_user_report_permissions(user)
+
+    # Build WHERE clauses with sol_id filtering from Report Preference
+    where_clauses = ["date = %s"]
+    params = [selected_date]
+
+    if perms and perms.get("is_restricted"):
+        allowed_sol_ids = set()
+
+        if perms.get("sol_ids"):
+            allowed_sol_ids.update(perms["sol_ids"])
+
+        if perms.get("zones") or (not perms.get("all_regions") and perms.get("regions")):
+            branches_map = get_sahayog_branches_cached()
+            for sid, b in branches_map.items():
+                if perms.get("zones") and b.get("zone") in perms["zones"]:
+                    allowed_sol_ids.add(sid)
+                if not perms.get("all_regions") and perms.get("regions") and b.get("region") in perms["regions"]:
+                    allowed_sol_ids.add(sid)
+
+        if allowed_sol_ids:
+            placeholders = ", ".join(["%s"] * len(allowed_sol_ids))
+            where_clauses.append(f"sol_id IN ({placeholders})")
+            params.extend(list(allowed_sol_ids))
+
+    where_sql = " AND ".join(where_clauses)
+
+    raw_data_db = frappe.db.sql(f"""
         SELECT
             zone,
             region,
@@ -3132,9 +3253,9 @@ def get_gl_wise_ch_report_data(selected_date=None):
             scheme_code,
             SUM(amount) as amount
         FROM `tabProduct Wise Report`
-        WHERE date = %s
+        WHERE {where_sql}
         GROUP BY zone, region, sol_id, product, scheme_code
-    """, (selected_date,), as_dict=True)
+    """, params, as_dict=True)
 
     if not raw_data_db:
         frappe.throw(f"No data available in GL Wise CH Report for the selected date: {selected_date}. Please select a different date.")
@@ -5436,8 +5557,27 @@ def get_raw_demand_collection_data(selected_date=None):
             else:
                 return []
 
+def _apply_report_prefs_filter(result):
+    """Apply zone/region/sol_id filtering from Report Preference to a list of dicts."""
+    import re as _re
+    perms = get_user_report_permissions(frappe.session.user)
+    if not perms.get("is_restricted"):
+        return result
+    allowed_zones = set(perms.get("zones", []))
+    allowed_regions = set(perms.get("regions", []))
+    allowed_sol_ids = set(perms.get("sol_ids", []))
+    if allowed_zones:
+        zn = {_re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones}
+        result = [r for r in result if _re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in zn]
+    if not perms.get("all_regions") and allowed_regions:
+        rn = {_re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions}
+        result = [r for r in result if _re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in rn]
+    if allowed_sol_ids and not allowed_zones and not allowed_regions:
+        sn = {str(s).strip() for s in allowed_sol_ids}
+        result = [r for r in result if str(r.get("sol_id")).strip() in sn]
+    return result
+
 @frappe.whitelist()
-@sahayog_cache(ttl=86400)
 def get_agent_wise_demand_collection_data(selected_date=None):
 
     import datetime
@@ -5647,11 +5787,11 @@ def get_staff_wise_demand_collection_data(selected_date=None):
         summary[key]["monthly_collection"] += float(r.monthly_collection or 0)
 
     result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+    result = _apply_report_prefs_filter(result)
     return result
 
 
 @frappe.whitelist()
-@sahayog_cache(ttl=86400)
 def get_bucket_wise_account_mis_data(selected_date=None):
     import datetime
     if not selected_date:
@@ -5713,10 +5853,10 @@ def get_bucket_wise_account_mis_data(selected_date=None):
         total_recs += 1
 
     result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+    result = _apply_report_prefs_filter(result)
     return {"summary": result, "total_records": total_recs}
 
 @frappe.whitelist()
-@sahayog_cache(ttl=86400)
 def get_new_account_report_data(selected_date=None):
     from frappe.utils import getdate
     import datetime
@@ -5813,11 +5953,11 @@ def get_new_account_report_data(selected_date=None):
         summary[key]["deposit_amount"] += float(r.amount or 0)
 
     result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+    result = _apply_report_prefs_filter(result)
     return result
 
 
 @frappe.whitelist()
-@sahayog_cache(ttl=86400)
 def get_maturity_tracker_data(selected_date=None):
     import datetime
     from frappe.utils import cint
@@ -5863,6 +6003,7 @@ def get_maturity_tracker_data(selected_date=None):
             r["account_numbers"] = ""
         result.append(r)
 
+    result = _apply_report_prefs_filter(result)
     return result
 
 
