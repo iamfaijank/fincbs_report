@@ -218,6 +218,28 @@ const filterMisTableDataByUserPermissions = function (data, filterOptions) {
 	return data;
 };
 
+function _autoExpandSearchResults(self, data) {
+	const term = (self.searchTerm || "").trim();
+	if (!term || !data || !data.length) return;
+	if (!self.expandedZones) return;
+	const terms = term.split(",").map(t => t.trim().toLowerCase()).filter(t => t);
+	data.forEach(row => {
+		const matches = terms.some(t => {
+			const br = (row.branch_name || row.sol_desc || "").toLowerCase();
+			const id = (row.sol_id || "").toLowerCase();
+			const dt = (row.district || "").toLowerCase();
+			const zone = (row.zone || "").toLowerCase();
+			const region = (row.region || "").toLowerCase();
+			return br.includes(t) || id.includes(t) || dt.includes(t) || zone.includes(t) || region.includes(t);
+		});
+		if (matches) {
+			if (row.zone) self.expandedZones[row.zone] = true;
+			if (row.zone && row.region && self.expandedRegions) self.expandedRegions[row.zone + "::" + row.region] = true;
+			if (row.zone && row.region && row.district && self.expandedDistricts) self.expandedDistricts[row.zone + "::" + row.region + "::" + row.district] = true;
+		}
+	});
+}
+
 class DrishtiDashboard {
 	constructor(page) {
 		this.page = page;
@@ -413,6 +435,7 @@ class DrishtiDashboard {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
+							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 							}
@@ -1044,6 +1067,7 @@ class DrishtiDashboard {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
+							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) { self.renderMisTable(container.find("#mis-table-container"), dashboardInstance); }
 						}, 300);
 					});
@@ -1820,6 +1844,7 @@ class DrishtiDashboard {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
+							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
 							}
@@ -2238,6 +2263,7 @@ class DrishtiDashboard {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
+							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 							}
@@ -2752,6 +2778,7 @@ class DrishtiDashboard {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
+							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 							}
@@ -3287,6 +3314,7 @@ class DrishtiDashboard {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
+							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 							}
@@ -3837,6 +3865,7 @@ class DrishtiDashboard {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
+							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 							}
@@ -4404,6 +4433,7 @@ class DrishtiDashboard {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
+							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 							}
