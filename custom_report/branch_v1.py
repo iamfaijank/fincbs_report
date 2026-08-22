@@ -618,7 +618,8 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
         "total_accounts_opened": 0, "total_accounts_total": 0,
         
         "rd_demand": 0.0, "rd_collection": 0.0, "rd_smbg_collection": 0.0,
-        "smbg_demand": 0.0, "smbg_collection": 0.0, "smbg_demand_vs_collection": 0.0
+        "smbg_demand": 0.0, "smbg_collection": 0.0, "smbg_demand_vs_collection": 0.0,
+        "rd_smbg_pending": 0.0
     }
 
     if not latest_date:
@@ -631,6 +632,17 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
         result["smbg_demand"] = smbg_demand_val
         result["smbg_collection"] = smbg_collection_val
         result["smbg_demand_vs_collection"] = (smbg_collection_val / smbg_demand_val * 100.0) if smbg_demand_val > 0 else 0.0
+
+        # Query yesterday's RD & SMBG Pending sum
+        from datetime import date, timedelta
+        target_date = date.today() - timedelta(days=1)
+        target_date_str = target_date.strftime('%Y-%m-%d')
+        pending_sum = frappe.db.get_value(
+            "RD and SMBG Pending",
+            {"sol_id": sol_id, "date": target_date_str},
+            "sum(pending_amount)"
+        ) or 0.0
+        result["rd_smbg_pending"] = float(pending_sum)
         return result
 
     data = frappe.db.get_list(
@@ -739,6 +751,17 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
     result["smbg_demand"] = smbg_demand_val
     result["smbg_collection"] = smbg_collection_val
     result["smbg_demand_vs_collection"] = (smbg_collection_val / smbg_demand_val * 100.0) if smbg_demand_val > 0 else 0.0
+
+    # Query yesterday's RD & SMBG Pending sum
+    from datetime import date, timedelta
+    target_date = date.today() - timedelta(days=1)
+    target_date_str = target_date.strftime('%Y-%m-%d')
+    pending_sum = frappe.db.get_value(
+        "RD and SMBG Pending",
+        {"sol_id": sol_id, "date": target_date_str},
+        "sum(pending_amount)"
+    ) or 0.0
+    result["rd_smbg_pending"] = float(pending_sum)
 
     return result
 
