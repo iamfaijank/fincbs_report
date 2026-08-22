@@ -221,6 +221,8 @@ const filterMisTableDataByUserPermissions = function (data, filterOptions) {
 function _autoExpandSearchResults(self, data) {
 	const term = (self.searchTerm || "").trim();
 	if (!term || !data || !data.length) return;
+	if (!self.expandedZones && !self.expandedTreeNodes) return;
+	if (self.expandedTreeNodes === undefined) self.expandedTreeNodes = {};
 	const terms = term.split(",").map(t => t.trim().toLowerCase()).filter(t => t);
 	data.forEach(row => {
 		const matches = terms.some(t => {
@@ -1119,6 +1121,7 @@ class DrishtiDashboard {
 				tableData: [],
 				expandedZones: {},
 				expandedRegions: {},
+				expandedTreeNodes: {},
 				selectedMisZones: [],
 				searchTerm: "",
 				render: function (container, dashboardInstance) {
