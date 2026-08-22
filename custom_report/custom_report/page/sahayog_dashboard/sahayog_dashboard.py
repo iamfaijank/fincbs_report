@@ -3189,10 +3189,11 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
 
 @frappe.whitelist(allow_guest=True)
 @sahayog_cache(ttl=86400)
-def get_gl_wise_ch_report_data(selected_date=None):
+def get_gl_wise_ch_report_data(selected_date=None, user=None):
     """
     Returns the GL Wise CH Report data with hierarchical grouping:
     Zone -> Region -> District -> Sol (Branch Sol ID)
+    Applies sol_id filtering from Report Preference.
     """
     if not selected_date:
         selected_date = frappe.db.get_value("Product Wise Report", {}, "date", order_by="date desc")
@@ -3200,7 +3201,37 @@ def get_gl_wise_ch_report_data(selected_date=None):
     if not selected_date:
         return {"product_wise": [], "all_products": []}
 
-    raw_data_db = frappe.db.sql("""
+    if not user:
+        user = frappe.session.user
+
+    perms = get_user_report_permissions(user)
+
+    # Build WHERE clauses with sol_id filtering from Report Preference
+    where_clauses = ["date = %s"]
+    params = [selected_date]
+
+    if perms and perms.get("is_restricted"):
+        allowed_sol_ids = set()
+
+        if perms.get("sol_ids"):
+            allowed_sol_ids.update(perms["sol_ids"])
+
+        if perms.get("zones") or (not perms.get("all_regions") and perms.get("regions")):
+            branches_map = get_sahayog_branches_cached()
+            for sid, b in branches_map.items():
+                if perms.get("zones") and b.get("zone") in perms["zones"]:
+                    allowed_sol_ids.add(sid)
+                if not perms.get("all_regions") and perms.get("regions") and b.get("region") in perms["regions"]:
+                    allowed_sol_ids.add(sid)
+
+        if allowed_sol_ids:
+            placeholders = ", ".join(["%s"] * len(allowed_sol_ids))
+            where_clauses.append(f"sol_id IN ({placeholders})")
+            params.extend(list(allowed_sol_ids))
+
+    where_sql = " AND ".join(where_clauses)
+
+    raw_data_db = frappe.db.sql(f"""
         SELECT
             zone,
             region,
@@ -3209,9 +3240,9 @@ def get_gl_wise_ch_report_data(selected_date=None):
             scheme_code,
             SUM(amount) as amount
         FROM `tabProduct Wise Report`
-        WHERE date = %s
+        WHERE {where_sql}
         GROUP BY zone, region, sol_id, product, scheme_code
-    """, (selected_date,), as_dict=True)
+    """, params, as_dict=True)
 
     if not raw_data_db:
         frappe.throw(f"No data available in GL Wise CH Report for the selected date: {selected_date}. Please select a different date.")

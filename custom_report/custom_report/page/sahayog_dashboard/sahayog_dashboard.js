@@ -1784,7 +1784,7 @@ class DrishtiDashboard {
 
 					frappe.call({
 						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_gl_wise_ch_report_data",
-						args: { selected_date: dashboardInstance.state.selectedDate },
+						args: { selected_date: dashboardInstance.state.selectedDate, user: frappe.session.user },
 						callback: function (r) {
 							if (dashboardInstance._misRenderSeq !== seq) return;
 							if (r.message) {
