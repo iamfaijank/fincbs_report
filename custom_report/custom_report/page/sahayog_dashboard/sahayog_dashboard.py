@@ -5557,8 +5557,27 @@ def get_raw_demand_collection_data(selected_date=None):
             else:
                 return []
 
+def _apply_report_prefs_filter(result):
+    """Apply zone/region/sol_id filtering from Report Preference to a list of dicts."""
+    import re as _re
+    perms = get_user_report_permissions(frappe.session.user)
+    if not perms.get("is_restricted"):
+        return result
+    allowed_zones = set(perms.get("zones", []))
+    allowed_regions = set(perms.get("regions", []))
+    allowed_sol_ids = set(perms.get("sol_ids", []))
+    if allowed_zones:
+        zn = {_re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones}
+        result = [r for r in result if _re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in zn]
+    if not perms.get("all_regions") and allowed_regions:
+        rn = {_re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions}
+        result = [r for r in result if _re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in rn]
+    if allowed_sol_ids and not allowed_zones and not allowed_regions:
+        sn = {str(s).strip() for s in allowed_sol_ids}
+        result = [r for r in result if str(r.get("sol_id")).strip() in sn]
+    return result
+
 @frappe.whitelist()
-@sahayog_cache(ttl=86400)
 def get_agent_wise_demand_collection_data(selected_date=None):
 
     import datetime
@@ -5768,11 +5787,11 @@ def get_staff_wise_demand_collection_data(selected_date=None):
         summary[key]["monthly_collection"] += float(r.monthly_collection or 0)
 
     result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+    result = _apply_report_prefs_filter(result)
     return result
 
 
 @frappe.whitelist()
-@sahayog_cache(ttl=86400)
 def get_bucket_wise_account_mis_data(selected_date=None):
     import datetime
     if not selected_date:
@@ -5834,10 +5853,10 @@ def get_bucket_wise_account_mis_data(selected_date=None):
         total_recs += 1
 
     result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+    result = _apply_report_prefs_filter(result)
     return {"summary": result, "total_records": total_recs}
 
 @frappe.whitelist()
-@sahayog_cache(ttl=86400)
 def get_new_account_report_data(selected_date=None):
     from frappe.utils import getdate
     import datetime
@@ -5934,11 +5953,11 @@ def get_new_account_report_data(selected_date=None):
         summary[key]["deposit_amount"] += float(r.amount or 0)
 
     result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
+    result = _apply_report_prefs_filter(result)
     return result
 
 
 @frappe.whitelist()
-@sahayog_cache(ttl=86400)
 def get_maturity_tracker_data(selected_date=None):
     import datetime
     from frappe.utils import cint
@@ -5984,6 +6003,7 @@ def get_maturity_tracker_data(selected_date=None):
             r["account_numbers"] = ""
         result.append(r)
 
+    result = _apply_report_prefs_filter(result)
     return result
 
 
