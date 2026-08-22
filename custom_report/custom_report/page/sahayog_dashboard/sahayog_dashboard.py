@@ -1769,7 +1769,6 @@ def get_daily_account_opening_data(selected_date=None):
 
 
 @frappe.whitelist()
-@sahayog_cache(ttl=86400)
 def get_ntb_evr_data(selected_date=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate, add_months
