@@ -691,7 +691,7 @@ def get_sahayog_dashboard(
     product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type, selected_date, combined_filters)
     category_wise = build_category_wise(all_branch_data, targets_map, months, target_type)
     branch_wise = build_branch_wise(all_branch_data, targets_map, months, target_type, district_map)
-    agent_wise = build_agent_wise(selected_date)
+    agent_wise = build_agent_wise(selected_date, perms)
 
     return {
         "financial_year": financial_year,
@@ -1235,11 +1235,12 @@ def build_branch_wise(branch_data, targets_map, months, target_type, district_ma
     return out
 
 
-def build_agent_wise(selected_date=None):
+def build_agent_wise(selected_date=None, perms=None):
     """
     Build Agent Wise report from 'Agent  Wise Report' doctype.
     Groups by Zone and Region, aggregates target and achievement.
     Uses 'date' field as the date filter.
+    Applies zone/region restrictions from Report Preference.
     """
     if not selected_date:
         selected_date = frappe.utils.today()
@@ -1250,18 +1251,56 @@ def build_agent_wise(selected_date=None):
         latest = frappe.db.get_value("Agent  Wise Report", {}, "date", order_by="date desc")
         if latest:
             selected_date = str(latest)[:10]
+    
+    # Build WHERE clauses with raw SQL for reliable filtering
+    where_clauses = ["zone != ''", "region != ''"]
+    params = []
+    
+    where_clauses.append("date BETWEEN %s AND %s")
+    params.extend([f"{selected_date} 00:00:00", f"{selected_date} 23:59:59"])
+    
+    # Apply zone/region restrictions from Report Preference
+    if perms and perms.get("is_restricted"):
+        allowed_zones = set()
+        allowed_regions = set()
         
-    # Fetch data from Agent  Wise Report doctype
-    agent_data = frappe.get_all(
-        "Agent  Wise Report",
-        fields=["zone", "region", "target", "achievement", "ss_target", "ss_achievement", "ss_active", "ss_inactive", "active", "inactive"],
-        filters={
-            "zone": ["!=", ""], 
-            "region": ["!=", ""],
-            "date": ["between", [f"{selected_date} 00:00:00", f"{selected_date} 23:59:59"]]
-        },
-        limit_page_length=1000
-    )
+        # 1. Resolve sol_ids → zones/regions from Sahayog Branch
+        if perms.get("sol_ids"):
+            branches_map = get_sahayog_branches_cached()
+            for sid in perms["sol_ids"]:
+                b = branches_map.get(sid, {})
+                if b.get("zone"):
+                    allowed_zones.add(b["zone"])
+                if b.get("region"):
+                    allowed_regions.add(b["region"])
+        
+        # 2. Add explicit zones from Report Preference
+        if perms.get("zones"):
+            allowed_zones.update(perms["zones"])
+        
+        # 3. Add explicit regions from Report Preference
+        if not perms.get("all_regions") and perms.get("regions"):
+            allowed_regions.update(perms["regions"])
+        
+        if allowed_zones:
+            placeholders = ", ".join(["%s"] * len(allowed_zones))
+            where_clauses.append(f"zone IN ({placeholders})")
+            params.extend(list(allowed_zones))
+        
+        if allowed_regions:
+            placeholders = ", ".join(["%s"] * len(allowed_regions))
+            where_clauses.append(f"region IN ({placeholders})")
+            params.extend(list(allowed_regions))
+    
+    where_sql = " AND ".join(where_clauses)
+    
+    agent_data = frappe.db.sql(f"""
+        SELECT zone, region, target, achievement, ss_target, ss_achievement,
+               ss_active, ss_inactive, active, inactive
+        FROM `tabAgent  Wise Report`
+        WHERE {where_sql}
+        LIMIT 1000
+    """, params, as_dict=True)
     
     # Group by zone and region
     agent_map = defaultdict(lambda: {
