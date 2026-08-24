@@ -647,7 +647,7 @@ def get_sahayog_dashboard(
                 region,
                 SUM(amount) as achievement
             FROM `tabProduct Wise Report`
-            WHERE date = %s
+            WHERE date = %s AND product NOT IN ('SHARE', 'TDA', 'JLL RD', 'SKBG', 'TASKSILVER', 'TASKWEALTH', 'SAVSIL', 'CUGOLD', 'CUWEALTH')
             GROUP BY sol_id, zone, region
         """
         monthly_data = frappe.db.sql(monthly_sql, (eff_date,), as_dict=True)
@@ -658,7 +658,7 @@ def get_sahayog_dashboard(
                 sol_id,
                 SUM(amount) as yearly_achievement
             FROM `tabProduct Wise Report`
-            WHERE date >= %s AND date <= %s
+            WHERE date >= %s AND date <= %s AND product NOT IN ('SHARE', 'TDA', 'JLL RD', 'SKBG', 'TASKSILVER', 'TASKWEALTH', 'SAVSIL', 'CUGOLD', 'CUWEALTH')
             GROUP BY sol_id
         """
         fy_start_date = f"{start_year}-04-01"
@@ -903,7 +903,7 @@ def build_product_wise(branch_data, targets_map, target_type, selected_date=None
             product,
             SUM(amount) as amount
         FROM `tabProduct Wise Report`
-        WHERE date = %s
+        WHERE date = %s AND product NOT IN ('SHARE', 'TDA', 'JLL RD', 'SKBG', 'TASKSILVER', 'TASKWEALTH', 'SAVSIL', 'CUGOLD', 'CUWEALTH')
         GROUP BY zone, region, sol_id, product
     """, (selected_date,), as_dict=True)
 
