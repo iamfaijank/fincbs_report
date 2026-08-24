@@ -1327,6 +1327,7 @@
 				</div>
 			</div>
 
+			{% if not is_branch_manager %}
 			<div class="branch-search">
 				<form id="branch-search-form" class="search-container" role="search">
 					<input type="search" id="branch-search-input" class="search-input"
@@ -1345,6 +1346,7 @@
 					<div class="suggestions-container" id="suggestions-container"></div>
 				</div>
 			</div>
+			{% endif %}
 
 			<div style="display: flex; align-items: center;">
 				<div class="format-toggle" id="format-toggle">
@@ -2523,7 +2525,9 @@
 
 					this.state.currentSolId = solId;
 					this.hideSuggestions();
-					this.el.searchInput.value = "";
+					if (this.el.searchInput) {
+						this.el.searchInput.value = "";
+					}
 
 					// Notify parent (Drishti dashboard popup) to update the modal title
 					if (window.parent && window.parent !== window) {
@@ -2728,26 +2732,28 @@
 					this.loadRecentBranches(); // Load recent branches on init
 					const debouncedSearch = this.debounce(this.fetchSuggestions, 250);
 
-					this.el.searchInput.addEventListener("input", (e) =>
-						debouncedSearch.call(this, e.target.value.trim()),
-					);
-					// Show recent suggestions when search input is focused
-					this.el.searchInput.addEventListener("focus", () =>
-						this.renderRecentSuggestions(this.el.searchInput.value.trim()),
-					);
+					if (this.el.searchInput && this.el.searchForm) {
+						this.el.searchInput.addEventListener("input", (e) =>
+							debouncedSearch.call(this, e.target.value.trim()),
+						);
+						// Show recent suggestions when search input is focused
+						this.el.searchInput.addEventListener("focus", () =>
+							this.renderRecentSuggestions(this.el.searchInput.value.trim()),
+						);
 
-					this.el.searchInput.addEventListener("keydown", (e) => this.handleKey(e));
+						this.el.searchInput.addEventListener("keydown", (e) => this.handleKey(e));
 
-					this.el.searchForm.addEventListener("submit", (e) => {
-						e.preventDefault();
-						if (this.state.suggestions[0]) {
-							this.loadBranch(this.state.suggestions[0].sol_id);
-						}
-					});
+						this.el.searchForm.addEventListener("submit", (e) => {
+							e.preventDefault();
+							if (this.state.suggestions[0]) {
+								this.loadBranch(this.state.suggestions[0].sol_id);
+							}
+						});
 
-					document.addEventListener("click", (e) => {
-						if (!this.el.searchForm.contains(e.target)) this.hideSuggestions();
-					});
+						document.addEventListener("click", (e) => {
+							if (!this.el.searchForm.contains(e.target)) this.hideSuggestions();
+						});
+					}
 
 					window.addEventListener("popstate", () => {
 						const sol = new URLSearchParams(location.search).get("sol_id");

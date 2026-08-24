@@ -21,3 +21,10 @@ def get_context(context):
         context.allowed_regions = []
         context.allowed_sol_ids = []
         context.all_regions_allowed = True
+
+    # Check if user designation is BRANCH MANAGER
+    user_designation = ""
+    employee = frappe.db.get_value("Employee", {"user_id": user}, ["designation"], as_dict=True)
+    if employee and employee.designation:
+        user_designation = employee.designation.upper().strip()
+    context.is_branch_manager = (user_designation == "BRANCH MANAGER")
