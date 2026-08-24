@@ -226,21 +226,24 @@ function _autoExpandSearchResults(self, data) {
 	const terms = term.split(",").map(t => t.trim().toLowerCase()).filter(t => t);
 	data.forEach(row => {
 		const matches = terms.some(t => {
-			const br = (row.branch_name || row.sol_desc || "").toLowerCase();
-			const id = (row.sol_id || "").toLowerCase();
-			const dt = (row.district || "").toLowerCase();
-			const zone = (row.zone || "").toLowerCase();
-			const region = (row.region || "").toLowerCase();
+			const br = (row.branch_name || row.sol_desc || (row.type === 'sol' ? row.name : '') || "").toLowerCase();
+			const id = (row.sol_id || (row.type === 'sol' && row.name ? row.name.split(" ")[0] : '') || "").toLowerCase();
+			const dt = (row.district || (row.parent_district ? row.parent_district.split("/").pop() : '') || "").toLowerCase();
+			const zone = (row.zone || row.parent_zone || "").toLowerCase();
+			const region = (row.region || (row.parent_region ? row.parent_region.split("/").pop() : '') || "").toLowerCase();
 			return br.includes(t) || id.includes(t) || dt.includes(t) || zone.includes(t) || region.includes(t);
 		});
 		if (matches) {
-			const z = row.zone || "";
-			const r = row.region || "";
-			const d = row.district || "";
-			const s = row.sol_id || "";
+			const z = (row.zone || row.parent_zone || "").trim();
+			const r = (row.region || (row.parent_region ? row.parent_region.split("/").pop() : "") || "").trim();
+			const d = (row.district || (row.parent_district ? row.parent_district.split("/").pop() : "") || "").trim();
+			const s = (row.sol_id || (row.type === 'sol' && row.name ? row.name.split(" ")[0] : '') || "").trim();
 			if (z) {
 				if (self.expandedZones) self.expandedZones[z] = true;
-				if (self.expandedTreeNodes) self.expandedTreeNodes[z] = true;
+				if (self.expandedTreeNodes) {
+					self.expandedTreeNodes[z] = true;
+					self.expandedTreeNodes[`z_${z}`] = true;
+				}
 			}
 			if (z && r) {
 				if (self.expandedRegions) self.expandedRegions[z + "::" + r] = true;
