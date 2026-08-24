@@ -644,6 +644,7 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
             "sum(pending_amount)"
         ) or 0.0
         result["rd_smbg_pending"] = float(pending_sum)
+        result["latest_month"] = ""
         return result
 
     data = frappe.db.get_list(
@@ -764,6 +765,13 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
         "sum(pending_amount)"
     ) or 0.0
     result["rd_smbg_pending"] = float(pending_sum)
+
+    if latest_date:
+        from frappe.utils import getdate
+        dt = getdate(latest_date)
+        result["latest_month"] = dt.strftime("%B").upper()
+    else:
+        result["latest_month"] = ""
 
     return result
 

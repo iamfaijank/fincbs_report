@@ -2163,7 +2163,10 @@
 			</section>
 
 			<section class="staff-detail-section">
-				<h2>Demand & Collection Performance</h2>
+				<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #346569; padding-bottom: 8px; margin-bottom: 16px;">
+					<h2 style="margin: 0; border: none; padding: 0; font-size: 20px; font-weight: 700; color: #1e293b;">Demand & Collection Performance</h2>
+					<span id="demand-collection-as-of" style="font-size: 13px; font-weight: 700; color: #346569; background: #e0f2fe; padding: 4px 10px; border-radius: 4px; border: 1px solid #7dd3fc;">AS OF: --</span>
+				</div>
 				<div class="financial-table-container">
 					<table class="financial-table">
 						<thead>
@@ -2944,6 +2947,7 @@
 					totalCustomersId: document.getElementById("total-customers-id"),
 
 					// Demand & Collection Performance
+					demandCollectionAsOf: document.getElementById("demand-collection-as-of"),
 					ddCollection: document.getElementById("dd-collection"),
 					rdCollection: document.getElementById("rd-collection"),
 					ddsDemand: document.getElementById("dds-demand"),
@@ -3303,6 +3307,9 @@
 					updateCustComp('dam-accounts-opened', 'total-dam-no-of-customers', 'dam-cust', d.dam_accounts_opened, d.dam_accounts_total || d.total_dam_no_of_customers, totalCustVal);
 
 					// Populate Demand & Collection Performance
+					if (this.el.demandCollectionAsOf) {
+						this.el.demandCollectionAsOf.textContent = d.latest_month ? `AS OF: ${d.latest_month}` : "AS OF: --";
+					}
 					this.el.ddCollection.textContent = this.formatAmount(d.dds_collection);
 					this.el.rdCollection.textContent = this.formatAmount(d.rd_collection);
 					this.el.ddsDemand.textContent = this.formatAmount(d.dds_demand);
