@@ -219,7 +219,7 @@ def get_user_report_permissions(user):
     doc = frappe.get_doc("Report Preference", pref_name)
     permissions["pref_name"] = pref_name
     permissions["is_restricted"] = True
-    permissions["all_regions"] = doc.all_regions
+    permissions["all_regions"] = doc.get("all_regions") or False
     
     # Query child tables directly (avoids ORM caching issues)
     permissions["zones"] = frappe.db.get_all("Zone Items", filters={"parent": pref_name, "parentfield": "zone"}, pluck="zone") or []
@@ -263,8 +263,7 @@ def get_last_available_date_for_month(month_num, year):
     
     for d in dates:
         date_obj = getdate(d.date)
-        if date_obj.weekday() != 6:
-            return str(date_obj)
+        return str(date_obj)
     return None
 
 
@@ -335,12 +334,11 @@ def get_fy_months_with_dates(financial_year, view="Monthly", selected_date=None,
         for m in all_months:
             if m[1] == ref_month and m[2] == ref_year:
                 if selected_date_obj and selected_date_obj.month == ref_month and selected_date_obj.year == ref_year:
-                    if selected_date_obj.weekday() != 6:
-                        exists = frappe.db.exists("Product Wise Report", {"date": selected_date_obj})
-                        if exists:
-                            result_months.append((m[0], m[1], m[2], str(selected_date_obj)))
-                            found = True
-                            break
+                    exists = frappe.db.exists("Product Wise Report", {"date": selected_date_obj})
+                    if exists:
+                        result_months.append((m[0], m[1], m[2], str(selected_date_obj)))
+                        found = True
+                        break
                 if not found:
                     last_date = get_last_available_date_for_month(m[1], m[2])
                     if last_date:
@@ -649,7 +647,7 @@ def get_sahayog_dashboard(
                 region,
                 SUM(amount) as achievement
             FROM `tabProduct Wise Report`
-            WHERE date = %s AND product NOT IN ('SHARE', 'TDA', 'JLL RD', 'SKBG', 'TASKSILVER', 'TASKWEALTH', 'SAVSIL', 'CUGOLD', 'CUWEALTH')
+            WHERE date = %s
             GROUP BY sol_id, zone, region
         """
         monthly_data = frappe.db.sql(monthly_sql, (eff_date,), as_dict=True)
@@ -660,7 +658,7 @@ def get_sahayog_dashboard(
                 sol_id,
                 SUM(amount) as yearly_achievement
             FROM `tabProduct Wise Report`
-            WHERE date >= %s AND date <= %s AND product NOT IN ('SHARE', 'TDA', 'JLL RD', 'SKBG', 'TASKSILVER', 'TASKWEALTH', 'SAVSIL', 'CUGOLD', 'CUWEALTH')
+            WHERE date >= %s AND date <= %s
             GROUP BY sol_id
         """
         fy_start_date = f"{start_year}-04-01"
@@ -687,11 +685,12 @@ def get_sahayog_dashboard(
                 
             all_branch_data.append(rec)
     
+    eff_selected_date = months[-1][3] if months else selected_date
     zone_wise = build_zone_wise(all_branch_data, targets_map, target_type, district_map)
-    product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type, selected_date)
+    product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type, eff_selected_date)
     category_wise = build_category_wise(all_branch_data, targets_map, months, target_type)
     branch_wise = build_branch_wise(all_branch_data, targets_map, months, target_type, district_map)
-    agent_wise = build_agent_wise(selected_date)
+    agent_wise = build_agent_wise(eff_selected_date)
 
     return {
         "financial_year": financial_year,
