@@ -1150,6 +1150,7 @@ class DrishtiDashboard {
 				expandedTreeNodes: {},
 				selectedMisZones: [],
 				searchTerm: "",
+				allExpanded: false,
 				render: function (container, dashboardInstance) {
 					const self = this;
 					container.html(`
@@ -1166,6 +1167,7 @@ class DrishtiDashboard {
 						</style>
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
 							<input type="text" id="ntb-evr-search" placeholder="Search branch, SOL ID, zone..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 						</div>
 						<div id="ntb-evr-loading" style="width: 100%; margin-top: 10px;">
 							${dashboardInstance.buildMisSkeletonTable("Fetching CASA NTB & EVR data...")}
@@ -1235,6 +1237,41 @@ class DrishtiDashboard {
 							_autoExpandSearchResults(self, self.tableData);
 							self._renderNtbTable();
 						}, 300);
+					});
+					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function () {
+						self.allExpanded = !self.allExpanded;
+						const expand = self.allExpanded;
+						if (!self.tableData) return;
+						
+						if (!self.expandedTreeNodes) self.expandedTreeNodes = {};
+						
+						if (expand) {
+							self.tableData.forEach(row => {
+								const z = (row.zone || "").trim();
+								const r = (row.region || "").trim();
+								const d = (row.district || "").trim();
+								
+								if (z) {
+									self.expandedTreeNodes[z] = true;
+									self.expandedTreeNodes[`z_${z}`] = true;
+									self.expandedZones[z] = true;
+								}
+								if (z && r) {
+									self.expandedTreeNodes[`r_${z}_${r}`] = true;
+									self.expandedRegions[z + "::" + r] = true;
+								}
+								if (z && r && d) {
+									self.expandedTreeNodes[`d_${z}_${r}_${d}`] = true;
+								}
+							});
+						} else {
+							self.expandedTreeNodes = {};
+							self.expandedZones = {};
+							self.expandedRegions = {};
+						}
+						
+						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
+						self._renderNtbTable();
 					});
 				},
 				renderZoneFilterTags: function (container, dashboardInstance) {
