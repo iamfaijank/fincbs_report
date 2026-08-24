@@ -626,12 +626,13 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
         rd_demand_val, rd_collection_val = get_rd_demand_collection_from_dr(sol_id, None)
         result["rd_demand"] = rd_demand_val
         result["rd_collection"] = rd_collection_val
-        result["rd_smbg_collection"] = rd_collection_val
 
         smbg_demand_val, smbg_collection_val = get_smbg_demand_collection_from_dr(sol_id, None)
         result["smbg_demand"] = smbg_demand_val
         result["smbg_collection"] = smbg_collection_val
         result["smbg_demand_vs_collection"] = (smbg_collection_val / smbg_demand_val * 100.0) if smbg_demand_val > 0 else 0.0
+        
+        result["rd_smbg_collection"] = rd_collection_val + smbg_collection_val
 
         # Query yesterday's RD & SMBG Pending sum
         from datetime import date, timedelta
@@ -643,6 +644,7 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
             "sum(pending_amount)"
         ) or 0.0
         result["rd_smbg_pending"] = float(pending_sum)
+        result["latest_month"] = ""
         return result
 
     data = frappe.db.get_list(
@@ -744,13 +746,14 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
     rd_demand_val, rd_collection_val = get_rd_demand_collection_from_dr(sol_id, latest_date)
     result["rd_demand"] = rd_demand_val
     result["rd_collection"] = rd_collection_val
-    result["rd_smbg_collection"] = rd_collection_val
 
     # Overwrite SMBG demand and collection from Finacle/DR DB
     smbg_demand_val, smbg_collection_val = get_smbg_demand_collection_from_dr(sol_id, latest_date)
     result["smbg_demand"] = smbg_demand_val
     result["smbg_collection"] = smbg_collection_val
     result["smbg_demand_vs_collection"] = (smbg_collection_val / smbg_demand_val * 100.0) if smbg_demand_val > 0 else 0.0
+
+    result["rd_smbg_collection"] = rd_collection_val + smbg_collection_val
 
     # Query yesterday's RD & SMBG Pending sum
     from datetime import date, timedelta
@@ -762,6 +765,13 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
         "sum(pending_amount)"
     ) or 0.0
     result["rd_smbg_pending"] = float(pending_sum)
+
+    if latest_date:
+        from frappe.utils import getdate
+        dt = getdate(latest_date)
+        result["latest_month"] = dt.strftime("%B").upper()
+    else:
+        result["latest_month"] = ""
 
     return result
 
