@@ -218,6 +218,45 @@ const filterMisTableDataByUserPermissions = function (data, filterOptions) {
 	return data;
 };
 
+function _autoExpandSearchResults(self, data) {
+	const term = (self.searchTerm || "").trim();
+	if (!term || !data || !data.length) return;
+	if (!self.expandedZones && !self.expandedTreeNodes) return;
+	if (self.expandedTreeNodes === undefined) self.expandedTreeNodes = {};
+	const terms = term.split(",").map(t => t.trim().toLowerCase()).filter(t => t);
+	data.forEach(row => {
+		const matches = terms.some(t => {
+			const br = (row.branch_name || row.sol_desc || "").toLowerCase();
+			const id = (row.sol_id || "").toLowerCase();
+			const dt = (row.district || "").toLowerCase();
+			const zone = (row.zone || "").toLowerCase();
+			const region = (row.region || "").toLowerCase();
+			return br.includes(t) || id.includes(t) || dt.includes(t) || zone.includes(t) || region.includes(t);
+		});
+		if (matches) {
+			const z = row.zone || "";
+			const r = row.region || "";
+			const d = row.district || "";
+			const s = row.sol_id || "";
+			if (z) {
+				if (self.expandedZones) self.expandedZones[z] = true;
+				if (self.expandedTreeNodes) self.expandedTreeNodes[z] = true;
+			}
+			if (z && r) {
+				if (self.expandedRegions) self.expandedRegions[z + "::" + r] = true;
+				if (self.expandedTreeNodes) self.expandedTreeNodes[`r_${z}_${r}`] = true;
+			}
+			if (z && r && d) {
+				if (self.expandedDistricts) self.expandedDistricts[z + "::" + r + "::" + d] = true;
+				if (self.expandedTreeNodes) self.expandedTreeNodes[`d_${z}_${r}_${d}`] = true;
+			}
+			if (z && r && d && s) {
+				if (self.expandedTreeNodes) self.expandedTreeNodes[`s_${z}_${r}_${d}_${s}`] = true;
+			}
+		}
+	});
+}
+
 class DrishtiDashboard {
 	constructor(page) {
 		this.page = page;
@@ -413,6 +452,7 @@ class DrishtiDashboard {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
+							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 							}
@@ -1044,6 +1084,7 @@ class DrishtiDashboard {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
+							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) { self.renderMisTable(container.find("#mis-table-container"), dashboardInstance); }
 						}, 300);
 					});
@@ -1080,6 +1121,7 @@ class DrishtiDashboard {
 				tableData: [],
 				expandedZones: {},
 				expandedRegions: {},
+				expandedTreeNodes: {},
 				selectedMisZones: [],
 				searchTerm: "",
 				render: function (container, dashboardInstance) {
@@ -1164,6 +1206,7 @@ class DrishtiDashboard {
 						clearTimeout(ntbSearchTimeout);
 						ntbSearchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val();
+							_autoExpandSearchResults(self, self.tableData);
 							self._renderNtbTable();
 						}, 300);
 					});
@@ -1784,7 +1827,7 @@ class DrishtiDashboard {
 
 					frappe.call({
 						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_gl_wise_ch_report_data",
-						args: { selected_date: dashboardInstance.state.selectedDate },
+						args: { selected_date: dashboardInstance.state.selectedDate, user: frappe.session.user },
 						callback: function (r) {
 							if (dashboardInstance._misRenderSeq !== seq) return;
 							if (r.message) {
@@ -1820,6 +1863,7 @@ class DrishtiDashboard {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
+							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
 							}
@@ -2238,6 +2282,7 @@ class DrishtiDashboard {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
+							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 							}
@@ -2752,6 +2797,7 @@ class DrishtiDashboard {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
+							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 							}
@@ -3287,6 +3333,7 @@ class DrishtiDashboard {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
+							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 							}
@@ -3837,6 +3884,7 @@ class DrishtiDashboard {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
+							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 							}
@@ -4404,6 +4452,7 @@ class DrishtiDashboard {
 						clearTimeout(searchTimeout);
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
+							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 							}
@@ -10177,7 +10226,7 @@ class DrishtiDashboard {
 			`;
 		}
 
-		const allProducts = this.allProducts.filter(p => p !== "TDA" && p !== "SHARE");
+		const allProducts = this.allProducts.filter(p => p !== "SHARE" && p !== "OTHER");
 
 		let headerHtml = `
 			<style>
