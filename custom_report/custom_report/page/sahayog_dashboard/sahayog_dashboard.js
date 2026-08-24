@@ -1095,11 +1095,34 @@ class DrishtiDashboard {
 						self.allExpanded = !self.allExpanded;
 						const expand = self.allExpanded;
 						if (!self.tableData) return;
-						const zoneData = self.aggregateByZone();
-						zoneData.forEach(z => {
-							self.expandedZones[z.zone] = expand;
-							z.regions.forEach(r => { self.expandedRegions[z.zone + "::" + r.region] = expand; });
-						});
+						
+						if (!self.expandedTreeNodes) self.expandedTreeNodes = {};
+						
+						if (expand) {
+							self.tableData.forEach(row => {
+								const z = (row.zone || "").trim();
+								const r = (row.region || "").trim();
+								const d = (row.district || "").trim();
+								
+								if (z) {
+									self.expandedTreeNodes[z] = true;
+									self.expandedTreeNodes[`z_${z}`] = true;
+									self.expandedZones[z] = true;
+								}
+								if (z && r) {
+									self.expandedTreeNodes[`r_${z}_${r}`] = true;
+									self.expandedRegions[z + "::" + r] = true;
+								}
+								if (z && r && d) {
+									self.expandedTreeNodes[`d_${z}_${r}_${d}`] = true;
+								}
+							});
+						} else {
+							self.expandedTreeNodes = {};
+							self.expandedZones = {};
+							self.expandedRegions = {};
+						}
+						
 						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 					});
@@ -1796,6 +1819,7 @@ class DrishtiDashboard {
 				expandedRegions: {},
 				expandedDistricts: {},
 				searchTerm: "",
+				allExpanded: false,
 				selectedMisZones: [],
 				checkedRows: {},
 				render: function (container, dashboardInstance, seq) {
@@ -1803,6 +1827,7 @@ class DrishtiDashboard {
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
 							<input type="text" id="mis-search" placeholder="Search branch or SOL ID..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
@@ -1872,12 +1897,50 @@ class DrishtiDashboard {
 							}
 						}, 300);
 					});
+					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function () {
+						self.allExpanded = !self.allExpanded;
+						const expand = self.allExpanded;
+						if (!self.tableData) return;
+						
+						if (!self.expandedTreeNodes) self.expandedTreeNodes = {};
+						
+						if (expand) {
+							self.tableData.forEach(row => {
+								const z = (row.zone || row.parent_zone || "").trim();
+								const r = (row.region || (row.parent_region ? row.parent_region.split("/").pop() : "") || "").trim();
+								const d = (row.district || (row.parent_district ? row.parent_district.split("/").pop() : "") || "").trim();
+								
+								if (z) {
+									self.expandedTreeNodes[z] = true;
+									self.expandedTreeNodes[`z_${z}`] = true;
+									self.expandedZones[z] = true;
+								}
+								if (z && r) {
+									self.expandedTreeNodes[`r_${z}_${r}`] = true;
+									self.expandedRegions[z + "::" + r] = true;
+								}
+								if (z && r && d) {
+									self.expandedTreeNodes[`d_${z}_${r}_${d}`] = true;
+								}
+							});
+						} else {
+							self.expandedTreeNodes = {};
+							self.expandedZones = {};
+							self.expandedRegions = {};
+						}
+						
+						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
+						self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
+					});
 					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function () {
 						self.tableData = [];
 						self.allProducts = [];
 						self.expandedZones = {};
+						self.expandedRegions = {};
+						self.expandedTreeNodes = {};
 						self.selectedMisZones = [];
 						self.searchTerm = "";
+						self.allExpanded = false;
 						self.checkedRows = {};
 						dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
 						self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
@@ -6565,7 +6628,7 @@ class DrishtiDashboard {
 					<span>🌳 ${reportTitle} (Zone → Region → District → SOL)</span>
 					<span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700;">${fmtNum(data.length)} Branches Total</span>
 				</div>
-				<div style="display: flex; align-items: center; gap: 8px;">
+				<div style="display: none; align-items: center; gap: 8px;">
 					<button type="button" class="btn btn-xs generic-tree-expand-all" style="background: rgba(65, 125, 129, 0.1); color: #417d81; border: 1px solid rgba(65, 125, 129, 0.3); font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
 						📂 Expand All
 					</button>
