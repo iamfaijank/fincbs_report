@@ -103,60 +103,67 @@ def _extract_emp_id(auth_id):
 
 @frappe.whitelist(allow_guest=True)
 def get_rd_smbg_pending_table_data():
-	from custom_report.db_connection import get_dr_connection
+	import datetime
+	ref_date = datetime.date.today().strftime("%Y-%m-%d")
+
+	has_date_records = frappe.db.exists("RD and SMBG Pending", {"date": ref_date})
+	if not has_date_records:
+		latest_date = frappe.db.sql("SELECT MAX(date) FROM `tabRD and SMBG Pending`")[0][0]
+		if latest_date:
+			ref_date = str(latest_date)
+
 	query = """
-    WITH main_data AS (
-        SELECT g.acid, g.sol_id, s.sol_desc, t.maturity_date, t.last_repayment_date
-        FROM tbaadm.gam g
-        JOIN tbaadm.tam t ON g.acid = t.acid
-        JOIN tbaadm.sol s ON g.sol_id = s.sol_id
-        WHERE g.schm_code IN ('2005','2010','2011','2012','2013','2014','2015','2016')
-            AND g.entity_cre_flg = 'Y' AND g.del_flg = 'N' AND g.acct_cls_flg = 'N'
-            AND t.maturity_date >= CURRENT_DATE
-    ),
-    tdt_summary AS (
-        SELECT acid,
-               COALESCE(SUM(tran_amt), 0) AS total_instalment_paid,
-               COALESCE(SUM(flow_amt) - SUM(tran_amt), 0) AS pending_amount,
-               COUNT(CASE WHEN flow_amt > 0 THEN 1 END) - COUNT(CASE WHEN tran_amt > 0 THEN 1 END) AS pending_instalments
-        FROM tbaadm.tdt
-        WHERE flow_code = 'NI' AND (flow_amt > 0 OR tran_amt > 0) AND flow_date <= CURRENT_DATE
-        GROUP BY acid
-    )
-    SELECT m.sol_id, m.sol_desc,
-           COUNT(*) AS total_accounts, COALESCE(SUM(t.total_instalment_paid), 0) AS total_collection,
-           COALESCE(SUM(CASE WHEN t.pending_amount > 0 THEN 1 ELSE 0 END), 0) AS pending_accounts,
-           COALESCE(SUM(t.pending_amount), 0) AS pending_amount,
-           COALESCE(SUM(t.pending_instalments), 0) AS pending_instalments
-    FROM main_data m LEFT JOIN tdt_summary t ON m.acid = t.acid
-    WHERE NOT (COALESCE(t.pending_instalments, 0) > 24 AND m.last_repayment_date < (CURRENT_DATE - INTERVAL '1 year'))
-    GROUP BY m.sol_id, m.sol_desc ORDER BY m.sol_id
-    """
-	conn = get_dr_connection()
-	if not conn:
-		return []
+	SELECT
+		sol_id,
+		sol_desc,
+		COUNT(*) AS total_accounts,
+		COALESCE(SUM(total_instalment_paid), 0) AS total_collection,
+		COALESCE(SUM(CASE WHEN pending_amount > 0 THEN 1 ELSE 0 END), 0) AS pending_accounts,
+		COALESCE(SUM(pending_amount), 0) AS pending_amount,
+		COALESCE(SUM(pending_instalments), 0) AS pending_instalments
+	FROM `tabRD and SMBG Pending`
+	WHERE `date` = %s
+	GROUP BY sol_id, sol_desc
+	ORDER BY sol_id
+	"""
+	detail_query = """
+	SELECT
+		sol_id,
+		rm_id,
+		rm_name,
+		auth_id,
+		auth_role_id,
+		COUNT(*) AS total_accounts,
+		COALESCE(SUM(total_instalment_paid), 0) AS total_collection,
+		COALESCE(SUM(CASE WHEN pending_amount > 0 THEN 1 ELSE 0 END), 0) AS pending_accounts,
+		COALESCE(SUM(pending_amount), 0) AS pending_amount,
+		COALESCE(SUM(pending_instalments), 0) AS pending_instalments
+	FROM `tabRD and SMBG Pending`
+	WHERE `date` = %s AND sol_id = %s
+	GROUP BY sol_id, rm_id, rm_name, auth_id, auth_role_id
+	ORDER BY rm_id
+	"""
 	try:
-		cursor = conn.cursor()
-		cursor.execute(query)
-		rows = cursor.fetchall()
-		sol_ids_found = [str(r[0]) for r in rows] if rows else []
+		rows = frappe.db.sql(query, (ref_date,), as_dict=True)
+		sol_ids_found = [r.sol_id.strip() for r in rows if r.sol_id]
 		branch_map = {}
 		if sol_ids_found:
 			sb_data = frappe.get_all("Sahayog Branch", filters={"name": ["in", sol_ids_found]}, fields=["name as sol_id", "zone", "region", "district", "branch"])
 			for b in sb_data:
 				branch_map[b.sol_id] = {"zone": b.zone or "", "region": b.region or "", "district": b.district or "", "branch_name": b.branch or ""}
+		detail_map = {}
+		for sid in sol_ids_found:
+			details = frappe.db.sql(detail_query, (ref_date, sid), as_dict=True)
+			detail_map[sid] = [{"rm_id": d.rm_id or "", "rm_name": d.rm_name or "", "auth_id": d.auth_id or "", "auth_role_id": d.auth_role_id or "", "total_accounts": d.total_accounts or 0, "total_collection": float(d.total_collection or 0), "pending_accounts": d.pending_accounts or 0, "pending_amount": float(d.pending_amount or 0), "pending_instalments": d.pending_instalments or 0} for d in details]
 		result = []
-		for row in rows:
-			sid = str(row[0])
+		for r in rows:
+			sid = str(r.sol_id).strip()
 			sb = branch_map.get(sid, {})
-			result.append({"sol_id": sid, "sol_desc": row[1] or "", "zone": sb.get("zone", ""), "region": sb.get("region", ""), "district": sb.get("district", ""), "branch_name": sb.get("branch_name", ""), "total_accounts": row[2] or 0, "total_collection": float(row[3]) if row[3] else 0, "pending_accounts": row[4] or 0, "pending_amount": float(row[5]) if row[5] else 0, "pending_instalments": row[6] or 0})
+			result.append({"sol_id": sid, "sol_desc": r.sol_desc or "", "zone": sb.get("zone", ""), "region": sb.get("region", ""), "district": sb.get("district", ""), "branch_name": sb.get("branch_name", ""), "total_accounts": r.total_accounts or 0, "total_collection": float(r.total_collection or 0), "pending_accounts": r.pending_accounts or 0, "pending_amount": float(r.pending_amount or 0), "pending_instalments": r.pending_instalments or 0, "details": detail_map.get(sid, [])})
 		return result
 	except Exception as e:
 		frappe.log_error(f"RD/SMBG query error: {str(e)}", "RD SMBG API")
 		return []
-	finally:
-		try: conn.close()
-		except: pass
 
 
 @frappe.whitelist(allow_guest=True)
