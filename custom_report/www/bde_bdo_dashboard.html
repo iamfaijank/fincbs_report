@@ -251,12 +251,12 @@ if(details.length>0){
 var dhs='<tr class="branch-child-row" data-sol="'+bid+'" style="display:'+(show&&be?"table-row":"none")+';background:#f8fafc;">';
 dhs+='<td></td><td></td>';
 dhs+='<td style="padding-left:70px;" colspan="'+(mc.length+2)+'"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
-dhs+='<thead><tr style="background:#e2e8f0;">';
-dhs+='<th style="padding:4px 8px;text-align:left;font-weight:600;color:#475569;">RM ID</th>';
-dhs+='<th style="padding:4px 8px;text-align:left;font-weight:600;color:#475569;">RM Name</th>';
-dhs+='<th style="padding:4px 8px;text-align:left;font-weight:600;color:#475569;">Auth ID</th>';
-dhs+='<th style="padding:4px 8px;text-align:left;font-weight:600;color:#475569;">Auth Role ID</th>';
-mc.forEach(function(c){dhs+='<th style="padding:4px 8px;text-align:right;font-weight:600;color:#475569;">'+c.label+'</th>'});
+dhs+='<thead><tr style="background:#1e293b;">';
+dhs+='<th style="padding:4px 8px;text-align:left;font-weight:600;color:#ffffff;">RM ID</th>';
+dhs+='<th style="padding:4px 8px;text-align:left;font-weight:600;color:#ffffff;">RM Name</th>';
+dhs+='<th style="padding:4px 8px;text-align:left;font-weight:600;color:#ffffff;">Auth ID</th>';
+dhs+='<th style="padding:4px 8px;text-align:left;font-weight:600;color:#ffffff;">Auth Role ID</th>';
+mc.forEach(function(c){dhs+='<th style="padding:4px 8px;text-align:right;font-weight:600;color:#ffffff;">'+c.label+'</th>'});
 dhs+='</tr></thead><tbody>';
 details.forEach(function(d,di){
 var dbg=di%2===0?"#ffffff":"#f1f5f9";
