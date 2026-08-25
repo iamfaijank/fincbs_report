@@ -259,6 +259,7 @@ dhs+='<tr style="background:'+dbg+';"><td style="padding:4px 8px;color:#475569;"
 dhs+='</tbody></table></td></tr>';
 rh+=dhs;
 }})});
+});
 var th=mc.map(function(c){return'<th class="'+c.align+'">'+c.label+"</th>"}).join("");
 var tf2=mc.map(function(c){return'<td class="'+c.align+'">'+(c.compute?c.compute(gt):c.fmt(gt[c.key]))+"</td>"}).join("");
 var tb=zd.reduce(function(s,z){return s+z.data.branches.length},0);
