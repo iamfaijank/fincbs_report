@@ -4370,8 +4370,8 @@ class DrishtiDashboard {
 													<td style="padding: 5px 14px;"></td>
 													<td style="padding: 5px 14px;"></td>
 													<td style="padding: 5px 14px; color: #cbd5e1; white-space: nowrap; font-size: 13px; padding-left: 100px;">└─</td>
-													<td style="padding: 5px 14px; color: #64748b; white-space: nowrap; font-size: 13px; font-weight: 500;">${acc.account_number || "-"}</td>
 													<td style="padding: 5px 14px; color: #64748b; white-space: nowrap; font-size: 13px; font-weight: 500;">${acc.customer_name || "-"}</td>
+													<td style="padding: 5px 14px; color: #64748b; white-space: nowrap; font-size: 13px; font-weight: 500;">${acc.account_number || "-"}</td>
 													<td style="padding: 5px 14px;"></td>
 													<td style="padding: 5px 14px;"></td>
 													<td style="padding: 5px 14px;"></td>
