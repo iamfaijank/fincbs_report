@@ -132,10 +132,16 @@ def get_rd_smbg_pending_table_data():
 		rm_id,
 		rm_name,
 		auth_id,
-		auth_role_id
+		auth_role_id,
+		COUNT(*) AS total_accounts,
+		COALESCE(SUM(total_instalment_paid), 0) AS total_collection,
+		COALESCE(SUM(CASE WHEN pending_amount > 0 THEN 1 ELSE 0 END), 0) AS pending_accounts,
+		COALESCE(SUM(pending_amount), 0) AS pending_amount,
+		COALESCE(SUM(pending_instalments), 0) AS pending_instalments
 	FROM `tabRD and SMBG Pending`
 	WHERE `date` = %s AND sol_id = %s
 	GROUP BY sol_id, rm_id, rm_name, auth_id, auth_role_id
+	ORDER BY rm_id
 	"""
 	try:
 		rows = frappe.db.sql(query, (ref_date,), as_dict=True)
@@ -148,7 +154,7 @@ def get_rd_smbg_pending_table_data():
 		detail_map = {}
 		for sid in sol_ids_found:
 			details = frappe.db.sql(detail_query, (ref_date, sid), as_dict=True)
-			detail_map[sid] = [{"rm_id": d.rm_id or "", "rm_name": d.rm_name or "", "auth_id": d.auth_id or "", "auth_role_id": d.auth_role_id or ""} for d in details]
+			detail_map[sid] = [{"rm_id": d.rm_id or "", "rm_name": d.rm_name or "", "auth_id": d.auth_id or "", "auth_role_id": d.auth_role_id or "", "total_accounts": d.total_accounts or 0, "total_collection": float(d.total_collection or 0), "pending_accounts": d.pending_accounts or 0, "pending_amount": float(d.pending_amount or 0), "pending_instalments": d.pending_instalments or 0} for d in details]
 		result = []
 		for r in rows:
 			sid = str(r.sol_id).strip()

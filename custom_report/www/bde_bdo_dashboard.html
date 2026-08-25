@@ -251,10 +251,26 @@ if(details.length>0){
 var dhs='<tr class="branch-child-row" data-sol="'+bid+'" style="display:'+(show&&be?"table-row":"none")+';background:#f8fafc;">';
 dhs+='<td></td><td></td>';
 dhs+='<td style="padding-left:70px;" colspan="'+(mc.length+2)+'"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
-dhs+='<thead><tr style="background:#e2e8f0;"><th style="padding:4px 8px;text-align:left;font-weight:600;color:#475569;">RM ID</th><th style="padding:4px 8px;text-align:left;font-weight:600;color:#475569;">RM Name</th><th style="padding:4px 8px;text-align:left;font-weight:600;color:#475569;">Auth ID</th><th style="padding:4px 8px;text-align:left;font-weight:600;color:#475569;">Auth Role ID</th></tr></thead><tbody>';
+dhs+='<thead><tr style="background:#e2e8f0;">';
+dhs+='<th style="padding:4px 8px;text-align:left;font-weight:600;color:#475569;">RM ID</th>';
+dhs+='<th style="padding:4px 8px;text-align:left;font-weight:600;color:#475569;">RM Name</th>';
+dhs+='<th style="padding:4px 8px;text-align:left;font-weight:600;color:#475569;">Auth ID</th>';
+dhs+='<th style="padding:4px 8px;text-align:left;font-weight:600;color:#475569;">Auth Role ID</th>';
+mc.forEach(function(c){dhs+='<th style="padding:4px 8px;text-align:right;font-weight:600;color:#475569;">'+c.label+'</th>'});
+dhs+='</tr></thead><tbody>';
 details.forEach(function(d,di){
 var dbg=di%2===0?"#ffffff":"#f1f5f9";
-dhs+='<tr style="background:'+dbg+';"><td style="padding:4px 8px;color:#475569;">'+(d.rm_id||"-")+'</td><td style="padding:4px 8px;color:#475569;">'+(d.rm_name||"-")+'</td><td style="padding:4px 8px;color:#475569;">'+(d.auth_id||"-")+'</td><td style="padding:4px 8px;color:#475569;">'+(d.auth_role_id||"-")+'</td></tr>';
+dhs+='<tr style="background:'+dbg+';">';
+dhs+='<td style="padding:4px 8px;color:#475569;">'+(d.rm_id||"-")+'</td>';
+dhs+='<td style="padding:4px 8px;color:#475569;">'+(d.rm_name||"-")+'</td>';
+dhs+='<td style="padding:4px 8px;color:#475569;">'+(d.auth_id||"-")+'</td>';
+dhs+='<td style="padding:4px 8px;color:#475569;">'+(d.auth_role_id||"-")+'</td>';
+mc.forEach(function(c){
+var v=d[c.key];
+if(c.am)v=fa(st.fmt,v);else v=fc(st.fmt,v);
+dhs+='<td style="padding:4px 8px;text-align:right;color:#475569;">'+v+'</td>';
+});
+dhs+='</tr>';
 });
 dhs+='</tbody></table></td></tr>';
 rh+=dhs;
