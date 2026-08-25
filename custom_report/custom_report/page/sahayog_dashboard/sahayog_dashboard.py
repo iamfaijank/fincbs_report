@@ -5589,7 +5589,7 @@ def get_agent_wise_demand_collection_data(selected_date=None):
     records = frappe.db.get_all(
         "DD Tracker Report",
         filters={"date": selected_date},
-        fields=["sol_id", "agent_code", "agent_name", "auth_id", "auth_name", "monthly_demand", "monthly_collection"]
+        fields=["sol_id", "agent_code", "agent_name", "auth_id", "auth_name", "monthly_demand", "monthly_collection", "account_number", "customer_name"]
     )
     
     if not records:
@@ -5598,7 +5598,7 @@ def get_agent_wise_demand_collection_data(selected_date=None):
             records = frappe.db.get_all(
                 "DD Tracker Report",
                 filters={"date": latest_date},
-                fields=["sol_id", "agent_code", "agent_name", "auth_id", "auth_name", "monthly_demand", "monthly_collection"]
+                fields=["sol_id", "agent_code", "agent_name", "auth_id", "auth_name", "monthly_demand", "monthly_collection", "account_number", "customer_name"]
             )
 
     if not records:
@@ -5677,11 +5677,18 @@ def get_agent_wise_demand_collection_data(selected_date=None):
                 "auth_name": final_auth_name,
                 "designation": canonical_desig,
                 "monthly_demand_amount": 0.0,
-                "monthly_collection": 0.0
+                "monthly_collection": 0.0,
+                "accounts": []
             }
 
         summary[key]["monthly_demand_amount"] += float(r.monthly_demand or 0)
         summary[key]["monthly_collection"] += float(r.monthly_collection or 0)
+        summary[key]["accounts"].append({
+            "account_number": str(r.account_number or "").strip() or "-",
+            "customer_name": str(r.customer_name or "").strip() or "-",
+            "monthly_demand_amount": float(r.monthly_demand or 0),
+            "monthly_collection": float(r.monthly_collection or 0)
+        })
 
     result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
     return result

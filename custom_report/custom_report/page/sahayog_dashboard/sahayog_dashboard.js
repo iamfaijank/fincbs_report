@@ -4363,6 +4363,25 @@ class DrishtiDashboard {
 											<td style="padding: 6px 14px; color: #8b5cf6; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtPct(auth.monthly_collection, auth.monthly_demand_amount)}</td>
 										</tr>`;
 
+										if (showAuth && authExpanded && auth.accounts && auth.accounts.length > 0) {
+											auth.accounts.forEach((acc, aci) => {
+												const accBg = aci % 2 === 0 ? "#ffffff" : "#f8fafc";
+												rowsHtml += `<tr class="mis-acc-row" style="display: table-row; background: ${accBg}; border-bottom: 1px solid #f1f5f9;">
+													<td style="padding: 5px 14px;"></td>
+													<td style="padding: 5px 14px;"></td>
+													<td style="padding: 5px 14px; color: #cbd5e1; white-space: nowrap; font-size: 13px; padding-left: 100px;">└─</td>
+													<td style="padding: 5px 14px; color: #64748b; white-space: nowrap; font-size: 13px; font-weight: 500;">${acc.account_number || "-"}</td>
+													<td style="padding: 5px 14px; color: #64748b; white-space: nowrap; font-size: 13px; font-weight: 500;">${acc.customer_name || "-"}</td>
+													<td style="padding: 5px 14px;"></td>
+													<td style="padding: 5px 14px;"></td>
+													<td style="padding: 5px 14px;"></td>
+													<td style="padding: 5px 14px; color: #64748b; text-align: right; white-space: nowrap; font-size: 13px; font-weight: 500;">${fmtAmt(acc.monthly_demand_amount)}</td>
+													<td style="padding: 5px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 13px; font-weight: 500;">${fmtAmt(acc.monthly_collection)}</td>
+													<td style="padding: 5px 14px; color: #8b5cf6; text-align: center; white-space: nowrap; font-size: 13px; font-weight: 500;">${fmtPct(acc.monthly_collection, acc.monthly_demand_amount)}</td>
+												</tr>`;
+											});
+										}
+
 									});
 								});
 							});
