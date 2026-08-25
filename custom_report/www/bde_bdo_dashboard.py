@@ -126,6 +126,17 @@ def get_rd_smbg_pending_table_data():
 	GROUP BY sol_id, sol_desc
 	ORDER BY sol_id
 	"""
+	detail_query = """
+	SELECT
+		sol_id,
+		rm_id,
+		rm_name,
+		auth_id,
+		auth_role_id
+	FROM `tabRD and SMBG Pending`
+	WHERE `date` = %s AND sol_id = %s
+	GROUP BY sol_id, rm_id, rm_name, auth_id, auth_role_id
+	"""
 	try:
 		rows = frappe.db.sql(query, (ref_date,), as_dict=True)
 		sol_ids_found = [r.sol_id.strip() for r in rows if r.sol_id]
@@ -134,11 +145,15 @@ def get_rd_smbg_pending_table_data():
 			sb_data = frappe.get_all("Sahayog Branch", filters={"name": ["in", sol_ids_found]}, fields=["name as sol_id", "zone", "region", "district", "branch"])
 			for b in sb_data:
 				branch_map[b.sol_id] = {"zone": b.zone or "", "region": b.region or "", "district": b.district or "", "branch_name": b.branch or ""}
+		detail_map = {}
+		for sid in sol_ids_found:
+			details = frappe.db.sql(detail_query, (ref_date, sid), as_dict=True)
+			detail_map[sid] = [{"rm_id": d.rm_id or "", "rm_name": d.rm_name or "", "auth_id": d.auth_id or "", "auth_role_id": d.auth_role_id or ""} for d in details]
 		result = []
 		for r in rows:
 			sid = str(r.sol_id).strip()
 			sb = branch_map.get(sid, {})
-			result.append({"sol_id": sid, "sol_desc": r.sol_desc or "", "zone": sb.get("zone", ""), "region": sb.get("region", ""), "district": sb.get("district", ""), "branch_name": sb.get("branch_name", ""), "total_accounts": r.total_accounts or 0, "total_collection": float(r.total_collection or 0), "pending_accounts": r.pending_accounts or 0, "pending_amount": float(r.pending_amount or 0), "pending_instalments": r.pending_instalments or 0})
+			result.append({"sol_id": sid, "sol_desc": r.sol_desc or "", "zone": sb.get("zone", ""), "region": sb.get("region", ""), "district": sb.get("district", ""), "branch_name": sb.get("branch_name", ""), "total_accounts": r.total_accounts or 0, "total_collection": float(r.total_collection or 0), "pending_accounts": r.pending_accounts or 0, "pending_amount": float(r.pending_amount or 0), "pending_instalments": r.pending_instalments or 0, "details": detail_map.get(sid, [])})
 		return result
 	except Exception as e:
 		frappe.log_error(f"RD/SMBG query error: {str(e)}", "RD SMBG API")
