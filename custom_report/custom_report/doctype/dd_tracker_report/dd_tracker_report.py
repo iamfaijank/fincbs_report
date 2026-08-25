@@ -97,7 +97,7 @@ def sync_dd_tracker_data(sync_date):
                 row.get("monthly_demand_amount") or 0.0,
                 row.get("total_tran_amt") or row.get("total_flow_amount") or 0.0,
                 row.get("foracid") or "",
-                row.get("cif_id") or "",
+                row.get("customer_name") or "",
                 row.get("acct_opn_date"),
                 row.get("schm_code") or "",
                 row.get("deposit_amount") or 0.0,

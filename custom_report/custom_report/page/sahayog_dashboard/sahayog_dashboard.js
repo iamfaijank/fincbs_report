@@ -3910,6 +3910,7 @@ class DrishtiDashboard {
 				expandedRegions: {},
 				expandedDistricts: {},
 				expandedBranches: {},
+				expandedAgents: {},
 				checkedRows: {},
 				searchTerm: "",
 				allExpanded: false,
@@ -4346,11 +4347,12 @@ class DrishtiDashboard {
 										const authBg = ai % 2 === 0 ? "#fafafa" : "#f5f5f5";
 										const authKey = branchKey + "::" + auth.rm_id + "::" + auth.auth_id;
 										const authChecked = self.checkedRows[authKey];
-										
-										rowsHtml += `<tr class="mis-auth-row${authChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-branch="${branch.sol_id}" data-check-id="${authKey}" style="display: ${showAuth ? "table-row" : "none"}; background: ${authBg}; border-bottom: 1px solid #f1f5f9;">
+										const authExpanded = self.expandedAgents[authKey];
+
+										rowsHtml += `<tr class="mis-auth-row${authChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-branch="${branch.sol_id}" data-check-id="${authKey}" style="display: ${showAuth ? "table-row" : "none"}; cursor: pointer; background: ${authBg}; border-bottom: 1px solid #f1f5f9;">
 											<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${authKey}" ${authChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 											<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-											<td style="padding: 6px 14px; color: #94a3b8; white-space: nowrap; font-size: 14px; padding-left: 78px; font-weight: 500;">└─</td>
+											<td style="padding: 6px 14px; color: #94a3b8; white-space: nowrap; font-size: 14px; padding-left: 78px; font-weight: 500;"><span class="mis-auth-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${authExpanded ? "▼" : "▶"}</span></td>
 											<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${auth.rm_id || "-"}</td>
 											<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${auth.rm_name || "-"}</td>
 											<td style="padding: 6px 14px; color: #64748b; white-space: nowrap; font-size: 14px; font-weight: 500;">${auth.auth_id || "-"}</td>
@@ -4360,6 +4362,25 @@ class DrishtiDashboard {
 											<td style="padding: 6px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtAmt(auth.monthly_collection)}</td>
 											<td style="padding: 6px 14px; color: #8b5cf6; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtPct(auth.monthly_collection, auth.monthly_demand_amount)}</td>
 										</tr>`;
+
+										if (showAuth && authExpanded && auth.accounts && auth.accounts.length > 0) {
+											auth.accounts.forEach((acc, aci) => {
+												const accBg = aci % 2 === 0 ? "#ffffff" : "#f8fafc";
+												rowsHtml += `<tr class="mis-acc-row" style="display: table-row; background: ${accBg}; border-bottom: 1px solid #f1f5f9;">
+													<td style="padding: 5px 14px;"></td>
+													<td style="padding: 5px 14px;"></td>
+													<td style="padding: 5px 14px; color: #cbd5e1; white-space: nowrap; font-size: 13px; padding-left: 100px;">└─</td>
+													<td style="padding: 5px 14px; color: #64748b; white-space: nowrap; font-size: 13px; font-weight: 500;">${acc.customer_name || "-"}</td>
+													<td style="padding: 5px 14px; color: #64748b; white-space: nowrap; font-size: 13px; font-weight: 500;">${acc.account_number || "-"}</td>
+													<td style="padding: 5px 14px;"></td>
+													<td style="padding: 5px 14px;"></td>
+													<td style="padding: 5px 14px;"></td>
+													<td style="padding: 5px 14px; color: #64748b; text-align: right; white-space: nowrap; font-size: 13px; font-weight: 500;">${fmtAmt(acc.monthly_demand_amount)}</td>
+													<td style="padding: 5px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 13px; font-weight: 500;">${fmtAmt(acc.monthly_collection)}</td>
+													<td style="padding: 5px 14px; color: #8b5cf6; text-align: center; white-space: nowrap; font-size: 13px; font-weight: 500;">${fmtPct(acc.monthly_collection, acc.monthly_demand_amount)}</td>
+												</tr>`;
+											});
+										}
 
 									});
 								});
@@ -4451,6 +4472,14 @@ class DrishtiDashboard {
 						const branch = $(this).data("branch");
 						const key = zone + "::" + region + "::" + district + "::" + branch;
 						self.expandedBranches[key] = !self.expandedBranches[key];
+						self.renderMisTable(tableContainer, dashboardInstance);
+					});
+
+					tableContainer.off("click", ".mis-auth-row").on("click", ".mis-auth-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const authKey = $(this).data("check-id");
+						if (!authKey) return;
+						self.expandedAgents[authKey] = !self.expandedAgents[authKey];
 						self.renderMisTable(tableContainer, dashboardInstance);
 					});
 
