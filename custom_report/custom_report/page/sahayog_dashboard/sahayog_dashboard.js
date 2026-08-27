@@ -66,8 +66,12 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 				$(wrapper)
 					.find("#drishti-subtitle")
 					.text("Updated till: " + formattedDate);
+				$(wrapper)
+					.find("#mis-subtitle")
+					.text("Updated till: " + formattedDate);
 			} else {
 				$(wrapper).find("#drishti-subtitle").text("");
+				$(wrapper).find("#mis-subtitle").text("");
 			}
 		},
 	});
@@ -7998,6 +8002,7 @@ class DrishtiDashboard {
 		const selectorHtml = `
 			<div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 16px; width: 100%;">
 				<div style="display: flex; gap: 12px;" id="mis-report-selector-tabs"></div>
+				<div id="mis-subtitle" style="font-size: 12px; color: #64748b; font-weight: 500; font-family: 'Inter', sans-serif;">Updated till: Loading...</div>
 			</div>
 			<div id="mis-report-title" style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px; padding: 0 4px;"></div>
 			<div id="mis-report-content-area" style="min-height: 200px;"></div>
