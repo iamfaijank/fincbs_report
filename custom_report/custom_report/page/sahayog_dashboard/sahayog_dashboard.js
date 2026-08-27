@@ -34,11 +34,6 @@ frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 		.after(
 			'<div id="drishti-subtitle" style="font-size: 12px; color: #64748b; margin-top: 4px; font-weight: 500; font-family: \'Inter\', sans-serif;">Updated till: Loading...</div>',
 		);
-	$(wrapper)
-		.find(".title-text")
-		.after(
-			'<div id="mis-subtitle" style="font-size: 12px; color: #64748b; margin-top: 4px; font-weight: 500; font-family: \'Inter\', sans-serif; display: none;">Updated till: Loading...</div>',
-		);
 
 	wrapper.dashboard = new DrishtiDashboard(page);
 };
@@ -71,12 +66,8 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 				$(wrapper)
 					.find("#drishti-subtitle")
 					.text("Updated till: " + formattedDate);
-				$(wrapper)
-					.find("#mis-subtitle")
-					.text("Updated till: " + formattedDate);
 			} else {
 				$(wrapper).find("#drishti-subtitle").text("");
-				$(wrapper).find("#mis-subtitle").text("");
 			}
 		},
 	});
@@ -7967,15 +7958,12 @@ class DrishtiDashboard {
 			if (this.mis_container) this.mis_container.hide();
 			if (this.drishti_container) this.drishti_container.show();
 			$(this.page.wrapper).find("#drishti-subtitle").show();
-			$(this.page.wrapper).find("#mis-subtitle").hide();
 			$("#drishti-header-timer").show();
 			if (this._fyLoaded) { this._dataLoaded = false; this.loadData(); }
 		} else {
 			if (this.drishti_container) this.drishti_container.hide();
 			if (this.mis_container) {
 				this.mis_container.show();
-				$(this.page.wrapper).find("#drishti-subtitle").hide();
-				$(this.page.wrapper).find("#mis-subtitle").show();
 				const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
 				this.mis_container.find(".mis-report-tab-btn").removeClass("active");
 				this.mis_container.find(".mis-dropdown-toggle").removeClass("active");
