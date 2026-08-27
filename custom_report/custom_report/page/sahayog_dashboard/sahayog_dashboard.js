@@ -10121,14 +10121,14 @@ class DrishtiDashboard {
                  <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">${this.formatNumber(totalAchievement)}</td>
                  <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">
  					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
- 						<span class="pct-value" style="color: ${isCurrentMonth ? "#ffffff !important" : this.getPctColor(overallPercentage)}; min-width: 45px; text-align: right; font-weight: bold;">${Math.round(overallPercentage)}%</span>
+ 						<span class="pct-value" style="color: ${isCurrentMonth ? "#ffffff !important" : this.getPctColor(overallPercentage)}; min-width: 45px; text-align: right; font-weight: bold;">${overallPercentage.toFixed(2)}%</span>
  						${this.renderProgressBar(overallPercentage)}
  					</div>
  				</td>
                  <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">${this.formatNumber(totalGap)}</td>
                  <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">
  					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
- 						<span class="pct-value" style="color: #ffffff !important; min-width: 45px; text-align: right; font-weight: bold;">${Math.round(totalGapPct)}%</span>
+ 						<span class="pct-value" style="color: #ffffff !important; min-width: 45px; text-align: right; font-weight: bold;">${totalGapPct.toFixed(2)}%</span>
  						${this.renderProgressBar(totalGapPct, this.getPctColor(100 - totalGapPct))}
  					</div>
  				</td>
@@ -10168,7 +10168,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 										mdata.percentage,
-									)}; min-width: 45px; text-align: right;">${Math.round(mdata.percentage)}%</span>
+									)}; min-width: 45px; text-align: right;">${mdata.percentage.toFixed(2)}%</span>
 									${this.renderProgressBar(mdata.percentage)}
 								</div>
 							</td>
@@ -10177,7 +10177,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 										100 - gapPct,
-									)}; min-width: 45px; text-align: right;">${Math.round(gapPct)}%</span>
+									)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
 									${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
 								</div>
 							</td>
@@ -10220,7 +10220,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 										mdata.percentage,
-									)}; min-width: 45px; text-align: right;">${Math.round(mdata.percentage)}%</span>
+									)}; min-width: 45px; text-align: right;">${mdata.percentage.toFixed(2)}%</span>
 									${this.renderProgressBar(mdata.percentage)}
 								</div>
 							</td>
@@ -10229,7 +10229,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 										100 - gapPct,
-									)}; min-width: 45px; text-align: right;">${Math.round(gapPct)}%</span>
+									)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
 									${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
 								</div>
 							</td>
@@ -10273,7 +10273,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 										mdata.percentage,
-									)}; min-width: 45px; text-align: right;">${Math.round(mdata.percentage)}%</span>
+									)}; min-width: 45px; text-align: right;">${mdata.percentage.toFixed(2)}%</span>
 									${this.renderProgressBar(mdata.percentage)}
 								</div>
 							</td>
@@ -10282,7 +10282,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 										100 - gapPct,
-									)}; min-width: 45px; text-align: right;">${Math.round(gapPct)}%</span>
+									)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
 									${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
 								</div>
 							</td>
@@ -11856,7 +11856,7 @@ class DrishtiDashboard {
 		const gapSubtextEl = this.page.main.find("#summary-gap-subtext");
 		if (totalTarget > 0 && gap > 0) {
 			const gapPct = (gap / totalTarget) * 100;
-			gapSubtextEl.text(Math.round(gapPct) + "% gap");
+			gapSubtextEl.text(gapPct.toFixed(2) + "% gap");
 			gapSubtextEl.css("color", "").removeClass("success muted").addClass("danger");
 		} else if (totalTarget > 0 && gap <= 0) {
 			gapSubtextEl.text("Target Achieved");
