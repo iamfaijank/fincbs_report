@@ -1092,16 +1092,34 @@
 			text-transform: uppercase;
 		}
 
+		.status-badge.optimal {
+			background: #ecfdf5;
+			color: #10b981;
+			border: 1px solid #d1fae5;
+		}
+
+		.status-badge.understaffed {
+			background: #fef3c7;
+			color: #d97706;
+			border: 1px solid #fde68a;
+		}
+
+		.status-badge.critically-understaffed {
+			background: #fff7ed;
+			color: #c2410c;
+			border: 1px solid #ffedd5;
+		}
+
 		.status-badge.overstaffed {
 			background: #fee2e2;
 			color: #dc2626;
 			border: 1px solid #fecaca;
 		}
 
-		.status-badge.optimal {
-			background: #ecfdf5;
-			color: #10b981;
-			border: 1px solid #d1fae5;
+		.status-badge.critically-overstaffed {
+			background: #fdf2f8;
+			color: #be185d;
+			border: 1px solid #fce7f3;
 		}
 
 		/* The Gauge Logic */
@@ -3185,12 +3203,43 @@
 					const mpPerc = budget > 0 ? (actual / budget * 100) : 0;
 					this.el.manpowerPercentage.textContent = Math.round(mpPerc) + "%";
 
+					// Calculate status based on staff percentage
+					let statusText = "Optimal";
+					let statusClass = "optimal";
+
+					if (budget > 0) {
+						if (mpPerc === 100) {
+							statusText = "Optimal";
+							statusClass = "optimal";
+						} else if (mpPerc >= 75 && mpPerc < 100) {
+							statusText = "Understaffed";
+							statusClass = "understaffed";
+						} else if (mpPerc < 75) {
+							statusText = "Critically Understaffed";
+							statusClass = "critically-understaffed";
+						} else if (mpPerc > 100 && mpPerc <= 125) {
+							statusText = "Overstaffed";
+							statusClass = "overstaffed";
+						} else if (mpPerc > 125) {
+							statusText = "Critically Overstaffed";
+							statusClass = "critically-overstaffed";
+						}
+					} else {
+						if (actual > 0) {
+							statusText = "Critically Overstaffed";
+							statusClass = "critically-overstaffed";
+						} else {
+							statusText = "Optimal";
+							statusClass = "optimal";
+						}
+					}
+
 					let totalFillPercent = 0;
 
 					if (actual > budget) {
 						const excess = actual - budget;
-						this.el.staffStatusBadge.className = "status-badge overstaffed";
-						this.el.staffStatusBadge.textContent = "Critical: Overstaffed";
+						this.el.staffStatusBadge.className = `status-badge ${statusClass}`;
+						this.el.staffStatusBadge.textContent = statusText;
 
 						// Calculate widths relative to the 'Actual' total
 						const blueWidth = (budget / actual) * 100;
@@ -3206,8 +3255,8 @@
 						this.el.budgetMarker.style.left = blueWidth + "%";
 						this.el.budgetMarker.style.display = "block";
 					} else {
-						this.el.staffStatusBadge.className = "status-badge optimal";
-						this.el.staffStatusBadge.textContent = "Optimal";
+						this.el.staffStatusBadge.className = `status-badge ${statusClass}`;
+						this.el.staffStatusBadge.textContent = statusText;
 						this.el.excessTag.style.display = "none";
 
 						// Normal progress relative to Budget
