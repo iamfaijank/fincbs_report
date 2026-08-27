@@ -3399,7 +3399,11 @@
 						}
 						this.el.productivityAsOf.textContent = `As of: ${display}`;
 					}
-					if (this.el.totalProductivity) this.el.totalProductivity.textContent = this.formatAmount(d.total_productivity);
+					// if (this.el.totalProductivity) this.el.totalProductivity.textContent = this.formatAmount(d.total_productivity);
+					const sumProductivity = (parseFloat(d.bdo_and_productivity) || 0) + 
+											(parseFloat(d.bde_and_productivity) || 0) + 
+											(parseFloat(d.ro_and_productivity) || 0);
+					if (this.el.totalProductivity) this.el.totalProductivity.textContent = this.formatAmount(sumProductivity);
 					if (this.el.bdoAndProductivity) this.el.bdoAndProductivity.textContent = this.formatAmount(d.bdo_and_productivity);
 					if (this.el.bdeAndProductivity) this.el.bdeAndProductivity.textContent = this.formatAmount(d.bde_and_productivity);
 					if (this.el.roProductivity) this.el.roProductivity.textContent = this.formatAmount(d.ro_and_productivity);
