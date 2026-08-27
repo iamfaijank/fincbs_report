@@ -1437,10 +1437,12 @@ def cleanup_ss_vs_old_monthly_records():
 		frappe.logger("scheduler").info("SS & VS Monthly Cleanup Cron: Sync is disabled in Drishti Settings. Skipping execution.")
 		return
 
+	import time
+
 	try:
 		# Increase lock wait timeout for this session
 		try:
-			frappe.db.sql("SET SESSION innodb_lock_wait_timeout = 120;")
+			frappe.db.sql("SET SESSION innodb_lock_wait_timeout = 300;")
 		except Exception:
 			pass
 
@@ -1450,20 +1452,30 @@ def cleanup_ss_vs_old_monthly_records():
 		# 1. Verify if yesterday's date has data in tabSS and VS Report
 		yesterday_count = frappe.db.count("SS and VS Report", filters={"date": yesterday})
 		
+		total_deleted = 0
+		CHUNK_SIZE = 200000
+
 		# 2. Cleanup current month ONLY if yesterday's date data is present
 		if yesterday_count > 0:
 			dt = frappe.utils.getdate(yesterday)
+			current_month_start = frappe.utils.get_first_day(yesterday)
 			while True:
-				affected = frappe.db.sql("""
+				frappe.db.sql("""
 					DELETE FROM `tabSS and VS Report`
-					WHERE YEAR(`date`) = %s
-					  AND MONTH(`date`) = %s
+					WHERE `date` >= %s
 					  AND `date` < %s
-					LIMIT 5000
-				""", (dt.year, dt.month, yesterday))
+					LIMIT 200000
+				""", (current_month_start, yesterday))
+				
+				deleted = getattr(frappe.db._cursor, "rowcount", 0)
 				frappe.db.commit()
-				if not affected:
+				total_deleted += deleted
+				frappe.logger("scheduler").info(f"SS & VS Current Month Cleanup: Deleted {deleted} records.")
+
+				if deleted < CHUNK_SIZE:
 					break
+
+				time.sleep(10)
 
 		# 3. Cleanup past completed months in chunked iterations
 		current_month_start = frappe.utils.get_first_day(today)
@@ -1478,19 +1490,26 @@ def cleanup_ss_vs_old_monthly_records():
 
 		if past_max_dates:
 			while True:
-				affected = frappe.db.sql("""
+				frappe.db.sql("""
 					DELETE FROM `tabSS and VS Report`
 					WHERE `date` < %s
 					  AND `date` NOT IN %s
-					LIMIT 5000
+					LIMIT 200000
 				""", (current_month_start, tuple(past_max_dates)))
+
+				deleted = getattr(frappe.db._cursor, "rowcount", 0)
 				frappe.db.commit()
-				if not affected:
+				total_deleted += deleted
+				frappe.logger("scheduler").info(f"SS & VS Past Months Cleanup: Deleted {deleted} records.")
+
+				if deleted < CHUNK_SIZE:
 					break
 
-		msg = f"SS & VS Cleanup completed. Yesterday ({yesterday}) data verified: {yesterday_count > 0}."
+				time.sleep(10)
+
+		msg = f"SS & VS Cleanup completed. Total deleted: {total_deleted}. Yesterday ({yesterday}) data verified: {yesterday_count > 0}."
 		frappe.logger("scheduler").info(msg)
-		return {"status": "success", "message": msg, "yesterday_verified": yesterday_count > 0}
+		return {"status": "success", "message": msg, "total_deleted": total_deleted, "yesterday_verified": yesterday_count > 0}
 	except Exception as e:
 		frappe.log_error(f"Error cleaning up SS & VS monthly records: {str(e)}", "SS & VS Cleanup Error")
 		return {"status": "error", "message": str(e)}
