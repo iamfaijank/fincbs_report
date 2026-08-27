@@ -2623,6 +2623,7 @@
 
 				renderSuggestions(searchTxt, isFromCache = false) {
 					const box = this.el.suggestionsContainer;
+					if (!box) return;
 					box.innerHTML = "";
 					this.state.selectedIndex = -1;
 
@@ -2662,11 +2663,15 @@
 						box.appendChild(div);
 					});
 
-					this.el.suggestionsBox.style.display = "block";
+					if (this.el.suggestionsBox) {
+						this.el.suggestionsBox.style.display = "block";
+					}
 				},
 
 				hideSuggestions() {
-					this.el.suggestionsBox.style.display = "none";
+					if (this.el.suggestionsBox) {
+						this.el.suggestionsBox.style.display = "none";
+					}
 					this.state.selectedIndex = -1;
 				},
 
