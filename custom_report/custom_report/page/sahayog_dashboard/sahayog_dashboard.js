@@ -5130,6 +5130,11 @@ class DrishtiDashboard {
 				id: "rm_wise",
 				name: "SS & VS Status Report",
 				tableData: [],
+				expandedZones: {},
+				expandedRegions: {},
+				expandedDistricts: {},
+				expandedBranches: {},
+				allExpanded: false,
 				selectedMisZones: [],
 				render: function (container, dashboardInstance, seq) {
 					const self = this;
@@ -5137,6 +5142,7 @@ class DrishtiDashboard {
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
 							<input type="text" id="rm-top-search" placeholder="Search Agent Code or Name..." style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 220px; outline: none;">
+							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="display: inline-flex; border-radius: 4px; overflow: hidden; border: 1px solid #cbd5e1;">
 								<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
@@ -5161,6 +5167,27 @@ class DrishtiDashboard {
 						dashboardInstance.state.formatMode = format;
 						container.find(".mis-format-btn").removeClass("active").css({ background: "#e2e8f0", color: "#475569" });
 						$(this).addClass("active").css({ background: "#417d81", color: "white" });
+						self.renderRmWiseTable(container.find("#mis-table-container"), dashboardInstance);
+					});
+
+					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function () {
+						self.allExpanded = !self.allExpanded;
+						const expand = self.allExpanded;
+						if (!self.tableData) return;
+						self.tableData.forEach(row => {
+							if (row.branches) {
+								row.branches.forEach(b => {
+									const bKey = row.zone + "::" + row.region + "::" + row.district + "::" + b.sol_id;
+									self.expandedBranches = self.expandedBranches || {};
+									self.expandedBranches[bKey] = expand;
+								});
+							}
+							self.expandedZones[row.zone || ""] = expand;
+							self.expandedRegions[(row.zone || "") + "::" + (row.region || "")] = expand;
+							self.expandedDistricts = self.expandedDistricts || {};
+							self.expandedDistricts[(row.zone || "") + "::" + (row.region || "") + "::" + (row.district || "")] = expand;
+						});
+						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
 						self.renderRmWiseTable(container.find("#mis-table-container"), dashboardInstance);
 					});
 
