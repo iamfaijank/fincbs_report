@@ -937,9 +937,9 @@ class DrishtiDashboard {
 										console.log("DEBUG: API CALL get_daily_account_opening_data RESPONSE", r3.message);
 										if (dashboardInstance._misRenderSeq !== seq) return;
 										if (r3.message) {
-											self.tableData = r3.message;
+											self.tableData = filterMisTableDataByUserPermissions(r3.message, self.filterOptions);
 											self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
-											container.find("#mis-records-count").text(`${r3.message.length} records`);
+											container.find("#mis-records-count").text(`${self.tableData.length} records`);
 											self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 											self.renderZoneFilterTags(container, dashboardInstance);
 										}
@@ -3400,19 +3400,26 @@ class DrishtiDashboard {
 					}
 
 					frappe.call({
-						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_staff_wise_demand_collection_data",
-						args: { selected_date: dashboardInstance.state.selectedDate },
-						callback: function(r) {
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_mis_filter_options",
+						callback: function(fo) {
 							if (dashboardInstance._misRenderSeq !== seq) return;
-							container.find("#mis-loading").hide();
-							if (r.message && r.message.length) {
-								self.tableData = r.message;
-								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
-								container.find("#mis-records-count").text(`${r.message.length} records`);
-								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
-								self.renderZoneFilterTags(container, dashboardInstance);
-							}
-							container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+							const fOpts = fo.message || {};
+							frappe.call({
+								method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_staff_wise_demand_collection_data",
+								args: { selected_date: dashboardInstance.state.selectedDate },
+								callback: function(r) {
+									if (dashboardInstance._misRenderSeq !== seq) return;
+									container.find("#mis-loading").hide();
+									if (r.message && r.message.length) {
+										self.tableData = filterMisTableDataByUserPermissions(r.message, fOpts);
+										self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+										container.find("#mis-records-count").text(`${self.tableData.length} records`);
+										self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+										self.renderZoneFilterTags(container, dashboardInstance);
+									}
+									container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+								}
+							});
 						}
 					});
 					self.attachReportEventHandlers(container, dashboardInstance);
@@ -3952,19 +3959,26 @@ class DrishtiDashboard {
 					}
 
 					frappe.call({
-						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_agent_wise_demand_collection_data",
-						args: { selected_date: dashboardInstance.state.selectedDate },
-						callback: function(r) {
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_mis_filter_options",
+						callback: function(fo) {
 							if (dashboardInstance._misRenderSeq !== seq) return;
-							container.find("#mis-loading").hide();
-							if (r.message && r.message.length) {
-								self.tableData = r.message;
-								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
-								container.find("#mis-records-count").text(`${r.message.length} records`);
-								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
-								self.renderZoneFilterTags(container, dashboardInstance);
-							}
-							container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+							const fOpts = fo.message || {};
+							frappe.call({
+								method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_agent_wise_demand_collection_data",
+								args: { selected_date: dashboardInstance.state.selectedDate },
+								callback: function(r) {
+									if (dashboardInstance._misRenderSeq !== seq) return;
+									container.find("#mis-loading").hide();
+									if (r.message && r.message.length) {
+										self.tableData = filterMisTableDataByUserPermissions(r.message, fOpts);
+										self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+										container.find("#mis-records-count").text(`${self.tableData.length} records`);
+										self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+										self.renderZoneFilterTags(container, dashboardInstance);
+									}
+									container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+								}
+							});
 						}
 					});
 					self.attachReportEventHandlers(container, dashboardInstance);

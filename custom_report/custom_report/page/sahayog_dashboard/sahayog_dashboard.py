@@ -1751,7 +1751,7 @@ def get_daily_account_opening_data(selected_date=None):
                 allowed_region_norm = {re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions}
                 result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in allowed_region_norm]
 
-            if allowed_sol_ids and not allowed_zones and not allowed_regions:
+            if allowed_sol_ids:
                 allowed_sols_str = {str(s).strip() for s in allowed_sol_ids}
                 result = [r for r in result if str(r.get("sol_id")).strip() in allowed_sols_str]
 
@@ -1966,7 +1966,7 @@ def get_ntb_evr_data(selected_date=None):
                 allowed_region_norm = {re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions}
                 result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in allowed_region_norm]
 
-            if allowed_sol_ids and not allowed_zones and not allowed_regions:
+            if allowed_sol_ids:
                 allowed_sols_str = {str(s).strip() for s in allowed_sol_ids}
                 result = [r for r in result if str(r.get("sol_id")).strip() in allowed_sols_str]
 
@@ -5573,7 +5573,7 @@ def _apply_report_prefs_filter(result):
     if not perms.get("all_regions") and allowed_regions:
         rn = {_re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions}
         result = [r for r in result if _re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in rn]
-    if allowed_sol_ids and not allowed_zones and not allowed_regions:
+    if allowed_sol_ids:
         sn = {str(s).strip() for s in allowed_sol_ids}
         result = [r for r in result if str(r.get("sol_id")).strip() in sn]
     return result
@@ -5691,7 +5691,7 @@ def get_agent_wise_demand_collection_data(selected_date=None):
         })
 
     result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
-    return result
+    return _apply_report_prefs_filter(result)
 
 
 @frappe.whitelist()
