@@ -189,33 +189,34 @@ const filterMisTableDataByUserPermissions = function (data, filterOptions) {
 	const hasRegionPerms = allowedRegions.length > 0;
 	const hasSolPerms = allowedSolIds.length > 0;
 
+	let result = data;
+
 	// 1. Explicit Zone permissions
 	if (hasZonePerms) {
-		let filtered = data.filter(r => r.zone && allowedZones.includes(norm(r.zone)));
+		result = result.filter(r => r.zone && allowedZones.includes(norm(r.zone)));
 		if (hasRegionPerms) {
-			filtered = filtered.filter(r => r.region && allowedRegions.includes(norm(r.region)));
+			result = result.filter(r => r.region && allowedRegions.includes(norm(r.region)));
 		}
-		return filtered;
+	} else if (hasRegionPerms) {
+		// 2. Explicit Region permissions
+		result = result.filter(r => r.region && allowedRegions.includes(norm(r.region)));
+	} else if (hasSolPerms) {
+		// 3. Explicit SOL ID permissions (Single or Multiple SOL access)
+		const solSet = new Set(allowedSolIds);
+		result = result.filter(r => r.sol_id && solSet.has(normSol(r.sol_id)));
+	} else if (filterOptions.zones && filterOptions.zones.length > 0) {
+		// 4. Fallback based on filterOptions.zones
+		const zoneSet = new Set(filterOptions.zones.map(norm));
+		result = result.filter(r => r.zone && zoneSet.has(norm(r.zone)));
 	}
 
-	// 2. Explicit Region permissions
-	if (hasRegionPerms) {
-		return data.filter(r => r.region && allowedRegions.includes(norm(r.region)));
-	}
-
-	// 3. Explicit SOL ID permissions (Single or Multiple SOL access)
+	// Always enforce sol_id permissions when they exist
 	if (hasSolPerms) {
 		const solSet = new Set(allowedSolIds);
-		return data.filter(r => r.sol_id && solSet.has(normSol(r.sol_id)));
+		result = result.filter(r => r.sol_id && solSet.has(normSol(r.sol_id)));
 	}
 
-	// 4. Fallback based on filterOptions.zones
-	if (filterOptions.zones && filterOptions.zones.length > 0) {
-		const zoneSet = new Set(filterOptions.zones.map(norm));
-		return data.filter(r => r.zone && zoneSet.has(norm(r.zone)));
-	}
-
-	return data;
+	return result;
 };
 
 function _autoExpandSearchResults(self, data) {

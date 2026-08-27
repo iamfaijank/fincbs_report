@@ -1471,7 +1471,7 @@ def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
                     allowed_reg_norm = [re.sub(r"[\s\-]+", "", reg or "").upper() for reg in allowed_regions]
                     result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in allowed_reg_norm]
 
-            elif allowed_sols and not sol_ids:
+            if allowed_sols and not sol_ids:
                 allowed_sol_set = set(str(s) for s in allowed_sols)
                 result = [r for r in result if str(r.get("sol_id")) in allowed_sol_set]
 
