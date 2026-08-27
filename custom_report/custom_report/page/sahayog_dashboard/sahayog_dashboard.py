@@ -1533,22 +1533,16 @@ def get_mis_filter_options():
     fixed_sol_id = None
     allowed_sol_ids = perms.get("sol_ids", [])
     
-    # If zone or region permissions exist, don't use sol_ids (zones/regions are the primary filter)
-    has_zone_or_region_perms = perms.get("is_restricted") and (perms.get("zones") or perms.get("regions") or perms.get("all_regions"))
-    if has_zone_or_region_perms:
-        allowed_sol_ids = []
-        perms["sol_data"] = []
-    else:
-        # Fallback: if no sol_ids from Report Preference, check Employee sahayog_branch
-        if not allowed_sol_ids and perms.get("is_restricted"):
-            employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
-            if employee_sol:
-                allowed_sol_ids = [employee_sol]
-                fixed_sol_id = employee_sol
-        
-        # If exactly one sol_id from report pref, also treat as fixed
-        if not fixed_sol_id and len(allowed_sol_ids) == 1:
-            fixed_sol_id = allowed_sol_ids[0]
+    # Fallback: if no sol_ids from Report Preference, check Employee sahayog_branch
+    if not allowed_sol_ids and perms.get("is_restricted"):
+        employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
+        if employee_sol:
+            allowed_sol_ids = [employee_sol]
+            fixed_sol_id = employee_sol
+
+    # If exactly one sol_id from report pref, also treat as fixed
+    if not fixed_sol_id and len(allowed_sol_ids) == 1:
+        fixed_sol_id = allowed_sol_ids[0]
     
     # Build sol_data: branch names from Sahayog Branch
     sol_data = perms.get("sol_data", [])
