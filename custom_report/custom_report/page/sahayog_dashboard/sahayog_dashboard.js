@@ -189,33 +189,34 @@ const filterMisTableDataByUserPermissions = function (data, filterOptions) {
 	const hasRegionPerms = allowedRegions.length > 0;
 	const hasSolPerms = allowedSolIds.length > 0;
 
+	let result = data;
+
 	// 1. Explicit Zone permissions
 	if (hasZonePerms) {
-		let filtered = data.filter(r => r.zone && allowedZones.includes(norm(r.zone)));
+		result = result.filter(r => r.zone && allowedZones.includes(norm(r.zone)));
 		if (hasRegionPerms) {
-			filtered = filtered.filter(r => r.region && allowedRegions.includes(norm(r.region)));
+			result = result.filter(r => r.region && allowedRegions.includes(norm(r.region)));
 		}
-		return filtered;
+	} else if (hasRegionPerms) {
+		// 2. Explicit Region permissions
+		result = result.filter(r => r.region && allowedRegions.includes(norm(r.region)));
+	} else if (hasSolPerms) {
+		// 3. Explicit SOL ID permissions (Single or Multiple SOL access)
+		const solSet = new Set(allowedSolIds);
+		result = result.filter(r => r.sol_id && solSet.has(normSol(r.sol_id)));
+	} else if (filterOptions.zones && filterOptions.zones.length > 0) {
+		// 4. Fallback based on filterOptions.zones
+		const zoneSet = new Set(filterOptions.zones.map(norm));
+		result = result.filter(r => r.zone && zoneSet.has(norm(r.zone)));
 	}
 
-	// 2. Explicit Region permissions
-	if (hasRegionPerms) {
-		return data.filter(r => r.region && allowedRegions.includes(norm(r.region)));
-	}
-
-	// 3. Explicit SOL ID permissions (Single or Multiple SOL access)
+	// Always enforce sol_id permissions when they exist
 	if (hasSolPerms) {
 		const solSet = new Set(allowedSolIds);
-		return data.filter(r => r.sol_id && solSet.has(normSol(r.sol_id)));
+		result = result.filter(r => r.sol_id && solSet.has(normSol(r.sol_id)));
 	}
 
-	// 4. Fallback based on filterOptions.zones
-	if (filterOptions.zones && filterOptions.zones.length > 0) {
-		const zoneSet = new Set(filterOptions.zones.map(norm));
-		return data.filter(r => r.zone && zoneSet.has(norm(r.zone)));
-	}
-
-	return data;
+	return result;
 };
 
 function _autoExpandSearchResults(self, data) {
@@ -936,9 +937,9 @@ class DrishtiDashboard {
 										console.log("DEBUG: API CALL get_daily_account_opening_data RESPONSE", r3.message);
 										if (dashboardInstance._misRenderSeq !== seq) return;
 										if (r3.message) {
-											self.tableData = r3.message;
+											self.tableData = filterMisTableDataByUserPermissions(r3.message, self.filterOptions);
 											self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
-											container.find("#mis-records-count").text(`${r3.message.length} records`);
+											container.find("#mis-records-count").text(`${self.tableData.length} records`);
 											self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 											self.renderZoneFilterTags(container, dashboardInstance);
 										}
@@ -3399,19 +3400,26 @@ class DrishtiDashboard {
 					}
 
 					frappe.call({
-						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_staff_wise_demand_collection_data",
-						args: { selected_date: dashboardInstance.state.selectedDate },
-						callback: function(r) {
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_mis_filter_options",
+						callback: function(fo) {
 							if (dashboardInstance._misRenderSeq !== seq) return;
-							container.find("#mis-loading").hide();
-							if (r.message && r.message.length) {
-								self.tableData = r.message;
-								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
-								container.find("#mis-records-count").text(`${r.message.length} records`);
-								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
-								self.renderZoneFilterTags(container, dashboardInstance);
-							}
-							container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+							const fOpts = fo.message || {};
+							frappe.call({
+								method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_staff_wise_demand_collection_data",
+								args: { selected_date: dashboardInstance.state.selectedDate },
+								callback: function(r) {
+									if (dashboardInstance._misRenderSeq !== seq) return;
+									container.find("#mis-loading").hide();
+									if (r.message && r.message.length) {
+										self.tableData = filterMisTableDataByUserPermissions(r.message, fOpts);
+										self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+										container.find("#mis-records-count").text(`${self.tableData.length} records`);
+										self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+										self.renderZoneFilterTags(container, dashboardInstance);
+									}
+									container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+								}
+							});
 						}
 					});
 					self.attachReportEventHandlers(container, dashboardInstance);
@@ -3951,19 +3959,26 @@ class DrishtiDashboard {
 					}
 
 					frappe.call({
-						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_agent_wise_demand_collection_data",
-						args: { selected_date: dashboardInstance.state.selectedDate },
-						callback: function(r) {
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_mis_filter_options",
+						callback: function(fo) {
 							if (dashboardInstance._misRenderSeq !== seq) return;
-							container.find("#mis-loading").hide();
-							if (r.message && r.message.length) {
-								self.tableData = r.message;
-								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
-								container.find("#mis-records-count").text(`${r.message.length} records`);
-								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
-								self.renderZoneFilterTags(container, dashboardInstance);
-							}
-							container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+							const fOpts = fo.message || {};
+							frappe.call({
+								method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_agent_wise_demand_collection_data",
+								args: { selected_date: dashboardInstance.state.selectedDate },
+								callback: function(r) {
+									if (dashboardInstance._misRenderSeq !== seq) return;
+									container.find("#mis-loading").hide();
+									if (r.message && r.message.length) {
+										self.tableData = filterMisTableDataByUserPermissions(r.message, fOpts);
+										self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+										container.find("#mis-records-count").text(`${self.tableData.length} records`);
+										self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+										self.renderZoneFilterTags(container, dashboardInstance);
+									}
+									container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+								}
+							});
 						}
 					});
 					self.attachReportEventHandlers(container, dashboardInstance);
@@ -10121,14 +10136,14 @@ class DrishtiDashboard {
                  <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">${this.formatNumber(totalAchievement)}</td>
                  <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">
  					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
- 						<span class="pct-value" style="color: ${isCurrentMonth ? "#ffffff !important" : this.getPctColor(overallPercentage)}; min-width: 45px; text-align: right; font-weight: bold;">${Math.round(overallPercentage)}%</span>
+ 						<span class="pct-value" style="color: ${isCurrentMonth ? "#ffffff !important" : this.getPctColor(overallPercentage)}; min-width: 45px; text-align: right; font-weight: bold;">${overallPercentage.toFixed(2)}%</span>
  						${this.renderProgressBar(overallPercentage)}
  					</div>
  				</td>
                  <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">${this.formatNumber(totalGap)}</td>
                  <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">
  					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
- 						<span class="pct-value" style="color: #ffffff !important; min-width: 45px; text-align: right; font-weight: bold;">${Math.round(totalGapPct)}%</span>
+ 						<span class="pct-value" style="color: #ffffff !important; min-width: 45px; text-align: right; font-weight: bold;">${totalGapPct.toFixed(2)}%</span>
  						${this.renderProgressBar(totalGapPct, this.getPctColor(100 - totalGapPct))}
  					</div>
  				</td>
@@ -10168,7 +10183,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 										mdata.percentage,
-									)}; min-width: 45px; text-align: right;">${Math.round(mdata.percentage)}%</span>
+									)}; min-width: 45px; text-align: right;">${mdata.percentage.toFixed(2)}%</span>
 									${this.renderProgressBar(mdata.percentage)}
 								</div>
 							</td>
@@ -10177,7 +10192,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 										100 - gapPct,
-									)}; min-width: 45px; text-align: right;">${Math.round(gapPct)}%</span>
+									)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
 									${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
 								</div>
 							</td>
@@ -10220,7 +10235,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 										mdata.percentage,
-									)}; min-width: 45px; text-align: right;">${Math.round(mdata.percentage)}%</span>
+									)}; min-width: 45px; text-align: right;">${mdata.percentage.toFixed(2)}%</span>
 									${this.renderProgressBar(mdata.percentage)}
 								</div>
 							</td>
@@ -10229,7 +10244,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 										100 - gapPct,
-									)}; min-width: 45px; text-align: right;">${Math.round(gapPct)}%</span>
+									)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
 									${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
 								</div>
 							</td>
@@ -10273,7 +10288,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 										mdata.percentage,
-									)}; min-width: 45px; text-align: right;">${Math.round(mdata.percentage)}%</span>
+									)}; min-width: 45px; text-align: right;">${mdata.percentage.toFixed(2)}%</span>
 									${this.renderProgressBar(mdata.percentage)}
 								</div>
 							</td>
@@ -10282,7 +10297,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 										100 - gapPct,
-									)}; min-width: 45px; text-align: right;">${Math.round(gapPct)}%</span>
+									)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
 									${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
 								</div>
 							</td>
@@ -11672,14 +11687,14 @@ class DrishtiDashboard {
                  <td class="metric-cell amount-cell">${this.formatNumber(mdata.achievement)}</td>
                  <td>
 					<div style="display: flex; align-items: center; gap: 4px; justify-content: center;">
-						<span class="pct-value" style="color: ${this.getPctColor(pct)}; min-width: 36px; text-align: right;">${Math.round(pct)}%</span>
+						<span class="pct-value" style="color: ${this.getPctColor(pct)}; min-width: 36px; text-align: right;">${pct.toFixed(2)}%</span>
 						${this.renderProgressBar(pct)}
 					</div>
 				</td>
                  <td class="metric-cell amount-cell">${this.formatNumber(gapVal)}</td>
                  <td>
 					<div style="display: flex; align-items: center; gap: 4px; justify-content: center;">
-						<span class="pct-value" style="color: ${this.getPctColor(100 - gapPct)}; min-width: 36px; text-align: right;">${Math.round(gapPct)}%</span>
+						<span class="pct-value" style="color: ${this.getPctColor(100 - gapPct)}; min-width: 36px; text-align: right;">${gapPct.toFixed(2)}%</span>
 						${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
 					</div>
 				</td>
@@ -11856,7 +11871,7 @@ class DrishtiDashboard {
 		const gapSubtextEl = this.page.main.find("#summary-gap-subtext");
 		if (totalTarget > 0 && gap > 0) {
 			const gapPct = (gap / totalTarget) * 100;
-			gapSubtextEl.text(Math.round(gapPct) + "% gap");
+			gapSubtextEl.text(gapPct.toFixed(2) + "% gap");
 			gapSubtextEl.css("color", "").removeClass("success muted").addClass("danger");
 		} else if (totalTarget > 0 && gap <= 0) {
 			gapSubtextEl.text("Target Achieved");

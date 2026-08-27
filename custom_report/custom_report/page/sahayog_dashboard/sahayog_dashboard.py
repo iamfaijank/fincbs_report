@@ -230,6 +230,12 @@ def get_user_report_permissions(user):
     
     permissions["sol_ids"] = frappe.db.get_all("Sol Items", filters={"parent": pref_name, "parentfield": "sol_id"}, pluck="sol_id") or []
 
+    # Fallback: if no sol_ids, no zones, no regions — use Employee sahayog_branch
+    if not permissions["sol_ids"] and not permissions["zones"] and not permissions["regions"] and not permissions["all_regions"]:
+        employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
+        if employee_sol:
+            permissions["sol_ids"] = [employee_sol]
+
     # Fetch branch names from Sahayog Branch for permitted sol_ids
     if permissions["sol_ids"]:
         branches_map = get_sahayog_branches_cached()
@@ -1471,7 +1477,7 @@ def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
                     allowed_reg_norm = [re.sub(r"[\s\-]+", "", reg or "").upper() for reg in allowed_regions]
                     result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in allowed_reg_norm]
 
-            elif allowed_sols and not sol_ids:
+            if allowed_sols and not sol_ids:
                 allowed_sol_set = set(str(s) for s in allowed_sols)
                 result = [r for r in result if str(r.get("sol_id")) in allowed_sol_set]
 
@@ -1533,22 +1539,16 @@ def get_mis_filter_options():
     fixed_sol_id = None
     allowed_sol_ids = perms.get("sol_ids", [])
     
-    # If zone or region permissions exist, don't use sol_ids (zones/regions are the primary filter)
-    has_zone_or_region_perms = perms.get("is_restricted") and (perms.get("zones") or perms.get("regions") or perms.get("all_regions"))
-    if has_zone_or_region_perms:
-        allowed_sol_ids = []
-        perms["sol_data"] = []
-    else:
-        # Fallback: if no sol_ids from Report Preference, check Employee sahayog_branch
-        if not allowed_sol_ids and perms.get("is_restricted"):
-            employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
-            if employee_sol:
-                allowed_sol_ids = [employee_sol]
-                fixed_sol_id = employee_sol
-        
-        # If exactly one sol_id from report pref, also treat as fixed
-        if not fixed_sol_id and len(allowed_sol_ids) == 1:
-            fixed_sol_id = allowed_sol_ids[0]
+    # Fallback: if no sol_ids from Report Preference, check Employee sahayog_branch
+    if not allowed_sol_ids and perms.get("is_restricted"):
+        employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
+        if employee_sol:
+            allowed_sol_ids = [employee_sol]
+            fixed_sol_id = employee_sol
+
+    # If exactly one sol_id from report pref, also treat as fixed
+    if not fixed_sol_id and len(allowed_sol_ids) == 1:
+        fixed_sol_id = allowed_sol_ids[0]
     
     # Build sol_data: branch names from Sahayog Branch
     sol_data = perms.get("sol_data", [])
@@ -1751,7 +1751,7 @@ def get_daily_account_opening_data(selected_date=None):
                 allowed_region_norm = {re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions}
                 result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in allowed_region_norm]
 
-            if allowed_sol_ids and not allowed_zones and not allowed_regions:
+            if allowed_sol_ids:
                 allowed_sols_str = {str(s).strip() for s in allowed_sol_ids}
                 result = [r for r in result if str(r.get("sol_id")).strip() in allowed_sols_str]
 
@@ -1966,7 +1966,7 @@ def get_ntb_evr_data(selected_date=None):
                 allowed_region_norm = {re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions}
                 result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in allowed_region_norm]
 
-            if allowed_sol_ids and not allowed_zones and not allowed_regions:
+            if allowed_sol_ids:
                 allowed_sols_str = {str(s).strip() for s in allowed_sol_ids}
                 result = [r for r in result if str(r.get("sol_id")).strip() in allowed_sols_str]
 
@@ -5573,7 +5573,7 @@ def _apply_report_prefs_filter(result):
     if not perms.get("all_regions") and allowed_regions:
         rn = {_re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions}
         result = [r for r in result if _re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in rn]
-    if allowed_sol_ids and not allowed_zones and not allowed_regions:
+    if allowed_sol_ids:
         sn = {str(s).strip() for s in allowed_sol_ids}
         result = [r for r in result if str(r.get("sol_id")).strip() in sn]
     return result
@@ -5691,7 +5691,7 @@ def get_agent_wise_demand_collection_data(selected_date=None):
         })
 
     result = sorted(summary.values(), key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
-    return result
+    return _apply_report_prefs_filter(result)
 
 
 @frappe.whitelist()
