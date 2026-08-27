@@ -230,6 +230,12 @@ def get_user_report_permissions(user):
     
     permissions["sol_ids"] = frappe.db.get_all("Sol Items", filters={"parent": pref_name, "parentfield": "sol_id"}, pluck="sol_id") or []
 
+    # Fallback: if no sol_ids, no zones, no regions — use Employee sahayog_branch
+    if not permissions["sol_ids"] and not permissions["zones"] and not permissions["regions"] and not permissions["all_regions"]:
+        employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
+        if employee_sol:
+            permissions["sol_ids"] = [employee_sol]
+
     # Fetch branch names from Sahayog Branch for permitted sol_ids
     if permissions["sol_ids"]:
         branches_map = get_sahayog_branches_cached()
