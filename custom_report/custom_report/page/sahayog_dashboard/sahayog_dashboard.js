@@ -7987,7 +7987,7 @@ class DrishtiDashboard {
 				const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
 				this.renderMisReport(activeReportId);
 			}
-			$(this.page.wrapper).find("#drishti-subtitle").hide();
+			$(this.page.wrapper).find("#drishti-subtitle").show();
 			$("#drishti-header-timer").hide();
 		}
 	}
