@@ -11672,14 +11672,14 @@ class DrishtiDashboard {
                  <td class="metric-cell amount-cell">${this.formatNumber(mdata.achievement)}</td>
                  <td>
 					<div style="display: flex; align-items: center; gap: 4px; justify-content: center;">
-						<span class="pct-value" style="color: ${this.getPctColor(pct)}; min-width: 36px; text-align: right;">${Math.round(pct)}%</span>
+						<span class="pct-value" style="color: ${this.getPctColor(pct)}; min-width: 36px; text-align: right;">${pct.toFixed(2)}%</span>
 						${this.renderProgressBar(pct)}
 					</div>
 				</td>
                  <td class="metric-cell amount-cell">${this.formatNumber(gapVal)}</td>
                  <td>
 					<div style="display: flex; align-items: center; gap: 4px; justify-content: center;">
-						<span class="pct-value" style="color: ${this.getPctColor(100 - gapPct)}; min-width: 36px; text-align: right;">${Math.round(gapPct)}%</span>
+						<span class="pct-value" style="color: ${this.getPctColor(100 - gapPct)}; min-width: 36px; text-align: right;">${gapPct.toFixed(2)}%</span>
 						${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
 					</div>
 				</td>
