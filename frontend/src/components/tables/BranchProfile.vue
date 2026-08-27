@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import { useNumberFormat } from '@/composables/useNumberFormat.js'
 import { useNameFormat } from '@/composables/useNameFormat.js'
 import AchievementBadge from './AchievementBadge.vue'
@@ -14,7 +15,13 @@ const emit = defineEmits(['back'])
 const { formatNumber } = useNumberFormat()
 const { formatZone, formatRegion } = useNameFormat()
 
-const activeMonth = props.months.length > 0 ? props.months[props.months.length - 1] : null
+const activeMonth = computed(() => props.months.length > 0 ? props.months[props.months.length - 1] : null)
+const asOfMonth = computed(() => {
+  if (activeMonth.value?.display) return activeMonth.value.display
+  if (props.branchProfile?.month) return props.branchProfile.month
+  if (props.months.length > 0) return props.months[props.months.length - 1]?.display || ''
+  return ''
+})
 
 const STATUS_META = {
   improved: { label: 'Improved', class: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400', icon: 'up' },
@@ -464,8 +471,9 @@ function scrollToManpowerDetails() {
 
     <!-- Productivity Details Card -->
     <div class="mx-5 mb-4 sb-card flex-shrink-0">
-      <div class="px-4 py-3 border-b border-[var(--border)]">
+      <div class="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
         <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Productivity Details</div>
+        <div class="text-[11px] font-medium text-[var(--text3)]">As of: {{ asOfMonth || '—' }}</div>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full">
