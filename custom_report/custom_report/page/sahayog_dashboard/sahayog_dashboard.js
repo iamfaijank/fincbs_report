@@ -5571,7 +5571,7 @@ class DrishtiDashboard {
 								<span>🌳 Hierarchical Drill-Down (Zone → Region → District → SOL → Agent)</span>
 								<span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700;">${fmtNum(data.length)} Agents Total</span>
 							</div>
-							<div style="display: flex; align-items: center; gap: 8px;">
+							<div>
 								<button type="button" class="btn btn-xs rm-tree-expand-all" style="background: rgba(65, 125, 129, 0.1); color: #417d81; border: 1px solid rgba(65, 125, 129, 0.3); font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
 									📂 Expand All
 								</button>
