@@ -2278,7 +2278,7 @@
 			</section>
 
 			<section class="staff-detail-section">
-				<h2>Productivity Details</h2>
+				<h2 style="display:flex; justify-content:space-between; align-items:center;">Productivity Details <span id="productivity-as-of" style="font-size:11px; font-weight:500; color:#64748b; text-transform:none; letter-spacing:normal;">As of: —</span></h2>
 				<div class="financial-table-container">
 					<table class="financial-table">
 						<thead>
@@ -2967,6 +2967,7 @@
 					// -----------------------
 
 					// Productivity Details
+					productivityAsOf: document.getElementById("productivity-as-of"),
 					totalProductivity: document.getElementById("total-productivity"),
 					bdoAndProductivity: document.getElementById("bdo-and-productivity"),
 					bdeAndProductivity: document.getElementById("bde-and-productivity"),
@@ -3326,6 +3327,24 @@
 					this.el.rdSmbgPending.textContent = this.formatAmount(d.rd_smbg_pending);
 
 					// Populate Productivity Details
+					if (this.el.productivityAsOf) {
+						let m = d.latest_month || d.branch_today_date || d.report_date || '';
+						let display = '—';
+						if (m) {
+							if (String(m).match(/^[A-Za-z]+.*\d{4}/)) {
+								display = m;
+							} else {
+								const dp = String(m).split(' ')[0];
+								const dt = new Date(dp);
+								if (!isNaN(dt.getTime())) {
+									display = dt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+								} else {
+									display = m;
+								}
+							}
+						}
+						this.el.productivityAsOf.textContent = `As of: ${display}`;
+					}
 					if (this.el.totalProductivity) this.el.totalProductivity.textContent = this.formatAmount(d.total_productivity);
 					if (this.el.bdoAndProductivity) this.el.bdoAndProductivity.textContent = this.formatAmount(d.bdo_and_productivity);
 					if (this.el.bdeAndProductivity) this.el.bdeAndProductivity.textContent = this.formatAmount(d.bde_and_productivity);
