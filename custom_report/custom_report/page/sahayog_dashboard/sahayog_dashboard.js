@@ -9651,35 +9651,81 @@ class DrishtiDashboard {
 	}
 
 	getFilteredProductData() {
-		if (!this.state.selectedDistricts || this.state.selectedDistricts.length === 0) {
-			return this.productData;
+		let base = this.productData;
+
+		// District filter (multi-select)
+		if (this.state.selectedDistricts && this.state.selectedDistricts.length > 0) {
+			const selectedNames = new Set(
+				this.state.selectedDistricts.map((d) => d.toLowerCase().trim()),
+			);
+
+			const matchingDistrictPaths = new Set();
+			const matchingRegionPaths = new Set();
+			const matchingZonePaths = new Set();
+
+			this.productData.forEach((item) => {
+				if (item.type === "district" && selectedNames.has(item.name.toLowerCase().trim())) {
+					matchingDistrictPaths.add(item.path);
+					matchingRegionPaths.add(item.parent_region);
+					matchingZonePaths.add(item.parent_zone);
+				}
+			});
+
+			if (matchingZonePaths.size === 0) return [];
+
+			base = this.productData.filter((item) => {
+				if (item.type === "zone") return matchingZonePaths.has(item.path);
+				if (item.type === "region") return matchingRegionPaths.has(item.path);
+				if (item.type === "district") return matchingDistrictPaths.has(item.path);
+				if (item.type === "sol") return matchingDistrictPaths.has(item.parent_district);
+				return true;
+			});
 		}
 
-		const selectedNames = new Set(
-			this.state.selectedDistricts.map((d) => d.toLowerCase().trim()),
-		);
+		// Branch search term filter (SOL ID / branch name) for Product Wise view
+		if (this.state.branchSearchTerm) {
+			const searchTerms = this.state.branchSearchTerm
+				.toLowerCase()
+				.split(",")
+				.map((s) => s.trim())
+				.filter(Boolean);
 
-		const matchingDistrictPaths = new Set();
-		const matchingRegionPaths = new Set();
-		const matchingZonePaths = new Set();
+			if (searchTerms.length > 0) {
+				const matchedSolPaths = new Set();
+				base.forEach((item) => {
+					if (item.type === "sol") {
+						const name = (item.name || "").toLowerCase();
+						if (searchTerms.some((t) => name.includes(t))) {
+							matchedSolPaths.add(item.path);
+						}
+					}
+				});
 
-		this.productData.forEach((item) => {
-			if (item.type === "district" && selectedNames.has(item.name.toLowerCase().trim())) {
-				matchingDistrictPaths.add(item.path);
-				matchingRegionPaths.add(item.parent_region);
-				matchingZonePaths.add(item.parent_zone);
+				if (matchedSolPaths.size === 0) return [];
+
+				// Ancestor paths that must stay visible so matches render inside the hierarchy
+				const allowedAncestors = new Set();
+				base.forEach((item) => {
+					if (matchedSolPaths.has(item.path)) {
+						if (item.parent_zone) allowedAncestors.add(item.parent_zone);
+						if (item.parent_region) allowedAncestors.add(item.parent_region);
+						if (item.parent_district) allowedAncestors.add(item.parent_district);
+					}
+				});
+
+				// Auto-expand ancestors of matches so results are immediately visible
+				allowedAncestors.forEach((path) => {
+					if (path) this.state.expandedProductRows[path] = true;
+				});
+
+				base = base.filter((item) => {
+					if (item.type === "sol") return matchedSolPaths.has(item.path);
+					return allowedAncestors.has(item.path);
+				});
 			}
-		});
+		}
 
-		if (matchingZonePaths.size === 0) return [];
-
-		return this.productData.filter((item) => {
-			if (item.type === "zone") return matchingZonePaths.has(item.path);
-			if (item.type === "region") return matchingRegionPaths.has(item.path);
-			if (item.type === "district") return matchingDistrictPaths.has(item.path);
-			if (item.type === "sol") return matchingDistrictPaths.has(item.parent_district);
-			return true;
-		});
+		return base;
 	}
 
 	reaggregateZoneData(branches) {
