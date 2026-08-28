@@ -486,15 +486,15 @@ function scrollToManpowerDetails() {
           <tbody>
             <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
               <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">Total Productivity</td>
-              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ branchProfile?.total_productivity || '—' }}</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">-</td>
             </tr>
             <tr class="border-b border-[var(--border)] hover:bg-[var(--bg2)]">
               <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">BDO Productivity</td>
-              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ branchProfile?.bdo_productivity || '—' }}</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">-</td>
             </tr>
             <tr class="hover:bg-[var(--bg2)]">
               <td class="px-4 py-3 text-[11px] font-medium text-[var(--text)]">BDE Productivity</td>
-              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">{{ branchProfile?.bde_productivity || '—' }}</td>
+              <td class="px-4 py-3 text-right font-mono text-[11px] text-[var(--text)]">-</td>
             </tr>
           </tbody>
         </table>
