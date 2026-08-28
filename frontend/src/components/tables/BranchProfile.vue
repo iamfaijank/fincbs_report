@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
+import { frappeRequest } from 'frappe-ui'
 import { useNumberFormat } from '@/composables/useNumberFormat.js'
 import { useNameFormat } from '@/composables/useNameFormat.js'
 import AchievementBadge from './AchievementBadge.vue'
@@ -21,6 +22,25 @@ const asOfMonth = computed(() => {
   if (props.branchProfile?.month) return props.branchProfile.month
   if (props.months.length > 0) return props.months[props.months.length - 1]?.display || ''
   return ''
+})
+
+// Session user's Employee resignation status (Resign / Active)
+const employeeStatus = ref('Active')
+const employeeStatusClass = computed(() =>
+  employeeStatus.value === 'Resign'
+    ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+    : 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+)
+onMounted(async () => {
+  try {
+    const res = await frappeRequest({
+      url: '/api/method/custom_report.www.drishti.get_current_user_employee_status',
+      method: 'POST',
+    })
+    if (res && res.status) employeeStatus.value = res.status
+  } catch (e) {
+    console.error('Failed to load employee status', e)
+  }
 })
 
 const STATUS_META = {
@@ -82,6 +102,7 @@ function scrollToManpowerDetails() {
             <div>
               <span class="text-sm font-semibold text-[var(--text)]">Branch Manager</span>
               <span class="text-[11px] text-[var(--text3)] ml-2">{{ branchProfile?.bm_name || '—' }}</span>
+              <span class="ml-2 inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold" :class="employeeStatusClass">{{ employeeStatus }}</span>
             </div>
             <!-- Row 2: 3 Sub-columns -->
             <div class="grid grid-cols-3 gap-4">

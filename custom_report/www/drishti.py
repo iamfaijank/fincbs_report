@@ -78,6 +78,20 @@ def get_report_preference():
 
 
 @frappe.whitelist(methods=["POST"], allow_guest=True)
+def get_current_user_employee_status():
+	user = frappe.session.user
+	if not user or user == "Guest":
+		return {"status": "Active", "resignation_letter_date": None}
+
+	resignation_date = frappe.db.get_value("Employee", {"user_id": user}, "resignation_letter_date")
+	_resign = resignation_date and str(resignation_date).strip() not in ("", "None", "0001-01-01")
+	if _resign:
+		return {"status": "Resign", "resignation_letter_date": str(resignation_date)}
+
+	return {"status": "Active", "resignation_letter_date": None}
+
+
+@frappe.whitelist(methods=["POST"], allow_guest=True)
 def get_filter_options():
 	cache_key = "drishti_filter_options"
 	cached = frappe.cache().get_value(cache_key)
