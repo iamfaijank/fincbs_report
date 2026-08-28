@@ -3176,7 +3176,11 @@
 
 					// Header Info Fallback safety checks
 					if (this.el.name) this.el.name.textContent = this.value(d.bm_name);
-					this.updateEmployeeStatusBadge();
+					if (this.state.bmList && this.state.bmList.length) {
+						this.updateBmListStatuses();
+					} else {
+						this.updateSessionStatusBadge();
+					}
 					if (this.el.mobile) this.el.mobile.textContent = this.value(d.bm_mob_no);
 					if (this.el.vintage) this.el.vintage.textContent = this.calculateExperience(d.bm_doj);
 					if (this.el.doj) this.el.doj.textContent = this.formatDate(d.bm_doj);
@@ -3605,33 +3609,43 @@
 					});
 				},
 
-				updateEmployeeStatusBadge() {
-					const badges = document.querySelectorAll(".bm-status-badge");
-					if (!badges.length) return;
+				refreshBadge(badge, employeeId) {
+					if (!badge) return;
+					const body = employeeId ? JSON.stringify({ employee_id: employeeId }) : JSON.stringify({});
 					fetch("/api/method/custom_report.www.drishti.get_current_user_employee_status", {
 						method: "POST",
 						headers: { "Content-Type": "application/json", "Accept": "application/json" },
-						body: JSON.stringify({})
+						body: body
 					})
 						.then(function (r) { return r.json(); })
 						.then(function (data) {
 							const status = (data && data.message && data.message.status) || "Active";
-							badges.forEach(function (badge) {
-								badge.textContent = status;
-								if (status === "Resign") {
-									badge.style.background = "#fee2e2";
-									badge.style.color = "#dc2626";
-								} else {
-									badge.style.background = "#dcfce7";
-									badge.style.color = "#16a34a";
-								}
-							});
+							badge.textContent = status;
+							if (status === "Resign") {
+								badge.style.background = "#fee2e2";
+								badge.style.color = "#dc2626";
+							} else {
+								badge.style.background = "#dcfce7";
+								badge.style.color = "#16a34a";
+							}
 						})
 						.catch(function () {
-							badges.forEach(function (badge) {
-								badge.textContent = "Active";
-							});
+							badge.textContent = "Active";
 						});
+				},
+
+				updateSessionStatusBadge() {
+					this.refreshBadge(document.getElementById("bm-status-single-badge"), null);
+				},
+
+				updateBmListStatuses() {
+					const list = this.state.bmList || [];
+					const self = this;
+					list.forEach(function (bm, idx) {
+						const badge = document.getElementById("bm-status-badge-" + idx);
+						const empId = bm.name || bm.employee_number || "";
+						self.refreshBadge(badge, empId);
+					});
 				},
 
 				renderBmData() {
@@ -3655,7 +3669,7 @@
 								<div class="bm-right">
 									<div class="bm-title">Branch Manager</div>
 									<div class="bm-name-row" style="display:flex; align-items:center; gap:8px;">
-										<div class="bm-name">${this.value(d.bm_name)}</div><span class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; background:#dcfce7; color:#16a34a;">Active</span>
+										<div class="bm-name">${this.value(d.bm_name)}</div><span id="bm-status-single-badge" class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; background:#dcfce7; color:#16a34a;">Active</span>
 									</div>
 									<div class="bm-sub">
 										<span>${this.value(d.branch_name)}</span> •
@@ -3696,7 +3710,7 @@
 										<div class="bm-name">
 											${this.value(bm.employee_name)}
 											<!-- ${empId ? `<span style="font-size: 12px; color: #0369a1; font-weight: 700; background: #e0f2fe; padding: 2px 8px; border-radius: 4px; margin-left: 6px;">ID: ${empId}</span>` : ""} -->
-										</div><span class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; background:#dcfce7; color:#16a34a;">Active</span>
+										</div><span id="bm-status-badge-${idx}" class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; background:#dcfce7; color:#16a34a;">Active</span>
 									</div>
 									<div class="bm-sub">
 										<span>${this.value(d.branch_name)}</span> •
