@@ -651,6 +651,7 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
         "Book Position and Account Details",
         filters={"sol_id": sol_id, "date": latest_date},
         fields=["group_name", "group_subname", "closing_balance", "account_opened", "closing_no_of_accounts"],
+        ignore_permissions=True,
     )
 
     total_balance = 0.0
@@ -732,7 +733,8 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
         dd_records = frappe.db.get_all(
             "DD Tracker Report",
             filters={"sol_id": sol_id, "date": dd_latest_date},
-            fields=["monthly_demand", "monthly_collection"]
+            fields=["monthly_demand", "monthly_collection"],
+            ignore_permissions=True,
         )
         for r in dd_records:
             dds_demand += flt(r.monthly_demand)
