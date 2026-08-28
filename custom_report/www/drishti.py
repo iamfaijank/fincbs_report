@@ -77,6 +77,56 @@ def get_report_preference():
 	}
 
 
+def _employee_status_dict(employee):
+	resignation_date, relieving_date = frappe.db.get_value(
+		"Employee", employee, ["resignation_letter_date", "relieving_date"]
+	) or (None, None)
+
+	_resign = resignation_date and str(resignation_date).strip() not in ("", "None", "0001-01-01")
+
+	relieving_in_days = None
+	if relieving_date:
+		relieving_in_days = (frappe.utils.getdate(relieving_date) - frappe.utils.getdate(frappe.utils.today())).days
+
+	return {
+		"status": "Resign" if _resign else "Active",
+		"resignation_letter_date": str(resignation_date) if resignation_date else None,
+		"relieving_date": str(relieving_date) if relieving_date else None,
+		"relieving_in_days": relieving_in_days,
+	}
+
+
+@frappe.whitelist(methods=["POST"], allow_guest=True)
+def get_current_user_employee_status(employee_id=None):
+	# Resolve a specific employee's status when an id is supplied.
+	if employee_id:
+		employee = None
+		if frappe.db.exists("Employee", employee_id):
+			employee = employee_id
+		else:
+			by_number = frappe.db.get_value("Employee", {"employee_number": employee_id}, "name")
+			if by_number:
+				employee = by_number
+			elif "@" not in str(employee_id):
+				candidate = f"{employee_id}@sahayog.com"
+				if frappe.db.exists("Employee", candidate):
+					employee = candidate
+
+		if employee:
+			return _employee_status_dict(employee)
+		return {"status": "Active", "resignation_letter_date": None, "relieving_date": None, "relieving_in_days": None}
+
+	user = frappe.session.user
+	if not user or user == "Guest":
+		return {"status": "Active", "resignation_letter_date": None, "relieving_date": None, "relieving_in_days": None}
+
+	employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+	if employee:
+		return _employee_status_dict(employee)
+
+	return {"status": "Active", "resignation_letter_date": None, "relieving_date": None, "relieving_in_days": None}
+
+
 @frappe.whitelist(methods=["POST"], allow_guest=True)
 def get_filter_options():
 	cache_key = "drishti_filter_options"
