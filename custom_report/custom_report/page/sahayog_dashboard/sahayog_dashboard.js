@@ -8692,11 +8692,7 @@ class DrishtiDashboard {
 			searchTimeout = setTimeout(() => {
 				self.state.branchSearchTerm = $(this).val() || "";
 				self.updateUrlFromState();
-				if (self.state.branchSearchTerm && self.state.activeTab !== "branch") {
-					self.switchTab("branch");
-				} else {
-					self.render();
-				}
+				self.render();
 			}, 300);
 		});
 
