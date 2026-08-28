@@ -26,6 +26,13 @@ const asOfMonth = computed(() => {
 
 // Session user's Employee resignation status (Resign / Active)
 const employeeStatus = ref('Active')
+const relievingInDays = ref(null)
+const employeeStatusLabel = computed(() => {
+  if (employeeStatus.value === 'Resign' && typeof relievingInDays.value === 'number' && relievingInDays.value > 0) {
+    return `Resign (relieving in ${relievingInDays.value} days)`
+  }
+  return employeeStatus.value
+})
 const employeeStatusClass = computed(() =>
   employeeStatus.value === 'Resign'
     ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
@@ -38,6 +45,7 @@ onMounted(async () => {
       method: 'POST',
     })
     if (res && res.status) employeeStatus.value = res.status
+    if (res && res.relieving_in_days !== undefined) relievingInDays.value = res.relieving_in_days
   } catch (e) {
     console.error('Failed to load employee status', e)
   }
@@ -102,7 +110,7 @@ function scrollToManpowerDetails() {
             <div>
               <span class="text-sm font-semibold text-[var(--text)]">Branch Manager</span>
               <span class="text-[11px] text-[var(--text3)] ml-2">{{ branchProfile?.bm_name || '—' }}</span>
-              <span class="ml-2 inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold" :class="employeeStatusClass">{{ employeeStatus }}</span>
+              <span class="ml-2 inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold" :class="employeeStatusClass">{{ employeeStatusLabel }}</span>
             </div>
             <!-- Row 2: 3 Sub-columns -->
             <div class="grid grid-cols-3 gap-4">

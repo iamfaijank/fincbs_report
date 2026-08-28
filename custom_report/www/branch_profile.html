@@ -3619,8 +3619,13 @@
 					})
 						.then(function (r) { return r.json(); })
 						.then(function (data) {
-							const status = (data && data.message && data.message.status) || "Active";
-							badge.textContent = status;
+							const msg = (data && data.message) || {};
+							const status = msg.status || "Active";
+							let label = status;
+							if (status === "Resign" && typeof msg.relieving_in_days === "number" && msg.relieving_in_days > 0) {
+								label = "Resign (relieving in " + msg.relieving_in_days + " days)";
+							}
+							badge.textContent = label;
 							if (status === "Resign") {
 								badge.style.background = "#fee2e2";
 								badge.style.color = "#dc2626";
