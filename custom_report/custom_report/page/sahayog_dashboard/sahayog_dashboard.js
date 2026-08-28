@@ -9890,6 +9890,16 @@ class DrishtiDashboard {
 
 		const filteredBranches = this.getFilteredBranches();
 
+		// Auto-expand matching ancestors in Zone Wise view so search results are visible
+		if (this.state.branchSearchTerm && this.state.activeTab === "zone") {
+			filteredBranches.forEach((branch) => {
+				if (branch.zone) this.state.expandedZones[branch.zone] = true;
+				if (branch.zone && branch.region) {
+					this.state.expandedZoneRegions[branch.zone + "::" + branch.region] = true;
+				}
+			});
+		}
+
 		const reaggregatedZoneData = this.reaggregateZoneData(filteredBranches);
 		const reaggregatedCategoryData = this.reaggregateCategoryData(filteredBranches);
 
