@@ -241,6 +241,13 @@
 			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 		}
 
+		.pw-mode-btn.active {
+			background: var(--white);
+			color: var(--primary-1);
+			opacity: 1;
+			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		}
+
 		/* LOADING STATES */
 		.loading {
 			opacity: 0.7;
@@ -1668,7 +1675,15 @@
 			<section class="staff-detail-section modern-table-card" style="margin-bottom: 20px; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); padding: 24px;">
 				<div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
 					<h2 style="margin: 0; font-size: 20px; color: #1e293b; font-weight: 700;">Product Wise Target VS Collection</h2>
-					<span id="product-wise-date-badge" style="font-size: 12px; font-weight: 600; color: #475569; background: #f1f5f9; padding: 4px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">--</span>
+					<div style="display: flex; align-items: center; gap: 10px;">
+						<select id="pw-month-select" style="display: inline-block; padding: 5px 10px; font-size: 12px; font-weight: 600; border: 1px solid #e2e8f0; border-radius: 6px; background: #f1f5f9; color: #475569; cursor: pointer; text-transform: uppercase;">
+						</select>
+						<div class="pw-mode-toggle" id="pw-mode-toggle" style="display: inline-flex; background: #f1f5f9; border-radius: 8px; padding: 3px; gap: 2px;">
+							<button type="button" class="pw-mode-btn active" data-mode="month" style="border: none; background: transparent; padding: 5px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; cursor: pointer; color: #475569; text-transform: uppercase; opacity: 0.7;">Month</button>
+							<button type="button" class="pw-mode-btn" data-mode="ytd" style="border: none; background: transparent; padding: 5px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; cursor: pointer; color: #475569; text-transform: uppercase; opacity: 0.7;">YTD</button>
+						</div>
+						<span id="product-wise-date-badge" style="font-size: 12px; font-weight: 600; color: #475569; background: #f1f5f9; padding: 4px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">--</span>
+					</div>
 				</div>
 				<div class="financial-table-container" style="overflow-x: auto;">
 					<table class="financial-table" style="width: 100%; border-collapse: collapse; text-align: left; border: 1px solid #e2e8f0; font-family: 'Inter', sans-serif;">
@@ -2838,6 +2853,38 @@
 						});
 					}
 
+					/* --- Product Wise Month/YTD Toggle + Month selector --- */
+					const pwMonthSelect = document.getElementById('pw-month-select');
+					if (pwMonthSelect) {
+						const fyMonths = ['APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN', 'FEB', 'MAR'];
+						const curMon = new Date().toLocaleString('en', { month: 'short' }).toUpperCase();
+						pwMonthSelect.innerHTML = fyMonths.map(m =>
+							`<option value="${m}" ${m === curMon ? 'selected' : ''}>${m}</option>`
+						).join('');
+						pwMonthSelect.addEventListener('change', () => {
+							const solId = this.state.currentSolId;
+							if (solId) {
+								this.loadProductCollections(solId);
+							}
+						});
+					}
+
+					const pwModeToggle = document.getElementById('pw-mode-toggle');
+					if (pwModeToggle) {
+						pwModeToggle.addEventListener('click', (e) => {
+							const btn = e.target.closest('.pw-mode-btn');
+							if (!btn) return;
+							pwModeToggle.querySelectorAll('.pw-mode-btn').forEach(b => b.classList.remove('active'));
+							btn.classList.add('active');
+							const isYtd = btn.dataset.mode === 'ytd';
+							if (pwMonthSelect) pwMonthSelect.style.display = isYtd ? 'none' : 'inline-block';
+							const solId = this.state.currentSolId;
+							if (solId) {
+								this.loadProductCollections(solId);
+							}
+						});
+					}
+
 					/* --- Attrition Period Filter Logic --- */
 					const attritionPeriodTabs = document.getElementById('attrition-period-tabs');
 					if (attritionPeriodTabs) {
@@ -3962,7 +4009,16 @@
 						let zone = zoneElem ? zoneElem.textContent.trim() : "";
 						const fyElem = document.getElementById("fy-select");
 						let fy = fyElem ? fyElem.value : "2026-2027";
-						const res = await fetch(`/api/method/custom_report.custom_api.get_sol_product_wise_collection?sol_id=${solId}&zone=${zone}&financial_year=${fy}`);
+						const pwToggle = document.getElementById("pw-mode-toggle");
+						const activeModeBtn = pwToggle ? pwToggle.querySelector(".pw-mode-btn.active") : null;
+						const mode = activeModeBtn ? activeModeBtn.dataset.mode : "month";
+						let pwUrl = `/api/method/custom_report.custom_api.get_sol_product_wise_collection?sol_id=${solId}&zone=${zone}&financial_year=${fy}&mode=${mode}`;
+						if (mode === "month") {
+							const pwMonthSelect = document.getElementById("pw-month-select");
+							const m = pwMonthSelect ? pwMonthSelect.value : "";
+							if (m) pwUrl += `&month=${m}`;
+						}
+						const res = await fetch(pwUrl);
 						const json = await res.json();
 						if (json.message) {
 							this.state.productCollectionsData = json.message;
@@ -3980,8 +4036,17 @@
 					if (data.report_date) {
 						const dateBadge = document.getElementById("product-wise-date-badge");
 						if (dateBadge) {
-							dateBadge.textContent = "As of: " + this.formatDate(data.report_date);
+							if (data.period_label) {
+								dateBadge.textContent = data.period_label;
+							} else {
+								dateBadge.textContent = "As of: " + this.formatDate(data.report_date);
+							}
 						}
+					}
+
+					if (data.month) {
+						const ms = document.getElementById("pw-month-select");
+						if (ms && ms.value !== data.month) ms.value = data.month;
 					}
 
 					if (data.targets) {
