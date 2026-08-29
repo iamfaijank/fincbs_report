@@ -158,6 +158,187 @@ def get_branch_profile_data(sol_id: str):
 
 
 @frappe.whitelist()
+def get_productivity_details(sol_id: str):
+    """
+    Fetch Productivity Details for a branch (sol_id).
+    Calculates BDE productivity by fetching T-1 (or latest available) data from
+    'Product Wise Report' for product = 'DD' and dividing by active BDE manpower count.
+    """
+    if not sol_id:
+        return {
+            "status": "error",
+            "message": "SOL ID is required",
+            "date": "",
+            "month": "—",
+            "dd_amount": 0.0,
+            "bde_count": 0,
+            "bdo_count": 0,
+            "ro_count": 0,
+            "bde_productivity": 0.0,
+            "bdo_productivity": 0.0,
+            "ro_productivity": 0.0,
+            "total_productivity": 0.0
+        }
+
+    try:
+        from frappe.utils import add_days, today, getdate, flt, cint
+
+        sol_id_str = str(sol_id).strip()
+
+        # 1. Determine Target Date (T-1 by default)
+        target_date = add_days(today(), -1)
+
+        # Check if records exist on or before target_date in Product Wise Report
+        latest_date_row = frappe.db.sql("""
+            SELECT MAX(date) as d FROM `tabProduct Wise Report`
+            WHERE sol_id = %s AND date <= %s
+        """, (sol_id_str, target_date), as_dict=True)
+
+        actual_date = latest_date_row[0].get("d") if (latest_date_row and latest_date_row[0].get("d")) else None
+
+        if not actual_date:
+            # Fallback: check any latest date available for this SOL ID
+            latest_date_row = frappe.db.sql("""
+                SELECT MAX(date) as d FROM `tabProduct Wise Report`
+                WHERE sol_id = %s
+            """, (sol_id_str,), as_dict=True)
+            actual_date = latest_date_row[0].get("d") if (latest_date_row and latest_date_row[0].get("d")) else None
+
+        if not actual_date:
+            # Fallback: check general latest date in doctype
+            latest_date_row = frappe.db.sql("""
+                SELECT MAX(date) as d FROM `tabProduct Wise Report`
+            """, as_dict=True)
+            actual_date = latest_date_row[0].get("d") if (latest_date_row and latest_date_row[0].get("d")) else getdate(target_date)
+
+        # 2. Fetch Product amounts on actual_date for this sol_id
+        products_data = frappe.db.sql("""
+            SELECT product, COALESCE(SUM(amount), 0) as total_amount
+            FROM `tabProduct Wise Report`
+            WHERE sol_id = %s AND date = %s
+            GROUP BY product
+        """, (sol_id_str, actual_date), as_dict=True)
+
+        product_amounts = {row["product"]: flt(row["total_amount"]) for row in products_data if row.get("product")}
+        dd_amount = flt(product_amounts.get("DD", 0.0))
+        rd_amount = flt(product_amounts.get("RD", 0.0))
+        smbg_amount = flt(product_amounts.get("SMBG", 0.0))
+        bdo_amount = rd_amount + smbg_amount
+
+        # Fetch CASA amount for RO (excluding scheme_code IN ('1104', '1011'))
+        casa_data = frappe.db.sql("""
+            SELECT COALESCE(SUM(amount), 0) as total_amount
+            FROM `tabProduct Wise Report`
+            WHERE sol_id = %s 
+              AND date = %s 
+              AND product = 'CASA'
+              AND (scheme_code NOT IN ('1104', '1011') OR scheme_code IS NULL)
+        """, (sol_id_str, actual_date), as_dict=True)
+        casa_amount = flt(casa_data[0].get("total_amount") or 0.0) if casa_data else 0.0
+        ro_amount = casa_amount
+
+        # 3. Fetch Manpower Counts for BDE, BDO, RO
+        branch_docs = frappe.db.get_all(
+            "Sahayog Branch",
+            filters=[["sol_id", "=", sol_id_str]],
+            fields=["name", "branch", "sol_id"],
+        )
+
+        possible_branch_values = [sol_id_str]
+        for bd in branch_docs:
+            if bd.get("name"):
+                possible_branch_values.append(bd["name"])
+            if bd.get("branch"):
+                possible_branch_values.append(bd["branch"])
+                clean_b = bd["branch"].replace(" BRANCH", "").replace("Branch", "").strip()
+                if clean_b:
+                    possible_branch_values.append(clean_b)
+            if bd.get("sol_id"):
+                possible_branch_values.append(bd["sol_id"])
+
+        possible_branch_values = list(set(possible_branch_values))
+
+        counts_query = """
+            SELECT
+                SUM(CASE WHEN designation LIKE %(bde)s THEN 1 ELSE 0 END) as bde_count,
+                SUM(CASE WHEN designation LIKE %(bdo)s THEN 1 ELSE 0 END) as bdo_count,
+                SUM(CASE WHEN designation LIKE %(ro)s THEN 1 ELSE 0 END) as ro_count,
+                COUNT(*) as total_active_staff
+            FROM `tabEmployee`
+            WHERE status = 'Active'
+              AND (sahayog_branch IN %(branches)s OR sol_id IN %(branches)s OR branch IN %(branches)s)
+        """
+        params = {
+            "bde": "%Business Development Executive%",
+            "bdo": "%Block Development Officer%",
+            "ro": "%Relationship Officer%",
+            "branches": possible_branch_values,
+        }
+
+        counts = frappe.db.sql(counts_query, params, as_dict=True)
+        bde_count = int(counts[0].get("bde_count") or 0) if counts else 0
+        bdo_count = int(counts[0].get("bdo_count") or 0) if counts else 0
+        ro_count = int(counts[0].get("ro_count") or 0) if counts else 0
+
+        # Fallback from Branch Profile Data if Employee count returns 0
+        if bde_count == 0 or bdo_count == 0 or ro_count == 0:
+            bpd = frappe.db.get_value("Branch Profile Data", {"sol_id": sol_id_str}, ["bde", "bdo", "ro"], as_dict=True)
+            if bpd:
+                if bde_count == 0 and bpd.get("bde"):
+                    bde_count = cint(bpd.get("bde") or 0)
+                if bdo_count == 0 and bpd.get("bdo"):
+                    bdo_count = cint(bpd.get("bdo") or 0)
+                if ro_count == 0 and bpd.get("ro"):
+                    ro_count = cint(bpd.get("ro") or 0)
+
+        # 4. Calculate Productivity
+        bde_productivity = (dd_amount / bde_count) if bde_count > 0 else 0.0
+        bdo_productivity = (bdo_amount / bdo_count) if bdo_count > 0 else 0.0
+        ro_productivity = (ro_amount / ro_count) if ro_count > 0 else 0.0
+        total_productivity = bde_productivity + bdo_productivity + ro_productivity
+
+        dt_obj = getdate(actual_date) if actual_date else getdate(today())
+        as_of_month = dt_obj.strftime("%B").upper() if dt_obj else "—"
+
+        return {
+            "status": "success",
+            "sol_id": sol_id_str,
+            "date": str(actual_date) if actual_date else "",
+            "month": as_of_month,
+            "dd_amount": dd_amount,
+            "rd_amount": rd_amount,
+            "smbg_amount": smbg_amount,
+            "bdo_amount": bdo_amount,
+            "casa_amount": casa_amount,
+            "ro_amount": ro_amount,
+            "bde_count": bde_count,
+            "bdo_count": bdo_count,
+            "ro_count": ro_count,
+            "bde_productivity": bde_productivity,
+            "bdo_productivity": bdo_productivity,
+            "ro_productivity": ro_productivity,
+            "total_productivity": total_productivity
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Get Productivity Details Error")
+        return {
+            "status": "error",
+            "message": str(e),
+            "date": "",
+            "month": "—",
+            "dd_amount": 0.0,
+            "bde_count": 0,
+            "bdo_count": 0,
+            "ro_count": 0,
+            "bde_productivity": 0.0,
+            "bdo_productivity": 0.0,
+            "ro_productivity": 0.0,
+            "total_productivity": 0.0
+        }
+
+
+@frappe.whitelist()
 def get_bm_details_from_employee(sol_id: str):
     """
     Fetch Branch Manager (BM) details for a given SOL ID from Employee DocType.

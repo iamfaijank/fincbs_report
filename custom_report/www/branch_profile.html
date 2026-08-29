@@ -32,6 +32,49 @@
 			padding-top: 64px;
 		}
 
+		/* Skeleton Loading State */
+		@keyframes skeleton-shimmer {
+			0% {
+				background-position: -200% 0;
+			}
+			100% {
+				background-position: 200% 0;
+			}
+		}
+
+		.skeleton-loading {
+			position: relative !important;
+			overflow: hidden !important;
+			pointer-events: none !important;
+			user-select: none !important;
+		}
+
+		.skeleton-loading > * {
+			opacity: 0.15 !important;
+			filter: grayscale(1) blur(0.5px) !important;
+			transition: opacity 0.3s ease !important;
+		}
+
+		.skeleton-loading::after {
+			content: "";
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: linear-gradient(
+				90deg,
+				rgba(241, 245, 249, 0.15) 0%,
+				rgba(203, 213, 225, 0.45) 50%,
+				rgba(241, 245, 249, 0.15) 100%
+			);
+			background-size: 200% 100%;
+			animation: skeleton-shimmer 1.4s ease-in-out infinite;
+			z-index: 50;
+			pointer-events: none;
+			border-radius: inherit;
+		}
+
 		/* HEADER - Compact design */
 		.header {
 			position: fixed;
@@ -1458,7 +1501,7 @@
 			</div>
 
 			<div class="details-row">
-				<section class="total-staff-overview-card">
+				<section class="total-staff-overview-card" id="manpower-overview-card">
 					<div class="staff-detail-content">
 						<div class="staff-header-flex">
 							<h2 style="margin:0">Manpower Status</h2>
@@ -1540,7 +1583,7 @@
 						Detailed Manpower Table</button>
 				</section>
 
-				<section class="staff-detail-section">
+				<section class="staff-detail-section" id="agent-details-card">
 					<h2>Agent Details</h2>
 					<div class="agent-cards-grid">
 						<!-- VS Agent Card -->
@@ -1672,7 +1715,7 @@
 				</section>
 			</div>
 
-			<section class="staff-detail-section modern-table-card" style="margin-bottom: 20px; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); padding: 24px;">
+			<section class="staff-detail-section modern-table-card" id="product-wise-collection-card" style="margin-bottom: 20px; background: #fff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); padding: 24px;">
 				<div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
 					<h2 style="margin: 0; font-size: 20px; color: #1e293b; font-weight: 700;">Product Wise Target VS Collection</h2>
 					<div style="display: flex; align-items: center; gap: 10px;">
@@ -2197,7 +2240,7 @@
 				</div>
 			</section>
 
-			<section class="staff-detail-section">
+			<section class="staff-detail-section" id="demand-collection-section">
 				<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #346569; padding-bottom: 8px; margin-bottom: 16px;">
 					<h2 style="margin: 0; border: none; padding: 0; font-size: 20px; font-weight: 700; color: #1e293b;">Demand & Collection Performance</h2>
 					<span id="demand-collection-as-of" style="font-size: 13px; font-weight: 700; color: #346569; background: #e0f2fe; padding: 4px 10px; border-radius: 4px; border: 1px solid #7dd3fc;">AS OF: --</span>
@@ -2312,8 +2355,11 @@
 				</div>
 			</section>
 
-			<section class="staff-detail-section">
-				<h2 style="display:flex; justify-content:space-between; align-items:center;">Productivity Details <span id="productivity-as-of" style="font-size:11px; font-weight:500; color:#64748b; text-transform:none; letter-spacing:normal;">As of: —</span></h2>
+			<section class="staff-detail-section" id="productivity-details-section">
+				<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #346569; padding-bottom: 8px; margin-bottom: 16px;">
+					<h2 style="margin: 0; border: none; padding: 0; font-size: 20px; font-weight: 700; color: #1e293b;">Productivity Details</h2>
+					<span id="productivity-as-of" style="font-size: 13px; font-weight: 700; color: #346569; background: #e0f2fe; padding: 4px 10px; border-radius: 4px; border: 1px solid #7dd3fc;">AS OF: --</span>
+				</div>
 				<div class="financial-table-container">
 					<table class="financial-table">
 						<thead>
@@ -3434,36 +3480,6 @@
 					this.el.rdSmbgCollection.textContent = this.formatAmount(d.rd_smbg_collection);
 					this.el.rdSmbgPending.textContent = this.formatAmount(d.rd_smbg_pending);
 
-					// Populate Productivity Details
-					if (this.el.productivityAsOf) {
-						let m = d.latest_month || d.branch_today_date || d.report_date || '';
-						let display = '—';
-						if (m) {
-							if (String(m).match(/^[A-Za-z]+.*\d{4}/)) {
-								display = m;
-							} else {
-								const dp = String(m).split(' ')[0];
-								const dt = new Date(dp);
-								if (!isNaN(dt.getTime())) {
-									display = dt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-								} else {
-									display = m;
-								}
-							}
-						}
-						this.el.productivityAsOf.textContent = `As of: ${display}`;
-					}
-					// Populate Productivity Details — values currently shown as "-" placeholder; wire data later
-					// if (this.el.totalProductivity) this.el.totalProductivity.textContent = this.formatAmount(d.total_productivity);
-					// const sumProductivity = (parseFloat(d.bdo_and_productivity) || 0) +
-					// 								(parseFloat(d.bde_and_productivity) || 0) +
-					// 								(parseFloat(d.ro_and_productivity) || 0);
-					// if (this.el.totalProductivity) this.el.totalProductivity.textContent = this.formatAmount(sumProductivity);
-					// if (this.el.bdoAndProductivity) this.el.bdoAndProductivity.textContent = this.formatAmount(d.bdo_and_productivity);
-					// if (this.el.bdeAndProductivity) this.el.bdeAndProductivity.textContent = this.formatAmount(d.bde_and_productivity);
-					// if (this.el.roProductivity) this.el.roProductivity.textContent = this.formatAmount(d.ro_and_productivity);
-
-
 					this.el.photo.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(d.bm_name || "BM")}&background=097c80&color=fff&size=256`;
 
 					// Re-render performance category with current tab
@@ -3507,6 +3523,7 @@
 
 				async loadEmployeeDetails(solId) {
 					try {
+						this.setSectionSkeleton("manpower-details-section", true);
 						const r = await fetch(`/api/method/custom_report.branch_v1.get_employee_details_by_sol?sol_id=${solId}`);
 						const j = await r.json();
 
@@ -3539,6 +3556,8 @@
                                 </tr>
                             `;
 						}
+					} finally {
+						this.setSectionSkeleton("manpower-details-section", false);
 					}
 				},
 
@@ -3818,8 +3837,35 @@
 					});
 				},
 
+				setAllSkeletons(isLoading) {
+					const sections = [
+						"bm-profiles-wrapper",
+						"manpower-overview-card",
+						"agent-details-card",
+						"category-card",
+						"product-wise-collection-card",
+						"deposit-book-section",
+						"demand-collection-section",
+						"productivity-details-section",
+						"manpower-details-section"
+					];
+					sections.forEach(id => {
+						this.setSectionSkeleton(id, isLoading);
+					});
+				},
+
+				setSectionSkeleton(id, isLoading) {
+					const el = document.getElementById(id);
+					if (el) {
+						if (isLoading) el.classList.add("skeleton-loading");
+						else el.classList.remove("skeleton-loading");
+					}
+				},
+
 				async load(solId, branchEmailValue) {
 					try {
+						this.setAllSkeletons(true);
+
 						const [r, bookR, bmR] = await Promise.all([
 							fetch(`/api/method/custom_report.branch_v1.get_branch_profile_data?sol_id=${solId}`),
 							fetch(`/api/method/custom_report.branch_v1.get_book_position_details?sol_id=${solId}`),
@@ -3844,19 +3890,24 @@
 						await this.populateDepositBookDate(solId);
 
 						this.render();
-						this.loadEmployeeDetails(solId);
+						this.setSectionSkeleton("bm-profiles-wrapper", false);
+						this.setSectionSkeleton("manpower-overview-card", false);
+						this.setSectionSkeleton("agent-details-card", false);
+						this.setSectionSkeleton("deposit-book-section", false);
+						this.setSectionSkeleton("demand-collection-section", false);
 
-
-						// --- Fetch Performance Data ---
-						await this.loadPerformanceData(solId);
-						// --- Fetch Product Collections Data ---
-						await this.loadProductCollections(solId);
-						// --- Fetch Attrition Data ---
-						await this.loadAttritionData(solId);
-						// ------------------------------
+						// Fetch sub-sections independently with their own skeleton loaders
+						await Promise.allSettled([
+							this.loadEmployeeDetails(solId),
+							this.loadPerformanceData(solId),
+							this.loadProductCollections(solId),
+							this.loadAttritionData(solId),
+							this.loadProductivityDetails(solId)
+						]);
 					} catch (e) {
 						console.error("Profile Load Error:", e);
 						this.el.name.textContent = "Branch Manager data unavailable";
+						this.setAllSkeletons(false);
 					}
 				},
 
@@ -3883,6 +3934,7 @@
 								input.value = latestDate;
 							}
 							try {
+								this.setSectionSkeleton("deposit-book-section", true);
 								const bookRes = await fetch(`/api/method/custom_report.branch_v1.get_book_position_details?sol_id=${solId}&selected_date=${encodeURIComponent(picked)}`);
 								const bookJson = await bookRes.json();
 								const bookD = bookJson.message || {};
@@ -3892,6 +3944,8 @@
 								this.render();
 							} catch (e) {
 								console.error("Month filter load error:", e);
+							} finally {
+								this.setSectionSkeleton("deposit-book-section", false);
 							}
 						};
 					} catch (e) {
@@ -3922,6 +3976,7 @@
 								input.value = latestDate;
 							}
 							try {
+								this.setSectionSkeleton("deposit-book-section", true);
 								const bookRes = await fetch(`/api/method/custom_report.branch_v1.get_book_position_details?sol_id=${solId}&selected_date=${encodeURIComponent(picked)}`);
 								const bookJson = await bookRes.json();
 								const bookD = bookJson.message || {};
@@ -3931,6 +3986,8 @@
 								this.render();
 							} catch (e) {
 								console.error("Deposit book date load error:", e);
+							} finally {
+								this.setSectionSkeleton("deposit-book-section", false);
 							}
 						};
 					} catch (e) {
@@ -3982,8 +4039,50 @@
 					if (this.el.attritionTotalVal) this.el.attritionTotalVal.textContent = "--";
 				},
 
+				async loadProductivityDetails(solId) {
+					try {
+						this.setSectionSkeleton("productivity-details-section", true);
+						const res = await fetch(`/api/method/custom_report.branch_v1.get_productivity_details?sol_id=${solId}`);
+						const json = await res.json();
+						if (json.message && json.message.status === "success") {
+							const d = json.message;
+							if (this.el.productivityAsOf) {
+								this.el.productivityAsOf.textContent = d.month ? `AS OF: ${d.month}` : "AS OF: --";
+							}
+							if (this.el.bdeAndProductivity) {
+								this.el.bdeAndProductivity.textContent = d.bde_productivity ? this.formatAmount(d.bde_productivity) : (d.bde_count > 0 ? "₹ 0" : "-");
+							}
+							if (this.el.bdoAndProductivity) {
+								this.el.bdoAndProductivity.textContent = d.bdo_productivity ? this.formatAmount(d.bdo_productivity) : (d.bdo_count > 0 ? "₹ 0" : "-");
+							}
+							if (this.el.roProductivity) {
+								this.el.roProductivity.textContent = d.ro_productivity ? this.formatAmount(d.ro_productivity) : (d.ro_count > 0 ? "₹ 0" : "-");
+							}
+							if (this.el.totalProductivity) {
+								this.el.totalProductivity.textContent = d.total_productivity ? this.formatAmount(d.total_productivity) : ((d.bde_count > 0 || d.bdo_count > 0 || d.ro_count > 0) ? "₹ 0" : "-");
+							}
+						} else {
+							this.clearProductivityUI();
+						}
+					} catch (e) {
+						console.error("Productivity Details Load Error:", e);
+						this.clearProductivityUI();
+					} finally {
+						this.setSectionSkeleton("productivity-details-section", false);
+					}
+				},
+
+				clearProductivityUI() {
+					if (this.el.productivityAsOf) this.el.productivityAsOf.textContent = "AS OF: --";
+					if (this.el.bdeAndProductivity) this.el.bdeAndProductivity.textContent = "-";
+					if (this.el.bdoAndProductivity) this.el.bdoAndProductivity.textContent = "-";
+					if (this.el.roProductivity) this.el.roProductivity.textContent = "-";
+					if (this.el.totalProductivity) this.el.totalProductivity.textContent = "-";
+				},
+
 				async loadPerformanceData(solId) {
 					try {
+						this.setSectionSkeleton("category-card", true);
 						const selectedFy = this.el.fySelect.value;
 						const perfR = await fetch(`/api/method/custom_report.branch_v1.get_performance_data?sol_id=${solId}&fy=${selectedFy}`);
 						const perfJ = await perfR.json();
@@ -4000,11 +4099,14 @@
 						console.error("Performance Load Error:", e);
 						this.state.performanceData = null;
 						this.clearCategoryUI();
+					} finally {
+						this.setSectionSkeleton("category-card", false);
 					}
 				},
 
 				async loadProductCollections(solId) {
 					try {
+						this.setSectionSkeleton("product-wise-collection-card", true);
 						const zoneElem = document.getElementById("branch-zone");
 						let zone = zoneElem ? zoneElem.textContent.trim() : "";
 						const fyElem = document.getElementById("fy-select");
@@ -4026,6 +4128,8 @@
 						}
 					} catch(e) {
 						console.error("Product Collections Load Error:", e);
+					} finally {
+						this.setSectionSkeleton("product-wise-collection-card", false);
 					}
 				},
 
