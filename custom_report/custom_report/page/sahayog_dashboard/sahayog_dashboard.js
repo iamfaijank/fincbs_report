@@ -1169,6 +1169,13 @@ class DrishtiDashboard {
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
 							<input type="text" id="ntb-evr-search" placeholder="Search branch, SOL ID, zone..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
+							<div style="margin-left: auto; display: flex; align-items: center; gap: 6px;">
+								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
+								<div class="btn-group mis-format-toggle" role="group">
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+								</div>
+							</div>
 						</div>
 						<div id="ntb-evr-loading" style="width: 100%; margin-top: 10px;">
 							${dashboardInstance.buildMisSkeletonTable("Fetching CASA NTB & EVR data...")}
@@ -1273,6 +1280,18 @@ class DrishtiDashboard {
 						
 						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
 						self._renderNtbTable();
+					});
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
+						const format = $(this).data("format");
+						dashboardInstance.state.formatMode = format;
+						dashboardInstance.updateUrlFromState();
+						container.find(".mis-format-btn").each(function () {
+							const btn = $(this);
+							const isActive = btn.data("format") === format;
+							btn.css("background", isActive ? "#417d81" : "#e2e8f0");
+							btn.css("color", isActive ? "white" : "#475569");
+						});
+						if (self._renderNtbTable) self._renderNtbTable();
 					});
 				},
 				renderZoneFilterTags: function (container, dashboardInstance) {
@@ -1531,7 +1550,12 @@ class DrishtiDashboard {
 
 						if (self.searchTerm) {
 							const pageData = self.cachedPages[self.currentPage] || [];
+							const normSolId = (v) => String(v == null ? "" : v).replace(/^0+/, "").trim();
+							const bmSol = (dashboardInstance.isBranchManager && dashboardInstance.userSolId)
+								? normSolId(dashboardInstance.userSolId)
+								: null;
 							const filteredCount = pageData.filter(r =>
+								(!bmSol || normSolId(r.sol_id) === bmSol) &&
 								Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm))
 							).length;
 							container.find("#cavg-count").text(`${filteredCount.toLocaleString()} matching records (Page ${self.currentPage})`);
@@ -1589,20 +1613,27 @@ class DrishtiDashboard {
 						$bar.html(html);
 					};
 
-					const renderPage = () => {
-						initTable();
-						const pageData = self.cachedPages[self.currentPage] || [];
-						let filtered = self.searchTerm
-							? pageData.filter(r => Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm)))
-							: pageData;
-						if (self.selectedMisZones && self.selectedMisZones.length > 0) {
-							filtered = filtered.filter(r => self.selectedMisZones.includes(r.circle_office_name));
-						}
-						appendRows(filtered);
-						applyStickyLeft();
-						updateCount();
-						renderPaginationBar();
-					};
+				const renderPage = () => {
+					initTable();
+					const pageData = self.cachedPages[self.currentPage] || [];
+					const normSolId = (v) => String(v == null ? "" : v).replace(/^0+/, "").trim();
+					const bmSol = (dashboardInstance.isBranchManager && dashboardInstance.userSolId)
+						? normSolId(dashboardInstance.userSolId)
+						: null;
+					let filtered = self.searchTerm
+						? pageData.filter(r => Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm)))
+						: pageData;
+					if (bmSol) {
+						filtered = filtered.filter(r => normSolId(r.sol_id) === bmSol);
+					}
+					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+						filtered = filtered.filter(r => self.selectedMisZones.includes(r.circle_office_name));
+					}
+					appendRows(filtered);
+					applyStickyLeft();
+					updateCount();
+					renderPaginationBar();
+				};
 
 					// Invalidate cache if date changed
 					if (self.cacheDate && self.cacheDate !== (dashboardInstance.state.selectedDate || frappe.datetime.get_today())) {
@@ -1625,8 +1656,8 @@ class DrishtiDashboard {
 							}
 
 							// Check sessionStorage cache fallback
-							const ssKey = `sahayog_cavg_p_${selDate}_${pageNum}`;
-							const metaKey = `sahayog_cavg_meta_${selDate}`;
+							const ssKey = `sahayog_cavg_p_${frappe.session.user}_${selDate}_${pageNum}`;
+							const metaKey = `sahayog_cavg_meta_${frappe.session.user}_${selDate}`;
 							try {
 								const sData = sessionStorage.getItem(ssKey);
 								const sMeta = sessionStorage.getItem(metaKey);
@@ -6335,7 +6366,7 @@ class DrishtiDashboard {
 
 	checkUserDesignation() {
 		const currentUser = frappe.session.user;
-		frappe.db.get_value("Employee", { user_id: currentUser }, ["name", "employee_name", "designation"])
+		frappe.db.get_value("Employee", { user_id: currentUser }, ["name", "employee_name", "designation", "sahayog_branch"])
 			.then(r => {
 				const emp = r && r.message ? r.message : null;
 				const designation = emp ? (emp.designation || "") : "";
@@ -6346,6 +6377,7 @@ class DrishtiDashboard {
 				console.log("[Sahayog Dashboard] Is Branch Manager?:", isBranchManager);
 
 				this.isBranchManager = isBranchManager;
+				this.userSolId = emp ? (emp.sahayog_branch || null) : null;
 				if (isBranchManager) {
 					this.applyBranchManagerRestrictions();
 				}
@@ -6643,7 +6675,16 @@ class DrishtiDashboard {
 
 	renderGeneric4LevelTreeTable(tableContainer, reportObj, data, metricCols, reportTitle) {
 		const self = this;
-		const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(Math.round(val || 0));
+		const fmtNum = (val) => {
+			const numValue = Math.round(val || 0);
+			if (self.state.formatMode === "words") {
+				if (numValue >= 10000000) return (numValue / 10000000).toFixed(2) + " Cr";
+				if (numValue >= 100000) return (numValue / 100000).toFixed(2) + " L";
+				if (numValue >= 1000) return (numValue / 1000).toFixed(2) + " K";
+				return numValue.toString();
+			}
+			return new Intl.NumberFormat("en-IN").format(numValue);
+		};
 		const fmtAmt = (val) => {
 			if (!val || val === 0) return "₹0";
 			if (val >= 10000000) return "₹" + (val / 10000000).toFixed(2) + " Cr";
@@ -7903,6 +7944,9 @@ class DrishtiDashboard {
 
 		// Update Branch search
 		this.page.main.find("#branch-search").val(this.state.branchSearchTerm);
+		this.page.main
+			.find("#branch-search")
+			.toggle(["zone", "product", "branch"].includes(this.state.activeTab));
 
 		// Update Segment filter
 		this.page.main.find("#segment-filter").val(this.state.selectedSegment);
@@ -8692,11 +8736,7 @@ class DrishtiDashboard {
 			searchTimeout = setTimeout(() => {
 				self.state.branchSearchTerm = $(this).val() || "";
 				self.updateUrlFromState();
-				if (self.state.branchSearchTerm && self.state.activeTab !== "branch") {
-					self.switchTab("branch");
-				} else {
-					self.render();
-				}
+				self.render();
 			}, 300);
 		});
 
@@ -9070,6 +9110,13 @@ class DrishtiDashboard {
 		this.updateUiFromState();
 		this.updateUrlFromState();
 		// Don't call render() here - loadData() callback will call it
+	}
+
+	// Show the shared "Search branch or SOL ID" box only on Zone/Product/Branch tabs.
+	updateBranchSearchVisibility() {
+		const visibleTabs = ["zone", "product", "branch"];
+		const show = visibleTabs.includes(this.state.activeTab);
+		this.page.main.find("#branch-search").toggle(show);
 	}
 
 	// Helper to load data with a specific date (for internal use)
@@ -9655,35 +9702,81 @@ class DrishtiDashboard {
 	}
 
 	getFilteredProductData() {
-		if (!this.state.selectedDistricts || this.state.selectedDistricts.length === 0) {
-			return this.productData;
+		let base = this.productData;
+
+		// District filter (multi-select)
+		if (this.state.selectedDistricts && this.state.selectedDistricts.length > 0) {
+			const selectedNames = new Set(
+				this.state.selectedDistricts.map((d) => d.toLowerCase().trim()),
+			);
+
+			const matchingDistrictPaths = new Set();
+			const matchingRegionPaths = new Set();
+			const matchingZonePaths = new Set();
+
+			this.productData.forEach((item) => {
+				if (item.type === "district" && selectedNames.has(item.name.toLowerCase().trim())) {
+					matchingDistrictPaths.add(item.path);
+					matchingRegionPaths.add(item.parent_region);
+					matchingZonePaths.add(item.parent_zone);
+				}
+			});
+
+			if (matchingZonePaths.size === 0) return [];
+
+			base = this.productData.filter((item) => {
+				if (item.type === "zone") return matchingZonePaths.has(item.path);
+				if (item.type === "region") return matchingRegionPaths.has(item.path);
+				if (item.type === "district") return matchingDistrictPaths.has(item.path);
+				if (item.type === "sol") return matchingDistrictPaths.has(item.parent_district);
+				return true;
+			});
 		}
 
-		const selectedNames = new Set(
-			this.state.selectedDistricts.map((d) => d.toLowerCase().trim()),
-		);
+		// Branch search term filter (SOL ID / branch name) for Product Wise view
+		if (this.state.branchSearchTerm) {
+			const searchTerms = this.state.branchSearchTerm
+				.toLowerCase()
+				.split(",")
+				.map((s) => s.trim())
+				.filter(Boolean);
 
-		const matchingDistrictPaths = new Set();
-		const matchingRegionPaths = new Set();
-		const matchingZonePaths = new Set();
+			if (searchTerms.length > 0) {
+				const matchedSolPaths = new Set();
+				base.forEach((item) => {
+					if (item.type === "sol") {
+						const name = (item.name || "").toLowerCase();
+						if (searchTerms.some((t) => name.includes(t))) {
+							matchedSolPaths.add(item.path);
+						}
+					}
+				});
 
-		this.productData.forEach((item) => {
-			if (item.type === "district" && selectedNames.has(item.name.toLowerCase().trim())) {
-				matchingDistrictPaths.add(item.path);
-				matchingRegionPaths.add(item.parent_region);
-				matchingZonePaths.add(item.parent_zone);
+				if (matchedSolPaths.size === 0) return [];
+
+				// Ancestor paths that must stay visible so matches render inside the hierarchy
+				const allowedAncestors = new Set();
+				base.forEach((item) => {
+					if (matchedSolPaths.has(item.path)) {
+						if (item.parent_zone) allowedAncestors.add(item.parent_zone);
+						if (item.parent_region) allowedAncestors.add(item.parent_region);
+						if (item.parent_district) allowedAncestors.add(item.parent_district);
+					}
+				});
+
+				// Auto-expand ancestors of matches so results are immediately visible
+				allowedAncestors.forEach((path) => {
+					if (path) this.state.expandedProductRows[path] = true;
+				});
+
+				base = base.filter((item) => {
+					if (item.type === "sol") return matchedSolPaths.has(item.path);
+					return allowedAncestors.has(item.path);
+				});
 			}
-		});
+		}
 
-		if (matchingZonePaths.size === 0) return [];
-
-		return this.productData.filter((item) => {
-			if (item.type === "zone") return matchingZonePaths.has(item.path);
-			if (item.type === "region") return matchingRegionPaths.has(item.path);
-			if (item.type === "district") return matchingDistrictPaths.has(item.path);
-			if (item.type === "sol") return matchingDistrictPaths.has(item.parent_district);
-			return true;
-		});
+		return base;
 	}
 
 	reaggregateZoneData(branches) {
@@ -9842,11 +9935,22 @@ class DrishtiDashboard {
 
 		this.clearViewControlsHighlight();
 		this.page.main.find("#error-message").hide();
+		this.updateBranchSearchVisibility();
 		const dataContainer = this.page.main.find("#data-container");
 
 		dataContainer.css("opacity", 0);
 
 		const filteredBranches = this.getFilteredBranches();
+
+		// Auto-expand matching ancestors in Zone Wise view so search results are visible
+		if (this.state.branchSearchTerm && this.state.activeTab === "zone") {
+			filteredBranches.forEach((branch) => {
+				if (branch.zone) this.state.expandedZones[branch.zone] = true;
+				if (branch.zone && branch.region) {
+					this.state.expandedZoneRegions[branch.zone + "::" + branch.region] = true;
+				}
+			});
+		}
 
 		const reaggregatedZoneData = this.reaggregateZoneData(filteredBranches);
 		const reaggregatedCategoryData = this.reaggregateCategoryData(filteredBranches);
