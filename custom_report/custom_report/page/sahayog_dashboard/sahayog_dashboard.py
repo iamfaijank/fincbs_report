@@ -2038,6 +2038,31 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
     limit = int(limit)
     offset = int(offset)
 
+    # Branch Manager restriction: a BM only sees rows whose SOL ID matches the SOL
+    # set on their Employee doctype (sahayog_branch). Other restricted users fall
+    # back to their Report Preference SOLs.
+    user = frappe.session.user
+    perms = get_user_report_permissions(user)
+    employee = frappe.db.get_value(
+        "Employee", {"user_id": user}, ["sahayog_branch", "designation"], as_dict=True
+    )
+    is_branch_manager = bool(
+        employee and "branch manager" in (employee.get("designation") or "").lower()
+    )
+
+    if is_branch_manager and employee and employee.get("sahayog_branch"):
+        sol_ids = [employee["sahayog_branch"]]
+        restricted = True
+    else:
+        sol_ids = list(perms.get("sol_ids") or [])
+        restricted = perms.get("is_restricted", False)
+
+    if restricted and sol_ids:
+        quoted_sols = ", ".join("'{}'".format(str(s).replace("'", "''")) for s in sol_ids)
+        sol_filter_balance = f"AND gam.sol_id IN ({quoted_sols})"
+    else:
+        sol_filter_balance = ""
+
     if not selected_date:
         selected_date = str(datetime.date.today())
 
@@ -2217,6 +2242,13 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
         s.division_name, s.region_name, s.circle_office_name, om.opening_mab, sgt.acid
     ORDER BY s.circle_office_name, s.region_name, wb.sol_id
     """
+
+    if sol_filter_balance:
+        query = query.replace(
+            "AND NOT EXISTS (SELECT 1 FROM excluded_accts x WHERE x.account_number = gam.foracid)",
+            sol_filter_balance + "\n          AND NOT EXISTS (SELECT 1 FROM excluded_accts x WHERE x.account_number = gam.foracid)",
+            1,
+        )
 
     base_query_no_order = query.rsplit("ORDER BY", 1)[0]
     count_query = f"SELECT COUNT(*) FROM ({base_query_no_order}) sub"

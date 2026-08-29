@@ -1550,7 +1550,12 @@ class DrishtiDashboard {
 
 						if (self.searchTerm) {
 							const pageData = self.cachedPages[self.currentPage] || [];
+							const normSolId = (v) => String(v == null ? "" : v).replace(/^0+/, "").trim();
+							const bmSol = (dashboardInstance.isBranchManager && dashboardInstance.userSolId)
+								? normSolId(dashboardInstance.userSolId)
+								: null;
 							const filteredCount = pageData.filter(r =>
+								(!bmSol || normSolId(r.sol_id) === bmSol) &&
 								Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm))
 							).length;
 							container.find("#cavg-count").text(`${filteredCount.toLocaleString()} matching records (Page ${self.currentPage})`);
@@ -1608,20 +1613,27 @@ class DrishtiDashboard {
 						$bar.html(html);
 					};
 
-					const renderPage = () => {
-						initTable();
-						const pageData = self.cachedPages[self.currentPage] || [];
-						let filtered = self.searchTerm
-							? pageData.filter(r => Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm)))
-							: pageData;
-						if (self.selectedMisZones && self.selectedMisZones.length > 0) {
-							filtered = filtered.filter(r => self.selectedMisZones.includes(r.circle_office_name));
-						}
-						appendRows(filtered);
-						applyStickyLeft();
-						updateCount();
-						renderPaginationBar();
-					};
+				const renderPage = () => {
+					initTable();
+					const pageData = self.cachedPages[self.currentPage] || [];
+					const normSolId = (v) => String(v == null ? "" : v).replace(/^0+/, "").trim();
+					const bmSol = (dashboardInstance.isBranchManager && dashboardInstance.userSolId)
+						? normSolId(dashboardInstance.userSolId)
+						: null;
+					let filtered = self.searchTerm
+						? pageData.filter(r => Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm)))
+						: pageData;
+					if (bmSol) {
+						filtered = filtered.filter(r => normSolId(r.sol_id) === bmSol);
+					}
+					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+						filtered = filtered.filter(r => self.selectedMisZones.includes(r.circle_office_name));
+					}
+					appendRows(filtered);
+					applyStickyLeft();
+					updateCount();
+					renderPaginationBar();
+				};
 
 					// Invalidate cache if date changed
 					if (self.cacheDate && self.cacheDate !== (dashboardInstance.state.selectedDate || frappe.datetime.get_today())) {
@@ -1644,8 +1656,8 @@ class DrishtiDashboard {
 							}
 
 							// Check sessionStorage cache fallback
-							const ssKey = `sahayog_cavg_p_${selDate}_${pageNum}`;
-							const metaKey = `sahayog_cavg_meta_${selDate}`;
+							const ssKey = `sahayog_cavg_p_${frappe.session.user}_${selDate}_${pageNum}`;
+							const metaKey = `sahayog_cavg_meta_${frappe.session.user}_${selDate}`;
 							try {
 								const sData = sessionStorage.getItem(ssKey);
 								const sMeta = sessionStorage.getItem(metaKey);
@@ -6354,7 +6366,7 @@ class DrishtiDashboard {
 
 	checkUserDesignation() {
 		const currentUser = frappe.session.user;
-		frappe.db.get_value("Employee", { user_id: currentUser }, ["name", "employee_name", "designation"])
+		frappe.db.get_value("Employee", { user_id: currentUser }, ["name", "employee_name", "designation", "sahayog_branch"])
 			.then(r => {
 				const emp = r && r.message ? r.message : null;
 				const designation = emp ? (emp.designation || "") : "";
@@ -6365,6 +6377,7 @@ class DrishtiDashboard {
 				console.log("[Sahayog Dashboard] Is Branch Manager?:", isBranchManager);
 
 				this.isBranchManager = isBranchManager;
+				this.userSolId = emp ? (emp.sahayog_branch || null) : null;
 				if (isBranchManager) {
 					this.applyBranchManagerRestrictions();
 				}
