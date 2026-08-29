@@ -531,6 +531,47 @@ def get_available_financial_years():
     return fy_list
 
 
+def get_branch_category_report_monthly_data(eff_date):
+    """
+    Fallback data source: when `tabProduct Wise Report` has no data for a date
+    (e.g. Quarterly views where only the daily Branch Category Report is synced),
+    derive the monthly achievement per SOL from the latest `Branch Category Report`
+    record available within that month.
+    """
+    from frappe.utils import getdate
+    from datetime import timedelta
+
+    dt = getdate(eff_date)
+    month_start = dt.replace(day=1)
+    if dt.month == 12:
+        next_month = dt.replace(year=dt.year + 1, month=1, day=1)
+    else:
+        next_month = dt.replace(month=dt.month + 1, day=1)
+    month_end = next_month - timedelta(days=1)
+
+    rows = frappe.db.sql("""
+        SELECT bcr.sol_id, bcr.zone, bcr.region, bcr.achievement, bcr.yearly_achievement
+        FROM `tabBranch Category Report` bcr
+        INNER JOIN (
+            SELECT sol_id, MAX(date) AS max_date
+            FROM `tabBranch Category Report`
+            WHERE date >= %s AND date <= %s
+            GROUP BY sol_id
+        ) latest ON latest.sol_id = bcr.sol_id AND latest.max_date = bcr.date
+    """, (month_start, month_end), as_dict=True)
+
+    result = []
+    for r in rows:
+        result.append(frappe._dict({
+            "sol_id": r.sol_id,
+            "zone": r.zone or "",
+            "region": r.region or "",
+            "achievement": float(r.achievement or 0),
+            "yearly_achievement": float(r.yearly_achievement or 0),
+        }))
+    return result
+
+
 @frappe.whitelist(allow_guest=True)
 def get_sahayog_dashboard(
     financial_year=None,
@@ -657,6 +698,10 @@ def get_sahayog_dashboard(
             GROUP BY sol_id, zone, region
         """
         monthly_data = frappe.db.sql(monthly_sql, (eff_date,), as_dict=True)
+
+        # Fallback to Branch Category Report when Product Wise Report has no data for this date
+        if not monthly_data:
+            monthly_data = get_branch_category_report_monthly_data(eff_date)
         
         # Fetch YTD achievements from start of FY to eff_date
         ytd_sql = """
@@ -675,7 +720,7 @@ def get_sahayog_dashboard(
             rec["date"] = eff_date
             rec["month_key"] = month_key
             rec["achievement"] = float(rec.achievement or 0)
-            rec["yearly_achievement"] = ytd_data.get(sol_id, 0.0)
+            rec["yearly_achievement"] = ytd_data.get(sol_id, float(rec.get("yearly_achievement") or 0))
             
             # Map branch name and fallback zone/region from Sahayog Branch
             branch_info = branches_map.get(sol_id) or {}
