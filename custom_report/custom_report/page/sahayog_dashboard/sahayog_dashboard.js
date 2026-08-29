@@ -7903,6 +7903,9 @@ class DrishtiDashboard {
 
 		// Update Branch search
 		this.page.main.find("#branch-search").val(this.state.branchSearchTerm);
+		this.page.main
+			.find("#branch-search")
+			.toggle(["zone", "product", "branch"].includes(this.state.activeTab));
 
 		// Update Segment filter
 		this.page.main.find("#segment-filter").val(this.state.selectedSegment);
@@ -9068,6 +9071,13 @@ class DrishtiDashboard {
 		// Don't call render() here - loadData() callback will call it
 	}
 
+	// Show the shared "Search branch or SOL ID" box only on Zone/Product/Branch tabs.
+	updateBranchSearchVisibility() {
+		const visibleTabs = ["zone", "product", "branch"];
+		const show = visibleTabs.includes(this.state.activeTab);
+		this.page.main.find("#branch-search").toggle(show);
+	}
+
 	// Helper to load data with a specific date (for internal use)
 	loadDataWithDate(dateStr) {
 		const self = this;
@@ -9884,6 +9894,7 @@ class DrishtiDashboard {
 
 		this.clearViewControlsHighlight();
 		this.page.main.find("#error-message").hide();
+		this.updateBranchSearchVisibility();
 		const dataContainer = this.page.main.find("#data-container");
 
 		dataContainer.css("opacity", 0);
