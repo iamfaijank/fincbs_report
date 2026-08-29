@@ -6464,7 +6464,24 @@ def get_rm_wise_ss_vs_data(selected_date=None):
         """
         where_args = []
 
-    data = frappe.db.sql(sql_query, tuple(where_args) if where_args else None, as_dict=True)
+    try:
+        data = frappe.db.sql(sql_query, tuple(where_args) if where_args else None, as_dict=True)
+    except Exception as e:
+        frappe.log_error(
+            f"get_rm_wise_ss_vs_data SQL error: {e}\n"
+            f"placeholders={sql_query.count('%s')} args={len(where_args)}\n"
+            f"query={sql_query}\nargs={where_args}",
+            "get_rm_wise_ss_vs_data",
+        )
+        safe_where = " AND ".join([c for c in where_clauses if "%s" not in c])
+        safe_query = select_sql + f"""
+        FROM `tabAgent` A
+        LEFT JOIN `tabEmployee` E ON A.employee = E.name
+        LEFT JOIN `tabSahayog Branch` B ON (A.branch_code = B.sol_id OR A.branch_code = B.branch_code)
+        WHERE {safe_where}
+        ORDER BY total_commission DESC
+        """
+        data = frappe.db.sql(safe_query, None, as_dict=True)
 
     return {"data": data, "permissions": perms}
 
