@@ -50,11 +50,49 @@
 			display: inline-block;
 		}
 
+		@keyframes skeleton-pulse {
+			0%, 100% {
+				opacity: 1;
+				transform: translateY(0);
+			}
+			50% {
+				opacity: 0.7;
+				transform: translateY(-1px);
+			}
+		}
+
+		@keyframes skeleton-spin {
+			to {
+				transform: rotate(360deg);
+			}
+		}
+
 		.skeleton-loading {
 			position: relative !important;
 			pointer-events: none !important;
 			user-select: none !important;
 			min-height: 80px;
+		}
+
+		.skeleton-loading::before {
+			content: "⏳ Please wait ..";
+			position: absolute;
+			top: 12px;
+			right: 16px;
+			background: #ffffff;
+			border: 1px solid #7dd3fc;
+			color: #0369a1 !important;
+			font-size: 12px !important;
+			font-weight: 700 !important;
+			letter-spacing: 0.3px;
+			padding: 4px 12px !important;
+			border-radius: 20px !important;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+			z-index: 30 !important;
+			pointer-events: none !important;
+			animation: skeleton-pulse 1.2s ease-in-out infinite !important;
+			display: inline-flex;
+			align-items: center;
 		}
 
 		.skeleton-loading span:not(.acc-dot):not(.skeleton-bar),
@@ -3564,10 +3602,9 @@
 						this.setSectionSkeleton("manpower-details-section", true);
 						if (this.el.manpowerDetailsTbody) {
 							this.el.manpowerDetailsTbody.innerHTML = `
-								<tr><td colspan="9" style="padding: 16px;"><div class="skeleton-bar" style="height: 18px; width: 100%;"></div></td></tr>
-								<tr><td colspan="9" style="padding: 16px;"><div class="skeleton-bar" style="height: 18px; width: 100%;"></div></td></tr>
-								<tr><td colspan="9" style="padding: 16px;"><div class="skeleton-bar" style="height: 18px; width: 100%;"></div></td></tr>
-								<tr><td colspan="9" style="padding: 16px;"><div class="skeleton-bar" style="height: 18px; width: 100%;"></div></td></tr>
+								<tr><td colspan="9" style="padding: 16px; text-align: center;"><div class="skeleton-bar" style="height: 18px; width: 50%; margin-bottom: 6px;"></div><br><span style="background: none !important; color: #0369a1 !important; font-size: 13px; font-weight: 600;">⏳ Please wait ..</span></td></tr>
+								<tr><td colspan="9" style="padding: 12px;"><div class="skeleton-bar" style="height: 16px; width: 90%;"></div></td></tr>
+								<tr><td colspan="9" style="padding: 12px;"><div class="skeleton-bar" style="height: 16px; width: 75%;"></div></td></tr>
 							`;
 						}
 						const r = await fetch(`/api/method/custom_report.branch_v1.get_employee_details_by_sol?sol_id=${solId}`);
@@ -4139,9 +4176,9 @@
 						const pwTbody = document.getElementById("product-wise-tbody");
 						if (pwTbody) {
 							pwTbody.innerHTML = `
-								<tr><td colspan="7" style="padding: 14px;"><div class="skeleton-bar" style="height: 18px; width: 100%;"></div></td></tr>
-								<tr><td colspan="7" style="padding: 14px;"><div class="skeleton-bar" style="height: 18px; width: 100%;"></div></td></tr>
-								<tr><td colspan="7" style="padding: 14px;"><div class="skeleton-bar" style="height: 18px; width: 100%;"></div></td></tr>
+								<tr><td colspan="7" style="padding: 16px; text-align: center;"><div class="skeleton-bar" style="height: 18px; width: 50%; margin-bottom: 6px;"></div><br><span style="background: none !important; color: #0369a1 !important; font-size: 13px; font-weight: 600;">⏳ Please wait ..</span></td></tr>
+								<tr><td colspan="7" style="padding: 12px;"><div class="skeleton-bar" style="height: 16px; width: 85%;"></div></td></tr>
+								<tr><td colspan="7" style="padding: 12px;"><div class="skeleton-bar" style="height: 16px; width: 70%;"></div></td></tr>
 							`;
 						}
 						const zoneElem = document.getElementById("branch-zone");
