@@ -6,7 +6,7 @@ from frappe.model.document import Document
 from frappe.utils import getdate, nowdate, now, flt, cint, get_first_day, get_last_day, add_days
 from frappe import _
 import psycopg2.extras
-from custom_report.db_connection import get_dr_connection
+from custom_report.db_connection import get_dr_connection, execute_dr_query
 
 
 class MaturityTracker(Document):
@@ -108,14 +108,12 @@ def sync_maturity_tracker(sync_date=None, date=None):
 	ORDER BY d.cif_id;
 	"""
 
-	conn = get_dr_connection()
-	rows = []
-	try:
-		with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
-			cursor.execute(query, (str(dt_from), str(dt_to), str(dt_from), str(dt_to)))
-			rows = cursor.fetchall()
-	finally:
-		conn.close()
+	rows = execute_dr_query(
+		query=query,
+		params=(str(dt_from), str(dt_to), str(dt_from), str(dt_to)),
+		cursor_factory=psycopg2.extras.RealDictCursor,
+		title="Maturity Tracker Sync"
+	)
 
 	# Clear existing data for this date to prevent duplicates
 	frappe.db.delete("Maturity Tracker", {"date": str(ref_date)})

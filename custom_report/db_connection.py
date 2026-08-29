@@ -41,3 +41,48 @@ def get_dr_connection(retries=3, retry_delay=2):
             retries, str(last_error)
         )
     )
+
+def execute_dr_query(query, params=None, cursor_factory=None, max_retries=5, title="DR DB Query"):
+    """
+    Executes a query on the DR PostgreSQL database with automatic retries on
+    connection drops or standby recovery conflicts (40001, 55006, etc.).
+    Returns fetched rows.
+    """
+    for attempt in range(max_retries):
+        conn = None
+        try:
+            conn = get_dr_connection()
+            with conn.cursor(cursor_factory=cursor_factory) as cur:
+                try:
+                    cur.execute("SET statement_timeout = 0;")
+                except Exception:
+                    pass
+                if params:
+                    cur.execute(query, params)
+                else:
+                    cur.execute(query)
+                rows = cur.fetchall()
+            return rows
+        except Exception as e:
+            err_str = str(e).lower()
+            is_recovery_conflict = any(term in err_str for term in [
+                "conflict with recovery", "canceling statement", "querycanceled",
+                "serializationfailure", "55006", "40001"
+            ])
+            if is_recovery_conflict and attempt < max_retries - 1:
+                retry_delay = (attempt + 1) * 3
+                frappe.log_error(
+                    message=f"{title} Conflict (Attempt {attempt + 1}/{max_retries}). Retrying in {retry_delay}s... Error: {e}",
+                    title=f"{title} Retry"
+                )
+                time.sleep(retry_delay)
+            else:
+                frappe.log_error(message=frappe.get_traceback(), title=f"{title} Execution Failed")
+                raise e
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+    return []
