@@ -6410,8 +6410,8 @@ def get_rm_wise_ss_vs_data(selected_date=None):
 
     where_stmt = " AND ".join(where_clauses)
 
-    sql_query = f"""
-        SELECT 
+    select_sql = f"""
+        SELECT
             A.name,
             A.agent_code,
             A.agent_code AS rm_id,
@@ -6434,12 +6434,36 @@ def get_rm_wise_ss_vs_data(selected_date=None):
             A.role,
             A.commission_json,
             CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(A.commission_json, '{json_path}')), 0) AS DECIMAL(18,2)) AS total_commission
+    """
+
+    from_join_sql = f"""
         FROM `tabAgent` A
         LEFT JOIN `tabEmployee` E ON A.employee = E.name
         LEFT JOIN `tabSahayog Branch` B ON (A.branch_code = B.sol_id OR A.branch_code = B.branch_code)
         WHERE {where_stmt}
         ORDER BY total_commission DESC
     """
+
+    sql_query = select_sql + from_join_sql
+
+    # Defensive guard: a placeholder/arg count mismatch would 500 the report.
+    # If it ever happens, drop the restricting (placeholder) clauses and run
+    # unfiltered instead of crashing.
+    if sql_query.count("%s") != len(where_args):
+        frappe.log_error(
+            f"get_rm_wise_ss_vs_data: %s placeholder count {sql_query.count('%s')} != args {len(where_args)}",
+            "get_rm_wise_ss_vs_data",
+        )
+        safe_where = " AND ".join([c for c in where_clauses if "%s" not in c])
+        sql_query = select_sql + f"""
+        FROM `tabAgent` A
+        LEFT JOIN `tabEmployee` E ON A.employee = E.name
+        LEFT JOIN `tabSahayog Branch` B ON (A.branch_code = B.sol_id OR A.branch_code = B.branch_code)
+        WHERE {safe_where}
+        ORDER BY total_commission DESC
+        """
+        where_args = []
+
     data = frappe.db.sql(sql_query, tuple(where_args) if where_args else None, as_dict=True)
 
     return {"data": data, "permissions": perms}
