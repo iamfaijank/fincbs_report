@@ -32,7 +32,7 @@
 			padding-top: 64px;
 		}
 
-		/* Skeleton Loading State */
+		/* Skeleton Loading State - Modern Design */
 		@keyframes skeleton-shimmer {
 			0% {
 				background-position: -200% 0;
@@ -42,17 +42,51 @@
 			}
 		}
 
-		.skeleton-loading {
-			position: relative !important;
-			overflow: hidden !important;
-			pointer-events: none !important;
-			user-select: none !important;
+		.skeleton-bar {
+			background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%) !important;
+			background-size: 200% 100% !important;
+			animation: skeleton-shimmer 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+			border-radius: 6px !important;
+			display: inline-block;
 		}
 
-		.skeleton-loading > * {
-			opacity: 0.15 !important;
-			filter: grayscale(1) blur(0.5px) !important;
-			transition: opacity 0.3s ease !important;
+		.skeleton-loading {
+			position: relative !important;
+			pointer-events: none !important;
+			user-select: none !important;
+			min-height: 80px;
+		}
+
+		.skeleton-loading span:not(.acc-dot):not(.skeleton-bar),
+		.skeleton-loading p,
+		.skeleton-loading h1,
+		.skeleton-loading h2,
+		.skeleton-loading h3,
+		.skeleton-loading h4,
+		.skeleton-loading td,
+		.skeleton-loading .hierarchy-badge,
+		.skeleton-loading .view-details-button,
+		.skeleton-loading .bm-profile-card,
+		.skeleton-loading .agent-card,
+		.skeleton-loading .product-wise-table td,
+		.skeleton-loading .financial-table td {
+			background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%) !important;
+			background-size: 200% 100% !important;
+			animation: skeleton-shimmer 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+			border-radius: 6px !important;
+			color: transparent !important;
+			box-shadow: none !important;
+		}
+
+		.skeleton-loading img,
+		.skeleton-loading .staff-avatar,
+		.skeleton-loading .bm-avatar {
+			background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%) !important;
+			background-size: 200% 100% !important;
+			animation: skeleton-shimmer 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+			border-radius: 50% !important;
+			color: transparent !important;
+			opacity: 0.8 !important;
 		}
 
 		.skeleton-loading::after {
@@ -64,13 +98,13 @@
 			bottom: 0;
 			background: linear-gradient(
 				90deg,
-				rgba(241, 245, 249, 0.15) 0%,
-				rgba(203, 213, 225, 0.45) 50%,
-				rgba(241, 245, 249, 0.15) 100%
+				rgba(255, 255, 255, 0) 0%,
+				rgba(255, 255, 255, 0.5) 50%,
+				rgba(255, 255, 255, 0) 100%
 			);
 			background-size: 200% 100%;
-			animation: skeleton-shimmer 1.4s ease-in-out infinite;
-			z-index: 50;
+			animation: skeleton-shimmer 1.5s infinite;
+			z-index: 10;
 			pointer-events: none;
 			border-radius: inherit;
 		}
@@ -2627,6 +2661,10 @@
 						window.history.pushState({}, "", url);
 					}
 
+					// Make data container visible immediately and activate skeletons
+					this.toggleBranchDataVisibility(true);
+					BranchManagerProfile.setAllSkeletons(true);
+
 					try {
 						const cacheKey = "branch_" + solId;
 						let data = this.getCache(cacheKey);
@@ -2655,15 +2693,15 @@
 						});
 
 						/* 🔗 Load Branch Manager Profile */
-						BranchManagerProfile.load(solId, data.email); // Pass data.email
-						this.toggleBranchDataVisibility(true); // Show data and hide message
+						await BranchManagerProfile.load(solId, data.email);
 					} catch (e) {
 						this.el.branchName.textContent = "Branch not found";
 						this.el.branchZone.textContent =
 							this.el.branchRegion.textContent =
 							this.el.branchState.textContent =
 							"--";
-						this.toggleBranchDataVisibility(false); // Hide data and show message on error
+						this.toggleBranchDataVisibility(false);
+						BranchManagerProfile.setAllSkeletons(false);
 					}
 				},
 
@@ -3524,6 +3562,14 @@
 				async loadEmployeeDetails(solId) {
 					try {
 						this.setSectionSkeleton("manpower-details-section", true);
+						if (this.el.manpowerDetailsTbody) {
+							this.el.manpowerDetailsTbody.innerHTML = `
+								<tr><td colspan="9" style="padding: 16px;"><div class="skeleton-bar" style="height: 18px; width: 100%;"></div></td></tr>
+								<tr><td colspan="9" style="padding: 16px;"><div class="skeleton-bar" style="height: 18px; width: 100%;"></div></td></tr>
+								<tr><td colspan="9" style="padding: 16px;"><div class="skeleton-bar" style="height: 18px; width: 100%;"></div></td></tr>
+								<tr><td colspan="9" style="padding: 16px;"><div class="skeleton-bar" style="height: 18px; width: 100%;"></div></td></tr>
+							`;
+						}
 						const r = await fetch(`/api/method/custom_report.branch_v1.get_employee_details_by_sol?sol_id=${solId}`);
 						const j = await r.json();
 
@@ -4090,6 +4136,14 @@
 				async loadProductCollections(solId) {
 					try {
 						this.setSectionSkeleton("product-wise-collection-card", true);
+						const pwTbody = document.getElementById("product-wise-tbody");
+						if (pwTbody) {
+							pwTbody.innerHTML = `
+								<tr><td colspan="7" style="padding: 14px;"><div class="skeleton-bar" style="height: 18px; width: 100%;"></div></td></tr>
+								<tr><td colspan="7" style="padding: 14px;"><div class="skeleton-bar" style="height: 18px; width: 100%;"></div></td></tr>
+								<tr><td colspan="7" style="padding: 14px;"><div class="skeleton-bar" style="height: 18px; width: 100%;"></div></td></tr>
+							`;
+						}
 						const zoneElem = document.getElementById("branch-zone");
 						let zone = zoneElem ? zoneElem.textContent.trim() : "";
 						const fyElem = document.getElementById("fy-select");
