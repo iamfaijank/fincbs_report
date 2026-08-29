@@ -1583,7 +1583,7 @@ def get_mis_filter_options():
 @frappe.whitelist()
 @sahayog_cache(ttl=86400)
 def get_daily_account_opening_data(selected_date=None):
-    from custom_report.db_connection import get_dr_connection
+    from custom_report.db_connection import get_dr_connection, execute_dr_query
     from frappe.utils import getdate
     import datetime
 
@@ -1651,16 +1651,13 @@ def get_daily_account_opening_data(selected_date=None):
             TRIM(gam.schm_code)
     """
 
-    conn = get_dr_connection()
-    if not conn:
-        frappe.log_error("Failed to connect to DR database", "Daily Account Opening API")
-        return []
+    rows = execute_dr_query(
+        query=query,
+        params=(start_date_str, end_date_str),
+        title="Daily Account Opening API"
+    )
 
     try:
-        cursor = conn.cursor()
-        cursor.execute(query, (start_date_str, end_date_str))
-        rows = cursor.fetchall()
-        
         branches_map = get_sahayog_branches_cached()
 
         # Group and aggregate raw records by branch
@@ -1769,7 +1766,7 @@ def get_daily_account_opening_data(selected_date=None):
 
 @frappe.whitelist()
 def get_ntb_evr_data(selected_date=None):
-    from custom_report.db_connection import get_dr_connection
+    from custom_report.db_connection import get_dr_connection, execute_dr_query
     from frappe.utils import getdate, add_months
     import datetime
 
@@ -1910,16 +1907,12 @@ def get_ntb_evr_data(selected_date=None):
     ORDER BY wb.sol_id, wb.schm_code, cif_status
     """
 
-    conn = get_dr_connection()
-    if not conn:
-        frappe.log_error("Failed to connect to DR database", "NTB EVR API")
-        return []
+    rows = execute_dr_query(
+        query=query,
+        title="NTB EVR API"
+    )
 
     try:
-        cursor = conn.cursor()
-        cursor.execute(query)
-        rows = cursor.fetchall()
-        
         branches_map = get_sahayog_branches_cached()
 
         branch_map = {}
@@ -2573,14 +2566,46 @@ GROUP BY
     dsamap.rm_id, get.emp_id, get.emp_name,
     s.division_name, s.region_name, s.circle_office_name, om.opening_mab, sgt.acid;'''
 
-    conn = get_dr_connection()
-    if not conn:
-        frappe.throw("Failed to connect to DR database. Please check your Finacle DR DB credentials.")
+    import time
+    max_retries = 5
+    rows = []
+
+    for attempt in range(max_retries):
+        conn = None
+        try:
+            conn = get_dr_connection()
+            if not conn:
+                frappe.throw("Failed to connect to DR database. Please check your Finacle DR DB credentials.")
+
+            with conn.cursor() as cursor:
+                try:
+                    cursor.execute("SET statement_timeout = 0;")
+                except Exception:
+                    pass
+                cursor.execute(query)
+                rows = cursor.fetchall()
+            break # Success, exit retry loop
+        except Exception as e:
+            err_str = str(e).lower()
+            is_recovery_conflict = any(term in err_str for term in [
+                "conflict with recovery", "canceling statement", "querycanceled",
+                "serializationfailure", "55006", "40001"
+            ])
+            if is_recovery_conflict and attempt < max_retries - 1:
+                retry_delay = (attempt + 1) * 3
+                frappe.log_error(f"DR DB CASA Query Conflict (Attempt {attempt + 1}/{max_retries}). Retrying in {retry_delay}s...", "Product Wise CASA Sync Retry")
+                time.sleep(retry_delay)
+            else:
+                frappe.log_error(message=frappe.get_traceback(), title="Product Wise CASA Sync Failed")
+                raise e
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     try:
-        cursor = conn.cursor()
-        cursor.execute(query)
-        rows = cursor.fetchall()
         print(f"CASA Sync - Total rows fetched from DB: {len(rows)}", flush=True)
         
         from frappe.utils import now_datetime
@@ -2636,11 +2661,6 @@ GROUP BY
     except Exception as e:
         frappe.log_error(message=frappe.get_traceback(), title="Product Wise CASA Sync Failed")
         raise e
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
 
 
 
@@ -3108,14 +3128,46 @@ LEFT JOIN mab_final m
                                      --            result par koi asar nahi padta.
 WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE SOL_ID FROM FINAL OUTPUT'''
 
-    conn = get_dr_connection()
-    if not conn:
-        frappe.throw("Failed to connect to DR database. Please check your Finacle DR DB credentials.")
+    import time
+    max_retries = 5
+    rows = []
+
+    for attempt in range(max_retries):
+        conn = None
+        try:
+            conn = get_dr_connection()
+            if not conn:
+                frappe.throw("Failed to connect to DR database. Please check your Finacle DR DB credentials.")
+
+            with conn.cursor() as cursor:
+                try:
+                    cursor.execute("SET statement_timeout = 0;")
+                except Exception:
+                    pass
+                cursor.execute(query)
+                rows = cursor.fetchall()
+            break # Success, exit retry loop
+        except Exception as e:
+            err_str = str(e).lower()
+            is_recovery_conflict = any(term in err_str for term in [
+                "conflict with recovery", "canceling statement", "querycanceled",
+                "serializationfailure", "55006", "40001"
+            ])
+            if is_recovery_conflict and attempt < max_retries - 1:
+                retry_delay = (attempt + 1) * 3
+                frappe.log_error(f"DR DB TDA Query Conflict (Attempt {attempt + 1}/{max_retries}). Retrying in {retry_delay}s...", "Product Wise TDA Sync Retry")
+                time.sleep(retry_delay)
+            else:
+                frappe.log_error(message=frappe.get_traceback(), title="Product Wise TDA Sync Failed")
+                raise e
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     try:
-        cursor = conn.cursor()
-        cursor.execute(query)
-        rows = cursor.fetchall()
         print(f"TDA Sync - Total rows fetched from DB: {len(rows)}", flush=True)
 
         now_time = now_datetime()
@@ -3193,11 +3245,6 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
     except Exception as e:
         frappe.log_error(message=frappe.get_traceback(), title="Product Wise TDA Sync Failed")
         raise e
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
 
 @frappe.whitelist(allow_guest=True)
 @sahayog_cache(ttl=86400)

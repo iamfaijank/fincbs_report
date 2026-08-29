@@ -6,7 +6,7 @@ from frappe.model.document import Document
 from frappe.utils import getdate, nowdate, now, flt, cint, add_days
 from frappe import _
 import time
-from custom_report.db_connection import get_dr_connection
+from custom_report.db_connection import get_dr_connection, execute_dr_query
 
 
 class RDandSMBGPending(Document):
@@ -129,18 +129,10 @@ def sync_rd_and_smbg_pending(sync_date=None, date=None):
     ORDER BY m.sol_id, m.foracid;
 	"""
 
-	conn = get_dr_connection()
-	if not conn:
-		frappe.throw(_("Failed to connect to DR Database."))
-
-	# Stream raw tuples directly without RealDictCursor overhead
-	rows = []
-	try:
-		with conn.cursor() as cursor:
-			cursor.execute(query)
-			rows = cursor.fetchall()
-	finally:
-		conn.close()
+	rows = execute_dr_query(
+		query=query,
+		title="RD & SMBG Pending Sync"
+	)
 
 	fetch_time = time.time() - start_time
 
