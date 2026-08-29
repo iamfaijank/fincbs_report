@@ -3862,136 +3862,134 @@
 					}
 				},
 
+				setupMonthFilters(solId, dates) {
+					dates = (dates || []).map(String);
+					if (!dates.length) return;
+
+					const latestDate = dates[0];
+					const oldestDate = dates[dates.length - 1];
+
+					const inputs = ["account-month-filter", "deposit-book-date"];
+					inputs.forEach(id => {
+						const input = document.getElementById(id);
+						if (!input) return;
+						input.min = oldestDate;
+						input.max = latestDate;
+						input.value = latestDate;
+
+						input.onchange = async () => {
+							let picked = input.value || latestDate;
+							input.value = picked;
+							try {
+								this.setSectionSkeleton("deposit-book-section", true);
+								const bookRes = await fetch(`/api/method/custom_report.branch_v1.get_book_position_details?sol_id=${solId}&selected_date=${encodeURIComponent(picked)}`);
+								const bookJson = await bookRes.json();
+								const bookD = bookJson.message || {};
+								if (this.state.rawData) {
+									Object.assign(this.state.rawData, bookD);
+								}
+								this.render();
+							} catch (e) {
+								console.error("Date filter load error:", e);
+							} finally {
+								this.setSectionSkeleton("deposit-book-section", false);
+							}
+						};
+					});
+				},
+
+				applyProductivityData(d) {
+					if (!d) {
+						this.clearProductivityUI();
+						return;
+					}
+					if (this.el.productivityAsOf) {
+						this.el.productivityAsOf.textContent = d.month ? `AS OF: ${d.month}` : "AS OF: --";
+					}
+					if (this.el.bdeAndProductivity) {
+						this.el.bdeAndProductivity.textContent = d.bde_productivity ? this.formatAmount(d.bde_productivity) : (d.bde_count > 0 ? "₹ 0" : "-");
+					}
+					if (this.el.bdoAndProductivity) {
+						this.el.bdoAndProductivity.textContent = d.bdo_productivity ? this.formatAmount(d.bdo_productivity) : (d.bdo_count > 0 ? "₹ 0" : "-");
+					}
+					if (this.el.roProductivity) {
+						this.el.roProductivity.textContent = d.ro_productivity ? this.formatAmount(d.ro_productivity) : (d.ro_count > 0 ? "₹ 0" : "-");
+					}
+					if (this.el.totalProductivity) {
+						this.el.totalProductivity.textContent = d.total_productivity ? this.formatAmount(d.total_productivity) : ((d.bde_count > 0 || d.bdo_count > 0 || d.ro_count > 0) ? "₹ 0" : "-");
+					}
+					this.setSectionSkeleton("productivity-details-section", false);
+				},
+
 				async load(solId, branchEmailValue) {
 					try {
 						this.setAllSkeletons(true);
+						const selectedFy = this.el.fySelect ? this.el.fySelect.value : "";
 
-						const [r, bookR, bmR] = await Promise.all([
-							fetch(`/api/method/custom_report.branch_v1.get_branch_profile_data?sol_id=${solId}`),
-							fetch(`/api/method/custom_report.branch_v1.get_book_position_details?sol_id=${solId}`),
-							fetch(`/api/method/custom_report.branch_v1.get_bm_details_from_employee?sol_id=${solId}`)
-						]);
-						const j = await r.json();
-						const bookJ = await bookR.json();
-						const bmJ = await bmR.json();
+						// 1. Fetch Complete Consolidated Profile in a single ultra-fast network round-trip
+						const completePromise = fetch(`/api/method/custom_report.branch_v1.get_branch_complete_profile?sol_id=${solId}${selectedFy ? `&fy=${encodeURIComponent(selectedFy)}` : ''}`)
+							.then(r => r.json());
 
-						const d = j.message || {};
-						const bookD = bookJ.message || {};
-						const bmList = (bmJ.message && bmJ.message.data) ? bmJ.message.data : [];
+						// 2. Concurrently trigger larger sub-tasks in background
+						const employeePromise = this.loadEmployeeDetails(solId);
+						const productCollectionsPromise = this.loadProductCollections(solId);
 
-						// Merge new book position data into rawData overriding old mappings
-						Object.assign(d, bookD);
-						
-						d._branch_email_value = branchEmailValue; // Store email in raw data
-						this.state.rawData = d;
-						this.state.bmList = bmList;
+						const completeJson = await completePromise;
+						const res = completeJson.message || {};
 
-						await this.populateAccountMonthFilter(solId);
-						await this.populateDepositBookDate(solId);
+						if (res.status === "success") {
+							const d = res.profile || {};
+							const bookD = res.book || {};
+							const bmList = (res.bm && res.bm.data) ? res.bm.data : [];
 
-						this.render();
-						this.setSectionSkeleton("bm-profiles-wrapper", false);
-						this.setSectionSkeleton("manpower-overview-card", false);
-						this.setSectionSkeleton("agent-details-card", false);
-						this.setSectionSkeleton("deposit-book-section", false);
-						this.setSectionSkeleton("demand-collection-section", false);
+							Object.assign(d, bookD);
+							d._branch_email_value = branchEmailValue;
+							this.state.rawData = d;
+							this.state.bmList = bmList;
 
-						// Fetch sub-sections independently with their own skeleton loaders
-						await Promise.allSettled([
-							this.loadEmployeeDetails(solId),
-							this.loadPerformanceData(solId),
-							this.loadProductCollections(solId),
-							this.loadAttritionData(solId),
-							this.loadProductivityDetails(solId)
-						]);
+							this.setupMonthFilters(solId, res.months || []);
+							this.render();
+
+							this.setSectionSkeleton("bm-profiles-wrapper", false);
+							this.setSectionSkeleton("manpower-overview-card", false);
+							this.setSectionSkeleton("agent-details-card", false);
+							this.setSectionSkeleton("deposit-book-section", false);
+							this.setSectionSkeleton("demand-collection-section", false);
+
+							// Apply Performance Category
+							if (res.performance && res.performance.data_exists) {
+								this.state.performanceData = res.performance.performance;
+								const activeTab = document.querySelector('#category-tabs .category-tab.active');
+								const period = activeTab ? activeTab.dataset.period : 'monthly';
+								this.updateCategoryUI(period);
+							} else {
+								this.state.performanceData = null;
+								this.clearCategoryUI();
+							}
+							this.setSectionSkeleton("category-card", false);
+
+							// Apply Attrition Data
+							if (res.attrition && res.attrition.status === 'success') {
+								this.state.attritionData = res.attrition;
+								this.renderAttritionUI();
+							} else {
+								this.state.attritionData = null;
+								this.clearAttritionUI();
+							}
+
+							// Apply Productivity Details
+							if (res.productivity && res.productivity.status === 'success') {
+								this.applyProductivityData(res.productivity);
+							} else {
+								this.clearProductivityUI();
+							}
+						}
+
+						await Promise.allSettled([employeePromise, productCollectionsPromise]);
 					} catch (e) {
 						console.error("Profile Load Error:", e);
 						this.el.name.textContent = "Branch Manager data unavailable";
 						this.setAllSkeletons(false);
-					}
-				},
-
-				async populateAccountMonthFilter(solId) {
-					const input = document.getElementById("account-month-filter");
-					if (!input) return;
-					try {
-						const res = await fetch(`/api/method/custom_report.branch_v1.get_book_position_months?sol_id=${solId}`);
-						const json = await res.json();
-						const dates = (json.message || []).map(String);
-						if (!dates.length) return;
-						
-						const latestDate = dates[0];
-						const oldestDate = dates[dates.length - 1];
-						
-						input.min = oldestDate;
-						input.max = latestDate;
-						input.value = latestDate;
-						
-						input.onchange = async () => {
-							let picked = input.value;
-							if (!picked) {
-								picked = latestDate;
-								input.value = latestDate;
-							}
-							try {
-								this.setSectionSkeleton("deposit-book-section", true);
-								const bookRes = await fetch(`/api/method/custom_report.branch_v1.get_book_position_details?sol_id=${solId}&selected_date=${encodeURIComponent(picked)}`);
-								const bookJson = await bookRes.json();
-								const bookD = bookJson.message || {};
-								if (this.state.rawData) {
-									Object.assign(this.state.rawData, bookD);
-								}
-								this.render();
-							} catch (e) {
-								console.error("Month filter load error:", e);
-							} finally {
-								this.setSectionSkeleton("deposit-book-section", false);
-							}
-						};
-					} catch (e) {
-						console.error("Month filter error:", e);
-					}
-				},
-
-				async populateDepositBookDate(solId) {
-					const input = document.getElementById("deposit-book-date");
-					if (!input) return;
-					try {
-						const res = await fetch(`/api/method/custom_report.branch_v1.get_book_position_months?sol_id=${solId}`);
-						const json = await res.json();
-						const dates = (json.message || []).map(String);
-						if (!dates.length) return;
-						
-						const latestDate = dates[0];
-						const oldestDate = dates[dates.length - 1];
-						
-						input.min = oldestDate;
-						input.max = latestDate;
-						input.value = latestDate;
-						
-						input.onchange = async () => {
-							let picked = input.value;
-							if (!picked) {
-								picked = latestDate;
-								input.value = latestDate;
-							}
-							try {
-								this.setSectionSkeleton("deposit-book-section", true);
-								const bookRes = await fetch(`/api/method/custom_report.branch_v1.get_book_position_details?sol_id=${solId}&selected_date=${encodeURIComponent(picked)}`);
-								const bookJson = await bookRes.json();
-								const bookD = bookJson.message || {};
-								if (this.state.rawData) {
-									Object.assign(this.state.rawData, bookD);
-								}
-								this.render();
-							} catch (e) {
-								console.error("Deposit book date load error:", e);
-							} finally {
-								this.setSectionSkeleton("deposit-book-section", false);
-							}
-						};
-					} catch (e) {
-						console.error("Deposit book date error:", e);
 					}
 				},
 
@@ -4045,22 +4043,7 @@
 						const res = await fetch(`/api/method/custom_report.branch_v1.get_productivity_details?sol_id=${solId}`);
 						const json = await res.json();
 						if (json.message && json.message.status === "success") {
-							const d = json.message;
-							if (this.el.productivityAsOf) {
-								this.el.productivityAsOf.textContent = d.month ? `AS OF: ${d.month}` : "AS OF: --";
-							}
-							if (this.el.bdeAndProductivity) {
-								this.el.bdeAndProductivity.textContent = d.bde_productivity ? this.formatAmount(d.bde_productivity) : (d.bde_count > 0 ? "₹ 0" : "-");
-							}
-							if (this.el.bdoAndProductivity) {
-								this.el.bdoAndProductivity.textContent = d.bdo_productivity ? this.formatAmount(d.bdo_productivity) : (d.bdo_count > 0 ? "₹ 0" : "-");
-							}
-							if (this.el.roProductivity) {
-								this.el.roProductivity.textContent = d.ro_productivity ? this.formatAmount(d.ro_productivity) : (d.ro_count > 0 ? "₹ 0" : "-");
-							}
-							if (this.el.totalProductivity) {
-								this.el.totalProductivity.textContent = d.total_productivity ? this.formatAmount(d.total_productivity) : ((d.bde_count > 0 || d.bdo_count > 0 || d.ro_count > 0) ? "₹ 0" : "-");
-							}
+							this.applyProductivityData(json.message);
 						} else {
 							this.clearProductivityUI();
 						}

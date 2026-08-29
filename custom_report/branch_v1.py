@@ -89,25 +89,19 @@ def get_branch_header_data(sol_id: str):
     ) or {}
 
 
-@frappe.whitelist()
-def get_branch_profile_data(sol_id: str):
+def get_possible_branch_values(sol_id: str) -> list:
     """
-    Fetch Branch Profile Data based on SOL ID, dynamically overriding BDE, BDO, RO,
-    and Actual Staff Count from Employee DocType.
+    Get all matching identifiers for a branch (sol_id, name, branch variants)
+    with local caching to prevent redundant database hits.
     """
-    profile_data = frappe.db.get_value(
-        "Branch Profile Data",
-        {"sol_id": sol_id},
-        "*",
-        as_dict=True,
-    ) or {}
-
     if not sol_id:
-        return profile_data
-
+        return []
     sol_id_str = str(sol_id).strip()
+    cache_key = f"sahayog_branch_possible_vals_{sol_id_str}"
+    cached = frappe.cache().get_value(cache_key)
+    if cached is not None:
+        return cached
 
-    # Find Sahayog Branch doc names and details if any
     branch_docs = frappe.db.get_all(
         "Sahayog Branch",
         filters=[["sol_id", "=", sol_id_str]],
@@ -126,7 +120,29 @@ def get_branch_profile_data(sol_id: str):
         if bd.get("sol_id"):
             possible_branch_values.append(bd["sol_id"])
 
-    possible_branch_values = list(set(possible_branch_values))
+    res = list(set(possible_branch_values))
+    frappe.cache().set_value(cache_key, res, expires_in_sec=1800)
+    return res
+
+
+@frappe.whitelist()
+def get_branch_profile_data(sol_id: str):
+    """
+    Fetch Branch Profile Data based on SOL ID, dynamically overriding BDE, BDO, RO,
+    and Actual Staff Count from Employee DocType.
+    """
+    profile_data = frappe.db.get_value(
+        "Branch Profile Data",
+        {"sol_id": sol_id},
+        "*",
+        as_dict=True,
+    ) or {}
+
+    if not sol_id:
+        return profile_data
+
+    sol_id_str = str(sol_id).strip()
+    possible_branch_values = get_possible_branch_values(sol_id_str)
 
     counts_query = """
         SELECT
@@ -155,6 +171,40 @@ def get_branch_profile_data(sol_id: str):
             profile_data["staff_count"] = int(c.get("total_active_staff") or 0)
 
     return profile_data
+
+
+@frappe.whitelist()
+def get_branch_complete_profile(sol_id: str, fy: str = None):
+    """
+    Consolidated high-performance API to fetch all branch dashboard components
+    in a single network round-trip.
+    """
+    if not sol_id:
+        return {"status": "error", "message": "SOL ID is required"}
+
+    try:
+        profile_data = get_branch_profile_data(sol_id)
+        book_data = get_book_position_details(sol_id)
+        bm_data = get_bm_details_from_employee(sol_id)
+        perf_data = get_performance_data(sol_id, fy=fy)
+        attrition_data = get_attrition_rate(sol_id)
+        productivity_data = get_productivity_details(sol_id)
+        months_list = get_book_position_months(sol_id)
+
+        return {
+            "status": "success",
+            "sol_id": sol_id,
+            "profile": profile_data,
+            "book": book_data,
+            "bm": bm_data,
+            "performance": perf_data,
+            "attrition": attrition_data,
+            "productivity": productivity_data,
+            "months": months_list
+        }
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Branch Complete Profile API Error")
+        return {"status": "error", "message": str(e)}
 
 
 @frappe.whitelist()
@@ -238,25 +288,7 @@ def get_productivity_details(sol_id: str):
         ro_amount = casa_amount
 
         # 3. Fetch Manpower Counts for BDE, BDO, RO
-        branch_docs = frappe.db.get_all(
-            "Sahayog Branch",
-            filters=[["sol_id", "=", sol_id_str]],
-            fields=["name", "branch", "sol_id"],
-        )
-
-        possible_branch_values = [sol_id_str]
-        for bd in branch_docs:
-            if bd.get("name"):
-                possible_branch_values.append(bd["name"])
-            if bd.get("branch"):
-                possible_branch_values.append(bd["branch"])
-                clean_b = bd["branch"].replace(" BRANCH", "").replace("Branch", "").strip()
-                if clean_b:
-                    possible_branch_values.append(clean_b)
-            if bd.get("sol_id"):
-                possible_branch_values.append(bd["sol_id"])
-
-        possible_branch_values = list(set(possible_branch_values))
+        possible_branch_values = get_possible_branch_values(sol_id_str)
 
         counts_query = """
             SELECT
@@ -343,37 +375,19 @@ def get_bm_details_from_employee(sol_id: str):
     """
     Fetch Branch Manager (BM) details for a given SOL ID from Employee DocType.
     Filters employees by sahayog_branch matching sol_id or branch name, and designation LIKE '%Branch Manager%'.
-    Also fetches Reporting Person details from Employee.reports_to.
+    Also fetches Reporting Person details from Employee.reports_to via single SQL JOIN.
     """
     if not sol_id:
         return {"status": "error", "message": "SOL ID is required", "data": []}
 
     sol_id_str = str(sol_id).strip()
-
-    # Find Sahayog Branch doc names and details if any
-    branch_docs = frappe.db.get_all(
-        "Sahayog Branch",
-        filters=[["sol_id", "=", sol_id_str]],
-        fields=["name", "branch", "sol_id"],
-    )
-
-    possible_branch_values = [sol_id_str]
-    for bd in branch_docs:
-        if bd.get("name"):
-            possible_branch_values.append(bd["name"])
-        if bd.get("branch"):
-            possible_branch_values.append(bd["branch"])
-            clean_b = bd["branch"].replace(" BRANCH", "").replace("Branch", "").strip()
-            if clean_b:
-                possible_branch_values.append(clean_b)
-        if bd.get("sol_id"):
-            possible_branch_values.append(bd["sol_id"])
+    possible_branch_values = get_possible_branch_values(sol_id_str)
 
     conditions = [
-        "status = 'Active'",
-        "designation LIKE %(bm_desig)s",
-        "designation NOT LIKE %(excl_assist)s",
-        "designation NOT LIKE %(excl_jll)s",
+        "emp.status = 'Active'",
+        "emp.designation LIKE %(bm_desig)s",
+        "emp.designation NOT LIKE %(excl_assist)s",
+        "emp.designation NOT LIKE %(excl_jll)s",
     ]
 
     params = {
@@ -382,55 +396,54 @@ def get_bm_details_from_employee(sol_id: str):
         "excl_jll": "%JLL%",
         "branches": possible_branch_values,
     }
-    conditions.append("(sahayog_branch IN %(branches)s OR sol_id IN %(branches)s OR branch IN %(branches)s)")
+    conditions.append("(emp.sahayog_branch IN %(branches)s OR emp.sol_id IN %(branches)s OR emp.branch IN %(branches)s)")
 
     where_clause = " AND ".join(conditions)
 
     query = f"""
         SELECT
-            name,
-            employee_name,
-            employee_number,
-            designation,
-            cell_number,
-            date_of_joining,
-            reports_to,
-            image,
-            user_id,
-            sahayog_branch,
-            status
-        FROM `tabEmployee`
+            emp.name,
+            emp.employee_name,
+            emp.employee_number,
+            emp.designation,
+            emp.cell_number,
+            emp.date_of_joining,
+            emp.reports_to,
+            emp.image,
+            emp.user_id,
+            emp.sahayog_branch,
+            emp.status,
+            rep.name AS rep_name,
+            rep.employee_name AS rep_employee_name,
+            rep.employee_number AS rep_employee_number,
+            rep.designation AS rep_designation,
+            rep.cell_number AS rep_cell_number
+        FROM `tabEmployee` emp
+        LEFT JOIN `tabEmployee` rep ON emp.reports_to = rep.name
         WHERE {where_clause}
-        ORDER BY (status = 'Active') DESC, date_of_joining ASC
+        ORDER BY (emp.status = 'Active') DESC, emp.date_of_joining ASC
     """
 
     bm_employees = frappe.db.sql(query, params, as_dict=True)
 
     result = []
     for emp in bm_employees:
-        reporting_person = {
-            "name": "",
-            "employee_name": "--",
-            "designation": "--",
-            "cell_number": "--",
-        }
-
-        reports_to_id = emp.get("reports_to")
-        if reports_to_id:
-            rep_doc = frappe.db.get_value(
-                "Employee",
-                reports_to_id,
-                ["name", "employee_name", "employee_number", "designation", "cell_number"],
-                as_dict=True,
-            )
-            if rep_doc:
-                reporting_person = {
-                    "name": rep_doc.get("name") or "",
-                    "employee_name": rep_doc.get("employee_name") or "--",
-                    "employee_number": rep_doc.get("employee_number") or rep_doc.get("name") or "",
-                    "designation": rep_doc.get("designation") or "--",
-                    "cell_number": rep_doc.get("cell_number") or "--",
-                }
+        rep_name = emp.get("rep_name")
+        if rep_name:
+            reporting_person = {
+                "name": rep_name,
+                "employee_name": emp.get("rep_employee_name") or "--",
+                "employee_number": emp.get("rep_employee_number") or rep_name,
+                "designation": emp.get("rep_designation") or "--",
+                "cell_number": emp.get("rep_cell_number") or "--",
+            }
+        else:
+            reporting_person = {
+                "name": "",
+                "employee_name": "--",
+                "designation": "--",
+                "cell_number": "--",
+            }
 
         result.append({
             "name": emp.get("name"),
@@ -975,96 +988,6 @@ import frappe
 from frappe.query_builder import DocType, functions as fn, Case
 from frappe.utils import get_first_day, get_last_day, today
 
-# @frappe.whitelist()
-# def get_employee_details_by_sol(sol_id: str):
-#     """
-#     Fetch comprehensive employee details including monthly lead generation 
-#     and conversion performance metrics filtered by SOL ID.
-    
-#     Args:
-#         sol_id (str): The Branch/Service Outlet ID to filter employees.
-        
-#     Returns:
-#         dict: Success status, record count, and data containing employee info 
-#               plus lead analytics (Total, Converted, and Ratio).
-#     """
-#     if not sol_id:
-#         return {"status": "error", "message": "SOL ID is required"}
-
-#     try:
-#         # 1. Initialize Doctypes for Query Builder
-#         Employee = DocType("Employee")
-#         Lead = DocType("Lead")
-
-#         # 2. Define the date range for the current month
-#         # This ensures we only count leads created between the 1st and today
-#         start_date = get_first_day(today())
-#         end_date = get_last_day(today())
-
-#         # 3. Construct the Query
-#         # We use a LEFT JOIN to ensure employees are listed even if they have 0 leads.
-#         # The join condition matches Employee.user_id with Lead.lead_owner.
-#         query = (
-#             frappe.qb.from_(Employee)
-#             .left_join(Lead).on(
-#                 (Employee.user_id == Lead.lead_owner) & 
-#                 (Lead.creation.between(start_date, end_date))
-#             )
-#             .select(
-#                 # Employee Identity and Contact Fields
-#                 Employee.sol_id,
-#                 Employee.employee_name,
-#                 Employee.employee_number,
-#                 Employee.user_id,
-#                 Employee.designation,
-#                 Employee.cell_number,
-#                 Employee.date_of_joining,
-#                 Employee.pip_status,
-                
-#                 # Aggregate Lead Analytics
-#                 fn.Count(Lead.name).as_("total_leads"),
-#                 fn.Sum(
-#                     Case().when(Lead.status == "Converted", 1).else_(0)
-#                 ).as_("total_converted")
-#             )
-#             .where(Employee.sol_id == sol_id)
-#             .groupby(Employee.name)
-#             .orderby(Employee.employee_name)
-#         )
-
-#         # 4. Execute the query and fetch results as a list of dictionaries
-#         employee_records = query.run(as_dict=True)
-
-#         # 5. Post-process data to calculate Conversion Ratios
-#         for record in employee_records:
-#             total = record.get("total_leads") or 0
-#             # SQL SUM on Case returns float (e.g. 1.0), converting to int for clean JSON
-#             converted = int(record.get("total_converted") or 0)
-            
-#             record["total_converted"] = converted
-            
-#             # Calculate conversion ratio percentage
-#             if total > 0:
-#                 conversion_ratio = (converted / total) * 100
-#                 record["conversion_ratio"] = f"{conversion_ratio:.2f}%"
-#             else:
-#                 record["conversion_ratio"] = "0.00%"
-
-#         return {
-#             "status": "success",
-#             "count": len(employee_records),
-#             "data": employee_records
-#         }
-
-#     except Exception as e:
-#         # Log the full error traceback in Frappe Error Log for debugging
-#         frappe.log_error(frappe.get_traceback(), "Employee Lead Details API Error")
-#         return {
-#             "status": "error", 
-#             "message": "An internal error occurred while fetching details."
-#         }
-
-
 @frappe.whitelist()
 def get_employee_details_by_sol(sol_id: str):
     """
@@ -1092,27 +1015,7 @@ def get_employee_details_by_sol(sol_id: str):
         end_date = get_last_day(today())
 
         sol_id_str = str(sol_id).strip()
-
-        # Find Sahayog Branch doc names and details if any
-        branch_docs = frappe.db.get_all(
-            "Sahayog Branch",
-            filters=[["sol_id", "=", sol_id_str]],
-            fields=["name", "branch", "sol_id"],
-        )
-
-        possible_branch_values = [sol_id_str]
-        for bd in branch_docs:
-            if bd.get("name"):
-                possible_branch_values.append(bd["name"])
-            if bd.get("branch"):
-                possible_branch_values.append(bd["branch"])
-                clean_b = bd["branch"].replace(" BRANCH", "").replace("Branch", "").strip()
-                if clean_b:
-                    possible_branch_values.append(clean_b)
-            if bd.get("sol_id"):
-                possible_branch_values.append(bd["sol_id"])
-
-        possible_branch_values = list(set(possible_branch_values))
+        possible_branch_values = get_possible_branch_values(sol_id_str)
 
         # 3. Construct the Query
         # We use a LEFT JOIN to ensure employees are listed even if they have 0 leads.
@@ -1416,48 +1319,62 @@ def get_attrition_rate(sol_id: str, period: str = "3"):
     try:
         from frappe.utils import add_months, today
         current_today = today()
+        sol_id_str = str(sol_id).strip()
 
         # Get current active employee count for this sol_id
-        active_count = frappe.db.count("Employee", filters={"sol_id": sol_id, "status": "Active"})
-        
-        # If active_count is 0, check staff_count in Branch Profile Data
+        active_count = frappe.db.count("Employee", filters={"sol_id": sol_id_str, "status": "Active"})
         if active_count == 0:
-            staff_count_str = frappe.db.get_value("Branch Profile Data", {"sol_id": sol_id}, "staff_count")
+            staff_count_str = frappe.db.get_value("Branch Profile Data", {"sol_id": sol_id_str}, "staff_count")
             active_count = frappe.utils.cint(staff_count_str) or 0
+
+        d3 = add_months(current_today, -3)
+        d6 = add_months(current_today, -6)
+        d12 = add_months(current_today, -12)
+
+        # Single combined query for 3, 6, and 12 months
+        left_row = frappe.db.sql("""
+            SELECT
+                SUM(CASE WHEN (
+                    (relieving_date IS NOT NULL AND relieving_date >= %(d3)s)
+                    OR (resignation_letter_date IS NOT NULL AND resignation_letter_date >= %(d3)s)
+                    OR (status != 'Active' AND status IS NOT NULL AND modified >= %(d3)s)
+                ) THEN 1 ELSE 0 END) AS left_3,
+                SUM(CASE WHEN (
+                    (relieving_date IS NOT NULL AND relieving_date >= %(d6)s)
+                    OR (resignation_letter_date IS NOT NULL AND resignation_letter_date >= %(d6)s)
+                    OR (status != 'Active' AND status IS NOT NULL AND modified >= %(d6)s)
+                ) THEN 1 ELSE 0 END) AS left_6,
+                SUM(CASE WHEN (
+                    (relieving_date IS NOT NULL AND relieving_date >= %(d12)s)
+                    OR (resignation_letter_date IS NOT NULL AND resignation_letter_date >= %(d12)s)
+                    OR (status != 'Active' AND status IS NOT NULL AND modified >= %(d12)s)
+                ) THEN 1 ELSE 0 END) AS left_12
+            FROM `tabEmployee`
+            WHERE sol_id = %(sol_id)s
+        """, {"sol_id": sol_id_str, "d3": d3, "d6": d6, "d12": d12}, as_dict=True)
+
+        left_map = {
+            "3": int(left_row[0].get("left_3") or 0) if left_row else 0,
+            "6": int(left_row[0].get("left_6") or 0) if left_row else 0,
+            "12": int(left_row[0].get("left_12") or 0) if left_row else 0,
+        }
 
         rates = {}
         counts = {}
-
-        for p_months in [3, 6, 12]:
-            start_date = add_months(current_today, -p_months)
-            
-            # Count employees relieved/left in period
-            left_count = frappe.db.sql("""
-                SELECT COUNT(*) FROM `tabEmployee`
-                WHERE sol_id = %s
-                  AND (
-                      (relieving_date IS NOT NULL AND relieving_date >= %s)
-                      OR (resignation_letter_date IS NOT NULL AND resignation_letter_date >= %s)
-                      OR (status != 'Active' AND status IS NOT NULL AND modified >= %s)
-                  )
-            """, (sol_id, start_date, start_date, start_date))[0][0] or 0
-
-            headcount = active_count + left_count
-            if headcount > 0:
-                rate = (left_count / headcount) * 100
-            else:
-                rate = 0.0
-
-            rates[str(p_months)] = round(rate, 1)
-            counts[str(p_months)] = {
-                "left": left_count,
-                "headcount": headcount,
+        for p_str in ["3", "6", "12"]:
+            l_cnt = left_map[p_str]
+            h_cnt = active_count + l_cnt
+            rate = round((l_cnt / h_cnt * 100), 1) if h_cnt > 0 else 0.0
+            rates[p_str] = rate
+            counts[p_str] = {
+                "left": l_cnt,
+                "headcount": h_cnt,
                 "active": active_count
             }
 
         return {
             "status": "success",
-            "sol_id": sol_id,
+            "sol_id": sol_id_str,
             "selected_period": str(period),
             "rates": rates,
             "counts": counts
