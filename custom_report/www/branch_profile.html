@@ -3974,11 +3974,23 @@
 						this.setAllSkeletons(true);
 						const selectedFy = this.el.fySelect ? this.el.fySelect.value : "";
 
-						// 1. Fetch Complete Consolidated Profile in a single ultra-fast network round-trip
+						// 1. PRIORITY 1: Fetch and Render Branch Manager details FIRST
+						const bmPromise = fetch(`/api/method/custom_report.branch_v1.get_bm_details_from_employee?sol_id=${solId}`)
+							.then(r => r.json())
+							.then(bmJ => {
+								if (bmJ && bmJ.message && bmJ.message.data) {
+									this.state.bmList = bmJ.message.data;
+									this.renderBmData();
+									this.setSectionSkeleton("bm-profiles-wrapper", false);
+								}
+							})
+							.catch(e => console.error("BM First Priority Fetch Error:", e));
+
+						// 2. PRIORITY 2: Fetch Complete Consolidated Profile in parallel
 						const completePromise = fetch(`/api/method/custom_report.branch_v1.get_branch_complete_profile?sol_id=${solId}${selectedFy ? `&fy=${encodeURIComponent(selectedFy)}` : ''}`)
 							.then(r => r.json());
 
-						// 2. Concurrently trigger larger sub-tasks in background
+						// 3. PRIORITY 3: Fetch Large Sub-tables in background
 						const employeePromise = this.loadEmployeeDetails(solId);
 						const productCollectionsPromise = this.loadProductCollections(solId);
 
@@ -3993,7 +4005,9 @@
 							Object.assign(d, bookD);
 							d._branch_email_value = branchEmailValue;
 							this.state.rawData = d;
-							this.state.bmList = bmList;
+							if (!this.state.bmList || !this.state.bmList.length) {
+								this.state.bmList = bmList;
+							}
 
 							this.setupMonthFilters(solId, res.months || []);
 							this.render();
@@ -4033,7 +4047,7 @@
 							}
 						}
 
-						await Promise.allSettled([employeePromise, productCollectionsPromise]);
+						await Promise.allSettled([bmPromise, employeePromise, productCollectionsPromise]);
 					} catch (e) {
 						console.error("Profile Load Error:", e);
 						this.el.name.textContent = "Branch Manager data unavailable";
