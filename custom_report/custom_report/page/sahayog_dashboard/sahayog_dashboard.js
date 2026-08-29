@@ -1169,6 +1169,13 @@ class DrishtiDashboard {
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
 							<input type="text" id="ntb-evr-search" placeholder="Search branch, SOL ID, zone..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
+							<div style="margin-left: auto; display: flex; align-items: center; gap: 6px;">
+								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
+								<div class="btn-group mis-format-toggle" role="group">
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+								</div>
+							</div>
 						</div>
 						<div id="ntb-evr-loading" style="width: 100%; margin-top: 10px;">
 							${dashboardInstance.buildMisSkeletonTable("Fetching CASA NTB & EVR data...")}
@@ -1273,6 +1280,18 @@ class DrishtiDashboard {
 						
 						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
 						self._renderNtbTable();
+					});
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
+						const format = $(this).data("format");
+						dashboardInstance.state.formatMode = format;
+						dashboardInstance.updateUrlFromState();
+						container.find(".mis-format-btn").each(function () {
+							const btn = $(this);
+							const isActive = btn.data("format") === format;
+							btn.css("background", isActive ? "#417d81" : "#e2e8f0");
+							btn.css("color", isActive ? "white" : "#475569");
+						});
+						if (self._renderNtbTable) self._renderNtbTable();
 					});
 				},
 				renderZoneFilterTags: function (container, dashboardInstance) {
@@ -6643,7 +6662,16 @@ class DrishtiDashboard {
 
 	renderGeneric4LevelTreeTable(tableContainer, reportObj, data, metricCols, reportTitle) {
 		const self = this;
-		const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(Math.round(val || 0));
+		const fmtNum = (val) => {
+			const numValue = Math.round(val || 0);
+			if (self.state.formatMode === "words") {
+				if (numValue >= 10000000) return (numValue / 10000000).toFixed(2) + " Cr";
+				if (numValue >= 100000) return (numValue / 100000).toFixed(2) + " L";
+				if (numValue >= 1000) return (numValue / 1000).toFixed(2) + " K";
+				return numValue.toString();
+			}
+			return new Intl.NumberFormat("en-IN").format(numValue);
+		};
 		const fmtAmt = (val) => {
 			if (!val || val === 0) return "₹0";
 			if (val >= 10000000) return "₹" + (val / 10000000).toFixed(2) + " Cr";
