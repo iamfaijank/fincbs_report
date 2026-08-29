@@ -32,7 +32,7 @@
 			padding-top: 64px;
 		}
 
-		/* Skeleton Loading State - Modern Design */
+		/* Clean Modern Skeleton Loading State */
 		@keyframes skeleton-shimmer {
 			0% {
 				background-position: -200% 0;
@@ -42,28 +42,14 @@
 			}
 		}
 
-		.skeleton-bar {
-			background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%) !important;
-			background-size: 200% 100% !important;
-			animation: skeleton-shimmer 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
-			border-radius: 6px !important;
-			display: inline-block;
-		}
-
 		@keyframes skeleton-pulse {
 			0%, 100% {
 				opacity: 1;
-				transform: translateY(0);
+				transform: translate(-50%, -50%) scale(1);
 			}
 			50% {
 				opacity: 0.7;
-				transform: translateY(-1px);
-			}
-		}
-
-		@keyframes skeleton-spin {
-			to {
-				transform: rotate(360deg);
+				transform: translate(-50%, -50%) scale(0.97);
 			}
 		}
 
@@ -71,62 +57,41 @@
 			position: relative !important;
 			pointer-events: none !important;
 			user-select: none !important;
-			min-height: 80px;
+			min-height: 120px !important;
 		}
 
+		/* Completely hide all content, labels, text and child elements */
+		.skeleton-loading > * {
+			visibility: hidden !important;
+			opacity: 0 !important;
+		}
+
+		/* Center only "Please wait . ." badge */
 		.skeleton-loading::before {
-			content: "⏳ Please wait ..";
+			content: "⏳ Please wait . .";
 			position: absolute;
-			top: 12px;
-			right: 16px;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
 			background: #ffffff;
 			border: 1px solid #7dd3fc;
 			color: #0369a1 !important;
-			font-size: 12px !important;
+			font-size: 13px !important;
 			font-weight: 700 !important;
-			letter-spacing: 0.3px;
-			padding: 4px 12px !important;
-			border-radius: 20px !important;
-			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-			z-index: 30 !important;
+			letter-spacing: 0.4px;
+			padding: 7px 18px !important;
+			border-radius: 9999px !important;
+			box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08) !important;
+			z-index: 50 !important;
 			pointer-events: none !important;
-			animation: skeleton-pulse 1.2s ease-in-out infinite !important;
-			display: inline-flex;
-			align-items: center;
+			animation: skeleton-pulse 1.4s ease-in-out infinite !important;
+			display: inline-flex !important;
+			align-items: center !important;
+			justify-content: center !important;
+			white-space: nowrap !important;
 		}
 
-		.skeleton-loading span:not(.acc-dot):not(.skeleton-bar),
-		.skeleton-loading p,
-		.skeleton-loading h1,
-		.skeleton-loading h2,
-		.skeleton-loading h3,
-		.skeleton-loading h4,
-		.skeleton-loading td,
-		.skeleton-loading .hierarchy-badge,
-		.skeleton-loading .view-details-button,
-		.skeleton-loading .bm-profile-card,
-		.skeleton-loading .agent-card,
-		.skeleton-loading .product-wise-table td,
-		.skeleton-loading .financial-table td {
-			background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%) !important;
-			background-size: 200% 100% !important;
-			animation: skeleton-shimmer 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
-			border-radius: 6px !important;
-			color: transparent !important;
-			box-shadow: none !important;
-		}
-
-		.skeleton-loading img,
-		.skeleton-loading .staff-avatar,
-		.skeleton-loading .bm-avatar {
-			background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%) !important;
-			background-size: 200% 100% !important;
-			animation: skeleton-shimmer 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
-			border-radius: 50% !important;
-			color: transparent !important;
-			opacity: 0.8 !important;
-		}
-
+		/* Smooth subtle shimmer background across the card */
 		.skeleton-loading::after {
 			content: "";
 			position: absolute;
@@ -136,13 +101,13 @@
 			bottom: 0;
 			background: linear-gradient(
 				90deg,
-				rgba(255, 255, 255, 0) 0%,
-				rgba(255, 255, 255, 0.5) 50%,
-				rgba(255, 255, 255, 0) 100%
+				#f8fafc 0%,
+				#f1f5f9 50%,
+				#f8fafc 100%
 			);
 			background-size: 200% 100%;
 			animation: skeleton-shimmer 1.5s infinite;
-			z-index: 10;
+			z-index: 20;
 			pointer-events: none;
 			border-radius: inherit;
 		}
