@@ -156,14 +156,19 @@ def _get_latest_pwr_date(sol_id, before_date):
 
 
 def _get_last_available_date_for_month(month_num, year):
+    cache_key = f"pwr_last_date_{month_num}_{year}"
+    cached = frappe.cache().get_value(cache_key)
+    if cached is not None:
+        return cached
+
     dates = frappe.db.sql("""
-        SELECT DISTINCT date FROM `tabProduct Wise Report`
+        SELECT MAX(date) as d FROM `tabProduct Wise Report`
         WHERE MONTH(date) = %s AND YEAR(date) = %s
-        ORDER BY date DESC
     """, (month_num, year), as_dict=True)
-    for d in dates:
-        return str(getdate(d.date))
-    return None
+    
+    val = str(getdate(dates[0].d)) if dates and dates[0].get("d") else None
+    frappe.cache().set_value(cache_key, val, expires_in_sec=1800)
+    return val
 
 
 def _get_ytd_collections(sol_id, target_date):
