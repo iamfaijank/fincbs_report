@@ -291,7 +291,23 @@
 		.tg-chat-info { min-width: 0; flex: 1; }
 		.tg-chat-top-line { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.15rem; }
 		.tg-chat-name { font-size: 0.85rem; font-weight: 700; color: var(--tg-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-		.tg-chat-time { font-size: 0.68rem; color: var(--tg-text-muted); font-family: 'JetBrains Mono', monospace; flex-shrink: 0; }
+		.tg-chat-time {
+			font-size: 0.72rem;
+			font-weight: 700;
+			color: #16a34a;
+			font-family: 'JetBrains Mono', monospace;
+			flex-shrink: 0;
+			background: rgba(22, 163, 74, 0.08);
+			padding: 0.1rem 0.45rem;
+			border-radius: 0.35rem;
+			display: inline-flex;
+			align-items: center;
+			gap: 0.25rem;
+		}
+		[data-theme="dark"] .tg-chat-time {
+			color: #4ade80;
+			background: rgba(74, 222, 128, 0.14);
+		}
 
 		.tg-chat-bottom-line { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 		.tg-chat-msg { font-size: 0.72rem; color: var(--tg-text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
