@@ -166,7 +166,9 @@ def clear_targets_cache(doc=None, method=None):
 
 
 def clear_branch_category_report_cache(doc=None, method=None):
-    """Clears cache related to Branch Category Report."""
+    """Clears cache related to Branch Category Report, dashboard, branches, and targets."""
+    clear_sahayog_branches_cache()
+    clear_targets_cache()
     get_last_available_date_for_month.clear_cache()
     get_previous_available_date.clear_cache()
     get_branch_category_report_monthly_data.clear_cache()
