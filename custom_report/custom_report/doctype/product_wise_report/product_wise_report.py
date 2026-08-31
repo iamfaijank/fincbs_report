@@ -6,6 +6,10 @@ import io
 import json
 
 
+class ProductWiseReport(Document):
+	pass
+
+
 @frappe.whitelist()
 def fast_import_product_wise_report(file_url=None, raw_data=None):
 	"""
