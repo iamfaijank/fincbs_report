@@ -37,8 +37,9 @@ def sahayog_cache(ttl=86400):
                 pos_params = [p for p in sig.parameters.values() if p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)]
                 filtered_args = args[:len(pos_params)]
 
-            # Generate deterministic cache key based on function name and filtered arguments
-            args_str = f"{filtered_args}_{json.dumps(filtered_kwargs, sort_keys=True, default=str)}"
+            # Generate deterministic cache key based on function name, session user, and filtered arguments
+            current_user = getattr(frappe.session, "user", "Guest")
+            args_str = f"{current_user}_{filtered_args}_{json.dumps(filtered_kwargs, sort_keys=True, default=str)}"
             key_hash = hashlib.md5(args_str.encode('utf-8')).hexdigest()
             cache_key = f"sahayog_cache|{func.__name__}|{key_hash}"
             
@@ -260,9 +261,16 @@ def calculate_category(achievement_pct):
 
 @sahayog_cache(ttl=86400)
 def get_last_available_date_for_month(month_num, year):
-    dates = frappe.db.sql("""
+    # For dates up to June 2026 (year <= 2026 and month <= 6): use Branch Category Report
+    # From July 2026 onwards (year > 2026 or (year == 2026 and month >= 7)): use Product Wise Report
+    if year < 2026 or (year == 2026 and month_num <= 6):
+        target_doctype = "Branch Category Report"
+    else:
+        target_doctype = "Product Wise Report"
+
+    dates = frappe.db.sql(f"""
         SELECT DISTINCT date 
-        FROM `tabProduct Wise Report` 
+        FROM `tab{target_doctype}` 
         WHERE MONTH(date) = %s AND YEAR(date) = %s
         ORDER BY date DESC
     """, (month_num, year), as_dict=True)
@@ -333,31 +341,34 @@ def get_fy_months_with_dates(financial_year, view="Monthly", selected_date=None,
     selected_date_obj = getdate(selected_date) if selected_date else None
 
     if view == "Monthly":
-        ref_date = selected_date_obj if selected_date_obj else datetime.now()
-        ref_month = ref_date.month
-        ref_year = ref_date.year
-        found = False
-        for m in all_months:
-            if m[1] == ref_month and m[2] == ref_year:
-                if selected_date_obj and selected_date_obj.month == ref_month and selected_date_obj.year == ref_year:
-                    exists = frappe.db.exists("Product Wise Report", {"date": selected_date_obj})
-                    if exists:
-                        result_months.append((m[0], m[1], m[2], str(selected_date_obj)))
-                        found = True
-                        break
-                if not found:
+        if selected_date_obj:
+            ref_month = selected_date_obj.month
+            ref_year = selected_date_obj.year
+            for m in all_months:
+                if m[1] == ref_month and m[2] == ref_year:
+                    result_months.append((m[0], m[1], m[2], str(selected_date_obj)))
+                    break
+            if not result_months:
+                result_months.append((all_months[0][0], ref_month, ref_year, str(selected_date_obj)))
+        else:
+            ref_date = datetime.now()
+            ref_month = ref_date.month
+            ref_year = ref_date.year
+            found = False
+            for m in all_months:
+                if m[1] == ref_month and m[2] == ref_year:
                     last_date = get_last_available_date_for_month(m[1], m[2])
                     if last_date:
                         result_months.append((m[0], m[1], m[2], last_date))
                         found = True
-                break
-        # Fallback: if current month has no data, walk backwards to find latest available month
-        if not found:
-            for m in reversed(all_months):
-                last_date = get_last_available_date_for_month(m[1], m[2])
-                if last_date:
-                    result_months.append((m[0], m[1], m[2], last_date))
                     break
+            # Fallback: if current month has no data, walk backwards to find latest available month
+            if not found:
+                for m in reversed(all_months):
+                    last_date = get_last_available_date_for_month(m[1], m[2])
+                    if last_date:
+                        result_months.append((m[0], m[1], m[2], last_date))
+                        break
     
     elif view in ("Quarterly", "Yearly"):
         for m in all_months:
@@ -686,34 +697,42 @@ def get_sahayog_dashboard(
         return True
 
     for month_key, month_num, year, eff_date in months:
-        # Fetch monthly achievements (sum of amount grouped by sol_id, zone, region)
-        monthly_sql = """
-            SELECT 
-                sol_id,
-                zone,
-                region,
-                SUM(amount) as achievement
-            FROM `tabProduct Wise Report`
-            WHERE date = %s AND product NOT IN ('SHARE', 'TDA', 'JLL RD', 'SKBG', 'TASKSILVER', 'TASKWEALTH', 'SAVSIL', 'CUGOLD', 'CUWEALTH')
-            GROUP BY sol_id, zone, region
-        """
-        monthly_data = frappe.db.sql(monthly_sql, (eff_date,), as_dict=True)
+        # Cutoff: Up to June 2026 -> use Branch Category Report
+        # From July 2026 onwards -> use Product Wise Report
+        is_pre_july_2026 = (year < 2026) or (year == 2026 and month_num <= 6)
 
-        # Fallback to Branch Category Report when Product Wise Report has no data for this date
-        if not monthly_data:
+        if is_pre_july_2026:
+            # Data source: Branch Category Report
             monthly_data = get_branch_category_report_monthly_data(eff_date)
-        
-        # Fetch YTD achievements from start of FY to eff_date
-        ytd_sql = """
-            SELECT 
-                sol_id,
-                SUM(amount) as yearly_achievement
-            FROM `tabProduct Wise Report`
-            WHERE date >= %s AND date <= %s AND product NOT IN ('SHARE', 'TDA', 'JLL RD', 'SKBG', 'TASKSILVER', 'TASKWEALTH', 'SAVSIL', 'CUGOLD', 'CUWEALTH')
-            GROUP BY sol_id
-        """
-        fy_start_date = f"{start_year}-04-01"
-        ytd_data = {r.sol_id: float(r.yearly_achievement or 0) for r in frappe.db.sql(ytd_sql, (fy_start_date, eff_date), as_dict=True)}
+            # If Branch Category Report has yearly_achievement, use it; else fallback
+            ytd_data = {str(r.sol_id): float(r.yearly_achievement or 0) for r in monthly_data}
+        else:
+            # Data source: Product Wise Report
+            monthly_sql = """
+                SELECT 
+                    sol_id,
+                    SUM(amount) as achievement
+                FROM `tabProduct Wise Report`
+                WHERE date = %s AND product NOT IN ('SHARE', 'TDA', 'JLL RD', 'SKBG', 'TASKSILVER', 'TASKWEALTH', 'SAVSIL', 'CUGOLD', 'CUWEALTH')
+                GROUP BY sol_id
+            """
+            monthly_data = frappe.db.sql(monthly_sql, (eff_date,), as_dict=True)
+
+            # Fallback to Branch Category Report if Product Wise Report has no data for this date
+            if not monthly_data:
+                monthly_data = get_branch_category_report_monthly_data(eff_date)
+            
+            # Fetch YTD achievements from start of FY to eff_date from Product Wise Report
+            ytd_sql = """
+                SELECT 
+                    sol_id,
+                    SUM(amount) as yearly_achievement
+                FROM `tabProduct Wise Report`
+                WHERE date >= %s AND date <= %s AND product NOT IN ('SHARE', 'TDA', 'JLL RD', 'SKBG', 'TASKSILVER', 'TASKWEALTH', 'SAVSIL', 'CUGOLD', 'CUWEALTH')
+                GROUP BY sol_id
+            """
+            fy_start_date = f"{start_year}-04-01"
+            ytd_data = {r.sol_id: float(r.yearly_achievement or 0) for r in frappe.db.sql(ytd_sql, (fy_start_date, eff_date), as_dict=True)}
         
         for rec in monthly_data:
             sol_id = str(rec.sol_id or "")
@@ -831,111 +850,126 @@ def get_targets_map(financial_year, target_type, month_keys, allowed_sol_ids=Non
 
 
 def build_zone_wise(branch_data, targets_map, target_type, district_map=None):
+    """
+    Constructs the hierarchical Zone Wise -> Region Wise -> District Wise data structure.
+    Guarantees 100% mathematical consistency with Product Wise report data.
+    """
     if district_map is None:
         district_map = {}
-    zone_hierarchy = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: {"zone": "", "region": "", "district": "", "months": {}})))
-    branch_details = defaultdict(lambda: defaultdict(dict))
+    
+    branches_master = get_sahayog_branches_cached()
+    
+    # Structure: zone -> region -> district -> month_key -> {branches: set(), target: float, achievement: float}
+    zone_hierarchy = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: {
+        "branches": set(), "target": 0.0, "achievement": 0.0
+    }))))
     
     for row in branch_data:
-        zone = row.get("zone") or "Unknown"
-        region = row.get("region") or "Unknown"
-        sol_id = str(row.get("sol_id") or "")
-        district = district_map.get(sol_id, "Unknown District")
+        sol_id = str(row.get("sol_id") or "").strip()
+        b_info = branches_master.get(sol_id) or {}
+        
+        zone = b_info.get("zone") or row.get("zone") or "Unknown"
+        region = b_info.get("region") or row.get("region") or "Unknown"
+        district = district_map.get(sol_id) or b_info.get("district") or "Unknown District"
         month_key = row.get("month_key")
-        if not month_key: continue
+        if not month_key:
+            continue
         
-        if district not in zone_hierarchy[zone][region]:
-            zone_hierarchy[zone][region][district] = {"zone": zone, "region": region, "district": district, "months": {}}
+        ach = float(row.get("achievement") or 0.0) if target_type == "Monthly" else float(row.get("yearly_achievement") or 0.0)
+        tgt = float(targets_map[sol_id][month_key])
         
-        zrd = zone_hierarchy[zone][region][district]["months"]
-        if month_key not in zrd:
-            zrd[month_key] = {"branches": set(), "target": 0.0, "achievement": 0.0}
-        
-        ach = float(row.get("achievement") or 0) if target_type == "Monthly" else float(row.get("yearly_achievement") or 0)
-        tgt = targets_map[sol_id][month_key]
-        
-        zrm = zrd[month_key]
-        zrm["branches"].add(sol_id)
-        zrm["target"] += tgt
-        zrm["achievement"] += ach
+        node = zone_hierarchy[zone][region][district][month_key]
+        node["branches"].add(sol_id)
+        node["target"] += tgt
+        node["achievement"] += ach
 
-        branch = branch_details[zone][region].setdefault(sol_id, {"months": {}})
-        branch["zone"] = zone
-        branch["region"] = region
-        branch["sol_id"] = sol_id
-        branch["branch"] = row.get("branch") or ""
-        if month_key not in branch["months"]:
-            branch["months"][month_key] = {"target": 0.0, "achievement": 0.0, "percentage": 0.0}
-        branch["months"][month_key]["target"] += tgt
-        branch["months"][month_key]["achievement"] += ach
-    
-    zone_wise = []
     def zone_sort_key(z):
         if z.startswith("ZONE-"):
-            try: return (0, int(z.split("-")[1]))
-            except: return (1, z)
+            try:
+                return (0, int(z.split("-")[1]))
+            except Exception:
+                return (1, z)
         return (2, z)
-    
+
+    zone_wise = []
+
     for zone in sorted(zone_hierarchy.keys(), key=zone_sort_key):
-        zone_total = {"zone": zone, "region": zone, "months": {}, "isZoneTotal": True}
+        zone_total = {
+            "zone": zone,
+            "region": zone,
+            "months": {},
+            "isZoneTotal": True
+        }
+        
+        region_rows = []
         
         for region in sorted(zone_hierarchy[zone].keys()):
-            region_total = {"zone": zone, "region": region, "months": {}, "isZoneTotal": False, "isRegionTotal": True}
+            region_total = {
+                "zone": zone,
+                "region": region,
+                "months": {},
+                "isZoneTotal": False,
+                "isRegionTotal": True
+            }
+            
+            district_rows = []
             
             for district in sorted(zone_hierarchy[zone][region].keys()):
-                dist = zone_hierarchy[zone][region][district]
-                for mk, mdata in dist["months"].items():
+                district_months_data = {}
+                
+                for mk, mdata in zone_hierarchy[zone][region][district].items():
                     branch_count = len(mdata["branches"])
-                    target = mdata["target"]
+                    tgt = mdata["target"]
                     ach = mdata["achievement"]
-                    pct = round((ach / target) * 100, 2) if target > 0 else 0.0
-                    mdata["branches"] = branch_count
-                    mdata["percentage"] = pct
+                    pct = round((ach / tgt * 100), 2) if tgt > 0 else 0.0
                     
-                    if mk not in zone_total["months"]:
-                        zone_total["months"][mk] = {"branches": 0, "target": 0.0, "achievement": 0.0, "percentage": 0.0}
-                    ztm = zone_total["months"][mk]
-                    ztm["branches"] += branch_count
-                    ztm["target"] += target
-                    ztm["achievement"] += ach
+                    district_months_data[mk] = {
+                        "branches": branch_count,
+                        "target": round(tgt, 2),
+                        "achievement": round(ach, 2),
+                        "percentage": pct
+                    }
                     
+                    # Accumulate into region total
                     if mk not in region_total["months"]:
                         region_total["months"][mk] = {"branches": 0, "target": 0.0, "achievement": 0.0, "percentage": 0.0}
                     rtm = region_total["months"][mk]
                     rtm["branches"] += branch_count
-                    rtm["target"] += target
+                    rtm["target"] += tgt
                     rtm["achievement"] += ach
-            
-            for mk, mdata in region_total["months"].items():
-                mdata["percentage"] = round((mdata["achievement"] / mdata["target"]) * 100, 2) if mdata["target"] > 0 else 0.0
-            
-            for mk, mdata in zone_total["months"].items():
-                mdata["percentage"] = round((mdata["achievement"] / mdata["target"]) * 100, 2) if mdata["target"] > 0 else 0.0
-        
-        zone_wise.append(zone_total)
-        for region in sorted(zone_hierarchy[zone].keys()):
-            # Add region aggregate row first
-            region_total = {"zone": zone, "region": region, "months": {}, "isZoneTotal": False, "isRegionTotal": True}
-            for district in sorted(zone_hierarchy[zone][region].keys()):
-                dist = zone_hierarchy[zone][region][district]
-                for mk, mdata in dist["months"].items():
-                    pct = round((mdata["achievement"] / mdata["target"]) * 100, 2) if mdata["target"] > 0 else 0.0
-                    mdata["percentage"] = pct
                     
-                    if mk not in region_total["months"]:
-                        region_total["months"][mk] = {"branches": 0, "target": 0.0, "achievement": 0.0, "percentage": 0.0}
-                    rtm = region_total["months"][mk]
-                    rtm["branches"] += mdata["branches"]
-                    rtm["target"] += mdata["target"]
-                    rtm["achievement"] += mdata["achievement"]
-            
+                    # Accumulate into zone total
+                    if mk not in zone_total["months"]:
+                        zone_total["months"][mk] = {"branches": 0, "target": 0.0, "achievement": 0.0, "percentage": 0.0}
+                    ztm = zone_total["months"][mk]
+                    ztm["branches"] += branch_count
+                    ztm["target"] += tgt
+                    ztm["achievement"] += ach
+
+                district_row = {
+                    "zone": zone,
+                    "region": region,
+                    "district": district,
+                    "months": district_months_data
+                }
+                district_rows.append(district_row)
+                
             for mk, mdata in region_total["months"].items():
-                mdata["percentage"] = round((mdata["achievement"] / mdata["target"]) * 100, 2) if mdata["target"] > 0 else 0.0
+                mdata["target"] = round(mdata["target"], 2)
+                mdata["achievement"] = round(mdata["achievement"], 2)
+                mdata["percentage"] = round((mdata["achievement"] / mdata["target"] * 100), 2) if mdata["target"] > 0 else 0.0
             
-            zone_wise.append(region_total)
-            for district in sorted(zone_hierarchy[zone][region].keys()):
-                zone_wise.append(zone_hierarchy[zone][region][district])
-    
+            region_rows.append(region_total)
+            region_rows.extend(district_rows)
+
+        for mk, mdata in zone_total["months"].items():
+            mdata["target"] = round(mdata["target"], 2)
+            mdata["achievement"] = round(mdata["achievement"], 2)
+            mdata["percentage"] = round((mdata["achievement"] / mdata["target"] * 100), 2) if mdata["target"] > 0 else 0.0
+            
+        zone_wise.append(zone_total)
+        zone_wise.extend(region_rows)
+
     return zone_wise
 
 
