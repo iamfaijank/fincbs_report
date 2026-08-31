@@ -157,7 +157,7 @@ def clear_sahayog_branches_cache(doc=None, method=None):
 
 def clear_user_permissions_cache(doc=None, method=None):
     """Clears the cached report permissions from Redis."""
-    get_user_report_permissions.clear_cache()
+    frappe.cache.delete_keys("sahayog_cache|get_user_report_permissions|*")
 
 
 def clear_targets_cache(doc=None, method=None):
@@ -167,12 +167,9 @@ def clear_targets_cache(doc=None, method=None):
 
 def clear_branch_category_report_cache(doc=None, method=None):
     """Clears cache related to Branch Category Report, dashboard, branches, and targets."""
-    clear_sahayog_branches_cache()
-    clear_targets_cache()
-    get_last_available_date_for_month.clear_cache()
-    get_previous_available_date.clear_cache()
-    get_branch_category_report_monthly_data.clear_cache()
-    get_sahayog_dashboard.clear_cache()
+    frappe.cache.delete_value("sahayog_branches_map")
+    frappe.cache.delete_keys("targets_map|*")
+    frappe.cache.delete_keys("sahayog_cache|*")
 
 
 @frappe.whitelist()
