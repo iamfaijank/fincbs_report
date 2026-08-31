@@ -219,6 +219,10 @@ def get_user_report_permissions(user):
         "has_access": True
     }
 
+    # Administrator always has full unrestricted access to all zones and branches
+    if user == "Administrator":
+        return permissions
+
     pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
     if not pref_name:
         if "System Manager" in frappe.get_roles(user):
