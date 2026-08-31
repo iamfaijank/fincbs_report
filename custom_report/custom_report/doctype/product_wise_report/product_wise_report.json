@@ -22,20 +22,28 @@
   {
    "fieldname": "zone",
    "fieldtype": "Data",
-   "label": "Zone"
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Zone",
+   "search_index": 1
   },
   {
    "fieldname": "region",
    "fieldtype": "Data",
-   "label": "Region"
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Region",
+   "search_index": 1
   },
   {
    "fetch_from": "scheme_code.group_name",
    "fieldname": "product",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Product",
-   "options": "\nCASA\nDAM\nFD\nRD\nDD\nSMBG\nSHARE"
+   "options": "\nCASA\nDAM\nFD\nRD\nDD\nSMBG\nSHARE",
+   "search_index": 1
   },
   {
    "fieldname": "amount",
@@ -47,7 +55,9 @@
    "fieldname": "date",
    "fieldtype": "Date",
    "in_list_view": 1,
-   "label": "Date"
+   "in_standard_filter": 1,
+   "label": "Date",
+   "search_index": 1
   },
   {
    "fieldname": "branch_details_section",
@@ -58,7 +68,9 @@
    "fieldname": "sol_id",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Sol ID"
+   "in_standard_filter": 1,
+   "label": "Sol ID",
+   "search_index": 1
   },
   {
    "fieldname": "column_break_bcwi",
@@ -77,14 +89,16 @@
    "fieldname": "scheme_code",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Scheme Code",
-   "options": "Product"
+   "options": "Product",
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-15 12:41:32.590614",
+ "modified": "2026-08-31 14:30:00.000000",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Product Wise Report",
@@ -101,11 +115,27 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "MIS Admin",
+   "select": 1,
+   "share": 1,
+   "write": 1
   }
  ],
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
- "sort_field": "modified",
+ "search_fields": "sol_id,zone,region,product,scheme_code,date",
+ "sort_field": "date",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "sol_id",
+ "track_changes": 0
 }
