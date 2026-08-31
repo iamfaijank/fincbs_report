@@ -364,53 +364,56 @@
 			flex: 1;
 		}
 		.status-dot {
-			width: 2.1rem;
-			height: 2.1rem;
-			border-radius: 0.6rem;
+			width: 2.2rem;
+			height: 2.2rem;
+			border-radius: 0.65rem;
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			font-size: 0.95rem;
+			font-size: 1rem;
+			font-weight: 800;
 			flex-shrink: 0;
 		}
-		.status-dot.success { background: var(--success-bg); color: var(--success); }
-		.status-dot.warning { background: var(--warning-bg); color: var(--warning); }
-		.status-dot.danger { background: var(--danger-bg); color: var(--danger); }
-
-		.job-meta { min-width: 0; flex: 1; }
-		.job-title-row {
+		.status-dot.success {
+			background: var(--success-bg);
+			color: var(--success);
+			border: 1px solid rgba(22, 163, 74, 0.25);
+		}
+		.btn-run-left {
+			width: 2.2rem;
+			height: 2.2rem;
+			border-radius: 0.65rem;
+			background: var(--primary);
+			color: #ffffff;
+			border: none;
+			font-size: 0.72rem;
+			font-weight: 700;
+			cursor: pointer;
 			display: flex;
 			align-items: center;
-			gap: 0.45rem;
-			margin-bottom: 0.15rem;
+			justify-content: center;
+			flex-shrink: 0;
+			transition: all 0.15s ease;
+			box-shadow: 0 1px 3px rgba(2, 132, 199, 0.3);
 		}
+		.btn-run-left:active { transform: scale(0.94); }
+		.btn-run-left:disabled { opacity: 0.5; cursor: not-allowed; }
+
+		.job-meta { min-width: 0; flex: 1; }
 		.job-title {
-			font-size: 0.84rem;
+			font-size: 0.86rem;
 			font-weight: 700;
 			color: var(--text-main);
 			white-space: nowrap;
 			overflow: hidden;
 			text-overflow: ellipsis;
-		}
-
-		/* Green Time Pill Tag */
-		.time-pill {
-			font-size: 0.7rem;
-			font-weight: 700;
-			color: var(--success);
-			background: var(--success-bg);
-			font-family: 'JetBrains Mono', monospace;
-			padding: 0.1rem 0.45rem;
-			border-radius: 0.35rem;
-			flex-shrink: 0;
-			display: inline-flex;
-			align-items: center;
+			margin-bottom: 0.15rem;
 		}
 
 		.job-sub-row {
 			display: flex;
 			align-items: center;
-			gap: 0.5rem;
+			gap: 0.45rem;
 			font-size: 0.7rem;
 			color: var(--text-sub);
 		}
@@ -419,36 +422,35 @@
 			font-family: 'JetBrains Mono', monospace;
 			color: var(--text-main);
 		}
+		.tag-failed {
+			color: var(--danger);
+			font-weight: 700;
+			background: var(--danger-bg);
+			padding: 0.05rem 0.35rem;
+			border-radius: 0.25rem;
+			font-size: 0.62rem;
+		}
 
-		.job-actions {
+		.job-right {
 			display: flex;
 			align-items: center;
-			gap: 0.4rem;
+			justify-content: flex-end;
 			flex-shrink: 0;
 		}
-		.btn-run {
-			padding: 0.35rem 0.75rem;
-			border-radius: 0.5rem;
-			font-size: 0.7rem;
-			font-weight: 700;
-			border: 1px solid var(--border);
-			background: var(--bg-subtle);
-			color: var(--text-main);
-			cursor: pointer;
-			transition: all 0.15s ease;
-		}
-		.btn-run:active { background: var(--primary); color: #ffffff; }
-		.btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
-		.badge-synced {
-			font-size: 0.7rem;
+
+		/* Green Time Pill Tag Right Aligned */
+		.time-pill {
+			font-size: 0.74rem;
 			font-weight: 700;
 			color: var(--success);
 			background: var(--success-bg);
-			padding: 0.3rem 0.65rem;
-			border-radius: 0.5rem;
+			font-family: 'JetBrains Mono', monospace;
+			padding: 0.18rem 0.55rem;
+			border-radius: 0.4rem;
+			border: 1px solid rgba(22, 163, 74, 0.2);
 			display: inline-flex;
 			align-items: center;
-			gap: 0.25rem;
+			white-space: nowrap;
 		}
 
 		/* Mobile-Responsive Modal Bottom Sheet with Backdrop Filter Blur */
@@ -1025,31 +1027,27 @@
 				els.jobsContainer.innerHTML = filtered.map(job => {
 					const st = (job.status || '').toLowerCase();
 					const isRunning = !!state.runningJobs[job.key];
-					const statusClass = st === 'success' ? 'success' : st === 'failed' ? 'danger' : 'warning';
-					const statusIcon = st === 'success' ? '✓' : st === 'failed' ? '!' : '⏱';
 
 					return `
 						<div class="job-card" data-key="${job.key}">
 							<div class="job-left">
-								<div class="status-dot ${statusClass}">${statusIcon}</div>
+								${st === 'success' 
+									? `<div class="status-dot success" title="Synced Successfully">✓</div>` 
+									: `<button type="button" class="btn-run-left" data-action="run" data-key="${job.key}" ${isRunning ? 'disabled' : ''} title="Run this sync">
+										${isRunning ? '...' : '▶'}
+									   </button>`}
 								<div class="job-meta">
-									<div class="job-title-row">
-										<span class="job-title">${job.title}</span>
-										<span class="time-pill">${job.schedule_time || ''}</span>
-									</div>
+									<div class="job-title">${job.title}</div>
 									<div class="job-sub-row">
 										<span>${job.category || 'General'}</span>
 										<span>•</span>
 										<span class="recs-badge">${formatNum(job.records_synced)} recs</span>
+										${st === 'failed' ? `<span class="tag-failed">Failed</span>` : ''}
 									</div>
 								</div>
 							</div>
-							<div class="job-actions">
-								${st === 'success' 
-									? `<span class="badge-synced">✓ Synced</span>`
-									: `<button type="button" class="btn-run" data-action="run" data-key="${job.key}" ${isRunning ? 'disabled' : ''}>
-										${isRunning ? 'Running...' : 'Run'}
-									   </button>`}
+							<div class="job-right">
+								<span class="time-pill">${job.schedule_time || ''}</span>
 							</div>
 						</div>
 					`;
