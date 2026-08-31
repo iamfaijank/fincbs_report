@@ -8206,11 +8206,19 @@ class DrishtiDashboard {
 	// FILTER TAGS - Zone & Category Selection
 	// ========================================================================
 	createFilterTags() {
+		const isSystemManager = frappe.session.user === "Administrator" || frappe.user.has_role("System Manager");
 		const html = `
             <div id="summary-cards-container" class="summary-cards-container">
                 <div class="summary-card">
                     <div class="summary-info">
-                        <span class="summary-label">Total Branches</span>
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem; width: 100%;">
+                            <span class="summary-label">Total Branches</span>
+                            ${isSystemManager ? `
+                                <button id="btn-refresh-branch-cache" class="btn-refresh-branch-cache" title="Clear Sahayog Branch & Dashboard Cache (System Manager)" style="background: transparent; border: 1px solid rgba(148, 163, 184, 0.3); cursor: pointer; color: #64748b; padding: 2px 5px; border-radius: 4px; font-size: 10px; display: inline-flex; align-items: center; gap: 3px; transition: all 0.2s;">
+                                    <i class="fa fa-refresh"></i>
+                                </button>
+                            ` : ''}
+                        </div>
                         <span class="summary-value" id="summary-total-branches">229</span>
                         <span class="summary-subtext success" id="summary-branches-trend">+12% from last month</span>
                     </div>
@@ -8279,6 +8287,40 @@ class DrishtiDashboard {
         `;
 
 		$(html).appendTo(this.drishti_container);
+
+		if (isSystemManager) {
+			this.page.main.find("#btn-refresh-branch-cache").on("click", (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				const $btn = $(e.currentTarget);
+				const $icon = $btn.find("i");
+				$icon.addClass("fa-spin");
+				$btn.prop("disabled", true);
+
+				frappe.call({
+					method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_branch_category_report_cache",
+					callback: (r) => {
+						$icon.removeClass("fa-spin");
+						$btn.prop("disabled", false);
+						frappe.show_alert({
+							message: __("Branch master & dashboard cache cleared successfully!"),
+							indicator: "green"
+						}, 3);
+						this.resetAllCaches();
+						this.loadData();
+					},
+					error: (err) => {
+						$icon.removeClass("fa-spin");
+						$btn.prop("disabled", false);
+						frappe.show_alert({
+							message: __("Failed to clear cache"),
+							indicator: "red"
+						}, 4);
+					}
+				});
+			});
+		}
+
 		this.populateFilterTags();
 	}
 
