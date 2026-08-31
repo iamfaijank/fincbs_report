@@ -150,26 +150,34 @@ def get_sahayog_branches_cached():
     return branches_map
 
 
+@frappe.whitelist()
 def clear_sahayog_branches_cache(doc=None, method=None):
     """Clears the cached Sahayog Branch map from Redis."""
     frappe.cache.delete_value("sahayog_branches_map")
+    return {"status": "success", "message": "Sahayog branches cache cleared."}
 
 
+@frappe.whitelist()
 def clear_user_permissions_cache(doc=None, method=None):
     """Clears the cached report permissions from Redis."""
     frappe.cache.delete_keys("sahayog_cache|get_user_report_permissions|*")
+    return {"status": "success", "message": "User report permissions cache cleared."}
 
 
+@frappe.whitelist()
 def clear_targets_cache(doc=None, method=None):
     """Clears the cached targets map from Redis."""
     frappe.cache.delete_keys("targets_map|*")
+    return {"status": "success", "message": "Targets cache cleared."}
 
 
+@frappe.whitelist()
 def clear_branch_category_report_cache(doc=None, method=None):
     """Clears cache related to Branch Category Report, dashboard, branches, and targets."""
     frappe.cache.delete_value("sahayog_branches_map")
     frappe.cache.delete_keys("targets_map|*")
     frappe.cache.delete_keys("sahayog_cache|*")
+    return {"status": "success", "message": "All dashboard, branch category, and target caches cleared."}
 
 
 @frappe.whitelist()
