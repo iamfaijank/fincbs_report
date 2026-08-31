@@ -1803,11 +1803,6 @@ def get_daily_account_opening_data(selected_date=None):
     except Exception as e:
         frappe.log_error(f"Error executing Daily Account Opening query: {str(e)}", "Daily Account Opening API")
         return []
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
 
 
 @frappe.whitelist()
@@ -2015,11 +2010,6 @@ def get_ntb_evr_data(selected_date=None):
     except Exception as e:
         frappe.log_error(f"Error executing NTB EVR query: {str(e)}", "NTB EVR API")
         return []
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
 
 
 @frappe.whitelist()
