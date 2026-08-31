@@ -924,7 +924,19 @@
 				els.cntFailed.innerText = failed;
 				els.cntPending.innerText = pending;
 
-				const q = state.searchQuery.toLowerCase().trim();
+			function parseTimeToMinutes(tStr) {
+				if (!tStr) return 9999;
+				const parts = tStr.trim().split(/[:\s]/);
+				if (parts.length < 3) return 9999;
+				let hours = parseInt(parts[0], 10);
+				const mins = parseInt(parts[1], 10);
+				const meridiem = parts[2].toUpperCase();
+				if (meridiem === 'PM' && hours < 12) hours += 12;
+				if (meridiem === 'AM' && hours === 12) hours = 0;
+				return hours * 60 + mins;
+			}
+
+			const q = state.searchQuery.toLowerCase().trim();
 				const filtered = state.jobs.filter(job => {
 					const s = (job.status || '').toLowerCase();
 					if (state.activeTab !== 'all' && s !== state.activeTab) return false;
@@ -935,6 +947,8 @@
 					}
 					return true;
 				});
+
+				filtered.sort((a, b) => parseTimeToMinutes(a.schedule_time) - parseTimeToMinutes(b.schedule_time));
 
 				if (filtered.length === 0) {
 					els.jobListContainer.innerHTML = `
