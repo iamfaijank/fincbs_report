@@ -773,11 +773,12 @@
 		window.initialData = {{ initial_sync_data | default('{}') }};
 		window.csrf_token = "{{ csrf_token | default('') }}";
 
-		// Register Service Worker for PWA
+		// Unregister any legacy Service Worker to ensure fresh live data
 		if ('serviceWorker' in navigator) {
-			window.addEventListener('load', () => {
-				navigator.serviceWorker.register('/assets/custom_report/js/sync-sw.js')
-					.catch(err => console.log('SW registration error', err));
+			navigator.serviceWorker.getRegistrations().then((registrations) => {
+				for (const registration of registrations) {
+					registration.unregister();
+				}
 			});
 		}
 
