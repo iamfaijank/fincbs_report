@@ -50,6 +50,10 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 	// Reset all caches so dashboard behaves like a fresh load every time
 	if (wrapper.dashboard) {
 		wrapper.dashboard.resetAllCaches();
+		const urlParams = new URLSearchParams(window.location.search);
+		if (!urlParams.get("activeTab")) {
+			wrapper.dashboard.state.activeTab = "zone";
+		}
 		// Trigger fresh data load after cache reset
 		if (wrapper.dashboard._fyLoaded) {
 			wrapper.dashboard.loadData();
@@ -8155,6 +8159,14 @@ class DrishtiDashboard {
 	}
 
 	clearAllFilters() {
+		this.state.activeTab = "zone";
+		this.tabDates = {
+			zone: null,
+			category: null,
+			product: null,
+			agent: null,
+			branch: null,
+		};
 		this.state.selectedDate = null;
 		this.state.selectedCategories = [];
 		this.state.selectedZones = [];
@@ -8163,6 +8175,9 @@ class DrishtiDashboard {
 		this.state.branchSearchTerm = "";
 		this.state.selectedMonth = null;
 		this.state.drillDownActive = false;
+
+		this.page.main.find(".tab-btn").removeClass("active");
+		this.page.main.find('.tab-btn[data-tab="zone"]').addClass("active");
 
 		this.updateDatePickerValue("");
 		this.updateRegionDropdownUI();
@@ -9021,7 +9036,7 @@ class DrishtiDashboard {
 		// Fetch latest available date from Product Wise Report so all tabs start from the exact same date
 		const self = this;
 		frappe.call({
-			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_product_report_date",
+			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_branch_category_report_date",
 			callback: (r) => {
 				let dateStr = r.message;
 				if (!dateStr) {
@@ -9197,7 +9212,7 @@ class DrishtiDashboard {
 		const self = this;
 
 		frappe.call({
-			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_agent_report_date",
+			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_branch_category_report_date",
 			callback: (r) => {
 				let dateStr = r.message;
 				if (!dateStr) {

@@ -43,8 +43,8 @@ frappe.listview_settings['Branch Category Report'] = {
 					primary_action(values) {
 						const selected_date = values.date;
 						const today = frappe.datetime.get_today();
-						if (selected_date >= today) {
-							frappe.msgprint(__('Today\'s date and future dates cannot be selected. Please select a past date.'));
+						if (selected_date > today) {
+							frappe.msgprint(__('Future dates cannot be selected. Please select today or a past date.'));
 							return;
 						}
 						

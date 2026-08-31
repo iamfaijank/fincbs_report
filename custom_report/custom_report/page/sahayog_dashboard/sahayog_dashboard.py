@@ -169,6 +169,8 @@ def clear_branch_category_report_cache(doc=None, method=None):
     """Clears cache related to Branch Category Report."""
     get_last_available_date_for_month.clear_cache()
     get_previous_available_date.clear_cache()
+    get_branch_category_report_monthly_data.clear_cache()
+    get_sahayog_dashboard.clear_cache()
 
 
 @frappe.whitelist()
@@ -261,12 +263,8 @@ def calculate_category(achievement_pct):
 
 @sahayog_cache(ttl=86400)
 def get_last_available_date_for_month(month_num, year):
-    # For dates up to June 2026 (year <= 2026 and month <= 6): use Branch Category Report
-    # From July 2026 onwards (year > 2026 or (year == 2026 and month >= 7)): use Product Wise Report
-    if year < 2026 or (year == 2026 and month_num <= 6):
-        target_doctype = "Branch Category Report"
-    else:
-        target_doctype = "Product Wise Report"
+    # Completely use Branch Category Report for all months
+    target_doctype = "Branch Category Report"
 
     dates = frappe.db.sql(f"""
         SELECT DISTINCT date 
@@ -496,8 +494,8 @@ def calculate_category_changes(current_date_data, previous_date_data):
 
 @frappe.whitelist(allow_guest=True)
 def get_latest_branch_category_report_date():
-    """Returns the latest available date from 'Product Wise Report' doctype."""
-    latest_date = frappe.db.get_value("Product Wise Report", {}, "date", order_by="date desc")
+    """Returns the latest available date from 'Branch Category Report' doctype."""
+    latest_date = frappe.db.get_value("Branch Category Report", {}, "date", order_by="date desc")
     if latest_date:
         return str(latest_date)[:10]
     return None
@@ -542,12 +540,12 @@ def get_available_financial_years():
     return fy_list
 
 
+@sahayog_cache(ttl=86400)
 def get_branch_category_report_monthly_data(eff_date):
     """
-    Fallback data source: when `tabProduct Wise Report` has no data for a date
-    (e.g. Quarterly views where only the daily Branch Category Report is synced),
-    derive the monthly achievement per SOL from the latest `Branch Category Report`
-    record available within that month.
+    Fetches monthly achievement per SOL from `tabBranch Category Report`
+    for the latest record on or before eff_date within that month.
+    Cached in Redis.
     """
     from frappe.utils import getdate
     from datetime import timedelta
@@ -561,7 +559,7 @@ def get_branch_category_report_monthly_data(eff_date):
     month_end = next_month - timedelta(days=1)
 
     rows = frappe.db.sql("""
-        SELECT bcr.sol_id, bcr.zone, bcr.region, bcr.achievement, bcr.yearly_achievement
+        SELECT bcr.sol_id, bcr.zone, bcr.region, bcr.district, bcr.branch, bcr.achievement, bcr.yearly_achievement
         FROM `tabBranch Category Report` bcr
         INNER JOIN (
             SELECT sol_id, MAX(date) AS max_date
@@ -574,9 +572,11 @@ def get_branch_category_report_monthly_data(eff_date):
     result = []
     for r in rows:
         result.append(frappe._dict({
-            "sol_id": r.sol_id,
+            "sol_id": str(r.sol_id or "").strip(),
             "zone": r.zone or "",
             "region": r.region or "",
+            "district": r.district or "",
+            "branch": r.branch or "",
             "achievement": float(r.achievement or 0),
             "yearly_achievement": float(r.yearly_achievement or 0),
         }))
@@ -584,6 +584,7 @@ def get_branch_category_report_monthly_data(eff_date):
 
 
 @frappe.whitelist(allow_guest=True)
+@sahayog_cache(ttl=86400)
 def get_sahayog_dashboard(
     financial_year=None,
     view="Monthly",
@@ -697,42 +698,9 @@ def get_sahayog_dashboard(
         return True
 
     for month_key, month_num, year, eff_date in months:
-        # Cutoff: Up to June 2026 -> use Branch Category Report
-        # From July 2026 onwards -> use Product Wise Report
-        is_pre_july_2026 = (year < 2026) or (year == 2026 and month_num <= 6)
-
-        if is_pre_july_2026:
-            # Data source: Branch Category Report
-            monthly_data = get_branch_category_report_monthly_data(eff_date)
-            # If Branch Category Report has yearly_achievement, use it; else fallback
-            ytd_data = {str(r.sol_id): float(r.yearly_achievement or 0) for r in monthly_data}
-        else:
-            # Data source: Product Wise Report
-            monthly_sql = """
-                SELECT 
-                    sol_id,
-                    SUM(amount) as achievement
-                FROM `tabProduct Wise Report`
-                WHERE date = %s AND product NOT IN ('SHARE', 'TDA', 'JLL RD', 'SKBG', 'TASKSILVER', 'TASKWEALTH', 'SAVSIL', 'CUGOLD', 'CUWEALTH')
-                GROUP BY sol_id
-            """
-            monthly_data = frappe.db.sql(monthly_sql, (eff_date,), as_dict=True)
-
-            # Fallback to Branch Category Report if Product Wise Report has no data for this date
-            if not monthly_data:
-                monthly_data = get_branch_category_report_monthly_data(eff_date)
-            
-            # Fetch YTD achievements from start of FY to eff_date from Product Wise Report
-            ytd_sql = """
-                SELECT 
-                    sol_id,
-                    SUM(amount) as yearly_achievement
-                FROM `tabProduct Wise Report`
-                WHERE date >= %s AND date <= %s AND product NOT IN ('SHARE', 'TDA', 'JLL RD', 'SKBG', 'TASKSILVER', 'TASKWEALTH', 'SAVSIL', 'CUGOLD', 'CUWEALTH')
-                GROUP BY sol_id
-            """
-            fy_start_date = f"{start_year}-04-01"
-            ytd_data = {r.sol_id: float(r.yearly_achievement or 0) for r in frappe.db.sql(ytd_sql, (fy_start_date, eff_date), as_dict=True)}
+        # Data source: Completely Branch Category Report
+        monthly_data = get_branch_category_report_monthly_data(eff_date)
+        ytd_data = {str(r.sol_id): float(r.yearly_achievement or 0) for r in monthly_data}
         
         for rec in monthly_data:
             sol_id = str(rec.sol_id or "")
@@ -743,7 +711,7 @@ def get_sahayog_dashboard(
             
             # Map branch name and fallback zone/region from Sahayog Branch
             branch_info = branches_map.get(sol_id) or {}
-            rec["branch"] = branch_info.get("branch_name") or ""
+            rec["branch"] = branch_info.get("branch_name") or rec.get("branch") or ""
             
             if not rec.get("zone") and branch_info.get("zone"):
                 rec["zone"] = branch_info["zone"]
