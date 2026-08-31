@@ -791,7 +791,7 @@ def daily_sync_cron(sync_date=None):
 
         today_date = getdate(today())
         sync_date = add_days(today_date, -1)
-        frappe.logger("scheduler").info(f"Daily Sync Cron: Triggering sync for {sync_date} at 8:00 AM.")
+        frappe.logger("scheduler").info(f"Daily Sync Cron: Triggering Branch Category consolidation from Product Wise for {sync_date} at 8:20 AM.")
 
         try:
             saved_count = generate_and_save_branch_category_report(sync_date)

@@ -211,15 +211,15 @@ scheduler_events = {
 		"45 6 * * *": [
 			"custom_report.custom_report.doctype.rd_and_smbg_pending.rd_and_smbg_pending.daily_sync_rd_and_smbg_pending"
 		],
-		# Daily Sahayog Dashboard and Financial Tracker Synchronizations starting at 08:00 AM IST
-		"0 8 * * *": [
-			"custom_report.custom_report.page.sahayog_dashboard.achievement.daily_sync_cron"
-		],
+		# Daily Sahayog Dashboard and Financial Tracker Synchronizations starting at 08:10 AM IST
 		"10 8 * * *": [
 			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_tda_sync"
 		],
 		"15 8 * * *": [
 			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_casa_sync"
+		],
+		"20 8 * * *": [
+			"custom_report.custom_report.page.sahayog_dashboard.achievement.daily_sync_cron"
 		],
 		"30 8 * * *": [
 			"custom_report.custom_report.doctype.book_position_and_account_details.book_position_and_account_details.daily_sync_book_position"
