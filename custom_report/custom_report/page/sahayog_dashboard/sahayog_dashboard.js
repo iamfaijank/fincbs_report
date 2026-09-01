@@ -50,6 +50,10 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 	// Reset all caches so dashboard behaves like a fresh load every time
 	if (wrapper.dashboard) {
 		wrapper.dashboard.resetAllCaches();
+		const urlParams = new URLSearchParams(window.location.search);
+		if (!urlParams.get("activeTab")) {
+			wrapper.dashboard.state.activeTab = "zone";
+		}
 		// Trigger fresh data load after cache reset
 		if (wrapper.dashboard._fyLoaded) {
 			wrapper.dashboard.loadData();
@@ -421,11 +425,9 @@ class DrishtiDashboard {
 									return;
 								}
 
-								console.log("DEBUG: API CALL get_rd_smbg_pending_table_data START");
 								frappe.call({
 									method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_pending_table_data",
 									callback: function (r3) {
-										console.log("DEBUG: API CALL get_rd_smbg_pending_table_data RESPONSE", r3 && r3.message ? r3.message.length : 0);
 										if (dashboardInstance._misRenderSeq !== seq) return;
 										self.rawTableData = (r3 && r3.message) ? r3.message : [];
 										applyUserPermissionsAndRender();
@@ -929,12 +931,10 @@ class DrishtiDashboard {
 							if (dashboardInstance._misRenderSeq !== seq) return;
 							if (r.message) {
 								self.filterOptions = r.message;
-								console.log("DEBUG: API CALL get_daily_account_opening_data START", { selected_date: dashboardInstance.state.selectedDate });
 								frappe.call({
 									method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_daily_account_opening_data",
 									args: { selected_date: dashboardInstance.state.selectedDate },
 									callback: function (r3) {
-										console.log("DEBUG: API CALL get_daily_account_opening_data RESPONSE", r3.message);
 										if (dashboardInstance._misRenderSeq !== seq) return;
 										if (r3.message) {
 											self.tableData = filterMisTableDataByUserPermissions(r3.message, self.filterOptions);
@@ -1674,7 +1674,6 @@ class DrishtiDashboard {
 									}
 								}
 							} catch (e) {
-								console.warn("sessionStorage read error", e);
 							}
 
 							const offset = (pageNum - 1) * self.pageSize;
@@ -1699,7 +1698,6 @@ class DrishtiDashboard {
 												totalPages: self.totalPages
 											}));
 										} catch (e) {
-											console.warn("sessionStorage write error", e);
 										}
 										resolve(true);
 									} else {
@@ -4883,7 +4881,6 @@ class DrishtiDashboard {
 							callback(dashboardInstance.canViewCommission);
 						})
 						.catch(err => {
-							console.error("Error checking employee cxo_level:", err);
 							dashboardInstance.canViewCommission = false;
 							callback(false);
 						});
@@ -5219,20 +5216,11 @@ class DrishtiDashboard {
 					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function () {
 						self.allExpanded = !self.allExpanded;
 						const expand = self.allExpanded;
-						if (!self.tableData) return;
-						self.tableData.forEach(row => {
-							if (row.branches) {
-								row.branches.forEach(b => {
-									const bKey = row.zone + "::" + row.region + "::" + row.district + "::" + b.sol_id;
-									self.expandedBranches = self.expandedBranches || {};
-									self.expandedBranches[bKey] = expand;
-								});
-							}
-							self.expandedZones[row.zone || ""] = expand;
-							self.expandedRegions[(row.zone || "") + "::" + (row.region || "")] = expand;
-							self.expandedDistricts = self.expandedDistricts || {};
-							self.expandedDistricts[(row.zone || "") + "::" + (row.region || "") + "::" + (row.district || "")] = expand;
-						});
+						if (expand) {
+							(self.allNodeIds || []).forEach(id => { self.expandedTreeNodes[id] = true; });
+						} else {
+							self.expandedTreeNodes = {};
+						}
 						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
 						self.renderRmWiseTable(container.find("#mis-table-container"), dashboardInstance);
 					});
@@ -5298,7 +5286,6 @@ class DrishtiDashboard {
 							callback(dashboardInstance.canViewCommission);
 						})
 						.catch(err => {
-							console.error("Error checking employee cxo_level:", err);
 							dashboardInstance.canViewCommission = false;
 							callback(false);
 						});
@@ -5537,6 +5524,7 @@ class DrishtiDashboard {
 						});
 					};
 					collectAllNodeIds(rootNodes);
+					self.allNodeIds = allNodeIds;
 
 					const renderTreeRows = (nodes) => {
 						let html = "";
@@ -5617,14 +5605,6 @@ class DrishtiDashboard {
 								<span>🌳 Hierarchical Drill-Down (Zone → Region → District → SOL → Agent)</span>
 								<span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700;">${fmtNum(data.length)} Agents Total</span>
 							</div>
-							<div>
-								<button type="button" class="btn btn-xs rm-tree-expand-all" style="background: rgba(65, 125, 129, 0.1); color: #417d81; border: 1px solid rgba(65, 125, 129, 0.3); font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
-									📂 Expand All
-								</button>
-								<button type="button" class="btn btn-xs rm-tree-collapse-all" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
-									📁 Collapse All
-								</button>
-							</div>
 						</div>
 					`;
 
@@ -5677,16 +5657,6 @@ class DrishtiDashboard {
 								self.openAgentModal(agentData, dashboardInstance);
 							}
 						}
-					});
-
-					tableContainer.off("click", ".rm-tree-expand-all").on("click", ".rm-tree-expand-all", function () {
-						allNodeIds.forEach(id => self.expandedTreeNodes[id] = true);
-						self.renderRmWiseTable(tableContainer, dashboardInstance);
-					});
-
-					tableContainer.off("click", ".rm-tree-collapse-all").on("click", ".rm-tree-collapse-all", function () {
-						self.expandedTreeNodes = {};
-						self.renderRmWiseTable(tableContainer, dashboardInstance);
 					});
 
 					// Render category details for expanded RMs
@@ -6372,9 +6342,6 @@ class DrishtiDashboard {
 				const designation = emp ? (emp.designation || "") : "";
 				const isBranchManager = designation.toLowerCase().includes("branch manager");
 
-				console.log("[Sahayog Dashboard] Logged in User:", currentUser);
-				console.log("[Sahayog Dashboard] Employee Designation:", designation);
-				console.log("[Sahayog Dashboard] Is Branch Manager?:", isBranchManager);
 
 				this.isBranchManager = isBranchManager;
 				this.userSolId = emp ? (emp.sahayog_branch || null) : null;
@@ -6383,7 +6350,6 @@ class DrishtiDashboard {
 				}
 			})
 			.catch(err => {
-				console.error("[Sahayog Dashboard] Error checking employee designation:", err);
 			});
 	}
 
@@ -8167,6 +8133,14 @@ class DrishtiDashboard {
 	}
 
 	clearAllFilters() {
+		this.state.activeTab = "zone";
+		this.tabDates = {
+			zone: null,
+			category: null,
+			product: null,
+			agent: null,
+			branch: null,
+		};
 		this.state.selectedDate = null;
 		this.state.selectedCategories = [];
 		this.state.selectedZones = [];
@@ -8175,6 +8149,9 @@ class DrishtiDashboard {
 		this.state.branchSearchTerm = "";
 		this.state.selectedMonth = null;
 		this.state.drillDownActive = false;
+
+		this.page.main.find(".tab-btn").removeClass("active");
+		this.page.main.find('.tab-btn[data-tab="zone"]').addClass("active");
 
 		this.updateDatePickerValue("");
 		this.updateRegionDropdownUI();
@@ -8203,11 +8180,19 @@ class DrishtiDashboard {
 	// FILTER TAGS - Zone & Category Selection
 	// ========================================================================
 	createFilterTags() {
+		const isSystemManager = frappe.session.user === "Administrator" || frappe.user.has_role("System Manager");
 		const html = `
             <div id="summary-cards-container" class="summary-cards-container">
                 <div class="summary-card">
                     <div class="summary-info">
-                        <span class="summary-label">Total Branches</span>
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem; width: 100%;">
+                            <span class="summary-label">Total Branches</span>
+                            ${isSystemManager ? `
+                                <button id="btn-refresh-branch-cache" class="btn-refresh-branch-cache" title="Clear Sahayog Branch & Dashboard Cache (System Manager)" style="background: transparent; border: 1px solid rgba(148, 163, 184, 0.3); cursor: pointer; color: #64748b; padding: 2px 5px; border-radius: 4px; font-size: 10px; display: inline-flex; align-items: center; gap: 3px; transition: all 0.2s;">
+                                    <i class="fa fa-refresh"></i>
+                                </button>
+                            ` : ''}
+                        </div>
                         <span class="summary-value" id="summary-total-branches">229</span>
                         <span class="summary-subtext success" id="summary-branches-trend">+12% from last month</span>
                     </div>
@@ -8276,6 +8261,40 @@ class DrishtiDashboard {
         `;
 
 		$(html).appendTo(this.drishti_container);
+
+		if (isSystemManager) {
+			this.page.main.find("#btn-refresh-branch-cache").on("click", (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				const $btn = $(e.currentTarget);
+				const $icon = $btn.find("i");
+				$icon.addClass("fa-spin");
+				$btn.prop("disabled", true);
+
+				frappe.call({
+					method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_branch_category_report_cache",
+					callback: (r) => {
+						$icon.removeClass("fa-spin");
+						$btn.prop("disabled", false);
+						frappe.show_alert({
+							message: __("Branch master & dashboard cache cleared successfully!"),
+							indicator: "green"
+						}, 3);
+						this.resetAllCaches();
+						this.loadData();
+					},
+					error: (err) => {
+						$icon.removeClass("fa-spin");
+						$btn.prop("disabled", false);
+						frappe.show_alert({
+							message: __("Failed to clear cache"),
+							indicator: "red"
+						}, 4);
+					}
+				});
+			});
+		}
+
 		this.populateFilterTags();
 	}
 
@@ -9030,82 +9049,41 @@ class DrishtiDashboard {
 		const savedDate = this.tabDates[tabId] || null;
 
 		// SPECIAL CASE: For Agent and Product Wise tabs, default to LATEST AVAILABLE DATE
-		if (tabId === "agent" || tabId === "product") {
-			const self = this;
-			const method =
-				tabId === "agent"
-					? "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_agent_report_date"
-					: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_product_report_date";
+		// Fetch latest available date from Product Wise Report so all tabs start from the exact same date
+		const self = this;
+		frappe.call({
+			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_branch_category_report_date",
+			callback: (r) => {
+				let dateStr = r.message;
+				if (!dateStr) {
+					const d = new Date();
+					d.setDate(d.getDate() - 1);
+					dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+				}
 
-			frappe.call({
-				method: method,
-				callback: (r) => {
-					let dateStr = r.message;
-					if (!dateStr) {
-						// Fallback to yesterday if no data exists
-						const d = new Date();
-						d.setDate(d.getDate() - 1);
-						dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-					}
+				self.state.selectedDate = savedDate || dateStr;
 
-					// Use saved date if available, otherwise use latest date from server
-					self.state.selectedDate = savedDate || dateStr;
+				if (self.state.selectedDate) {
+					const monthNames = [
+						"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+						"JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
+					];
+					const monthNum = parseInt(self.state.selectedDate.split("-")[1], 10);
+					self.state.selectedMonth = monthNames[monthNum - 1];
+				}
 
-					if (self.state.selectedDate) {
-						const monthNames = [
-							"JAN",
-							"FEB",
-							"MAR",
-							"APR",
-							"MAY",
-							"JUN",
-							"JUL",
-							"AUG",
-							"SEP",
-							"OCT",
-							"NOV",
-							"DEC",
-						];
-						const monthNum = parseInt(self.state.selectedDate.split("-")[1], 10);
-						self.state.selectedMonth = monthNames[monthNum - 1];
-					}
+				if (self.dateControl) {
+					self.isRefreshingDate = true;
+					self.dateControl.set_value(self.state.selectedDate);
+					self.isRefreshingDate = false;
+				}
 
-					// Update date control properly
-					if (self.dateControl) {
-						self.isRefreshingDate = true;
-						self.dateControl.set_value(self.state.selectedDate);
-						self.isRefreshingDate = false;
-					}
-
-					self.updateUiFromState();
-					self.updateUrlFromState();
-					self.loadData();
-				},
-			});
-			return;
-		}
-
-		// For other tabs, restore saved date or use today's date for data loading
-		if (savedDate) {
-			this.state.selectedDate = savedDate;
-			if (this.dateControl) {
-				this.isRefreshingDate = true;
-				this.dateControl.set_value(savedDate);
-				this.isRefreshingDate = false;
-			}
-			// Load data with restored date
-			this.loadData();
-		} else {
-			// Clear date selector (show blank DD/MM/YY) but use today's date for API
-			this.state.selectedDate = null;
-			if (this.dateControl) {
-				this.isRefreshingDate = true;
-				this.dateControl.set_value(null);
-				this.isRefreshingDate = false;
-			}
-			// Load data with yesterday's date (default) - but don't show it in selector
-			this.loadDataWithDate(frappe.datetime.add_days(frappe.datetime.get_today(), -1));
-		}
+				self.updateUiFromState();
+				self.updateUrlFromState();
+				self.loadData();
+			},
+		});
+		return;
 
 		this.updateUiFromState();
 		this.updateUrlFromState();
@@ -9240,7 +9218,6 @@ class DrishtiDashboard {
 			},
 			error: (err) => {
 				self.isLoadingData = false;
-				console.error("Error loading dashboard data:", err);
 				self.showError("Failed to load data. Please refresh the page.");
 			},
 		});
@@ -9251,7 +9228,7 @@ class DrishtiDashboard {
 		const self = this;
 
 		frappe.call({
-			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_agent_report_date",
+			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_latest_branch_category_report_date",
 			callback: (r) => {
 				let dateStr = r.message;
 				if (!dateStr) {
@@ -9332,21 +9309,15 @@ class DrishtiDashboard {
 			}),
 			selected_date: apiDate,
 		};
-		console.log("DEBUG: API CALL get_sahayog_dashboard START", reqArgs);
 
 		frappe.call({
 			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_sahayog_dashboard",
 			args: reqArgs,
 			callback: (r) => {
-				console.log("DEBUG: API CALL get_sahayog_dashboard RESPONSE", r.message);
 				if (r.message) {
 					self.normalizeDashboardResponse(r.message);
 					self.data = r.message;
 					self.permissions = r.message.permissions;
-					console.log("🛡️ Sahayog Dashboard Permissions:", self.permissions);
-					console.log(
-						`[loadData callback] Data received. branchData length: ${self.branchData?.length || 0}`,
-					);
 
 					if (self.permissions && self.permissions.has_access === false) {
 						self.page.main.html(`
@@ -9970,11 +9941,35 @@ class DrishtiDashboard {
 
 			if (this.state.activeTab === "zone") {
 				htmlContent = this.renderZoneTable(reaggregatedZoneData);
+				const totalBranches = (filteredBranches || []).length;
+				let totalAch = 0;
+				let totalTgt = 0;
+				(reaggregatedZoneData || []).forEach((z) => {
+					if (z.isZoneTotal) {
+						Object.values(z.months || {}).forEach((m) => {
+							totalAch += m.achievement || 0;
+							totalTgt += m.target || 0;
+						});
+					}
+				});
+				console.log(`📊 [ZONE WISE] Date: ${this.state.selectedDate || 'Default'} | Branches: ${totalBranches} | Target: ₹ ${totalTgt.toLocaleString('en-IN')} | Achievement: ₹ ${totalAch.toLocaleString('en-IN')}`);
 			} else if (this.state.activeTab === "category") {
 				htmlContent = this.renderCategoryTable(reaggregatedCategoryData);
 			} else if (this.state.activeTab === "product") {
 				const filteredProductData = this.getFilteredProductData();
 				htmlContent = this.renderProductTable(filteredProductData);
+				const solSet = new Set();
+				let totalProdAmt = 0;
+				(filteredProductData || []).forEach((item) => {
+					if (item.type === "sol" || item.is_group === false) {
+						solSet.add(item.name || item.path);
+					}
+					if (item.type === "zone") {
+						totalProdAmt += (item.amount || 0);
+					}
+				});
+				const branchCount = solSet.size || (filteredBranches || []).length;
+				console.log(`📦 [PRODUCT WISE] Date: ${this.state.selectedDate || 'Default'} | Branches: ${branchCount} | Total Amount: ₹ ${totalProdAmt.toLocaleString('en-IN')}`);
 			} else if (this.state.activeTab === "agent") {
 				htmlContent = this.renderAgentWiseTable(this.agentData);
 			} else if (this.state.activeTab === "branch") {
@@ -11530,7 +11525,6 @@ class DrishtiDashboard {
 	}
 
 	drillDownToCategoryMonth(category, month) {
-		console.log(`🔍 Drilling down to Category: ${category}, Month: ${month}`);
 
 		this.state.selectedCategories = [category];
 
@@ -11546,7 +11540,6 @@ class DrishtiDashboard {
 	}
 
 	drillDownToZoneCategoryMonth(category, zone, month) {
-		console.log(`🔍 Drilling down to Category: ${category}, Zone: ${zone}, Month: ${month}`);
 
 		this.state.selectedCategories = [category];
 
@@ -11575,11 +11568,6 @@ class DrishtiDashboard {
 	}
 
 	drillDownToBranchView(zone, region = null, district = null) {
-		console.log(
-			`Drilling down to Branch view for Zone: ${zone}` +
-				(region ? `, Region: ${region}` : "") +
-				(district ? `, District: ${district}` : ""),
-		);
 
 		this.state.selectedZones = [zone];
 		this.state.selectedRegions = region ? [region] : [];
@@ -11959,7 +11947,7 @@ class DrishtiDashboard {
 		// Achievement Percentage
 		const pct = totalTarget > 0 ? (totalAch / totalTarget) * 100 : 0;
 		const pctEl = this.page.main.find("#summary-achievement-pct");
-		pctEl.text(Math.round(pct) + "% achieved");
+		pctEl.text(pct.toFixed(2) + "% achieved");
 
 		// Color transition from red to green based on percentage
 		const hue = Math.min(120, Math.max(0, (pct / 100) * 120));

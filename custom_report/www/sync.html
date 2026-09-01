@@ -2,561 +2,628 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 	<title>{{ title or "Automation Sync Tracker" }}</title>
+	
+	<!-- PWA Meta Tags -->
+	<link rel="manifest" href="/assets/custom_report/sync-manifest.json">
+	<meta name="theme-color" content="#0284c7" media="(prefers-color-scheme: light)">
+	<meta name="theme-color" content="#0b1120" media="(prefers-color-scheme: dark)">
+	<meta name="mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<meta name="apple-mobile-web-app-title" content="Sync Tracker">
+	<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='128' fill='%230284c7'/%3E%3Cpath d='M256 120a136 136 0 1 1-136 136' stroke='%23ffffff' stroke-width='40' stroke-linecap='round' fill='none'/%3E%3Cpolyline points='120 180 120 256 196 256' stroke='%23ffffff' stroke-width='40' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 
 	<style>
 		:root {
-			--tg-primary: #2481cc;
-			--tg-primary-hover: #1c6ca8;
-			--tg-bg-page: #f4f5f8;
-			--tg-bg-card: #ffffff;
-			--tg-bg-subtle: #ebedf0;
-			--tg-border: #e0e4e8;
-			--tg-text: #000000;
-			--tg-text-subtle: #707579;
-			--tg-text-muted: #999999;
-			--tg-success: #10b981;
-			--tg-danger: #e53935;
-			--tg-warning: #f59e0b;
-			--tg-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-			--tg-fab-shadow: 0 4px 14px rgba(36, 129, 204, 0.4);
-			--tg-selected: rgba(36, 129, 204, 0.1);
+			--bg-page: #f8fafc;
+			--bg-card: #ffffff;
+			--bg-subtle: #f1f5f9;
+			--border: #e2e8f0;
+			--text-main: #0f172a;
+			--text-sub: #64748b;
+			--text-muted: #94a3b8;
+			--primary: #0284c7;
+			--primary-hover: #0369a1;
+			--success: #16a34a;
+			--success-bg: rgba(22, 163, 74, 0.1);
+			--danger: #dc2626;
+			--danger-bg: rgba(220, 38, 38, 0.1);
+			--warning: #d97706;
+			--warning-bg: rgba(217, 119, 6, 0.1);
+			--shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
 		}
 
 		[data-theme="dark"] {
-			--tg-primary: #5288c1;
-			--tg-primary-hover: #64b5ef;
-			--tg-bg-page: #0e1621;
-			--tg-bg-card: #17212b;
-			--tg-bg-subtle: #242f3d;
-			--tg-border: #2b5278;
-			--tg-text: #f5f5f5;
-			--tg-text-subtle: #7f91a4;
-			--tg-text-muted: #627488;
-			--tg-success: #34d399;
-			--tg-danger: #f87171;
-			--tg-warning: #fbbf24;
-			--tg-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-			--tg-fab-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-			--tg-selected: rgba(82, 136, 193, 0.18);
+			--bg-page: #0b1120;
+			--bg-card: #1e293b;
+			--bg-subtle: #0f172a;
+			--border: #334155;
+			--text-main: #f8fafc;
+			--text-sub: #94a3b8;
+			--text-muted: #64748b;
+			--primary: #38bdf8;
+			--primary-hover: #7dd3fc;
+			--success: #4ade80;
+			--success-bg: rgba(74, 222, 128, 0.12);
+			--danger: #f87171;
+			--danger-bg: rgba(248, 113, 113, 0.12);
+			--warning: #fbbf24;
+			--warning-bg: rgba(251, 191, 36, 0.12);
+			--shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
 		}
 
 		* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-		*::-webkit-scrollbar { width: 0; height: 0; }
-		* { scrollbar-width: none; -ms-overflow-style: none; }
 		body {
 			font-family: 'Inter', system-ui, -apple-system, sans-serif;
-			background-color: var(--tg-bg-page);
-			color: var(--tg-text);
-			line-height: 1.4;
-			-webkit-font-smoothing: antialiased;
-			height: 100vh;
-			overflow: hidden;
-			user-select: none;
-		}
-
-		/* Main Mobile Container */
-		.tg-app {
+			background-color: var(--bg-page);
+			color: var(--text-main);
+			min-height: 100vh;
 			display: flex;
 			flex-direction: column;
-			height: 100vh;
-			max-width: 768px;
-			margin: 0 auto;
-			position: relative;
-			background: var(--tg-bg-page);
+			-webkit-font-smoothing: antialiased;
+			padding-top: max(0.5rem, env(safe-area-inset-top));
+			padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
 		}
 
-		/* Telegram Top Bar Header */
-		.tg-header {
-			background: var(--tg-primary);
-			color: #ffffff;
-			padding: 0.75rem 1rem;
+		/* Main Shell */
+		.app-container {
+			width: 100%;
+			max-width: 860px;
+			margin: 0 auto;
+			padding: 0.75rem 1rem 2rem;
+			display: flex;
+			flex-direction: column;
+			gap: 1rem;
+		}
+
+		/* Top Nav (Sticky) */
+		.app-header {
+			position: sticky;
+			top: max(0.5rem, env(safe-area-inset-top));
+			z-index: 50;
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
 			gap: 0.75rem;
-			flex-shrink: 0;
-			box-shadow: 0 2px 6px rgba(0,0,0,0.12);
-			z-index: 20;
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			padding: 0.75rem 1rem;
+			border-radius: 1rem;
+			box-shadow: var(--shadow-md);
+			-webkit-backdrop-filter: blur(12px);
+			backdrop-filter: blur(12px);
 		}
-		.tg-brand {
+		.brand-box {
 			display: flex;
 			align-items: center;
-			gap: 0.75rem;
+			gap: 0.65rem;
 			min-width: 0;
 		}
-		.tg-avatar {
-			width: 2.5rem;
-			height: 2.5rem;
-			border-radius: 50%;
-			background: rgba(255, 255, 255, 0.25);
+		.brand-logo {
+			width: 2.25rem;
+			height: 2.25rem;
+			border-radius: 0.65rem;
+			background: linear-gradient(135deg, var(--primary), #6366f1);
 			color: #ffffff;
+			display: flex;
+			align-items: center;
+			justify-content: center;
 			font-weight: 800;
-			font-size: 0.9rem;
-			display: flex;
-			align-items: center;
-			justify-content: center;
+			font-size: 0.85rem;
+			box-shadow: var(--shadow-sm);
 			flex-shrink: 0;
 		}
-		.tg-title-box { min-width: 0; }
-		.tg-title { font-size: 0.95rem; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-		.tg-subtitle { font-size: 0.7rem; opacity: 0.85; font-weight: 500; }
-
-		/* Header Action Buttons */
-		.tg-header-actions {
-			display: flex;
-			align-items: center;
-			gap: 0.5rem;
-			flex-shrink: 0;
-		}
-		.tg-icon-btn {
-			width: 2.2rem;
-			height: 2.2rem;
-			border-radius: 50%;
-			border: none;
-			background: transparent;
-			color: #ffffff;
-			cursor: pointer;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-size: 1.1rem;
-			transition: background 0.15s ease;
-		}
-		.tg-icon-btn:active { background: rgba(255, 255, 255, 0.2); }
-
-		/* Auto Sync Badge Pill in Header */
-		.tg-autosync-pill {
-			display: flex;
-			align-items: center;
-			gap: 0.4rem;
-			padding: 0.25rem 0.65rem;
-			border-radius: 9999px;
-			font-size: 0.68rem;
+		.brand-text { min-width: 0; }
+		.brand-title {
+			font-size: 0.95rem;
 			font-weight: 700;
-			background: rgba(255, 255, 255, 0.2);
-			color: #ffffff;
-			border: none;
+			color: var(--text-main);
+			line-height: 1.2;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		.brand-subtitle {
+			font-size: 0.68rem;
+			color: var(--text-sub);
+			font-weight: 500;
+		}
+
+		.header-actions {
+			display: flex;
+			align-items: center;
+			gap: 0.45rem;
+			flex-shrink: 0;
+		}
+		.btn-pill {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.35rem;
+			padding: 0.4rem 0.7rem;
+			border-radius: 9999px;
+			font-size: 0.72rem;
+			font-weight: 600;
+			border: 1px solid var(--border);
+			background: var(--bg-subtle);
+			color: var(--text-main);
 			cursor: pointer;
+			transition: all 0.15s ease;
+			position: relative;
 			white-space: nowrap;
 		}
-		.tg-pulse-dot {
-			width: 0.4rem;
-			height: 0.4rem;
+		.btn-pill:active { transform: scale(0.96); }
+		.pulse-dot {
+			width: 0.45rem;
+			height: 0.45rem;
 			border-radius: 50%;
-			background: #34d399;
+			background: var(--success);
 			animation: pulse 1.5s infinite;
 		}
-
-		/* Telegram Filter Folder Tabs Bar */
-		.tg-tabs-bar {
-			background: var(--tg-bg-card);
+		.pulse-dot.off { background: var(--text-muted); animation: none; }
+		.btn-icon {
+			width: 2.1rem;
+			height: 2.1rem;
+			border-radius: 0.6rem;
+			border: 1px solid var(--border);
+			background: var(--bg-subtle);
+			color: var(--text-main);
+			cursor: pointer;
 			display: flex;
 			align-items: center;
-			border-bottom: 1px solid var(--tg-border);
+			justify-content: center;
+			font-size: 1rem;
+			transition: all 0.15s ease;
+		}
+		.btn-icon:active { transform: scale(0.94); }
+		.hidden-date-input {
+			position: absolute;
+			inset: 0;
+			opacity: 0;
+			cursor: pointer;
+			width: 100%;
+			height: 100%;
+		}
+
+		/* PWA Install Banner (Visible only when installable) */
+		.pwa-install-banner {
+			display: none;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.75rem;
+			background: linear-gradient(135deg, rgba(2, 132, 199, 0.12), rgba(99, 102, 241, 0.12));
+			border: 1px solid var(--primary);
+			padding: 0.65rem 1rem;
+			border-radius: 0.85rem;
+		}
+		.pwa-install-banner.show { display: flex; }
+		.pwa-install-text { font-size: 0.75rem; font-weight: 600; color: var(--text-main); }
+		.btn-install {
+			padding: 0.35rem 0.85rem;
+			border-radius: 0.5rem;
+			background: var(--primary);
+			color: #ffffff;
+			border: none;
+			font-size: 0.72rem;
+			font-weight: 700;
+			cursor: pointer;
+		}
+
+		/* Metrics Grid */
+		.stats-grid {
+			display: grid;
+			grid-template-columns: repeat(4, 1fr);
+			gap: 0.5rem;
+		}
+		.stat-card {
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: 0.75rem;
+			padding: 0.65rem 0.75rem;
+			box-shadow: var(--shadow-sm);
+			display: flex;
+			flex-direction: column;
+			gap: 0.15rem;
+		}
+		.stat-label {
+			font-size: 0.62rem;
+			font-weight: 700;
+			color: var(--text-muted);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+		.stat-val {
+			font-size: 1.15rem;
+			font-weight: 800;
+			line-height: 1.1;
+			font-family: 'JetBrains Mono', monospace;
+		}
+		.stat-val.success { color: var(--success); }
+		.stat-val.warning { color: var(--warning); }
+		.stat-val.danger { color: var(--danger); }
+
+		/* Search & Tabs Controls */
+		.controls-bar {
+			display: flex;
+			flex-direction: column;
+			gap: 0.6rem;
+		}
+		@media (min-width: 640px) {
+			.controls-bar {
+				flex-direction: row;
+				align-items: center;
+				justify-content: space-between;
+			}
+		}
+
+		.tabs-wrapper {
+			display: flex;
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			padding: 0.25rem;
+			border-radius: 0.75rem;
+			gap: 0.2rem;
+			box-shadow: var(--shadow-sm);
 			overflow-x: auto;
-			flex-shrink: 0;
 			-webkit-overflow-scrolling: touch;
 		}
-		.tg-tabs-bar::-webkit-scrollbar { display: none; }
-		.tg-tab {
+		.tabs-wrapper::-webkit-scrollbar { display: none; }
+		.tab-btn {
 			flex: 1;
-			min-width: 80px;
-			padding: 0.75rem 0.5rem;
-			font-size: 0.78rem;
+			padding: 0.35rem 0.65rem;
+			border-radius: 0.55rem;
+			font-size: 0.72rem;
 			font-weight: 600;
-			text-align: center;
-			color: var(--tg-text-subtle);
 			border: none;
 			background: transparent;
-			border-bottom: 3px solid transparent;
+			color: var(--text-sub);
 			cursor: pointer;
-			white-space: nowrap;
 			display: flex;
 			align-items: center;
 			justify-content: center;
 			gap: 0.3rem;
+			white-space: nowrap;
 			transition: all 0.15s ease;
 		}
-		.tg-tab.active {
-			color: var(--tg-primary);
-			border-bottom-color: var(--tg-primary);
+		.tab-btn.active {
+			background: var(--bg-subtle);
+			color: var(--primary);
 			font-weight: 700;
 		}
-		.tg-badge {
+		.tab-count {
 			font-size: 0.62rem;
-			padding: 0.05rem 0.35rem;
+			padding: 0.05rem 0.3rem;
 			border-radius: 9999px;
-			background: var(--tg-bg-subtle);
-			color: var(--tg-text-subtle);
+			background: var(--border);
+			color: var(--text-sub);
 		}
-		.tg-tab.active .tg-badge {
-			background: rgba(36, 129, 204, 0.15);
-			color: var(--tg-primary);
+		.tab-btn.active .tab-count {
+			background: rgba(2, 132, 199, 0.15);
+			color: var(--primary);
 		}
 
-		/* Telegram Expandable Search Input */
-		.tg-search-container {
-			background: var(--tg-bg-card);
-			padding: 0.5rem 0.85rem;
-			border-bottom: 1px solid var(--tg-border);
-			display: none;
-		}
-		.tg-search-container.open { display: block; }
-		.tg-search-input {
+		.search-box {
+			position: relative;
 			width: 100%;
-			background: var(--tg-bg-subtle);
-			border: 1px solid var(--tg-border);
-			border-radius: 0.6rem;
-			padding: 0.4rem 0.75rem 0.4rem 2.1rem;
+		}
+		@media (min-width: 640px) {
+			.search-box { max-width: 280px; }
+		}
+		.search-input {
+			width: 100%;
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: 0.75rem;
+			padding: 0.45rem 0.85rem 0.45rem 2.1rem;
 			font-size: 0.8rem;
-			color: var(--tg-text);
+			color: var(--text-main);
 			outline: none;
+			box-shadow: var(--shadow-sm);
+		}
+		.search-input:focus { border-color: var(--primary); }
+		.search-icon {
+			position: absolute;
+			left: 0.75rem;
+			top: 50%;
+			transform: translateY(-50%);
+			color: var(--text-muted);
+			pointer-events: none;
+			display: flex;
 		}
 
-		/* Stats Row Banner */
-		.tg-stats-banner {
-			display: grid;
-			grid-template-columns: repeat(4, 1fr);
-			gap: 0.4rem;
-			padding: 0.6rem 0.85rem;
-			background: var(--tg-bg-card);
-			border-bottom: 1px solid var(--tg-border);
-			flex-shrink: 0;
+		/* Jobs List */
+		.jobs-list {
+			display: flex;
+			flex-direction: column;
+			gap: 0.5rem;
 		}
-		.tg-stat-item {
-			text-align: center;
-			padding: 0.3rem 0;
-			border-right: 1px solid var(--tg-border);
-		}
-		.tg-stat-item:last-child { border-right: none; }
-		.tg-stat-lbl { font-size: 0.6rem; font-weight: 700; color: var(--tg-text-muted); text-transform: uppercase; }
-		.tg-stat-val { font-size: 1rem; font-weight: 800; color: var(--tg-text); line-height: 1.1; }
-		.tg-stat-val.success { color: var(--tg-success); }
-		.tg-stat-val.danger { color: var(--tg-danger); }
-		.tg-stat-val.warning { color: var(--tg-warning); }
-
-		/* Main Content Scrollable Workspace */
-		.tg-chat-list {
-			flex: 1;
-			overflow-y: auto;
-			background: var(--tg-bg-card);
-			-webkit-overflow-scrolling: touch;
-			padding-bottom: 5.5rem;
-		}
-
-		/* Telegram Chat Item Row */
-		.tg-chat-item {
+		.job-card {
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: 0.85rem;
+			padding: 0.75rem 0.9rem;
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
-			padding: 0.85rem 1rem;
-			border-bottom: 1px solid var(--tg-border);
+			gap: 0.75rem;
+			box-shadow: var(--shadow-sm);
 			cursor: pointer;
-			transition: background 0.15s ease;
-			position: relative;
+			transition: all 0.15s ease;
 		}
-		.tg-chat-item:active { background: var(--tg-bg-subtle); }
-		.tg-chat-item.selected {
-			background: var(--tg-selected);
-			box-shadow: inset 3px 0 0 var(--tg-primary);
+		.job-card:active {
+			transform: scale(0.985);
+			background: var(--bg-subtle);
 		}
-		.tg-chat-item.selected .tg-chat-name { color: var(--tg-primary); }
-		.tg-chat-left {
+		.job-left {
 			display: flex;
 			align-items: center;
-			gap: 0.85rem;
+			gap: 0.75rem;
 			min-width: 0;
 			flex: 1;
 		}
-		.tg-chat-avatar {
-			width: 2.6rem;
-			height: 2.6rem;
-			border-radius: 50%;
+		.status-dot {
+			width: 2.2rem;
+			height: 2.2rem;
+			border-radius: 0.65rem;
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			font-size: 1.1rem;
-			color: #ffffff;
+			font-size: 1rem;
+			font-weight: 800;
 			flex-shrink: 0;
 		}
-		.tg-chat-avatar.success { background: linear-gradient(135deg, #10b981, #059669); }
-		.tg-chat-avatar.failed { background: linear-gradient(135deg, #ef4444, #dc2626); }
-		.tg-chat-avatar.pending { background: linear-gradient(135deg, #f59e0b, #d97706); }
-
-		.tg-chat-info { min-width: 0; flex: 1; }
-		.tg-chat-top-line { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.15rem; }
-		.tg-chat-name { font-size: 0.85rem; font-weight: 700; color: var(--tg-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-		.tg-chat-time { font-size: 0.68rem; color: var(--tg-text-muted); font-family: 'JetBrains Mono', monospace; flex-shrink: 0; }
-
-		.tg-chat-bottom-line { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
-		.tg-chat-msg { font-size: 0.72rem; color: var(--tg-text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-		.tg-chat-recs { font-size: 0.72rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--tg-text); flex-shrink: 0; }
-
-		.tg-run-btn {
-			padding: 0.35rem 0.8rem;
-			font-size: 0.7rem;
-			font-weight: 700;
-			border-radius: 0.5rem;
-			border: 1px solid var(--tg-border);
-			background: var(--tg-bg-subtle);
-			color: var(--tg-primary);
-			cursor: pointer;
-			margin-left: 0.75rem;
-			flex-shrink: 0;
+		.status-dot.success {
+			background: var(--success-bg);
+			color: var(--success);
+			border: 1px solid rgba(22, 163, 74, 0.25);
 		}
-		.tg-run-btn:active { background: var(--tg-primary); color: #ffffff; }
-
-		/* Telegram Floating Action Button (FAB) */
-		.tg-fab-btn {
-			position: fixed;
-			bottom: 1.5rem;
-			right: 1.25rem;
-			z-index: 40;
-			background: linear-gradient(135deg, var(--tg-primary), var(--tg-primary-hover));
+		.btn-run-left {
+			width: 2.2rem;
+			height: 2.2rem;
+			border-radius: 0.65rem;
+			background: var(--primary);
 			color: #ffffff;
 			border: none;
-			padding: 0.8rem 1.25rem;
-			border-radius: 9999px;
-			font-size: 0.8rem;
+			font-size: 0.72rem;
 			font-weight: 700;
-			box-shadow: var(--tg-fab-shadow);
+			cursor: pointer;
 			display: flex;
 			align-items: center;
-			gap: 0.5rem;
-			cursor: pointer;
-			transition: transform 0.15s ease, opacity 0.15s ease;
-		}
-		.tg-fab-btn:active { transform: scale(0.95); }
-		.tg-fab-btn:disabled { opacity: 0.5; pointer-events: none; }
-		.tg-fab-center {
-			left: 50%;
-			right: auto;
-			transform: translateX(-50%);
-			padding: 0.6rem 1.1rem;
-			font-size: 0.78rem;
-		}
-		.tg-fab-center:active { transform: translateX(-50%) scale(0.95); }
-		.fab-date-input {
-			position: absolute;
-			inset: 0;
-			width: 100%;
-			height: 100%;
-			opacity: 0;
-			cursor: pointer;
-			border: none;
-			padding: 0;
-		}
-
-		/* Telegram Glassmorphism Bottom Sheet Modal (User Memory Rule Enforced) */
-		.tg-modal-backdrop {
-			position: fixed;
-			inset: 0;
-			z-index: 50;
-			display: flex;
-			align-items: flex-end;
 			justify-content: center;
-			background: rgba(0, 0, 0, 0.45);
-			-webkit-backdrop-filter: blur(12px);
-			backdrop-filter: blur(12px);
-			opacity: 0;
-			pointer-events: none;
-			transition: opacity 0.25s ease;
+			flex-shrink: 0;
+			transition: all 0.15s ease;
+			box-shadow: 0 1px 3px rgba(2, 132, 199, 0.3);
 		}
-		.tg-modal-backdrop.open {
-			opacity: 1;
-			pointer-events: auto;
-		}
+		.btn-run-left:active { transform: scale(0.94); }
+		.btn-run-left:disabled { opacity: 0.5; cursor: not-allowed; }
 
-		/* Bottom Sheet on Mobile, Centered Card on Desktop */
-		.tg-modal-sheet {
-			background: var(--tg-bg-card);
-			border: 1px solid var(--tg-border);
-			border-radius: 1.25rem 1.25rem 0 0;
-			width: 100%;
-			max-width: 540px;
-			max-height: 88vh;
-			display: flex;
-			flex-direction: column;
-			box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
-			transform: translateY(100%);
-			transition: transform 0.25s cubic-bezier(0.1, 0.9, 0.2, 1);
+		.job-meta { min-width: 0; flex: 1; }
+		.job-title {
+			font-size: 0.86rem;
+			font-weight: 700;
+			color: var(--text-main);
+			white-space: nowrap;
 			overflow: hidden;
-		}
-		.tg-modal-backdrop.open .tg-modal-sheet {
-			transform: translateY(0);
-		}
-		@media (min-width: 640px) {
-			.tg-modal-backdrop { align-items: center; padding: 1rem; }
-			.tg-modal-sheet { border-radius: 1rem; transform: scale(0.95); }
-			.tg-modal-backdrop.open .tg-modal-sheet { transform: scale(1); }
-		}
-		.tg-detail-empty { display: none; }
-
-		/* Desktop: split view - list on left, details as main content */
-		@media (min-width: 900px) {
-			.tg-shell { display: flex; flex-direction: row; height: 100vh; }
-			.tg-app {
-				max-width: none;
-				flex: 0 0 420px;
-				height: 100vh;
-				margin: 0;
-				border-right: 1px solid var(--tg-border);
-				background: var(--tg-bg-card);
-			}
-			.tg-modal-backdrop {
-				position: static;
-				flex: 1;
-				min-width: 0;
-				background: var(--tg-bg-page);
-				opacity: 1;
-				pointer-events: auto;
-				align-items: stretch;
-				justify-content: center;
-				padding: 0;
-				backdrop-filter: none;
-				-webkit-backdrop-filter: none;
-				overflow-y: auto;
-			}
-			.tg-modal-backdrop.open { opacity: 1; pointer-events: auto; }
-			.tg-modal-backdrop .tg-modal-header,
-			.tg-modal-backdrop .tg-modal-body,
-			.tg-modal-backdrop .tg-modal-footer {
-				width: 100%;
-				max-width: 760px;
-				margin-left: auto;
-				margin-right: auto;
-			}
-			.tg-modal-sheet {
-				transform: none !important;
-				display: none;
-				width: 100%;
-				max-width: none;
-				margin: 0;
-				max-height: none;
-				height: 100vh;
-				border: none;
-				border-left: 1px solid var(--tg-border);
-				border-radius: 0;
-				box-shadow: none;
-				background: var(--tg-bg-card);
-			}
-			.tg-modal-backdrop.open .tg-modal-sheet { display: flex; }
-			.tg-modal-grabber { display: none; }
-			.tg-detail-empty {
-				display: flex;
-				flex: 1;
-				align-items: center;
-				justify-content: center;
-				padding: 2rem;
-			}
-			.tg-modal-footer { border-top: 1px solid var(--tg-border); }
-			.tg-fab-center {
-				left: 210px;
-				transform: translateX(-50%);
-			}
-			.tg-fab-center:active { transform: translateX(-50%) scale(0.95); }
+			text-overflow: ellipsis;
+			margin-bottom: 0.15rem;
 		}
 
-		/* Telegram Sheet Handle Grabber */
-		.tg-modal-grabber {
-			width: 2.5rem;
-			height: 0.25rem;
-			background: var(--tg-border);
-			border-radius: 9999px;
-			margin: 0.5rem auto 0.25rem auto;
-			flex-shrink: 0;
-		}
-
-		.tg-modal-header {
-			padding: 0.85rem 1.25rem;
-			border-bottom: 1px solid var(--tg-border);
+		.job-sub-row {
 			display: flex;
 			align-items: center;
-			justify-content: space-between;
-			flex-shrink: 0;
+			gap: 0.45rem;
+			font-size: 0.7rem;
+			color: var(--text-sub);
 		}
-		.tg-modal-body {
-			padding: 1.25rem;
-			overflow-y: auto;
-			display: flex;
-			flex-direction: column;
-			gap: 1rem;
-			font-size: 0.78rem;
+		.recs-badge {
+			font-weight: 700;
+			font-family: 'JetBrains Mono', monospace;
+			color: var(--text-main);
 		}
-		.tg-modal-footer {
-			padding: 0.85rem 1.25rem;
-			border-top: 1px solid var(--tg-border);
+		.tag-failed {
+			color: var(--danger);
+			font-weight: 700;
+			background: var(--danger-bg);
+			padding: 0.05rem 0.35rem;
+			border-radius: 0.25rem;
+			font-size: 0.62rem;
+		}
+
+		.job-right {
 			display: flex;
 			align-items: center;
 			justify-content: flex-end;
-			gap: 0.5rem;
 			flex-shrink: 0;
 		}
 
-		.tg-info-grid {
+		/* Green Time Pill Tag Right Aligned */
+		.time-pill {
+			font-size: 0.74rem;
+			font-weight: 700;
+			color: var(--success);
+			background: var(--success-bg);
+			font-family: 'JetBrains Mono', monospace;
+			padding: 0.18rem 0.55rem;
+			border-radius: 0.4rem;
+			border: 1px solid rgba(22, 163, 74, 0.2);
+			display: inline-flex;
+			align-items: center;
+			white-space: nowrap;
+		}
+
+		/* Mobile-Responsive Modal Bottom Sheet with Backdrop Filter Blur */
+		.modal-overlay {
+			position: fixed;
+			inset: 0;
+			z-index: 100;
+			background: rgba(15, 23, 42, 0.55);
+			-webkit-backdrop-filter: blur(12px);
+			backdrop-filter: blur(12px);
+			display: flex;
+			align-items: flex-end;
+			justify-content: center;
+			opacity: 0;
+			pointer-events: none;
+			transition: opacity 0.2s ease;
+		}
+		@media (min-width: 640px) {
+			.modal-overlay {
+				align-items: center;
+				padding: 1rem;
+			}
+		}
+		.modal-overlay.open {
+			opacity: 1;
+			pointer-events: auto;
+		}
+		.modal-card {
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: 1.5rem 1.5rem 0 0;
+			width: 100%;
+			max-width: 540px;
+			max-height: 85vh;
+			display: flex;
+			flex-direction: column;
+			box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.2);
+			overflow: hidden;
+			transform: translateY(100%);
+			transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+		}
+		@media (min-width: 640px) {
+			.modal-card {
+				border-radius: 1.25rem;
+				transform: scale(0.96);
+				box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+			}
+			.modal-overlay.open .modal-card {
+				transform: scale(1);
+			}
+		}
+		.modal-overlay.open .modal-card {
+			transform: translateY(0);
+		}
+
+		.modal-grabber {
+			width: 2.5rem;
+			height: 0.25rem;
+			background: var(--border);
+			border-radius: 9999px;
+			margin: 0.5rem auto 0;
+		}
+		@media (min-width: 640px) {
+			.modal-grabber { display: none; }
+		}
+
+		.modal-header {
+			padding: 0.9rem 1.2rem;
+			border-bottom: 1px solid var(--border);
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.75rem;
+		}
+		.modal-title-box { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+		.modal-title { font-size: 0.95rem; font-weight: 700; color: var(--text-main); }
+		.btn-close {
+			width: 1.85rem;
+			height: 1.85rem;
+			border-radius: 0.5rem;
+			border: none;
+			background: var(--bg-subtle);
+			color: var(--text-sub);
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 1rem;
+		}
+
+		.modal-body {
+			padding: 1.1rem;
+			overflow-y: auto;
+			display: flex;
+			flex-direction: column;
+			gap: 0.85rem;
+		}
+		.modal-grid {
 			display: grid;
 			grid-template-columns: repeat(3, 1fr);
 			gap: 0.5rem;
-			background: var(--tg-bg-subtle);
+			background: var(--bg-subtle);
 			padding: 0.75rem;
-			border-radius: 0.6rem;
+			border-radius: 0.65rem;
 		}
-		.tg-code-box {
-			background: var(--tg-bg-subtle);
-			padding: 0.65rem;
+		.grid-item { display: flex; flex-direction: column; gap: 0.15rem; }
+		.grid-lbl { font-size: 0.62rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+		.grid-val { font-size: 0.82rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+		.code-block {
+			background: var(--bg-subtle);
+			border: 1px solid var(--border);
+			padding: 0.6rem 0.75rem;
 			border-radius: 0.6rem;
 			font-family: 'JetBrains Mono', monospace;
 			font-size: 0.7rem;
 			word-break: break-all;
-			user-select: all;
-			color: var(--tg-text);
+			color: var(--text-main);
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			gap: 0.5rem;
 		}
-		.tg-error-box {
-			background: rgba(229, 57, 53, 0.1);
-			color: var(--tg-danger);
-			border: 1px solid rgba(229, 57, 53, 0.2);
+		.error-box {
+			background: var(--danger-bg);
+			border: 1px solid rgba(220, 38, 38, 0.2);
+			color: var(--danger);
 			padding: 0.75rem;
-			border-radius: 0.6rem;
+			border-radius: 0.65rem;
 			font-family: 'JetBrains Mono', monospace;
-			font-size: 0.7rem;
+			font-size: 0.68rem;
 			white-space: pre-wrap;
-			max-height: 160px;
+			max-height: 140px;
 			overflow-y: auto;
 		}
 
-		/* Telegram Toast Banner */
-		.tg-toast {
-			position: fixed;
-			top: 1rem;
-			left: 50%;
-			transform: translateX(-50%) translateY(-30px);
-			z-index: 60;
-			padding: 0.6rem 1.25rem;
-			border-radius: 9999px;
-			font-size: 0.78rem;
-			font-weight: 600;
-			background: rgba(23, 33, 43, 0.92);
-			color: #ffffff;
-			box-shadow: 0 4px 16px rgba(0,0,0,0.25);
-			backdrop-filter: blur(8px);
+		.modal-footer {
+			padding: 0.75rem 1.1rem;
+			border-top: 1px solid var(--border);
 			display: flex;
 			align-items: center;
+			justify-content: flex-end;
 			gap: 0.5rem;
+			background: var(--bg-subtle);
+		}
+
+		/* Minimal Toast */
+		.toast {
+			position: fixed;
+			bottom: 1.5rem;
+			left: 50%;
+			transform: translateX(-50%) translateY(20px);
+			z-index: 200;
+			padding: 0.55rem 1.1rem;
+			border-radius: 9999px;
+			font-size: 0.75rem;
+			font-weight: 600;
+			background: #0f172a;
+			color: #ffffff;
+			box-shadow: var(--shadow-md);
+			display: flex;
+			align-items: center;
+			gap: 0.45rem;
 			opacity: 0;
-			transition: all 0.25s ease;
 			pointer-events: none;
-			white-space: nowrap;
+			transition: all 0.2s ease;
 		}
-		.tg-toast.show {
-			transform: translateX(-50%) translateY(0);
-			opacity: 1;
-			pointer-events: auto;
-		}
+		.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
 		@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 		.spin { animation: spin 1s linear infinite; }
@@ -565,285 +632,277 @@
 </head>
 <body>
 
-	<div class="tg-shell">
+	<main class="app-container">
 
-	<div class="tg-app">
-
-		<!-- Telegram Top Header -->
-		<header class="tg-header">
-			<div class="tg-brand">
-				<div class="tg-avatar">ST</div>
-				<div class="tg-title-box">
-					<div class="tg-title">Automation Sync Tracker</div>
-					<div class="tg-subtitle">Sahayog Bench</div>
+		<!-- Top Header -->
+		<header class="app-header">
+			<div class="brand-box">
+				<div class="brand-logo">ST</div>
+				<div class="brand-text">
+					<h1 class="brand-title">Sync Tracker</h1>
+					<p class="brand-subtitle">Sahayog Operations</p>
 				</div>
 			</div>
 
-			<div class="tg-header-actions">
-				<button type="button" id="btnAutoSync" class="tg-autosync-pill" title="Toggle Auto Sync">
-					<span class="tg-pulse-dot"></span>
-					<span id="txtAutoSync">Auto Sync</span>
+			<div class="header-actions">
+				<!-- Date Picker Button -->
+				<button class="btn-pill" title="Select Sync Date">
+					<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+					<span id="date-label">Loading...</span>
+					<input type="date" id="date-input" class="hidden-date-input">
 				</button>
-				<button type="button" id="btnSearchToggle" class="tg-icon-btn" title="Search">
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em"><path d="m21 21-4.3-4.3"/><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"/></svg>
+
+				<!-- Auto Sync Toggle -->
+				<button class="btn-pill" id="btn-auto-sync" title="Toggle Auto Sync">
+					<div class="pulse-dot" id="auto-sync-dot"></div>
+					<span id="auto-sync-text">Auto</span>
 				</button>
-				<button type="button" id="btnThemeToggle" class="tg-icon-btn" title="Theme">
-					<i id="iconTheme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></i>
+
+				<!-- Refresh Button -->
+				<button class="btn-icon" id="btn-refresh" title="Refresh Status">
+					<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+				</button>
+
+				<!-- Theme Toggle -->
+				<button class="btn-icon" id="btn-theme" title="Toggle Theme">
+					<svg id="theme-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
 				</button>
 			</div>
 		</header>
 
-		<!-- Telegram Filter Folder Tabs Bar -->
-		<div class="tg-tabs-bar">
-			<button type="button" class="tg-tab active" data-tab="all">
-				All <span class="tg-badge" id="cntAll">0</span>
-			</button>
-			<button type="button" class="tg-tab" data-tab="success">
-				Success <span class="tg-badge" id="cntSuccess">0</span>
-			</button>
-			<button type="button" class="tg-tab" data-tab="failed">
-				Failed <span class="tg-badge" id="cntFailed">0</span>
-			</button>
-			<button type="button" class="tg-tab" data-tab="pending">
-				Pending <span class="tg-badge" id="cntPending">0</span>
-			</button>
+		<!-- PWA Install Banner -->
+		<div class="pwa-install-banner" id="pwa-banner">
+			<span class="pwa-install-text">📱 Install Sync Tracker as Mobile App</span>
+			<button class="btn-install" id="btn-pwa-install">Install</button>
 		</div>
 
-		<!-- Expandable Search Input -->
-		<div class="tg-search-container" id="searchContainer">
-			<div style="position: relative;">
-				<i style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--tg-text-muted); font-size: 0.8rem;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em"><path d="m21 21-4.3-4.3"/><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"/></svg></i>
-				<input type="text" id="searchInput" class="tg-search-input" placeholder="Search jobs by title, method or category..." aria-label="Search jobs">
+		<!-- Stats Grid -->
+		<section class="stats-grid">
+			<div class="stat-card">
+				<span class="stat-label">Total</span>
+				<span class="stat-val" id="stat-total">0</span>
 			</div>
-		</div>
+			<div class="stat-card">
+				<span class="stat-label">Synced</span>
+				<span class="stat-val success" id="stat-success">0</span>
+			</div>
+			<div class="stat-card">
+				<span class="stat-label">Pending</span>
+				<span class="stat-val warning" id="stat-pending">0</span>
+			</div>
+			<div class="stat-card">
+				<span class="stat-label">Failed</span>
+				<span class="stat-val danger" id="stat-failed">0</span>
+			</div>
+		</section>
 
-		<!-- Stats Row Banner -->
-		<div class="tg-stats-banner">
-			<div class="tg-stat-item">
-				<div class="tg-stat-lbl">TOTAL</div>
-				<div class="tg-stat-val" id="statTotal">0</div>
+		<!-- Controls Bar: Filter Tabs & Search -->
+		<section class="controls-bar">
+			<div class="tabs-wrapper">
+				<button class="tab-btn active" data-tab="all">All <span class="tab-count" id="cnt-all">0</span></button>
+				<button class="tab-btn" data-tab="success">Synced <span class="tab-count" id="cnt-success">0</span></button>
+				<button class="tab-btn" data-tab="pending">Pending <span class="tab-count" id="cnt-pending">0</span></button>
+				<button class="tab-btn" data-tab="failed">Failed <span class="tab-count" id="cnt-failed">0</span></button>
 			</div>
-			<div class="tg-stat-item">
-				<div class="tg-stat-lbl">SUCCESS</div>
-				<div class="tg-stat-val success" id="statSuccess">0</div>
-			</div>
-			<div class="tg-stat-item">
-				<div class="tg-stat-lbl">FAILED</div>
-				<div class="tg-stat-val danger" id="statFailed">0</div>
-			</div>
-			<div class="tg-stat-item">
-				<div class="tg-stat-lbl">PENDING</div>
-				<div class="tg-stat-val warning" id="statPending">0</div>
-			</div>
-		</div>
 
-		<!-- Scrollable Telegram Job List Workspace -->
-		<div class="tg-chat-list" id="jobListContainer">
-			<div style="padding: 3rem 1rem; text-align: center; color: var(--tg-text-muted); font-size: 0.8rem;">
-				Loading automations...
+			<div class="search-box">
+				<span class="search-icon">
+					<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+				</span>
+				<input type="text" id="search-input" class="search-input" placeholder="Search automation job...">
 			</div>
-		</div>
+		</section>
 
-		<!-- Floating Date Selector (Navigation Style) -->
-		<button type="button" class="tg-fab-btn tg-fab-center" title="Select Date">
-			<i style="font-size: 0.95rem;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></i>
-			<span id="fabDateText">-</span>
-			<input type="date" id="fabDate" class="fab-date-input" aria-label="Select Date">
-		</button>
-
-	</div>
-
-	<!-- Telegram Glassmorphism Modal Bottom Sheet (Enforces User Memory Rule) -->
-	<div class="tg-modal-backdrop" id="modalBackdrop">
-		<div class="tg-detail-empty" id="detailEmpty">
-			<div style="text-align: center; color: var(--tg-text-muted);">
-				<i style="font-size: 2rem;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></i>
-				<div style="margin-top: 0.75rem; font-weight: 700; color: var(--tg-text);">No automation selected</div>
-				<div style="font-size: 0.75rem; margin-top: 0.35rem; max-width: 260px;">Click any automation on the left to view its details</div>
+		<!-- Jobs List Container -->
+		<section class="jobs-list" id="jobs-container">
+			<div style="padding: 3rem; text-align: center; color: var(--text-muted); font-size: 0.82rem;">
+				Loading automation jobs...
 			</div>
-		</div>
-		<div class="tg-modal-sheet">
-			<div class="tg-modal-grabber"></div>
-			<div class="tg-modal-header">
-				<div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0;">
-					<i id="modalStatusIcon" style="font-size: 1.1rem;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></i>
-					<h2 style="font-size: 0.9rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="modalTitle">Job Details</h2>
+		</section>
+
+	</main>
+
+	<!-- Mobile-Responsive Modal with Backdrop Blur -->
+	<div class="modal-overlay" id="modal-overlay">
+		<div class="modal-card">
+			<div class="modal-grabber"></div>
+			<div class="modal-header">
+				<div class="modal-title-box">
+					<span id="modal-status-dot" class="status-dot success" style="width: 1.75rem; height: 1.75rem;">✓</span>
+					<div class="modal-title" id="modal-title">Job Details</div>
 				</div>
-				<button type="button" id="btnModalClose" class="tg-icon-btn" style="color: var(--tg-text-subtle);" aria-label="Close">
-					<i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></i>
-				</button>
+				<button class="btn-close" id="btn-modal-close">&times;</button>
 			</div>
-			<div class="tg-modal-body">
-				<div class="tg-info-grid">
-					<div>
-						<span style="color: var(--tg-text-muted); font-size: 0.65rem;">Target Date</span>
-						<div style="font-weight: 700;" id="modalDate">-</div>
+
+			<div class="modal-body">
+				<div class="modal-grid">
+					<div class="grid-item">
+						<span class="grid-lbl">Schedule</span>
+						<span class="grid-val" id="modal-schedule" style="color: var(--success);">-</span>
 					</div>
-					<div>
-						<span style="color: var(--tg-text-muted); font-size: 0.65rem;">Status</span>
-						<div style="font-weight: 700;" id="modalStatus">-</div>
+					<div class="grid-item">
+						<span class="grid-lbl">Target Date</span>
+						<span class="grid-val" id="modal-date">-</span>
 					</div>
-					<div>
-						<span style="color: var(--tg-text-muted); font-size: 0.65rem;">Records Synced</span>
-						<div style="font-weight: 700; font-family: monospace;" id="modalRecs">0</div>
+					<div class="grid-item">
+						<span class="grid-lbl">Records Synced</span>
+						<span class="grid-val" id="modal-recs">-</span>
 					</div>
 				</div>
 
-				<div>
-					<span style="color: var(--tg-text-muted); font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">Category</span>
-					<div style="font-weight: 600; margin-top: 0.1rem;" id="modalCategory">-</div>
-				</div>
-
-				<div id="modalLatestBox" style="display: none; background: var(--tg-bg-subtle); padding: 0.65rem; border-radius: 0.6rem;">
-					<span style="color: var(--tg-text-muted); font-size: 0.65rem;">Latest DB Sync Found</span>
-					<div style="font-weight: 700; font-family: monospace;" id="modalLatestVal">-</div>
-				</div>
-
-				<div>
-					<div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
-						<span style="color: var(--tg-text-muted); font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">Python Method</span>
-						<a href="#" id="btnCopyMethod" style="color: var(--tg-primary); font-size: 0.68rem; text-decoration: none; font-weight: 600;">Copy Method</a>
+				<div class="grid-item">
+					<span class="grid-lbl" style="margin-bottom: 0.25rem;">Backend Python Method</span>
+					<div class="code-block">
+						<span id="modal-method" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+						<button class="btn-pill" id="btn-copy-method" style="padding: 0.2rem 0.5rem; font-size: 0.65rem;">Copy</button>
 					</div>
-					<div class="tg-code-box" id="modalMethod">-</div>
 				</div>
 
-				<div id="modalErrorContainer">
-					<div style="display: flex; justify-content: space-between; margin-bottom: 0.2rem;">
-						<span style="color: var(--tg-danger); font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">Log / Traceback</span>
-						<a href="#" id="btnCopyTraceback" style="color: var(--tg-danger); font-size: 0.68rem; text-decoration: none; font-weight: 600;">Copy Traceback</a>
-					</div>
-					<div class="tg-error-box" id="modalErrorText">-</div>
+				<div class="grid-item" id="modal-error-wrap" style="display: none;">
+					<span class="grid-lbl" style="margin-bottom: 0.25rem; color: var(--danger);">Error Message / Traceback</span>
+					<div class="error-box" id="modal-error-text"></div>
 				</div>
 			</div>
-			<div class="tg-modal-footer">
-				<button type="button" class="tg-run-btn" style="padding: 0.5rem 1.25rem; width: 100%;" id="btnModalClose2">Close</button>
+
+			<div class="modal-footer">
+				<button class="btn-pill" id="btn-modal-close2">Close</button>
+				<button class="btn-run" id="btn-modal-run" style="padding: 0.45rem 1rem;">Run Sync Now</button>
 			</div>
 		</div>
 	</div>
 
-	</div>
-
-	<!-- Telegram Toast Alert -->
-	<div class="tg-toast" id="toast">
-		<i id="toastIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></i>
-		<span id="toastMsg">Notification</span>
+	<!-- Minimal Toast -->
+	<div class="toast" id="toast">
+		<span id="toast-msg">Notification</span>
 	</div>
 
 	<script>
-		window.csrf_token = "{{ csrf_token }}";
-		try {
-			window.initialData = {{ initial_sync_data | safe }};
-		} catch (e) {
-			window.initialData = null;
+		window.initialData = {{ initial_sync_data | default('{}') }};
+		window.csrf_token = "{{ csrf_token | default('') }}";
+
+		// Unregister any legacy Service Worker to ensure fresh live data
+		if ('serviceWorker' in navigator) {
+			navigator.serviceWorker.getRegistrations().then((registrations) => {
+				for (const registration of registrations) {
+					registration.unregister();
+				}
+			});
 		}
 
 		(function() {
-			let state = {
-				loading: false,
-				autoSyncEnabled: true,
-				targetDate: getYesterdayStr(),
+			let deferredPrompt = null;
+			const pwaBanner = document.getElementById('pwa-banner');
+			const btnPwaInstall = document.getElementById('btn-pwa-install');
+
+			window.addEventListener('beforeinstallprompt', (e) => {
+				e.preventDefault();
+				deferredPrompt = e;
+				if (pwaBanner) pwaBanner.classList.add('show');
+			});
+
+			if (btnPwaInstall) {
+				btnPwaInstall.addEventListener('click', async () => {
+					if (!deferredPrompt) return;
+					deferredPrompt.prompt();
+					const { outcome } = await deferredPrompt.userChoice;
+					if (outcome === 'accepted') {
+						if (pwaBanner) pwaBanner.classList.remove('show');
+					}
+					deferredPrompt = null;
+				});
+			}
+
+			const state = {
 				jobs: [],
-				searchQuery: '',
+				targetDate: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+				autoSyncEnabled: false,
 				activeTab: 'all',
-				activeModalJob: null,
+				searchQuery: '',
 				runningJobs: {},
-				isDark: localStorage.getItem('theme') === 'dark'
+				selectedJob: null,
+				isDark: localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)
 			};
 
 			const els = {
-				btnAutoSync: document.getElementById('btnAutoSync'),
-				txtAutoSync: document.getElementById('txtAutoSync'),
-				fabDate: document.getElementById('fabDate'),
-				fabDateText: document.getElementById('fabDateText'),
-				btnThemeToggle: document.getElementById('btnThemeToggle'),
-				iconTheme: document.getElementById('iconTheme'),
-				btnSearchToggle: document.getElementById('btnSearchToggle'),
-				searchContainer: document.getElementById('searchContainer'),
-				searchInput: document.getElementById('searchInput'),
-				jobListContainer: document.getElementById('jobListContainer'),
-				statTotal: document.getElementById('statTotal'),
-				statSuccess: document.getElementById('statSuccess'),
-				statFailed: document.getElementById('statFailed'),
-				statPending: document.getElementById('statPending'),
-				cntAll: document.getElementById('cntAll'),
-				cntSuccess: document.getElementById('cntSuccess'),
-				cntFailed: document.getElementById('cntFailed'),
-				cntPending: document.getElementById('cntPending'),
-				modalBackdrop: document.getElementById('modalBackdrop'),
-				detailEmpty: document.getElementById('detailEmpty'),
-				btnModalClose: document.getElementById('btnModalClose'),
-				btnModalClose2: document.getElementById('btnModalClose2'),
-				modalTitle: document.getElementById('modalTitle'),
-				modalStatusIcon: document.getElementById('modalStatusIcon'),
-				modalDate: document.getElementById('modalDate'),
-				modalStatus: document.getElementById('modalStatus'),
-				modalRecs: document.getElementById('modalRecs'),
-				modalCategory: document.getElementById('modalCategory'),
-				modalLatestBox: document.getElementById('modalLatestBox'),
-				modalLatestVal: document.getElementById('modalLatestVal'),
-				modalMethod: document.getElementById('modalMethod'),
-				modalErrorContainer: document.getElementById('modalErrorContainer'),
-				modalErrorText: document.getElementById('modalErrorText'),
-				btnCopyMethod: document.getElementById('btnCopyMethod'),
-				btnCopyTraceback: document.getElementById('btnCopyTraceback'),
+				dateLabel: document.getElementById('date-label'),
+				dateInput: document.getElementById('date-input'),
+				autoSyncDot: document.getElementById('auto-sync-dot'),
+				autoSyncText: document.getElementById('auto-sync-text'),
+				btnAutoSync: document.getElementById('btn-auto-sync'),
+				btnRefresh: document.getElementById('btn-refresh'),
+				btnTheme: document.getElementById('btn-theme'),
+				themeIcon: document.getElementById('theme-icon'),
+				statTotal: document.getElementById('stat-total'),
+				statSuccess: document.getElementById('stat-success'),
+				statPending: document.getElementById('stat-pending'),
+				statFailed: document.getElementById('stat-failed'),
+				cntAll: document.getElementById('cnt-all'),
+				cntSuccess: document.getElementById('cnt-success'),
+				cntPending: document.getElementById('cnt-pending'),
+				cntFailed: document.getElementById('cnt-failed'),
+				searchInput: document.getElementById('search-input'),
+				jobsContainer: document.getElementById('jobs-container'),
+				modalOverlay: document.getElementById('modal-overlay'),
+				modalStatusDot: document.getElementById('modal-status-dot'),
+				modalTitle: document.getElementById('modal-title'),
+				modalSchedule: document.getElementById('modal-schedule'),
+				modalDate: document.getElementById('modal-date'),
+				modalRecs: document.getElementById('modal-recs'),
+				modalMethod: document.getElementById('modal-method'),
+				modalErrorWrap: document.getElementById('modal-error-wrap'),
+				modalErrorText: document.getElementById('modal-error-text'),
+				btnCopyMethod: document.getElementById('btn-copy-method'),
+				btnModalClose: document.getElementById('btn-modal-close'),
+				btnModalClose2: document.getElementById('btn-modal-close2'),
+				btnModalRun: document.getElementById('btn-modal-run'),
 				toast: document.getElementById('toast'),
-				toastMsg: document.getElementById('toastMsg'),
-				toastIcon: document.getElementById('toastIcon')
+				toastMsg: document.getElementById('toast-msg')
 			};
 
-			const ICONS = {
-				search: '<path d="m21 21-4.3-4.3"/><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z"/>',
-				moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
-				sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
-				'check-circle': '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>',
-				'check-circle-2': '<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Z"/><path d="m9 12 2 2 4-4"/>',
-				'alert-circle': '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>',
-				clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-				info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
-				x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
-				activity: '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
-				play: '<polygon points="6 3 20 12 6 21 6 3"/>'
-			};
-			function svgIcon(name) {
-				const paths = ICONS[name] || '';
-				return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="1em" height="1em">${paths}</svg>`;
+			function parseTimeToMinutes(tStr) {
+				if (!tStr) return 9999;
+				const parts = tStr.trim().split(/[:\s]/);
+				if (parts.length < 3) return 9999;
+				let h = parseInt(parts[0], 10);
+				const m = parseInt(parts[1], 10);
+				const mer = parts[2].toUpperCase();
+				if (mer === 'PM' && h < 12) h += 12;
+				if (mer === 'AM' && h === 12) h = 0;
+				return h * 60 + m;
 			}
-			function setIcon(el, name) {
-				if (el) el.innerHTML = svgIcon(name);
-			}
-			function getYesterdayStr() { return new Date(Date.now() - 86400000).toISOString().split('T')[0]; }
+
 			function formatDate(dStr) {
 				if (!dStr) return '';
 				const parts = dStr.split(' ')[0].split('-');
 				return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : dStr;
 			}
+
 			function formatNum(num) {
 				if (!num && num !== 0) return '0';
 				return Number(num).toLocaleString('en-IN');
 			}
 
 			let toastTimer = null;
-			function showToast(msg, type = 'info') {
+			function showToast(msg) {
 				if (toastTimer) clearTimeout(toastTimer);
 				els.toastMsg.innerText = msg;
-				setIcon(els.toastIcon, type === 'success' ? 'check-circle' : type === 'error' ? 'alert-circle' : 'info');
 				els.toast.classList.add('show');
-				toastTimer = setTimeout(() => els.toast.classList.remove('show'), 3000);
+				toastTimer = setTimeout(() => els.toast.classList.remove('show'), 2500);
 			}
 
 			function applyTheme() {
 				if (state.isDark) {
 					document.documentElement.setAttribute('data-theme', 'dark');
-					setIcon(els.iconTheme, 'sun');
+					els.themeIcon.innerHTML = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>';
 				} else {
 					document.documentElement.removeAttribute('data-theme');
-					setIcon(els.iconTheme, 'moon');
+					els.themeIcon.innerHTML = '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>';
 				}
 			}
 
 			async function fetchStatus() {
-				state.loading = true;
 				try {
+					els.btnRefresh.classList.add('spin');
 					const res = await fetch(`/api/method/custom_report.api.get_automation_sync_status?sync_date=${state.targetDate}`);
 					if (!res.ok) throw new Error(`HTTP ${res.status}`);
 					const data = await res.json();
@@ -853,10 +912,9 @@
 						render();
 					}
 				} catch (e) {
-					console.error(e);
-					showToast('Failed to load sync status', 'error');
+					showToast('Failed to load status');
 				} finally {
-					state.loading = false;
+					setTimeout(() => els.btnRefresh.classList.remove('spin'), 400);
 				}
 			}
 
@@ -868,20 +926,19 @@
 						headers: { 'Content-Type': 'application/json', 'X-Frappe-CSRF-Token': window.csrf_token || '' },
 						body: JSON.stringify({ enabled: newVal })
 					});
-					if (!res.ok) throw new Error(`HTTP ${res.status}`);
 					const data = await res.json();
 					if (data.message && data.message.status === 'success') {
 						state.autoSyncEnabled = data.message.auto_sync_enabled;
-						showToast(`Auto Sync ${state.autoSyncEnabled ? 'Active' : 'Off'}`, 'success');
-						fetchStatus();
+						showToast(`Auto Sync ${state.autoSyncEnabled ? 'Enabled' : 'Disabled'}`);
+						render();
 					}
 				} catch (e) {
-					showToast('Error toggling Auto Sync', 'error');
+					showToast('Error toggling auto sync');
 				}
 			}
 
 			async function runJob(jobKey) {
-				if (!jobKey) return;
+				if (!jobKey || state.runningJobs[jobKey]) return;
 				state.runningJobs[jobKey] = true;
 				render();
 				try {
@@ -890,24 +947,49 @@
 						headers: { 'Content-Type': 'application/json', 'X-Frappe-CSRF-Token': window.csrf_token || '' },
 						body: JSON.stringify({ job_key: jobKey, sync_date: state.targetDate })
 					});
-					if (!res.ok) throw new Error(`HTTP ${res.status}`);
 					const data = await res.json();
-					if (data.message) {
-						showToast(data.message.message || 'Job triggered', 'success');
-						await fetchStatus();
-					}
+					showToast(data.message?.message || 'Sync initiated successfully');
+					await fetchStatus();
 				} catch (e) {
-					showToast(`Execution error: ${e.message}`, 'error');
+					showToast(`Execution error: ${e.message}`);
 				} finally {
 					delete state.runningJobs[jobKey];
 					render();
 				}
 			}
 
+			function openModal(job) {
+				state.selectedJob = job;
+				const st = (job.status || '').toLowerCase();
+				els.modalTitle.innerText = job.title;
+				els.modalSchedule.innerText = job.schedule_time || '-';
+				els.modalDate.innerText = formatDate(job.target_date);
+				els.modalRecs.innerText = `${formatNum(job.records_synced)} recs`;
+				els.modalMethod.innerText = job.method || '-';
+
+				els.modalStatusDot.className = `status-dot ${st === 'success' ? 'success' : st === 'failed' ? 'danger' : 'warning'}`;
+				els.modalStatusDot.innerText = st === 'success' ? '✓' : st === 'failed' ? '!' : '⏱';
+
+				if (job.error_message) {
+					els.modalErrorWrap.style.display = 'block';
+					els.modalErrorText.innerText = job.error_message;
+				} else {
+					els.modalErrorWrap.style.display = 'none';
+				}
+
+				els.modalOverlay.classList.add('open');
+			}
+
+			function closeModal() {
+				els.modalOverlay.classList.remove('open');
+				state.selectedJob = null;
+			}
+
 			function render() {
-				els.txtAutoSync.innerText = state.autoSyncEnabled ? 'Auto Sync On' : 'Auto Sync Off';
-				els.fabDate.value = state.targetDate;
-				els.fabDateText.innerText = formatDate(state.targetDate);
+				els.dateLabel.innerText = formatDate(state.targetDate);
+				els.dateInput.value = state.targetDate;
+				els.autoSyncDot.className = `pulse-dot ${state.autoSyncEnabled ? '' : 'off'}`;
+				els.autoSyncText.innerText = state.autoSyncEnabled ? 'Auto' : 'Off';
 
 				const total = state.jobs.length;
 				const success = state.jobs.filter(j => (j.status || '').toLowerCase() === 'success').length;
@@ -916,13 +998,13 @@
 
 				els.statTotal.innerText = total;
 				els.statSuccess.innerText = success;
-				els.statFailed.innerText = failed;
 				els.statPending.innerText = pending;
+				els.statFailed.innerText = failed;
 
 				els.cntAll.innerText = total;
 				els.cntSuccess.innerText = success;
-				els.cntFailed.innerText = failed;
 				els.cntPending.innerText = pending;
+				els.cntFailed.innerText = failed;
 
 				const q = state.searchQuery.toLowerCase().trim();
 				const filtered = state.jobs.filter(job => {
@@ -936,168 +1018,114 @@
 					return true;
 				});
 
+				filtered.sort((a, b) => parseTimeToMinutes(a.schedule_time) - parseTimeToMinutes(b.schedule_time));
+
 				if (filtered.length === 0) {
-					els.jobListContainer.innerHTML = `
-						<div style="padding: 3rem 1rem; text-align: center; color: var(--tg-text-muted); font-size: 0.8rem;">
-							No matching automation jobs found.
+					els.jobsContainer.innerHTML = `
+						<div style="padding: 3rem 1rem; text-align: center; color: var(--text-muted); font-size: 0.82rem;">
+							No automation tasks found matching criteria.
 						</div>
 					`;
 					return;
 				}
 
-				els.jobListContainer.innerHTML = filtered.map(job => {
+				els.jobsContainer.innerHTML = filtered.map(job => {
 					const st = (job.status || '').toLowerCase();
 					const isRunning = !!state.runningJobs[job.key];
-					const iconName = st === 'success' ? 'check-circle-2' : st === 'failed' ? 'alert-circle' : 'clock';
-					const latestSub = (job.latest_date && job.records_synced === 0) ? ` • Last: ${formatDate(job.latest_date)} (${formatNum(job.latest_count)})` : '';
 
 					return `
-						<div class="tg-chat-item${state.activeModalJob && state.activeModalJob.key === job.key ? ' selected' : ''}" data-key="${job.key}">
-							<div class="tg-chat-left">
-								<div class="tg-chat-avatar ${st}">
-									${svgIcon(iconName)}
-								</div>
-								<div class="tg-chat-info">
-									<div class="tg-chat-top-line">
-										<div class="tg-chat-name">${job.title}</div>
-										<div class="tg-chat-time">${job.schedule_time || ''}</div>
-									</div>
-									<div class="tg-chat-bottom-line">
-										<div class="tg-chat-msg">${job.category || 'General'}${latestSub}</div>
-										<div class="tg-chat-recs">${formatNum(job.records_synced)} recs</div>
+						<div class="job-card" data-key="${job.key}">
+							<div class="job-left">
+								${st === 'success' 
+									? `<div class="status-dot success" title="Synced Successfully">✓</div>` 
+									: `<button type="button" class="btn-run-left" data-action="run" data-key="${job.key}" ${isRunning ? 'disabled' : ''} title="Run this sync">
+										${isRunning ? '...' : '▶'}
+									   </button>`}
+								<div class="job-meta">
+									<div class="job-title">${job.title}</div>
+									<div class="job-sub-row">
+										<span>${job.category || 'General'}</span>
+										<span>•</span>
+										<span class="recs-badge">${formatNum(job.records_synced)} recs</span>
+										${st === 'failed' ? `<span class="tag-failed">Failed</span>` : ''}
 									</div>
 								</div>
 							</div>
-							${st === 'success'
-							? `<span class="tg-run-btn" style="opacity: 0.55; cursor: default; color: var(--tg-success);">Synced</span>`
-							: `<button type="button" class="tg-run-btn" data-action="run" data-key="${job.key}" ${isRunning ? 'disabled' : ''}>
-								${isRunning ? '...' : 'Run'}
-							</button>`}
+							<div class="job-right">
+								<span class="time-pill">${job.schedule_time || ''}</span>
+							</div>
 						</div>
 					`;
 				}).join('');
 			}
 
-			function highlightSelected(key) {
-				document.querySelectorAll('.tg-chat-item.selected').forEach(el => el.classList.remove('selected'));
-				const sel = document.querySelector(`.tg-chat-item[data-key="${key}"]`);
-				if (sel) sel.classList.add('selected');
-			}
-			function clearSelected() {
-				document.querySelectorAll('.tg-chat-item.selected').forEach(el => el.classList.remove('selected'));
-			}
-
-			function openModal(job) {
-				state.activeModalJob = job;
-				const st = (job.status || '').toLowerCase();
-				els.modalTitle.innerText = job.title;
-				els.modalStatusIcon.style.color = st === 'success' ? 'var(--tg-success)' : st === 'failed' ? 'var(--tg-danger)' : 'var(--tg-warning)';
-				setIcon(els.modalStatusIcon, st === 'success' ? 'check-circle-2' : st === 'failed' ? 'alert-circle' : 'clock');
-				els.modalDate.innerText = formatDate(job.target_date);
-				els.modalStatus.innerText = job.status;
-				els.modalStatus.style.color = st === 'success' ? 'var(--tg-success)' : st === 'failed' ? 'var(--tg-danger)' : 'var(--tg-warning)';
-				els.modalRecs.innerText = formatNum(job.records_synced);
-				els.modalCategory.innerText = job.category || 'General';
-
-				if (job.latest_date) {
-					els.modalLatestBox.style.display = 'block';
-					els.modalLatestVal.innerText = `${formatDate(job.latest_date)} (${formatNum(job.latest_count)} records)`;
-				} else {
-					els.modalLatestBox.style.display = 'none';
-				}
-
-				els.modalMethod.innerText = job.method || '';
-
-				if (job.error_message) {
-					els.modalErrorContainer.style.display = 'block';
-					els.modalErrorText.innerText = job.error_message;
-				} else {
-					els.modalErrorContainer.style.display = 'none';
-				}
-
-				els.modalBackdrop.classList.add('open');
-				if (els.detailEmpty) els.detailEmpty.style.display = 'none';
-				highlightSelected(job.key);
-			}
-			function closeModal() {
-				els.modalBackdrop.classList.remove('open');
-				state.activeModalJob = null;
-				if (els.detailEmpty) els.detailEmpty.style.display = '';
-				clearSelected();
-			}
-
+			// Event Listeners
 			els.btnAutoSync.addEventListener('click', toggleAutoSync);
-			els.fabDate.addEventListener('change', (e) => {
+			els.dateInput.addEventListener('change', (e) => {
 				state.targetDate = e.target.value;
-				els.fabDateText.innerText = formatDate(state.targetDate);
 				fetchStatus();
 			});
-			els.btnThemeToggle.addEventListener('click', () => {
+			els.btnRefresh.addEventListener('click', fetchStatus);
+			els.btnTheme.addEventListener('click', () => {
 				state.isDark = !state.isDark;
 				localStorage.setItem('theme', state.isDark ? 'dark' : 'light');
 				applyTheme();
 			});
-			els.btnSearchToggle.addEventListener('click', () => {
-				els.searchContainer.classList.toggle('open');
-				if (els.searchContainer.classList.contains('open')) els.searchInput.focus();
+
+			document.querySelectorAll('.tab-btn').forEach(btn => {
+				btn.addEventListener('click', () => {
+					document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+					btn.classList.add('active');
+					state.activeTab = btn.dataset.tab;
+					render();
+				});
 			});
+
 			els.searchInput.addEventListener('input', (e) => {
 				state.searchQuery = e.target.value;
 				render();
 			});
 
-			
-
-			document.querySelectorAll('.tg-tab').forEach(tab => {
-				tab.addEventListener('click', () => {
-					document.querySelectorAll('.tg-tab').forEach(t => t.classList.remove('active'));
-					tab.classList.add('active');
-					state.activeTab = tab.dataset.tab;
-					render();
-				});
-			});
-
-			els.jobListContainer.addEventListener('click', (e) => {
+			els.jobsContainer.addEventListener('click', (e) => {
 				const runBtn = e.target.closest('[data-action="run"]');
 				if (runBtn) {
 					e.stopPropagation();
 					runJob(runBtn.dataset.key);
 					return;
 				}
-				const item = e.target.closest('.tg-chat-item');
-				if (item) {
-					const job = state.jobs.find(j => j.key === item.dataset.key);
+				const card = e.target.closest('.job-card');
+				if (card) {
+					const job = state.jobs.find(j => j.key === card.dataset.key);
 					if (job) openModal(job);
 				}
 			});
 
 			els.btnModalClose.addEventListener('click', closeModal);
 			els.btnModalClose2.addEventListener('click', closeModal);
-			els.modalBackdrop.addEventListener('click', (e) => {
-				if (e.target === els.modalBackdrop) closeModal();
+			els.modalOverlay.addEventListener('click', (e) => {
+				if (e.target === els.modalOverlay) closeModal();
 			});
 			document.addEventListener('keydown', (e) => {
-				if (e.key === 'Escape' && els.modalBackdrop.classList.contains('open')) closeModal();
+				if (e.key === 'Escape' && els.modalOverlay.classList.contains('open')) closeModal();
 			});
 
-			els.btnCopyMethod.addEventListener('click', (e) => {
-				e.preventDefault();
-				if (state.activeModalJob && state.activeModalJob.method) {
-					navigator.clipboard.writeText(state.activeModalJob.method);
-					showToast('Method copied to clipboard!', 'success');
+			els.btnCopyMethod.addEventListener('click', () => {
+				if (state.selectedJob?.method) {
+					navigator.clipboard.writeText(state.selectedJob.method);
+					showToast('Method copied to clipboard');
 				}
 			});
-			els.btnCopyTraceback.addEventListener('click', (e) => {
-				e.preventDefault();
-				if (state.activeModalJob && state.activeModalJob.error_message) {
-					navigator.clipboard.writeText(state.activeModalJob.error_message);
-					showToast('Traceback copied to clipboard!', 'success');
+
+			els.btnModalRun.addEventListener('click', () => {
+				if (state.selectedJob?.key) {
+					const key = state.selectedJob.key;
+					closeModal();
+					runJob(key);
 				}
 			});
 
 			applyTheme();
-			state.targetDate = getYesterdayStr();
-			
+
 			if (window.initialData && Array.isArray(window.initialData.jobs) && window.initialData.jobs.length > 0) {
 				state.jobs = window.initialData.jobs;
 				state.autoSyncEnabled = !!window.initialData.auto_sync_enabled;
