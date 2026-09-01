@@ -521,99 +521,122 @@ def safe_str(val):
         return str(val)
 
 
+def get_previous_month_date_range(date_obj):
+    """Returns (start_date, end_date) string tuple for the previous month in the same financial year."""
+    import calendar
+    fiscal_year = get_fiscal_year(date_obj)
+    start_year = int(fiscal_year.split("-")[0])
+    fy_months = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+    current_month = date_obj.month
+    try:
+        curr_idx = fy_months.index(current_month)
+    except ValueError:
+        return None, None
+    if curr_idx == 0:
+        return None, None
+    prev_month = fy_months[curr_idx - 1]
+    prev_year = start_year if prev_month >= 4 else start_year + 1
+    last_day = calendar.monthrange(prev_year, prev_month)[1]
+    return f"{prev_year}-{prev_month:02d}-01", f"{prev_year}-{prev_month:02d}-{last_day:02d}"
+
+
 @frappe.whitelist()
 def generate_and_save_branch_category_report(input_date):
     """
-    Generate and save achievement records to 'Branch Category Report' doctype for a particular date.
-    Validates if records already exist for the given date before inserting.
+    Superfast batch consolidation: saves unique achievement records to 'Branch Category Report'
+    from 'Product Wise Report' (excluding 'SHARE') for a particular date.
+    Uses batch pre-fetching and direct bulk SQL insert for sub-second execution.
     """
-    from frappe.utils import getdate
+    from frappe.utils import getdate, now
+    from frappe import generate_hash
+    from custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard import (
+        get_sahayog_branches_cached,
+        clear_branch_category_report_cache,
+    )
     
     # 1. Date conversion
     date_obj = getdate(input_date)
-    input_date_str = date_obj.strftime("%d-%m-%Y")
-    dates = date_control(input_date_str)
-    processed_date = dates["current_date"]
+    processed_date = date_obj
     
-    # 2. Check if records already exist for this processed date
-    if frappe.db.exists("Branch Category Report", {"date": processed_date}):
-        frappe.msgprint(f"Branch Category Report records already exist for date {processed_date}. Skipping insert.")
-        return []
-        
-    # 3. Execute achievement query
-    query_results = execute_achievement_query(dates)
+    # 2. Fetch consolidated Product Wise data for processed_date (excluding SHARE)
+    query_results = frappe.db.sql("""
+        SELECT 
+            sol_id,
+            SUM(amount) as achievement
+        FROM `tabProduct Wise Report`
+        WHERE date = %s AND product != 'SHARE'
+        GROUP BY sol_id
+    """, (processed_date,), as_dict=True)
+    
     if not query_results:
-        return []
+        frappe.msgprint(f"No Product Wise Report records found for date {processed_date}.")
+        return 0
         
-    saved_count = 0
+    # 3. Clear existing records for this processed date to guarantee clean unique rows
+    frappe.db.delete("Branch Category Report", {"date": processed_date})
+    
+    branches_map = get_sahayog_branches_cached()
+    fiscal_year = get_fiscal_year(processed_date)
+    month_key = processed_date.strftime("%b").upper()
+    
+    # 4. Batch pre-fetch previous month last YTD in 1 single query (instead of N queries)
+    prev_ytd_map = {}
+    prev_start, prev_end = get_previous_month_date_range(processed_date)
+    if prev_start and prev_end:
+        prev_rows = frappe.db.sql("""
+            SELECT bcr.sol_id, bcr.yearly_achievement
+            FROM `tabBranch Category Report` bcr
+            INNER JOIN (
+                SELECT sol_id, MAX(date) AS max_date
+                FROM `tabBranch Category Report`
+                WHERE date >= %s AND date <= %s AND docstatus < 2
+                GROUP BY sol_id
+            ) latest ON latest.sol_id = bcr.sol_id AND latest.max_date = bcr.date
+        """, (prev_start, prev_end), as_dict=True)
+        for r in prev_rows:
+            prev_ytd_map[str(r.sol_id or "").strip()] = float(r.yearly_achievement or 0.0)
+
+    # 5. Batch pre-fetch all Targets in 1 single query (instead of 2N queries)
+    target_rows = frappe.db.sql("""
+        SELECT sol_id, type, month, target
+        FROM `tabTarget Vs Achivement`
+        WHERE financial_year = %s AND (type = 'YTD' OR (type = 'Monthly' AND month = %s))
+    """, (fiscal_year, month_key), as_dict=True)
+    
+    monthly_targets_map = {}
+    ytd_targets_map = {}
+    for t in target_rows:
+        sid = str(t.sol_id or "").strip()
+        val = float(t.target or 0.0)
+        if t.type == "Monthly":
+            monthly_targets_map[sid] = val
+        elif t.type == "YTD":
+            ytd_targets_map[sid] = val
+
+    # 6. In-memory computation & prepare bulk rows
+    now_dt = now()
+    user_session = getattr(frappe.session, "user", "Administrator") or "Administrator"
+    bulk_data = []
+    
     for row in query_results:
-        sol_id = str(row[0]).strip()
-        sol_desc = row[1]
-        region_name = row[2]
-        division_name = row[3]
-        circle_office_name = row[4]
-        total_flow_amount = row[5]
-        total_tran_amt = row[6]
-        opening_balance = row[7]
-        closing_balance = row[8]
-        opening_mab = row[9]
-        closing_mab = row[10]
-        inc_mab = row[11]
-        achievement = float(row[12] or 0)
+        sol_id = str(row.sol_id or "").strip()
+        achievement = float(row.achievement or 0.0)
         
-        # Calculate YTD achievement (previous month last YTD + current month achievement)
-        prev_achievement = get_previous_month_last_ytd(sol_id, processed_date)
+        prev_achievement = prev_ytd_map.get(sol_id, 0.0)
         yearly_achievement = prev_achievement + achievement
 
-        # Fetch proper zone, region, and branch from 'Sahayog Branch' using sol_id
-        branch_info = frappe.db.get_value(
-            "Sahayog Branch",
-            {"sol_id": sol_id},
-            ["zone", "region", "branch"],
-            as_dict=True
-        )
-        
-        final_zone = division_name
-        final_region = region_name
-        final_branch = sol_desc
-        
-        if branch_info:
-            if branch_info.get("zone"):
-                final_zone = branch_info.get("zone")
-            if branch_info.get("region"):
-                final_region = branch_info.get("region")
-            if branch_info.get("branch"):
-                final_branch = branch_info.get("branch")
+        branch_info = branches_map.get(sol_id, {})
+        final_branch = branch_info.get("branch_name") or f"Branch {sol_id}"
+        final_zone = branch_info.get("zone") or ""
+        final_region = branch_info.get("region") or ""
+        final_district = branch_info.get("district") or ""
 
-        # Get targets from 'Target Vs Achivement' to calculate category and YTD %
-        month_val = processed_date.month
-        year_val = processed_date.year
-        if month_val >= 4:
-            financial_year = f"{year_val}-{year_val+1}"
-        else:
-            financial_year = f"{year_val-1}-{year_val}"
-            
-        month_key = processed_date.strftime("%b").upper()
+        monthly_target = monthly_targets_map.get(sol_id, 0.0)
+        ytd_target = ytd_targets_map.get(sol_id, 0.0)
 
-        monthly_target = frappe.db.get_value(
-            "Target Vs Achivement",
-            {"sol_id": sol_id, "financial_year": financial_year, "type": "Monthly", "month": month_key},
-            "target"
-        )
-        monthly_target = float(monthly_target or 0)
+        monthly_pct = (achievement / monthly_target * 100) if monthly_target > 0 else 0.0
+        ytd_achi_pct = (yearly_achievement / ytd_target * 100) if ytd_target > 0 else 0.0
         
-        ytd_target = frappe.db.get_value(
-            "Target Vs Achivement",
-            {"sol_id": sol_id, "financial_year": financial_year, "type": "YTD"},
-            "target"
-        )
-        ytd_target = float(ytd_target or 0)
-
-        # Calculate percentages
-        monthly_pct = (achievement / monthly_target * 100) if monthly_target > 0 else 0
-        ytd_achi_pct = (yearly_achievement / ytd_target * 100) if ytd_target > 0 else 0
-        
-        # Calculate Category
         if monthly_pct >= 100:
             branch_category = "Pinnacle"
         elif monthly_pct >= 80:
@@ -627,34 +650,58 @@ def generate_and_save_branch_category_report(input_date):
         else:
             branch_category = "Zero Level"
         
-        # Create DocType record
-        doc = frappe.get_doc({
-            "doctype": "Branch Category Report",
-            "sol_id": sol_id,
-            "branch": final_branch,
-            "zone": final_zone,
-            "region": final_region,
-            "district": circle_office_name,
-            "date": processed_date,
-            "achievement": safe_str(achievement),
-            "yearly_achievement": yearly_achievement,
-            "branch_category": branch_category,
-            "ytd_achi": safe_str(round(ytd_achi_pct, 2)),
-            "total_flow_amount": safe_str(total_flow_amount),
-            "total_tran_amt": safe_str(total_tran_amt),
-            "opening_balance": safe_str(opening_balance),
-            "closing_balance": safe_str(closing_balance),
-            "opening_mab": safe_str(opening_mab),
-            "closing_mab": safe_str(closing_mab),
-            "inc_mab": safe_str(inc_mab)
-        })
-        
-        doc.insert(ignore_permissions=True)
-        saved_count += 1
-        recalculate_subsequent_ytd(sol_id, processed_date)
-        
+        bulk_data.append((
+            generate_hash(length=10),
+            now_dt,
+            now_dt,
+            user_session,
+            user_session,
+            0,
+            0,
+            sol_id,
+            final_branch,
+            final_zone,
+            final_region,
+            final_district,
+            processed_date,
+            safe_str(achievement),
+            yearly_achievement,
+            branch_category,
+            safe_str(round(ytd_achi_pct, 2))
+        ))
+
+    # 7. Direct Bulk SQL Insert (Sub-second execution)
+    if bulk_data:
+        chunk_size = 1000
+        row_placeholder = "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        for i in range(0, len(bulk_data), chunk_size):
+            chunk = bulk_data[i : i + chunk_size]
+            placeholders = ", ".join([row_placeholder] * len(chunk))
+            flattened = [v for r in chunk for v in r]
+            sql = f"""
+                INSERT INTO `tabBranch Category Report` (
+                    `name`, `creation`, `modified`, `modified_by`, `owner`, `docstatus`, `idx`,
+                    `sol_id`, `branch`, `zone`, `region`, `district`, `date`,
+                    `achievement`, `yearly_achievement`, `branch_category`, `ytd_achi`
+                ) VALUES {placeholders}
+            """
+            frappe.db.sql(sql, flattened)
+
+    # 8. Check if subsequent dates in same FY exist; if so, recalculate them
+    end_of_fy = f"{int(fiscal_year.split('-')[0]) + 1}-03-31"
+    subsequent_exists = frappe.db.sql("""
+        SELECT 1 FROM `tabBranch Category Report` 
+        WHERE date > %s AND date <= %s AND docstatus < 2 LIMIT 1
+    """, (processed_date, end_of_fy))
+    
+    if subsequent_exists:
+        for row in query_results:
+            sol_id = str(row.sol_id or "").strip()
+            recalculate_subsequent_ytd(sol_id, processed_date)
+
     frappe.db.commit()
-    return saved_count
+    clear_branch_category_report_cache()
+    return len(bulk_data)
 
 
 @frappe.whitelist()
@@ -744,7 +791,7 @@ def daily_sync_cron(sync_date=None):
 
         today_date = getdate(today())
         sync_date = add_days(today_date, -1)
-        frappe.logger("scheduler").info(f"Daily Sync Cron: Triggering sync for {sync_date} at 8:00 AM.")
+        frappe.logger("scheduler").info(f"Daily Sync Cron: Triggering Branch Category consolidation from Product Wise for {sync_date} at 8:20 AM.")
 
         try:
             saved_count = generate_and_save_branch_category_report(sync_date)

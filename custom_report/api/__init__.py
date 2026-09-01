@@ -1629,7 +1629,28 @@ def _print_sql_debug(sql_query, params, filter_applied, is_branch_user):
     _log_process(f"{border}\n")
 
 
+def parse_schedule_time_to_minutes(time_str):
+	try:
+		if not time_str:
+			return 9999
+		from datetime import datetime
+		t = datetime.strptime(time_str.strip(), "%I:%M %p")
+		return t.hour * 60 + t.minute
+	except Exception:
+		return 9999
+
+
 JOBS_REGISTRY = [
+	{
+		"key": "daily_sync_rd_and_smbg_pending",
+		"title": "RD & SMBG Pending Sync",
+		"category": "Financial Trackers",
+		"schedule_time": "06:45 AM",
+		"method": "custom_report.custom_report.doctype.rd_and_smbg_pending.rd_and_smbg_pending.daily_sync_rd_and_smbg_pending",
+		"doctype": "RD and SMBG Pending",
+		"filters": {},
+		"error_title": "daily_sync_rd_and_smbg_pending"
+	},
 	{
 		"key": "sync_dd_sav_daily",
 		"title": "DD SAV Report Sync",
@@ -1731,16 +1752,6 @@ JOBS_REGISTRY = [
 		"error_title": "cleanup_ss_vs_old_monthly_records"
 	},
 	{
-		"key": "daily_sync_cron",
-		"title": "Sahayog Achievement Sync",
-		"category": "Sahayog Dashboard",
-		"schedule_time": "08:00 AM",
-		"method": "custom_report.custom_report.page.sahayog_dashboard.achievement.daily_sync_cron",
-		"doctype": "Branch Category Report",
-		"filters": {},
-		"error_title": "daily_sync_cron"
-	},
-	{
 		"key": "daily_tda_sync",
 		"title": "Sahayog TDA Sync",
 		"category": "Sahayog Dashboard",
@@ -1761,6 +1772,16 @@ JOBS_REGISTRY = [
 		"error_title": "daily_casa_sync"
 	},
 	{
+		"key": "daily_sync_cron",
+		"title": "Sahayog Achievement Sync",
+		"category": "Sahayog Dashboard",
+		"schedule_time": "08:20 AM",
+		"method": "custom_report.custom_report.page.sahayog_dashboard.achievement.daily_sync_cron",
+		"doctype": "Branch Category Report",
+		"filters": {},
+		"error_title": "daily_sync_cron"
+	},
+	{
 		"key": "daily_sync_book_position",
 		"title": "Book Position & Account Details Sync",
 		"category": "Financial Trackers",
@@ -1779,16 +1800,6 @@ JOBS_REGISTRY = [
 		"doctype": "DD Tracker Report",
 		"filters": {},
 		"error_title": "daily_sync_dd_tracker"
-	},
-	{
-		"key": "daily_sync_rd_and_smbg_pending",
-		"title": "RD & SMBG Pending Sync",
-		"category": "Financial Trackers",
-		"schedule_time": "06:45 AM",
-		"method": "custom_report.custom_report.doctype.rd_and_smbg_pending.rd_and_smbg_pending.daily_sync_rd_and_smbg_pending",
-		"doctype": "RD and SMBG Pending",
-		"filters": {},
-		"error_title": "daily_sync_rd_and_smbg_pending"
 	}
 ]
 
@@ -1870,7 +1881,17 @@ def get_automation_sync_status(sync_date=None):
 			rec_count = ss_vs_counts.get(rtype, 0) if rtype else 0
 		elif job["doctype"] == "Product Wise Report":
 			pname = job.get("filters", {}).get("product")
-			rec_count = product_counts.get(pname, 0) if pname else 0
+			if pname == "CASA":
+				rec_count = product_counts.get("CASA", 0)
+			elif pname == "TDA" or job.get("key") == "daily_tda_sync":
+				# TDA Sync populates all non-CASA products (FD, RD, DAM, DD, SMBG, TDA, OTHER, SHARE)
+				rec_count = sum(cnt for prod, cnt in product_counts.items() if prod != "CASA")
+			elif isinstance(pname, list):
+				rec_count = sum(product_counts.get(p, 0) for p in pname)
+			elif pname:
+				rec_count = product_counts.get(pname, 0)
+			else:
+				rec_count = sum(product_counts.values())
 		elif job["doctype"]:
 			try:
 				f = dict(job["filters"])
@@ -1909,6 +1930,8 @@ def get_automation_sync_status(sync_date=None):
 			pending_count += 1
 
 		result_jobs.append(job_info)
+
+	result_jobs.sort(key=lambda j: parse_schedule_time_to_minutes(j.get("schedule_time", "")))
 
 	total_jobs = len(JOBS_REGISTRY)
 	success_rate = round((success_count / total_jobs * 100), 1) if total_jobs > 0 else 0.0
