@@ -11,7 +11,7 @@ const props = defineProps({
   branchProfile: { type: Object, default: () => ({}) },
 })
 
-const emit = defineEmits(['back'])
+const emit = defineEmits(['back', 'daily-planning-sheet'])
 
 const { formatNumber } = useNumberFormat()
 const { formatZone, formatRegion } = useNameFormat()
@@ -95,8 +95,14 @@ function scrollToManpowerDetails() {
 
     <!-- Branch Information Card -->
     <div class="mx-5 my-4 sb-card flex-shrink-0">
-      <div class="px-4 py-3 border-b border-[var(--border)]">
+      <div class="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
         <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Branch Information</div>
+        <a
+          href="/app/bm-checklist/new-bm-checklist-tcthxsxvlh"
+          class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 transition dark:bg-blue-600 dark:hover:bg-blue-500 shadow-sm cursor-pointer no-underline"
+        >
+          Daily Planning Sheet
+        </a>
       </div>
       <div class="px-4 py-4">
         <div class="flex gap-4">
