@@ -5216,20 +5216,11 @@ class DrishtiDashboard {
 					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function () {
 						self.allExpanded = !self.allExpanded;
 						const expand = self.allExpanded;
-						if (!self.tableData) return;
-						self.tableData.forEach(row => {
-							if (row.branches) {
-								row.branches.forEach(b => {
-									const bKey = row.zone + "::" + row.region + "::" + row.district + "::" + b.sol_id;
-									self.expandedBranches = self.expandedBranches || {};
-									self.expandedBranches[bKey] = expand;
-								});
-							}
-							self.expandedZones[row.zone || ""] = expand;
-							self.expandedRegions[(row.zone || "") + "::" + (row.region || "")] = expand;
-							self.expandedDistricts = self.expandedDistricts || {};
-							self.expandedDistricts[(row.zone || "") + "::" + (row.region || "") + "::" + (row.district || "")] = expand;
-						});
+						if (expand) {
+							(self.allNodeIds || []).forEach(id => { self.expandedTreeNodes[id] = true; });
+						} else {
+							self.expandedTreeNodes = {};
+						}
 						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
 						self.renderRmWiseTable(container.find("#mis-table-container"), dashboardInstance);
 					});
@@ -5533,6 +5524,7 @@ class DrishtiDashboard {
 						});
 					};
 					collectAllNodeIds(rootNodes);
+					self.allNodeIds = allNodeIds;
 
 					const renderTreeRows = (nodes) => {
 						let html = "";
@@ -5613,14 +5605,6 @@ class DrishtiDashboard {
 								<span>🌳 Hierarchical Drill-Down (Zone → Region → District → SOL → Agent)</span>
 								<span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700;">${fmtNum(data.length)} Agents Total</span>
 							</div>
-							<div>
-								<button type="button" class="btn btn-xs rm-tree-expand-all" style="background: rgba(65, 125, 129, 0.1); color: #417d81; border: 1px solid rgba(65, 125, 129, 0.3); font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
-									📂 Expand All
-								</button>
-								<button type="button" class="btn btn-xs rm-tree-collapse-all" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-weight: 700; border-radius: 4px; padding: 4px 10px; cursor: pointer;">
-									📁 Collapse All
-								</button>
-							</div>
 						</div>
 					`;
 
@@ -5673,16 +5657,6 @@ class DrishtiDashboard {
 								self.openAgentModal(agentData, dashboardInstance);
 							}
 						}
-					});
-
-					tableContainer.off("click", ".rm-tree-expand-all").on("click", ".rm-tree-expand-all", function () {
-						allNodeIds.forEach(id => self.expandedTreeNodes[id] = true);
-						self.renderRmWiseTable(tableContainer, dashboardInstance);
-					});
-
-					tableContainer.off("click", ".rm-tree-collapse-all").on("click", ".rm-tree-collapse-all", function () {
-						self.expandedTreeNodes = {};
-						self.renderRmWiseTable(tableContainer, dashboardInstance);
 					});
 
 					// Render category details for expanded RMs
