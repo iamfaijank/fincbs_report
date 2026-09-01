@@ -1165,17 +1165,17 @@ class DrishtiDashboard {
 							#ntb-evr-table tbody tr:hover { background: #dcfce7 !important; }
 							#ntb-evr-table tfoot td { padding: 10px 14px; font-size: 14px; font-weight: 700; color: #ffffff; background: #1e293b; }
 							#ntb-evr-scroll { max-height: 550px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
-							#ntb-kpi-inline { display: flex; gap: 10px; align-items: center; }
-							#ntb-kpi-inline .ntb-kpi-card { display: flex; flex-direction: column; justify-content: center; padding: 6px 12px; border-radius: 8px; min-width: 110px; border-left: 4px solid; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-							#ntb-kpi-inline .ntb-kpi-label { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1; margin-bottom: 4px; }
-							#ntb-kpi-inline .ntb-kpi-value { font-size: 15px; font-weight: 800; line-height: 1; font-family: 'Inter', sans-serif; }
-							@media (max-width: 900px) { #mis-controls { flex-wrap: wrap; } #ntb-kpi-inline { width: 100%; order: 10; margin-left: 0 !important; } }
+							#ntb-kpi-inline { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+							#ntb-kpi-inline .ntb-kpi-card { flex: 1 1 180px; min-width: 160px; display: flex; flex-direction: column; justify-content: center; padding: 14px 16px; border-radius: 10px; border-left: 4px solid; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.06); min-height: 88px; }
+							#ntb-kpi-inline .ntb-kpi-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1; margin-bottom: 8px; }
+							#ntb-kpi-inline .ntb-kpi-value { font-size: clamp(18px, 2vw, 22px); font-weight: 800; line-height: 1.1; font-family: 'Inter', sans-serif; }
+							@media (max-width: 768px) { #ntb-kpi-inline .ntb-kpi-card { flex: 1 1 140px; min-width: 130px; padding: 12px 14px; min-height: 80px; } #ntb-kpi-inline .ntb-kpi-value { font-size: 16px; } }
+							@media (max-width: 480px) { #ntb-kpi-inline .ntb-kpi-card { flex: 1 1 100%; min-width: unset; } }
 						</style>
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;" id="mis-controls">
 							<input type="text" id="ntb-evr-search" placeholder="Search branch, SOL ID, zone..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="ntb-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
-							<div id="ntb-kpi-inline"></div>
 							<div style="margin-left: auto; display: flex; align-items: center; gap: 6px;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
 								<div class="btn-group mis-format-toggle" role="group">
@@ -1188,6 +1188,7 @@ class DrishtiDashboard {
 							${dashboardInstance.buildMisSkeletonTable("Fetching CASA NTB & EVR data...")}
 						</div>
 						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
+						<div id="ntb-kpi-inline"></div>
 						<div id="ntb-evr-table-container"></div>
 					`);
 
