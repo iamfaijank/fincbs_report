@@ -1,7 +1,8 @@
-{
- "actions": [],
- "allow_rename": 1,
- "creation": "2026-09-01 16:45:08.940667",
+ {
+  "actions": [],
+  "allow_rename": 1,
+  "autoname": "format:{date}-{bm_employee_id}",
+  "creation": "2026-09-01 16:45:08.940667",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [

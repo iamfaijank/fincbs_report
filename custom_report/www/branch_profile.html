@@ -2902,6 +2902,9 @@
 
 				handlePlanningTrigger(targetUrl, empId, solId, specificDate) {
 					const targetDate = specificDate || new Date().toISOString().split('T')[0];
+					const statusMap = this.state.checklistStatusMap || {};
+					const existingRecord = specificDate ? statusMap[specificDate]?.name : null;
+
 					try {
 						if (empId) {
 							sessionStorage.setItem("bm_checklist_employee_id", empId);
@@ -2916,7 +2919,15 @@
 					} catch (err) {}
 
 					let finalUrl = targetUrl || "/app/bm-checklist/new-bm-checklist-tcthxsxvlh";
-					if (!finalUrl.includes("date=")) {
+					if (existingRecord) {
+						finalUrl = `/app/bm-checklist/${encodeURIComponent(existingRecord)}`;
+					} else if (specificDate) {
+						const params = new URLSearchParams();
+						if (empId) params.set("bm_employee_id", empId);
+						if (solId) params.set("sol_id", solId);
+						params.set("date", specificDate);
+						finalUrl = `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?${params.toString()}`;
+					} else if (!finalUrl.includes("date=")) {
 						finalUrl += (finalUrl.includes("?") ? "&" : "?") + "date=" + encodeURIComponent(targetDate);
 					}
 
@@ -3264,7 +3275,28 @@
 					manpowerSearchQuery: '',
 					manpowerSortCol: 'employee_number',
 					attritionPeriod: '3',
-					attritionData: null
+					attritionData: null,
+					checklistStatusMap: {}
+				},
+
+				fetchChecklistStatus(solId, empId) {
+					const week = this.getCurrentWeekWorkingDays();
+					if (!week || week.length === 0) return Promise.resolve({});
+					const startDate = week[0].isoDate;
+					const endDate = week[week.length - 1].isoDate;
+
+					const self = this;
+					return fetch(`/api/method/custom_report.custom_report.doctype.bm_checklist.bm_checklist.get_bm_checklist_status_for_week?sol_id=${encodeURIComponent(solId || '')}&employee_id=${encodeURIComponent(empId || '')}&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`)
+						.then(r => r.json())
+						.then(data => {
+							self.state.checklistStatusMap = (data && data.message) ? data.message : {};
+							self.renderBmData();
+							return self.state.checklistStatusMap;
+						})
+						.catch(e => {
+							console.error("Failed to fetch checklist status", e);
+							return {};
+						});
 				},
 
 				getCurrentWeekWorkingDays() {
@@ -3923,12 +3955,43 @@
 					const bmList = this.state.bmList || [];
 					const branchEmailValue = d._branch_email_value || "--";
 					const weekDays = this.getCurrentWeekWorkingDays();
-					const daysHtml = weekDays.map(item => `
-						<div class="daily-planning-day-chip" data-date="${item.isoDate}" style="padding: 2px 7px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-right: 1px solid rgba(9, 124, 128, 0.15); ${item.isToday ? 'background: rgba(9, 124, 128, 0.18); font-weight: 700;' : ''}" title="${item.fullDisplay}${item.isToday ? ' (Today)' : ''}">
-							<span style="font-size: 9px; text-transform: uppercase; color: #097c80; line-height: 1.1; font-weight: 700;">${item.dayName}</span>
-							<span style="font-size: 11px; color: ${item.isToday ? '#097c80' : '#334155'}; font-weight: ${item.isToday ? '800' : '600'}; line-height: 1.2;">${item.dateNum}</span>
-						</div>
-					`).join('');
+					const todayStr = new Date().toISOString().split('T')[0];
+					const statusMap = this.state.checklistStatusMap || {};
+
+					const daysHtml = weekDays.map(item => {
+						const hasRecord = !!statusMap[item.isoDate]?.exists;
+						let bgStyle = "";
+						let dayColor = "";
+						let dateColor = "";
+						let statusLabel = "";
+
+						if (hasRecord) {
+							// GREEN: Record exists
+							bgStyle = "background: #dcfce7; border-color: rgba(34, 197, 94, 0.4);";
+							dayColor = "#15803d;";
+							dateColor = "#166534;";
+							statusLabel = "Completed";
+						} else if (item.isoDate <= todayStr) {
+							// RED: Today or past without record
+							bgStyle = "background: #fee2e2; border-color: rgba(239, 68, 68, 0.4);";
+							dayColor = "#b91c1c;";
+							dateColor = "#991b1b;";
+							statusLabel = "Pending / Missing";
+						} else {
+							// GRAY: Future dates
+							bgStyle = "background: #f8fafc; border-color: rgba(226, 232, 240, 0.6);";
+							dayColor = "#94a3b8;";
+							dateColor = "#64748b;";
+							statusLabel = "Upcoming";
+						}
+
+						return `
+							<div class="daily-planning-day-chip" data-date="${item.isoDate}" style="padding: 2px 7px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-right: 1px solid rgba(0, 0, 0, 0.08); ${bgStyle}" title="${item.fullDisplay} • Status: ${statusLabel}">
+								<span style="font-size: 9px; text-transform: uppercase; color: ${dayColor} line-height: 1.1; font-weight: 700;">${item.dayName}</span>
+								<span style="font-size: 11px; color: ${dateColor} font-weight: 800; line-height: 1.2;">${item.dateNum}</span>
+							</div>
+						`;
+					}).join('');
 
 					wrapper.innerHTML = "";
 

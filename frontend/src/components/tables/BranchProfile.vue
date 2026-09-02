@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { frappeRequest } from 'frappe-ui'
 import { useNumberFormat } from '@/composables/useNumberFormat.js'
 import { useNameFormat } from '@/composables/useNameFormat.js'
@@ -73,6 +73,65 @@ const currentWeekWorkingDays = computed(() => {
 })
 
 const showPlanningModal = ref(false)
+const modalUrl = ref('')
+const checklistStatusMap = ref({})
+
+async function fetchChecklistStatus() {
+  const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || ''
+  const solId = props.branch?.sol_id || props.branchProfile?.sol_id || ''
+  if (!empId && !solId) return
+
+  const week = currentWeekWorkingDays.value
+  if (!week || week.length === 0) return
+  const startDate = week[0].isoDate
+  const endDate = week[week.length - 1].isoDate
+
+  try {
+    const res = await frappeRequest({
+      url: '/api/method/custom_report.custom_report.doctype.bm_checklist.bm_checklist.get_bm_checklist_status_for_week',
+      method: 'POST',
+      params: {
+        employee_id: empId,
+        sol_id: solId,
+        start_date: startDate,
+        end_date: endDate,
+      }
+    })
+    checklistStatusMap.value = res || {}
+  } catch (e) {
+    console.error('Failed to fetch checklist status', e)
+  }
+}
+
+function getDayChipStyle(d) {
+  const todayStr = new Date().toISOString().split('T')[0]
+  const hasRecord = !!checklistStatusMap.value[d.isoDate]?.exists
+
+  if (hasRecord) {
+    return {
+      containerClass: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 ring-1 ring-inset ring-emerald-500/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60',
+      dayTextClass: 'text-emerald-700 dark:text-emerald-400 font-bold',
+      dateTextClass: 'text-emerald-800 dark:text-emerald-200 font-extrabold',
+      statusText: 'Completed'
+    }
+  }
+
+  if (d.isoDate <= todayStr) {
+    return {
+      containerClass: 'bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 ring-1 ring-inset ring-rose-500/40 hover:bg-rose-100 dark:hover:bg-rose-900/60',
+      dayTextClass: 'text-rose-700 dark:text-rose-400 font-bold',
+      dateTextClass: 'text-rose-800 dark:text-rose-200 font-extrabold',
+      statusText: 'Pending'
+    }
+  }
+
+  return {
+    containerClass: 'bg-slate-50/60 text-slate-400 dark:bg-slate-900/30 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800/50',
+    dayTextClass: 'text-slate-400 dark:text-slate-500 font-semibold',
+    dateTextClass: 'text-slate-500 dark:text-slate-400 font-bold',
+    statusText: 'Upcoming'
+  }
+}
 
 function openDailyPlanningSheet(specificDate) {
   const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || ''
@@ -92,16 +151,30 @@ function openDailyPlanningSheet(specificDate) {
   } catch (e) {}
 }
 
-function handleDailyPlanningClick(e) {
+function handleDailyPlanningClick(e, specificDate) {
   if (e) e.preventDefault()
-  openDailyPlanningSheet()
+  const existingRecord = specificDate ? checklistStatusMap.value[specificDate]?.name : null
+
+  let targetUrl = dailyPlanningSheetUrl.value
+  if (existingRecord) {
+    targetUrl = `/app/bm-checklist/${encodeURIComponent(existingRecord)}`
+  } else if (specificDate) {
+    const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || ''
+    const solId = props.branch?.sol_id || props.branchProfile?.sol_id || ''
+    const params = new URLSearchParams()
+    if (empId) params.set('bm_employee_id', empId)
+    if (solId) params.set('sol_id', solId)
+    params.set('date', specificDate)
+    targetUrl = `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?${params.toString()}`
+  }
+
+  openDailyPlanningSheet(specificDate)
 
   const isInPopup = window.self !== window.top
   if (isInPopup) {
-    // If branch profile is already in a popup, load in the same popup
-    window.location.href = dailyPlanningSheetUrl.value
+    window.location.href = targetUrl
   } else {
-    // If branch profile is open in full screen, open in popup modal
+    modalUrl.value = targetUrl
     showPlanningModal.value = true
   }
 }
@@ -121,6 +194,7 @@ const employeeStatusClass = computed(() =>
     : 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
 )
 onMounted(async () => {
+  fetchChecklistStatus()
   try {
     const res = await frappeRequest({
       url: '/api/method/custom_report.www.drishti.get_current_user_employee_status',
@@ -132,6 +206,10 @@ onMounted(async () => {
     console.error('Failed to load employee status', e)
   }
 })
+
+watch(() => [props.branchProfile, props.branch], () => {
+  fetchChecklistStatus()
+}, { deep: true })
 
 const STATUS_META = {
   improved: { label: 'Improved', class: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400', icon: 'up' },
@@ -160,18 +238,16 @@ function scrollToManpowerDetails() {
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
-    <!-- Header with Back Button -->
-    <div class="px-5 py-3 border-b border-[var(--border)] flex items-center gap-3 flex-shrink-0">
-      <button
-        @click="emit('back')"
-        class="flex items-center gap-1 text-sm text-[var(--text3)] hover:text-[var(--text)] transition"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <div class="h-full flex flex-col overflow-y-auto">
+    <!-- Top breadcrumb bar -->
+    <div class="flex items-center gap-2 px-6 py-2.5 bg-[var(--surface)] border-b border-[var(--border)] text-xs text-[var(--text2)] flex-shrink-0">
+      <button @click="$emit('back')" class="flex items-center gap-1 hover:text-[var(--text)] transition font-medium">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6"></polyline>
         </svg>
-        Back
+        <span>Branches</span>
       </button>
+      <span class="text-[var(--border)]">/</span>
       <span class="text-sm font-semibold text-[var(--text)]">{{ branch.branch }} ({{ branch.sol_id }})</span>
     </div>
 
@@ -179,20 +255,20 @@ function scrollToManpowerDetails() {
     <div class="mx-5 my-4 sb-card flex-shrink-0">
       <div class="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
         <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Branch Information</div>
-        <div class="inline-flex items-stretch rounded-lg overflow-hidden border border-blue-600/30 text-xs shadow-sm hover:shadow transition bg-[var(--bg)]">
-          <!-- Left side: Every working day date of current week (Mon-Sat) -->
-          <div class="flex items-stretch divide-x divide-blue-200 dark:divide-blue-800/60 bg-blue-50/70 dark:bg-blue-950/40">
+        <div class="inline-flex items-stretch rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700 text-xs shadow-sm hover:shadow transition bg-[var(--bg)]">
+          <!-- Left side: Every working day date of current week (Mon-Sat) with color variation -->
+          <div class="flex items-stretch divide-x divide-slate-200 dark:divide-slate-800">
             <button
               v-for="d in currentWeekWorkingDays"
               :key="d.isoDate"
               type="button"
               @click="handleDailyPlanningClick($event, d.isoDate)"
-              class="px-2 py-1 flex flex-col items-center justify-center transition cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/60"
-              :class="d.isToday ? 'bg-blue-600/15 text-blue-700 dark:text-blue-300 ring-1 ring-inset ring-blue-500/30' : 'text-[var(--text2)]'"
-              :title="`${d.fullDisplay}${d.isToday ? ' (Today)' : ''}`"
+              class="px-2 py-1 flex flex-col items-center justify-center transition cursor-pointer"
+              :class="getDayChipStyle(d).containerClass"
+              :title="`${d.fullDisplay} • Status: ${getDayChipStyle(d).statusText}`"
             >
-              <span class="text-[9px] uppercase font-bold leading-tight tracking-wider opacity-75">{{ d.dayName }}</span>
-              <span class="text-[11px] font-bold leading-tight" :class="d.isToday ? 'text-blue-600 dark:text-blue-400 font-extrabold' : 'text-[var(--text)]'">
+              <span class="text-[9px] uppercase leading-tight tracking-wider" :class="getDayChipStyle(d).dayTextClass">{{ d.dayName }}</span>
+              <span class="text-[11px] leading-tight" :class="getDayChipStyle(d).dateTextClass">
                 {{ d.dateNum }}
               </span>
             </button>
@@ -804,7 +880,7 @@ function scrollToManpowerDetails() {
         <!-- Modal Iframe Body -->
         <div class="flex-1 min-h-0 bg-white dark:bg-gray-900 relative">
           <iframe
-            :src="dailyPlanningSheetUrl"
+            :src="modalUrl || dailyPlanningSheetUrl"
             class="w-full h-full border-none"
             frameborder="0"
           ></iframe>
