@@ -24,6 +24,33 @@ const asOfMonth = computed(() => {
   return ''
 })
 
+const dailyPlanningSheetUrl = computed(() => {
+  const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || ''
+  const solId = props.branch?.sol_id || props.branchProfile?.sol_id || ''
+  if (empId) {
+    return `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?bm_employee_id=${encodeURIComponent(empId)}`
+  }
+  if (solId) {
+    return `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?sol_id=${encodeURIComponent(solId)}`
+  }
+  return '/app/bm-checklist/new-bm-checklist-tcthxsxvlh'
+})
+
+function openDailyPlanningSheet() {
+  const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || ''
+  const solId = props.branch?.sol_id || props.branchProfile?.sol_id || ''
+  try {
+    if (empId) {
+      sessionStorage.setItem('bm_checklist_employee_id', empId)
+      localStorage.setItem('bm_checklist_employee_id', empId)
+    }
+    if (solId) {
+      sessionStorage.setItem('bm_checklist_sol_id', solId)
+      localStorage.setItem('bm_checklist_sol_id', solId)
+    }
+  } catch (e) {}
+}
+
 // Session user's Employee resignation status (Resign / Active)
 const employeeStatus = ref('Active')
 const relievingInDays = ref(null)
@@ -98,7 +125,8 @@ function scrollToManpowerDetails() {
       <div class="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
         <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Branch Information</div>
         <a
-          href="/app/bm-checklist/new-bm-checklist-tcthxsxvlh"
+          :href="dailyPlanningSheetUrl"
+          @click="openDailyPlanningSheet"
           class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 transition dark:bg-blue-600 dark:hover:bg-blue-500 shadow-sm cursor-pointer no-underline"
         >
           Daily Planning Sheet

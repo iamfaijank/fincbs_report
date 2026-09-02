@@ -3774,6 +3774,12 @@
 					wrapper.innerHTML = "";
 
 					if (!bmList || bmList.length === 0) {
+						const fallbackEmpId = d.bm_employee_id || "";
+						const solId = d.sol_id || "";
+						const fallbackUrl = fallbackEmpId 
+							? `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?bm_employee_id=${encodeURIComponent(fallbackEmpId)}`
+							: (solId ? `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?sol_id=${encodeURIComponent(solId)}` : `/app/bm-checklist/new-bm-checklist-tcthxsxvlh`);
+
 						wrapper.innerHTML = `
 							<section class="bm-card">
 								<div class="bm-left">
@@ -3784,7 +3790,7 @@
 								<div class="bm-right">
 									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
 										<div class="bm-title" style="margin-bottom: 0;">Branch Manager</div>
-										<a href="/app/bm-checklist/new-bm-checklist-tcthxsxvlh" class="daily-planning-sheet-btn" style="display: inline-block; padding: 6px 14px; font-size: 12px; font-weight: 600; border-radius: 6px; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;">Daily Planning Sheet</a>
+										<a href="${fallbackUrl}" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" class="daily-planning-sheet-btn" style="display: inline-block; padding: 6px 14px; font-size: 12px; font-weight: 600; border-radius: 6px; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;">Daily Planning Sheet</a>
 									</div>
 									<div class="bm-name-row" style="display:flex; align-items:center; gap:8px;">
 										<div class="bm-name">${this.value(d.bm_name)}</div><span id="bm-status-single-badge" class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; background:#dcfce7; color:#16a34a;">Active</span>
@@ -3812,7 +3818,11 @@
 					bmList.forEach((bm, idx) => {
 						const rep = bm.reporting_person || {};
 						const avatarSrc = bm.image || "/assets/frappe/images/default-avatar.png";
-						const empId = bm.employee_number || bm.name || "";
+						const empId = bm.name || bm.employee_number || "";
+						const solId = d.sol_id || "";
+						const planningUrl = empId 
+							? `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?bm_employee_id=${encodeURIComponent(empId)}`
+							: (solId ? `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?sol_id=${encodeURIComponent(solId)}` : `/app/bm-checklist/new-bm-checklist-tcthxsxvlh`);
 						const bmIndexBadge = bmList.length > 1 ? `<span style="font-size: 11px; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 8px; border-radius: 12px; margin-left: 8px;">BM #${idx + 1} of ${bmList.length}</span>` : "";
 
 						const cardHtml = `
@@ -3825,7 +3835,7 @@
 								<div class="bm-right">
 									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
 										<div class="bm-title" style="margin-bottom: 0;">${this.value(bm.designation)} ${bmIndexBadge}</div>
-										<a href="/app/bm-checklist/new-bm-checklist-tcthxsxvlh" class="daily-planning-sheet-btn" style="display: inline-block; padding: 6px 14px; font-size: 12px; font-weight: 600; border-radius: 6px; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;">Daily Planning Sheet</a>
+										<a href="${planningUrl}" data-emp-id="${empId}" data-sol-id="${solId}" class="daily-planning-sheet-btn" style="display: inline-block; padding: 6px 14px; font-size: 12px; font-weight: 600; border-radius: 6px; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;">Daily Planning Sheet</a>
 									</div>
 									<div class="bm-name-row" style="display:flex; align-items:center; gap:8px;">
 										<div class="bm-name">
