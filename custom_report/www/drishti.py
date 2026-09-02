@@ -267,5 +267,12 @@ def get_branch_profile(sol_id=None):
  )
  
  if result:
-  return result[0]
+  doc = result[0]
+  if not doc.get("bm_employee_id"):
+   from custom_report.branch_v1 import get_bm_details_from_employee
+   bm_res = get_bm_details_from_employee(sol_id)
+   if bm_res and bm_res.get("data") and len(bm_res["data"]) > 0:
+    first_bm = bm_res["data"][0]
+    doc["bm_employee_id"] = first_bm.get("name") or first_bm.get("employee_number")
+  return doc
  return {}
