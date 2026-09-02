@@ -36,6 +36,8 @@ const dailyPlanningSheetUrl = computed(() => {
   return '/app/bm-checklist/new-bm-checklist-tcthxsxvlh'
 })
 
+const showPlanningModal = ref(false)
+
 function openDailyPlanningSheet() {
   const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || ''
   const solId = props.branch?.sol_id || props.branchProfile?.sol_id || ''
@@ -49,6 +51,20 @@ function openDailyPlanningSheet() {
       localStorage.setItem('bm_checklist_sol_id', solId)
     }
   } catch (e) {}
+}
+
+function handleDailyPlanningClick(e) {
+  if (e) e.preventDefault()
+  openDailyPlanningSheet()
+
+  const isInPopup = window.self !== window.top
+  if (isInPopup) {
+    // If branch profile is already in a popup, load in the same popup
+    window.location.href = dailyPlanningSheetUrl.value
+  } else {
+    // If branch profile is open in full screen, open in popup modal
+    showPlanningModal.value = true
+  }
 }
 
 // Session user's Employee resignation status (Resign / Active)
@@ -126,7 +142,7 @@ function scrollToManpowerDetails() {
         <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Branch Information</div>
         <a
           :href="dailyPlanningSheetUrl"
-          @click="openDailyPlanningSheet"
+          @click="handleDailyPlanningClick"
           class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 transition dark:bg-blue-600 dark:hover:bg-blue-500 shadow-sm cursor-pointer no-underline"
         >
           Daily Planning Sheet
@@ -677,6 +693,57 @@ function scrollToManpowerDetails() {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Daily Planning Sheet Modal Popup (Full-Screen Mode) -->
+    <div
+      v-if="showPlanningModal"
+      class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6"
+      @click.self="showPlanningModal = false"
+    >
+      <div class="relative w-full max-w-6xl h-[88vh] bg-[var(--bg)] border border-[var(--border)] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <!-- Modal Header -->
+        <div class="px-5 py-3 border-b border-[var(--border)] flex items-center justify-between bg-[var(--bg2)] flex-shrink-0">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-semibold text-[var(--text)]">Daily Planning Sheet - BM Checklist</span>
+            <span class="text-xs text-[var(--text3)]" v-if="branch?.branch">({{ branch.branch }} - {{ branch.sol_id }})</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <a
+              :href="dailyPlanningSheetUrl"
+              target="_blank"
+              class="px-2.5 py-1 text-xs font-medium rounded text-[var(--text3)] hover:text-[var(--text)] hover:bg-[var(--bg)] border border-[var(--border)] transition flex items-center gap-1 no-underline"
+              title="Open in new tab"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+              Open New Tab
+            </a>
+            <button
+              type="button"
+              @click="showPlanningModal = false"
+              class="p-1 text-[var(--text3)] hover:text-[var(--text)] hover:bg-[var(--bg)] rounded-lg transition cursor-pointer"
+              title="Close"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <!-- Modal Iframe Body -->
+        <div class="flex-1 min-h-0 bg-white dark:bg-gray-900 relative">
+          <iframe
+            :src="dailyPlanningSheetUrl"
+            class="w-full h-full border-none"
+            frameborder="0"
+          ></iframe>
+        </div>
+      </div>
     </div>
   </div>
 </template>

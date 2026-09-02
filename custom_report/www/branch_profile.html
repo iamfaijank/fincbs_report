@@ -2502,6 +2502,33 @@
 				</div>
 			</section>
 		</div>
+
+		<!-- Daily Planning Sheet Modal Popup (Full-Screen Mode) -->
+		<div id="daily-planning-modal" style="display: none; position: fixed; inset: 0; z-index: 99999; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); justify-content: center; align-items: center; padding: 16px; box-sizing: border-box;">
+			<div style="position: relative; width: 85vw; max-width: 1200px; height: 88vh; background: #ffffff; border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(226, 232, 240, 0.8);">
+				<div style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; flex-shrink: 0;">
+					<div style="display: flex; align-items: center; gap: 8px;">
+						<span style="font-size: 15px; font-weight: 600; color: #1e293b;">Daily Planning Sheet - BM Checklist</span>
+					</div>
+					<div style="display: flex; align-items: center; gap: 10px;">
+						<a id="daily-planning-tab-btn" href="#" target="_blank" style="padding: 5px 12px; font-size: 12px; font-weight: 500; border-radius: 6px; border: 1px solid #cbd5e1; color: #475569; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; background: #ffffff; transition: all 0.2s ease;">
+							<i class="fa fa-external-link"></i> Open New Tab
+						</a>
+						<button type="button" id="close-daily-planning-modal" onclick="BranchDashboard.closeDailyPlanningModal()" style="background: transparent; border: none; font-size: 22px; line-height: 1; color: #64748b; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.15s ease;">
+							&times;
+						</button>
+					</div>
+				</div>
+				<div style="flex: 1; min-height: 0; position: relative; background: #f1f5f9;">
+					<div id="daily-planning-loader" style="position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #ffffff; z-index: 2;">
+						<div style="border: 3px solid #e2e8f0; border-top: 3px solid #097c80; border-radius: 50%; width: 36px; height: 36px; animation: spin 0.8s linear infinite; margin-bottom: 12px;"></div>
+						<span style="font-size: 13px; color: #64748b; font-weight: 500;">Loading BM Checklist...</span>
+					</div>
+					<iframe id="daily-planning-iframe" src="" style="width: 100%; height: 100%; border: none; background: #ffffff;"></iframe>
+				</div>
+			</div>
+		</div>
+
 		<script>
 			/* =========================================================
 	   BRANCH DASHBOARD (HEADER + SEARCH)
@@ -2830,11 +2857,68 @@
 
 					if (e.key === "Escape") {
 						this.hideSuggestions();
+						this.closeDailyPlanningModal();
 					}
+				},
+
+				openDailyPlanningModal(url) {
+					const modal = document.getElementById("daily-planning-modal");
+					const iframe = document.getElementById("daily-planning-iframe");
+					const loader = document.getElementById("daily-planning-loader");
+					const tabBtn = document.getElementById("daily-planning-tab-btn");
+					if (!modal || !iframe) return;
+
+					if (tabBtn) tabBtn.href = url;
+					if (loader) loader.style.display = "flex";
+					iframe.src = url;
+					iframe.onload = () => {
+						if (loader) loader.style.display = "none";
+					};
+					modal.style.display = "flex";
+					document.body.style.overflow = "hidden";
+				},
+
+				closeDailyPlanningModal() {
+					const modal = document.getElementById("daily-planning-modal");
+					const iframe = document.getElementById("daily-planning-iframe");
+					if (modal) modal.style.display = "none";
+					if (iframe) iframe.src = "";
+					document.body.style.overflow = "";
 				},
 
 				/* ---------------- Init ---------------- */
 				init() {
+					// Delegate Daily Planning Sheet click events
+					document.addEventListener("click", (e) => {
+						const btn = e.target.closest(".daily-planning-sheet-btn");
+						if (btn) {
+							e.preventDefault();
+							const targetUrl = btn.getAttribute("href");
+							const empId = btn.getAttribute("data-emp-id");
+							const solId = btn.getAttribute("data-sol-id");
+
+							try {
+								if (empId) {
+									sessionStorage.setItem("bm_checklist_employee_id", empId);
+									localStorage.setItem("bm_checklist_employee_id", empId);
+								}
+								if (solId) {
+									sessionStorage.setItem("bm_checklist_sol_id", solId);
+									localStorage.setItem("bm_checklist_sol_id", solId);
+								}
+							} catch (err) {}
+
+							const isInPopup = window.self !== window.top;
+							if (isInPopup) {
+								// Already in popup/iframe: open in the same popup
+								window.location.href = targetUrl;
+							} else {
+								// In full screen: open in modal dialog
+								this.openDailyPlanningModal(targetUrl);
+							}
+						}
+					});
+
 					// Populate dynamic financial years starting from 2025-2026 up to current year
 					const fySelectEl = document.getElementById("fy-select");
 					if (fySelectEl) {
