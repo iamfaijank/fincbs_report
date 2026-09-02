@@ -73,8 +73,24 @@ const currentWeekWorkingDays = computed(() => {
 })
 
 const showPlanningModal = ref(false)
-const modalUrl = ref('')
+const isPlanningLoading = ref(false)
+const isPlanningSaving = ref(false)
+const planningFeedback = ref({ message: '', type: '' })
+const isNewChecklist = ref(true)
+const checklistDoc = ref({
+  name: '',
+  bm_employee_id: '',
+  name1: '',
+  designation: '',
+  sol_id: '',
+  date: '',
+  table_lqft: []
+})
 const checklistStatusMap = ref({})
+
+const completedTasksCount = computed(() => (checklistDoc.value.table_lqft || []).filter(t => t.is_completed).length)
+const totalTasksCount = computed(() => (checklistDoc.value.table_lqft || []).length)
+const completionProgress = computed(() => totalTasksCount.value > 0 ? Math.round((completedTasksCount.value / totalTasksCount.value) * 100) : 0)
 
 async function fetchChecklistStatus() {
   const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || props.branch?.bm_employee_id || ''
@@ -128,52 +144,111 @@ function getDayChipStyle(d) {
   }
 }
 
-function openDailyPlanningSheet(specificDate) {
+async function loadChecklistDoc(specificDate) {
+  const targetDate = specificDate || new Date().toISOString().split('T')[0]
   const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || props.branch?.bm_employee_id || ''
   const solId = props.branch?.sol_id || props.branchProfile?.sol_id || ''
-  const targetDate = specificDate || new Date().toISOString().split('T')[0]
+  const recordInfo = checklistStatusMap.value[targetDate]
+  const recordName = (recordInfo && recordInfo.exists && (!empId || recordInfo.bm_employee_id === empId)) ? recordInfo.name : ''
+
+  isPlanningLoading.value = true
+  planningFeedback.value = { message: '', type: '' }
+
   try {
-    if (empId) {
-      sessionStorage.setItem('bm_checklist_employee_id', empId)
-      localStorage.setItem('bm_checklist_employee_id', empId)
+    const url = `/api/method/custom_report.custom_report.doctype.bm_checklist.bm_checklist.get_bm_checklist_details?name=${encodeURIComponent(recordName)}&employee_id=${encodeURIComponent(empId)}&date=${encodeURIComponent(targetDate)}&sol_id=${encodeURIComponent(solId)}`
+    const res = await fetch(url).then(r => r.json())
+    const data = res.message || res
+    if (data && data.doc) {
+      checklistDoc.value = {
+        name: data.doc.name || '',
+        bm_employee_id: data.doc.bm_employee_id || empId,
+        name1: data.doc.name1 || props.branchProfile?.bm_name || '',
+        designation: data.doc.designation || props.branchProfile?.bm_designation || 'BRANCH MANAGER',
+        sol_id: data.doc.sol_id || solId,
+        date: data.doc.date || targetDate,
+        table_lqft: (data.doc.table_lqft || []).map(row => ({
+          name: row.name || '',
+          task: row.task || '',
+          is_completed: Boolean(row.is_completed == 1 || row.is_completed === true),
+          remark: row.remark || ''
+        }))
+      }
+      isNewChecklist.value = Boolean(data.is_new)
     }
-    if (solId) {
-      sessionStorage.setItem('bm_checklist_sol_id', solId)
-      localStorage.setItem('bm_checklist_sol_id', solId)
-    }
-    sessionStorage.setItem('bm_checklist_date', targetDate)
-    localStorage.setItem('bm_checklist_date', targetDate)
-  } catch (e) {}
+  } catch (e) {
+    console.error('Failed to load checklist details', e)
+    planningFeedback.value = { message: 'Failed to load checklist details.', type: 'error' }
+  } finally {
+    isPlanningLoading.value = false
+  }
 }
 
-function handleDailyPlanningClick(e, specificDate) {
+async function handleDailyPlanningClick(e, specificDate) {
   if (e) e.preventDefault()
   const targetDate = specificDate || new Date().toISOString().split('T')[0]
-  const recordInfo = checklistStatusMap.value[targetDate]
-  const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || props.branch?.bm_employee_id || ''
-  const solId = props.branch?.sol_id || props.branchProfile?.sol_id || ''
-  const isThisBm = !!(recordInfo?.exists && (!empId || !recordInfo.bm_employee_id || recordInfo.bm_employee_id === empId))
-  const existingRecord = isThisBm ? recordInfo.name : null
+  showPlanningModal.value = true
+  await loadChecklistDoc(targetDate)
+}
 
-  let targetUrl = ''
-  if (existingRecord) {
-    targetUrl = `/app/bm-checklist/${encodeURIComponent(existingRecord)}`
-  } else {
-    const params = new URLSearchParams()
-    if (empId) params.set('bm_employee_id', empId)
-    if (solId) params.set('sol_id', solId)
-    params.set('date', targetDate)
-    targetUrl = `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?${params.toString()}`
+function addTaskRow() {
+  checklistDoc.value.table_lqft.push({
+    name: '',
+    task: '',
+    is_completed: false,
+    remark: ''
+  })
+}
+
+function removeTaskRow(idx) {
+  checklistDoc.value.table_lqft.splice(idx, 1)
+}
+
+async function saveChecklistDoc() {
+  isPlanningSaving.value = true
+  planningFeedback.value = { message: '', type: '' }
+
+  const payload = {
+    name: checklistDoc.value.name,
+    bm_employee_id: checklistDoc.value.bm_employee_id,
+    name1: checklistDoc.value.name1,
+    designation: checklistDoc.value.designation,
+    sol_id: checklistDoc.value.sol_id,
+    date: checklistDoc.value.date,
+    table_lqft: checklistDoc.value.table_lqft.map(t => ({
+      name: t.name,
+      task: t.task,
+      is_completed: t.is_completed ? 1 : 0,
+      remark: t.remark
+    }))
   }
 
-  openDailyPlanningSheet(targetDate)
+  try {
+    const res = await fetch('/api/method/custom_report.custom_report.doctype.bm_checklist.bm_checklist.save_bm_checklist_doc', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Frappe-CSRF-Token': (window.frappe && window.frappe.csrf_token) || ''
+      },
+      body: JSON.stringify({ data: payload })
+    }).then(r => r.json())
 
-  const isInPopup = window.self !== window.top
-  if (isInPopup) {
-    window.location.href = targetUrl
-  } else {
-    modalUrl.value = targetUrl
-    showPlanningModal.value = true
+    const data = res.message || res
+    if (data && data.status === 'success') {
+      checklistDoc.value.name = data.doc.name
+      isNewChecklist.value = false
+      planningFeedback.value = { message: data.message || 'Saved successfully!', type: 'success' }
+      await fetchChecklistStatus()
+      setTimeout(() => {
+        planningFeedback.value = { message: '', type: '' }
+      }, 4000)
+    } else {
+      planningFeedback.value = { message: data.message || 'Failed to save checklist.', type: 'error' }
+    }
+  } catch (e) {
+    console.error('Save checklist error', e)
+    planningFeedback.value = { message: 'Network error while saving checklist.', type: 'error' }
+  } finally {
+    isPlanningSaving.value = false
   }
 }
 
@@ -835,37 +910,50 @@ function scrollToManpowerDetails() {
       </table>
     </div>
 
-    <!-- Daily Planning Sheet Modal Popup (Full-Screen Mode) -->
+    <!-- Daily Planning Sheet Custom UI Modal -->
     <div
       v-if="showPlanningModal"
       class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6"
       @click.self="showPlanningModal = false"
     >
-      <div class="relative w-full max-w-6xl h-[88vh] bg-[var(--bg)] border border-[var(--border)] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div class="relative w-full max-w-4xl max-h-[90vh] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        
         <!-- Modal Header -->
-        <div class="px-5 py-3 border-b border-[var(--border)] flex items-center justify-between bg-[var(--bg2)] flex-shrink-0">
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-semibold text-[var(--text)]">Daily Planning Sheet - BM Checklist</span>
-            <span class="text-xs text-[var(--text3)]" v-if="branch?.branch">({{ branch.branch }} - {{ branch.sol_id }})</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <a
-              :href="dailyPlanningSheetUrl"
-              target="_blank"
-              class="px-2.5 py-1 text-xs font-medium rounded text-[var(--text3)] hover:text-[var(--text)] hover:bg-[var(--bg)] border border-[var(--border)] transition flex items-center gap-1 no-underline"
-              title="Open in new tab"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                <polyline points="15 3 21 3 21 9"></polyline>
-                <line x1="10" y1="14" x2="21" y2="3"></line>
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-slate-50/80 dark:bg-gray-800/80 backdrop-blur-sm flex-shrink-0">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 flex items-center justify-center text-teal-600 dark:text-teal-400 shadow-sm">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
               </svg>
-              Open New Tab
-            </a>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-base font-bold text-gray-900 dark:text-white">Daily Planning Sheet</h3>
+                <span
+                  class="px-2 py-0.5 text-[11px] font-bold rounded-full uppercase tracking-wider"
+                  :class="isNewChecklist ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'"
+                >
+                  {{ isNewChecklist ? 'New Checklist' : 'Saved Record' }}
+                </span>
+                <span v-if="checklistDoc.name" class="text-xs text-gray-500 font-mono">
+                  #{{ checklistDoc.name }}
+                </span>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                BM Task Planning & Daily Execution Checklist
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
             <button
               type="button"
               @click="showPlanningModal = false"
-              class="p-1 text-[var(--text3)] hover:text-[var(--text)] hover:bg-[var(--bg)] rounded-lg transition cursor-pointer"
+              class="w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center transition cursor-pointer"
               title="Close"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -875,14 +963,189 @@ function scrollToManpowerDetails() {
             </button>
           </div>
         </div>
-        <!-- Modal Iframe Body -->
-        <div class="flex-1 min-h-0 bg-white dark:bg-gray-900 relative">
-          <iframe
-            :src="modalUrl || dailyPlanningSheetUrl"
-            class="w-full h-full border-none"
-            frameborder="0"
-          ></iframe>
+
+        <!-- Notification Banner -->
+        <div
+          v-if="planningFeedback.message"
+          class="px-6 py-2.5 text-xs font-semibold flex items-center justify-between transition"
+          :class="planningFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border-b border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 text-rose-800 dark:bg-rose-950 dark:text-rose-200 border-b border-rose-200 dark:border-rose-800'"
+        >
+          <div class="flex items-center gap-2">
+            <svg v-if="planningFeedback.type === 'success'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <span>{{ planningFeedback.message }}</span>
+          </div>
+          <button @click="planningFeedback.message = ''" class="opacity-60 hover:opacity-100 text-xs font-bold">Dismiss</button>
         </div>
+
+        <!-- Modal Body Content -->
+        <div class="flex-1 min-h-0 overflow-y-auto p-6 space-y-6">
+          <div v-if="isPlanningLoading" class="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
+            <div class="w-8 h-8 border-3 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-sm font-medium">Loading BM Checklist details...</p>
+          </div>
+
+          <template v-else>
+            <!-- Top Metadata Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-xl bg-slate-50 dark:bg-gray-800/60 border border-slate-200/80 dark:border-gray-800">
+              <div>
+                <label class="block text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Date</label>
+                <input
+                  type="date"
+                  v-model="checklistDoc.date"
+                  class="w-full text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">BM Employee ID</label>
+                <div class="text-xs font-bold text-teal-700 dark:text-teal-400 px-3 py-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  {{ checklistDoc.bm_employee_id || '—' }}
+                </div>
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">BM Name</label>
+                <div class="text-xs font-semibold text-gray-800 dark:text-gray-200 px-3 py-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 truncate" :title="checklistDoc.name1">
+                  {{ checklistDoc.name1 || '—' }}
+                </div>
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Branch (SOL ID)</label>
+                <div class="text-xs font-semibold text-gray-800 dark:text-gray-200 px-3 py-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  {{ branch?.branch || 'Branch' }} ({{ checklistDoc.sol_id || branch?.sol_id }})
+                </div>
+              </div>
+            </div>
+
+            <!-- Task Progress Section -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/50">
+              <div class="flex items-center gap-3">
+                <div class="text-2xl font-black text-teal-700 dark:text-teal-300">
+                  {{ completionProgress }}%
+                </div>
+                <div>
+                  <div class="text-xs font-bold text-gray-900 dark:text-white">
+                    Checklist Completion Progress
+                  </div>
+                  <div class="text-[11px] text-gray-500 dark:text-gray-400">
+                    {{ completedTasksCount }} of {{ totalTasksCount }} tasks marked as completed
+                  </div>
+                </div>
+              </div>
+              <div class="w-full sm:w-48 bg-gray-200 dark:bg-gray-700 h-2.5 rounded-full overflow-hidden">
+                <div
+                  class="h-full bg-teal-600 dark:bg-teal-400 rounded-full transition-all duration-300"
+                  :style="{ width: `${completionProgress}%` }"
+                ></div>
+              </div>
+            </div>
+
+            <!-- Tasks Table / List -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                    Checklist Tasks
+                  </h4>
+                  <span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                    {{ totalTasksCount }}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  @click="addTaskRow"
+                  class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/60 border border-teal-200 dark:border-teal-800 flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  Add Custom Task
+                </button>
+              </div>
+
+              <!-- Tasks List Box -->
+              <div class="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
+                <div
+                  v-for="(t, idx) in checklistDoc.table_lqft"
+                  :key="idx"
+                  class="p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 transition"
+                  :class="t.is_completed ? 'bg-emerald-50/30 dark:bg-emerald-950/10' : 'hover:bg-slate-50/50 dark:hover:bg-gray-800/40'"
+                >
+                  <!-- Checkbox -->
+                  <label class="flex items-center gap-3 cursor-pointer select-none sm:pt-0.5">
+                    <input
+                      type="checkbox"
+                      v-model="t.is_completed"
+                      class="w-5 h-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500 dark:border-gray-700 dark:bg-gray-800 cursor-pointer"
+                    />
+                  </label>
+
+                  <!-- Task Description -->
+                  <div class="flex-1 min-w-0">
+                    <input
+                      v-model="t.task"
+                      type="text"
+                      placeholder="Task description..."
+                      class="w-full text-xs font-semibold bg-transparent border-b border-transparent focus:border-teal-500 focus:bg-white dark:focus:bg-gray-800 px-1 py-1 rounded transition text-gray-800 dark:text-gray-100 focus:outline-none"
+                      :class="t.is_completed ? 'line-through text-gray-400 dark:text-gray-500' : ''"
+                    />
+                  </div>
+
+                  <!-- Remark Input -->
+                  <div class="w-full sm:w-64 flex-shrink-0">
+                    <input
+                      v-model="t.remark"
+                      type="text"
+                      placeholder="Add note / remark..."
+                      class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 focus:bg-white dark:focus:bg-gray-900 focus:border-teal-500 focus:outline-none transition"
+                    />
+                  </div>
+
+                  <!-- Remove Action -->
+                  <button
+                    type="button"
+                    @click="removeTaskRow(idx)"
+                    class="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition self-end sm:self-center"
+                    title="Remove task"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  </button>
+                </div>
+
+                <div v-if="checklistDoc.table_lqft.length === 0" class="py-8 text-center text-xs text-gray-400">
+                  No tasks added yet. Click "+ Add Custom Task" above to add your first checklist item.
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between bg-slate-50/80 dark:bg-gray-800/80 backdrop-blur-sm flex-shrink-0">
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-400">
+              {{ isNewChecklist ? 'Create and submit daily planning sheet' : 'Update existing checklist record' }}
+            </span>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              @click="showPlanningModal = false"
+              class="px-4 py-2 text-xs font-semibold rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-200/70 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 transition cursor-pointer"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              @click="saveChecklistDoc"
+              :disabled="isPlanningSaving || isPlanningLoading"
+              class="px-5 py-2 text-xs font-bold rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white shadow-md shadow-teal-600/20 flex items-center gap-2 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div v-if="isPlanningSaving" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+              <span>{{ isNewChecklist ? 'Create Checklist' : 'Update Checklist' }}</span>
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>

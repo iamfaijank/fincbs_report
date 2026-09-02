@@ -2517,29 +2517,117 @@
 			</section>
 		</div>
 
-		<!-- Daily Planning Sheet Modal Popup (Full-Screen Mode) -->
+		<!-- Daily Planning Sheet Custom UI Modal -->
 		<div id="daily-planning-modal" style="display: none; position: fixed; inset: 0; z-index: 99999; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); justify-content: center; align-items: center; padding: 16px; box-sizing: border-box;">
-			<div style="position: relative; width: 85vw; max-width: 1200px; height: 88vh; background: #ffffff; border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(226, 232, 240, 0.8);">
-				<div style="padding: 12px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; flex-shrink: 0;">
-					<div style="display: flex; align-items: center; gap: 8px;">
-						<span style="font-size: 15px; font-weight: 600; color: #1e293b;">Daily Planning Sheet - BM Checklist</span>
+			<div style="position: relative; width: 92vw; max-width: 900px; max-height: 90vh; background: #ffffff; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(226, 232, 240, 0.8);">
+				
+				<!-- Modal Header -->
+				<div style="padding: 16px 24px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; flex-shrink: 0;">
+					<div style="display: flex; align-items: center; gap: 12px;">
+						<div style="width: 38px; height: 38px; border-radius: 10px; background: #f0fdfa; border: 1px solid #ccfbf1; display: flex; align-items: center; justify-content: center; color: #0d9488; font-size: 16px;">
+							<i class="fa fa-file-text-o"></i>
+						</div>
+						<div>
+							<div style="display: flex; align-items: center; gap: 8px;">
+								<span style="font-size: 16px; font-weight: 700; color: #0f172a;">Daily Planning Sheet</span>
+								<span id="dp-modal-status-badge" style="padding: 2px 8px; font-size: 11px; font-weight: 700; border-radius: 20px; text-transform: uppercase; background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
+									New Checklist
+								</span>
+								<span id="dp-modal-docname" style="font-size: 12px; font-family: monospace; color: #64748b;"></span>
+							</div>
+							<div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+								BM Task Planning & Execution Checklist
+							</div>
+						</div>
 					</div>
-					<div style="display: flex; align-items: center; gap: 10px;">
-						<a id="daily-planning-tab-btn" href="#" target="_blank" style="padding: 5px 12px; font-size: 12px; font-weight: 500; border-radius: 6px; border: 1px solid #cbd5e1; color: #475569; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; background: #ffffff; transition: all 0.2s ease;">
-							<i class="fa fa-external-link"></i> Open New Tab
-						</a>
-						<button type="button" id="close-daily-planning-modal" onclick="BranchDashboard.closeDailyPlanningModal()" style="background: transparent; border: none; font-size: 22px; line-height: 1; color: #64748b; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.15s ease;">
+					<div style="display: flex; align-items: center; gap: 8px;">
+						<button type="button" onclick="BranchDashboard.closeDailyPlanningModal()" style="background: transparent; border: none; font-size: 20px; line-height: 1; color: #94a3b8; cursor: pointer; padding: 6px 10px; border-radius: 8px; transition: all 0.15s ease;">
 							&times;
 						</button>
 					</div>
 				</div>
-				<div style="flex: 1; min-height: 0; position: relative; background: #f1f5f9;">
-					<div id="daily-planning-loader" style="position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #ffffff; z-index: 2;">
-						<div style="border: 3px solid #e2e8f0; border-top: 3px solid #097c80; border-radius: 50%; width: 36px; height: 36px; animation: spin 0.8s linear infinite; margin-bottom: 12px;"></div>
-						<span style="font-size: 13px; color: #64748b; font-weight: 500;">Loading BM Checklist...</span>
+
+				<!-- Feedback Banner -->
+				<div id="dp-feedback-banner" style="display: none; padding: 10px 24px; font-size: 13px; font-weight: 600;"></div>
+
+				<!-- Modal Body Content -->
+				<div id="dp-modal-body" style="flex: 1; min-height: 0; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px;">
+					<!-- Loader -->
+					<div id="daily-planning-loader" style="display: none; flex-direction: column; justify-content: center; align-items: center; padding: 40px 0;">
+						<div style="border: 3px solid #e2e8f0; border-top: 3px solid #0d9488; border-radius: 50%; width: 32px; height: 32px; animation: spin 0.8s linear infinite; margin-bottom: 12px;"></div>
+						<span style="font-size: 13px; color: #64748b; font-weight: 500;">Loading BM Checklist details...</span>
 					</div>
-					<iframe id="daily-planning-iframe" src="" style="width: 100%; height: 100%; border: none; background: #ffffff;"></iframe>
+
+					<!-- Form Content -->
+					<div id="dp-form-content" style="display: flex; flex-direction: column; gap: 20px;">
+						<!-- Metadata Grid -->
+						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+							<div>
+								<label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">Date</label>
+								<input type="date" id="dp-field-date" style="width: 100%; box-sizing: border-box; padding: 6px 10px; font-size: 13px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #1e293b;" />
+							</div>
+							<div>
+								<label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">BM Employee ID</label>
+								<div id="dp-field-empid" style="padding: 7px 10px; font-size: 13px; font-weight: 700; color: #0d9488; background: #ffffff; border-radius: 8px; border: 1px solid #cbd5e1;">--</div>
+							</div>
+							<div>
+								<label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">BM Name</label>
+								<div id="dp-field-empname" style="padding: 7px 10px; font-size: 13px; font-weight: 600; color: #1e293b; background: #ffffff; border-radius: 8px; border: 1px solid #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">--</div>
+							</div>
+							<div>
+								<label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">SOL ID</label>
+								<div id="dp-field-solid" style="padding: 7px 10px; font-size: 13px; font-weight: 600; color: #1e293b; background: #ffffff; border-radius: 8px; border: 1px solid #cbd5e1;">--</div>
+							</div>
+						</div>
+
+						<!-- Progress Section -->
+						<div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; background: #f0fdfa; border-radius: 12px; border: 1px solid #ccfbf1;">
+							<div style="display: flex; align-items: center; gap: 14px;">
+								<span id="dp-progress-pct" style="font-size: 22px; font-weight: 900; color: #0f766e;">0%</span>
+								<div>
+									<div style="font-size: 13px; font-weight: 700; color: #134e4a;">Tasks Progress</div>
+									<div id="dp-progress-text" style="font-size: 11px; color: #0d9488;">0 of 0 tasks completed</div>
+								</div>
+							</div>
+							<div style="width: 180px; height: 10px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+								<div id="dp-progress-bar" style="width: 0%; height: 100%; background: #0d9488; border-radius: 999px; transition: width 0.3s ease;"></div>
+							</div>
+						</div>
+
+						<!-- Tasks Table -->
+						<div>
+							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+								<div style="display: flex; align-items: center; gap: 8px;">
+									<span style="font-size: 13px; font-weight: 700; text-transform: uppercase; color: #334155;">Checklist Tasks</span>
+									<span id="dp-task-count-badge" style="font-size: 11px; font-weight: 800; background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 999px;">0</span>
+								</div>
+								<button type="button" onclick="BranchDashboard.addCustomTaskRow()" style="padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 8px; background: #f0fdfa; color: #0d9488; border: 1px solid #99f6e4; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+									<i class="fa fa-plus"></i> Add Custom Task
+								</button>
+							</div>
+
+							<div id="dp-tasks-container" style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff;">
+								<!-- Rendered task rows -->
+							</div>
+						</div>
+					</div>
 				</div>
+
+				<!-- Modal Footer -->
+				<div style="padding: 16px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; flex-shrink: 0;">
+					<span id="dp-footer-caption" style="font-size: 12px; color: #64748b;">
+						Create and submit daily planning sheet
+					</span>
+					<div style="display: flex; align-items: center; gap: 10px;">
+						<button type="button" onclick="BranchDashboard.closeDailyPlanningModal()" style="padding: 8px 16px; font-size: 13px; font-weight: 600; border-radius: 10px; border: 1px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer;">
+							Close
+						</button>
+						<button type="button" id="dp-save-btn" onclick="BranchDashboard.saveChecklistDoc()" style="padding: 8px 20px; font-size: 13px; font-weight: 700; border-radius: 10px; border: none; background: #097c80; color: #ffffff; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px -1px rgba(9, 124, 128, 0.25);">
+							<i class="fa fa-check"></i> <span id="dp-save-btn-text">Create Checklist</span>
+						</button>
+					</div>
+				</div>
+
 			</div>
 		</div>
 
@@ -2875,29 +2963,224 @@
 					}
 				},
 
-				openDailyPlanningModal(url) {
-					const modal = document.getElementById("daily-planning-modal");
-					const iframe = document.getElementById("daily-planning-iframe");
-					const loader = document.getElementById("daily-planning-loader");
-					const tabBtn = document.getElementById("daily-planning-tab-btn");
-					if (!modal || !iframe) return;
+				currentChecklistDoc: null,
+				isNewChecklist: true,
 
-					if (tabBtn) tabBtn.href = url;
-					if (loader) loader.style.display = "flex";
-					iframe.src = url;
-					iframe.onload = () => {
-						if (loader) loader.style.display = "none";
-					};
+				async openDailyPlanningModal(targetDate, empId, solId, recordName) {
+					const modal = document.getElementById("daily-planning-modal");
+					const loader = document.getElementById("daily-planning-loader");
+					const formContent = document.getElementById("dp-form-content");
+					const feedback = document.getElementById("dp-feedback-banner");
+					if (!modal) return;
+
 					modal.style.display = "flex";
 					document.body.style.overflow = "hidden";
+					if (loader) loader.style.display = "flex";
+					if (formContent) formContent.style.display = "none";
+					if (feedback) feedback.style.display = "none";
+
+					try {
+						const url = `/api/method/custom_report.custom_report.doctype.bm_checklist.bm_checklist.get_bm_checklist_details?name=${encodeURIComponent(recordName || '')}&employee_id=${encodeURIComponent(empId || '')}&date=${encodeURIComponent(targetDate || '')}&sol_id=${encodeURIComponent(solId || '')}`;
+						const res = await fetch(url).then(r => r.json());
+						const data = res.message || res;
+						if (data && data.doc) {
+							this.currentChecklistDoc = data.doc;
+							this.isNewChecklist = Boolean(data.is_new);
+							this.renderChecklistFormUI();
+						}
+					} catch(e) {
+						console.error("Failed to load BM checklist doc", e);
+						this.showPlanningFeedback("Failed to load checklist details.", "error");
+					} finally {
+						if (loader) loader.style.display = "none";
+						if (formContent) formContent.style.display = "flex";
+					}
 				},
 
 				closeDailyPlanningModal() {
 					const modal = document.getElementById("daily-planning-modal");
-					const iframe = document.getElementById("daily-planning-iframe");
 					if (modal) modal.style.display = "none";
-					if (iframe) iframe.src = "";
 					document.body.style.overflow = "";
+				},
+
+				renderChecklistFormUI() {
+					const doc = this.currentChecklistDoc || {};
+					const isNew = this.isNewChecklist;
+
+					const badgeEl = document.getElementById("dp-modal-status-badge");
+					const docnameEl = document.getElementById("dp-modal-docname");
+					const saveBtnText = document.getElementById("dp-save-btn-text");
+					const footerCaption = document.getElementById("dp-footer-caption");
+
+					if (badgeEl) {
+						badgeEl.textContent = isNew ? "New Checklist" : "Saved Record";
+						badgeEl.style.background = isNew ? "#fef3c7" : "#dcfce7";
+						badgeEl.style.color = isNew ? "#92400e" : "#166534";
+						badgeEl.style.borderColor = isNew ? "#fde68a" : "#86efac";
+					}
+					if (docnameEl) docnameEl.textContent = doc.name ? `#${doc.name}` : "";
+					if (saveBtnText) saveBtnText.textContent = isNew ? "Create Checklist" : "Update Checklist";
+					if (footerCaption) footerCaption.textContent = isNew ? "Create and submit daily planning sheet" : "Update existing checklist record";
+
+					const dateInput = document.getElementById("dp-field-date");
+					const empidEl = document.getElementById("dp-field-empid");
+					const empnameEl = document.getElementById("dp-field-empname");
+					const solidEl = document.getElementById("dp-field-solid");
+
+					if (dateInput) dateInput.value = doc.date || "";
+					if (empidEl) empidEl.textContent = doc.bm_employee_id || "--";
+					if (empnameEl) empnameEl.textContent = doc.name1 || "--";
+					if (solidEl) solidEl.textContent = doc.sol_id || "--";
+
+					this.renderChecklistTasks();
+				},
+
+				renderChecklistTasks() {
+					const doc = this.currentChecklistDoc || {};
+					const tasks = doc.table_lqft || [];
+					const container = document.getElementById("dp-tasks-container");
+					const countBadge = document.getElementById("dp-task-count-badge");
+					const progressPct = document.getElementById("dp-progress-pct");
+					const progressText = document.getElementById("dp-progress-text");
+					const progressBar = document.getElementById("dp-progress-bar");
+
+					if (countBadge) countBadge.textContent = tasks.length;
+
+					const completedCount = tasks.filter(t => t.is_completed == 1 || t.is_completed === true).length;
+					const pct = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
+					if (progressPct) progressPct.textContent = `${pct}%`;
+					if (progressText) progressText.textContent = `${completedCount} of ${tasks.length} tasks completed`;
+					if (progressBar) progressBar.style.width = `${pct}%`;
+
+					if (!container) return;
+					if (tasks.length === 0) {
+						container.innerHTML = `<div style="padding: 30px; text-align: center; color: #94a3b8; font-size: 13px;">No tasks added. Click "+ Add Custom Task" to add a checklist item.</div>`;
+						return;
+					}
+
+					container.innerHTML = tasks.map((t, idx) => {
+						const isChecked = Boolean(t.is_completed == 1 || t.is_completed === true);
+						const taskText = (t.task || "").replace(/"/g, "&quot;");
+						const remarkText = (t.remark || "").replace(/"/g, "&quot;");
+						const rowBg = isChecked ? "background: #f0fdf4;" : (idx % 2 === 0 ? "background: #ffffff;" : "background: #fafafa;");
+
+						return `
+							<div class="dp-task-row" style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 14px; ${rowBg}">
+								<input type="checkbox" ${isChecked ? "checked" : ""} onchange="BranchDashboard.toggleTaskCompletion(${idx}, this.checked)" style="width: 18px; height: 18px; accent-color: #0d9488; cursor: pointer;" />
+								<div style="flex: 1; min-width: 0;">
+									<input type="text" value="${taskText}" placeholder="Task description..." onchange="BranchDashboard.updateTaskText(${idx}, this.value)" style="width: 100%; box-sizing: border-box; font-size: 13px; font-weight: 600; color: ${isChecked ? '#94a3b8; text-decoration: line-through;' : '#1e293b;'} border: 1px solid transparent; background: transparent; padding: 4px 6px; border-radius: 6px;" onfocus="this.style.borderColor='#99f6e4'; this.style.background='#fff';" onblur="this.style.borderColor='transparent'; this.style.background='transparent';" />
+								</div>
+								<div style="width: 240px; flex-shrink: 0;">
+									<input type="text" value="${remarkText}" placeholder="Add remark..." onchange="BranchDashboard.updateTaskRemark(${idx}, this.value)" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 10px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155;" />
+								</div>
+								<button type="button" onclick="BranchDashboard.removeCustomTaskRow(${idx})" style="background: transparent; border: none; color: #cbd5e1; cursor: pointer; padding: 4px 8px; border-radius: 6px; font-size: 14px;" onmouseover="this.style.color='#ef4444';" onmouseout="this.style.color='#cbd5e1';" title="Remove task">
+									<i class="fa fa-trash-o"></i>
+								</button>
+							</div>
+						`;
+					}).join("");
+				},
+
+				toggleTaskCompletion(idx, isChecked) {
+					if (this.currentChecklistDoc && this.currentChecklistDoc.table_lqft && this.currentChecklistDoc.table_lqft[idx]) {
+						this.currentChecklistDoc.table_lqft[idx].is_completed = isChecked ? 1 : 0;
+						this.renderChecklistTasks();
+					}
+				},
+
+				updateTaskText(idx, val) {
+					if (this.currentChecklistDoc && this.currentChecklistDoc.table_lqft && this.currentChecklistDoc.table_lqft[idx]) {
+						this.currentChecklistDoc.table_lqft[idx].task = val;
+					}
+				},
+
+				updateTaskRemark(idx, val) {
+					if (this.currentChecklistDoc && this.currentChecklistDoc.table_lqft && this.currentChecklistDoc.table_lqft[idx]) {
+						this.currentChecklistDoc.table_lqft[idx].remark = val;
+					}
+				},
+
+				addCustomTaskRow() {
+					if (!this.currentChecklistDoc) return;
+					if (!this.currentChecklistDoc.table_lqft) this.currentChecklistDoc.table_lqft = [];
+					this.currentChecklistDoc.table_lqft.push({
+						task: "",
+						is_completed: 0,
+						remark: ""
+					});
+					this.renderChecklistTasks();
+				},
+
+				removeCustomTaskRow(idx) {
+					if (this.currentChecklistDoc && this.currentChecklistDoc.table_lqft) {
+						this.currentChecklistDoc.table_lqft.splice(idx, 1);
+						this.renderChecklistTasks();
+					}
+				},
+
+				async saveChecklistDoc() {
+					const doc = this.currentChecklistDoc;
+					if (!doc) return;
+
+					const dateInput = document.getElementById("dp-field-date");
+					if (dateInput && dateInput.value) doc.date = dateInput.value;
+
+					const saveBtn = document.getElementById("dp-save-btn");
+					const saveBtnText = document.getElementById("dp-save-btn-text");
+					if (saveBtn) saveBtn.disabled = true;
+					if (saveBtnText) saveBtnText.textContent = "Saving...";
+
+					try {
+						const res = await fetch("/api/method/custom_report.custom_report.doctype.bm_checklist.bm_checklist.save_bm_checklist_doc", {
+							method: "POST",
+							headers: {
+								"Content-Type": "application/json",
+								"X-Frappe-CSRF-Token": (window.frappe && window.frappe.csrf_token) || ""
+							},
+							body: JSON.stringify({ data: doc })
+						}).then(r => r.json());
+
+						const data = res.message || res;
+						if (data && data.status === "success") {
+							this.currentChecklistDoc = data.doc;
+							this.isNewChecklist = false;
+							this.renderChecklistFormUI();
+							this.showPlanningFeedback(data.message || "Saved successfully!", "success");
+
+							const solId = this.state.currentSolId;
+							const empId = doc.bm_employee_id;
+							if (typeof BranchManagerProfile.fetchChecklistStatus === "function") {
+								BranchManagerProfile.fetchChecklistStatus(solId, empId);
+							}
+						} else {
+							this.showPlanningFeedback(data.message || "Failed to save checklist.", "error");
+						}
+					} catch(e) {
+						console.error("Save error", e);
+						this.showPlanningFeedback("Network error while saving checklist.", "error");
+					} finally {
+						if (saveBtn) saveBtn.disabled = false;
+						if (saveBtnText) saveBtnText.textContent = this.isNewChecklist ? "Create Checklist" : "Update Checklist";
+					}
+				},
+
+				showPlanningFeedback(msg, type) {
+					const banner = document.getElementById("dp-feedback-banner");
+					if (!banner) return;
+					banner.textContent = msg;
+					banner.style.display = "block";
+					if (type === "success") {
+						banner.style.background = "#dcfce7";
+						banner.style.color = "#166534";
+						banner.style.borderBottom = "1px solid #86efac";
+					} else {
+						banner.style.background = "#fee2e2";
+						banner.style.color = "#991b1b";
+						banner.style.borderBottom = "1px solid #fca5a5";
+					}
+					setTimeout(() => {
+						if (banner) banner.style.display = "none";
+					}, 4000);
 				},
 
 				handlePlanningTrigger(targetUrl, empId, solId, specificDate) {
@@ -2911,36 +3194,7 @@
 					));
 					const existingRecord = isThisBm ? recordInfo.name : null;
 
-					try {
-						if (empId) {
-							sessionStorage.setItem("bm_checklist_employee_id", empId);
-							localStorage.setItem("bm_checklist_employee_id", empId);
-						}
-						if (solId) {
-							sessionStorage.setItem("bm_checklist_sol_id", solId);
-							localStorage.setItem("bm_checklist_sol_id", solId);
-						}
-						sessionStorage.setItem("bm_checklist_date", targetDate);
-						localStorage.setItem("bm_checklist_date", targetDate);
-					} catch (err) {}
-
-					let finalUrl = "";
-					if (existingRecord) {
-						finalUrl = `/app/bm-checklist/${encodeURIComponent(existingRecord)}`;
-					} else {
-						const params = new URLSearchParams();
-						if (empId) params.set("bm_employee_id", empId);
-						if (solId) params.set("sol_id", solId);
-						params.set("date", targetDate);
-						finalUrl = `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?${params.toString()}`;
-					}
-
-					const isInPopup = window.self !== window.top;
-					if (isInPopup) {
-						window.location.href = finalUrl;
-					} else {
-						this.openDailyPlanningModal(finalUrl);
-					}
+					this.openDailyPlanningModal(targetDate, empId, solId, existingRecord);
 				},
 
 				/* ---------------- Init ---------------- */

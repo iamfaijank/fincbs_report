@@ -112,3 +112,158 @@ def get_bm_checklist_status_for_week(employee_id=None, start_date=None, end_date
 	return status_map
 
 
+@frappe.whitelist(methods=["POST", "GET"])
+def get_bm_checklist_details(name=None, employee_id=None, date=None, sol_id=None):
+	"""Fetch existing BM checklist details or initial blank structure with template tasks."""
+	doc = None
+	if name and frappe.db.exists("BM checklist", name):
+		doc = frappe.get_doc("BM checklist", name)
+	elif employee_id and date:
+		# Check if record already exists for this employee and date
+		records = get_bm_checklist_status_for_week(employee_id=employee_id, start_date=date, end_date=date, sol_id=sol_id)
+		if records and records.get(str(date)) and records[str(date)].get("name"):
+			doc_name = records[str(date)]["name"]
+			if frappe.db.exists("BM checklist", doc_name):
+				doc = frappe.get_doc("BM checklist", doc_name)
+
+	if doc:
+		return {
+			"status": "success",
+			"is_new": False,
+			"doc": doc.as_dict()
+		}
+
+	# Create clean new template structure
+	resolved_emp_id = employee_id or ""
+	emp_name = ""
+	designation = ""
+	resolved_sol_id = sol_id or ""
+
+	if resolved_emp_id:
+		emp_data = frappe.db.get_value("Employee", {"employee_number": resolved_emp_id}, ["name", "employee_name", "designation", "sol_id"], as_dict=True)
+		if not emp_data:
+			emp_data = frappe.db.get_value("Employee", resolved_emp_id, ["name", "employee_name", "designation", "sol_id"], as_dict=True)
+		if emp_data:
+			resolved_emp_id = emp_data.name
+			emp_name = emp_data.employee_name or ""
+			designation = emp_data.designation or ""
+			if not resolved_sol_id:
+				resolved_sol_id = emp_data.sol_id or ""
+
+	template_tasks = get_bm_template_tasks()
+	tasks = []
+	for task_subj in template_tasks:
+		tasks.append({
+			"task": task_subj,
+			"is_completed": 0,
+			"remark": ""
+		})
+
+	new_doc = {
+		"name": "",
+		"bm_employee_id": resolved_emp_id,
+		"name1": emp_name,
+		"designation": designation,
+		"sol_id": resolved_sol_id,
+		"date": str(date or frappe.utils.today()),
+		"table_lqft": tasks
+	}
+
+	return {
+		"status": "success",
+		"is_new": True,
+		"doc": new_doc
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def save_bm_checklist_doc(data=None):
+	"""Save or update BM checklist document from custom UI."""
+	if not data:
+		data = frappe.form_dict.get("data") or frappe.request.get_data(as_text=True)
+
+	import json
+	if isinstance(data, str):
+		doc_data = json.loads(data)
+	else:
+		doc_data = data or {}
+
+	name = doc_data.get("name")
+	is_new = not bool(name and frappe.db.exists("BM checklist", name))
+
+	if not is_new:
+		doc = frappe.get_doc("BM checklist", name)
+		doc.date = doc_data.get("date") or doc.date
+		doc.bm_employee_id = doc_data.get("bm_employee_id") or doc.bm_employee_id
+		doc.name1 = doc_data.get("name1") or doc.name1
+		doc.designation = doc_data.get("designation") or doc.designation
+		doc.sol_id = doc_data.get("sol_id") or doc.sol_id
+
+		# Replace / update child table tasks
+		doc.set("table_lqft", [])
+		for row in doc_data.get("table_lqft", []):
+			doc.append("table_lqft", {
+				"task": row.get("task", ""),
+				"is_completed": 1 if row.get("is_completed") in (1, "1", True) else 0,
+				"remark": row.get("remark", "") or ""
+			})
+
+		doc.save(ignore_permissions=True)
+		frappe.db.commit()
+
+		return {
+			"status": "success",
+			"message": "BM Checklist updated successfully",
+			"is_new": False,
+			"doc": doc.as_dict()
+		}
+	else:
+		# Check if already exists for this date and emp
+		emp_id = doc_data.get("bm_employee_id")
+		dt = doc_data.get("date") or frappe.utils.today()
+		expected_name = f"{dt}-{emp_id}" if emp_id else f"{dt}"
+
+		if frappe.db.exists("BM checklist", expected_name):
+			doc = frappe.get_doc("BM checklist", expected_name)
+			doc.set("table_lqft", [])
+			for row in doc_data.get("table_lqft", []):
+				doc.append("table_lqft", {
+					"task": row.get("task", ""),
+					"is_completed": 1 if row.get("is_completed") in (1, "1", True) else 0,
+					"remark": row.get("remark", "") or ""
+				})
+			doc.save(ignore_permissions=True)
+			frappe.db.commit()
+			return {
+				"status": "success",
+				"message": "BM Checklist updated successfully",
+				"is_new": False,
+				"doc": doc.as_dict()
+			}
+
+		doc = frappe.new_doc("BM checklist")
+		doc.date = dt
+		doc.bm_employee_id = emp_id
+		doc.name1 = doc_data.get("name1")
+		doc.designation = doc_data.get("designation")
+		doc.sol_id = doc_data.get("sol_id")
+
+		for row in doc_data.get("table_lqft", []):
+			doc.append("table_lqft", {
+				"task": row.get("task", ""),
+				"is_completed": 1 if row.get("is_completed") in (1, "1", True) else 0,
+				"remark": row.get("remark", "") or ""
+			})
+
+		doc.insert(ignore_permissions=True)
+		frappe.db.commit()
+
+		return {
+			"status": "success",
+			"message": "BM Checklist created successfully",
+			"is_new": True,
+			"doc": doc.as_dict()
+		}
+
+
+
