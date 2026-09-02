@@ -146,22 +146,23 @@ function openDailyPlanningSheet(specificDate) {
 
 function handleDailyPlanningClick(e, specificDate) {
   if (e) e.preventDefault()
-  const existingRecord = specificDate ? checklistStatusMap.value[specificDate]?.name : null
+  const targetDate = specificDate || new Date().toISOString().split('T')[0]
+  const existingRecord = checklistStatusMap.value[targetDate]?.name
 
-  let targetUrl = dailyPlanningSheetUrl.value
+  let targetUrl = ''
   if (existingRecord) {
     targetUrl = `/app/bm-checklist/${encodeURIComponent(existingRecord)}`
-  } else if (specificDate) {
-    const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || ''
+  } else {
+    const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || props.branch?.bm_employee_id || ''
     const solId = props.branch?.sol_id || props.branchProfile?.sol_id || ''
     const params = new URLSearchParams()
     if (empId) params.set('bm_employee_id', empId)
     if (solId) params.set('sol_id', solId)
-    params.set('date', specificDate)
+    params.set('date', targetDate)
     targetUrl = `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?${params.toString()}`
   }
 
-  openDailyPlanningSheet(specificDate)
+  openDailyPlanningSheet(targetDate)
 
   const isInPopup = window.self !== window.top
   if (isInPopup) {

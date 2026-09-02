@@ -2902,8 +2902,10 @@
 
 				handlePlanningTrigger(targetUrl, empId, solId, specificDate) {
 					const targetDate = specificDate || new Date().toISOString().split('T')[0];
-					const statusMap = this.state.checklistStatusMap || {};
-					const existingRecord = specificDate ? statusMap[specificDate]?.name : null;
+					const statusMap = (typeof BranchManagerProfile !== 'undefined' && BranchManagerProfile.state && BranchManagerProfile.state.checklistStatusMap) 
+						? BranchManagerProfile.state.checklistStatusMap 
+						: (this.state.checklistStatusMap || {});
+					const existingRecord = statusMap[targetDate]?.name;
 
 					try {
 						if (empId) {
@@ -2918,17 +2920,15 @@
 						localStorage.setItem("bm_checklist_date", targetDate);
 					} catch (err) {}
 
-					let finalUrl = targetUrl || "/app/bm-checklist/new-bm-checklist-tcthxsxvlh";
+					let finalUrl = "";
 					if (existingRecord) {
 						finalUrl = `/app/bm-checklist/${encodeURIComponent(existingRecord)}`;
-					} else if (specificDate) {
+					} else {
 						const params = new URLSearchParams();
 						if (empId) params.set("bm_employee_id", empId);
 						if (solId) params.set("sol_id", solId);
-						params.set("date", specificDate);
+						params.set("date", targetDate);
 						finalUrl = `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?${params.toString()}`;
-					} else if (!finalUrl.includes("date=")) {
-						finalUrl += (finalUrl.includes("?") ? "&" : "?") + "date=" + encodeURIComponent(targetDate);
 					}
 
 					const isInPopup = window.self !== window.top;

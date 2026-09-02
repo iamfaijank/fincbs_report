@@ -1,10 +1,12 @@
 frappe.ui.form.on("BM checklist", {
 	onload(frm) {
+		check_existing_record_and_redirect(frm);
 		set_bm_employee_from_context(frm);
 		set_date_from_context(frm);
 		populate_bm_template_tasks(frm);
 	},
 	refresh(frm) {
+		check_existing_record_and_redirect(frm);
 		set_bm_employee_from_context(frm);
 		set_date_from_context(frm);
 		if (frm.is_new() && (!frm.doc.table_lqft || frm.doc.table_lqft.length === 0)) {
@@ -12,6 +14,39 @@ frappe.ui.form.on("BM checklist", {
 		}
 	}
 });
+
+function check_existing_record_and_redirect(frm) {
+	if (!frm.is_new()) return;
+
+	const urlParams = new URLSearchParams(window.location.search);
+	const raw_emp = urlParams.get("bm_employee_id")
+		|| (frappe.route_options && frappe.route_options.bm_employee_id)
+		|| sessionStorage.getItem("bm_checklist_employee_id")
+		|| localStorage.getItem("bm_checklist_employee_id");
+	const passedDate = urlParams.get("date")
+		|| (frappe.route_options && frappe.route_options.date)
+		|| sessionStorage.getItem("bm_checklist_date")
+		|| localStorage.getItem("bm_checklist_date");
+
+	if (!raw_emp || !passedDate) return;
+
+	frappe.call({
+		method: "custom_report.custom_report.doctype.bm_checklist.bm_checklist.get_bm_checklist_status_for_week",
+		args: {
+			employee_id: raw_emp,
+			start_date: passedDate,
+			end_date: passedDate
+		},
+		callback: function(r) {
+			if (r.message && r.message[passedDate] && r.message[passedDate].name) {
+				const existingName = r.message[passedDate].name;
+				if (existingName && frm.doc.name !== existingName) {
+					frappe.set_route("Form", "BM checklist", existingName);
+				}
+			}
+		}
+	});
+}
 
 function set_date_from_context(frm) {
 	if (!frm.is_new() || frm.doc.date) return;
