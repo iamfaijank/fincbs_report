@@ -27,13 +27,12 @@ const asOfMonth = computed(() => {
 const dailyPlanningSheetUrl = computed(() => {
   const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || ''
   const solId = props.branch?.sol_id || props.branchProfile?.sol_id || ''
-  if (empId) {
-    return `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?bm_employee_id=${encodeURIComponent(empId)}`
-  }
-  if (solId) {
-    return `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?sol_id=${encodeURIComponent(solId)}`
-  }
-  return '/app/bm-checklist/new-bm-checklist-tcthxsxvlh'
+  const today = new Date().toISOString().split('T')[0]
+  const params = new URLSearchParams()
+  if (empId) params.set('bm_employee_id', empId)
+  if (solId) params.set('sol_id', solId)
+  params.set('date', today)
+  return `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?${params.toString()}`
 })
 
 const currentWeekWorkingDays = computed(() => {
@@ -75,9 +74,10 @@ const currentWeekWorkingDays = computed(() => {
 
 const showPlanningModal = ref(false)
 
-function openDailyPlanningSheet() {
+function openDailyPlanningSheet(specificDate) {
   const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || ''
   const solId = props.branch?.sol_id || props.branchProfile?.sol_id || ''
+  const targetDate = specificDate || new Date().toISOString().split('T')[0]
   try {
     if (empId) {
       sessionStorage.setItem('bm_checklist_employee_id', empId)
@@ -87,6 +87,8 @@ function openDailyPlanningSheet() {
       sessionStorage.setItem('bm_checklist_sol_id', solId)
       localStorage.setItem('bm_checklist_sol_id', solId)
     }
+    sessionStorage.setItem('bm_checklist_date', targetDate)
+    localStorage.setItem('bm_checklist_date', targetDate)
   } catch (e) {}
 }
 

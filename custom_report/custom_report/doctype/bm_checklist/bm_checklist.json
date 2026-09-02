@@ -7,6 +7,7 @@
  "field_order": [
   "bm_employee_id",
   "sol_id",
+  "date",
   "column_break_gkvm",
   "name1",
   "designation",
@@ -50,12 +51,17 @@
   {
    "fieldname": "section_break_zgjn",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-01 17:30:06.851616",
+ "modified": "2026-09-02 12:16:33.777298",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "BM checklist",

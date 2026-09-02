@@ -1801,32 +1801,39 @@
 									</div>
 								</td>
 								<td style="padding: 16px; border: 1px solid #e2e8f0;">
-									<div id="target-casa" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div id="target-casa" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="target-pct-casa" style="font-size: 12px; font-weight: 600; color: var(--primary-1); margin: 4px 0;">--</div>
 									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-casa" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
 								</td>
 								<td style="padding: 16px; border: 1px solid #e2e8f0;">
-									<div id="target-dam" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div id="target-dam" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="target-pct-dam" style="font-size: 12px; font-weight: 600; color: var(--primary-1); margin: 4px 0;">--</div>
 									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-dam" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
 								</td>
 								<td style="padding: 16px; border: 1px solid #e2e8f0;">
-									<div id="target-dd" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div id="target-dd" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="target-pct-dd" style="font-size: 12px; font-weight: 600; color: var(--primary-1); margin: 4px 0;">--</div>
 									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-dd" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
 								</td>
 								<td style="padding: 16px; border: 1px solid #e2e8f0;">
-									<div id="target-fd" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div id="target-fd" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="target-pct-fd" style="font-size: 12px; font-weight: 600; color: var(--primary-1); margin: 4px 0;">--</div>
 									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-fd" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
 								</td>
 								<td style="padding: 16px; border: 1px solid #e2e8f0;">
-									<div id="target-rd" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div id="target-rd" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="target-pct-rd" style="font-size: 12px; font-weight: 600; color: var(--primary-1); margin: 4px 0;">--</div>
 									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-rd" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
 								</td>
 								<td style="padding: 16px; border: 1px solid #e2e8f0;">
-									<div id="target-smbg" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
+									<div id="target-smbg" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="target-pct-smbg" style="font-size: 12px; font-weight: 600; color: var(--primary-1); margin: 4px 0;">--</div>
 									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-smbg" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
 								</td>
 								<td style="padding: 16px; border: 1px solid #e2e8f0;">
-									<div id="target-total" style="font-weight: 600; color: #334155; font-size: 14px; margin-bottom: 8px;">--</div>
-									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-total" style="height: 100%; background: var(--primary-1); width: 0%;"></div></div>
+									<div id="target-total" style="font-weight: 600; color: #334155; font-size: 14px;">--</div>
+									<div id="target-pct-total" style="font-size: 12px; font-weight: 600; color: var(--primary-1); margin: 4px 0;">100.00%</div>
+									<div class="progress-bar-bg" style="height: 6px; background: #e2e8f0; border-radius: 4px; overflow: hidden; width: 80%; margin: 0 auto;"><div id="target-bar-total" style="height: 100%; background: var(--primary-1); width: 100%;"></div></div>
 								</td>
 							</tr>
 							<tr>
@@ -2893,36 +2900,55 @@
 					document.body.style.overflow = "";
 				},
 
+				handlePlanningTrigger(targetUrl, empId, solId, specificDate) {
+					const targetDate = specificDate || new Date().toISOString().split('T')[0];
+					try {
+						if (empId) {
+							sessionStorage.setItem("bm_checklist_employee_id", empId);
+							localStorage.setItem("bm_checklist_employee_id", empId);
+						}
+						if (solId) {
+							sessionStorage.setItem("bm_checklist_sol_id", solId);
+							localStorage.setItem("bm_checklist_sol_id", solId);
+						}
+						sessionStorage.setItem("bm_checklist_date", targetDate);
+						localStorage.setItem("bm_checklist_date", targetDate);
+					} catch (err) {}
+
+					let finalUrl = targetUrl || "/app/bm-checklist/new-bm-checklist-tcthxsxvlh";
+					if (!finalUrl.includes("date=")) {
+						finalUrl += (finalUrl.includes("?") ? "&" : "?") + "date=" + encodeURIComponent(targetDate);
+					}
+
+					const isInPopup = window.self !== window.top;
+					if (isInPopup) {
+						window.location.href = finalUrl;
+					} else {
+						this.openDailyPlanningModal(finalUrl);
+					}
+				},
+
 				/* ---------------- Init ---------------- */
 				init() {
-					// Delegate Daily Planning Sheet click events
+					// Delegate Daily Planning Sheet and Date Chip click events
 					document.addEventListener("click", (e) => {
+						const dayChip = e.target.closest(".daily-planning-day-chip");
 						const btn = e.target.closest(".daily-planning-sheet-btn");
-						if (btn) {
+						if (dayChip) {
+							e.preventDefault();
+							const group = dayChip.closest(".daily-planning-btn-group");
+							const targetBtn = group ? group.querySelector(".daily-planning-sheet-btn") : null;
+							const targetUrl = targetBtn ? targetBtn.getAttribute("href") : "/app/bm-checklist/new-bm-checklist-tcthxsxvlh";
+							const empId = targetBtn ? targetBtn.getAttribute("data-emp-id") : "";
+							const solId = targetBtn ? targetBtn.getAttribute("data-sol-id") : "";
+							const date = dayChip.getAttribute("data-date");
+							this.handlePlanningTrigger(targetUrl, empId, solId, date);
+						} else if (btn) {
 							e.preventDefault();
 							const targetUrl = btn.getAttribute("href");
 							const empId = btn.getAttribute("data-emp-id");
 							const solId = btn.getAttribute("data-sol-id");
-
-							try {
-								if (empId) {
-									sessionStorage.setItem("bm_checklist_employee_id", empId);
-									localStorage.setItem("bm_checklist_employee_id", empId);
-								}
-								if (solId) {
-									sessionStorage.setItem("bm_checklist_sol_id", solId);
-									localStorage.setItem("bm_checklist_sol_id", solId);
-								}
-							} catch (err) {}
-
-							const isInPopup = window.self !== window.top;
-							if (isInPopup) {
-								// Already in popup/iframe: open in the same popup
-								window.location.href = targetUrl;
-							} else {
-								// In full screen: open in modal dialog
-								this.openDailyPlanningModal(targetUrl);
-							}
+							this.handlePlanningTrigger(targetUrl, empId, solId, null);
 						}
 					});
 
@@ -4395,8 +4421,24 @@
 							// TARGET ROW
 							const elTarget = document.getElementById(`target-${p.id}`);
 							if (elTarget) elTarget.textContent = this.formatAmount(targetVal);
+
+							const totalTargetVal = tAmt["TOTAL TARGET"] || 0;
+							let distPct = 0;
+							if (p.id === "total") {
+								distPct = 100;
+							} else if (p.tgPct !== undefined && p.tgPct !== null && p.tgPct > 0) {
+								distPct = p.tgPct;
+							} else if (totalTargetVal > 0) {
+								distPct = (targetVal / totalTargetVal) * 100;
+							}
+
+							const elTargetPct = document.getElementById(`target-pct-${p.id}`);
+							if (elTargetPct) {
+								elTargetPct.textContent = `${distPct.toFixed(2)}%`;
+							}
+
 							const elTargetBar = document.getElementById(`target-bar-${p.id}`);
-							if (elTargetBar) elTargetBar.style.width = `${Math.min(p.tgPct, 100)}%`;
+							if (elTargetBar) elTargetBar.style.width = `${Math.min(distPct, 100)}%`;
 
 							// ACH ROW
 							const achPct = targetVal ? ((achVal / targetVal) * 100) : 0;

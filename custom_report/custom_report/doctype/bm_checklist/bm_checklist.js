@@ -1,15 +1,37 @@
 frappe.ui.form.on("BM checklist", {
 	onload(frm) {
 		set_bm_employee_from_context(frm);
+		set_date_from_context(frm);
 		populate_bm_template_tasks(frm);
 	},
 	refresh(frm) {
 		set_bm_employee_from_context(frm);
+		set_date_from_context(frm);
 		if (frm.is_new() && (!frm.doc.table_lqft || frm.doc.table_lqft.length === 0)) {
 			populate_bm_template_tasks(frm);
 		}
 	}
 });
+
+function set_date_from_context(frm) {
+	if (!frm.is_new() || frm.doc.date) return;
+
+	const urlParams = new URLSearchParams(window.location.search);
+	const passedDate = urlParams.get("date")
+		|| (frappe.route_options && frappe.route_options.date)
+		|| sessionStorage.getItem("bm_checklist_date")
+		|| localStorage.getItem("bm_checklist_date");
+
+	try {
+		sessionStorage.removeItem("bm_checklist_date");
+		localStorage.removeItem("bm_checklist_date");
+	} catch (e) {}
+
+	const targetDate = passedDate || frappe.datetime.get_today();
+	if (targetDate) {
+		frm.set_value("date", targetDate);
+	}
+}
 
 function populate_bm_template_tasks(frm) {
 	if (!frm.is_new()) return;

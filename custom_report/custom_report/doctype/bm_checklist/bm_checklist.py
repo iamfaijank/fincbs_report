@@ -4,6 +4,8 @@ from frappe.model.document import Document
 
 class BMchecklist(Document):
 	def before_insert(self):
+		if not self.date:
+			self.date = frappe.utils.today()
 		self.populate_default_tasks()
 
 	def populate_default_tasks(self):
