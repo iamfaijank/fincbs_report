@@ -98,7 +98,9 @@ async function fetchChecklistStatus() {
 
 function getDayChipStyle(d) {
   const todayStr = new Date().toISOString().split('T')[0]
-  const hasRecord = !!checklistStatusMap.value[d.isoDate]?.exists
+  const recordInfo = checklistStatusMap.value[d.isoDate]
+  const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || props.branch?.bm_employee_id || ''
+  const hasRecord = !!(recordInfo?.exists && (!empId || !recordInfo.bm_employee_id || recordInfo.bm_employee_id === empId))
 
   if (hasRecord) {
     return {
@@ -127,7 +129,7 @@ function getDayChipStyle(d) {
 }
 
 function openDailyPlanningSheet(specificDate) {
-  const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || ''
+  const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || props.branch?.bm_employee_id || ''
   const solId = props.branch?.sol_id || props.branchProfile?.sol_id || ''
   const targetDate = specificDate || new Date().toISOString().split('T')[0]
   try {
@@ -147,14 +149,16 @@ function openDailyPlanningSheet(specificDate) {
 function handleDailyPlanningClick(e, specificDate) {
   if (e) e.preventDefault()
   const targetDate = specificDate || new Date().toISOString().split('T')[0]
-  const existingRecord = checklistStatusMap.value[targetDate]?.name
+  const recordInfo = checklistStatusMap.value[targetDate]
+  const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || props.branch?.bm_employee_id || ''
+  const solId = props.branch?.sol_id || props.branchProfile?.sol_id || ''
+  const isThisBm = !!(recordInfo?.exists && (!empId || !recordInfo.bm_employee_id || recordInfo.bm_employee_id === empId))
+  const existingRecord = isThisBm ? recordInfo.name : null
 
   let targetUrl = ''
   if (existingRecord) {
     targetUrl = `/app/bm-checklist/${encodeURIComponent(existingRecord)}`
   } else {
-    const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || props.branch?.bm_employee_id || ''
-    const solId = props.branch?.sol_id || props.branchProfile?.sol_id || ''
     const params = new URLSearchParams()
     if (empId) params.set('bm_employee_id', empId)
     if (solId) params.set('sol_id', solId)

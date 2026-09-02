@@ -55,33 +55,31 @@ def get_bm_template_tasks():
 
 @frappe.whitelist(methods=["POST", "GET"], allow_guest=True)
 def get_bm_checklist_status_for_week(employee_id=None, start_date=None, end_date=None, sol_id=None):
-	"""Fetch mapping of dates to BM checklist records for an employee or branch."""
+	"""Fetch mapping of dates to BM checklist records strictly for the specified BM employee."""
 	if not employee_id and not sol_id:
 		return {}
 
 	emp_names = []
 	if employee_id:
-		emp_names.append(str(employee_id).strip())
-		emp_doc = frappe.db.get_value("Employee", {"employee_number": str(employee_id).strip()}, "name")
+		clean_emp = str(employee_id).strip()
+		emp_names.append(clean_emp)
+		emp_doc = frappe.db.get_value("Employee", {"employee_number": clean_emp}, "name")
 		if emp_doc and emp_doc not in emp_names:
 			emp_names.append(emp_doc)
-
-	if sol_id:
-		sol_emp_names = frappe.db.get_all("Employee", filters={"sol_id": str(sol_id).strip()}, pluck="name")
-		for en in sol_emp_names:
-			if en not in emp_names:
-				emp_names.append(en)
+		emp_num = frappe.db.get_value("Employee", {"name": clean_emp}, "employee_number")
+		if emp_num and emp_num not in emp_names:
+			emp_names.append(emp_num)
 
 	conditions = []
 	values = []
 
-	if emp_names and sol_id:
-		conditions.append("(bm_employee_id IN ({}) OR sol_id = %s)".format(", ".join(["%s"] * len(emp_names))))
-		values.extend(emp_names)
-		values.append(str(sol_id).strip())
-	elif emp_names:
+	if emp_names:
+		# Strictly filter by this BM's employee identity only
 		conditions.append("bm_employee_id IN ({})".format(", ".join(["%s"] * len(emp_names))))
 		values.extend(emp_names)
+		if sol_id:
+			conditions.append("sol_id = %s")
+			values.append(str(sol_id).strip())
 	elif sol_id:
 		conditions.append("sol_id = %s")
 		values.append(str(sol_id).strip())

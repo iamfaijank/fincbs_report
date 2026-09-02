@@ -2905,7 +2905,11 @@
 					const statusMap = (typeof BranchManagerProfile !== 'undefined' && BranchManagerProfile.state && BranchManagerProfile.state.checklistStatusMap) 
 						? BranchManagerProfile.state.checklistStatusMap 
 						: (this.state.checklistStatusMap || {});
-					const existingRecord = statusMap[targetDate]?.name;
+					const recordInfo = statusMap[targetDate];
+					const isThisBm = !!(recordInfo && recordInfo.exists && (
+						!empId || !recordInfo.bm_employee_id || recordInfo.bm_employee_id === empId
+					));
+					const existingRecord = isThisBm ? recordInfo.name : null;
 
 					try {
 						if (empId) {
@@ -2950,7 +2954,7 @@
 							const group = dayChip.closest(".daily-planning-btn-group");
 							const targetBtn = group ? group.querySelector(".daily-planning-sheet-btn") : null;
 							const targetUrl = targetBtn ? targetBtn.getAttribute("href") : "/app/bm-checklist/new-bm-checklist-tcthxsxvlh";
-							const empId = targetBtn ? targetBtn.getAttribute("data-emp-id") : "";
+							const empId = dayChip.getAttribute("data-emp-id") || (targetBtn ? targetBtn.getAttribute("data-emp-id") : "");
 							const solId = targetBtn ? targetBtn.getAttribute("data-sol-id") : "";
 							const date = dayChip.getAttribute("data-date");
 							this.handlePlanningTrigger(targetUrl, empId, solId, date);
@@ -3960,40 +3964,45 @@
 					const todayStr = new Date().toISOString().split('T')[0];
 					const statusMap = this.state.checklistStatusMap || {};
 
-					const daysHtml = weekDays.map(item => {
-						const hasRecord = !!statusMap[item.isoDate]?.exists;
-						let bgStyle = "";
-						let dayColor = "";
-						let dateColor = "";
-						let statusLabel = "";
+					const renderDaysHtmlForEmp = (targetEmpId) => {
+						return weekDays.map(item => {
+							const recordInfo = statusMap[item.isoDate];
+							const isThisBm = !!(recordInfo && recordInfo.exists && (
+								!targetEmpId || !recordInfo.bm_employee_id || recordInfo.bm_employee_id === targetEmpId
+							));
+							let bgStyle = "";
+							let dayColor = "";
+							let dateColor = "";
+							let statusLabel = "";
 
-						if (hasRecord) {
-							// GREEN: Record exists
-							bgStyle = "background: #dcfce7; border-color: rgba(34, 197, 94, 0.4);";
-							dayColor = "#15803d;";
-							dateColor = "#166534;";
-							statusLabel = "Completed";
-						} else if (item.isoDate <= todayStr) {
-							// RED: Today or past without record
-							bgStyle = "background: #fee2e2; border-color: rgba(239, 68, 68, 0.4);";
-							dayColor = "#b91c1c;";
-							dateColor = "#991b1b;";
-							statusLabel = "Pending / Missing";
-						} else {
-							// GRAY: Future dates
-							bgStyle = "background: #f8fafc; border-color: rgba(226, 232, 240, 0.6);";
-							dayColor = "#94a3b8;";
-							dateColor = "#64748b;";
-							statusLabel = "Upcoming";
-						}
+							if (isThisBm) {
+								// GREEN: Record exists for THIS BM
+								bgStyle = "background: #dcfce7; border-color: rgba(34, 197, 94, 0.4);";
+								dayColor = "#15803d;";
+								dateColor = "#166534;";
+								statusLabel = "Completed";
+							} else if (item.isoDate <= todayStr) {
+								// RED: Today or past without record for THIS BM
+								bgStyle = "background: #fee2e2; border-color: rgba(239, 68, 68, 0.4);";
+								dayColor = "#b91c1c;";
+								dateColor = "#991b1b;";
+								statusLabel = "Pending / Missing";
+							} else {
+								// GRAY: Future dates
+								bgStyle = "background: #f8fafc; border-color: rgba(226, 232, 240, 0.6);";
+								dayColor = "#94a3b8;";
+								dateColor = "#64748b;";
+								statusLabel = "Upcoming";
+							}
 
-						return `
-							<div class="daily-planning-day-chip" data-date="${item.isoDate}" style="padding: 2px 7px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-right: 1px solid rgba(0, 0, 0, 0.08); ${bgStyle}" title="${item.fullDisplay} • Status: ${statusLabel}">
-								<span style="font-size: 9px; text-transform: uppercase; color: ${dayColor} line-height: 1.1; font-weight: 700;">${item.dayName}</span>
-								<span style="font-size: 11px; color: ${dateColor} font-weight: 800; line-height: 1.2;">${item.dateNum}</span>
-							</div>
-						`;
-					}).join('');
+							return `
+								<div class="daily-planning-day-chip" data-date="${item.isoDate}" data-emp-id="${targetEmpId || ''}" style="padding: 2px 7px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-right: 1px solid rgba(0, 0, 0, 0.08); ${bgStyle}" title="${item.fullDisplay} • Status: ${statusLabel}">
+									<span style="font-size: 9px; text-transform: uppercase; color: ${dayColor} line-height: 1.1; font-weight: 700;">${item.dayName}</span>
+									<span style="font-size: 11px; color: ${dateColor} font-weight: 800; line-height: 1.2;">${item.dateNum}</span>
+								</div>
+							`;
+						}).join('');
+					};
 
 					wrapper.innerHTML = "";
 
@@ -4003,6 +4012,7 @@
 						const fallbackUrl = fallbackEmpId 
 							? `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?bm_employee_id=${encodeURIComponent(fallbackEmpId)}`
 							: (solId ? `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?sol_id=${encodeURIComponent(solId)}` : `/app/bm-checklist/new-bm-checklist-tcthxsxvlh`);
+						const daysHtml = renderDaysHtmlForEmp(fallbackEmpId);
 
 						wrapper.innerHTML = `
 							<section class="bm-card">
@@ -4055,6 +4065,7 @@
 							? `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?bm_employee_id=${encodeURIComponent(empId)}`
 							: (solId ? `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?sol_id=${encodeURIComponent(solId)}` : `/app/bm-checklist/new-bm-checklist-tcthxsxvlh`);
 						const bmIndexBadge = bmList.length > 1 ? `<span style="font-size: 11px; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 8px; border-radius: 12px; margin-left: 8px;">BM #${idx + 1} of ${bmList.length}</span>` : "";
+						const daysHtml = renderDaysHtmlForEmp(empId);
 
 						const cardHtml = `
 							<section class="bm-card" style="margin-bottom: 20px;">
