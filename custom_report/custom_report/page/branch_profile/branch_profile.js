@@ -1075,7 +1075,10 @@ function render_branch_manager(data) {
 
 	const html = `
         <div class="dashboard-card" style="animation-delay: 0.1s;">
-            <div class="card-header">Branch Manager</div>
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Branch Manager</span>
+                <a href="/app/bm-checklist/new-bm-checklist-tcthxsxvlh" class="btn btn-primary btn-xs daily-planning-sheet-btn" style="padding: 4px 10px; font-size: 11px; font-weight: 600; border-radius: 4px; background-color: #0a66c2; border: none; color: #fff; text-decoration: none; cursor: pointer;">Daily Planning Sheet</a>
+            </div>
             <div class="manager-profile">
                 <div class="manager-avatar">${initials}</div>
                 <div>

@@ -1,0 +1,89 @@
+ {
+  "actions": [],
+  "allow_rename": 1,
+  "autoname": "format:{date}-{bm_employee_id}",
+  "creation": "2026-09-01 16:45:08.940667",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "bm_employee_id",
+  "sol_id",
+  "date",
+  "column_break_gkvm",
+  "name1",
+  "designation",
+  "section_break_zgjn",
+  "table_lqft"
+ ],
+ "fields": [
+  {
+   "fieldname": "bm_employee_id",
+   "fieldtype": "Link",
+   "label": "BM Employee ID",
+   "options": "Employee"
+  },
+  {
+   "fetch_from": "bm_employee_id.sol_id",
+   "fieldname": "sol_id",
+   "fieldtype": "Data",
+   "label": "Sol id"
+  },
+  {
+   "fetch_from": "bm_employee_id.employee_name",
+   "fieldname": "name1",
+   "fieldtype": "Data",
+   "label": "Name"
+  },
+  {
+   "fetch_from": "bm_employee_id.designation",
+   "fieldname": "designation",
+   "fieldtype": "Data",
+   "label": "Designation"
+  },
+  {
+   "fieldname": "table_lqft",
+   "fieldtype": "Table",
+   "options": "BM checklist Task"
+  },
+  {
+   "fieldname": "column_break_gkvm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_zgjn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-02 12:16:33.777298",
+ "modified_by": "Administrator",
+ "module": "custom_report",
+ "name": "BM checklist",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
