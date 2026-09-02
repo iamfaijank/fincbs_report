@@ -56,43 +56,60 @@ def get_bm_template_tasks():
 @frappe.whitelist(methods=["POST", "GET"], allow_guest=True)
 def get_bm_checklist_status_for_week(employee_id=None, start_date=None, end_date=None, sol_id=None):
 	"""Fetch mapping of dates to BM checklist records for an employee or branch."""
-	if not employee_id and sol_id:
-		from custom_report.branch_v1 import get_bm_details_from_employee
-		bm_res = get_bm_details_from_employee(sol_id)
-		if bm_res and bm_res.get("data") and len(bm_res["data"]) > 0:
-			first_bm = bm_res["data"][0]
-			employee_id = first_bm.get("name") or first_bm.get("employee_number")
-
 	if not employee_id and not sol_id:
 		return {}
 
-	filters = []
+	emp_names = []
 	if employee_id:
-		emp_names = [employee_id]
-		emp_doc = frappe.db.get_value("Employee", {"employee_number": employee_id}, "name")
+		emp_names.append(str(employee_id).strip())
+		emp_doc = frappe.db.get_value("Employee", {"employee_number": str(employee_id).strip()}, "name")
 		if emp_doc and emp_doc not in emp_names:
 			emp_names.append(emp_doc)
-		filters.append(["bm_employee_id", "in", emp_names])
+
+	if sol_id:
+		sol_emp_names = frappe.db.get_all("Employee", filters={"sol_id": str(sol_id).strip()}, pluck="name")
+		for en in sol_emp_names:
+			if en not in emp_names:
+				emp_names.append(en)
+
+	conditions = []
+	values = []
+
+	if emp_names and sol_id:
+		conditions.append("(bm_employee_id IN ({}) OR sol_id = %s)".format(", ".join(["%s"] * len(emp_names))))
+		values.extend(emp_names)
+		values.append(str(sol_id).strip())
+	elif emp_names:
+		conditions.append("bm_employee_id IN ({})".format(", ".join(["%s"] * len(emp_names))))
+		values.extend(emp_names)
 	elif sol_id:
-		filters.append(["sol_id", "=", sol_id])
+		conditions.append("sol_id = %s")
+		values.append(str(sol_id).strip())
 
 	if start_date and end_date:
-		filters.append(["date", "between", [start_date, end_date]])
+		conditions.append("date BETWEEN %s AND %s")
+		values.extend([start_date, end_date])
 
-	records = frappe.get_all(
-		"BM checklist",
-		filters=filters,
-		fields=["name", "date", "bm_employee_id", "docstatus"]
-	)
+	where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
+	query = f"""
+		SELECT name, date, bm_employee_id, sol_id, docstatus
+		FROM `tabBM checklist`
+		{where_clause}
+		ORDER BY creation DESC
+	"""
+	records = frappe.db.sql(query, values, as_dict=True)
 
 	status_map = {}
 	for r in records:
 		d_str = str(r.date)
-		status_map[d_str] = {
-			"name": r.name,
-			"docstatus": r.docstatus,
-			"exists": True
-		}
+		if d_str not in status_map:
+			status_map[d_str] = {
+				"name": r.name,
+				"docstatus": r.docstatus,
+				"bm_employee_id": r.bm_employee_id,
+				"sol_id": r.sol_id,
+				"exists": True
+			}
 
 	return status_map
 

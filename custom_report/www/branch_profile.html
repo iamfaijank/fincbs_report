@@ -4228,6 +4228,8 @@
 							.then(bmJ => {
 								if (bmJ && bmJ.message && bmJ.message.data) {
 									this.state.bmList = bmJ.message.data;
+									const firstEmp = this.state.bmList[0] ? (this.state.bmList[0].name || this.state.bmList[0].employee_number) : "";
+									this.fetchChecklistStatus(solId, firstEmp);
 									this.renderBmData();
 									this.setSectionSkeleton("bm-profiles-wrapper", false);
 								}
@@ -4256,6 +4258,11 @@
 							if (!this.state.bmList || !this.state.bmList.length) {
 								this.state.bmList = bmList;
 							}
+
+							const firstEmp = (this.state.bmList && this.state.bmList[0])
+								? (this.state.bmList[0].name || this.state.bmList[0].employee_number)
+								: (d.bm_employee_id || "");
+							this.fetchChecklistStatus(solId, firstEmp);
 
 							this.setupMonthFilters(solId, res.months || []);
 							this.render();

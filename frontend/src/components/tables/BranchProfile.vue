@@ -77,7 +77,7 @@ const modalUrl = ref('')
 const checklistStatusMap = ref({})
 
 async function fetchChecklistStatus() {
-  const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || ''
+  const empId = props.branchProfile?.bm_employee_id || props.branchProfile?.bm_id || props.branch?.bm_employee_id || ''
   const solId = props.branch?.sol_id || props.branchProfile?.sol_id || ''
   if (!empId && !solId) return
 
@@ -87,17 +87,10 @@ async function fetchChecklistStatus() {
   const endDate = week[week.length - 1].isoDate
 
   try {
-    const res = await frappeRequest({
-      url: '/api/method/custom_report.custom_report.doctype.bm_checklist.bm_checklist.get_bm_checklist_status_for_week',
-      method: 'POST',
-      params: {
-        employee_id: empId,
-        sol_id: solId,
-        start_date: startDate,
-        end_date: endDate,
-      }
-    })
-    checklistStatusMap.value = res || {}
+    const res = await fetch(`/api/method/custom_report.custom_report.doctype.bm_checklist.bm_checklist.get_bm_checklist_status_for_week?sol_id=${encodeURIComponent(solId)}&employee_id=${encodeURIComponent(empId)}&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`)
+      .then(r => r.json())
+    const map = (res && res.message) ? res.message : (res || {})
+    checklistStatusMap.value = map
   } catch (e) {
     console.error('Failed to fetch checklist status', e)
   }
