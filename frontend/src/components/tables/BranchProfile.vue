@@ -73,6 +73,7 @@ const currentWeekWorkingDays = computed(() => {
 })
 
 const showPlanningModal = ref(false)
+const activeView = ref('profile') // 'profile' | 'planning'
 const isPlanningLoading = ref(false)
 const isPlanningSaving = ref(false)
 const planningFeedback = ref({ message: '', type: '' })
@@ -87,6 +88,11 @@ const checklistDoc = ref({
   table_lqft: []
 })
 const checklistStatusMap = ref({})
+
+function backToProfile() {
+  activeView.value = 'profile'
+  fetchChecklistStatus()
+}
 
 const completedTasksCount = computed(() => (checklistDoc.value.table_lqft || []).filter(t => t.is_completed).length)
 const totalTasksCount = computed(() => (checklistDoc.value.table_lqft || []).length)
@@ -186,8 +192,19 @@ async function loadChecklistDoc(specificDate) {
 async function handleDailyPlanningClick(e, specificDate) {
   if (e) e.preventDefault()
   const targetDate = specificDate || new Date().toISOString().split('T')[0]
-  showPlanningModal.value = true
-  await loadChecklistDoc(targetDate)
+  const isInPopup = typeof window !== 'undefined' && (
+    window.self !== window.top ||
+    window.opener != null ||
+    new URLSearchParams(window.location.search).get('popup') === '1'
+  )
+
+  if (isInPopup) {
+    activeView.value = 'planning'
+    await loadChecklistDoc(targetDate)
+  } else {
+    showPlanningModal.value = true
+    await loadChecklistDoc(targetDate)
+  }
 }
 
 function addTaskRow() {
@@ -314,18 +331,220 @@ function scrollToManpowerDetails() {
   <div class="h-full flex flex-col overflow-y-auto">
     <!-- Top breadcrumb bar -->
     <div class="flex items-center gap-2 px-6 py-2.5 bg-[var(--surface)] border-b border-[var(--border)] text-xs text-[var(--text2)] flex-shrink-0">
-      <button @click="$emit('back')" class="flex items-center gap-1 hover:text-[var(--text)] transition font-medium">
+      <button @click="activeView === 'planning' ? backToProfile() : $emit('back')" class="flex items-center gap-1 hover:text-[var(--text)] transition font-medium">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6"></polyline>
         </svg>
-        <span>Branches</span>
+        <span>{{ activeView === 'planning' ? 'Branch Profile' : 'Branches' }}</span>
       </button>
       <span class="text-[var(--border)]">/</span>
       <span class="text-sm font-semibold text-[var(--text)]">{{ branch.branch }} ({{ branch.sol_id }})</span>
+      <template v-if="activeView === 'planning'">
+        <span class="text-[var(--border)]">/</span>
+        <span class="text-xs font-bold text-teal-600 dark:text-teal-400">Daily Planning Sheet</span>
+      </template>
     </div>
 
-    <!-- Branch Information Card -->
-    <div class="mx-5 my-4 sb-card flex-shrink-0">
+    <!-- Inline Daily Planning Sheet (When branch profile is shown in a popup / switched view) -->
+    <div v-if="activeView === 'planning'" class="flex-1 flex flex-col p-5 space-y-4 animate-in fade-in duration-200">
+      <div class="flex items-center justify-between p-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-sm">
+        <button
+          type="button"
+          @click="backToProfile"
+          class="px-3.5 py-1.5 text-xs font-bold rounded-xl text-teal-700 bg-teal-50 dark:bg-teal-950/60 dark:text-teal-300 hover:bg-teal-100 border border-teal-200 dark:border-teal-800 flex items-center gap-1.5 transition cursor-pointer"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          Back to Branch Profile
+        </button>
+
+        <div class="flex items-center gap-2">
+          <span
+            class="px-2.5 py-0.5 text-[11px] font-bold rounded-full uppercase tracking-wider"
+            :class="isNewChecklist ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'"
+          >
+            {{ isNewChecklist ? 'New Checklist' : 'Saved Record' }}
+          </span>
+          <span v-if="checklistDoc.name" class="text-xs text-gray-500 font-mono">
+            #{{ checklistDoc.name }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Notification Banner -->
+      <div
+        v-if="planningFeedback.message"
+        class="px-4 py-2.5 text-xs font-semibold rounded-xl flex items-center justify-between transition"
+        :class="planningFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800' : 'bg-rose-50 text-rose-800 dark:bg-rose-950 dark:text-rose-200 border border-rose-200 dark:border-rose-800'"
+      >
+        <div class="flex items-center gap-2">
+          <svg v-if="planningFeedback.type === 'success'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          <span>{{ planningFeedback.message }}</span>
+        </div>
+        <button @click="planningFeedback.message = ''" class="opacity-60 hover:opacity-100 text-xs font-bold">Dismiss</button>
+      </div>
+
+      <!-- Loading or Form Content -->
+      <div v-if="isPlanningLoading" class="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
+        <div class="w-8 h-8 border-3 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-sm font-medium">Loading BM Checklist details...</p>
+      </div>
+
+      <div v-else class="space-y-4">
+        <!-- Metadata Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-xl bg-slate-50 dark:bg-gray-800/60 border border-slate-200/80 dark:border-gray-800">
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Date</label>
+            <input
+              type="date"
+              v-model="checklistDoc.date"
+              class="w-full text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">BM Employee ID</label>
+            <div class="text-xs font-bold text-teal-700 dark:text-teal-400 px-3 py-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+              {{ checklistDoc.bm_employee_id || '—' }}
+            </div>
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">BM Name</label>
+            <div class="text-xs font-semibold text-gray-800 dark:text-gray-200 px-3 py-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 truncate" :title="checklistDoc.name1">
+              {{ checklistDoc.name1 || '—' }}
+            </div>
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Branch (SOL ID)</label>
+            <div class="text-xs font-semibold text-gray-800 dark:text-gray-200 px-3 py-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+              {{ branch?.branch || 'Branch' }} ({{ checklistDoc.sol_id || branch?.sol_id }})
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress Section -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/50">
+          <div class="flex items-center gap-3">
+            <div class="text-2xl font-black text-teal-700 dark:text-teal-300">
+              {{ completionProgress }}%
+            </div>
+            <div>
+              <div class="text-xs font-bold text-gray-900 dark:text-white">
+                Checklist Completion Progress
+              </div>
+              <div class="text-[11px] text-gray-500 dark:text-gray-400">
+                {{ completedTasksCount }} of {{ totalTasksCount }} tasks marked as completed
+              </div>
+            </div>
+          </div>
+          <div class="w-full sm:w-48 bg-gray-200 dark:bg-gray-700 h-2.5 rounded-full overflow-hidden">
+            <div
+              class="h-full bg-teal-600 dark:bg-teal-400 rounded-full transition-all duration-300"
+              :style="{ width: `${completionProgress}%` }"
+            ></div>
+          </div>
+        </div>
+
+        <!-- Tasks Table / List -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                Checklist Tasks
+              </h4>
+              <span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                {{ totalTasksCount }}
+              </span>
+            </div>
+            <button
+              type="button"
+              @click="addTaskRow"
+              class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/60 border border-teal-200 dark:border-teal-800 flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Add Custom Task
+            </button>
+          </div>
+
+          <div class="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
+            <div
+              v-for="(t, idx) in checklistDoc.table_lqft"
+              :key="idx"
+              class="p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 transition"
+              :class="t.is_completed ? 'bg-emerald-50/30 dark:bg-emerald-950/10' : 'hover:bg-slate-50/50 dark:hover:bg-gray-800/40'"
+            >
+              <label class="flex items-center gap-3 cursor-pointer select-none sm:pt-0.5">
+                <input
+                  type="checkbox"
+                  v-model="t.is_completed"
+                  class="w-5 h-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500 dark:border-gray-700 dark:bg-gray-800 cursor-pointer"
+                />
+              </label>
+
+              <div class="flex-1 min-w-0">
+                <input
+                  v-model="t.task"
+                  type="text"
+                  placeholder="Task description..."
+                  class="w-full text-xs font-semibold bg-transparent border-b border-transparent focus:border-teal-500 focus:bg-white dark:focus:bg-gray-800 px-1 py-1 rounded transition text-gray-800 dark:text-gray-100 focus:outline-none"
+                  :class="t.is_completed ? 'line-through text-gray-400 dark:text-gray-500' : ''"
+                />
+              </div>
+
+              <div class="w-full sm:w-64 flex-shrink-0">
+                <input
+                  v-model="t.remark"
+                  type="text"
+                  placeholder="Add note / remark..."
+                  class="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 focus:bg-white dark:focus:bg-gray-900 focus:border-teal-500 focus:outline-none transition"
+                />
+              </div>
+
+              <button
+                type="button"
+                @click="removeTaskRow(idx)"
+                class="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition self-end sm:self-center"
+                title="Remove task"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </div>
+
+            <div v-if="checklistDoc.table_lqft.length === 0" class="py-8 text-center text-xs text-gray-400">
+              No tasks added yet. Click "+ Add Custom Task" above to add your first checklist item.
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="p-4 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-between">
+          <button
+            type="button"
+            @click="backToProfile"
+            class="px-4 py-2 text-xs font-semibold rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-200/70 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 transition cursor-pointer"
+          >
+            ← Back to Branch Profile
+          </button>
+          <button
+            type="button"
+            @click="saveChecklistDoc"
+            :disabled="isPlanningSaving || isPlanningLoading"
+            class="px-5 py-2 text-xs font-bold rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white shadow-md shadow-teal-600/20 flex items-center gap-2 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <div v-if="isPlanningSaving" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            <span>{{ isNewChecklist ? 'Create Checklist' : 'Update Checklist' }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Branch Profile View -->
+    <template v-if="activeView === 'profile'">
+      <!-- Branch Information Card -->
+      <div class="mx-5 my-4 sb-card flex-shrink-0">
       <div class="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
         <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Branch Information</div>
         <div class="inline-flex items-stretch rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700 text-xs shadow-sm hover:shadow transition bg-[var(--bg)]">
@@ -909,8 +1128,9 @@ function scrollToManpowerDetails() {
         </tbody>
       </table>
     </div>
+    </template>
 
-    <!-- Daily Planning Sheet Custom UI Modal -->
+    <!-- Daily Planning Sheet Custom UI Modal (Used in Full-Screen mode) -->
     <div
       v-if="showPlanningModal"
       class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6"

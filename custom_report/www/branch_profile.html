@@ -2517,7 +2517,100 @@
 			</section>
 		</div>
 
-		<!-- Daily Planning Sheet Custom UI Modal -->
+		<!-- Daily Planning Sheet Inline Container (Used when Branch Profile is displayed in a Popup / Iframe) -->
+		<div id="daily-planning-inline-container" style="display: none; padding-bottom: 40px;">
+			<div style="background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04); overflow: hidden; margin-bottom: 24px;">
+				<!-- Top Back Header -->
+				<div style="padding: 16px 24px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+					<div style="display: flex; align-items: center; gap: 12px;">
+						<button type="button" onclick="BranchDashboard.backToBranchProfileFromInline()" style="padding: 6px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; border: 1px solid #99f6e4; background: #f0fdfa; color: #0d9488; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+							<i class="fa fa-arrow-left"></i> Back to Branch Profile
+						</button>
+						<span style="font-size: 15px; font-weight: 700; color: #0f172a;">Daily Planning Sheet</span>
+						<span id="dp-inline-status-badge" style="padding: 2px 8px; font-size: 11px; font-weight: 700; border-radius: 20px; text-transform: uppercase; background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
+							New Checklist
+						</span>
+						<span id="dp-inline-docname" style="font-size: 12px; font-family: monospace; color: #64748b;"></span>
+					</div>
+				</div>
+
+				<!-- Feedback Banner -->
+				<div id="dp-inline-feedback-banner" style="display: none; padding: 10px 24px; font-size: 13px; font-weight: 600;"></div>
+
+				<!-- Inline Content Body -->
+				<div style="padding: 24px; display: flex; flex-direction: column; gap: 20px;">
+					<!-- Loader -->
+					<div id="daily-planning-inline-loader" style="display: none; flex-direction: column; justify-content: center; align-items: center; padding: 40px 0;">
+						<div style="border: 3px solid #e2e8f0; border-top: 3px solid #0d9488; border-radius: 50%; width: 32px; height: 32px; animation: spin 0.8s linear infinite; margin-bottom: 12px;"></div>
+						<span style="font-size: 13px; color: #64748b; font-weight: 500;">Loading BM Checklist details...</span>
+					</div>
+
+					<div id="dp-inline-form-content" style="display: flex; flex-direction: column; gap: 20px;">
+						<!-- Metadata Grid -->
+						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+							<div>
+								<label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">Date</label>
+								<input type="date" id="dp-inline-field-date" style="width: 100%; box-sizing: border-box; padding: 6px 10px; font-size: 13px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #1e293b;" />
+							</div>
+							<div>
+								<label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">BM Employee ID</label>
+								<div id="dp-inline-field-empid" style="padding: 7px 10px; font-size: 13px; font-weight: 700; color: #0d9488; background: #ffffff; border-radius: 8px; border: 1px solid #cbd5e1;">--</div>
+							</div>
+							<div>
+								<label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">BM Name</label>
+								<div id="dp-inline-field-empname" style="padding: 7px 10px; font-size: 13px; font-weight: 600; color: #1e293b; background: #ffffff; border-radius: 8px; border: 1px solid #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">--</div>
+							</div>
+							<div>
+								<label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">SOL ID</label>
+								<div id="dp-inline-field-solid" style="padding: 7px 10px; font-size: 13px; font-weight: 600; color: #1e293b; background: #ffffff; border-radius: 8px; border: 1px solid #cbd5e1;">--</div>
+							</div>
+						</div>
+
+						<!-- Progress Section -->
+						<div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; background: #f0fdfa; border-radius: 12px; border: 1px solid #ccfbf1;">
+							<div style="display: flex; align-items: center; gap: 14px;">
+								<span id="dp-inline-progress-pct" style="font-size: 22px; font-weight: 900; color: #0f766e;">0%</span>
+								<div>
+									<div style="font-size: 13px; font-weight: 700; color: #134e4a;">Tasks Progress</div>
+									<div id="dp-inline-progress-text" style="font-size: 11px; color: #0d9488;">0 of 0 tasks completed</div>
+								</div>
+							</div>
+							<div style="width: 180px; height: 10px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+								<div id="dp-inline-progress-bar" style="width: 0%; height: 100%; background: #0d9488; border-radius: 999px; transition: width 0.3s ease;"></div>
+							</div>
+						</div>
+
+						<!-- Tasks Table -->
+						<div>
+							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+								<div style="display: flex; align-items: center; gap: 8px;">
+									<span style="font-size: 13px; font-weight: 700; text-transform: uppercase; color: #334155;">Checklist Tasks</span>
+									<span id="dp-inline-task-count-badge" style="font-size: 11px; font-weight: 800; background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 999px;">0</span>
+								</div>
+								<button type="button" onclick="BranchDashboard.addCustomTaskRow(true)" style="padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 8px; background: #f0fdfa; color: #0d9488; border: 1px solid #99f6e4; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+									<i class="fa fa-plus"></i> Add Custom Task
+								</button>
+							</div>
+
+							<div id="dp-inline-tasks-container" style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff;">
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Footer Actions -->
+				<div style="padding: 16px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+					<button type="button" onclick="BranchDashboard.backToBranchProfileFromInline()" style="padding: 8px 16px; font-size: 13px; font-weight: 600; border-radius: 10px; border: 1px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer;">
+						← Back to Branch Profile
+					</button>
+					<button type="button" id="dp-inline-save-btn" onclick="BranchDashboard.saveChecklistDoc(true)" style="padding: 8px 20px; font-size: 13px; font-weight: 700; border-radius: 10px; border: none; background: #097c80; color: #ffffff; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px -1px rgba(9, 124, 128, 0.25);">
+						<i class="fa fa-check"></i> <span id="dp-inline-save-btn-text">Create Checklist</span>
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Daily Planning Sheet Custom UI Modal (Used in Full-Screen mode) -->
 		<div id="daily-planning-modal" style="display: none; position: fixed; inset: 0; z-index: 99999; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); justify-content: center; align-items: center; padding: 16px; box-sizing: border-box;">
 			<div style="position: relative; width: 92vw; max-width: 900px; max-height: 90vh; background: #ffffff; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(226, 232, 240, 0.8);">
 				
@@ -2965,6 +3058,57 @@
 
 				currentChecklistDoc: null,
 				isNewChecklist: true,
+				isInlinePlanningMode: false,
+
+				async openDailyPlanningInline(targetDate, empId, solId, recordName) {
+					const inlineContainer = document.getElementById("daily-planning-inline-container");
+					const branchDataContainer = document.getElementById("branch-data-container");
+					const loader = document.getElementById("daily-planning-inline-loader");
+					const formContent = document.getElementById("dp-inline-form-content");
+					const feedback = document.getElementById("dp-inline-feedback-banner");
+					if (!inlineContainer) return;
+
+					this.isInlinePlanningMode = true;
+					if (branchDataContainer) branchDataContainer.style.display = "none";
+					inlineContainer.style.display = "block";
+					window.scrollTo({ top: 0, behavior: "smooth" });
+
+					if (loader) loader.style.display = "flex";
+					if (formContent) formContent.style.display = "none";
+					if (feedback) feedback.style.display = "none";
+
+					try {
+						const url = `/api/method/custom_report.custom_report.doctype.bm_checklist.bm_checklist.get_bm_checklist_details?name=${encodeURIComponent(recordName || '')}&employee_id=${encodeURIComponent(empId || '')}&date=${encodeURIComponent(targetDate || '')}&sol_id=${encodeURIComponent(solId || '')}`;
+						const res = await fetch(url).then(r => r.json());
+						const data = res.message || res;
+						if (data && data.doc) {
+							this.currentChecklistDoc = data.doc;
+							this.isNewChecklist = Boolean(data.is_new);
+							this.renderChecklistFormUI();
+						}
+					} catch(e) {
+						console.error("Failed to load BM checklist doc", e);
+						this.showPlanningFeedback("Failed to load checklist details.", "error", true);
+					} finally {
+						if (loader) loader.style.display = "none";
+						if (formContent) formContent.style.display = "flex";
+					}
+				},
+
+				backToBranchProfileFromInline() {
+					const inlineContainer = document.getElementById("daily-planning-inline-container");
+					const branchDataContainer = document.getElementById("branch-data-container");
+					if (inlineContainer) inlineContainer.style.display = "none";
+					if (branchDataContainer) branchDataContainer.style.display = "block";
+					this.isInlinePlanningMode = false;
+					window.scrollTo({ top: 0, behavior: "smooth" });
+
+					const solId = this.state.currentSolId;
+					const empId = this.currentChecklistDoc ? this.currentChecklistDoc.bm_employee_id : "";
+					if (typeof BranchManagerProfile.fetchChecklistStatus === "function") {
+						BranchManagerProfile.fetchChecklistStatus(solId, empId);
+					}
+				},
 
 				async openDailyPlanningModal(targetDate, empId, solId, recordName) {
 					const modal = document.getElementById("daily-planning-modal");
@@ -2973,6 +3117,7 @@
 					const feedback = document.getElementById("dp-feedback-banner");
 					if (!modal) return;
 
+					this.isInlinePlanningMode = false;
 					modal.style.display = "flex";
 					document.body.style.overflow = "hidden";
 					if (loader) loader.style.display = "flex";
@@ -2990,7 +3135,7 @@
 						}
 					} catch(e) {
 						console.error("Failed to load BM checklist doc", e);
-						this.showPlanningFeedback("Failed to load checklist details.", "error");
+						this.showPlanningFeedback("Failed to load checklist details.", "error", false);
 					} finally {
 						if (loader) loader.style.display = "none";
 						if (formContent) formContent.style.display = "flex";
@@ -3007,30 +3152,33 @@
 					const doc = this.currentChecklistDoc || {};
 					const isNew = this.isNewChecklist;
 
-					const badgeEl = document.getElementById("dp-modal-status-badge");
-					const docnameEl = document.getElementById("dp-modal-docname");
-					const saveBtnText = document.getElementById("dp-save-btn-text");
-					const footerCaption = document.getElementById("dp-footer-caption");
+					const pfxs = ["dp-", "dp-inline-"];
+					pfxs.forEach(pfx => {
+						const badgeEl = document.getElementById(`${pfx}modal-status-badge`) || document.getElementById(`${pfx}status-badge`);
+						const docnameEl = document.getElementById(`${pfx}modal-docname`) || document.getElementById(`${pfx}docname`);
+						const saveBtnText = document.getElementById(`${pfx}save-btn-text`);
+						const footerCaption = document.getElementById(`${pfx}footer-caption`);
 
-					if (badgeEl) {
-						badgeEl.textContent = isNew ? "New Checklist" : "Saved Record";
-						badgeEl.style.background = isNew ? "#fef3c7" : "#dcfce7";
-						badgeEl.style.color = isNew ? "#92400e" : "#166534";
-						badgeEl.style.borderColor = isNew ? "#fde68a" : "#86efac";
-					}
-					if (docnameEl) docnameEl.textContent = doc.name ? `#${doc.name}` : "";
-					if (saveBtnText) saveBtnText.textContent = isNew ? "Create Checklist" : "Update Checklist";
-					if (footerCaption) footerCaption.textContent = isNew ? "Create and submit daily planning sheet" : "Update existing checklist record";
+						if (badgeEl) {
+							badgeEl.textContent = isNew ? "New Checklist" : "Saved Record";
+							badgeEl.style.background = isNew ? "#fef3c7" : "#dcfce7";
+							badgeEl.style.color = isNew ? "#92400e" : "#166534";
+							badgeEl.style.borderColor = isNew ? "#fde68a" : "#86efac";
+						}
+						if (docnameEl) docnameEl.textContent = doc.name ? `#${doc.name}` : "";
+						if (saveBtnText) saveBtnText.textContent = isNew ? "Create Checklist" : "Update Checklist";
+						if (footerCaption) footerCaption.textContent = isNew ? "Create and submit daily planning sheet" : "Update existing checklist record";
 
-					const dateInput = document.getElementById("dp-field-date");
-					const empidEl = document.getElementById("dp-field-empid");
-					const empnameEl = document.getElementById("dp-field-empname");
-					const solidEl = document.getElementById("dp-field-solid");
+						const dateInput = document.getElementById(`${pfx}field-date`);
+						const empidEl = document.getElementById(`${pfx}field-empid`);
+						const empnameEl = document.getElementById(`${pfx}field-empname`);
+						const solidEl = document.getElementById(`${pfx}field-solid`);
 
-					if (dateInput) dateInput.value = doc.date || "";
-					if (empidEl) empidEl.textContent = doc.bm_employee_id || "--";
-					if (empnameEl) empnameEl.textContent = doc.name1 || "--";
-					if (solidEl) solidEl.textContent = doc.sol_id || "--";
+						if (dateInput) dateInput.value = doc.date || "";
+						if (empidEl) empidEl.textContent = doc.bm_employee_id || "--";
+						if (empnameEl) empnameEl.textContent = doc.name1 || "--";
+						if (solidEl) solidEl.textContent = doc.sol_id || "--";
+					});
 
 					this.renderChecklistTasks();
 				},
@@ -3038,11 +3186,12 @@
 				renderChecklistTasks() {
 					const doc = this.currentChecklistDoc || {};
 					const tasks = doc.table_lqft || [];
-					const container = document.getElementById("dp-tasks-container");
-					const countBadge = document.getElementById("dp-task-count-badge");
-					const progressPct = document.getElementById("dp-progress-pct");
-					const progressText = document.getElementById("dp-progress-text");
-					const progressBar = document.getElementById("dp-progress-bar");
+					const isInline = this.isInlinePlanningMode;
+					const container = isInline ? document.getElementById("dp-inline-tasks-container") : document.getElementById("dp-tasks-container");
+					const countBadge = isInline ? document.getElementById("dp-inline-task-count-badge") : document.getElementById("dp-task-count-badge");
+					const progressPct = isInline ? document.getElementById("dp-inline-progress-pct") : document.getElementById("dp-progress-pct");
+					const progressText = isInline ? document.getElementById("dp-inline-progress-text") : document.getElementById("dp-progress-text");
+					const progressBar = isInline ? document.getElementById("dp-inline-progress-bar") : document.getElementById("dp-progress-bar");
 
 					if (countBadge) countBadge.textContent = tasks.length;
 
@@ -3100,7 +3249,7 @@
 					}
 				},
 
-				addCustomTaskRow() {
+				addCustomTaskRow(isInline = false) {
 					if (!this.currentChecklistDoc) return;
 					if (!this.currentChecklistDoc.table_lqft) this.currentChecklistDoc.table_lqft = [];
 					this.currentChecklistDoc.table_lqft.push({
@@ -3118,15 +3267,18 @@
 					}
 				},
 
-				async saveChecklistDoc() {
+				async saveChecklistDoc(isInline = false) {
 					const doc = this.currentChecklistDoc;
 					if (!doc) return;
 
-					const dateInput = document.getElementById("dp-field-date");
+					const dateFieldId = isInline ? "dp-inline-field-date" : "dp-field-date";
+					const dateInput = document.getElementById(dateFieldId);
 					if (dateInput && dateInput.value) doc.date = dateInput.value;
 
-					const saveBtn = document.getElementById("dp-save-btn");
-					const saveBtnText = document.getElementById("dp-save-btn-text");
+					const saveBtnId = isInline ? "dp-inline-save-btn" : "dp-save-btn";
+					const saveBtnTextId = isInline ? "dp-inline-save-btn-text" : "dp-save-btn-text";
+					const saveBtn = document.getElementById(saveBtnId);
+					const saveBtnText = document.getElementById(saveBtnTextId);
 					if (saveBtn) saveBtn.disabled = true;
 					if (saveBtnText) saveBtnText.textContent = "Saving...";
 
@@ -3145,7 +3297,7 @@
 							this.currentChecklistDoc = data.doc;
 							this.isNewChecklist = false;
 							this.renderChecklistFormUI();
-							this.showPlanningFeedback(data.message || "Saved successfully!", "success");
+							this.showPlanningFeedback(data.message || "Saved successfully!", "success", isInline);
 
 							const solId = this.state.currentSolId;
 							const empId = doc.bm_employee_id;
@@ -3153,19 +3305,20 @@
 								BranchManagerProfile.fetchChecklistStatus(solId, empId);
 							}
 						} else {
-							this.showPlanningFeedback(data.message || "Failed to save checklist.", "error");
+							this.showPlanningFeedback(data.message || "Failed to save checklist.", "error", isInline);
 						}
 					} catch(e) {
 						console.error("Save error", e);
-						this.showPlanningFeedback("Network error while saving checklist.", "error");
+						this.showPlanningFeedback("Network error while saving checklist.", "error", isInline);
 					} finally {
 						if (saveBtn) saveBtn.disabled = false;
 						if (saveBtnText) saveBtnText.textContent = this.isNewChecklist ? "Create Checklist" : "Update Checklist";
 					}
 				},
 
-				showPlanningFeedback(msg, type) {
-					const banner = document.getElementById("dp-feedback-banner");
+				showPlanningFeedback(msg, type, isInline = false) {
+					const bannerId = isInline ? "dp-inline-feedback-banner" : "dp-feedback-banner";
+					const banner = document.getElementById(bannerId);
 					if (!banner) return;
 					banner.textContent = msg;
 					banner.style.display = "block";
@@ -3194,7 +3347,13 @@
 					));
 					const existingRecord = isThisBm ? recordInfo.name : null;
 
-					this.openDailyPlanningModal(targetDate, empId, solId, existingRecord);
+					const isInPopup = window.self !== window.top || window.opener != null || new URLSearchParams(window.location.search).get('popup') === '1';
+
+					if (isInPopup) {
+						this.openDailyPlanningInline(targetDate, empId, solId, existingRecord);
+					} else {
+						this.openDailyPlanningModal(targetDate, empId, solId, existingRecord);
+					}
 				},
 
 				/* ---------------- Init ---------------- */
