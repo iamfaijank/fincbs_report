@@ -1,11 +1,43 @@
 frappe.ui.form.on("BM checklist", {
 	onload(frm) {
 		set_bm_employee_from_context(frm);
+		populate_bm_template_tasks(frm);
 	},
 	refresh(frm) {
 		set_bm_employee_from_context(frm);
+		if (frm.is_new() && (!frm.doc.table_lqft || frm.doc.table_lqft.length === 0)) {
+			populate_bm_template_tasks(frm);
+		}
 	}
 });
+
+function populate_bm_template_tasks(frm) {
+	if (!frm.is_new()) return;
+	if (frm.doc.table_lqft && frm.doc.table_lqft.length > 0) return;
+
+	frappe.call({
+		method: "custom_report.custom_report.doctype.bm_checklist.bm_checklist.get_bm_template_tasks",
+		callback: function(r) {
+			if (r.message && Array.isArray(r.message) && r.message.length > 0) {
+				const existing = new Set((frm.doc.table_lqft || []).map(row => (row.task || "").trim().toLowerCase()));
+				let added = false;
+				r.message.forEach(subject => {
+					const clean = (subject || "").trim();
+					if (clean && !existing.has(clean.toLowerCase())) {
+						const row = frm.add_child("table_lqft");
+						row.task = clean;
+						row.is_completed = 0;
+						existing.add(clean.toLowerCase());
+						added = true;
+					}
+				});
+				if (added) {
+					frm.refresh_field("table_lqft");
+				}
+			}
+		}
+	});
+}
 
 function set_bm_employee_from_context(frm) {
 	if (!frm.is_new() || frm.doc.bm_employee_id) return;
