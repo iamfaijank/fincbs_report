@@ -348,10 +348,39 @@ function scrollToManpowerDetails() {
     <!-- Inline Daily Planning Sheet (When branch profile is shown in a popup / switched view) -->
     <div v-if="activeView === 'planning'" class="flex-1 flex flex-col p-5 space-y-4 animate-in fade-in duration-200">
       <div class="flex items-center justify-between p-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-sm">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 flex items-center justify-center text-teal-600 dark:text-teal-400 shadow-sm">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-base font-bold text-[var(--text)]">Daily Planning Sheet</h3>
+              <span
+                class="px-2.5 py-0.5 text-[11px] font-bold rounded-full uppercase tracking-wider"
+                :class="isNewChecklist ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'"
+              >
+                {{ isNewChecklist ? 'New Checklist' : 'Saved Record' }}
+              </span>
+              <span v-if="checklistDoc.name" class="text-xs text-gray-500 font-mono">
+                #{{ checklistDoc.name }}
+              </span>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              BM Task Planning & Daily Execution Checklist
+            </p>
+          </div>
+        </div>
+
         <button
           type="button"
           @click="backToProfile"
-          class="px-3.5 py-1.5 text-xs font-bold rounded-xl text-teal-700 bg-teal-50 dark:bg-teal-950/60 dark:text-teal-300 hover:bg-teal-100 border border-teal-200 dark:border-teal-800 flex items-center gap-1.5 transition cursor-pointer"
+          class="px-4 py-2 text-xs font-bold rounded-xl text-teal-700 bg-teal-50 dark:bg-teal-950/60 dark:text-teal-300 hover:bg-teal-100 border border-teal-200 dark:border-teal-800 flex items-center gap-1.5 transition cursor-pointer shadow-sm flex-shrink-0"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -359,18 +388,6 @@ function scrollToManpowerDetails() {
           </svg>
           Back to Branch Profile
         </button>
-
-        <div class="flex items-center gap-2">
-          <span
-            class="px-2.5 py-0.5 text-[11px] font-bold rounded-full uppercase tracking-wider"
-            :class="isNewChecklist ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'"
-          >
-            {{ isNewChecklist ? 'New Checklist' : 'Saved Record' }}
-          </span>
-          <span v-if="checklistDoc.name" class="text-xs text-gray-500 font-mono">
-            #{{ checklistDoc.name }}
-          </span>
-        </div>
       </div>
 
       <!-- Notification Banner -->
