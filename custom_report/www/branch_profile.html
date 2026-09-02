@@ -1489,7 +1489,14 @@
 					<div class="bm-right">
 						<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
 							<div class="bm-title" style="margin-bottom: 0;">Branch Manager</div>
-							<a href="/app/bm-checklist/new-bm-checklist-tcthxsxvlh" class="daily-planning-sheet-btn" style="display: inline-block; padding: 6px 14px; font-size: 12px; font-weight: 600; border-radius: 6px; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;">Daily Planning Sheet</a>
+							<a href="/app/bm-checklist/new-bm-checklist-tcthxsxvlh" class="daily-planning-sheet-btn" style="display: inline-flex; align-items: center; border-radius: 6px; overflow: hidden; border: 1px solid rgba(9, 124, 128, 0.4); text-decoration: none; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.08); font-size: 12px; transition: all 0.2s ease;">
+								<span id="bm-header-week-range" style="padding: 5px 10px; font-weight: 600; background-color: #e6f4f4; color: #097c80; border-right: 1px solid rgba(9, 124, 128, 0.25); display: inline-flex; align-items: center; gap: 5px;">
+									<i class="fa fa-calendar" style="font-size: 11px; opacity: 0.85;"></i> This Week
+								</span>
+								<span style="padding: 5px 12px; font-weight: 600; background-color: var(--primary-1, #097c80); color: #fff;">
+									Daily Planning Sheet
+								</span>
+							</a>
 						</div>
 
 						<div class="bm-name-row" style="display:flex; align-items:center; gap:8px;">
@@ -3230,9 +3237,44 @@
 					manpowerFilter: 'all',
 					manpowerSearchQuery: '',
 					manpowerSortCol: 'employee_number',
-					manpowerSortDir: 'desc',
 					attritionPeriod: '3',
 					attritionData: null
+				},
+
+				getCurrentWeekWorkingDays() {
+					const now = new Date();
+					const currentDay = now.getDay();
+					const diffToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+					const monday = new Date(now);
+					monday.setDate(now.getDate() + diffToMonday);
+
+					const days = [];
+					const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+					const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+					for (let i = 0; i < 6; i++) {
+						const d = new Date(monday);
+						d.setDate(monday.getDate() + i);
+
+						const dayNum = String(d.getDate()).padStart(2, '0');
+						const monthStr = monthNames[d.getMonth()];
+						const yyyy = d.getFullYear();
+						const mm = String(d.getMonth() + 1).padStart(2, '0');
+						const isoDate = `${yyyy}-${mm}-${dayNum}`;
+						const isToday = d.toDateString() === now.toDateString();
+
+						days.push({
+							dayName: dayNames[i],
+							dateNum: dayNum,
+							month: monthStr,
+							displayDate: `${dayNames[i]} ${dayNum}`,
+							fullDisplay: `${dayNames[i]} ${dayNum} ${monthStr}`,
+							isoDate: isoDate,
+							isToday: isToday,
+						});
+					}
+
+					return days;
 				},
 
 				toggleDepositBookSection() {
@@ -3854,6 +3896,13 @@
 					const d = this.state.rawData || {};
 					const bmList = this.state.bmList || [];
 					const branchEmailValue = d._branch_email_value || "--";
+					const weekDays = this.getCurrentWeekWorkingDays();
+					const daysHtml = weekDays.map(item => `
+						<div class="daily-planning-day-chip" data-date="${item.isoDate}" style="padding: 2px 7px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-right: 1px solid rgba(9, 124, 128, 0.15); ${item.isToday ? 'background: rgba(9, 124, 128, 0.18); font-weight: 700;' : ''}" title="${item.fullDisplay}${item.isToday ? ' (Today)' : ''}">
+							<span style="font-size: 9px; text-transform: uppercase; color: #097c80; line-height: 1.1; font-weight: 700;">${item.dayName}</span>
+							<span style="font-size: 11px; color: ${item.isToday ? '#097c80' : '#334155'}; font-weight: ${item.isToday ? '800' : '600'}; line-height: 1.2;">${item.dateNum}</span>
+						</div>
+					`).join('');
 
 					wrapper.innerHTML = "";
 
@@ -3874,7 +3923,14 @@
 								<div class="bm-right">
 									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
 										<div class="bm-title" style="margin-bottom: 0;">Branch Manager</div>
-										<a href="${fallbackUrl}" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" class="daily-planning-sheet-btn" style="display: inline-block; padding: 6px 14px; font-size: 12px; font-weight: 600; border-radius: 6px; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;">Daily Planning Sheet</a>
+										<div class="daily-planning-btn-group" style="display: inline-flex; align-items: stretch; border-radius: 6px; overflow: hidden; border: 1px solid rgba(9, 124, 128, 0.4); box-shadow: 0 2px 4px rgba(0,0,0,0.06); font-size: 12px; background: #fff;">
+											<div style="display: inline-flex; align-items: stretch; background: #f0fdfa;">
+												${daysHtml}
+											</div>
+											<a href="${fallbackUrl}" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" class="daily-planning-sheet-btn" style="display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; font-weight: 600; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease;">
+												<i class="fa fa-file-text-o" style="font-size: 11px;"></i> Daily Planning Sheet
+											</a>
+										</div>
 									</div>
 									<div class="bm-name-row" style="display:flex; align-items:center; gap:8px;">
 										<div class="bm-name">${this.value(d.bm_name)}</div><span id="bm-status-single-badge" class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; background:#dcfce7; color:#16a34a;">Active</span>
@@ -3919,7 +3975,14 @@
 								<div class="bm-right">
 									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
 										<div class="bm-title" style="margin-bottom: 0;">${this.value(bm.designation)} ${bmIndexBadge}</div>
-										<a href="${planningUrl}" data-emp-id="${empId}" data-sol-id="${solId}" class="daily-planning-sheet-btn" style="display: inline-block; padding: 6px 14px; font-size: 12px; font-weight: 600; border-radius: 6px; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s ease;">Daily Planning Sheet</a>
+										<div class="daily-planning-btn-group" style="display: inline-flex; align-items: stretch; border-radius: 6px; overflow: hidden; border: 1px solid rgba(9, 124, 128, 0.4); box-shadow: 0 2px 4px rgba(0,0,0,0.06); font-size: 12px; background: #fff;">
+											<div style="display: inline-flex; align-items: stretch; background: #f0fdfa;">
+												${daysHtml}
+											</div>
+											<a href="${planningUrl}" data-emp-id="${empId}" data-sol-id="${solId}" class="daily-planning-sheet-btn" style="display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; font-weight: 600; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease;">
+												<i class="fa fa-file-text-o" style="font-size: 11px;"></i> Daily Planning Sheet
+											</a>
+										</div>
 									</div>
 									<div class="bm-name-row" style="display:flex; align-items:center; gap:8px;">
 										<div class="bm-name">

@@ -36,6 +36,43 @@ const dailyPlanningSheetUrl = computed(() => {
   return '/app/bm-checklist/new-bm-checklist-tcthxsxvlh'
 })
 
+const currentWeekWorkingDays = computed(() => {
+  const now = new Date()
+  const currentDay = now.getDay() // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  const diffToMonday = currentDay === 0 ? -6 : 1 - currentDay
+  const monday = new Date(now)
+  monday.setDate(now.getDate() + diffToMonday)
+
+  const days = []
+  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+
+    const dayNum = String(d.getDate()).padStart(2, '0')
+    const monthStr = monthNames[d.getMonth()]
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const isoDate = `${yyyy}-${mm}-${dayNum}`
+
+    const isToday = d.toDateString() === now.toDateString()
+
+    days.push({
+      dayName: dayNames[i],
+      dateNum: dayNum,
+      month: monthStr,
+      displayDate: `${dayNames[i]} ${dayNum}`,
+      fullDisplay: `${dayNames[i]} ${dayNum} ${monthStr}`,
+      isoDate: isoDate,
+      isToday: isToday,
+    })
+  }
+
+  return days
+})
+
 const showPlanningModal = ref(false)
 
 function openDailyPlanningSheet() {
@@ -140,13 +177,40 @@ function scrollToManpowerDetails() {
     <div class="mx-5 my-4 sb-card flex-shrink-0">
       <div class="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
         <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Branch Information</div>
-        <a
-          :href="dailyPlanningSheetUrl"
-          @click="handleDailyPlanningClick"
-          class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 transition dark:bg-blue-600 dark:hover:bg-blue-500 shadow-sm cursor-pointer no-underline"
-        >
-          Daily Planning Sheet
-        </a>
+        <div class="inline-flex items-stretch rounded-lg overflow-hidden border border-blue-600/30 text-xs shadow-sm hover:shadow transition bg-[var(--bg)]">
+          <!-- Left side: Every working day date of current week (Mon-Sat) -->
+          <div class="flex items-stretch divide-x divide-blue-200 dark:divide-blue-800/60 bg-blue-50/70 dark:bg-blue-950/40">
+            <button
+              v-for="d in currentWeekWorkingDays"
+              :key="d.isoDate"
+              type="button"
+              @click="handleDailyPlanningClick($event, d.isoDate)"
+              class="px-2 py-1 flex flex-col items-center justify-center transition cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/60"
+              :class="d.isToday ? 'bg-blue-600/15 text-blue-700 dark:text-blue-300 ring-1 ring-inset ring-blue-500/30' : 'text-[var(--text2)]'"
+              :title="`${d.fullDisplay}${d.isToday ? ' (Today)' : ''}`"
+            >
+              <span class="text-[9px] uppercase font-bold leading-tight tracking-wider opacity-75">{{ d.dayName }}</span>
+              <span class="text-[11px] font-bold leading-tight" :class="d.isToday ? 'text-blue-600 dark:text-blue-400 font-extrabold' : 'text-[var(--text)]'">
+                {{ d.dateNum }}
+              </span>
+            </button>
+          </div>
+          <!-- Right side: Daily Planning Sheet button -->
+          <button
+            type="button"
+            @click="handleDailyPlanningClick($event)"
+            class="px-3.5 py-1.5 font-semibold bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 transition flex items-center gap-1.5 cursor-pointer border-l border-blue-600/40"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            <span>Daily Planning Sheet</span>
+          </button>
+        </div>
       </div>
       <div class="px-4 py-4">
         <div class="flex gap-4">
