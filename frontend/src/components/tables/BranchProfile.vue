@@ -537,13 +537,9 @@ function scrollToManpowerDetails() {
 
         <!-- Footer Actions -->
         <div class="p-4 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-between">
-          <button
-            type="button"
-            @click="backToProfile"
-            class="px-4 py-2 text-xs font-semibold rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-200/70 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 transition cursor-pointer"
-          >
-            ← Back to Branch Profile
-          </button>
+          <span class="text-xs text-[var(--text3)]">
+            {{ isNewChecklist ? 'Create and submit daily planning sheet' : 'Update existing checklist record' }}
+          </span>
           <button
             type="button"
             @click="saveChecklistDoc"
