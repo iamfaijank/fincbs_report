@@ -3079,9 +3079,9 @@
 							`<option value="${m}">${m}</option>`
 						).join('');
 						pwMonthSelect.addEventListener('change', () => {
-							const solId = this.state.currentSolId;
-							if (solId) {
-								this.loadProductCollections(solId);
+							const solId = this.state.currentSolId || (new URLSearchParams(window.location.search)).get("sol_id");
+							if (solId && typeof BranchManagerProfile.loadProductCollections === 'function') {
+								BranchManagerProfile.loadProductCollections(solId);
 							}
 						});
 					}
@@ -3098,9 +3098,9 @@
 								pwMonthSelect.value = "";
 								pwMonthSelect.style.display = isYtd ? 'none' : 'inline-block';
 							}
-							const solId = this.state.currentSolId;
-							if (solId) {
-								this.loadProductCollections(solId);
+							const solId = this.state.currentSolId || (new URLSearchParams(window.location.search)).get("sol_id");
+							if (solId && typeof BranchManagerProfile.loadProductCollections === 'function') {
+								BranchManagerProfile.loadProductCollections(solId);
 							}
 						});
 					}
