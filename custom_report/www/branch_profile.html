@@ -3075,9 +3075,8 @@
 					const pwMonthSelect = document.getElementById('pw-month-select');
 					if (pwMonthSelect) {
 						const fyMonths = ['APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN', 'FEB', 'MAR'];
-						const curMon = new Date().toLocaleString('en', { month: 'short' }).toUpperCase();
-						pwMonthSelect.innerHTML = fyMonths.map(m =>
-							`<option value="${m}" ${m === curMon ? 'selected' : ''}>${m}</option>`
+						pwMonthSelect.innerHTML = `<option value="" selected>--</option>` + fyMonths.map(m =>
+							`<option value="${m}">${m}</option>`
 						).join('');
 						pwMonthSelect.addEventListener('change', () => {
 							const solId = this.state.currentSolId;
@@ -3095,7 +3094,10 @@
 							pwModeToggle.querySelectorAll('.pw-mode-btn').forEach(b => b.classList.remove('active'));
 							btn.classList.add('active');
 							const isYtd = btn.dataset.mode === 'ytd';
-							if (pwMonthSelect) pwMonthSelect.style.display = isYtd ? 'none' : 'inline-block';
+							if (pwMonthSelect) {
+								pwMonthSelect.value = "";
+								pwMonthSelect.style.display = isYtd ? 'none' : 'inline-block';
+							}
 							const solId = this.state.currentSolId;
 							if (solId) {
 								this.loadProductCollections(solId);
@@ -4450,7 +4452,7 @@
 
 					if (data.month) {
 						const ms = document.getElementById("pw-month-select");
-						if (ms && ms.value !== data.month) ms.value = data.month;
+						if (ms && ms.value && ms.value !== data.month) ms.value = data.month;
 					}
 
 					if (data.targets) {
