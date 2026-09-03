@@ -6522,7 +6522,10 @@ def get_rm_wise_ss_vs_data(selected_date=None):
         where_args = []
 
     try:
-        data = frappe.db.sql(sql_query, tuple(where_args) if where_args else None, as_dict=True)
+        if where_args:
+            data = frappe.db.sql(sql_query, tuple(where_args), as_dict=True)
+        else:
+            data = frappe.db.sql(sql_query, as_dict=True)
     except Exception as e:
         frappe.log_error(
             f"get_rm_wise_ss_vs_data SQL error: {e}\n"
@@ -6538,7 +6541,7 @@ def get_rm_wise_ss_vs_data(selected_date=None):
         WHERE {safe_where}
         ORDER BY total_commission DESC
         """
-        data = frappe.db.sql(safe_query, None, as_dict=True)
+        data = frappe.db.sql(safe_query, as_dict=True)
 
     return {"data": data, "permissions": perms}
 
