@@ -3599,7 +3599,10 @@
 							const monthsHtml = months.map(m => `<div class="category-tab ${activeValue===m.value?'active':''}" data-month="${m.value}">${m.label}</div>`).join('');
 							manpowerMonthFilter.innerHTML = `<div class="category-tab" data-action="prev" title="Previous months" style="padding:6px 8px;"><i class="fa fa-chevron-left" style="font-size:11px;"></i></div>${monthsHtml}<div class="category-tab ${isCurrent?'disabled':''}" data-action="next" title="Next months" style="padding:6px 8px;${isCurrent?'opacity:0.4;pointer-events:none;':''}"><i class="fa fa-chevron-right" style="font-size:11px;"></i></div><div class="category-tab ${!activeValue?'active':''}" data-month="">All</div>`;
 						};
-						renderStrip(''); // default All
+						// default: current month active (not All)
+						const _initialMonth = fmt(stripMonth);
+						BranchManagerProfile.state.manpowerDateFilter = _initialMonth;
+						renderStrip(_initialMonth);
 						manpowerMonthFilter.addEventListener('click', (e) => {
 							const tab = e.target.closest('.category-tab');
 							if (!tab) return;
