@@ -986,12 +986,12 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
 
 import frappe
 from frappe.query_builder import DocType, functions as fn, Case
-from frappe.utils import get_first_day, get_last_day, today
+from frappe.utils import getdate
 
 @frappe.whitelist()
 def get_employee_details_by_sol(sol_id: str):
     """
-    Fetch comprehensive employee details including monthly lead generation 
+    Fetch comprehensive employee details including all-time lead generation 
     and conversion performance metrics filtered by SOL ID.
     
     Args:
@@ -1034,9 +1034,6 @@ def get_employee_details_by_sol(sol_id: str):
         leads_map = {}
 
         if user_ids:
-            start_date = get_first_day(today())
-            end_date = get_last_day(today())
-
             lead_stats = frappe.db.sql("""
                 SELECT
                     lead_owner,
@@ -1044,12 +1041,9 @@ def get_employee_details_by_sol(sol_id: str):
                     SUM(CASE WHEN status = 'Converted' THEN 1 ELSE 0 END) as total_converted
                 FROM `tabLead`
                 WHERE lead_owner IN %(user_ids)s
-                  AND creation >= %(start_date)s AND creation <= %(end_date)s
                 GROUP BY lead_owner
             """, {
-                "user_ids": user_ids,
-                "start_date": f"{start_date} 00:00:00",
-                "end_date": f"{end_date} 23:59:59"
+                "user_ids": user_ids
             }, as_dict=True)
 
             for ls in lead_stats:
