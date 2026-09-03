@@ -1368,16 +1368,21 @@ class DrishtiDashboard {
 				cachedPages: {},
 				cacheDate: null,
 				searchTerm: "",
+				filterOptions: null,
 				selectedMisZones: [],
 				_bgRunning: false,
 				_renderSeq: 0,
 				render: function (container, dashboardInstance) {
 					const self = this;
 					const fmtAmt = (val) => {
-						if (val === null || val === undefined) return "-";
+						if (val === null || val === undefined || val === "") return "-";
 						const n = parseFloat(val);
 						if (isNaN(n)) return val;
-						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+						if (n === 0) return "₹0";
+						const isNeg = n < 0;
+						const formatted = dashboardInstance.formatCurrency(Math.abs(n));
+						if (formatted === "-") return "-";
+						return isNeg ? `-₹${formatted}` : `₹${formatted}`;
 					};
 
 					const columns = [
@@ -1430,7 +1435,14 @@ class DrishtiDashboard {
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="cavg-controls">
 							<input type="text" id="cavg-search" placeholder="Search account, CIF, branch..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 220px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="cavg-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
-							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px; margin-left: auto;" id="cavg-count"></div>
+							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
+								<div class="btn-group mis-format-toggle" role="group">
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+								</div>
+							</div>
+							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="cavg-count"></div>
 						</div>
 						<div id="cavg-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<div id="cavg-loading" style="width: 100%; margin-top: 10px;">
@@ -1688,6 +1700,7 @@ class DrishtiDashboard {
 					const fetchPageAjax = (pageNum) => {
 						return new Promise((resolve) => {
 							const selDate = dashboardInstance.state.selectedDate || frappe.datetime.get_today();
+							const zoneKey = (self.selectedMisZones || []).slice().sort().join("_");
 
 							// Check memory cache
 							if (self.cachedPages[pageNum] && self.cacheDate === selDate) {
@@ -1696,8 +1709,8 @@ class DrishtiDashboard {
 							}
 
 							// Check sessionStorage cache fallback
-							const ssKey = `sahayog_cavg_p_${frappe.session.user}_${selDate}_${pageNum}`;
-							const metaKey = `sahayog_cavg_meta_${frappe.session.user}_${selDate}`;
+							const ssKey = `sahayog_cavg_p_${frappe.session.user}_${selDate}_${zoneKey}_${pageNum}`;
+							const metaKey = `sahayog_cavg_meta_${frappe.session.user}_${selDate}_${zoneKey}`;
 							try {
 								const sData = sessionStorage.getItem(ssKey);
 								const sMeta = sessionStorage.getItem(metaKey);
@@ -1723,6 +1736,7 @@ class DrishtiDashboard {
 									selected_date: selDate,
 									limit: self.pageSize,
 									offset: offset,
+									selected_zones: JSON.stringify(self.selectedMisZones || [])
 								},
 								callback: function (r) {
 									if (r.message && r.message.data) {
@@ -1771,6 +1785,7 @@ class DrishtiDashboard {
 								if (seq !== self._renderSeq) { self._bgRunning = false; return; }
 								updateCount();
 								renderPaginationBar();
+								self.renderZoneFilterTags(container, dashboardInstance);
 								setTimeout(() => loadNext(page + 1), 2000);
 							});
 						};
@@ -1784,6 +1799,7 @@ class DrishtiDashboard {
 							self._bgRunning = false;
 							updateCount();
 							renderPaginationBar();
+							self.renderZoneFilterTags(container, dashboardInstance);
 						});
 					};
 
@@ -1846,6 +1862,14 @@ class DrishtiDashboard {
 						});
 					});
 
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
+						const format = $(this).data("format");
+						dashboardInstance.state.formatMode = format;
+						container.find(".mis-format-btn").removeClass("active").css({ background: "#e2e8f0", color: "#475569" });
+						$(this).addClass("active").css({ background: "#417d81", color: "white" });
+						renderPage();
+					});
+
 					container.off("click", ".cavg-page-btn[data-page]").on("click", ".cavg-page-btn[data-page]", function () {
 						const page = parseInt($(this).data("page"));
 						if (page && page !== self.currentPage) goToPage(page);
@@ -1870,18 +1894,35 @@ class DrishtiDashboard {
 					});
 
 					const selDate = dashboardInstance.state.selectedDate || frappe.datetime.get_today();
+					
+					const ensureFilterOptions = () => {
+						if (self.filterOptions && self.filterOptions.zones && self.filterOptions.zones.length > 0) {
+							self.renderZoneFilterTags(container, dashboardInstance);
+						} else {
+							frappe.call({
+								method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_mis_filter_options",
+								callback: function (r) {
+									if (r.message) {
+										self.filterOptions = r.message;
+										self.renderZoneFilterTags(container, dashboardInstance);
+									}
+								}
+							});
+						}
+					};
+
 					if (Object.keys(self.cachedPages).length > 0 && self.cacheDate === selDate) {
 						container.find("#cavg-loading").hide();
 						container.find("#cavg-table-container").show();
 						renderPage();
-						self.renderZoneFilterTags(container, dashboardInstance);
+						ensureFilterOptions();
 					} else {
 						fetchPageAjax(1).then(() => {
 							container.find("#cavg-loading").hide();
 							container.find("#cavg-table-container").show();
 							self.currentPage = 1;
 							renderPage();
-							self.renderZoneFilterTags(container, dashboardInstance);
+							ensureFilterOptions();
 							startBgFetch(2);
 						});
 					}
@@ -1889,13 +1930,15 @@ class DrishtiDashboard {
 				},
 				renderZoneFilterTags: function (container, dashboardInstance) {
 					const self = this;
-					let allLoaded = [];
-					Object.keys(self.cachedPages).forEach(p => {
-						if (Array.isArray(self.cachedPages[p])) allLoaded = allLoaded.concat(self.cachedPages[p]);
-					});
-					if (allLoaded.length === 0) { container.find("#cavg-zone-filter-row").hide(); return; }
 					const permittedZones = (self.filterOptions && self.filterOptions.zones) || [];
-					let zones = permittedZones.length > 0 ? permittedZones : [...new Set(allLoaded.map(r => r.circle_office_name).filter(Boolean))].sort();
+					let zones = permittedZones.length > 0 ? permittedZones : [];
+					if (zones.length === 0) {
+						let allLoaded = [];
+						Object.keys(self.cachedPages).forEach(p => {
+							if (Array.isArray(self.cachedPages[p])) allLoaded = allLoaded.concat(self.cachedPages[p]);
+						});
+						zones = [...new Set(allLoaded.map(r => (r.circle_office_name || "").trim()).filter(Boolean))].sort();
+					}
 					if (zones.length === 0) { container.find("#cavg-zone-filter-row").hide(); return; }
 					const allSelected = self.selectedMisZones.length === 0;
 					let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
@@ -1911,9 +1954,27 @@ class DrishtiDashboard {
 						if (zone === "all") { self.selectedMisZones = []; }
 						else { const idx = self.selectedMisZones.indexOf(zone); if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); } }
 						self.renderZoneFilterTags(container, dashboardInstance);
-						if (typeof self._renderPage === "function") {
-							self._renderPage();
-						}
+						
+						self.currentPage = 1;
+						self.cachedPages = {};
+						self.totalRows = 0;
+						self.totalPages = 0;
+						self._bgRunning = false;
+						self._renderSeq = (self._renderSeq || 0) + 1;
+
+						container.find("#cavg-table-container").hide().empty();
+						container.find("#cavg-pagination").hide().html("");
+						container.find("#cavg-loading").show();
+
+						fetchPageAjax(1).then(() => {
+							container.find("#cavg-loading").hide();
+							container.find("#cavg-table-container").show();
+							self.currentPage = 1;
+							if (typeof self._renderPage === "function") {
+								self._renderPage();
+							}
+							startBgFetch(2);
+						});
 					});
 				},
 			},
@@ -5235,9 +5296,12 @@ class DrishtiDashboard {
 							<input type="text" id="rm-top-search" placeholder="Search Agent Code or Name..." style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 220px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
-							<div style="display: inline-flex; border-radius: 4px; overflow: hidden; border: 1px solid #cbd5e1; margin-left: auto;">
-								<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
-								<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
+								<div class="btn-group mis-format-toggle" role="group">
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+								</div>
 							</div>
 						</div>
 						<div id="mis-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
