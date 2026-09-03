@@ -1368,6 +1368,7 @@ class DrishtiDashboard {
 				cachedPages: {},
 				cacheDate: null,
 				searchTerm: "",
+				filterOptions: null,
 				selectedMisZones: [],
 				_bgRunning: false,
 				_renderSeq: 0,
@@ -1699,6 +1700,7 @@ class DrishtiDashboard {
 					const fetchPageAjax = (pageNum) => {
 						return new Promise((resolve) => {
 							const selDate = dashboardInstance.state.selectedDate || frappe.datetime.get_today();
+							const zoneKey = (self.selectedMisZones || []).slice().sort().join("_");
 
 							// Check memory cache
 							if (self.cachedPages[pageNum] && self.cacheDate === selDate) {
@@ -1707,8 +1709,8 @@ class DrishtiDashboard {
 							}
 
 							// Check sessionStorage cache fallback
-							const ssKey = `sahayog_cavg_p_${frappe.session.user}_${selDate}_${pageNum}`;
-							const metaKey = `sahayog_cavg_meta_${frappe.session.user}_${selDate}`;
+							const ssKey = `sahayog_cavg_p_${frappe.session.user}_${selDate}_${zoneKey}_${pageNum}`;
+							const metaKey = `sahayog_cavg_meta_${frappe.session.user}_${selDate}_${zoneKey}`;
 							try {
 								const sData = sessionStorage.getItem(ssKey);
 								const sMeta = sessionStorage.getItem(metaKey);
@@ -1734,6 +1736,7 @@ class DrishtiDashboard {
 									selected_date: selDate,
 									limit: self.pageSize,
 									offset: offset,
+									selected_zones: JSON.stringify(self.selectedMisZones || [])
 								},
 								callback: function (r) {
 									if (r.message && r.message.data) {
@@ -1782,6 +1785,7 @@ class DrishtiDashboard {
 								if (seq !== self._renderSeq) { self._bgRunning = false; return; }
 								updateCount();
 								renderPaginationBar();
+								self.renderZoneFilterTags(container, dashboardInstance);
 								setTimeout(() => loadNext(page + 1), 2000);
 							});
 						};
@@ -1795,6 +1799,7 @@ class DrishtiDashboard {
 							self._bgRunning = false;
 							updateCount();
 							renderPaginationBar();
+							self.renderZoneFilterTags(container, dashboardInstance);
 						});
 					};
 
@@ -1889,18 +1894,35 @@ class DrishtiDashboard {
 					});
 
 					const selDate = dashboardInstance.state.selectedDate || frappe.datetime.get_today();
+					
+					const ensureFilterOptions = () => {
+						if (self.filterOptions && self.filterOptions.zones && self.filterOptions.zones.length > 0) {
+							self.renderZoneFilterTags(container, dashboardInstance);
+						} else {
+							frappe.call({
+								method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_mis_filter_options",
+								callback: function (r) {
+									if (r.message) {
+										self.filterOptions = r.message;
+										self.renderZoneFilterTags(container, dashboardInstance);
+									}
+								}
+							});
+						}
+					};
+
 					if (Object.keys(self.cachedPages).length > 0 && self.cacheDate === selDate) {
 						container.find("#cavg-loading").hide();
 						container.find("#cavg-table-container").show();
 						renderPage();
-						self.renderZoneFilterTags(container, dashboardInstance);
+						ensureFilterOptions();
 					} else {
 						fetchPageAjax(1).then(() => {
 							container.find("#cavg-loading").hide();
 							container.find("#cavg-table-container").show();
 							self.currentPage = 1;
 							renderPage();
-							self.renderZoneFilterTags(container, dashboardInstance);
+							ensureFilterOptions();
 							startBgFetch(2);
 						});
 					}
@@ -1908,13 +1930,15 @@ class DrishtiDashboard {
 				},
 				renderZoneFilterTags: function (container, dashboardInstance) {
 					const self = this;
-					let allLoaded = [];
-					Object.keys(self.cachedPages).forEach(p => {
-						if (Array.isArray(self.cachedPages[p])) allLoaded = allLoaded.concat(self.cachedPages[p]);
-					});
-					if (allLoaded.length === 0) { container.find("#cavg-zone-filter-row").hide(); return; }
 					const permittedZones = (self.filterOptions && self.filterOptions.zones) || [];
-					let zones = permittedZones.length > 0 ? permittedZones : [...new Set(allLoaded.map(r => r.circle_office_name).filter(Boolean))].sort();
+					let zones = permittedZones.length > 0 ? permittedZones : [];
+					if (zones.length === 0) {
+						let allLoaded = [];
+						Object.keys(self.cachedPages).forEach(p => {
+							if (Array.isArray(self.cachedPages[p])) allLoaded = allLoaded.concat(self.cachedPages[p]);
+						});
+						zones = [...new Set(allLoaded.map(r => (r.circle_office_name || "").trim()).filter(Boolean))].sort();
+					}
 					if (zones.length === 0) { container.find("#cavg-zone-filter-row").hide(); return; }
 					const allSelected = self.selectedMisZones.length === 0;
 					let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
@@ -1930,9 +1954,27 @@ class DrishtiDashboard {
 						if (zone === "all") { self.selectedMisZones = []; }
 						else { const idx = self.selectedMisZones.indexOf(zone); if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); } }
 						self.renderZoneFilterTags(container, dashboardInstance);
-						if (typeof self._renderPage === "function") {
-							self._renderPage();
-						}
+						
+						self.currentPage = 1;
+						self.cachedPages = {};
+						self.totalRows = 0;
+						self.totalPages = 0;
+						self._bgRunning = false;
+						self._renderSeq = (self._renderSeq || 0) + 1;
+
+						container.find("#cavg-table-container").hide().empty();
+						container.find("#cavg-pagination").hide().html("");
+						container.find("#cavg-loading").show();
+
+						fetchPageAjax(1).then(() => {
+							container.find("#cavg-loading").hide();
+							container.find("#cavg-table-container").show();
+							self.currentPage = 1;
+							if (typeof self._renderPage === "function") {
+								self._renderPage();
+							}
+							startBgFetch(2);
+						});
 					});
 				},
 			},

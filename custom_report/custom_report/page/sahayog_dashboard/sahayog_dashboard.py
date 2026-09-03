@@ -2021,8 +2021,7 @@ def get_ntb_evr_data(selected_date=None):
 
 
 @frappe.whitelist()
-@sahayog_cache(ttl=86400)
-def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
+def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0, selected_zones=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate, add_months
     import datetime
@@ -2049,9 +2048,27 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
         sol_ids = list(perms.get("sol_ids") or [])
         restricted = perms.get("is_restricted", False)
 
+    # Filter by selected zones if passed from UI
+    if selected_zones:
+        if isinstance(selected_zones, str):
+            try:
+                selected_zones = frappe.parse_json(selected_zones)
+            except Exception:
+                selected_zones = [selected_zones]
+        if isinstance(selected_zones, list) and len(selected_zones) > 0:
+            branches_map = get_sahayog_branches_cached()
+            zone_sols = [str(b["sol_id"]).strip() for b in branches_map.values() if b.get("zone") in selected_zones]
+            if restricted and sol_ids:
+                sol_ids = [s for s in sol_ids if str(s).strip() in zone_sols]
+            else:
+                sol_ids = zone_sols
+                restricted = True
+
     if restricted and sol_ids:
         quoted_sols = ", ".join("'{}'".format(str(s).replace("'", "''")) for s in sol_ids)
         sol_filter_balance = f"AND gam.sol_id IN ({quoted_sols})"
+    elif restricted and not sol_ids:
+        return {"total_rows": 0, "data": []}
     else:
         sol_filter_balance = ""
 
@@ -2260,6 +2277,8 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
         rows = cursor.fetchall()
         headers = [desc[0] for desc in cursor.description]
 
+        branches_map = get_sahayog_branches_cached()
+
         result = []
         for row in rows:
             row_dict = {}
@@ -2273,6 +2292,21 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0):
                     row_dict[col] = str(val)[:10]
                 else:
                     row_dict[col] = str(val)
+
+            sol_id = str(row_dict.get("sol_id") or "").strip()
+            b = branches_map.get(sol_id) or branches_map.get(sol_id.lstrip('0')) or {}
+            if b:
+                if b.get("zone"):
+                    row_dict["circle_office_name"] = str(b.get("zone")).strip()
+                if b.get("region"):
+                    row_dict["region_name"] = str(b.get("region")).strip()
+                if b.get("district"):
+                    row_dict["division_name"] = str(b.get("district")).strip()
+                if b.get("branch_name"):
+                    row_dict["sol_desc"] = str(b.get("branch_name")).strip()
+            elif row_dict.get("circle_office_name"):
+                row_dict["circle_office_name"] = str(row_dict["circle_office_name"]).strip()
+
             result.append(row_dict)
 
         return {"total_rows": total_rows, "data": result}
