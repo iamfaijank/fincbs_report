@@ -5791,11 +5791,12 @@ def get_agent_wise_demand_collection_data(selected_date=None):
 
     emp_map = {}
     if emp_ids:
-        employees = frappe.get_all("Employee", filters={"name": ["in", list(emp_ids)]}, fields=["name", "employee_name", "designation"])
+        employees = frappe.get_all("Employee", filters={"name": ["in", list(emp_ids)]}, fields=["name", "employee_name", "designation", "status"])
         for emp in employees:
             emp_map[emp.name] = {
                 "name": emp.employee_name or "",
-                "designation": emp.designation or ""
+                "designation": emp.designation or "",
+                "status": emp.status or ""
             }
 
     summary = {}
@@ -5811,6 +5812,7 @@ def get_agent_wise_demand_collection_data(selected_date=None):
             
             canonical_name = ""
             canonical_desig = ""
+            canonical_status = ""
             if auth_id and auth_id != "Unknown":
                 digits = re.findall(r'\d+', auth_id)
                 if digits:
@@ -5819,6 +5821,7 @@ def get_agent_wise_demand_collection_data(selected_date=None):
                         emp_info = emp_map.get(emp_id, {})
                         canonical_name = emp_info.get("name", "")
                         canonical_desig = emp_info.get("designation", "")
+                        canonical_status = emp_info.get("status", "")
                     except ValueError:
                         pass
 
@@ -5835,6 +5838,7 @@ def get_agent_wise_demand_collection_data(selected_date=None):
                 "auth_id": auth_id,
                 "auth_name": final_auth_name,
                 "designation": canonical_desig,
+                "status": canonical_status,
                 "monthly_demand_amount": 0.0,
                 "monthly_collection": 0.0,
                 "accounts": []
@@ -5905,11 +5909,12 @@ def get_staff_wise_demand_collection_data(selected_date=None):
 
     emp_map = {}
     if emp_ids:
-        employees = frappe.get_all("Employee", filters={"name": ["in", list(emp_ids)]}, fields=["name", "employee_name", "designation"])
+        employees = frappe.get_all("Employee", filters={"name": ["in", list(emp_ids)]}, fields=["name", "employee_name", "designation", "status"])
         for emp in employees:
             emp_map[emp.name] = {
                 "name": emp.employee_name or "",
-                "designation": emp.designation or ""
+                "designation": emp.designation or "",
+                "status": emp.status or ""
             }
 
     summary = {}
@@ -5924,6 +5929,7 @@ def get_staff_wise_demand_collection_data(selected_date=None):
         if key not in summary:
             canonical_name = ""
             canonical_desig = ""
+            canonical_status = ""
             if auth_id and auth_id != "Unknown":
                 digits = re.findall(r'\d+', auth_id)
                 if digits:
@@ -5932,6 +5938,7 @@ def get_staff_wise_demand_collection_data(selected_date=None):
                         emp_info = emp_map.get(emp_id, {})
                         canonical_name = emp_info.get("name", "")
                         canonical_desig = emp_info.get("designation", "")
+                        canonical_status = emp_info.get("status", "")
                     except ValueError:
                         pass
 
@@ -5946,6 +5953,7 @@ def get_staff_wise_demand_collection_data(selected_date=None):
                 "auth_id": auth_id,
                 "auth_name": final_auth_name,
                 "designation": canonical_desig,
+                "status": canonical_status,
                 "monthly_demand_amount": 0.0,
                 "monthly_collection": 0.0
             }
