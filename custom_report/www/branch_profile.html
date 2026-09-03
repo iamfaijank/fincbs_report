@@ -2479,8 +2479,9 @@
 					</div>
 
 					<div style="display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap;">
-						<input type="month" id="manpower-date-filter" title="Filter leads by month (clear for all-time)"
-							style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; outline: none; background: #fff; color: #334155; cursor: pointer;">
+						<div class="category-tabs" id="manpower-month-filter" title="Filter by month">
+							<!-- populated by JS: previous 2 + current month + All -->
+						</div>
 						<div class="category-tabs" id="manpower-pip-filter">
 							<div class="category-tab active" data-filter="all">All</div>
 							<div class="category-tab" data-filter="pip">PIP</div>
@@ -3578,11 +3579,30 @@
 						});
 					}
 
-					/* --- Manpower Date Filter Logic (single date picker) --- */
-					const manpowerDateFilter = document.getElementById('manpower-date-filter');
-					if (manpowerDateFilter) {
-						manpowerDateFilter.addEventListener('change', (e) => {
-							BranchManagerProfile.state.manpowerDateFilter = e.target.value; // YYYY-MM
+					/* --- Manpower Month Strip Logic (3 months: prev 2 + current + All) --- */
+					const manpowerMonthFilter = document.getElementById('manpower-month-filter');
+					if (manpowerMonthFilter) {
+						// Build strip: previous 2 + current month
+						const now = new Date();
+						const fmt = (d) => {
+							const y = d.getFullYear();
+							const m = String(d.getMonth() + 1).padStart(2, '0');
+							return `${y}-${m}`;
+						};
+						const label = (d) => d.toLocaleString('en-IN', { month: 'short', year: '2-digit' });
+						const months = [];
+						for (let i = 2; i >= 0; i--) {
+							const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+							months.push({ value: fmt(d), label: label(d) });
+						}
+						// Render pills + All (default All active = all-time)
+						manpowerMonthFilter.innerHTML = months.map(m => `<div class="category-tab" data-month="${m.value}">${m.label}</div>`).join('') + `<div class="category-tab active" data-month="">All</div>`;
+						manpowerMonthFilter.addEventListener('click', (e) => {
+							const tab = e.target.closest('.category-tab');
+							if (!tab) return;
+							manpowerMonthFilter.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+							tab.classList.add('active');
+							BranchManagerProfile.state.manpowerDateFilter = tab.dataset.month || ''; // YYYY-MM or '' for All
 							const solId = new URLSearchParams(location.search).get('sol_id') || document.getElementById('search-field')?.querySelector('input')?.value?.trim();
 							if (solId) BranchManagerProfile.loadEmployeeDetails(solId);
 						});
@@ -3710,7 +3730,7 @@
 					manpowerDetailsTbody: document.getElementById("manpower-details-tbody"),
 					manpowerPipFilter: document.getElementById("manpower-pip-filter"),
 					manpowerSearchInput: document.getElementById("manpower-search-input"),
-					manpowerDateFilter: document.getElementById("manpower-date-filter"),
+					manpowerMonthFilter: document.getElementById("manpower-month-filter"),
 				},
 
 				state: {
@@ -4199,7 +4219,7 @@
 				async loadEmployeeDetails(solId) {
 					try {
 						this.setSectionSkeleton("manpower-details-section", true);
-						const month = this.state.manpowerDateFilter || (document.getElementById('manpower-date-filter')?.value || '');
+						const month = this.state.manpowerDateFilter || '';
 						let url = `/api/method/custom_report.branch_v1.get_employee_details_by_sol?sol_id=${solId}`;
 						if (month) url += `&month=${encodeURIComponent(month)}`;
 						const r = await fetch(url);
