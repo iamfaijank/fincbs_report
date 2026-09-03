@@ -1374,10 +1374,14 @@ class DrishtiDashboard {
 				render: function (container, dashboardInstance) {
 					const self = this;
 					const fmtAmt = (val) => {
-						if (val === null || val === undefined) return "-";
+						if (val === null || val === undefined || val === "") return "-";
 						const n = parseFloat(val);
 						if (isNaN(n)) return val;
-						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+						if (n === 0) return "₹0";
+						const isNeg = n < 0;
+						const formatted = dashboardInstance.formatCurrency(Math.abs(n));
+						if (formatted === "-") return "-";
+						return isNeg ? `-₹${formatted}` : `₹${formatted}`;
 					};
 
 					const columns = [
@@ -1430,7 +1434,14 @@ class DrishtiDashboard {
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="cavg-controls">
 							<input type="text" id="cavg-search" placeholder="Search account, CIF, branch..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 220px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="cavg-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
-							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px; margin-left: auto;" id="cavg-count"></div>
+							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
+								<div class="btn-group mis-format-toggle" role="group">
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+								</div>
+							</div>
+							<div style="font-size: 13px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 6px 12px; border-radius: 6px;" id="cavg-count"></div>
 						</div>
 						<div id="cavg-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<div id="cavg-loading" style="width: 100%; margin-top: 10px;">
@@ -1844,6 +1855,14 @@ class DrishtiDashboard {
 							renderPage();
 							startBgFetch(2);
 						});
+					});
+
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
+						const format = $(this).data("format");
+						dashboardInstance.state.formatMode = format;
+						container.find(".mis-format-btn").removeClass("active").css({ background: "#e2e8f0", color: "#475569" });
+						$(this).addClass("active").css({ background: "#417d81", color: "white" });
+						renderPage();
 					});
 
 					container.off("click", ".cavg-page-btn[data-page]").on("click", ".cavg-page-btn[data-page]", function () {
