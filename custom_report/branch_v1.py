@@ -986,16 +986,21 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
 
 import frappe
 from frappe.query_builder import DocType, functions as fn, Case
-from frappe.utils import getdate
+from frappe.utils import get_first_day, get_last_day, getdate
 
 @frappe.whitelist()
-def get_employee_details_by_sol(sol_id: str):
+def get_employee_details_by_sol(sol_id: str, month: str = None, selected_date: str = None, date: str = None):
     """
-    Fetch comprehensive employee details including all-time lead generation 
+    Fetch comprehensive employee details including lead generation 
     and conversion performance metrics filtered by SOL ID.
+    If selected_date/date (YYYY-MM-DD) is provided, filters leads by that day;
+    else if month (YYYY-MM) is provided, filters leads by that month; otherwise all-time.
     
     Args:
         sol_id (str): The Branch/Service Outlet ID to filter employees.
+        month (str, optional): YYYY-MM to filter leads by creation month.
+        selected_date (str, optional): YYYY-MM-DD to filter leads by specific date.
+        date (str, optional): alias for selected_date.
         
     Returns:
         dict: Success status, record count, and data containing employee info 
@@ -1034,17 +1039,40 @@ def get_employee_details_by_sol(sol_id: str):
         leads_map = {}
 
         if user_ids:
-            lead_stats = frappe.db.sql("""
+            # Optional month filter for calendar (YYYY-MM)
+            month_filter_sql = ""
+            sql_params = {"user_ids": user_ids}
+            # prioritize specific date over month
+            effective_date = selected_date or date
+            if effective_date:
+                try:
+                    dt = getdate(effective_date)
+                    month_filter_sql = " AND creation >= %(start_date)s AND creation <= %(end_date)s"
+                    sql_params["start_date"] = f"{dt} 00:00:00"
+                    sql_params["end_date"] = f"{dt} 23:59:59"
+                except Exception:
+                    pass
+            elif month:
+                try:
+                    # month is YYYY-MM, build first/last day range
+                    dt = getdate(f"{month}-01")
+                    start_date = get_first_day(dt)
+                    end_date = get_last_day(dt)
+                    month_filter_sql = " AND creation >= %(start_date)s AND creation <= %(end_date)s"
+                    sql_params["start_date"] = f"{start_date} 00:00:00"
+                    sql_params["end_date"] = f"{end_date} 23:59:59"
+                except Exception:
+                    pass  # ignore invalid month, fallback to all-time
+
+            lead_stats = frappe.db.sql(f"""
                 SELECT
                     lead_owner,
                     COUNT(*) as total_leads,
                     SUM(CASE WHEN status = 'Converted' THEN 1 ELSE 0 END) as total_converted
                 FROM `tabLead`
-                WHERE lead_owner IN %(user_ids)s
+                WHERE lead_owner IN %(user_ids)s{month_filter_sql}
                 GROUP BY lead_owner
-            """, {
-                "user_ids": user_ids
-            }, as_dict=True)
+            """, sql_params, as_dict=True)
 
             for ls in lead_stats:
                 leads_map[ls.lead_owner] = {

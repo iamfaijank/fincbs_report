@@ -2478,10 +2478,14 @@
 						</svg>
 					</div>
 
-					<div class="category-tabs" id="manpower-pip-filter" style="margin-left: auto;">
-						<div class="category-tab active" data-filter="all">All</div>
-						<div class="category-tab" data-filter="pip">PIP</div>
-						<div class="category-tab" data-filter="non-pip">Non-PIP</div>
+					<div style="display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap;">
+						<input type="month" id="manpower-date-filter" title="Filter leads by month (clear for all-time)"
+							style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; outline: none; background: #fff; color: #334155; cursor: pointer;">
+						<div class="category-tabs" id="manpower-pip-filter">
+							<div class="category-tab active" data-filter="all">All</div>
+							<div class="category-tab" data-filter="pip">PIP</div>
+							<div class="category-tab" data-filter="non-pip">Non-PIP</div>
+						</div>
 					</div>
 				</div>
 				<div class="financial-table-container">
@@ -3574,6 +3578,16 @@
 						});
 					}
 
+					/* --- Manpower Date Filter Logic (single date picker) --- */
+					const manpowerDateFilter = document.getElementById('manpower-date-filter');
+					if (manpowerDateFilter) {
+						manpowerDateFilter.addEventListener('change', (e) => {
+							BranchManagerProfile.state.manpowerDateFilter = e.target.value; // YYYY-MM
+							const solId = new URLSearchParams(location.search).get('sol_id') || document.getElementById('search-field')?.querySelector('input')?.value?.trim();
+							if (solId) BranchManagerProfile.loadEmployeeDetails(solId);
+						});
+					}
+
 					/* --- Manpower Sorting Logic --- */
 					const sortEmpId = document.getElementById('sort-emp-id');
 					if (sortEmpId) {
@@ -3696,6 +3710,7 @@
 					manpowerDetailsTbody: document.getElementById("manpower-details-tbody"),
 					manpowerPipFilter: document.getElementById("manpower-pip-filter"),
 					manpowerSearchInput: document.getElementById("manpower-search-input"),
+					manpowerDateFilter: document.getElementById("manpower-date-filter"),
 				},
 
 				state: {
@@ -3704,6 +3719,7 @@
 					employees: [],
 					manpowerFilter: 'all',
 					manpowerSearchQuery: '',
+					manpowerDateFilter: '',
 					manpowerSortCol: 'employee_number',
 					attritionPeriod: '3',
 					attritionData: null,
@@ -4183,7 +4199,10 @@
 				async loadEmployeeDetails(solId) {
 					try {
 						this.setSectionSkeleton("manpower-details-section", true);
-						const r = await fetch(`/api/method/custom_report.branch_v1.get_employee_details_by_sol?sol_id=${solId}`);
+						const month = this.state.manpowerDateFilter || (document.getElementById('manpower-date-filter')?.value || '');
+						let url = `/api/method/custom_report.branch_v1.get_employee_details_by_sol?sol_id=${solId}`;
+						if (month) url += `&month=${encodeURIComponent(month)}`;
+						const r = await fetch(url);
 						const j = await r.json();
 
 						this.state.employees = (j.message && j.message.data) ? j.message.data : [];
