@@ -5804,6 +5804,7 @@ def get_agent_wise_demand_collection_data(selected_date=None):
         sid = str(r.sol_id or "").strip()
         if not sid:
             continue
+        br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
         rm_id = str(r.agent_code or "").strip() or "Unknown"
         auth_id = str(r.auth_id or "").strip() or "Unknown"
         key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{rm_id}||{auth_id}"
