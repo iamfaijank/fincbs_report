@@ -3579,27 +3579,47 @@
 						});
 					}
 
-					/* --- Manpower Month Strip Logic (3 months: prev 2 + current + All) --- */
+					/* --- Manpower Month Strip Logic (current month only + All + arrow at start) --- */
 					const manpowerMonthFilter = document.getElementById('manpower-month-filter');
 					if (manpowerMonthFilter) {
-						// Build strip: previous 2 + current month
-						const now = new Date();
-						const fmt = (d) => {
-							const y = d.getFullYear();
-							const m = String(d.getMonth() + 1).padStart(2, '0');
-							return `${y}-${m}`;
+						let stripMonth = new Date(); // tracks displayed month
+						const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+						const lbl = (d) => d.toLocaleString('en-IN', { month: 'short', year: '2-digit' });
+						const renderStrip = (activeValue) => {
+							const curVal = fmt(stripMonth);
+							const curLbl = lbl(stripMonth);
+							const now = new Date();
+							const isCurrent = stripMonth.getFullYear()===now.getFullYear() && stripMonth.getMonth()===now.getMonth();
+							// arrow left + current month + All + arrow right
+							manpowerMonthFilter.innerHTML = `<div class="category-tab" data-action="prev" title="Previous month" style="padding:6px 8px;"><i class="fa fa-chevron-left" style="font-size:11px;"></i></div><div class="category-tab ${activeValue===curVal?'active':''}" data-month="${curVal}">${curLbl}</div><div class="category-tab ${!activeValue?'active':''}" data-month="">All</div><div class="category-tab ${isCurrent?'disabled':''}" data-action="next" title="Next month" style="padding:6px 8px;${isCurrent?'opacity:0.4;pointer-events:none;':''}"><i class="fa fa-chevron-right" style="font-size:11px;"></i></div>`;
 						};
-						const label = (d) => d.toLocaleString('en-IN', { month: 'short', year: '2-digit' });
-						const months = [];
-						for (let i = 2; i >= 0; i--) {
-							const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-							months.push({ value: fmt(d), label: label(d) });
-						}
-						// Render pills + All (default All active = all-time)
-						manpowerMonthFilter.innerHTML = months.map(m => `<div class="category-tab" data-month="${m.value}">${m.label}</div>`).join('') + `<div class="category-tab active" data-month="">All</div>`;
+						renderStrip(''); // default All
 						manpowerMonthFilter.addEventListener('click', (e) => {
 							const tab = e.target.closest('.category-tab');
 							if (!tab) return;
+							if (tab.dataset.action === 'prev') {
+								// go to previous month
+								stripMonth = new Date(stripMonth.getFullYear(), stripMonth.getMonth() - 1, 1);
+								const prevVal = fmt(stripMonth);
+								BranchManagerProfile.state.manpowerDateFilter = prevVal;
+								renderStrip(prevVal);
+								const solId = new URLSearchParams(location.search).get('sol_id') || document.getElementById('search-field')?.querySelector('input')?.value?.trim();
+								if (solId) BranchManagerProfile.loadEmployeeDetails(solId);
+								return;
+							}
+							if (tab.dataset.action === 'next') {
+								// go to next month (capped at current)
+								const now = new Date();
+								const next = new Date(stripMonth.getFullYear(), stripMonth.getMonth() + 1, 1);
+								if (next > new Date(now.getFullYear(), now.getMonth(), 1)) return;
+								stripMonth = next;
+								const nextVal = fmt(stripMonth);
+								BranchManagerProfile.state.manpowerDateFilter = nextVal;
+								renderStrip(nextVal);
+								const solId = new URLSearchParams(location.search).get('sol_id') || document.getElementById('search-field')?.querySelector('input')?.value?.trim();
+								if (solId) BranchManagerProfile.loadEmployeeDetails(solId);
+								return;
+							}
 							manpowerMonthFilter.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
 							tab.classList.add('active');
 							BranchManagerProfile.state.manpowerDateFilter = tab.dataset.month || ''; // YYYY-MM or '' for All
