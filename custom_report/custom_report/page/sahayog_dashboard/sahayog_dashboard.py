@@ -5769,13 +5769,11 @@ def get_agent_wise_demand_collection_data(selected_date=None):
         sid = str(r.sol_id or "").strip()
         if not sid:
             continue
-        br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
         rm_id = str(r.agent_code or "").strip() or "Unknown"
-
-        key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{rm_id}"
+        auth_id = str(r.auth_id or "").strip() or "Unknown"
+        key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{rm_id}||{auth_id}"
         if key not in summary:
             rm_name = str(r.agent_name or "").strip() or "Unknown"
-            auth_id = str(r.auth_id or "").strip() or ""
             
             canonical_name = ""
             canonical_desig = ""
@@ -6004,6 +6002,17 @@ def get_new_account_report_data(selected_date=None):
     records = frappe.db.get_all("DD Tracker Report", filters={"date": selected_date}, fields=["sol_id", "auth_id", "auth_name", "amount", "opening_date"])
     
     if not records:
+        latest_date = frappe.db.get_value("DD Tracker Report", {}, "date", order_by="date desc")
+        if latest_date:
+            records = frappe.db.get_all(
+                "DD Tracker Report",
+                filters={"date": latest_date},
+                fields=["sol_id", "auth_id", "auth_name", "amount", "opening_date"]
+            )
+            if records:
+                dt = getdate(latest_date)
+
+    if not records:
         return []
 
     sol_ids = list(set(r.sol_id for r in records if r.sol_id))
@@ -6030,15 +6039,19 @@ def get_new_account_report_data(selected_date=None):
                 except ValueError:
                     pass
     
-    designation_map = {}
+    emp_map = {}
     if emp_ids:
-        employees = frappe.get_all("Employee", filters={"name": ["in", list(emp_ids)]}, fields=["name", "designation"])
+        employees = frappe.get_all("Employee", filters={"name": ["in", list(emp_ids)]}, fields=["name", "employee_name", "designation", "status"])
         for emp in employees:
-            designation_map[emp.name] = emp.designation or ""
+            emp_map[emp.name] = {
+                "name": emp.employee_name or "",
+                "designation": emp.designation or "",
+                "status": emp.status or ""
+            }
 
     summary = {}
     for r in records:
-        sid = r.sol_id
+        sid = str(r.sol_id or "").strip()
         if not sid:
             continue
             
@@ -6056,20 +6069,26 @@ def get_new_account_report_data(selected_date=None):
             continue
             
         br = branch_map.get(sid, {"zone": "Unknown", "region": "Unknown", "district": "Unknown", "branch_name": sid})
-        auth_id = r.auth_id or "Unknown"
-        auth_name = r.auth_name or "Unknown"
+        auth_id = str(r.auth_id or "").strip() or "Unknown"
 
-        designation = ""
+        canonical_name = ""
+        canonical_desig = ""
+        canonical_status = ""
         if auth_id and auth_id != "Unknown":
             digits = re.findall(r'\d+', auth_id)
             if digits:
                 try:
                     emp_id = str(int(''.join(digits)))
-                    designation = designation_map.get(emp_id) or ""
+                    emp_info = emp_map.get(emp_id, {})
+                    canonical_name = emp_info.get("name", "")
+                    canonical_desig = emp_info.get("designation", "")
+                    canonical_status = emp_info.get("status", "")
                 except ValueError:
                     pass
 
-        key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{auth_id}||{auth_name}||{designation}"
+        final_auth_name = canonical_name if canonical_name else (r.auth_name or "Unknown")
+
+        key = f"{br['zone']}||{br['region']}||{br['district']}||{sid}||{auth_id}||{final_auth_name}||{canonical_desig}||{canonical_status}"
         if key not in summary:
             summary[key] = {
                 "zone": br["zone"],
@@ -6078,8 +6097,9 @@ def get_new_account_report_data(selected_date=None):
                 "sol_id": sid,
                 "sol_desc": br["branch_name"],
                 "auth_id": auth_id,
-                "auth_name": auth_name,
-                "designation": designation,
+                "auth_name": final_auth_name,
+                "designation": canonical_desig,
+                "status": canonical_status,
                 "new_ac": 0,
                 "deposit_amount": 0.0
             }
