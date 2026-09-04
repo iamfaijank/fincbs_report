@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -7,13 +7,13 @@
 	
 	<!-- PWA Meta Tags -->
 	<link rel="manifest" href="/assets/custom_report/sync-manifest.json">
-	<meta name="theme-color" content="#0284c7" media="(prefers-color-scheme: light)">
-	<meta name="theme-color" content="#0b1120" media="(prefers-color-scheme: dark)">
+	<meta name="theme-color" content="#8774e1" media="(prefers-color-scheme: light)">
+	<meta name="theme-color" content="#0e1621" media="(prefers-color-scheme: dark)">
 	<meta name="mobile-web-app-capable" content="yes">
 	<meta name="apple-mobile-web-app-capable" content="yes">
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 	<meta name="apple-mobile-web-app-title" content="Sync Tracker">
-	<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='128' fill='%230284c7'/%3E%3Cpath d='M256 120a136 136 0 1 1-136 136' stroke='%23ffffff' stroke-width='40' stroke-linecap='round' fill='none'/%3E%3Cpolyline points='120 180 120 256 196 256' stroke='%23ffffff' stroke-width='40' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+	<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='128' fill='%238774e1'/%3E%3Cpath d='M256 120a136 136 0 1 1-136 136' stroke='%23ffffff' stroke-width='40' stroke-linecap='round' fill='none'/%3E%3Cpolyline points='120 180 120 256 196 256' stroke='%23ffffff' stroke-width='40' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
 
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,168 +21,202 @@
 
 	<style>
 		:root {
-			--bg-page: #f8fafc;
-			--bg-card: #ffffff;
-			--bg-subtle: #f1f5f9;
-			--border: #e2e8f0;
-			--text-main: #0f172a;
-			--text-sub: #64748b;
-			--text-muted: #94a3b8;
-			--primary: #0284c7;
-			--primary-hover: #0369a1;
-			--success: #16a34a;
-			--success-bg: rgba(22, 163, 74, 0.1);
-			--danger: #dc2626;
-			--danger-bg: rgba(220, 38, 38, 0.1);
-			--warning: #d97706;
-			--warning-bg: rgba(217, 119, 6, 0.1);
-			--shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+			--tg-bg: #e6ebee;
+			--tg-sidebar-bg: #ffffff;
+			--tg-header-bg: #ffffff;
+			--tg-card-bg: #ffffff;
+			--tg-card-hover: #f4f6f8;
+			--tg-active-item: #8774e1;
+			--tg-active-item-bg: rgba(135, 116, 225, 0.12);
+			--tg-primary: #8774e1;
+			--tg-primary-hover: #766ac8;
+			--tg-secondary: #3390ec;
+			--tg-text-main: #000000;
+			--tg-text-sub: #707579;
+			--tg-text-muted: #a2acb4;
+			--tg-border: #dfe1e5;
+			--tg-msg-in-bg: #ffffff;
+			--tg-msg-out-bg: #eeffde;
+			--tg-success: #22c55e;
+			--tg-success-bg: rgba(34, 197, 94, 0.12);
+			--tg-warning: #f59e0b;
+			--tg-warning-bg: rgba(245, 158, 11, 0.12);
+			--tg-danger: #ef4444;
+			--tg-danger-bg: rgba(239, 68, 68, 0.12);
+			--tg-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+			--tg-pattern-opacity: 0.18;
 		}
 
 		[data-theme="dark"] {
-			--bg-page: #0b1120;
-			--bg-card: #1e293b;
-			--bg-subtle: #0f172a;
-			--border: #334155;
-			--text-main: #f8fafc;
-			--text-sub: #94a3b8;
-			--text-muted: #64748b;
-			--primary: #38bdf8;
-			--primary-hover: #7dd3fc;
-			--success: #4ade80;
-			--success-bg: rgba(74, 222, 128, 0.12);
-			--danger: #f87171;
-			--danger-bg: rgba(248, 113, 113, 0.12);
-			--warning: #fbbf24;
-			--warning-bg: rgba(251, 191, 36, 0.12);
-			--shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+			--tg-bg: #0e1621;
+			--tg-sidebar-bg: #17212b;
+			--tg-header-bg: #17212b;
+			--tg-card-bg: #18222d;
+			--tg-card-hover: #202b36;
+			--tg-active-item: #8774e1;
+			--tg-active-item-bg: rgba(135, 116, 225, 0.18);
+			--tg-primary: #8774e1;
+			--tg-primary-hover: #9b89f5;
+			--tg-secondary: #2b5278;
+			--tg-text-main: #f5f5f5;
+			--tg-text-sub: #7f91a4;
+			--tg-text-muted: #6c7883;
+			--tg-border: #242f3d;
+			--tg-msg-in-bg: #182533;
+			--tg-msg-out-bg: #2b5278;
+			--tg-success: #4cd964;
+			--tg-success-bg: rgba(76, 217, 100, 0.15);
+			--tg-warning: #ffb700;
+			--tg-warning-bg: rgba(255, 183, 0, 0.15);
+			--tg-danger: #ff595a;
+			--tg-danger-bg: rgba(255, 89, 90, 0.15);
+			--tg-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+			--tg-pattern-opacity: 0.08;
 		}
 
 		* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-		body {
-			font-family: 'Inter', system-ui, -apple-system, sans-serif;
-			background-color: var(--bg-page);
-			color: var(--text-main);
-			min-height: 100vh;
-			display: flex;
-			flex-direction: column;
-			-webkit-font-smoothing: antialiased;
-			padding-top: max(0.5rem, env(safe-area-inset-top));
-			padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+
+		html {
+			font-size: 14.5px;
 		}
 
-		/* Main Shell */
-		.app-container {
+		html, body {
 			width: 100%;
-			max-width: 860px;
-			margin: 0 auto;
-			padding: 0.75rem 1rem 2rem;
-			display: flex;
-			flex-direction: column;
-			gap: 1rem;
+			height: 100%;
+			margin: 0;
+			padding: 0;
+			overflow: hidden;
+			font-family: 'Inter', system-ui, -apple-system, sans-serif;
+			background-color: var(--tg-bg);
+			color: var(--tg-text-main);
+			-webkit-font-smoothing: antialiased;
 		}
 
-		/* Top Nav (Sticky) */
-		.app-header {
-			position: sticky;
-			top: max(0.5rem, env(safe-area-inset-top));
-			z-index: 50;
+		/* Telegram Doodle Wallpaper Overlay */
+		.tg-wallpaper {
+			position: fixed;
+			inset: 0;
+			z-index: 0;
+			pointer-events: none;
+			opacity: var(--tg-pattern-opacity);
+			background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='%238774e1' fill-opacity='0.8'%3E%3Cpath d='M20 15a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM65 20l5 10-10-3 5-7zm30 15c-4.4 0-8 3.6-8 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm0 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM15 70l12-4-4 12-8-8zm75 5a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm-40 20c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10-4.5-10-10-10zm0 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12z'/%3E%3Cpath d='M40 30h12v4H40zm45 75h14v3H85z'/%3E%3Cpath d='M95 12l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5zM30 90l1.5 3.5 3.5 1.5-3.5 1.5-1.5 3.5-1.5-3.5-3.5-1.5 3.5-1.5 1.5-3.5z'/%3E%3C/g%3E%3C/svg%3E");
+			background-repeat: repeat;
+			background-size: 220px 220px;
+		}
+
+		/* Full Width Telegram App Layout */
+		.tg-app {
+			position: relative;
+			z-index: 1;
+			display: flex;
+			flex-direction: column;
+			height: 100vh;
+			height: 100dvh;
+			width: 100vw;
+			max-width: 100%;
+			margin: 0;
+			padding: 0;
+		}
+
+		/* Top Navigation Bar (Telegram PWA Style) */
+		.tg-header {
+			height: 56px;
+			background: var(--tg-header-bg);
+			border-bottom: 1px solid var(--tg-border);
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
+			padding: 0 1.25rem;
 			gap: 0.75rem;
-			background: var(--bg-card);
-			border: 1px solid var(--border);
-			padding: 0.75rem 1rem;
-			border-radius: 1rem;
-			box-shadow: var(--shadow-md);
-			-webkit-backdrop-filter: blur(12px);
-			backdrop-filter: blur(12px);
+			flex-shrink: 0;
+			z-index: 10;
 		}
-		.brand-box {
+		.tg-brand {
 			display: flex;
 			align-items: center;
-			gap: 0.65rem;
+			gap: 0.75rem;
 			min-width: 0;
 		}
-		.brand-logo {
-			width: 2.25rem;
-			height: 2.25rem;
-			border-radius: 0.65rem;
-			background: linear-gradient(135deg, var(--primary), #6366f1);
+		.tg-logo-btn {
+			width: 40px;
+			height: 40px;
+			border-radius: 50%;
+			background: linear-gradient(135deg, #8774e1, #5682a3);
 			color: #ffffff;
 			display: flex;
 			align-items: center;
 			justify-content: center;
 			font-weight: 800;
-			font-size: 0.85rem;
-			box-shadow: var(--shadow-sm);
-			flex-shrink: 0;
-		}
-		.brand-text { min-width: 0; }
-		.brand-title {
 			font-size: 0.95rem;
+			border: none;
+			cursor: pointer;
+			flex-shrink: 0;
+			box-shadow: 0 2px 6px rgba(135, 116, 225, 0.4);
+		}
+		.tg-title-box { min-width: 0; }
+		.tg-title {
+			font-size: 1rem;
 			font-weight: 700;
-			color: var(--text-main);
+			color: var(--tg-text-main);
 			line-height: 1.2;
 			white-space: nowrap;
 			overflow: hidden;
 			text-overflow: ellipsis;
 		}
-		.brand-subtitle {
-			font-size: 0.68rem;
-			color: var(--text-sub);
+		.tg-subtitle {
+			font-size: 0.72rem;
+			color: var(--tg-text-sub);
 			font-weight: 500;
 		}
 
-		.header-actions {
+		.tg-header-actions {
 			display: flex;
 			align-items: center;
-			gap: 0.45rem;
+			gap: 0.6rem;
 			flex-shrink: 0;
 		}
-		.btn-pill {
+		.tg-btn-pill {
 			display: inline-flex;
 			align-items: center;
-			gap: 0.35rem;
-			padding: 0.4rem 0.7rem;
-			border-radius: 9999px;
-			font-size: 0.72rem;
+			gap: 0.4rem;
+			padding: 0.45rem 0.85rem;
+			border-radius: 20px;
+			font-size: 0.75rem;
 			font-weight: 600;
-			border: 1px solid var(--border);
-			background: var(--bg-subtle);
-			color: var(--text-main);
+			border: 1px solid var(--tg-border);
+			background: var(--tg-card-bg);
+			color: var(--tg-text-main);
 			cursor: pointer;
 			transition: all 0.15s ease;
 			position: relative;
 			white-space: nowrap;
 		}
-		.btn-pill:active { transform: scale(0.96); }
+		.tg-btn-pill:hover { background: var(--tg-card-hover); }
+		.tg-btn-pill:active { transform: scale(0.96); }
 		.pulse-dot {
-			width: 0.45rem;
-			height: 0.45rem;
+			width: 7px;
+			height: 7px;
 			border-radius: 50%;
-			background: var(--success);
+			background: var(--tg-success);
 			animation: pulse 1.5s infinite;
 		}
-		.pulse-dot.off { background: var(--text-muted); animation: none; }
-		.btn-icon {
-			width: 2.1rem;
-			height: 2.1rem;
-			border-radius: 0.6rem;
-			border: 1px solid var(--border);
-			background: var(--bg-subtle);
-			color: var(--text-main);
+		.pulse-dot.off { background: var(--tg-text-muted); animation: none; }
+		.tg-icon-btn {
+			width: 38px;
+			height: 38px;
+			border-radius: 50%;
+			border: none;
+			background: transparent;
+			color: var(--tg-text-sub);
 			cursor: pointer;
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			font-size: 1rem;
+			font-size: 1.1rem;
 			transition: all 0.15s ease;
 		}
-		.btn-icon:active { transform: scale(0.94); }
+		.tg-icon-btn:hover { background: var(--tg-card-hover); color: var(--tg-text-main); }
+		.tg-icon-btn:active { transform: scale(0.92); }
 		.hidden-date-input {
 			position: absolute;
 			inset: 0;
@@ -192,587 +226,842 @@
 			height: 100%;
 		}
 
-		/* PWA Install Banner (Visible only when installable) */
-		.pwa-install-banner {
-			display: none;
-			align-items: center;
-			justify-content: space-between;
-			gap: 0.75rem;
-			background: linear-gradient(135deg, rgba(2, 132, 199, 0.12), rgba(99, 102, 241, 0.12));
-			border: 1px solid var(--primary);
-			padding: 0.65rem 1rem;
-			border-radius: 0.85rem;
-		}
-		.pwa-install-banner.show { display: flex; }
-		.pwa-install-text { font-size: 0.75rem; font-weight: 600; color: var(--text-main); }
-		.btn-install {
-			padding: 0.35rem 0.85rem;
-			border-radius: 0.5rem;
-			background: var(--primary);
-			color: #ffffff;
-			border: none;
-			font-size: 0.72rem;
-			font-weight: 700;
-			cursor: pointer;
-		}
-
-		/* Metrics Grid */
-		.stats-grid {
-			display: grid;
-			grid-template-columns: repeat(4, 1fr);
-			gap: 0.5rem;
-		}
-		.stat-card {
-			background: var(--bg-card);
-			border: 1px solid var(--border);
-			border-radius: 0.75rem;
-			padding: 0.65rem 0.75rem;
-			box-shadow: var(--shadow-sm);
-			display: flex;
-			flex-direction: column;
-			gap: 0.15rem;
-		}
-		.stat-label {
-			font-size: 0.62rem;
-			font-weight: 700;
-			color: var(--text-muted);
-			text-transform: uppercase;
-			letter-spacing: 0.05em;
-		}
-		.stat-val {
-			font-size: 1.15rem;
-			font-weight: 800;
-			line-height: 1.1;
-			font-family: 'JetBrains Mono', monospace;
-		}
-		.stat-val.success { color: var(--success); }
-		.stat-val.warning { color: var(--warning); }
-		.stat-val.danger { color: var(--danger); }
-
-		/* Search & Tabs Controls */
-		.controls-bar {
-			display: flex;
-			flex-direction: column;
-			gap: 0.6rem;
-		}
-		@media (min-width: 640px) {
-			.controls-bar {
-				flex-direction: row;
-				align-items: center;
-				justify-content: space-between;
+		/* Mobile Header Optimizations */
+		@media (max-width: 640px) {
+			.tg-header {
+				padding: 0 0.65rem;
+				gap: 0.4rem;
+				height: 52px;
+			}
+			.tg-brand {
+				gap: 0.45rem;
+			}
+			.tg-logo-btn {
+				width: 34px;
+				height: 34px;
+				font-size: 0.82rem;
+			}
+			.tg-title {
+				font-size: 0.85rem;
+				max-width: 115px;
+			}
+			.tg-subtitle {
+				display: none;
+			}
+			.tg-header-actions {
+				gap: 0.35rem;
+			}
+			.tg-btn-pill {
+				padding: 0.3rem 0.55rem;
+				font-size: 0.68rem;
+				gap: 0.25rem;
+			}
+			.tg-icon-btn {
+				width: 32px;
+				height: 32px;
+				font-size: 0.95rem;
 			}
 		}
 
-		.tabs-wrapper {
-			display: flex;
-			background: var(--bg-card);
-			border: 1px solid var(--border);
-			padding: 0.25rem;
-			border-radius: 0.75rem;
-			gap: 0.2rem;
-			box-shadow: var(--shadow-sm);
-			overflow-x: auto;
-			-webkit-overflow-scrolling: touch;
-		}
-		.tabs-wrapper::-webkit-scrollbar { display: none; }
-		.tab-btn {
-			flex: 1;
-			padding: 0.35rem 0.65rem;
-			border-radius: 0.55rem;
-			font-size: 0.72rem;
-			font-weight: 600;
-			border: none;
-			background: transparent;
-			color: var(--text-sub);
-			cursor: pointer;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			gap: 0.3rem;
-			white-space: nowrap;
-			transition: all 0.15s ease;
-		}
-		.tab-btn.active {
-			background: var(--bg-subtle);
-			color: var(--primary);
-			font-weight: 700;
-		}
-		.tab-count {
-			font-size: 0.62rem;
-			padding: 0.05rem 0.3rem;
-			border-radius: 9999px;
-			background: var(--border);
-			color: var(--text-sub);
-		}
-		.tab-btn.active .tab-count {
-			background: rgba(2, 132, 199, 0.15);
-			color: var(--primary);
+		@media (max-width: 380px) {
+			.tg-title {
+				max-width: 85px;
+			}
+			.tg-btn-pill span {
+				font-size: 0.65rem;
+			}
 		}
 
-		.search-box {
+		/* PWA Install Banner */
+		.pwa-banner {
+			display: none;
+			align-items: center;
+			justify-content: space-between;
+			padding: 0.5rem 1.25rem;
+			background: rgba(135, 116, 225, 0.15);
+			border-bottom: 1px solid var(--tg-primary);
+			font-size: 0.78rem;
+			font-weight: 600;
+		}
+		.pwa-banner.show { display: flex; }
+		.btn-pwa {
+			padding: 0.25rem 0.75rem;
+			border-radius: 12px;
+			background: var(--tg-primary);
+			color: #fff;
+			border: none;
+			font-weight: 700;
+			cursor: pointer;
+			font-size: 0.72rem;
+		}
+
+		/* Main Split View Body */
+		.tg-body {
+			display: flex;
+			flex: 1;
+			min-height: 0;
+			width: 100%;
+			position: relative;
+			background: var(--tg-sidebar-bg);
+		}
+
+		/* Sidebar List Panel (Left Column - Responsive Proportions) */
+		.tg-sidebar {
+			width: 100%;
+			max-width: 100%;
+			border-right: 1px solid var(--tg-border);
+			background: var(--tg-sidebar-bg);
+			display: flex;
+			flex-direction: column;
+			height: 100%;
+			flex-shrink: 0;
+			z-index: 2;
+			transition: transform 0.25s ease;
+		}
+		@media (min-width: 900px) {
+			.tg-sidebar { width: 380px; }
+		}
+		@media (min-width: 1280px) {
+			.tg-sidebar { width: 420px; }
+		}
+
+		/* Search & Stats Bar inside Sidebar */
+		.tg-sidebar-top {
+			padding: 0.75rem 1rem;
+			display: flex;
+			flex-direction: column;
+			gap: 0.75rem;
+			border-bottom: 1px solid var(--tg-border);
+		}
+
+		/* Telegram Style Search Input */
+		.tg-search-wrap {
 			position: relative;
 			width: 100%;
 		}
-		@media (min-width: 640px) {
-			.search-box { max-width: 280px; }
-		}
-		.search-input {
+		.tg-search-input {
 			width: 100%;
-			background: var(--bg-card);
-			border: 1px solid var(--border);
-			border-radius: 0.75rem;
-			padding: 0.45rem 0.85rem 0.45rem 2.1rem;
-			font-size: 0.8rem;
-			color: var(--text-main);
+			background: var(--tg-card-hover);
+			border: 1px solid transparent;
+			border-radius: 22px;
+			padding: 0.55rem 1rem 0.55rem 2.5rem;
+			font-size: 0.83rem;
+			color: var(--tg-text-main);
 			outline: none;
-			box-shadow: var(--shadow-sm);
+			transition: all 0.15s ease;
 		}
-		.search-input:focus { border-color: var(--primary); }
-		.search-icon {
+		.tg-search-input:focus {
+			border-color: var(--tg-primary);
+			background: var(--tg-card-bg);
+			box-shadow: 0 0 0 2px rgba(135, 116, 225, 0.2);
+		}
+		.tg-search-icon {
 			position: absolute;
-			left: 0.75rem;
+			left: 0.9rem;
 			top: 50%;
 			transform: translateY(-50%);
-			color: var(--text-muted);
+			color: var(--tg-text-muted);
 			pointer-events: none;
 			display: flex;
 		}
 
-		/* Jobs List */
-		.jobs-list {
+		/* Telegram Quick Metrics Bar */
+		.tg-metrics-row {
+			display: grid;
+			grid-template-columns: repeat(4, 1fr);
+			gap: 0.45rem;
+		}
+		.tg-metric-box {
+			background: var(--tg-card-hover);
+			border-radius: 10px;
+			padding: 0.45rem 0.5rem;
+			text-align: center;
 			display: flex;
 			flex-direction: column;
-			gap: 0.5rem;
+			gap: 0.12rem;
 		}
-		.job-card {
-			background: var(--bg-card);
-			border: 1px solid var(--border);
-			border-radius: 0.85rem;
-			padding: 0.75rem 0.9rem;
+		.tg-metric-lbl { font-size: 0.65rem; font-weight: 700; color: var(--tg-text-muted); text-transform: uppercase; }
+		.tg-metric-val { font-size: 0.9rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+		.tg-metric-val.success { color: var(--tg-success); }
+		.tg-metric-val.warning { color: var(--tg-warning); }
+		.tg-metric-val.danger { color: var(--tg-danger); }
+
+		/* Filter Tabs Header */
+		.tg-tabs {
+			display: flex;
+			padding: 0 0.5rem;
+			gap: 0.2rem;
+			border-bottom: 1px solid var(--tg-border);
+			background: var(--tg-sidebar-bg);
+			overflow-x: auto;
+		}
+		.tg-tabs::-webkit-scrollbar { display: none; }
+		.tg-tab-btn {
+			flex: 1;
+			padding: 0.55rem 0.5rem;
+			font-size: 0.72rem;
+			font-weight: 600;
+			border: none;
+			background: transparent;
+			color: var(--tg-text-sub);
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0.35rem;
+			white-space: nowrap;
+			border-bottom: 2px solid transparent;
+			transition: all 0.15s ease;
+		}
+		.tg-tab-btn.active {
+			color: var(--tg-primary);
+			border-bottom-color: var(--tg-primary);
+			font-weight: 700;
+		}
+		.tg-tab-badge {
+			font-size: 0.65rem;
+			padding: 0.05rem 0.35rem;
+			border-radius: 10px;
+			background: var(--tg-card-hover);
+			color: var(--tg-text-sub);
+		}
+		.tg-tab-btn.active .tg-tab-badge {
+			background: var(--tg-active-item-bg);
+			color: var(--tg-primary);
+		}
+
+		/* Task Jobs List View (Telegram Chat List Style) */
+		.tg-list-container {
+			flex: 1;
+			overflow-y: auto;
+			padding: 0.45rem;
+			display: flex;
+			flex-direction: column;
+			gap: 0.25rem;
+		}
+		.tg-list-container::-webkit-scrollbar { width: 5px; }
+		.tg-list-container::-webkit-scrollbar-thumb { background: var(--tg-border); border-radius: 4px; }
+
+		/* Job List Card (Telegram Chat Row) */
+		.tg-chat-item {
+			display: flex;
+			align-items: center;
+			padding: 0.7rem 0.85rem;
+			border-radius: 12px;
+			gap: 0.8rem;
+			cursor: pointer;
+			transition: background 0.15s ease;
+			position: relative;
+			user-select: none;
+		}
+		.tg-chat-item:hover { background: var(--tg-card-hover); }
+		.tg-chat-item.active {
+			background: var(--tg-active-item-bg);
+			border-left: 3px solid var(--tg-primary);
+		}
+
+		/* Telegram Avatar Circle with Play & Checked State */
+		.tg-avatar {
+			width: 46px;
+			height: 46px;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-weight: 800;
+			font-size: 0.95rem;
+			color: #ffffff;
+			flex-shrink: 0;
+			position: relative;
+			box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+			overflow: hidden;
+			transition: all 0.2s ease;
+		}
+		.tg-avatar-icon {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: opacity 0.15s ease;
+		}
+		.tg-avatar-btn {
+			position: absolute;
+			inset: 0;
+			border-radius: 50%;
+			background: var(--tg-primary);
+			color: #ffffff;
+			border: none;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 0.95rem;
+			cursor: pointer;
+			opacity: 0;
+			transition: opacity 0.18s ease, transform 0.18s ease;
+			z-index: 3;
+			box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.25);
+		}
+		.tg-avatar-btn.show-default,
+		.tg-avatar-btn.running {
+			opacity: 1;
+		}
+		.tg-chat-item:hover .tg-avatar-btn,
+		.tg-avatar:hover .tg-avatar-btn {
+			opacity: 1;
+		}
+		.tg-avatar-badge {
+			position: absolute;
+			bottom: -2px;
+			right: -2px;
+			width: 16px;
+			height: 16px;
+			border-radius: 50%;
+			border: 2px solid var(--tg-sidebar-bg);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 0.65rem;
+			font-weight: 900;
+			color: #fff;
+			z-index: 4;
+		}
+		.tg-avatar-badge.success { background: var(--tg-success); }
+		.tg-avatar-badge.warning { background: var(--tg-warning); }
+		.tg-avatar-badge.danger { background: var(--tg-danger); }
+
+		.tg-item-info { min-width: 0; flex: 1; }
+		.tg-item-top {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.4rem;
+			margin-bottom: 0.2rem;
+		}
+		.tg-item-title {
+			font-size: 0.84rem;
+			font-weight: 700;
+			color: var(--tg-text-main);
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		.tg-item-time {
+			font-size: 0.68rem;
+			color: var(--tg-success);
+			background: var(--tg-success-bg);
+			padding: 0.1rem 0.4rem;
+			border-radius: 6px;
+			font-weight: 700;
+			font-family: 'JetBrains Mono', monospace;
+			white-space: nowrap;
+			flex-shrink: 0;
+		}
+		.tg-item-bottom {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.4rem;
+			font-size: 0.7rem;
+			color: var(--tg-text-sub);
+		}
+		.tg-item-sub {
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		.tg-recs-tag {
+			font-family: 'JetBrains Mono', monospace;
+			font-weight: 700;
+			color: var(--tg-text-main);
+			background: var(--tg-card-hover);
+			padding: 0.08rem 0.45rem;
+			border-radius: 6px;
+			font-size: 0.66rem;
+			white-space: nowrap;
+		}
+
+		/* Right Detail / Chat View Column (Edge to Edge Full Width Canvas) */
+		.tg-chat-panel {
+			flex: 1;
+			width: 100%;
+			min-width: 0;
+			display: flex;
+			flex-direction: column;
+			height: 100%;
+			background: var(--tg-bg);
+			position: relative;
+			z-index: 1;
+		}
+		@media (max-width: 899px) {
+			.tg-chat-panel {
+				position: absolute;
+				inset: 0;
+				z-index: 20;
+				transform: translateX(100%);
+				transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+			}
+			.tg-chat-panel.open-mobile {
+				transform: translateX(0);
+			}
+		}
+
+		/* Detail Chat Header Bar */
+		.tg-chat-header {
+			height: 56px;
+			background: var(--tg-header-bg);
+			border-bottom: 1px solid var(--tg-border);
+			padding: 0 1.25rem;
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
 			gap: 0.75rem;
-			box-shadow: var(--shadow-sm);
-			cursor: pointer;
-			transition: all 0.15s ease;
+			flex-shrink: 0;
 		}
-		.job-card:active {
-			transform: scale(0.985);
-			background: var(--bg-subtle);
-		}
-		.job-left {
+		.tg-chat-header-left {
 			display: flex;
 			align-items: center;
 			gap: 0.75rem;
 			min-width: 0;
-			flex: 1;
 		}
-		.status-dot {
-			width: 2.2rem;
-			height: 2.2rem;
-			border-radius: 0.65rem;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-size: 1rem;
-			font-weight: 800;
-			flex-shrink: 0;
-		}
-		.status-dot.success {
-			background: var(--success-bg);
-			color: var(--success);
-			border: 1px solid rgba(22, 163, 74, 0.25);
-		}
-		.btn-run-left {
-			width: 2.2rem;
-			height: 2.2rem;
-			border-radius: 0.65rem;
-			background: var(--primary);
-			color: #ffffff;
+		.tg-back-btn {
+			display: none;
+			width: 36px;
+			height: 36px;
+			border-radius: 50%;
 			border: none;
-			font-size: 0.72rem;
-			font-weight: 700;
+			background: transparent;
+			color: var(--tg-text-main);
+			font-size: 1.1rem;
 			cursor: pointer;
+		}
+		@media (max-width: 899px) {
+			.tg-back-btn { display: flex; align-items: center; justify-content: center; }
+			.tg-chat-header { padding: 0 0.75rem; }
+		}
+
+		/* Telegram Chat Stream Area (Messages centered cleanly inside canvas) */
+		.tg-chat-stream {
+			flex: 1;
+			overflow-y: auto;
+			padding: 1.25rem 1.5rem;
+			display: flex;
+			flex-direction: column;
+			gap: 1rem;
+			align-items: center;
+		}
+		@media (max-width: 640px) {
+			.tg-chat-stream { padding: 0.85rem 0.75rem; gap: 0.75rem; }
+		}
+		.tg-chat-stream::-webkit-scrollbar { width: 6px; }
+		.tg-chat-stream::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
+
+		/* Date Separator Badge in Chat */
+		.tg-date-divider {
+			align-self: center;
+			background: rgba(0, 0, 0, 0.4);
+			color: #ffffff;
+			font-size: 0.72rem;
+			font-weight: 600;
+			padding: 0.3rem 0.85rem;
+			border-radius: 14px;
+			-webkit-backdrop-filter: blur(8px);
+			backdrop-filter: blur(8px);
+		}
+
+		/* Telegram Message Bubbles (Wide & Crisp) */
+		.tg-msg-bubble {
+			width: 100%;
+			max-width: 780px;
+			border-radius: 16px;
+			padding: 1rem 1.25rem;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+			display: flex;
+			flex-direction: column;
+			gap: 0.6rem;
+			position: relative;
+			animation: fadeIn 0.2s ease;
+		}
+		@media (max-width: 640px) {
+			.tg-msg-bubble { padding: 0.85rem 0.95rem; }
+		}
+		.tg-msg-in {
+			align-self: flex-start;
+			background: var(--tg-msg-in-bg);
+			border-bottom-left-radius: 4px;
+			color: var(--tg-text-main);
+		}
+		.tg-msg-out {
+			align-self: flex-end;
+			background: var(--tg-msg-out-bg);
+			border-bottom-right-radius: 4px;
+			color: var(--tg-text-main);
+		}
+		[data-theme="dark"] .tg-msg-out {
+			background: var(--tg-secondary);
+			color: #ffffff;
+		}
+
+		.tg-msg-header {
 			display: flex;
 			align-items: center;
-			justify-content: center;
-			flex-shrink: 0;
-			transition: all 0.15s ease;
-			box-shadow: 0 1px 3px rgba(2, 132, 199, 0.3);
+			justify-content: space-between;
+			gap: 0.75rem;
 		}
-		.btn-run-left:active { transform: scale(0.94); }
-		.btn-run-left:disabled { opacity: 0.5; cursor: not-allowed; }
-
-		.job-meta { min-width: 0; flex: 1; }
-		.job-title {
-			font-size: 0.86rem;
+		.tg-msg-sender {
+			font-size: 0.82rem;
 			font-weight: 700;
-			color: var(--text-main);
-			white-space: nowrap;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			margin-bottom: 0.15rem;
+			color: var(--tg-primary);
 		}
-
-		.job-sub-row {
-			display: flex;
-			align-items: center;
-			gap: 0.45rem;
-			font-size: 0.7rem;
-			color: var(--text-sub);
-		}
-		.recs-badge {
+		.tg-msg-time {
+			font-size: 0.68rem;
+			color: var(--tg-success);
 			font-weight: 700;
 			font-family: 'JetBrains Mono', monospace;
-			color: var(--text-main);
-		}
-		.tag-failed {
-			color: var(--danger);
-			font-weight: 700;
-			background: var(--danger-bg);
-			padding: 0.05rem 0.35rem;
-			border-radius: 0.25rem;
-			font-size: 0.62rem;
-		}
-
-		.job-right {
+			align-self: flex-end;
 			display: flex;
 			align-items: center;
-			justify-content: flex-end;
-			flex-shrink: 0;
+			gap: 0.25rem;
 		}
 
-		/* Green Time Pill Tag Right Aligned */
-		.time-pill {
+		.tg-msg-grid {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: 0.6rem;
+			background: var(--tg-card-hover);
+			padding: 0.75rem;
+			border-radius: 10px;
+		}
+		.tg-msg-grid-item { display: flex; flex-direction: column; gap: 0.12rem; }
+		.tg-msg-lbl { font-size: 0.62rem; font-weight: 700; color: var(--tg-text-muted); text-transform: uppercase; }
+		.tg-msg-val { font-size: 0.88rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+		.tg-code-box {
+			background: var(--tg-card-hover);
+			border: 1px solid var(--tg-border);
+			padding: 0.65rem 0.75rem;
+			border-radius: 10px;
+			font-family: 'JetBrains Mono', monospace;
 			font-size: 0.74rem;
-			font-weight: 700;
-			color: var(--success);
-			background: var(--success-bg);
-			font-family: 'JetBrains Mono', monospace;
-			padding: 0.18rem 0.55rem;
-			border-radius: 0.4rem;
-			border: 1px solid rgba(22, 163, 74, 0.2);
-			display: inline-flex;
+			word-break: break-all;
+			display: flex;
 			align-items: center;
-			white-space: nowrap;
+			justify-content: space-between;
+			gap: 0.5rem;
+		}
+		.tg-err-box {
+			background: var(--tg-danger-bg);
+			border: 1px solid rgba(239, 68, 68, 0.3);
+			color: var(--tg-danger);
+			padding: 0.75rem;
+			border-radius: 10px;
+			font-family: 'JetBrains Mono', monospace;
+			font-size: 0.72rem;
+			white-space: pre-wrap;
+			max-height: 180px;
+			overflow-y: auto;
 		}
 
-		/* Mobile-Responsive Modal Bottom Sheet with Backdrop Filter Blur */
-		.modal-overlay {
+		/* Task Detail Popup Modal with Backdrop Blur */
+		.tg-modal-overlay {
 			position: fixed;
 			inset: 0;
 			z-index: 100;
-			background: rgba(15, 23, 42, 0.55);
-			-webkit-backdrop-filter: blur(12px);
-			backdrop-filter: blur(12px);
+			background: rgba(15, 23, 42, 0.65);
+			-webkit-backdrop-filter: blur(16px);
+			backdrop-filter: blur(16px);
 			display: flex;
 			align-items: flex-end;
 			justify-content: center;
 			opacity: 0;
 			pointer-events: none;
-			transition: opacity 0.2s ease;
+			transition: opacity 0.25s ease;
 		}
 		@media (min-width: 640px) {
-			.modal-overlay {
-				align-items: center;
-				padding: 1rem;
-			}
+			.tg-modal-overlay { align-items: center; padding: 1rem; }
 		}
-		.modal-overlay.open {
-			opacity: 1;
-			pointer-events: auto;
-		}
-		.modal-card {
-			background: var(--bg-card);
-			border: 1px solid var(--border);
-			border-radius: 1.5rem 1.5rem 0 0;
+		.tg-modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+		.tg-modal-card {
+			background: var(--tg-sidebar-bg);
+			border: 1px solid var(--tg-border);
+			border-radius: 24px 24px 0 0;
 			width: 100%;
-			max-width: 540px;
+			max-width: 580px;
 			max-height: 85vh;
 			display: flex;
 			flex-direction: column;
-			box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.2);
+			box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3);
 			overflow: hidden;
 			transform: translateY(100%);
-			transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+			transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 		}
 		@media (min-width: 640px) {
-			.modal-card {
-				border-radius: 1.25rem;
-				transform: scale(0.96);
-				box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+			.tg-modal-card {
+				border-radius: 20px;
+				transform: scale(0.95);
+				box-shadow: var(--tg-shadow);
 			}
-			.modal-overlay.open .modal-card {
-				transform: scale(1);
-			}
+			.tg-modal-overlay.open .tg-modal-card { transform: scale(1); }
 		}
-		.modal-overlay.open .modal-card {
-			transform: translateY(0);
-		}
+		.tg-modal-overlay.open .tg-modal-card { transform: translateY(0); }
 
-		.modal-grabber {
-			width: 2.5rem;
-			height: 0.25rem;
-			background: var(--border);
-			border-radius: 9999px;
-			margin: 0.5rem auto 0;
+		.tg-modal-grabber {
+			width: 40px;
+			height: 4px;
+			background: var(--tg-border);
+			border-radius: 10px;
+			margin: 8px auto 0;
 		}
-		@media (min-width: 640px) {
-			.modal-grabber { display: none; }
-		}
+		@media (min-width: 640px) { .tg-modal-grabber { display: none; } }
 
-		.modal-header {
-			padding: 0.9rem 1.2rem;
-			border-bottom: 1px solid var(--border);
+		.tg-modal-header {
+			padding: 1rem 1.25rem;
+			border-bottom: 1px solid var(--tg-border);
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
 			gap: 0.75rem;
 		}
-		.modal-title-box { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
-		.modal-title { font-size: 0.95rem; font-weight: 700; color: var(--text-main); }
-		.btn-close {
-			width: 1.85rem;
-			height: 1.85rem;
-			border-radius: 0.5rem;
-			border: none;
-			background: var(--bg-subtle);
-			color: var(--text-sub);
-			cursor: pointer;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-size: 1rem;
-		}
-
-		.modal-body {
-			padding: 1.1rem;
+		.tg-modal-body {
+			padding: 1.25rem;
 			overflow-y: auto;
 			display: flex;
 			flex-direction: column;
-			gap: 0.85rem;
+			gap: 1rem;
 		}
-		.modal-grid {
-			display: grid;
-			grid-template-columns: repeat(3, 1fr);
-			gap: 0.5rem;
-			background: var(--bg-subtle);
-			padding: 0.75rem;
-			border-radius: 0.65rem;
-		}
-		.grid-item { display: flex; flex-direction: column; gap: 0.15rem; }
-		.grid-lbl { font-size: 0.62rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
-		.grid-val { font-size: 0.82rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
-
-		.code-block {
-			background: var(--bg-subtle);
-			border: 1px solid var(--border);
-			padding: 0.6rem 0.75rem;
-			border-radius: 0.6rem;
-			font-family: 'JetBrains Mono', monospace;
-			font-size: 0.7rem;
-			word-break: break-all;
-			color: var(--text-main);
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			gap: 0.5rem;
-		}
-		.error-box {
-			background: var(--danger-bg);
-			border: 1px solid rgba(220, 38, 38, 0.2);
-			color: var(--danger);
-			padding: 0.75rem;
-			border-radius: 0.65rem;
-			font-family: 'JetBrains Mono', monospace;
-			font-size: 0.68rem;
-			white-space: pre-wrap;
-			max-height: 140px;
-			overflow-y: auto;
-		}
-
-		.modal-footer {
-			padding: 0.75rem 1.1rem;
-			border-top: 1px solid var(--border);
+		.tg-modal-footer {
+			padding: 0.85rem 1.25rem;
+			border-top: 1px solid var(--tg-border);
 			display: flex;
 			align-items: center;
 			justify-content: flex-end;
-			gap: 0.5rem;
-			background: var(--bg-subtle);
+			gap: 0.6rem;
+			background: var(--tg-card-hover);
 		}
 
-		/* Minimal Toast */
-		.toast {
+		/* Minimal Toast Notification */
+		.tg-toast {
 			position: fixed;
 			bottom: 1.5rem;
 			left: 50%;
-			transform: translateX(-50%) translateY(20px);
+			transform: translateX(-50%) translateY(30px);
 			z-index: 200;
-			padding: 0.55rem 1.1rem;
-			border-radius: 9999px;
-			font-size: 0.75rem;
+			padding: 0.65rem 1.25rem;
+			border-radius: 24px;
+			font-size: 0.78rem;
 			font-weight: 600;
-			background: #0f172a;
+			background: #17212b;
 			color: #ffffff;
-			box-shadow: var(--shadow-md);
+			border: 1px solid var(--tg-border);
+			box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 			display: flex;
 			align-items: center;
-			gap: 0.45rem;
+			gap: 0.5rem;
 			opacity: 0;
 			pointer-events: none;
-			transition: all 0.2s ease;
+			transition: all 0.22s ease;
 		}
-		.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+		.tg-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
-		@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+		@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 		.spin { animation: spin 1s linear infinite; }
 		@keyframes spin { 100% { transform: rotate(360deg); } }
+		@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 	</style>
 </head>
 <body>
 
-	<main class="app-container">
+	<!-- Telegram Doodle Wallpaper -->
+	<div class="tg-wallpaper"></div>
+
+	<!-- Main Telegram PWA App -->
+	<main class="tg-app">
 
 		<!-- Top Header -->
-		<header class="app-header">
-			<div class="brand-box">
-				<div class="brand-logo">ST</div>
-				<div class="brand-text">
-					<h1 class="brand-title">Sync Tracker</h1>
-					<p class="brand-subtitle">Sahayog Operations</p>
+		<header class="tg-header">
+			<div class="tg-brand">
+				<button class="tg-logo-btn" id="btn-brand-logo" title="Telegram Sync Tracker">ST</button>
+				<div class="tg-title-box">
+					<h1 class="tg-title">{{ title or "Automation Sync Tracker" }}</h1>
+					<p class="tg-subtitle">Sahayog Operations • Telegram PWA</p>
 				</div>
 			</div>
 
-			<div class="header-actions">
-				<!-- Date Picker Button -->
-				<button class="btn-pill" title="Select Sync Date">
-					<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+			<div class="tg-header-actions">
+				<!-- Date Picker Pill -->
+				<button class="tg-btn-pill" title="Select Sync Date">
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
 					<span id="date-label">Loading...</span>
 					<input type="date" id="date-input" class="hidden-date-input">
 				</button>
 
 				<!-- Auto Sync Toggle -->
-				<button class="btn-pill" id="btn-auto-sync" title="Toggle Auto Sync">
+				<button class="tg-btn-pill" id="btn-auto-sync" title="Toggle Auto Sync">
 					<div class="pulse-dot" id="auto-sync-dot"></div>
 					<span id="auto-sync-text">Auto</span>
 				</button>
 
 				<!-- Refresh Button -->
-				<button class="btn-icon" id="btn-refresh" title="Refresh Status">
-					<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+				<button class="tg-icon-btn" id="btn-refresh" title="Refresh Status">
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
 				</button>
 
 				<!-- Theme Toggle -->
-				<button class="btn-icon" id="btn-theme" title="Toggle Theme">
-					<svg id="theme-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+				<button class="tg-icon-btn" id="btn-theme" title="Toggle Light/Dark Theme">
+					<svg id="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
 				</button>
 			</div>
 		</header>
 
 		<!-- PWA Install Banner -->
-		<div class="pwa-install-banner" id="pwa-banner">
-			<span class="pwa-install-text">📱 Install Sync Tracker as Mobile App</span>
-			<button class="btn-install" id="btn-pwa-install">Install</button>
+		<div class="pwa-banner" id="pwa-banner">
+			<span>📱 Install Sync Tracker as Telegram Web App</span>
+			<button class="btn-pwa" id="btn-pwa-install">Install</button>
 		</div>
 
-		<!-- Stats Grid -->
-		<section class="stats-grid">
-			<div class="stat-card">
-				<span class="stat-label">Total</span>
-				<span class="stat-val" id="stat-total">0</span>
-			</div>
-			<div class="stat-card">
-				<span class="stat-label">Synced</span>
-				<span class="stat-val success" id="stat-success">0</span>
-			</div>
-			<div class="stat-card">
-				<span class="stat-label">Pending</span>
-				<span class="stat-val warning" id="stat-pending">0</span>
-			</div>
-			<div class="stat-card">
-				<span class="stat-label">Failed</span>
-				<span class="stat-val danger" id="stat-failed">0</span>
-			</div>
-		</section>
+		<!-- Split 2-Column Body -->
+		<div class="tg-body">
 
-		<!-- Controls Bar: Filter Tabs & Search -->
-		<section class="controls-bar">
-			<div class="tabs-wrapper">
-				<button class="tab-btn active" data-tab="all">All <span class="tab-count" id="cnt-all">0</span></button>
-				<button class="tab-btn" data-tab="success">Synced <span class="tab-count" id="cnt-success">0</span></button>
-				<button class="tab-btn" data-tab="pending">Pending <span class="tab-count" id="cnt-pending">0</span></button>
-				<button class="tab-btn" data-tab="failed">Failed <span class="tab-count" id="cnt-failed">0</span></button>
-			</div>
+			<!-- Left Column: Task List Drawer -->
+			<aside class="tg-sidebar">
+				
+				<div class="tg-sidebar-top">
+					<!-- Telegram Style Search Box -->
+					<div class="tg-search-wrap">
+						<span class="tg-search-icon">
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+						</span>
+						<input type="text" id="search-input" class="tg-search-input" placeholder="Search automation tasks...">
+					</div>
 
-			<div class="search-box">
-				<span class="search-icon">
-					<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-				</span>
-				<input type="text" id="search-input" class="search-input" placeholder="Search automation job...">
-			</div>
-		</section>
+					<!-- Quick Stats Counters -->
+					<div class="tg-metrics-row">
+						<div class="tg-metric-box">
+							<span class="tg-metric-lbl">Total</span>
+							<span class="tg-metric-val" id="stat-total">0</span>
+						</div>
+						<div class="tg-metric-box">
+							<span class="tg-metric-lbl">Synced</span>
+							<span class="tg-metric-val success" id="stat-success">0</span>
+						</div>
+						<div class="tg-metric-box">
+							<span class="tg-metric-lbl">Pending</span>
+							<span class="tg-metric-val warning" id="stat-pending">0</span>
+						</div>
+						<div class="tg-metric-box">
+							<span class="tg-metric-lbl">Failed</span>
+							<span class="tg-metric-val danger" id="stat-failed">0</span>
+						</div>
+					</div>
+				</div>
 
-		<!-- Jobs List Container -->
-		<section class="jobs-list" id="jobs-container">
-			<div style="padding: 3rem; text-align: center; color: var(--text-muted); font-size: 0.82rem;">
-				Loading automation jobs...
-			</div>
-		</section>
+				<!-- Filter Tabs -->
+				<div class="tg-tabs">
+					<button class="tg-tab-btn active" data-tab="all">All <span class="tg-tab-badge" id="cnt-all">0</span></button>
+					<button class="tg-tab-btn" data-tab="success">Synced <span class="tg-tab-badge" id="cnt-success">0</span></button>
+					<button class="tg-tab-btn" data-tab="pending">Pending <span class="tg-tab-badge" id="cnt-pending">0</span></button>
+					<button class="tg-tab-btn" data-tab="failed">Failed <span class="tg-tab-badge" id="cnt-failed">0</span></button>
+				</div>
+
+				<!-- Jobs List Container -->
+				<div class="tg-list-container" id="jobs-container">
+					<div style="padding: 3rem; text-align: center; color: var(--tg-text-muted); font-size: 0.82rem;">
+						Loading automation jobs...
+					</div>
+				</div>
+			</aside>
+
+			<!-- Right Column: Detail Chat Window -->
+			<section class="tg-chat-panel" id="chat-panel">
+				
+				<!-- Chat Header Bar -->
+				<header class="tg-chat-header">
+					<div class="tg-chat-header-left">
+						<button class="tg-back-btn" id="btn-chat-back" title="Back to task list">←</button>
+						<div class="tg-avatar" id="detail-avatar" style="width: 38px; height: 38px; background: linear-gradient(135deg, #8774e1, #5682a3);">
+							<span class="tg-avatar-icon">⚙️</span>
+						</div>
+						<div class="tg-title-box">
+							<h2 class="tg-title" id="detail-title">Select an Automation Job</h2>
+							<p class="tg-subtitle" id="detail-sub">Click any item from the left list to view thread</p>
+						</div>
+					</div>
+
+					<div class="tg-header-actions">
+						<button class="tg-btn-pill" id="btn-detail-run" style="background: var(--tg-primary); color: #fff; border: none; display: none;">▶ Run Sync</button>
+						<button class="tg-icon-btn" id="btn-detail-modal" title="Open Detail Modal" style="display: none;">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+						</button>
+					</div>
+				</header>
+
+				<!-- Chat Stream Body -->
+				<div class="tg-chat-stream" id="chat-stream">
+					<div class="tg-date-divider" id="chat-date-divider">Today</div>
+					
+					<!-- Default Empty State -->
+					<div class="tg-msg-bubble tg-msg-in" id="chat-empty-state" style="align-self: center; max-width: 380px; text-align: center; margin: auto;">
+						<div style="font-size: 2.2rem; margin-bottom: 0.3rem;">📡</div>
+						<div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 0.2rem;">Automation Tracker Feed</div>
+						<div style="font-size: 0.78rem; color: var(--tg-text-sub);">Select any job on the left panel to inspect method specs, sync history & error tracebacks.</div>
+					</div>
+				</div>
+			</section>
+
+		</div>
 
 	</main>
 
-	<!-- Mobile-Responsive Modal with Backdrop Blur -->
-	<div class="modal-overlay" id="modal-overlay">
-		<div class="modal-card">
-			<div class="modal-grabber"></div>
-			<div class="modal-header">
-				<div class="modal-title-box">
-					<span id="modal-status-dot" class="status-dot success" style="width: 1.75rem; height: 1.75rem;">✓</span>
-					<div class="modal-title" id="modal-title">Job Details</div>
+	<!-- Task Detail Popup Modal with Backdrop Blur -->
+	<div class="tg-modal-overlay" id="modal-overlay">
+		<div class="tg-modal-card">
+			<div class="tg-modal-grabber"></div>
+			<div class="tg-modal-header">
+				<div style="display: flex; align-items: center; gap: 0.6rem; min-width: 0;">
+					<span id="modal-status-dot" class="tg-avatar" style="width: 32px; height: 32px; font-size: 0.8rem; background: var(--tg-success);">✓</span>
+					<div class="tg-title" id="modal-title" style="font-size: 0.95rem;">Job Details</div>
 				</div>
-				<button class="btn-close" id="btn-modal-close">&times;</button>
+				<button class="tg-icon-btn" id="btn-modal-close">&times;</button>
 			</div>
 
-			<div class="modal-body">
-				<div class="modal-grid">
-					<div class="grid-item">
-						<span class="grid-lbl">Schedule</span>
-						<span class="grid-val" id="modal-schedule" style="color: var(--success);">-</span>
+			<div class="tg-modal-body">
+				<div class="tg-msg-grid">
+					<div class="tg-msg-grid-item">
+						<span class="tg-msg-lbl">Schedule</span>
+						<span class="tg-msg-val" id="modal-schedule" style="color: var(--tg-success);">-</span>
 					</div>
-					<div class="grid-item">
-						<span class="grid-lbl">Target Date</span>
-						<span class="grid-val" id="modal-date">-</span>
+					<div class="tg-msg-grid-item">
+						<span class="tg-msg-lbl">Target Date</span>
+						<span class="tg-msg-val" id="modal-date">-</span>
 					</div>
-					<div class="grid-item">
-						<span class="grid-lbl">Records Synced</span>
-						<span class="grid-val" id="modal-recs">-</span>
+					<div class="tg-msg-grid-item">
+						<span class="tg-msg-lbl">Records Synced</span>
+						<span class="tg-msg-val" id="modal-recs">-</span>
 					</div>
 				</div>
 
-				<div class="grid-item">
-					<span class="grid-lbl" style="margin-bottom: 0.25rem;">Backend Python Method</span>
-					<div class="code-block">
+				<div class="tg-msg-grid-item">
+					<span class="tg-msg-lbl" style="margin-bottom: 0.25rem;">Backend Python Method</span>
+					<div class="tg-code-box">
 						<span id="modal-method" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
-						<button class="btn-pill" id="btn-copy-method" style="padding: 0.2rem 0.5rem; font-size: 0.65rem;">Copy</button>
+						<button class="tg-btn-pill" id="btn-copy-method" style="padding: 0.2rem 0.5rem; font-size: 0.65rem;">Copy</button>
 					</div>
 				</div>
 
-				<div class="grid-item" id="modal-error-wrap" style="display: none;">
-					<span class="grid-lbl" style="margin-bottom: 0.25rem; color: var(--danger);">Error Message / Traceback</span>
-					<div class="error-box" id="modal-error-text"></div>
+				<div class="tg-msg-grid-item" id="modal-error-wrap" style="display: none;">
+					<span class="tg-msg-lbl" style="margin-bottom: 0.25rem; color: var(--tg-danger);">Error Message / Traceback</span>
+					<div class="tg-err-box" id="modal-error-text"></div>
 				</div>
 			</div>
 
-			<div class="modal-footer">
-				<button class="btn-pill" id="btn-modal-close2">Close</button>
-				<button class="btn-run" id="btn-modal-run" style="padding: 0.45rem 1rem;">Run Sync Now</button>
+			<div class="tg-modal-footer">
+				<button class="tg-btn-pill" id="btn-modal-close2">Close</button>
+				<button class="tg-btn-pill" id="btn-modal-run" style="background: var(--tg-primary); color: #fff; border: none; padding: 0.45rem 1rem;">Run Sync Now</button>
 			</div>
 		</div>
 	</div>
 
 	<!-- Minimal Toast -->
-	<div class="toast" id="toast">
+	<div class="tg-toast" id="toast">
 		<span id="toast-msg">Notification</span>
 	</div>
 
@@ -780,7 +1069,7 @@
 		window.initialData = {{ initial_sync_data | default('{}') }};
 		window.csrf_token = "{{ csrf_token | default('') }}";
 
-		// Unregister any legacy Service Worker to ensure fresh live data
+		// Unregister legacy Service Workers if present
 		if ('serviceWorker' in navigator) {
 			navigator.serviceWorker.getRegistrations().then((registrations) => {
 				for (const registration of registrations) {
@@ -810,6 +1099,59 @@
 					}
 					deferredPrompt = null;
 				});
+			}
+
+			// Avatar Color Gradients for Telegram Style
+			const avatarGradients = [
+				'linear-gradient(135deg, #ff885e, #ff5252)',
+				'linear-gradient(135deg, #8774e1, #5682a3)',
+				'linear-gradient(135deg, #00c6ff, #0072ff)',
+				'linear-gradient(135deg, #f7971e, #ffd200)',
+				'linear-gradient(135deg, #11998e, #38ef7d)',
+				'linear-gradient(135deg, #e1eec3, #f05053)',
+				'linear-gradient(135deg, #b92b27, #1565c0)',
+				'linear-gradient(135deg, #8a2387, #e94057)'
+			];
+
+			function getJobIconSVG(job) {
+				if (!job) return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`;
+				
+				const title = (job.title || '').toLowerCase();
+				const cat = (job.category || '').toLowerCase();
+
+				if (title.includes('broker') || cat.includes('broker')) {
+					return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
+				}
+				if (title.includes('client') || title.includes('cif') || title.includes('user') || cat.includes('client')) {
+					return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+				}
+				if (title.includes('policy') || title.includes('insurance') || cat.includes('insurance')) {
+					return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
+				}
+				if (title.includes('payment') || title.includes('bank') || title.includes('transaction') || cat.includes('payment')) {
+					return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>`;
+				}
+				if (title.includes('report') || title.includes('excel') || title.includes('converter') || cat.includes('report')) {
+					return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/></svg>`;
+				}
+				if (title.includes('branch') || title.includes('bde') || title.includes('bdo') || cat.includes('branch')) {
+					return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>`;
+				}
+				if (title.includes('drishti') || title.includes('analytics') || cat.includes('analytics')) {
+					return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>`;
+				}
+
+				// Default Automation Bot Icon
+				return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="12" x="3" y="10" rx="2"/><path d="M12 2v4"/><circle cx="12" cy="7" r="1"/><line x1="8" x2="8" y1="15" y2="15"/><line x1="16" x2="16" y1="15" y2="15"/></svg>`;
+			}
+
+			function getGradient(str) {
+				let hash = 0;
+				for (let i = 0; i < (str || '').length; i++) {
+					hash = str.charCodeAt(i) + ((hash << 5) - hash);
+				}
+				const idx = Math.abs(hash) % avatarGradients.length;
+				return avatarGradients[idx];
 			}
 
 			const state = {
@@ -842,6 +1184,15 @@
 				cntFailed: document.getElementById('cnt-failed'),
 				searchInput: document.getElementById('search-input'),
 				jobsContainer: document.getElementById('jobs-container'),
+				chatPanel: document.getElementById('chat-panel'),
+				btnChatBack: document.getElementById('btn-chat-back'),
+				detailAvatar: document.getElementById('detail-avatar'),
+				detailTitle: document.getElementById('detail-title'),
+				detailSub: document.getElementById('detail-sub'),
+				btnDetailRun: document.getElementById('btn-detail-run'),
+				btnDetailModal: document.getElementById('btn-detail-modal'),
+				chatStream: document.getElementById('chat-stream'),
+				chatEmptyState: document.getElementById('chat-empty-state'),
 				modalOverlay: document.getElementById('modal-overlay'),
 				modalStatusDot: document.getElementById('modal-status-dot'),
 				modalTitle: document.getElementById('modal-title'),
@@ -910,11 +1261,17 @@
 						state.jobs = data.message.jobs || [];
 						state.autoSyncEnabled = !!data.message.auto_sync_enabled;
 						render();
+						if (state.selectedJob) {
+							const updated = state.jobs.find(j => j.key === state.selectedJob.key);
+							if (updated) selectJob(updated, false);
+						}
 					}
 				} catch (e) {
 					showToast('Failed to load status');
 				} finally {
-					setTimeout(() => els.btnRefresh.classList.remove('spin'), 400);
+					setTimeout(() => {
+						els.btnRefresh.classList.remove('spin');
+					}, 400);
 				}
 			}
 
@@ -958,6 +1315,99 @@
 				}
 			}
 
+			function selectJob(job, openMobile = true) {
+				state.selectedJob = job;
+				const st = (job.status || '').toLowerCase();
+				const isSuccess = st === 'success';
+				const iconSVG = isSuccess 
+					? `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+					: getJobIconSVG(job);
+				const bgGradient = isSuccess ? 'linear-gradient(135deg, #10b981, #059669)' : getGradient(job.title);
+
+				els.detailAvatar.innerHTML = `<span class="tg-avatar-icon">${iconSVG}</span>`;
+				els.detailAvatar.style.background = bgGradient;
+				els.detailTitle.innerText = job.title;
+				els.detailSub.innerText = `${job.category || 'General'} • Scheduled ${job.schedule_time || ''}`;
+				els.btnDetailRun.style.display = 'inline-flex';
+				els.btnDetailModal.style.display = 'inline-flex';
+
+				// Render Messages in Detail View
+				els.chatStream.innerHTML = `
+					<div class="tg-date-divider">Target Date: ${formatDate(job.target_date)}</div>
+
+					<!-- Inbound Message: Job Spec -->
+					<div class="tg-msg-bubble tg-msg-in">
+						<div class="tg-msg-header">
+							<span class="tg-msg-sender">⚙️ ${job.title}</span>
+							<span class="tg-recs-tag" style="color: var(--tg-primary);">${formatNum(job.records_synced)} recs</span>
+						</div>
+						<div style="font-size: 0.82rem; font-weight: 600;">Job Category: ${job.category || 'General Automation'}</div>
+						
+						<div class="tg-msg-grid">
+							<div class="tg-msg-grid-item">
+								<span class="tg-msg-lbl">Schedule</span>
+								<span class="tg-msg-val" style="color: var(--tg-success);">${job.schedule_time || '-'}</span>
+							</div>
+							<div class="tg-msg-grid-item">
+								<span class="tg-msg-lbl">Status</span>
+								<span class="tg-msg-val" style="color: ${st === 'success' ? 'var(--tg-success)' : st === 'failed' ? 'var(--tg-danger)' : 'var(--tg-warning)'};">${st.toUpperCase()}</span>
+							</div>
+							<div class="tg-msg-grid-item">
+								<span class="tg-msg-lbl">Records</span>
+								<span class="tg-msg-val">${formatNum(job.records_synced)}</span>
+							</div>
+						</div>
+
+						<div class="tg-msg-grid-item" style="margin-top: 0.2rem;">
+							<span class="tg-msg-lbl" style="margin-bottom: 0.2rem;">Python Method</span>
+							<div class="tg-code-box">
+								<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${job.method || '-'}</span>
+								<button class="tg-btn-pill" id="btn-chat-copy-method" style="padding: 0.15rem 0.4rem; font-size: 0.62rem;">Copy</button>
+							</div>
+						</div>
+
+						${job.error_message ? `
+							<div class="tg-msg-grid-item" style="margin-top: 0.2rem;">
+								<span class="tg-msg-lbl" style="color: var(--tg-danger); margin-bottom: 0.2rem;">Error Log</span>
+								<div class="tg-err-box">${job.error_message}</div>
+							</div>
+						` : ''}
+
+						<div class="tg-msg-time">
+							<span>${job.schedule_time || ''}</span>
+							<span>${st === 'success' ? '✓✓' : st === 'failed' ? '!' : '⏱'}</span>
+						</div>
+					</div>
+
+					<!-- Outbound Message: Action Bar -->
+					<div class="tg-msg-bubble tg-msg-out">
+						<div style="font-size: 0.82rem;">
+							${st === 'success' ? '✅ This task finished sync successfully.' : st === 'failed' ? '⚠️ Task run failed. Click top right button to re-trigger execution.' : '⏱ Task pending sync execution.'}
+						</div>
+						<div class="tg-msg-time">
+							<span>${formatDate(job.target_date)}</span>
+							<span>✓✓</span>
+						</div>
+					</div>
+				`;
+
+				const btnCopyInChat = document.getElementById('btn-chat-copy-method');
+				if (btnCopyInChat) {
+					btnCopyInChat.addEventListener('click', () => {
+						if (job.method) {
+							navigator.clipboard.writeText(job.method);
+							showToast('Python Method copied!');
+						}
+					});
+				}
+
+				if (openMobile && window.innerWidth < 900) {
+					els.chatPanel.classList.add('open-mobile');
+				}
+
+				renderActiveCard();
+			}
+
 			function openModal(job) {
 				state.selectedJob = job;
 				const st = (job.status || '').toLowerCase();
@@ -967,7 +1417,7 @@
 				els.modalRecs.innerText = `${formatNum(job.records_synced)} recs`;
 				els.modalMethod.innerText = job.method || '-';
 
-				els.modalStatusDot.className = `status-dot ${st === 'success' ? 'success' : st === 'failed' ? 'danger' : 'warning'}`;
+				els.modalStatusDot.style.background = st === 'success' ? 'var(--tg-success)' : st === 'failed' ? 'var(--tg-danger)' : 'var(--tg-warning)';
 				els.modalStatusDot.innerText = st === 'success' ? '✓' : st === 'failed' ? '!' : '⏱';
 
 				if (job.error_message) {
@@ -982,7 +1432,16 @@
 
 			function closeModal() {
 				els.modalOverlay.classList.remove('open');
-				state.selectedJob = null;
+			}
+
+			function renderActiveCard() {
+				document.querySelectorAll('.tg-chat-item').forEach(item => {
+					if (state.selectedJob && item.dataset.key === state.selectedJob.key) {
+						item.classList.add('active');
+					} else {
+						item.classList.remove('active');
+					}
+				});
 			}
 
 			function render() {
@@ -1022,7 +1481,7 @@
 
 				if (filtered.length === 0) {
 					els.jobsContainer.innerHTML = `
-						<div style="padding: 3rem 1rem; text-align: center; color: var(--text-muted); font-size: 0.82rem;">
+						<div style="padding: 3rem 1rem; text-align: center; color: var(--tg-text-muted); font-size: 0.82rem;">
 							No automation tasks found matching criteria.
 						</div>
 					`;
@@ -1032,27 +1491,38 @@
 				els.jobsContainer.innerHTML = filtered.map(job => {
 					const st = (job.status || '').toLowerCase();
 					const isRunning = !!state.runningJobs[job.key];
+					const isActive = state.selectedJob && state.selectedJob.key === job.key;
+					const isSuccess = st === 'success';
+
+					const iconSVG = isSuccess 
+						? `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+						: getJobIconSVG(job);
+
+					const bgGradient = isSuccess 
+						? 'linear-gradient(135deg, #10b981, #059669)' 
+						: getGradient(job.title);
 
 					return `
-						<div class="job-card" data-key="${job.key}">
-							<div class="job-left">
-								${st === 'success' 
-									? `<div class="status-dot success" title="Synced Successfully">✓</div>` 
-									: `<button type="button" class="btn-run-left" data-action="run" data-key="${job.key}" ${isRunning ? 'disabled' : ''} title="Run this sync">
-										${isRunning ? '...' : '▶'}
-									   </button>`}
-								<div class="job-meta">
-									<div class="job-title">${job.title}</div>
-									<div class="job-sub-row">
-										<span>${job.category || 'General'}</span>
-										<span>•</span>
-										<span class="recs-badge">${formatNum(job.records_synced)} recs</span>
-										${st === 'failed' ? `<span class="tag-failed">Failed</span>` : ''}
-									</div>
+						<div class="tg-chat-item ${isActive ? 'active' : ''}" data-key="${job.key}">
+							<div class="tg-avatar" style="background: ${bgGradient};">
+								<span class="tg-avatar-icon">${iconSVG}</span>
+								<button type="button" class="tg-avatar-btn ${!isSuccess || isRunning ? 'show-default' : ''}" data-action="run" data-key="${job.key}" ${isRunning ? 'disabled' : ''} title="Run this sync">
+									${isRunning ? '...' : '▶'}
+								</button>
+								<div class="tg-avatar-badge ${st === 'success' ? 'success' : st === 'failed' ? 'danger' : 'warning'}">
+									${st === 'success' ? '✓' : st === 'failed' ? '!' : '⏱'}
 								</div>
 							</div>
-							<div class="job-right">
-								<span class="time-pill">${job.schedule_time || ''}</span>
+
+							<div class="tg-item-info">
+								<div class="tg-item-top">
+									<span class="tg-item-title">${job.title}</span>
+									<span class="tg-item-time">${job.schedule_time || ''}</span>
+								</div>
+								<div class="tg-item-bottom">
+									<span class="tg-item-sub">${job.category || 'General Automation'}</span>
+									<span class="tg-recs-tag">${formatNum(job.records_synced)} recs</span>
+								</div>
 							</div>
 						</div>
 					`;
@@ -1066,15 +1536,16 @@
 				fetchStatus();
 			});
 			els.btnRefresh.addEventListener('click', fetchStatus);
+
 			els.btnTheme.addEventListener('click', () => {
 				state.isDark = !state.isDark;
 				localStorage.setItem('theme', state.isDark ? 'dark' : 'light');
 				applyTheme();
 			});
 
-			document.querySelectorAll('.tab-btn').forEach(btn => {
+			document.querySelectorAll('.tg-tab-btn').forEach(btn => {
 				btn.addEventListener('click', () => {
-					document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+					document.querySelectorAll('.tg-tab-btn').forEach(b => b.classList.remove('active'));
 					btn.classList.add('active');
 					state.activeTab = btn.dataset.tab;
 					render();
@@ -1093,11 +1564,23 @@
 					runJob(runBtn.dataset.key);
 					return;
 				}
-				const card = e.target.closest('.job-card');
-				if (card) {
-					const job = state.jobs.find(j => j.key === card.dataset.key);
-					if (job) openModal(job);
+				const item = e.target.closest('.tg-chat-item');
+				if (item) {
+					const job = state.jobs.find(j => j.key === item.dataset.key);
+					if (job) selectJob(job, true);
 				}
+			});
+
+			els.btnChatBack.addEventListener('click', () => {
+				els.chatPanel.classList.remove('open-mobile');
+			});
+
+			els.btnDetailRun.addEventListener('click', () => {
+				if (state.selectedJob?.key) runJob(state.selectedJob.key);
+			});
+
+			els.btnDetailModal.addEventListener('click', () => {
+				if (state.selectedJob) openModal(state.selectedJob);
 			});
 
 			els.btnModalClose.addEventListener('click', closeModal);
@@ -1131,6 +1614,7 @@
 				state.autoSyncEnabled = !!window.initialData.auto_sync_enabled;
 				if (window.initialData.sync_date) state.targetDate = window.initialData.sync_date;
 				render();
+				if (state.jobs.length > 0) selectJob(state.jobs[0], false);
 			} else {
 				fetchStatus();
 			}
