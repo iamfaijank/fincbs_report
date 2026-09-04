@@ -6468,11 +6468,20 @@ class DrishtiDashboard {
 				const designation = emp ? (emp.designation || "") : "";
 				const isBranchManager = designation.toLowerCase().includes("branch manager");
 
-
 				this.isBranchManager = isBranchManager;
 				this.userSolId = emp ? (emp.sahayog_branch || null) : null;
 				if (isBranchManager) {
+					if (this.branchData && this.userSolId) {
+						const targetSol = String(this.userSolId).trim();
+						this.branchData = this.branchData.filter((branch) => {
+							const bSol = String(branch.sol_id || branch.name || "").trim();
+							return bSol === targetSol || bSol === targetSol.replace(/^0+/, "") || targetSol === bSol.replace(/^0+/, "");
+						});
+					}
 					this.applyBranchManagerRestrictions();
+					if (this.state.activeTab === "branch") {
+						this.renderActiveTab();
+					}
 				}
 			})
 			.catch(err => {
@@ -7825,7 +7834,14 @@ class DrishtiDashboard {
 		this.productData = data.product_wise || [];
 		this.allProducts = data.all_products || [];
 		this.categoryData = data.category_wise;
-		this.branchData = data.branch_wise;
+		this.branchData = data.branch_wise || [];
+		if (this.isBranchManager && this.userSolId) {
+			const targetSol = String(this.userSolId).trim();
+			this.branchData = this.branchData.filter((branch) => {
+				const bSol = String(branch.sol_id || branch.name || "").trim();
+				return bSol === targetSol || bSol === targetSol.replace(/^0+/, "") || targetSol === bSol.replace(/^0+/, "");
+			});
+		}
 		this.agentData = data.agent_wise || [];
 
 		// Extract zones from zone_wise data
@@ -9271,7 +9287,7 @@ class DrishtiDashboard {
 						}
 					}
 
-					if (self.permissions && self.permissions.has_access === false) {
+					if (self.permissions && self.permissions.has_access === false && !self.isBranchManager) {
 						self.page.main.html(`
 							<div style="text-align: center; padding: 100px 20px;">
 								<div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
@@ -9445,7 +9461,7 @@ class DrishtiDashboard {
 					self.data = r.message;
 					self.permissions = r.message.permissions;
 
-					if (self.permissions && self.permissions.has_access === false) {
+					if (self.permissions && self.permissions.has_access === false && !self.isBranchManager) {
 						self.page.main.html(`
 							<div style="text-align: center; padding: 100px 20px;">
 								<div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
@@ -9731,6 +9747,14 @@ class DrishtiDashboard {
 
 	getFilteredBranches() {
 		let filtered = this.branchData ? [...this.branchData] : [];
+
+		if (this.isBranchManager && this.userSolId) {
+			const targetSol = String(this.userSolId).trim();
+			filtered = filtered.filter((branch) => {
+				const bSol = String(branch.sol_id || branch.name || "").trim();
+				return bSol === targetSol || bSol === targetSol.replace(/^0+/, "") || targetSol === bSol.replace(/^0+/, "");
+			});
+		}
 
 		const filterMonthKey =
 			this.state.selectedMonth ||

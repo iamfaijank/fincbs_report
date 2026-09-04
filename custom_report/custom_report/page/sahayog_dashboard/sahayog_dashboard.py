@@ -201,7 +201,6 @@ def get_user_sol_ids():
     return {"user": user, "sol_ids": sol_ids, "employee_sol_id": employee_sol, "employee_zone": employee_zone, "employee_region": employee_region}
 
 
-@sahayog_cache(ttl=86400)
 def get_user_report_permissions(user):
     """
     Fetches permissions from 'Report Preference' or Employee for the current user.
