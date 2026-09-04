@@ -14,11 +14,13 @@ def get_context(context):
     if perms.get("is_restricted"):
         context.allowed_zones = perms.get("zones", [])
         context.allowed_regions = perms.get("regions", [])
+        context.allowed_districts = perms.get("districts", [])
         context.allowed_sol_ids = perms.get("sol_ids", [])
         context.all_regions_allowed = perms.get("all_regions", False)
     else:
         context.allowed_zones = []
         context.allowed_regions = []
+        context.allowed_districts = []
         context.allowed_sol_ids = []
         context.all_regions_allowed = True
 

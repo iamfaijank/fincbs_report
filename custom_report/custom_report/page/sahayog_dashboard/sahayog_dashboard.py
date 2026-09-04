@@ -209,12 +209,14 @@ def get_user_report_permissions(user):
     permissions = {
         "zones": [],
         "regions": [],
+        "districts": [],
         "sol_data": [],
         "sol_ids": [],
         "is_restricted": False,
         "all_regions": False,
         "zone_ids": [],
         "region_ids": [],
+        "district_ids": [],
         "has_access": True,
         "is_branch_manager": False
     }
@@ -255,10 +257,13 @@ def get_user_report_permissions(user):
         
         permissions["regions"] = frappe.db.get_all("Region Items", filters={"parent": pref_name, "parentfield": "region"}, pluck="region") or []
         permissions["region_ids"] = [re.sub(r"\D", "", r) for r in permissions["regions"] if re.sub(r"\D", "", r)]
+
+        permissions["districts"] = frappe.db.get_all("District Items", filters={"parent": pref_name, "parentfield": "district"}, pluck="district") or []
+        permissions["district_ids"] = [re.sub(r"\D", "", d) for d in permissions["districts"] if re.sub(r"\D", "", d)]
         
         permissions["sol_ids"] = frappe.db.get_all("Sol Items", filters={"parent": pref_name, "parentfield": "sol_id"}, pluck="sol_id") or []
 
-        has_pref_config = bool(permissions["zones"] or permissions["regions"] or permissions["sol_ids"] or permissions["all_regions"])
+        has_pref_config = bool(permissions["zones"] or permissions["regions"] or permissions["districts"] or permissions["sol_ids"] or permissions["all_regions"])
 
         if has_pref_config:
             if permissions["sol_ids"]:
@@ -280,8 +285,10 @@ def get_user_report_permissions(user):
         permissions["sol_data"] = [{"sol_id": emp_sol, "branch_name": branch_name}]
         permissions["zones"] = []
         permissions["regions"] = []
+        permissions["districts"] = []
         permissions["zone_ids"] = []
         permissions["region_ids"] = []
+        permissions["district_ids"] = []
         permissions["all_regions"] = False
         permissions["has_access"] = True
         return permissions
@@ -310,15 +317,7 @@ def get_permitted_sol_ids_for_user(perms):
     Resolves permitted sol_ids based on hierarchical permissions:
     - If unrestricted: returns None (meaning all allowed).
     - If restricted:
-      - If zones specified:
-        - If regions also specified: matches (zone AND region)
-        - Else: matches (zone)
-        - If sols also specified: further restricts to (sol_id in sols)
-      - Else if regions specified:
-        - matches (region)
-        - If sols also specified: further restricts to (sol_id in sols)
-      - Else if sols specified:
-        - matches (sol_id in sols)
+      - Hierarchically filters branches: (Zone -> Region -> District -> SOL ID)
       - If all_regions is True and no other restriction: returns all sol_ids
       - Returns a list of permitted sol_ids.
     """
@@ -327,11 +326,13 @@ def get_permitted_sol_ids_for_user(perms):
 
     allowed_zones = perms.get("zones", [])
     allowed_regions = perms.get("regions", [])
+    allowed_districts = perms.get("districts", [])
     allowed_sols = perms.get("sol_ids", [])
     all_regions = perms.get("all_regions", False)
 
     has_zones = bool(allowed_zones)
     has_regions = bool(allowed_regions) and not all_regions
+    has_districts = bool(allowed_districts)
     has_sols = bool(allowed_sols)
 
     branches_map = get_sahayog_branches_cached()
@@ -339,42 +340,34 @@ def get_permitted_sol_ids_for_user(perms):
     norm_loc = lambda s: re.sub(r"[\s\-]+", "", str(s or "")).upper()
     norm_sol = lambda s: str(s or "").strip().lstrip("0")
 
+    zone_norms = {norm_loc(z) for z in allowed_zones if z} if has_zones else set()
+    reg_norms = {norm_loc(r) for r in allowed_regions if r} if has_regions else set()
+    dist_norms = {norm_loc(d) for d in allowed_districts if d} if has_districts else set()
+    sol_norms = {norm_sol(s) for s in allowed_sols if s} if has_sols else set()
+
     matching_sols = set()
 
-    if has_zones:
-        zone_norms = {norm_loc(z) for z in allowed_zones if z}
-        reg_norms = {norm_loc(r) for r in allowed_regions if r} if has_regions else set()
-        sol_norms = {norm_sol(s) for s in allowed_sols if s} if has_sols else set()
+    for sid, b in branches_map.items():
+        if has_zones and norm_loc(b.get("zone")) not in zone_norms:
+            continue
+        if has_regions and norm_loc(b.get("region")) not in reg_norms:
+            continue
+        if has_districts and norm_loc(b.get("district")) not in dist_norms:
+            continue
+        if has_sols and norm_sol(sid) not in sol_norms:
+            continue
+        matching_sols.add(str(sid).strip())
 
-        for sid, b in branches_map.items():
-            if norm_loc(b.get("zone")) in zone_norms:
-                if not has_regions or norm_loc(b.get("region")) in reg_norms:
-                    if not has_sols or norm_sol(sid) in sol_norms:
-                        matching_sols.add(str(sid).strip())
-
-    elif has_regions:
-        reg_norms = {norm_loc(r) for r in allowed_regions if r}
-        sol_norms = {norm_sol(s) for s in allowed_sols if s} if has_sols else set()
-
-        for sid, b in branches_map.items():
-            if norm_loc(b.get("region")) in reg_norms:
-                if not has_sols or norm_sol(sid) in sol_norms:
-                    matching_sols.add(str(sid).strip())
-
-    elif has_sols:
-        sol_norms = {norm_sol(s) for s in allowed_sols if s}
-        for sid in branches_map.keys():
-            if norm_sol(sid) in sol_norms:
-                matching_sols.add(str(sid).strip())
-
-    elif all_regions:
-        return list(branches_map.keys())
+    if not has_zones and not has_regions and not has_districts and not has_sols:
+        if all_regions:
+            return list(branches_map.keys())
+        return []
 
     return list(matching_sols)
 
 
 def _apply_report_prefs_filter(result, perms=None):
-    """Apply hierarchical zone/region/sol_id filtering from Report Preference to a list of dicts."""
+    """Apply hierarchical zone/region/district/sol_id filtering from Report Preference to a list of dicts."""
     if not result:
         return []
     import re as _re
@@ -385,40 +378,41 @@ def _apply_report_prefs_filter(result, perms=None):
 
     allowed_zones = perms.get("zones", [])
     allowed_regions = perms.get("regions", [])
+    allowed_districts = perms.get("districts", [])
     allowed_sol_ids = perms.get("sol_ids", [])
     all_regions = perms.get("all_regions", False)
 
     has_zones = bool(allowed_zones)
     has_regions = bool(allowed_regions) and not all_regions
+    has_districts = bool(allowed_districts)
     has_sols = bool(allowed_sol_ids)
+
+    if not has_zones and not has_regions and not has_districts and not has_sols:
+        if all_regions:
+            return result
+        return []
 
     norm_loc = lambda s: _re.sub(r"[\s\-]+", "", str(s or "")).upper()
     norm_sol = lambda s: str(s or "").strip().lstrip("0")
 
-    if has_zones:
-        zn = {norm_loc(z) for z in allowed_zones if z}
-        result = [r for r in result if norm_loc(r.get("zone")) in zn]
-        if has_regions:
-            rn = {norm_loc(r) for r in allowed_regions if r}
-            result = [r for r in result if norm_loc(r.get("region")) in rn]
-        if has_sols:
-            sn = {norm_sol(s) for s in allowed_sol_ids if s}
-            result = [r for r in result if norm_sol(r.get("sol_id")) in sn]
-    elif has_regions:
-        rn = {norm_loc(r) for r in allowed_regions if r}
-        result = [r for r in result if norm_loc(r.get("region")) in rn]
-        if has_sols:
-            sn = {norm_sol(s) for s in allowed_sol_ids if s}
-            result = [r for r in result if norm_sol(r.get("sol_id")) in sn]
-    elif has_sols:
-        sn = {norm_sol(s) for s in allowed_sol_ids if s}
-        result = [r for r in result if norm_sol(r.get("sol_id")) in sn]
-    elif all_regions:
-        pass
-    else:
-        result = []
+    zn = {norm_loc(z) for z in allowed_zones if z} if has_zones else set()
+    rn = {norm_loc(r) for r in allowed_regions if r} if has_regions else set()
+    dn = {norm_loc(d) for d in allowed_districts if d} if has_districts else set()
+    sn = {norm_sol(s) for s in allowed_sol_ids if s} if has_sols else set()
 
-    return result
+    filtered = []
+    for r in result:
+        if has_zones and norm_loc(r.get("zone")) not in zn:
+            continue
+        if has_regions and norm_loc(r.get("region")) not in rn:
+            continue
+        if has_districts and norm_loc(r.get("district")) not in dn:
+            continue
+        if has_sols and norm_sol(r.get("sol_id")) not in sn:
+            continue
+        filtered.append(r)
+
+    return filtered
 
 
 def calculate_category(achievement_pct):
@@ -788,39 +782,12 @@ def get_sahayog_dashboard(
     
     month_keys = [m[0] for m in months]
     
-    # Merge UI filters with User Permissions (Simplified Logic)
+    # Merge UI filters with User Permissions
     combined_filters = {}
     if perms["is_restricted"]:
-        # Priority 1: Specific SOL IDs (if provided, they take precedence)
-        if perms["sol_ids"]:
-            combined_filters["sol_id"] = ["in", perms["sol_ids"]]
-        
-        # Priority 2: Zone & Region (if no specific SOL IDs provided)
-        else:
-            branches_map = get_sahayog_branches_cached()
-            # 🛡️ Numeric Matching Logic for Zones
-            if perms["zone_ids"]:
-                all_zones = set(b["zone"] for b in branches_map.values() if b["zone"])
-                if len(perms["zone_ids"]) > 1:
-                    zone_pattern = re.compile(f"({'|'.join(re.escape(zid) for zid in perms['zone_ids'])})")
-                    matched_zones = [z for z in all_zones if zone_pattern.search(z)]
-                    combined_filters["zone"] = ["in", matched_zones] if matched_zones else ["in", ["_NONE_"]]
-                else:
-                    combined_filters["zone"] = ["like", f"%{perms['zone_ids'][0]}"]
-            
-            # 🛡️ Numeric Matching Logic for Regions
-            if not perms["all_regions"] and perms["region_ids"]:
-                all_regions = set(b["region"] for b in branches_map.values() if b["region"])
-                if len(perms["region_ids"]) > 1:
-                    region_pattern = re.compile(f"({'|'.join(re.escape(rid) for rid in perms['region_ids'])})")
-                    matched_regions = [r for r in all_regions if region_pattern.search(r)]
-                    combined_filters["region"] = ["in", matched_regions] if matched_regions else ["in", ["_NONE_"]]
-                else:
-                    combined_filters["region"] = ["like", f"%{perms['region_ids'][0]}"]
-            
-            # If everything is empty but restricted, show nothing
-            if not perms["zone_ids"] and not perms["region_ids"] and not perms["all_regions"]:
-                combined_filters["sol_id"] = ["in", ["_NONE_"]]
+        permitted_sols = get_permitted_sol_ids_for_user(perms)
+        if permitted_sols is not None:
+            combined_filters["sol_id"] = ["in", permitted_sols if permitted_sols else ["_NONE_"]]
 
     if filters:
         try:
@@ -830,21 +797,14 @@ def get_sahayog_dashboard(
                 matched_ui_zones = get_matching_location_values(
                     "Branch Category Report", "zone", ui_zones
                 )
-                # Intersect UI filter with permissions if restricted
-                if perms["is_restricted"] and perms["zones"]:
-                    allowed_ui_zones = [
-                        z for z in matched_ui_zones if re.sub(r"\D", "", z or "") in perms["zone_ids"]
-                    ]
-                    combined_filters["zone"] = ["in", allowed_ui_zones] if allowed_ui_zones else ["in", ["_NONE_"]]
-                else:
-                    combined_filters["zone"] = ["in", matched_ui_zones] if matched_ui_zones else ["in", ["_NONE_"]]
+                combined_filters["zone"] = ["in", matched_ui_zones] if matched_ui_zones else ["in", ["_NONE_"]]
         except:
             pass
     
     # Filter targets map to only include allowed sol_ids
     allowed_sol_ids = None
-    if perms["is_restricted"] and perms["sol_ids"]:
-        allowed_sol_ids = perms["sol_ids"]
+    if perms["is_restricted"]:
+        allowed_sol_ids = get_permitted_sol_ids_for_user(perms)
         
     targets_map = get_targets_map(financial_year, target_type, month_keys, allowed_sol_ids)
     
@@ -1699,83 +1659,46 @@ def get_mis_filter_options():
     allowed_sol_ids = perms.get("sol_ids", [])
     allowed_zones = perms.get("zones", [])
     allowed_regions = perms.get("regions", [])
+    allowed_districts = perms.get("districts", [])
     all_regions_flag = perms.get("all_regions", False)
 
     if perms.get("is_restricted"):
         has_zones = bool(allowed_zones)
         has_regions = bool(allowed_regions) and not all_regions_flag
+        has_districts = bool(allowed_districts)
         has_sols = bool(allowed_sol_ids)
 
-        if has_zones:
-            zone_norms = {norm_loc(z) for z in allowed_zones if z}
-            reg_norms = {norm_loc(r) for r in allowed_regions if r} if has_regions else set()
-            sol_norms = {norm_sol(s) for s in allowed_sol_ids if s} if has_sols else set()
-
+        if not has_zones and not has_regions and not has_districts and not has_sols and not all_regions_flag:
             matching_branches = []
-            for b in branches_map.values():
-                if norm_loc(b.get("zone")) in zone_norms:
-                    if not has_regions or norm_loc(b.get("region")) in reg_norms:
-                        if not has_sols or norm_sol(b.get("sol_id")) in sol_norms:
-                            matching_branches.append(b)
-
-            zones = sorted(list(set(b["zone"] for b in matching_branches if b.get("zone"))))
-            regions = sorted(list(set(b["region"] for b in matching_branches if b.get("region"))))
-            districts = sorted(list(set(b["district"] for b in matching_branches if b.get("district"))))
-            sol_data = [
-                {"sol_id": b["sol_id"], "branch_name": b["branch_name"]}
-                for b in sorted(matching_branches, key=lambda x: x["sol_id"])
-            ]
-            if has_sols and len(allowed_sol_ids) == 1:
-                fixed_sol_id = allowed_sol_ids[0]
-
-        elif has_regions:
-            reg_norms = {norm_loc(r) for r in allowed_regions if r}
-            sol_norms = {norm_sol(s) for s in allowed_sol_ids if s} if has_sols else set()
-
-            matching_branches = []
-            for b in branches_map.values():
-                if norm_loc(b.get("region")) in reg_norms:
-                    if not has_sols or norm_sol(b.get("sol_id")) in sol_norms:
-                        matching_branches.append(b)
-
-            zones = sorted(list(set(b["zone"] for b in matching_branches if b.get("zone"))))
-            regions = sorted(list(set(b["region"] for b in matching_branches if b.get("region"))))
-            districts = sorted(list(set(b["district"] for b in matching_branches if b.get("district"))))
-            sol_data = [
-                {"sol_id": b["sol_id"], "branch_name": b["branch_name"]}
-                for b in sorted(matching_branches, key=lambda x: x["sol_id"])
-            ]
-            if has_sols and len(allowed_sol_ids) == 1:
-                fixed_sol_id = allowed_sol_ids[0]
-
-        elif has_sols:
-            sol_norms = {norm_sol(s) for s in allowed_sol_ids if s}
-            matching_branches = [b for b in branches_map.values() if norm_sol(b.get("sol_id")) in sol_norms]
-
-            zones = sorted(list(set(b["zone"] for b in matching_branches if b.get("zone"))))
-            regions = sorted(list(set(b["region"] for b in matching_branches if b.get("region"))))
-            districts = sorted(list(set(b["district"] for b in matching_branches if b.get("district"))))
-            sol_data = [
-                {"sol_id": b["sol_id"], "branch_name": b["branch_name"]}
-                for b in sorted(matching_branches, key=lambda x: x["sol_id"])
-            ]
-            if len(allowed_sol_ids) == 1:
-                fixed_sol_id = allowed_sol_ids[0]
-
-        elif all_regions_flag:
-            zones = all_zones
-            regions = all_regions
-            districts = all_districts
-            sol_data = [
-                {"sol_id": sid, "branch_name": branches_map[sid]["branch_name"]}
-                for sid in sorted(branches_map.keys())
-            ]
-
+        elif all_regions_flag and not has_zones and not has_regions and not has_districts and not has_sols:
+            matching_branches = list(branches_map.values())
         else:
-            zones = []
-            regions = []
-            districts = []
-            sol_data = []
+            zone_norms = {norm_loc(z) for z in allowed_zones if z} if has_zones else set()
+            reg_norms = {norm_loc(r) for r in allowed_regions if r} if has_regions else set()
+            dist_norms = {norm_loc(d) for d in allowed_districts if d} if has_districts else set()
+            sol_norms = {norm_sol(s) for s in allowed_sols if s} if has_sols else set()
+
+            matching_branches = []
+            for b in branches_map.values():
+                if has_zones and norm_loc(b.get("zone")) not in zone_norms:
+                    continue
+                if has_regions and norm_loc(b.get("region")) not in reg_norms:
+                    continue
+                if has_districts and norm_loc(b.get("district")) not in dist_norms:
+                    continue
+                if has_sols and norm_sol(b.get("sol_id")) not in sol_norms:
+                    continue
+                matching_branches.append(b)
+
+        zones = sorted(list(set(b["zone"] for b in matching_branches if b.get("zone"))))
+        regions = sorted(list(set(b["region"] for b in matching_branches if b.get("region"))))
+        districts = sorted(list(set(b["district"] for b in matching_branches if b.get("district"))))
+        sol_data = [
+            {"sol_id": b["sol_id"], "branch_name": b["branch_name"]}
+            for b in sorted(matching_branches, key=lambda x: x["sol_id"])
+        ]
+        if has_sols and len(allowed_sol_ids) == 1:
+            fixed_sol_id = allowed_sol_ids[0]
 
     else:
         # No restrictions — show all
@@ -1796,6 +1719,7 @@ def get_mis_filter_options():
             "is_restricted": perms.get("is_restricted", False),
             "allowed_zones": allowed_zones,
             "allowed_regions": allowed_regions,
+            "allowed_districts": allowed_districts,
             "allowed_sol_ids": allowed_sol_ids,
             "fixed_sol_id": fixed_sol_id
         }

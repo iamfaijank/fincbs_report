@@ -183,41 +183,34 @@ const filterMisTableDataByUserPermissions = function (data, filterOptions) {
 
 	const allowedZones = (perms.allowed_zones || []).map(norm);
 	const allowedRegions = (perms.allowed_regions || []).map(norm);
+	const allowedDistricts = (perms.allowed_districts || []).map(norm);
 	const allowedSolIds = (perms.allowed_sol_ids || []).map(normSol);
 
 	const hasZonePerms = allowedZones.length > 0;
 	const hasRegionPerms = allowedRegions.length > 0;
+	const hasDistrictPerms = allowedDistricts.length > 0;
 	const hasSolPerms = allowedSolIds.length > 0;
 
-	let result = data;
+	const zoneSet = hasZonePerms ? new Set(allowedZones) : null;
+	const regSet = hasRegionPerms ? new Set(allowedRegions) : null;
+	const distSet = hasDistrictPerms ? new Set(allowedDistricts) : null;
+	const solSet = hasSolPerms ? new Set(allowedSolIds) : null;
 
-	if (hasZonePerms) {
-		const zoneSet = new Set(allowedZones);
-		result = result.filter(r => r.zone && zoneSet.has(norm(r.zone)));
-		if (hasRegionPerms) {
-			const regSet = new Set(allowedRegions);
-			result = result.filter(r => r.region && regSet.has(norm(r.region)));
+	if (!hasZonePerms && !hasRegionPerms && !hasDistrictPerms && !hasSolPerms) {
+		if (filterOptions.zones && filterOptions.zones.length > 0) {
+			const zSet = new Set(filterOptions.zones.map(norm));
+			return data.filter(r => r.zone && zSet.has(norm(r.zone)));
 		}
-		if (hasSolPerms) {
-			const solSet = new Set(allowedSolIds);
-			result = result.filter(r => r.sol_id && solSet.has(normSol(r.sol_id)));
-		}
-	} else if (hasRegionPerms) {
-		const regSet = new Set(allowedRegions);
-		result = result.filter(r => r.region && regSet.has(norm(r.region)));
-		if (hasSolPerms) {
-			const solSet = new Set(allowedSolIds);
-			result = result.filter(r => r.sol_id && solSet.has(normSol(r.sol_id)));
-		}
-	} else if (hasSolPerms) {
-		const solSet = new Set(allowedSolIds);
-		result = result.filter(r => r.sol_id && solSet.has(normSol(r.sol_id)));
-	} else if (filterOptions.zones && filterOptions.zones.length > 0) {
-		const zoneSet = new Set(filterOptions.zones.map(norm));
-		result = result.filter(r => r.zone && zoneSet.has(norm(r.zone)));
+		return [];
 	}
 
-	return result;
+	return data.filter(r => {
+		if (zoneSet && (!r.zone || !zoneSet.has(norm(r.zone)))) return false;
+		if (regSet && (!r.region || !regSet.has(norm(r.region)))) return false;
+		if (distSet && (!r.district || !distSet.has(norm(r.district)))) return false;
+		if (solSet && (!r.sol_id || !solSet.has(normSol(r.sol_id)))) return false;
+		return true;
+	});
 };
 
 function _autoExpandSearchResults(self, data) {
