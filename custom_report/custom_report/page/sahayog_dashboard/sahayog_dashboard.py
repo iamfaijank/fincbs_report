@@ -241,13 +241,42 @@ def get_user_report_permissions(user):
     is_branch_manager = bool(
         "branch manager" in designation or "bm" == designation or "branch head" in designation
     )
+    permissions["is_branch_manager"] = is_branch_manager
 
+    pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
+    if pref_name:
+        doc = frappe.get_doc("Report Preference", pref_name)
+        permissions["pref_name"] = pref_name
+        permissions["is_restricted"] = True
+        permissions["all_regions"] = doc.get("all_regions") or False
+        
+        # Query child tables directly (avoids ORM caching issues)
+        permissions["zones"] = frappe.db.get_all("Zone Items", filters={"parent": pref_name, "parentfield": "zone"}, pluck="zone") or []
+        permissions["zone_ids"] = [re.sub(r"\D", "", z) for z in permissions["zones"] if re.sub(r"\D", "", z)]
+        
+        permissions["regions"] = frappe.db.get_all("Region Items", filters={"parent": pref_name, "parentfield": "region"}, pluck="region") or []
+        permissions["region_ids"] = [re.sub(r"\D", "", r) for r in permissions["regions"] if re.sub(r"\D", "", r)]
+        
+        permissions["sol_ids"] = frappe.db.get_all("Sol Items", filters={"parent": pref_name, "parentfield": "sol_id"}, pluck="sol_id") or []
+
+        has_pref_config = bool(permissions["zones"] or permissions["regions"] or permissions["sol_ids"] or permissions["all_regions"])
+
+        if has_pref_config:
+            if permissions["sol_ids"]:
+                branches_map = get_sahayog_branches_cached()
+                permissions["sol_data"] = [
+                    {"sol_id": sid, "branch_name": branches_map[sid]["branch_name"]}
+                    for sid in permissions["sol_ids"]
+                    if sid in branches_map
+                ]
+            return permissions
+
+    # If no Report Preference or empty Report Preference:
     if is_branch_manager and employee and employee.get("sahayog_branch"):
         emp_sol = str(employee["sahayog_branch"]).strip()
         branches_map = get_sahayog_branches_cached()
         branch_name = branches_map.get(emp_sol, {}).get("branch_name") or f"Branch {emp_sol}"
         permissions["is_restricted"] = True
-        permissions["is_branch_manager"] = True
         permissions["sol_ids"] = [emp_sol]
         permissions["sol_data"] = [{"sol_id": emp_sol, "branch_name": branch_name}]
         permissions["zones"] = []
@@ -258,7 +287,6 @@ def get_user_report_permissions(user):
         permissions["has_access"] = True
         return permissions
 
-    pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
     if not pref_name:
         if "System Manager" in frappe.get_roles(user):
             return permissions
@@ -275,34 +303,6 @@ def get_user_report_permissions(user):
         permissions["has_access"] = False
         return permissions
 
-    doc = frappe.get_doc("Report Preference", pref_name)
-    permissions["pref_name"] = pref_name
-    permissions["is_restricted"] = True
-    permissions["all_regions"] = doc.get("all_regions") or False
-    
-    # Query child tables directly (avoids ORM caching issues)
-    permissions["zones"] = frappe.db.get_all("Zone Items", filters={"parent": pref_name, "parentfield": "zone"}, pluck="zone") or []
-    permissions["zone_ids"] = [re.sub(r"\D", "", z) for z in permissions["zones"] if re.sub(r"\D", "", z)]
-    
-    permissions["regions"] = frappe.db.get_all("Region Items", filters={"parent": pref_name, "parentfield": "region"}, pluck="region") or []
-    permissions["region_ids"] = [re.sub(r"\D", "", r) for r in permissions["regions"] if re.sub(r"\D", "", r)]
-    
-    permissions["sol_ids"] = frappe.db.get_all("Sol Items", filters={"parent": pref_name, "parentfield": "sol_id"}, pluck="sol_id") or []
-
-    # Fallback ONLY when NO zones, NO regions, and NO all_regions are configured:
-    if not permissions["sol_ids"] and not permissions["zones"] and not permissions["regions"] and not permissions["all_regions"]:
-        if employee and employee.get("sahayog_branch"):
-            permissions["sol_ids"] = [str(employee["sahayog_branch"]).strip()]
-
-    # Fetch branch names from Sahayog Branch for permitted sol_ids
-    if permissions["sol_ids"]:
-        branches_map = get_sahayog_branches_cached()
-        permissions["sol_data"] = [
-            {"sol_id": sid, "branch_name": branches_map[sid]["branch_name"]}
-            for sid in permissions["sol_ids"]
-            if sid in branches_map
-        ]
-    
     return permissions
 
 
