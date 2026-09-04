@@ -201,10 +201,9 @@ def get_user_sol_ids():
     return {"user": user, "sol_ids": sol_ids, "employee_sol_id": employee_sol, "employee_zone": employee_zone, "employee_region": employee_region}
 
 
-@sahayog_cache(ttl=86400)
 def get_user_report_permissions(user):
     """
-    Fetches permissions from 'Report Preference' for the current user.
+    Fetches permissions from 'Report Preference' or Employee for the current user.
     Returns restricted lists for zones, regions, and sol_data (sol_id + branch_name).
     """
     permissions = {
@@ -216,16 +215,61 @@ def get_user_report_permissions(user):
         "all_regions": False,
         "zone_ids": [],
         "region_ids": [],
-        "has_access": True
+        "has_access": True,
+        "is_branch_manager": False
     }
 
     # Administrator always has full unrestricted access to all zones and branches
     if user == "Administrator":
         return permissions
 
+    # Check Employee record for designation & sahayog_branch
+    employee = frappe.db.get_value(
+        "Employee", {"user_id": user}, ["name", "sahayog_branch", "designation"], as_dict=True
+    )
+    if not employee:
+        employee = frappe.db.get_value(
+            "Employee", {"prefered_email": user}, ["name", "sahayog_branch", "designation"], as_dict=True
+        ) or frappe.db.get_value(
+            "Employee", {"company_email": user}, ["name", "sahayog_branch", "designation"], as_dict=True
+        ) or frappe.db.get_value(
+            "Employee", {"name": user}, ["name", "sahayog_branch", "designation"], as_dict=True
+        )
+
+    designation = str(employee.get("designation") or "").strip().lower() if employee else ""
+    is_branch_manager = bool(
+        "branch manager" in designation or "bm" == designation or "branch head" in designation
+    )
+
+    if is_branch_manager and employee and employee.get("sahayog_branch"):
+        emp_sol = str(employee["sahayog_branch"]).strip()
+        branches_map = get_sahayog_branches_cached()
+        branch_name = branches_map.get(emp_sol, {}).get("branch_name") or f"Branch {emp_sol}"
+        permissions["is_restricted"] = True
+        permissions["is_branch_manager"] = True
+        permissions["sol_ids"] = [emp_sol]
+        permissions["sol_data"] = [{"sol_id": emp_sol, "branch_name": branch_name}]
+        permissions["zones"] = []
+        permissions["regions"] = []
+        permissions["zone_ids"] = []
+        permissions["region_ids"] = []
+        permissions["all_regions"] = False
+        permissions["has_access"] = True
+        return permissions
+
     pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
     if not pref_name:
         if "System Manager" in frappe.get_roles(user):
+            return permissions
+        # Fallback to Employee sahayog_branch if assigned
+        if employee and employee.get("sahayog_branch"):
+            emp_sol = str(employee["sahayog_branch"]).strip()
+            branches_map = get_sahayog_branches_cached()
+            branch_name = branches_map.get(emp_sol, {}).get("branch_name") or f"Branch {emp_sol}"
+            permissions["is_restricted"] = True
+            permissions["sol_ids"] = [emp_sol]
+            permissions["sol_data"] = [{"sol_id": emp_sol, "branch_name": branch_name}]
+            permissions["has_access"] = True
             return permissions
         permissions["has_access"] = False
         return permissions
@@ -246,9 +290,8 @@ def get_user_report_permissions(user):
 
     # Fallback: if no sol_ids, no zones, no regions — use Employee sahayog_branch
     if not permissions["sol_ids"] and not permissions["zones"] and not permissions["regions"] and not permissions["all_regions"]:
-        employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
-        if employee_sol:
-            permissions["sol_ids"] = [employee_sol]
+        if employee and employee.get("sahayog_branch"):
+            permissions["sol_ids"] = [str(employee["sahayog_branch"]).strip()]
 
     # Fetch branch names from Sahayog Branch for permitted sol_ids
     if permissions["sol_ids"]:
