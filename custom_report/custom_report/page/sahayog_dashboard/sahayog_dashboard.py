@@ -204,7 +204,7 @@ def get_user_sol_ids():
 @sahayog_cache(ttl=86400)
 def get_user_report_permissions(user):
     """
-    Fetches permissions from 'Report Preference' for the current user.
+    Fetches permissions from 'Report Preference' or Employee for the current user.
     Returns restricted lists for zones, regions, and sol_data (sol_id + branch_name).
     """
     permissions = {
@@ -216,16 +216,61 @@ def get_user_report_permissions(user):
         "all_regions": False,
         "zone_ids": [],
         "region_ids": [],
-        "has_access": True
+        "has_access": True,
+        "is_branch_manager": False
     }
 
     # Administrator always has full unrestricted access to all zones and branches
     if user == "Administrator":
         return permissions
 
+    # Check Employee record for designation & sahayog_branch
+    employee = frappe.db.get_value(
+        "Employee", {"user_id": user}, ["name", "sahayog_branch", "designation"], as_dict=True
+    )
+    if not employee:
+        employee = frappe.db.get_value(
+            "Employee", {"prefered_email": user}, ["name", "sahayog_branch", "designation"], as_dict=True
+        ) or frappe.db.get_value(
+            "Employee", {"company_email": user}, ["name", "sahayog_branch", "designation"], as_dict=True
+        ) or frappe.db.get_value(
+            "Employee", {"name": user}, ["name", "sahayog_branch", "designation"], as_dict=True
+        )
+
+    designation = str(employee.get("designation") or "").strip().lower() if employee else ""
+    is_branch_manager = bool(
+        "branch manager" in designation or "bm" == designation or "branch head" in designation
+    )
+
+    if is_branch_manager and employee and employee.get("sahayog_branch"):
+        emp_sol = str(employee["sahayog_branch"]).strip()
+        branches_map = get_sahayog_branches_cached()
+        branch_name = branches_map.get(emp_sol, {}).get("branch_name") or f"Branch {emp_sol}"
+        permissions["is_restricted"] = True
+        permissions["is_branch_manager"] = True
+        permissions["sol_ids"] = [emp_sol]
+        permissions["sol_data"] = [{"sol_id": emp_sol, "branch_name": branch_name}]
+        permissions["zones"] = []
+        permissions["regions"] = []
+        permissions["zone_ids"] = []
+        permissions["region_ids"] = []
+        permissions["all_regions"] = False
+        permissions["has_access"] = True
+        return permissions
+
     pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
     if not pref_name:
         if "System Manager" in frappe.get_roles(user):
+            return permissions
+        # Fallback to Employee sahayog_branch if assigned
+        if employee and employee.get("sahayog_branch"):
+            emp_sol = str(employee["sahayog_branch"]).strip()
+            branches_map = get_sahayog_branches_cached()
+            branch_name = branches_map.get(emp_sol, {}).get("branch_name") or f"Branch {emp_sol}"
+            permissions["is_restricted"] = True
+            permissions["sol_ids"] = [emp_sol]
+            permissions["sol_data"] = [{"sol_id": emp_sol, "branch_name": branch_name}]
+            permissions["has_access"] = True
             return permissions
         permissions["has_access"] = False
         return permissions
@@ -244,11 +289,10 @@ def get_user_report_permissions(user):
     
     permissions["sol_ids"] = frappe.db.get_all("Sol Items", filters={"parent": pref_name, "parentfield": "sol_id"}, pluck="sol_id") or []
 
-    # Fallback: if no sol_ids, no zones, no regions — use Employee sahayog_branch
+    # Fallback ONLY when NO zones, NO regions, and NO all_regions are configured:
     if not permissions["sol_ids"] and not permissions["zones"] and not permissions["regions"] and not permissions["all_regions"]:
-        employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
-        if employee_sol:
-            permissions["sol_ids"] = [employee_sol]
+        if employee and employee.get("sahayog_branch"):
+            permissions["sol_ids"] = [str(employee["sahayog_branch"]).strip()]
 
     # Fetch branch names from Sahayog Branch for permitted sol_ids
     if permissions["sol_ids"]:
@@ -260,6 +304,122 @@ def get_user_report_permissions(user):
         ]
     
     return permissions
+
+
+def get_permitted_sol_ids_for_user(perms):
+    """
+    Resolves permitted sol_ids based on hierarchical permissions:
+    - If unrestricted: returns None (meaning all allowed).
+    - If restricted:
+      - If zones specified:
+        - If regions also specified: matches (zone AND region)
+        - Else: matches (zone)
+        - If sols also specified: further restricts to (sol_id in sols)
+      - Else if regions specified:
+        - matches (region)
+        - If sols also specified: further restricts to (sol_id in sols)
+      - Else if sols specified:
+        - matches (sol_id in sols)
+      - If all_regions is True and no other restriction: returns all sol_ids
+      - Returns a list of permitted sol_ids.
+    """
+    if not perms or not perms.get("is_restricted"):
+        return None
+
+    allowed_zones = perms.get("zones", [])
+    allowed_regions = perms.get("regions", [])
+    allowed_sols = perms.get("sol_ids", [])
+    all_regions = perms.get("all_regions", False)
+
+    has_zones = bool(allowed_zones)
+    has_regions = bool(allowed_regions) and not all_regions
+    has_sols = bool(allowed_sols)
+
+    branches_map = get_sahayog_branches_cached()
+    import re
+    norm_loc = lambda s: re.sub(r"[\s\-]+", "", str(s or "")).upper()
+    norm_sol = lambda s: str(s or "").strip().lstrip("0")
+
+    matching_sols = set()
+
+    if has_zones:
+        zone_norms = {norm_loc(z) for z in allowed_zones if z}
+        reg_norms = {norm_loc(r) for r in allowed_regions if r} if has_regions else set()
+        sol_norms = {norm_sol(s) for s in allowed_sols if s} if has_sols else set()
+
+        for sid, b in branches_map.items():
+            if norm_loc(b.get("zone")) in zone_norms:
+                if not has_regions or norm_loc(b.get("region")) in reg_norms:
+                    if not has_sols or norm_sol(sid) in sol_norms:
+                        matching_sols.add(str(sid).strip())
+
+    elif has_regions:
+        reg_norms = {norm_loc(r) for r in allowed_regions if r}
+        sol_norms = {norm_sol(s) for s in allowed_sols if s} if has_sols else set()
+
+        for sid, b in branches_map.items():
+            if norm_loc(b.get("region")) in reg_norms:
+                if not has_sols or norm_sol(sid) in sol_norms:
+                    matching_sols.add(str(sid).strip())
+
+    elif has_sols:
+        sol_norms = {norm_sol(s) for s in allowed_sols if s}
+        for sid in branches_map.keys():
+            if norm_sol(sid) in sol_norms:
+                matching_sols.add(str(sid).strip())
+
+    elif all_regions:
+        return list(branches_map.keys())
+
+    return list(matching_sols)
+
+
+def _apply_report_prefs_filter(result, perms=None):
+    """Apply hierarchical zone/region/sol_id filtering from Report Preference to a list of dicts."""
+    if not result:
+        return []
+    import re as _re
+    if perms is None:
+        perms = get_user_report_permissions(frappe.session.user)
+    if not perms.get("is_restricted"):
+        return result
+
+    allowed_zones = perms.get("zones", [])
+    allowed_regions = perms.get("regions", [])
+    allowed_sol_ids = perms.get("sol_ids", [])
+    all_regions = perms.get("all_regions", False)
+
+    has_zones = bool(allowed_zones)
+    has_regions = bool(allowed_regions) and not all_regions
+    has_sols = bool(allowed_sol_ids)
+
+    norm_loc = lambda s: _re.sub(r"[\s\-]+", "", str(s or "")).upper()
+    norm_sol = lambda s: str(s or "").strip().lstrip("0")
+
+    if has_zones:
+        zn = {norm_loc(z) for z in allowed_zones if z}
+        result = [r for r in result if norm_loc(r.get("zone")) in zn]
+        if has_regions:
+            rn = {norm_loc(r) for r in allowed_regions if r}
+            result = [r for r in result if norm_loc(r.get("region")) in rn]
+        if has_sols:
+            sn = {norm_sol(s) for s in allowed_sol_ids if s}
+            result = [r for r in result if norm_sol(r.get("sol_id")) in sn]
+    elif has_regions:
+        rn = {norm_loc(r) for r in allowed_regions if r}
+        result = [r for r in result if norm_loc(r.get("region")) in rn]
+        if has_sols:
+            sn = {norm_sol(s) for s in allowed_sol_ids if s}
+            result = [r for r in result if norm_sol(r.get("sol_id")) in sn]
+    elif has_sols:
+        sn = {norm_sol(s) for s in allowed_sol_ids if s}
+        result = [r for r in result if norm_sol(r.get("sol_id")) in sn]
+    elif all_regions:
+        pass
+    else:
+        result = []
+
+    return result
 
 
 def calculate_category(achievement_pct):
@@ -1516,33 +1676,7 @@ def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
             })
 
         # Apply User Report Permissions filtering
-        user = frappe.session.user
-        perms = get_user_report_permissions(user)
-
-        if perms.get("is_restricted"):
-            allowed_zones = perms.get("zones", [])
-            allowed_regions = perms.get("regions", [])
-            allowed_sols = perms.get("sol_ids", [])
-
-            has_zone_or_region_perms = bool(allowed_zones or allowed_regions or perms.get("all_regions"))
-
-            if has_zone_or_region_perms:
-                if allowed_zones:
-                    allowed_norm = [re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones]
-                    result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in allowed_norm]
-
-                if allowed_regions and not perms.get("all_regions"):
-                    allowed_reg_norm = [re.sub(r"[\s\-]+", "", reg or "").upper() for reg in allowed_regions]
-                    result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in allowed_reg_norm]
-
-            if allowed_sols and not sol_ids:
-                allowed_sol_set = set(str(s) for s in allowed_sols)
-                result = [r for r in result if str(r.get("sol_id")) in allowed_sol_set]
-
-            elif not allowed_zones and not allowed_regions and not allowed_sols and not perms.get("all_regions"):
-                result = []
-
-        return result
+        return _apply_report_prefs_filter(result)
     except Exception as e:
         frappe.log_error(f"Error executing RD/SMBG table query: {str(e)}", "RD SMBG Table API")
         return []
@@ -1554,75 +1688,106 @@ def get_mis_filter_options():
     perms = get_user_report_permissions(user)
     import re
     
-    zones = []
-    regions = []
-    districts = []
-
     branches_map = get_sahayog_branches_cached()
     all_zones = sorted(list(set(b["zone"] for b in branches_map.values() if b["zone"])))
     all_regions = sorted(list(set(b["region"] for b in branches_map.values() if b["region"])))
     all_districts = sorted(list(set(b["district"] for b in branches_map.values() if b["district"])))
 
-    # Apply same permission logic as Drishti (get_sahayog_dashboard)
+    norm_loc = lambda s: re.sub(r"[\s\-]+", "", str(s or "")).upper()
+    norm_sol = lambda s: str(s or "").strip().lstrip("0")
+
+    fixed_sol_id = None
+    allowed_sol_ids = perms.get("sol_ids", [])
+    allowed_zones = perms.get("zones", [])
+    allowed_regions = perms.get("regions", [])
+    all_regions_flag = perms.get("all_regions", False)
+
     if perms.get("is_restricted"):
-        allowed_zones = perms.get("zones", [])
-        allowed_regions = perms.get("regions", [])
-        # If zone permissions exist, use zones as primary filter — ignore sol_ids for data scope
-        if allowed_zones:
-            # Normalize: uppercase, remove spaces/dashes/hyphens for matching
-            allowed_norm = [re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones]
-            zones = [z for z in all_zones if re.sub(r"[\s\-]+", "", z or "").upper() in allowed_norm]
-            regions = all_regions
-            if allowed_regions:
-                allowed_reg_norm = [re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions]
-                regions = [r for r in all_regions if re.sub(r"[\s\-]+", "", r or "").upper() in allowed_reg_norm]
-            districts = all_districts
-        elif perms.get("sol_ids"):
-            # No zone permissions — restrict by sol_ids
-            sol_branches = [branches_map[sid] for sid in perms["sol_ids"] if sid in branches_map]
-            zones = sorted(list(set(b["zone"] for b in sol_branches if b["zone"])))
-            regions = sorted(list(set(b["region"] for b in sol_branches if b["region"])))
-            districts = sorted(list(set(b["district"] for b in sol_branches if b["district"])))
-        else:
+        has_zones = bool(allowed_zones)
+        has_regions = bool(allowed_regions) and not all_regions_flag
+        has_sols = bool(allowed_sol_ids)
+
+        if has_zones:
+            zone_norms = {norm_loc(z) for z in allowed_zones if z}
+            reg_norms = {norm_loc(r) for r in allowed_regions if r} if has_regions else set()
+            sol_norms = {norm_sol(s) for s in allowed_sol_ids if s} if has_sols else set()
+
+            matching_branches = []
+            for b in branches_map.values():
+                if norm_loc(b.get("zone")) in zone_norms:
+                    if not has_regions or norm_loc(b.get("region")) in reg_norms:
+                        if not has_sols or norm_sol(b.get("sol_id")) in sol_norms:
+                            matching_branches.append(b)
+
+            zones = sorted(list(set(b["zone"] for b in matching_branches if b.get("zone"))))
+            regions = sorted(list(set(b["region"] for b in matching_branches if b.get("region"))))
+            districts = sorted(list(set(b["district"] for b in matching_branches if b.get("district"))))
+            sol_data = [
+                {"sol_id": b["sol_id"], "branch_name": b["branch_name"]}
+                for b in sorted(matching_branches, key=lambda x: x["sol_id"])
+            ]
+            if has_sols and len(allowed_sol_ids) == 1:
+                fixed_sol_id = allowed_sol_ids[0]
+
+        elif has_regions:
+            reg_norms = {norm_loc(r) for r in allowed_regions if r}
+            sol_norms = {norm_sol(s) for s in allowed_sol_ids if s} if has_sols else set()
+
+            matching_branches = []
+            for b in branches_map.values():
+                if norm_loc(b.get("region")) in reg_norms:
+                    if not has_sols or norm_sol(b.get("sol_id")) in sol_norms:
+                        matching_branches.append(b)
+
+            zones = sorted(list(set(b["zone"] for b in matching_branches if b.get("zone"))))
+            regions = sorted(list(set(b["region"] for b in matching_branches if b.get("region"))))
+            districts = sorted(list(set(b["district"] for b in matching_branches if b.get("district"))))
+            sol_data = [
+                {"sol_id": b["sol_id"], "branch_name": b["branch_name"]}
+                for b in sorted(matching_branches, key=lambda x: x["sol_id"])
+            ]
+            if has_sols and len(allowed_sol_ids) == 1:
+                fixed_sol_id = allowed_sol_ids[0]
+
+        elif has_sols:
+            sol_norms = {norm_sol(s) for s in allowed_sol_ids if s}
+            matching_branches = [b for b in branches_map.values() if norm_sol(b.get("sol_id")) in sol_norms]
+
+            zones = sorted(list(set(b["zone"] for b in matching_branches if b.get("zone"))))
+            regions = sorted(list(set(b["region"] for b in matching_branches if b.get("region"))))
+            districts = sorted(list(set(b["district"] for b in matching_branches if b.get("district"))))
+            sol_data = [
+                {"sol_id": b["sol_id"], "branch_name": b["branch_name"]}
+                for b in sorted(matching_branches, key=lambda x: x["sol_id"])
+            ]
+            if len(allowed_sol_ids) == 1:
+                fixed_sol_id = allowed_sol_ids[0]
+
+        elif all_regions_flag:
             zones = all_zones
             regions = all_regions
             districts = all_districts
+            sol_data = [
+                {"sol_id": sid, "branch_name": branches_map[sid]["branch_name"]}
+                for sid in sorted(branches_map.keys())
+            ]
+
+        else:
+            zones = []
+            regions = []
+            districts = []
+            sol_data = []
 
     else:
         # No restrictions — show all
         zones = all_zones
         regions = all_regions
         districts = all_districts
+        sol_data = [
+            {"sol_id": sid, "branch_name": branches_map[sid]["branch_name"]}
+            for sid in sorted(branches_map.keys())
+        ]
 
-    fixed_sol_id = None
-    allowed_sol_ids = perms.get("sol_ids", [])
-    
-    # Fallback: if no sol_ids from Report Preference, check Employee sahayog_branch
-    if not allowed_sol_ids and perms.get("is_restricted"):
-        employee_sol = frappe.db.get_value("Employee", {"user_id": user}, "sahayog_branch")
-        if employee_sol:
-            allowed_sol_ids = [employee_sol]
-            fixed_sol_id = employee_sol
-
-    # If exactly one sol_id from report pref, also treat as fixed
-    if not fixed_sol_id and len(allowed_sol_ids) == 1:
-        fixed_sol_id = allowed_sol_ids[0]
-    
-    # Build sol_data: branch names from Sahayog Branch
-    sol_data = perms.get("sol_data", [])
-    if not sol_data:
-        if allowed_sol_ids:
-            sol_data = [
-                {"sol_id": sid, "branch_name": branches_map[sid]["branch_name"]}
-                for sid in sorted(allowed_sol_ids)
-                if sid in branches_map
-            ]
-        else:
-            sol_data = [
-                {"sol_id": sid, "branch_name": branches_map[sid]["branch_name"]}
-                for sid in sorted(branches_map.keys())
-            ]
-    
     return {
         "zones": sorted(zones),
         "regions": sorted(regions),
@@ -1630,8 +1795,8 @@ def get_mis_filter_options():
         "sol_data": sol_data,
         "permissions": {
             "is_restricted": perms.get("is_restricted", False),
-            "allowed_zones": perms.get("zones", []),
-            "allowed_regions": perms.get("regions", []),
+            "allowed_zones": allowed_zones,
+            "allowed_regions": allowed_regions,
             "allowed_sol_ids": allowed_sol_ids,
             "fixed_sol_id": fixed_sol_id
         }
@@ -1792,25 +1957,7 @@ def get_daily_account_opening_data(selected_date=None):
         result = list(branch_aggregates.values())
 
         # Enforce Report Preference permissions
-        if perms.get("is_restricted"):
-            allowed_zones = set(perms.get("zones", []))
-            allowed_regions = set(perms.get("regions", []))
-            allowed_sol_ids = set(perms.get("sol_ids", []))
-
-            import re
-            if allowed_zones:
-                allowed_zone_norm = {re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones}
-                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in allowed_zone_norm]
-
-            if not perms.get("all_regions") and allowed_regions:
-                allowed_region_norm = {re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions}
-                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in allowed_region_norm]
-
-            if allowed_sol_ids:
-                allowed_sols_str = {str(s).strip() for s in allowed_sol_ids}
-                result = [r for r in result if str(r.get("sol_id")).strip() in allowed_sols_str]
-
-        return result
+        return _apply_report_prefs_filter(result, perms)
         
     except Exception as e:
         frappe.log_error(f"Error executing Daily Account Opening query: {str(e)}", "Daily Account Opening API")
@@ -1997,24 +2144,7 @@ def get_ntb_evr_data(selected_date=None):
                 branch_map[sol_id]["evr"] += count
 
         result = list(branch_map.values())
-
-        if perms.get("is_restricted"):
-            allowed_zones = set(perms.get("zones", []))
-            allowed_regions = set(perms.get("regions", []))
-            allowed_sol_ids = set(perms.get("sol_ids", []))
-
-            import re
-            if allowed_zones:
-                allowed_zone_norm = {re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones}
-                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in allowed_zone_norm]
-
-            if not perms.get("all_regions") and allowed_regions:
-                allowed_region_norm = {re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions}
-                result = [r for r in result if re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in allowed_region_norm]
-
-            if allowed_sol_ids:
-                allowed_sols_str = {str(s).strip() for s in allowed_sol_ids}
-                result = [r for r in result if str(r.get("sol_id")).strip() in allowed_sols_str]
+        result = _apply_report_prefs_filter(result, perms)
 
         result.sort(key=lambda x: (x["zone"], x["region"], x["district"], x["sol_id"]))
         return {"total_rows": len(result), "data": result}
@@ -2033,24 +2163,11 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0, selected_
     limit = int(limit)
     offset = int(offset)
 
-    # Branch Manager restriction: a BM only sees rows whose SOL ID matches the SOL
-    # set on their Employee doctype (sahayog_branch). Other restricted users fall
-    # back to their Report Preference SOLs.
     user = frappe.session.user
     perms = get_user_report_permissions(user)
-    employee = frappe.db.get_value(
-        "Employee", {"user_id": user}, ["sahayog_branch", "designation"], as_dict=True
-    )
-    is_branch_manager = bool(
-        employee and "branch manager" in (employee.get("designation") or "").lower()
-    )
-
-    if is_branch_manager and employee and employee.get("sahayog_branch"):
-        sol_ids = [employee["sahayog_branch"]]
-        restricted = True
-    else:
-        sol_ids = list(perms.get("sol_ids") or [])
-        restricted = perms.get("is_restricted", False)
+    restricted = perms.get("is_restricted", False)
+    permitted_sols = get_permitted_sol_ids_for_user(perms)
+    sol_ids = permitted_sols if restricted else None
 
     # Filter by selected zones if passed from UI
     if selected_zones:
@@ -2062,16 +2179,16 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0, selected_
         if isinstance(selected_zones, list) and len(selected_zones) > 0:
             branches_map = get_sahayog_branches_cached()
             zone_sols = [str(b["sol_id"]).strip() for b in branches_map.values() if b.get("zone") in selected_zones]
-            if restricted and sol_ids:
+            if sol_ids is not None:
                 sol_ids = [s for s in sol_ids if str(s).strip() in zone_sols]
             else:
                 sol_ids = zone_sols
-                restricted = True
+            restricted = True
 
-    if restricted and sol_ids:
+    if restricted and sol_ids is not None and len(sol_ids) > 0:
         quoted_sols = ", ".join("'{}'".format(str(s).replace("'", "''")) for s in sol_ids)
         sol_filter_balance = f"AND gam.sol_id IN ({quoted_sols})"
-    elif restricted and not sol_ids:
+    elif restricted and sol_ids is not None and len(sol_ids) == 0:
         return {"total_rows": 0, "data": []}
     else:
         sol_filter_balance = ""
@@ -3384,23 +3501,14 @@ def get_gl_wise_ch_report_data(selected_date=None, user=None):
     params = [selected_date]
 
     if perms and perms.get("is_restricted"):
-        allowed_sol_ids = set()
-
-        if perms.get("sol_ids"):
-            allowed_sol_ids.update(perms["sol_ids"])
-
-        if perms.get("zones") or (not perms.get("all_regions") and perms.get("regions")):
-            branches_map = get_sahayog_branches_cached()
-            for sid, b in branches_map.items():
-                if perms.get("zones") and b.get("zone") in perms["zones"]:
-                    allowed_sol_ids.add(sid)
-                if not perms.get("all_regions") and perms.get("regions") and b.get("region") in perms["regions"]:
-                    allowed_sol_ids.add(sid)
-
-        if allowed_sol_ids:
-            placeholders = ", ".join(["%s"] * len(allowed_sol_ids))
-            where_clauses.append(f"sol_id IN ({placeholders})")
-            params.extend(list(allowed_sol_ids))
+        allowed_sol_ids = get_permitted_sol_ids_for_user(perms)
+        if allowed_sol_ids is not None:
+            if allowed_sol_ids:
+                placeholders = ", ".join(["%s"] * len(allowed_sol_ids))
+                where_clauses.append(f"sol_id IN ({placeholders})")
+                params.extend(list(allowed_sol_ids))
+            else:
+                return {"product_wise": [], "all_products": []}
 
     where_sql = " AND ".join(where_clauses)
 
@@ -5719,25 +5827,6 @@ def get_raw_demand_collection_data(selected_date=None):
             else:
                 return []
 
-def _apply_report_prefs_filter(result):
-    """Apply zone/region/sol_id filtering from Report Preference to a list of dicts."""
-    import re as _re
-    perms = get_user_report_permissions(frappe.session.user)
-    if not perms.get("is_restricted"):
-        return result
-    allowed_zones = set(perms.get("zones", []))
-    allowed_regions = set(perms.get("regions", []))
-    allowed_sol_ids = set(perms.get("sol_ids", []))
-    if allowed_zones:
-        zn = {_re.sub(r"[\s\-]+", "", z or "").upper() for z in allowed_zones}
-        result = [r for r in result if _re.sub(r"[\s\-]+", "", r.get("zone") or "").upper() in zn]
-    if not perms.get("all_regions") and allowed_regions:
-        rn = {_re.sub(r"[\s\-]+", "", r or "").upper() for r in allowed_regions}
-        result = [r for r in result if _re.sub(r"[\s\-]+", "", r.get("region") or "").upper() in rn]
-    if allowed_sol_ids:
-        sn = {str(s).strip() for s in allowed_sol_ids}
-        result = [r for r in result if str(r.get("sol_id")).strip() in sn]
-    return result
 
 @frappe.whitelist()
 def get_agent_wise_demand_collection_data(selected_date=None):
@@ -6335,13 +6424,7 @@ def get_product_wise_tgt_vs_ach_data(financial_year=None, selected_date=None, ta
                 "ach": ach
             })
 
-    return result
-
-
-    return result
-
-
-
+    return _apply_report_prefs_filter(result)
 
 
 def resolve_ss_vs_date(target_date=None):
@@ -6445,33 +6528,12 @@ def get_rm_wise_ss_vs_data(selected_date=None):
     where_args = []
 
     if perms.get("is_restricted"):
-        if perms.get("sol_ids"):
-            sols = perms.get("sol_ids")
-            where_clauses.append("(A.branch_code IN %s OR B.sol_id IN %s)")
-            where_args.extend([tuple(sols), tuple(sols)])
-        else:
-            branches_map = get_sahayog_branches_cached()
-            if perms.get("zone_ids"):
-                all_zones = set(b["zone"] for b in branches_map.values() if b["zone"])
-                zone_pattern = re.compile(f"({'|'.join(re.escape(zid) for zid in perms['zone_ids'])})")
-                matched_zones = [z for z in all_zones if zone_pattern.search(z)]
-                if matched_zones:
-                    where_clauses.append("B.zone IN %s")
-                    where_args.append(tuple(matched_zones))
-                else:
-                    where_clauses.append("1 = 0")
-
-            if not perms.get("all_regions") and perms.get("region_ids"):
-                all_regions = set(b["region"] for b in branches_map.values() if b["region"])
-                region_pattern = re.compile(f"({'|'.join(re.escape(rid) for rid in perms['region_ids'])})")
-                matched_regions = [r for r in all_regions if region_pattern.search(r)]
-                if matched_regions:
-                    where_clauses.append("B.region IN %s")
-                    where_args.append(tuple(matched_regions))
-                else:
-                    where_clauses.append("1 = 0")
-
-            if not perms.get("zone_ids") and not perms.get("region_ids") and not perms.get("all_regions"):
+        permitted_sols = get_permitted_sol_ids_for_user(perms)
+        if permitted_sols is not None:
+            if permitted_sols:
+                where_clauses.append("(A.branch_code IN %s OR B.sol_id IN %s)")
+                where_args.extend([tuple(permitted_sols), tuple(permitted_sols)])
+            else:
                 where_clauses.append("1 = 0")
 
     where_stmt = " AND ".join(where_clauses)
