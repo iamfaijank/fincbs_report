@@ -109,6 +109,30 @@ def get_user_report_permissions():
     """
     user = frappe.session.user
     user_roles = set(frappe.get_roles())
+
+    # If user is a Branch Manager, strictly restrict to their employee.sahayog_branch
+    employee = frappe.db.get_value(
+        "Employee", {"user_id": user}, ["name", "sahayog_branch", "designation"], as_dict=True
+    )
+    is_branch_manager = bool(
+        employee and "branch manager" in (employee.get("designation") or "").lower()
+    )
+    if is_branch_manager and employee and employee.get("sahayog_branch"):
+        emp_sol = str(employee["sahayog_branch"]).strip()
+        branches = frappe.get_all(
+            "Sahayog Branch",
+            filters={"name": emp_sol},
+            fields=["name as sol_id", "branch as branch_name"]
+        )
+        if not branches:
+            branches = [{"sol_id": emp_sol, "branch_name": f"Branch {emp_sol}"}]
+        return {
+            "is_branch_user": True,
+            "is_dept_user": False,
+            "sol_data": branches,
+            "is_branch_manager": True,
+            "sol_id": emp_sol
+        }
     
     is_branch_user = "Branch Report" in user_roles
     is_dept_user = bool(user_roles.intersection(get_department_roles()))
