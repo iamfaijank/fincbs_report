@@ -173,54 +173,44 @@ const filterMisTableDataByUserPermissions = function (data, filterOptions) {
 
 	const perms = filterOptions.permissions || {};
 
-	// If user is not restricted (Admin / HO user), return full cached dataset
+	// If user is not restricted (Admin / HO user), return full dataset
 	if (!perms.is_restricted) {
 		return data;
 	}
 
-	const norm = s => {
-		const str = (s || "").toString().trim();
-		const m = str.match(/\d+/);
-		return m ? parseInt(m[0], 10).toString() : str.replace(/[\s\-]+/g, "").toUpperCase();
-	};
+	const norm = s => String(s || "").replace(/[\s\-]+/g, "").toUpperCase();
 	const normSol = s => String(s || "").trim().replace(/^0+/, "");
 
 	const allowedZones = (perms.allowed_zones || []).map(norm);
 	const allowedRegions = (perms.allowed_regions || []).map(norm);
+	const allowedDistricts = (perms.allowed_districts || []).map(norm);
 	const allowedSolIds = (perms.allowed_sol_ids || []).map(normSol);
 
 	const hasZonePerms = allowedZones.length > 0;
 	const hasRegionPerms = allowedRegions.length > 0;
+	const hasDistrictPerms = allowedDistricts.length > 0;
 	const hasSolPerms = allowedSolIds.length > 0;
 
-	let result = data;
+	const zoneSet = hasZonePerms ? new Set(allowedZones) : null;
+	const regSet = hasRegionPerms ? new Set(allowedRegions) : null;
+	const distSet = hasDistrictPerms ? new Set(allowedDistricts) : null;
+	const solSet = hasSolPerms ? new Set(allowedSolIds) : null;
 
-	// 1. Explicit Zone permissions
-	if (hasZonePerms) {
-		result = result.filter(r => r.zone && allowedZones.includes(norm(r.zone)));
-		if (hasRegionPerms) {
-			result = result.filter(r => r.region && allowedRegions.includes(norm(r.region)));
+	if (!hasZonePerms && !hasRegionPerms && !hasDistrictPerms && !hasSolPerms) {
+		if (filterOptions.zones && filterOptions.zones.length > 0) {
+			const zSet = new Set(filterOptions.zones.map(norm));
+			return data.filter(r => r.zone && zSet.has(norm(r.zone)));
 		}
-	} else if (hasRegionPerms) {
-		// 2. Explicit Region permissions
-		result = result.filter(r => r.region && allowedRegions.includes(norm(r.region)));
-	} else if (hasSolPerms) {
-		// 3. Explicit SOL ID permissions (Single or Multiple SOL access)
-		const solSet = new Set(allowedSolIds);
-		result = result.filter(r => r.sol_id && solSet.has(normSol(r.sol_id)));
-	} else if (filterOptions.zones && filterOptions.zones.length > 0) {
-		// 4. Fallback based on filterOptions.zones
-		const zoneSet = new Set(filterOptions.zones.map(norm));
-		result = result.filter(r => r.zone && zoneSet.has(norm(r.zone)));
+		return [];
 	}
 
-	// Always enforce sol_id permissions when they exist
-	if (hasSolPerms) {
-		const solSet = new Set(allowedSolIds);
-		result = result.filter(r => r.sol_id && solSet.has(normSol(r.sol_id)));
-	}
-
-	return result;
+	return data.filter(r => {
+		if (zoneSet && (!r.zone || !zoneSet.has(norm(r.zone)))) return false;
+		if (regSet && (!r.region || !regSet.has(norm(r.region)))) return false;
+		if (distSet && (!r.district || !distSet.has(norm(r.district)))) return false;
+		if (solSet && (!r.sol_id || !solSet.has(normSol(r.sol_id)))) return false;
+		return true;
+	});
 };
 
 function _autoExpandSearchResults(self, data) {

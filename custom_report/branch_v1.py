@@ -7,7 +7,10 @@ from frappe.utils import flt, getdate
 # BRANCH APIs
 # ============================================================================
 
-from custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard import get_user_report_permissions
+from custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard import (
+    get_user_report_permissions,
+    get_permitted_sol_ids_for_user
+)
 
 @frappe.whitelist()
 def search_branches(txt: str):
@@ -26,22 +29,12 @@ def search_branches(txt: str):
     params = {"txt": f"%{txt}%"}
 
     if perms.get("is_restricted"):
-        # Priority 1: Specific SOL IDs
-        if perms.get("sol_ids"):
-            conditions.append("sol_id IN %(sol_ids)s")
-            params["sol_ids"] = perms["sol_ids"]
-        
-        # Priority 2: Zone & Region
-        else:
-            if perms.get("zone_ids"):
-                zone_regex = "|".join(perms["zone_ids"])
-                conditions.append(f"zone REGEXP '({zone_regex})'")
-            
-            if not perms.get("all_regions") and perms.get("region_ids"):
-                region_regex = "|".join(perms["region_ids"])
-                conditions.append(f"region REGEXP '({region_regex})'")
-            
-            if not perms.get("zone_ids") and not perms.get("region_ids") and not perms.get("all_regions"):
+        permitted_sols = get_permitted_sol_ids_for_user(perms)
+        if permitted_sols is not None:
+            if permitted_sols:
+                conditions.append("sol_id IN %(sol_ids)s")
+                params["sol_ids"] = tuple(permitted_sols)
+            else:
                 conditions.append("1=0")
 
     where_clause = " AND ".join(conditions)
