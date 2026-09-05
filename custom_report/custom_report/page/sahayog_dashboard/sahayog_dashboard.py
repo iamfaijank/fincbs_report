@@ -1676,7 +1676,7 @@ def get_mis_filter_options():
             zone_norms = {norm_loc(z) for z in allowed_zones if z} if has_zones else set()
             reg_norms = {norm_loc(r) for r in allowed_regions if r} if has_regions else set()
             dist_norms = {norm_loc(d) for d in allowed_districts if d} if has_districts else set()
-            sol_norms = {norm_sol(s) for s in allowed_sols if s} if has_sols else set()
+            sol_norms = {norm_sol(s) for s in allowed_sol_ids if s} if has_sols else set()
 
             matching_branches = []
             for b in branches_map.values():
