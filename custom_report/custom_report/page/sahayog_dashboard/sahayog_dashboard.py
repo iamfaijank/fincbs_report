@@ -1439,30 +1439,54 @@ def build_agent_wise(selected_date=None, perms=None):
         allowed_regions = set()
         
         # Use explicit zones/regions from Report Preference directly
-        # Do NOT resolve sol_ids here — they may map to different zones/regions
-        # than what the user has explicitly set in Report Preference
         if perms.get("zones"):
             allowed_zones.update(perms["zones"])
         
         if not perms.get("all_regions") and perms.get("regions"):
             allowed_regions.update(perms["regions"])
         
+        # Derive zones from sol_ids BEFORE building WHERE clause (Agent Wise has no sol_id column)
+        if perms.get("sol_ids") and not allowed_zones:
+            try:
+                branches_map = get_sahayog_branches_cached()
+                for sol in perms["sol_ids"]:
+                    z = branches_map.get(str(sol), {}).get("zone")
+                    if z:
+                        allowed_zones.add(z)
+            except Exception:
+                pass
+        
+        import re
+        
         if allowed_zones:
-            placeholders = ", ".join(["%s"] * len(allowed_zones))
-            where_clauses.append(f"zone IN ({placeholders})")
-            params.extend(list(allowed_zones))
+            zone_ids = [re.sub(r"\D", "", z) for z in allowed_zones if re.sub(r"\D", "", z)]
+            if zone_ids:
+                if len(zone_ids) == 1:
+                    where_clauses.append("zone LIKE %s")
+                    params.append(f"%{zone_ids[0]}%")
+                else:
+                    pattern = "(" + "|".join(re.escape(zid) for zid in zone_ids) + ")"
+                    where_clauses.append("zone REGEXP %s")
+                    params.append(pattern)
+            else:
+                placeholders = ", ".join(["%s"] * len(allowed_zones))
+                where_clauses.append(f"zone IN ({placeholders})")
+                params.extend(list(allowed_zones))
         
         if allowed_regions:
-            placeholders = ", ".join(["%s"] * len(allowed_regions))
-            where_clauses.append(f"region IN ({placeholders})")
-            params.extend(list(allowed_regions))
-        
-        # Also filter by sol_id when Report Preference has specific SOLs (e.g. 3131 sols 1001,1002 in ZONE-1)
-        if perms.get("sol_ids"):
-            allowed_sols = perms["sol_ids"]
-            placeholders = ", ".join(["%s"] * len(allowed_sols))
-            where_clauses.append(f"sol_id IN ({placeholders})")
-            params.extend(list(allowed_sols))
+            region_ids = [re.sub(r"\D", "", r) for r in allowed_regions if re.sub(r"\D", "", r)]
+            if region_ids:
+                if len(region_ids) == 1:
+                    where_clauses.append("region LIKE %s")
+                    params.append(f"%{region_ids[0]}%")
+                else:
+                    pattern = "(" + "|".join(re.escape(rid) for rid in region_ids) + ")"
+                    where_clauses.append("region REGEXP %s")
+                    params.append(pattern)
+            else:
+                placeholders = ", ".join(["%s"] * len(allowed_regions))
+                where_clauses.append(f"region IN ({placeholders})")
+                params.extend(list(allowed_regions))
     
     where_sql = " AND ".join(where_clauses)
     
