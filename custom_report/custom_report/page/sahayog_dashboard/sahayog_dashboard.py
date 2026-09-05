@@ -273,6 +273,16 @@ def get_user_report_permissions(user):
                     for sid in permissions["sol_ids"]
                     if sid in branches_map
                 ]
+            # BM: merge Employee sahayog_branch into pref sol_ids if not already present
+            if is_branch_manager and employee and employee.get("sahayog_branch"):
+                emp_sol = str(employee["sahayog_branch"]).strip()
+                if emp_sol and emp_sol not in permissions["sol_ids"]:
+                    permissions["sol_ids"].append(emp_sol)
+                    branches_map = get_sahayog_branches_cached()
+                    if emp_sol in branches_map:
+                        permissions["sol_data"].append(
+                            {"sol_id": emp_sol, "branch_name": branches_map[emp_sol]["branch_name"]}
+                        )
             return permissions
 
     # If no Report Preference or empty Report Preference:
