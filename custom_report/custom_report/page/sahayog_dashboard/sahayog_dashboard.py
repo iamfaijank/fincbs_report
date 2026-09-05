@@ -847,10 +847,10 @@ def get_sahayog_dashboard(
     
     eff_selected_date = months[-1][3] if months else selected_date
     zone_wise = build_zone_wise(all_branch_data, targets_map, target_type, district_map)
-    product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type, eff_selected_date)
+    product_wise_result, all_products = build_product_wise(all_branch_data, targets_map, target_type, eff_selected_date, combined_filters)
     category_wise = build_category_wise(all_branch_data, targets_map, months, target_type)
     branch_wise = build_branch_wise(all_branch_data, targets_map, months, target_type, district_map)
-    agent_wise = build_agent_wise(eff_selected_date)
+    agent_wise = build_agent_wise(eff_selected_date, perms)
 
     return {
         "financial_year": financial_year,
@@ -1100,7 +1100,7 @@ def build_product_wise(branch_data, targets_map, target_type, selected_date=None
             product,
             SUM(amount) as amount
         FROM `tabProduct Wise Report`
-        WHERE date = %s AND product NOT IN ('SHARE', 'TDA', 'JLL RD', 'SKBG', 'TASKSILVER', 'TASKWEALTH', 'SAVSIL', 'CUGOLD', 'CUWEALTH')
+        WHERE {where_clause} AND product NOT IN ('SHARE', 'TDA', 'JLL RD', 'SKBG', 'TASKSILVER', 'TASKWEALTH', 'SAVSIL', 'CUGOLD', 'CUWEALTH')
         GROUP BY zone, region, sol_id, product
     """, params, as_dict=True)
 
@@ -1456,6 +1456,13 @@ def build_agent_wise(selected_date=None, perms=None):
             placeholders = ", ".join(["%s"] * len(allowed_regions))
             where_clauses.append(f"region IN ({placeholders})")
             params.extend(list(allowed_regions))
+        
+        # Also filter by sol_id when Report Preference has specific SOLs (e.g. 3131 sols 1001,1002 in ZONE-1)
+        if perms.get("sol_ids"):
+            allowed_sols = perms["sol_ids"]
+            placeholders = ", ".join(["%s"] * len(allowed_sols))
+            where_clauses.append(f"sol_id IN ({placeholders})")
+            params.extend(list(allowed_sols))
     
     where_sql = " AND ".join(where_clauses)
     
