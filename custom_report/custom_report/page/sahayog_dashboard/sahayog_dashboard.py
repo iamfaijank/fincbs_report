@@ -296,16 +296,8 @@ def get_user_report_permissions(user):
     if not pref_name:
         if "System Manager" in frappe.get_roles(user):
             return permissions
-        # Fallback to Employee sahayog_branch if assigned
-        if employee and employee.get("sahayog_branch"):
-            emp_sol = str(employee["sahayog_branch"]).strip()
-            branches_map = get_sahayog_branches_cached()
-            branch_name = branches_map.get(emp_sol, {}).get("branch_name") or f"Branch {emp_sol}"
-            permissions["is_restricted"] = True
-            permissions["sol_ids"] = [emp_sol]
-            permissions["sol_data"] = [{"sol_id": emp_sol, "branch_name": branch_name}]
-            permissions["has_access"] = True
-            return permissions
+        # Non-BM with no Report Preference → no data (has_access False)
+        # BM fallback already handled above (is_branch_manager), so deny here
         permissions["has_access"] = False
         return permissions
 
