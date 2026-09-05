@@ -319,7 +319,8 @@ def get_permitted_sol_ids_for_user(perms):
     Resolves permitted sol_ids based on hierarchical permissions:
     - If unrestricted: returns None (meaning all allowed).
     - If restricted:
-      - Hierarchically filters branches: (Zone -> Region -> District -> SOL ID)
+      - If both zones AND districts are set: OR logic (sol must match zone OR district)
+      - Otherwise: AND logic (sol must match all set filters)
       - If all_regions is True and no other restriction: returns all sol_ids
       - Returns a list of permitted sol_ids.
     """
@@ -349,15 +350,26 @@ def get_permitted_sol_ids_for_user(perms):
 
     matching_sols = set()
 
+    # OR logic: when both zones AND districts are set, match zone OR district
+    use_zone_district_or = has_zones and has_districts and not has_regions and not has_sols
+
     for sid, b in branches_map.items():
-        if has_zones and norm_loc(b.get("zone")) not in zone_norms:
-            continue
-        if has_regions and norm_loc(b.get("region")) not in reg_norms:
-            continue
-        if has_districts and norm_loc(b.get("district")) not in dist_norms:
-            continue
-        if has_sols and norm_sol(sid) not in sol_norms:
-            continue
+        if use_zone_district_or:
+            # OR: branch must match zone OR district (or both)
+            zone_match = has_zones and norm_loc(b.get("zone")) in zone_norms
+            district_match = has_districts and norm_loc(b.get("district")) in dist_norms
+            if not zone_match and not district_match:
+                continue
+        else:
+            # AND: branch must match ALL set filters
+            if has_zones and norm_loc(b.get("zone")) not in zone_norms:
+                continue
+            if has_regions and norm_loc(b.get("region")) not in reg_norms:
+                continue
+            if has_districts and norm_loc(b.get("district")) not in dist_norms:
+                continue
+            if has_sols and norm_sol(sid) not in sol_norms:
+                continue
         matching_sols.add(str(sid).strip())
 
     if not has_zones and not has_regions and not has_districts and not has_sols:
