@@ -9140,10 +9140,39 @@ class DrishtiDashboard {
 			});
 		});
 
-		// Clear Filters
+		// Reset & Refresh (Clear Cache & Reload)
 		this.page.main.find("#clear-filters").on("click", function () {
+			const $btn = $(this);
+			$btn.prop("disabled", true).html("🔄 Clearing Cache...");
+
+			// 1. Reset URL parameters to clean state
 			history.pushState({}, "", window.location.pathname);
-			location.reload(true);
+
+			// 2. Clear frontend asset local storage
+			if (frappe.assets && typeof frappe.assets.clear_local_storage === "function") {
+				frappe.assets.clear_local_storage();
+			}
+
+			// 3. Clear session cache and dashboard backend cache
+			const clearSessionPromise = frappe.xcall("frappe.sessions.clear");
+			const clearDashboardCachePromise = frappe.xcall(
+				"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_branch_category_report_cache"
+			).catch(() => null);
+
+			Promise.all([clearSessionPromise, clearDashboardCachePromise])
+				.then(([message]) => {
+					frappe.show_alert({
+						message: message || __("Cache Cleared"),
+						indicator: "green",
+					});
+					setTimeout(() => {
+						location.reload(true);
+					}, 300);
+				})
+				.catch((err) => {
+					console.error("Cache Clear Error:", err);
+					location.reload(true);
+				});
 		});
 
 		// Segment Filter
