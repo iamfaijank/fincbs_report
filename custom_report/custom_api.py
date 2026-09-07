@@ -21,6 +21,13 @@ def get_sol_product_wise_collection(sol_id, zone, financial_year="2026-2027", re
     if mode not in ("month", "ytd"):
         mode = "month"
 
+    clean_m = (month or "").strip().upper() if month else ""
+    sol_str = str(sol_id).strip() if sol_id else ""
+    cache_key = f"sol_pw_coll_{sol_str}_{financial_year or 'default'}_{mode}_{clean_m}"
+    cached = frappe.cache().get_value(cache_key)
+    if cached is not None:
+        return cached
+
     today_dt = getdate(today())
     yesterday_dt = add_days(today_dt, -1)
     current_month = today_dt.strftime('%b').upper()
@@ -125,7 +132,7 @@ def get_sol_product_wise_collection(sol_id, zone, financial_year="2026-2027", re
     target_amounts = {p: (overall_target * targets[p]) / 100 for p in targets}
     target_amounts["TOTAL TARGET"] = overall_target
 
-    return {
+    resp = {
         "status": "success",
         "sol_id": sol_id,
         "zone": zone,
@@ -139,6 +146,8 @@ def get_sol_product_wise_collection(sol_id, zone, financial_year="2026-2027", re
         "targets": targets,
         "target_amounts": target_amounts
     }
+    frappe.cache().set_value(cache_key, resp, expires_in_sec=1800)
+    return resp
 
 
 def _fy_for_month(month_code, today_dt):
@@ -162,8 +171,9 @@ def _aggregate_collections(data):
 
 def _get_latest_pwr_date(sol_id, before_date):
     res = frappe.db.sql("""
-        SELECT MAX(date) as d FROM `tabProduct Wise Report`
+        SELECT date as d FROM `tabProduct Wise Report`
         WHERE sol_id = %s AND date <= %s
+        ORDER BY date DESC LIMIT 1
     """, (sol_id, before_date), as_dict=True)
     return res[0].get("d") if res and res[0].get("d") else None
 

@@ -124,17 +124,22 @@ def get_branch_profile_data(sol_id: str):
     Fetch Branch Profile Data based on SOL ID, dynamically overriding BDE, BDO, RO,
     and Actual Staff Count from Employee DocType.
     """
+    if not sol_id:
+        return {}
+
+    sol_id_str = str(sol_id).strip()
+    cache_key = f"branch_profile_data_{sol_id_str}"
+    cached = frappe.cache().get_value(cache_key)
+    if cached is not None:
+        return cached
+
     profile_data = frappe.db.get_value(
         "Branch Profile Data",
-        {"sol_id": sol_id},
+        {"sol_id": sol_id_str},
         "*",
         as_dict=True,
     ) or {}
 
-    if not sol_id:
-        return profile_data
-
-    sol_id_str = str(sol_id).strip()
     possible_branch_values = get_possible_branch_values(sol_id_str)
 
     counts_query = """
@@ -163,6 +168,7 @@ def get_branch_profile_data(sol_id: str):
         if "staff_count" not in profile_data or not profile_data.get("staff_count"):
             profile_data["staff_count"] = int(c.get("total_active_staff") or 0)
 
+    frappe.cache().set_value(cache_key, profile_data, expires_in_sec=1800)
     return profile_data
 
 
@@ -175,18 +181,26 @@ def get_branch_complete_profile(sol_id: str, fy: str = None):
     if not sol_id:
         return {"status": "error", "message": "SOL ID is required"}
 
-    try:
-        profile_data = get_branch_profile_data(sol_id)
-        book_data = get_book_position_details(sol_id)
-        bm_data = get_bm_details_from_employee(sol_id)
-        perf_data = get_performance_data(sol_id, fy=fy)
-        attrition_data = get_attrition_rate(sol_id)
-        productivity_data = get_productivity_details(sol_id)
-        months_list = get_book_position_months(sol_id)
+    sol_id_str = str(sol_id).strip()
+    cache_key = f"branch_complete_profile_{sol_id_str}_{fy or 'default'}"
+    cached = frappe.cache().get_value(cache_key)
+    if cached is not None:
+        return cached
 
-        return {
+    try:
+        header_data = get_branch_header_data(sol_id_str)
+        profile_data = get_branch_profile_data(sol_id_str)
+        book_data = get_book_position_details(sol_id_str)
+        bm_data = get_bm_details_from_employee(sol_id_str)
+        perf_data = get_performance_data(sol_id_str, fy=fy)
+        attrition_data = get_attrition_rate(sol_id_str)
+        productivity_data = get_productivity_details(sol_id_str)
+        months_list = get_book_position_months(sol_id_str)
+
+        res = {
             "status": "success",
-            "sol_id": sol_id,
+            "sol_id": sol_id_str,
+            "header": header_data,
             "profile": profile_data,
             "book": book_data,
             "bm": bm_data,
@@ -195,6 +209,8 @@ def get_branch_complete_profile(sol_id: str, fy: str = None):
             "productivity": productivity_data,
             "months": months_list
         }
+        frappe.cache().set_value(cache_key, res, expires_in_sec=900)
+        return res
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Branch Complete Profile API Error")
         return {"status": "error", "message": str(e)}
@@ -227,14 +243,19 @@ def get_productivity_details(sol_id: str):
         from frappe.utils import add_days, today, getdate, flt, cint
 
         sol_id_str = str(sol_id).strip()
+        cache_key = f"productivity_details_{sol_id_str}"
+        cached = frappe.cache().get_value(cache_key)
+        if cached is not None:
+            return cached
 
         # 1. Determine Target Date (T-1 by default)
         target_date = add_days(today(), -1)
 
-        # Check if records exist on or before target_date in Product Wise Report
+        # Check if records exist on or before target_date in Product Wise Report (using fast index seek)
         latest_date_row = frappe.db.sql("""
-            SELECT MAX(date) as d FROM `tabProduct Wise Report`
+            SELECT date as d FROM `tabProduct Wise Report`
             WHERE sol_id = %s AND date <= %s
+            ORDER BY date DESC LIMIT 1
         """, (sol_id_str, target_date), as_dict=True)
 
         actual_date = latest_date_row[0].get("d") if (latest_date_row and latest_date_row[0].get("d")) else None
@@ -242,21 +263,26 @@ def get_productivity_details(sol_id: str):
         if not actual_date:
             # Fallback: check any latest date available for this SOL ID
             latest_date_row = frappe.db.sql("""
-                SELECT MAX(date) as d FROM `tabProduct Wise Report`
+                SELECT date as d FROM `tabProduct Wise Report`
                 WHERE sol_id = %s
+                ORDER BY date DESC LIMIT 1
             """, (sol_id_str,), as_dict=True)
             actual_date = latest_date_row[0].get("d") if (latest_date_row and latest_date_row[0].get("d")) else None
 
         if not actual_date:
             # Fallback: check general latest date in doctype
             latest_date_row = frappe.db.sql("""
-                SELECT MAX(date) as d FROM `tabProduct Wise Report`
+                SELECT date as d FROM `tabProduct Wise Report`
+                ORDER BY date DESC LIMIT 1
             """, as_dict=True)
             actual_date = latest_date_row[0].get("d") if (latest_date_row and latest_date_row[0].get("d")) else getdate(target_date)
 
-        # 2. Fetch Product amounts on actual_date for this sol_id
+        # 2. Fetch Product amounts on actual_date for this sol_id in a SINGLE query
         products_data = frappe.db.sql("""
-            SELECT product, COALESCE(SUM(amount), 0) as total_amount
+            SELECT 
+                product, 
+                COALESCE(SUM(amount), 0) as total_amount,
+                COALESCE(SUM(CASE WHEN product = 'CASA' AND (scheme_code NOT IN ('1104', '1011') OR scheme_code IS NULL) THEN amount ELSE 0 END), 0) as casa_ro_amount
             FROM `tabProduct Wise Report`
             WHERE sol_id = %s AND date = %s
             GROUP BY product
@@ -268,17 +294,13 @@ def get_productivity_details(sol_id: str):
         smbg_amount = flt(product_amounts.get("SMBG", 0.0))
         bdo_amount = rd_amount + smbg_amount
 
-        # Fetch CASA amount for RO (excluding scheme_code IN ('1104', '1011'))
-        casa_data = frappe.db.sql("""
-            SELECT COALESCE(SUM(amount), 0) as total_amount
-            FROM `tabProduct Wise Report`
-            WHERE sol_id = %s 
-              AND date = %s 
-              AND product = 'CASA'
-              AND (scheme_code NOT IN ('1104', '1011') OR scheme_code IS NULL)
-        """, (sol_id_str, actual_date), as_dict=True)
-        casa_amount = flt(casa_data[0].get("total_amount") or 0.0) if casa_data else 0.0
-        ro_amount = casa_amount
+        # CASA amount for RO
+        ro_amount = 0.0
+        for row in products_data:
+            if row.get("product") == "CASA":
+                ro_amount = flt(row.get("casa_ro_amount") or 0.0)
+                break
+        casa_amount = ro_amount
 
         # 3. Fetch Manpower Counts for BDE, BDO, RO
         possible_branch_values = get_possible_branch_values(sol_id_str)
@@ -325,7 +347,7 @@ def get_productivity_details(sol_id: str):
         dt_obj = getdate(actual_date) if actual_date else getdate(today())
         as_of_month = dt_obj.strftime("%B").upper() if dt_obj else "—"
 
-        return {
+        result = {
             "status": "success",
             "sol_id": sol_id_str,
             "date": str(actual_date) if actual_date else "",
@@ -344,6 +366,8 @@ def get_productivity_details(sol_id: str):
             "ro_productivity": ro_productivity,
             "total_productivity": total_productivity
         }
+        frappe.cache().set_value(cache_key, result, expires_in_sec=1800)
+        return result
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Get Productivity Details Error")
@@ -374,6 +398,11 @@ def get_bm_details_from_employee(sol_id: str):
         return {"status": "error", "message": "SOL ID is required", "data": []}
 
     sol_id_str = str(sol_id).strip()
+    cache_key = f"bm_details_{sol_id_str}"
+    cached = frappe.cache().get_value(cache_key)
+    if cached is not None:
+        return cached
+
     possible_branch_values = get_possible_branch_values(sol_id_str)
 
     conditions = [
@@ -450,11 +479,13 @@ def get_bm_details_from_employee(sol_id: str):
             "reporting_person": reporting_person,
         })
 
-    return {
+    res = {
         "status": "success",
         "count": len(result),
         "data": result,
     }
+    frappe.cache().set_value(cache_key, res, expires_in_sec=1800)
+    return res
 
 @frappe.whitelist()
 def get_book_position_months(sol_id: str):
@@ -463,16 +494,37 @@ def get_book_position_months(sol_id: str):
     """
     if not sol_id:
         return []
+    sol_id_str = str(sol_id).strip()
+    cache_key = f"book_position_months_{sol_id_str}"
+    cached = frappe.cache().get_value(cache_key)
+    if cached is not None:
+        return cached
+
     rows = frappe.db.sql("""
         SELECT DISTINCT `date`
         FROM `tabBook Position and Account Details`
         WHERE sol_id = %s
         ORDER BY `date` DESC
-    """, (sol_id,))
-    return [str(r[0]) for r in rows]
+    """, (sol_id_str,))
+    res = [str(r[0]) for r in rows]
+    frappe.cache().set_value(cache_key, res, expires_in_sec=3600)
+    return res
 
 
-def get_smbg_demand_collection_from_dr(sol_id: str, date_str: str = None):
+def get_smbg_demand_collection_from_dr(sol_id: str, date_str: str = None, fallback_demand: float = 0.0, fallback_collection: float = 0.0):
+    if not sol_id:
+        return fallback_demand, fallback_collection
+
+    sol_id_str = str(sol_id).strip()
+    cache_key = f"dr_smbg_demand_coll_{sol_id_str}_{date_str or 'latest'}"
+    cached = frappe.cache().get_value(cache_key)
+    if cached is not None:
+        return flt(cached[0]), flt(cached[1])
+
+    # Circuit breaker: if DR was unreachable recently, return fallback immediately without blocking
+    if frappe.cache().get_value("dr_db_down"):
+        return fallback_demand, fallback_collection
+
     if not date_str:
         from datetime import datetime
         date_str = datetime.today().strftime('%Y-%m-%d')
@@ -589,35 +641,51 @@ LEFT JOIN
     tbaadm.gsp AS gsp ON g.schm_code = gsp.schm_code;
     """
 
-    total_demand = 0.0
-    total_collection = 0.0
+    total_demand = fallback_demand
+    total_collection = fallback_collection
 
     try:
-        conn = get_dr_connection()
+        conn = get_dr_connection(retries=1, retry_delay=0, timeout=2)
         with conn.cursor() as cur:
+            cur.execute("SET statement_timeout = 3000;")
             cur.execute(query, (
-                sol_id,
+                sol_id_str,
                 start_date,
                 end_date,
-                sol_id,
+                sol_id_str,
                 start_date,
                 end_date,
-                sol_id,
-                sol_id,
+                sol_id_str,
+                sol_id_str,
                 start_date
             ))
             row = cur.fetchone()
-            if row:
+            if row and (row[0] is not None or row[1] is not None):
                 total_demand = flt(row[0] or 0)
                 total_collection = flt(row[1] or 0)
         conn.close()
+        frappe.cache().set_value(cache_key, (total_demand, total_collection), expires_in_sec=7200)
     except Exception as e:
-        frappe.log_error(f"Failed to fetch SMBG Demand/Collection from DR for {sol_id}: {str(e)}", "SMBG Demand Collection DR Fetch")
+        frappe.cache().set_value("dr_db_down", True, expires_in_sec=300)
+        frappe.log_error(f"Failed to fetch SMBG Demand/Collection from DR for {sol_id_str}: {str(e)}", "SMBG Demand Collection DR Fetch")
 
     return total_demand, total_collection
 
 
-def get_rd_demand_collection_from_dr(sol_id: str, date_str: str = None):
+def get_rd_demand_collection_from_dr(sol_id: str, date_str: str = None, fallback_demand: float = 0.0, fallback_collection: float = 0.0):
+    if not sol_id:
+        return fallback_demand, fallback_collection
+
+    sol_id_str = str(sol_id).strip()
+    cache_key = f"dr_rd_demand_coll_{sol_id_str}_{date_str or 'latest'}"
+    cached = frappe.cache().get_value(cache_key)
+    if cached is not None:
+        return flt(cached[0]), flt(cached[1])
+
+    # Circuit breaker: if DR was unreachable recently, return fallback immediately without blocking
+    if frappe.cache().get_value("dr_db_down"):
+        return fallback_demand, fallback_collection
+
     if not date_str:
         from datetime import datetime
         date_str = datetime.today().strftime('%Y-%m-%d')
@@ -742,30 +810,33 @@ LEFT JOIN reference_data AS rd
     AND (fd.total_flow_amount > 0 OR td.total_tran_amt > 0);
     """
     
-    total_demand = 0.0
-    total_collection = 0.0
+    total_demand = fallback_demand
+    total_collection = fallback_collection
     
     try:
-        conn = get_dr_connection()
+        conn = get_dr_connection(retries=1, retry_delay=0, timeout=2)
         with conn.cursor() as cur:
+            cur.execute("SET statement_timeout = 3000;")
             cur.execute(query, (
-                sol_id,
-                sol_id,
+                sol_id_str,
+                sol_id_str,
                 start_date,
                 end_date,
-                sol_id,
+                sol_id_str,
                 start_date,
                 end_date,
-                sol_id,
+                sol_id_str,
                 start_date
             ))
             row = cur.fetchone()
-            if row:
+            if row and (row[0] is not None or row[1] is not None):
                 total_demand = flt(row[0] or 0)
                 total_collection = flt(row[1] or 0)
         conn.close()
+        frappe.cache().set_value(cache_key, (total_demand, total_collection), expires_in_sec=7200)
     except Exception as e:
-        frappe.log_error(f"Failed to fetch RD Demand/Collection from DR for {sol_id}: {str(e)}", "RD Demand Collection DR Fetch")
+        frappe.cache().set_value("dr_db_down", True, expires_in_sec=300)
+        frappe.log_error(f"Failed to fetch RD Demand/Collection from DR for {sol_id_str}: {str(e)}", "RD Demand Collection DR Fetch")
         
     return total_demand, total_collection
 
@@ -779,16 +850,26 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
     if not sol_id:
         return {}
 
-    # Get the latest date for this sol_id
-    if selected_date:
-        latest_date = selected_date
-    else:
-        latest_date = frappe.db.get_value(
-            "Book Position and Account Details",
-            {"sol_id": sol_id},
-            "date",
-            order_by="date desc"
-        )
+    sol_id_str = str(sol_id).strip()
+    cache_key = f"book_pos_details_{sol_id_str}_{selected_date or 'latest'}"
+    cached = frappe.cache().get_value(cache_key)
+    if cached is not None:
+        return cached
+
+    # Pre-fetch existing demand/collection from Branch Profile Data for instant fallback
+    bpd = frappe.db.get_value("Branch Profile Data", {"sol_id": sol_id_str}, [
+        "rd_demand", "rd_collection", "smbg_demand", "smbg_collection",
+        "rd_smbg_collection", "smbg_demand_vs_collection", "dds_demand",
+        "dds_collection", "dds_demand_vs_collection", "rd_smbg_pending"
+    ], as_dict=True) or {}
+
+    init_rd_demand = flt(bpd.get("rd_demand") or 0.0)
+    init_rd_collection = flt(bpd.get("rd_collection") or 0.0)
+    init_smbg_demand = flt(bpd.get("smbg_demand") or 0.0)
+    init_smbg_collection = flt(bpd.get("smbg_collection") or 0.0)
+    init_rd_smbg_coll = flt(bpd.get("rd_smbg_collection") or (init_rd_collection + init_smbg_collection))
+    init_smbg_vs_coll = flt(bpd.get("smbg_demand_vs_collection") or ((init_smbg_collection / init_smbg_demand * 100.0) if init_smbg_demand > 0 else 0.0))
+    init_rd_smbg_pending = flt(bpd.get("rd_smbg_pending") or 0.0)
 
     result = {
         "sa_book": 0.0, "ca_book": 0.0, "fd_book": 0.0,
@@ -804,39 +885,44 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
         "dam_accounts_opened": 0, "dam_accounts_total": 0,
         "total_accounts_opened": 0, "total_accounts_total": 0,
         
-        "rd_demand": 0.0, "rd_collection": 0.0, "rd_smbg_collection": 0.0,
-        "smbg_demand": 0.0, "smbg_collection": 0.0, "smbg_demand_vs_collection": 0.0,
-        "rd_smbg_pending": 0.0
+        "rd_demand": init_rd_demand,
+        "rd_collection": init_rd_collection,
+        "rd_smbg_collection": init_rd_smbg_coll,
+        "smbg_demand": init_smbg_demand,
+        "smbg_collection": init_smbg_collection,
+        "smbg_demand_vs_collection": init_smbg_vs_coll,
+        "rd_smbg_pending": init_rd_smbg_pending
     }
 
+    # Get the latest date for this sol_id
+    if selected_date:
+        latest_date = selected_date
+    else:
+        latest_date = frappe.db.get_value(
+            "Book Position and Account Details",
+            {"sol_id": sol_id_str},
+            "date",
+            order_by="date desc"
+        )
+
     if not latest_date:
-        rd_demand_val, rd_collection_val = get_rd_demand_collection_from_dr(sol_id, None)
+        rd_demand_val, rd_collection_val = get_rd_demand_collection_from_dr(sol_id_str, None, fallback_demand=init_rd_demand, fallback_collection=init_rd_collection)
         result["rd_demand"] = rd_demand_val
         result["rd_collection"] = rd_collection_val
 
-        smbg_demand_val, smbg_collection_val = get_smbg_demand_collection_from_dr(sol_id, None)
+        smbg_demand_val, smbg_collection_val = get_smbg_demand_collection_from_dr(sol_id_str, None, fallback_demand=init_smbg_demand, fallback_collection=init_smbg_collection)
         result["smbg_demand"] = smbg_demand_val
         result["smbg_collection"] = smbg_collection_val
         result["smbg_demand_vs_collection"] = (smbg_collection_val / smbg_demand_val * 100.0) if smbg_demand_val > 0 else 0.0
         
         result["rd_smbg_collection"] = rd_collection_val + smbg_collection_val
-
-        # Query yesterday's RD & SMBG Pending sum
-        from datetime import date, timedelta
-        target_date = date.today() - timedelta(days=1)
-        target_date_str = target_date.strftime('%Y-%m-%d')
-        pending_sum = frappe.db.get_value(
-            "RD and SMBG Pending",
-            {"sol_id": sol_id, "date": target_date_str},
-            "sum(pending_amount)"
-        ) or 0.0
-        result["rd_smbg_pending"] = float(pending_sum)
         result["latest_month"] = ""
+        frappe.cache().set_value(cache_key, result, expires_in_sec=1800)
         return result
 
     data = frappe.db.get_list(
         "Book Position and Account Details",
-        filters={"sol_id": sol_id, "date": latest_date},
+        filters={"sol_id": sol_id_str, "date": latest_date},
         fields=["group_name", "group_subname", "closing_balance", "account_opened", "closing_no_of_accounts"],
         ignore_permissions=True,
     )
@@ -881,9 +967,6 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
             
         total_balance += balance
 
-    # Total Book should probably be sum of all categories, or sum of everything.
-    # The requirement is just showing these compositions of the total book.
-    # Let's sum all mapped ones for composition 100%.
     result["total_book"] = (
         result["sa_book"] + result["ca_book"] + result["fd_book"] +
         result["rd_book"] + result["dds_book"] + result["smbg_book"] + result["dam_book"]
@@ -899,10 +982,10 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
         result["rd_accounts_total"] + result["dds_accounts_total"] + result["smbg_accounts_total"] + result["dam_accounts_total"]
     )
     
-    # Fetch DDS Demand, Collection, and Demand vs Collection from 'DD Tracker Report' for this sol_id
+    # Fetch DDS Demand, Collection from 'DD Tracker Report' for this sol_id
     dd_latest_date = frappe.db.get_value(
         "DD Tracker Report",
-        {"sol_id": sol_id},
+        {"sol_id": sol_id_str},
         "date",
         order_by="date desc"
     )
@@ -914,30 +997,30 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
             order_by="date desc"
         )
 
-    dds_demand = 0.0
-    dds_collection = 0.0
+    dds_demand = flt(bpd.get("dds_demand") or 0.0)
+    dds_collection = flt(bpd.get("dds_collection") or 0.0)
     if dd_latest_date:
         dd_records = frappe.db.get_all(
             "DD Tracker Report",
-            filters={"sol_id": sol_id, "date": dd_latest_date},
+            filters={"sol_id": sol_id_str, "date": dd_latest_date},
             fields=["monthly_demand", "monthly_collection"],
             ignore_permissions=True,
         )
-        for r in dd_records:
-            dds_demand += flt(r.monthly_demand)
-            dds_collection += flt(r.monthly_collection)
+        if dd_records:
+            dds_demand = sum(flt(r.monthly_demand) for r in dd_records)
+            dds_collection = sum(flt(r.monthly_collection) for r in dd_records)
 
     result["dds_demand"] = dds_demand
     result["dds_collection"] = dds_collection
     result["dds_demand_vs_collection"] = (dds_collection / dds_demand * 100.0) if dds_demand > 0 else 0.0
 
-    # Overwrite RD demand and collection from Finacle/DR DB
-    rd_demand_val, rd_collection_val = get_rd_demand_collection_from_dr(sol_id, latest_date)
+    # Overwrite RD demand and collection from Finacle/DR DB (with instant fallback)
+    rd_demand_val, rd_collection_val = get_rd_demand_collection_from_dr(sol_id_str, latest_date, fallback_demand=init_rd_demand, fallback_collection=init_rd_collection)
     result["rd_demand"] = rd_demand_val
     result["rd_collection"] = rd_collection_val
 
-    # Overwrite SMBG demand and collection from Finacle/DR DB
-    smbg_demand_val, smbg_collection_val = get_smbg_demand_collection_from_dr(sol_id, latest_date)
+    # Overwrite SMBG demand and collection from Finacle/DR DB (with instant fallback)
+    smbg_demand_val, smbg_collection_val = get_smbg_demand_collection_from_dr(sol_id_str, latest_date, fallback_demand=init_smbg_demand, fallback_collection=init_smbg_collection)
     result["smbg_demand"] = smbg_demand_val
     result["smbg_collection"] = smbg_collection_val
     result["smbg_demand_vs_collection"] = (smbg_collection_val / smbg_demand_val * 100.0) if smbg_demand_val > 0 else 0.0
@@ -950,10 +1033,11 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
     target_date_str = target_date.strftime('%Y-%m-%d')
     pending_sum = frappe.db.get_value(
         "RD and SMBG Pending",
-        {"sol_id": sol_id, "date": target_date_str},
+        {"sol_id": sol_id_str, "date": target_date_str},
         "sum(pending_amount)"
-    ) or 0.0
-    result["rd_smbg_pending"] = float(pending_sum)
+    )
+    if pending_sum is not None:
+        result["rd_smbg_pending"] = float(pending_sum)
 
     if latest_date:
         from frappe.utils import getdate
@@ -962,6 +1046,7 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
     else:
         result["latest_month"] = ""
 
+    frappe.cache().set_value(cache_key, result, expires_in_sec=1800)
     return result
 
 
@@ -1216,6 +1301,19 @@ def format_ui_output(achievement, target):
 
 @frappe.whitelist()
 def get_performance_data(sol_id, date=None, fy=None):
+    if not sol_id:
+        return {
+            "status": "no_data",
+            "message": "SOL ID is required",
+            "data_exists": False
+        }
+
+    sol_id_str = str(sol_id).strip()
+    cache_key = f"perf_data_{sol_id_str}_{fy or 'default'}"
+    cached = frappe.cache().get_value(cache_key)
+    if cached is not None:
+        return cached
+
     try:
         start_date = None
         end_date = None
@@ -1236,7 +1334,7 @@ def get_performance_data(sol_id, date=None, fy=None):
                 WHERE sol_id = %s AND date >= %s AND date <= %s
                 ORDER BY date DESC 
                 LIMIT 1
-            """, (sol_id, start_date, end_date), as_dict=1)
+            """, (sol_id_str, start_date, end_date), as_dict=1)
         else:
             latest_record = frappe.db.sql("""
                 SELECT date, achievement, yearly_achievement 
@@ -1244,7 +1342,7 @@ def get_performance_data(sol_id, date=None, fy=None):
                 WHERE sol_id = %s 
                 ORDER BY date DESC 
                 LIMIT 1
-            """, (sol_id,), as_dict=1)
+            """, (sol_id_str,), as_dict=1)
 
         if not latest_record:
             return {
@@ -1258,13 +1356,13 @@ def get_performance_data(sol_id, date=None, fy=None):
         
         # 2. Get Targets
         fiscal_year = fy or get_fiscal_year(report_date)
-        targets = get_targets(sol_id, fiscal_year) 
+        targets = get_targets(sol_id_str, fiscal_year) 
 
         # 3. Final Response with Monthly, YTD, and Yearly segments
-        return {
+        result = {
             "status": "success",
             "data_exists": True,
-            "sol_id": sol_id,
+            "sol_id": sol_id_str,
             "report_date": report_date.strftime('%Y-%m-%d'),
             "financial_year": fiscal_year,
             "performance": {
@@ -1273,9 +1371,11 @@ def get_performance_data(sol_id, date=None, fy=None):
                 "yearly": format_ui_output(res.yearly_achievement, targets.get("yearly", 0))
             }
         }
+        frappe.cache().set_value(cache_key, result, expires_in_sec=1800)
+        return result
 
     except Exception as e:
-        frappe.log_error(f"Branch Performance Error: {sol_id}", frappe.get_traceback())
+        frappe.log_error(f"Branch Performance Error: {sol_id_str}", frappe.get_traceback())
         return {
             "status": "error", 
             "message": str(e)
@@ -1296,10 +1396,17 @@ def get_attrition_rate(sol_id: str, period: str = "3"):
             "counts": {"3": {"left": 0, "headcount": 0}, "6": {"left": 0, "headcount": 0}, "12": {"left": 0, "headcount": 0}}
         }
 
+    sol_id_str = str(sol_id).strip()
+    cache_key = f"attrition_rate_{sol_id_str}"
+    cached = frappe.cache().get_value(cache_key)
+    if cached is not None:
+        res = dict(cached)
+        res["selected_period"] = str(period)
+        return res
+
     try:
         from frappe.utils import add_months, today
         current_today = today()
-        sol_id_str = str(sol_id).strip()
 
         # Get current active employee count for this sol_id
         active_count = frappe.db.count("Employee", filters={"sol_id": sol_id_str, "status": "Active"})
@@ -1352,13 +1459,15 @@ def get_attrition_rate(sol_id: str, period: str = "3"):
                 "active": active_count
             }
 
-        return {
+        result = {
             "status": "success",
             "sol_id": sol_id_str,
             "selected_period": str(period),
             "rates": rates,
             "counts": counts
         }
+        frappe.cache().set_value(cache_key, result, expires_in_sec=3600)
+        return result
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Get Attrition Rate Error")
         return {

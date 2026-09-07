@@ -3,7 +3,7 @@ import psycopg2
 import time
 from frappe import _
 
-def get_dr_connection(retries=3, retry_delay=2):
+def get_dr_connection(retries=3, retry_delay=2, timeout=15):
     """
     Establishes a connection to the Disaster Recovery (DR) / External Finacle DB 
     using credentials from the 'Finacle DB Credentials' Single Doctype.
@@ -21,7 +21,7 @@ def get_dr_connection(retries=3, retry_delay=2):
         "database": config.db_name,
         "user": config.db_user,
         "password": config.get_password("db_password"),
-        "connect_timeout": 15,
+        "connect_timeout": timeout or 15,
     }
 
     for attempt in range(retries):

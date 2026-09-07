@@ -2909,6 +2909,9 @@
 						const cacheKey = "branch_" + solId;
 						let data = this.getCache(cacheKey);
 
+						/* 🔗 Load Branch Manager Profile in parallel immediately */
+						const profileLoadPromise = BranchManagerProfile.load(solId, data ? data.email : null);
+
 						if (!data) {
 							const r = await this.fetchJSON(
 								`/api/method/custom_report.branch_v1.get_branch_header_data?sol_id=${solId}`,
@@ -2932,8 +2935,7 @@
 							state: data.state,
 						});
 
-						/* 🔗 Load Branch Manager Profile */
-						await BranchManagerProfile.load(solId, data.email);
+						await profileLoadPromise;
 					} catch (e) {
 						this.el.branchName.textContent = "Branch not found";
 						this.el.branchZone.textContent =
@@ -4691,7 +4693,7 @@
 							const bmList = (res.bm && res.bm.data) ? res.bm.data : [];
 
 							Object.assign(d, bookD);
-							d._branch_email_value = branchEmailValue;
+							d._branch_email_value = branchEmailValue || (res.header ? res.header.email : "");
 							this.state.rawData = d;
 							if (!this.state.bmList || !this.state.bmList.length) {
 								this.state.bmList = bmList;
