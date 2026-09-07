@@ -3504,9 +3504,12 @@
 					const pwMonthSelect = document.getElementById('pw-month-select');
 					if (pwMonthSelect) {
 						const fyMonths = ['APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'JAN', 'FEB', 'MAR'];
-						pwMonthSelect.innerHTML = `<option value="" selected>--</option>` + fyMonths.map(m =>
+						pwMonthSelect.innerHTML = fyMonths.map(m =>
 							`<option value="${m}">${m}</option>`
 						).join('');
+						const now = new Date();
+						const currM = now.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+						pwMonthSelect.value = fyMonths.includes(currM) ? currM : 'SEP';
 						pwMonthSelect.addEventListener('change', () => {
 							const solId = this.state.currentSolId || (new URLSearchParams(window.location.search)).get("sol_id");
 							if (solId && typeof BranchManagerProfile.loadProductCollections === 'function') {
@@ -3524,7 +3527,6 @@
 							btn.classList.add('active');
 							const isYtd = btn.dataset.mode === 'ytd';
 							if (pwMonthSelect) {
-								pwMonthSelect.value = "";
 								pwMonthSelect.style.display = isYtd ? 'none' : 'inline-block';
 							}
 							const solId = this.state.currentSolId || (new URLSearchParams(window.location.search)).get("sol_id");
@@ -4855,17 +4857,21 @@
 					try {
 						this.setSectionSkeleton("product-wise-collection-card", true);
 						const zoneElem = document.getElementById("branch-zone");
-						let zone = zoneElem ? zoneElem.textContent.trim() : "";
+						let zone = (this.state.rawData && this.state.rawData.zone) || (zoneElem ? zoneElem.textContent.trim() : "");
+						if (zone === "--") zone = "";
 						const fyElem = document.getElementById("fy-select");
-						let fy = fyElem ? fyElem.value : "2026-2027";
+						let fy = (fyElem && fyElem.value) ? fyElem.value : (this.state.currentFy || "2026-2027");
 						const pwToggle = document.getElementById("pw-mode-toggle");
 						const activeModeBtn = pwToggle ? pwToggle.querySelector(".pw-mode-btn.active") : null;
 						const mode = activeModeBtn ? activeModeBtn.dataset.mode : "month";
-						let pwUrl = `/api/method/custom_report.custom_api.get_sol_product_wise_collection?sol_id=${solId}&zone=${zone}&financial_year=${fy}&mode=${mode}`;
+						let pwUrl = `/api/method/custom_report.custom_api.get_sol_product_wise_collection?sol_id=${encodeURIComponent(solId)}&financial_year=${encodeURIComponent(fy)}&mode=${encodeURIComponent(mode)}`;
+						if (zone) {
+							pwUrl += `&zone=${encodeURIComponent(zone)}`;
+						}
 						if (mode === "month") {
 							const pwMonthSelect = document.getElementById("pw-month-select");
 							const m = pwMonthSelect ? pwMonthSelect.value : "";
-							if (m) pwUrl += `&month=${m}`;
+							if (m) pwUrl += `&month=${encodeURIComponent(m)}`;
 						}
 						const res = await fetch(pwUrl);
 						const json = await res.json();
@@ -4897,14 +4903,15 @@
 
 					if (data.month) {
 						const ms = document.getElementById("pw-month-select");
-						if (ms && ms.value && ms.value !== data.month) ms.value = data.month;
+						if (ms) ms.value = data.month;
 					}
 
 					if (data.targets) {
 						const tg = data.targets;
 						const setTh = (id, label, pct) => {
 							const el = document.getElementById(id);
-							if(el) el.textContent = `${label} (${pct}%)`;
+							const val = (pct !== undefined && pct !== null) ? Number(pct) : 0;
+							if(el) el.textContent = `${label} (${val % 1 === 0 ? val : val.toFixed(1)}%)`;
 						};
 						setTh("th-casa", "CASA", tg["CASA"]);
 						setTh("th-dam", "DAM", tg["DAM"]);
@@ -4912,7 +4919,7 @@
 						setTh("th-fd", "FD", tg["FD"]);
 						setTh("th-rd", "RD", tg["RD"]);
 						setTh("th-smbg", "SMBG", tg["SMBG"]);
-						setTh("th-total", "TOTAL", "100");
+						setTh("th-total", "TOTAL", 100);
 					}
 
 					if (data.target_amounts && data.collections) {
@@ -4958,7 +4965,7 @@
 							if (elTargetBar) elTargetBar.style.width = `${Math.min(distPct, 100)}%`;
 
 							// ACH ROW
-							const achPct = targetVal ? ((achVal / targetVal) * 100) : 0;
+							const achPct = targetVal > 0 ? ((achVal / targetVal) * 100) : 0;
 							const elAch = document.getElementById(`ach-${p.id}`);
 							if (elAch) elAch.textContent = this.formatAmount(achVal);
 							const elAchPct = document.getElementById(`ach-pct-${p.id}`);
@@ -4967,7 +4974,6 @@
 							if (elAchBar) elAchBar.style.width = `${Math.min(achPct, 100)}%`;
 
 							// REMAINING ROW
-							const remPct = targetVal ? ((remVal / targetVal) * 100) : 0;
 							const isOverAchieved = remVal < 0;
 							const displayRemVal = Math.abs(remVal);
 							
@@ -4986,33 +4992,34 @@
 							const remColor = isOverAchieved ? "#9333ea" : "#ef4444";
 							
 							if (elRemPct) {
-								let displayPct = Math.abs(remPct).toFixed(2) + "%";
+								const remPct = targetVal > 0 ? ((displayRemVal / targetVal) * 100) : 0;
+								let displayPct = remPct.toFixed(2) + "%";
 								if (isOverAchieved) displayPct = "+" + displayPct;
 								elRemPct.textContent = displayPct;
 								elRemPct.style.color = remColor;
 							}
 							if (elRemBar) {
-								elRemBar.style.width = `${Math.min(Math.abs(remPct), 100)}%`;
+								const remPct = targetVal > 0 ? ((displayRemVal / targetVal) * 100) : 0;
+								elRemBar.style.width = `${Math.min(remPct, 100)}%`;
 								elRemBar.style.background = remColor;
 							}
 
 							// STATUS ROW
 							const elStatus = document.getElementById(`status-${p.id}`);
 							if (elStatus) {
-								if (achPct >= 100) {
-									elStatus.innerHTML = `<i class="fa fa-arrow-circle-up"></i> Over Achieved`;
-									elStatus.style.color = "#9333ea";
+								if (targetVal === 0 && achVal === 0) {
+									elStatus.innerHTML = `<span style="color:#94a3b8;font-size:12px;">--</span>`;
+								} else if (achPct >= 100) {
+									elStatus.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;background:#f3e8ff;color:#7e22ce;font-weight:600;font-size:11px;white-space:nowrap;"><i class="fa fa-check-circle"></i> Over Achieved</span>`;
 								} else if (achPct >= 50) {
-									elStatus.innerHTML = `<i class="fa fa-arrow-circle-up"></i> On Track`;
-									elStatus.style.color = "#22c55e";
+									elStatus.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;background:#dcfce7;color:#15803d;font-weight:600;font-size:11px;white-space:nowrap;"><i class="fa fa-arrow-circle-up"></i> On Track</span>`;
 								} else {
-									elStatus.innerHTML = `<i class="fa fa-arrow-circle-down"></i> Below Target`;
-									elStatus.style.color = "#ef4444";
+									elStatus.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;background:#fee2e2;color:#b91c1c;font-weight:600;font-size:11px;white-space:nowrap;"><i class="fa fa-arrow-circle-down"></i> Below Target</span>`;
 								}
 							}
 
 							// HIGHLIGHT COLUMN IF OVER TARGET
-							const isTargetMet = achPct >= 100;
+							const isTargetMet = achPct >= 100 && targetVal > 0;
 							const highlightBg = isTargetMet ? "color-mix(in srgb, var(--primary-1) 8%, transparent)" : "";
 							const highlightThBg = isTargetMet && p.id !== 'total' ? "color-mix(in srgb, var(--primary-1) 12%, transparent)" : (p.id === 'total' ? 'var(--primary-2)' : '#fff');
 							

@@ -11,7 +11,7 @@ MONTH_MAP = {
 
 
 @frappe.whitelist()
-def get_sol_product_wise_collection(sol_id, zone, financial_year="2026-2027", report_date=None, mode="month", month=None):
+def get_sol_product_wise_collection(sol_id, zone=None, financial_year="2026-2027", report_date=None, mode="month", month=None):
     """
     Fetch product wise collection (ACH) from 'Product Wise Report' doctype.
     mode='ytd'   -> Sum of value from 01-04-(FY start) till yesterday (today - 1).
@@ -23,9 +23,22 @@ def get_sol_product_wise_collection(sol_id, zone, financial_year="2026-2027", re
 
     clean_m = (month or "").strip().upper() if month else ""
     sol_str = str(sol_id).strip() if sol_id else ""
-    cache_key = f"sol_pw_coll_{sol_str}_{financial_year or 'default'}_{mode}_{clean_m}"
+
+    # Auto-resolve zone if not passed or placeholder
+    if not zone or str(zone).strip() in ("", "--", "None", "undefined"):
+        zone = frappe.db.get_value("Branch Category Report", {"sol_id": sol_str}, "zone")
+        if not zone:
+            try:
+                from custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard import get_sahayog_branches_cached
+                bm = get_sahayog_branches_cached()
+                zone = bm.get(sol_str, {}).get("zone")
+            except Exception:
+                pass
+
+    clean_zone = (zone or "").strip()
+    cache_key = f"sol_pw_coll_v3_{sol_str}_{clean_zone}_{financial_year or 'default'}_{mode}_{clean_m}"
     cached = frappe.cache().get_value(cache_key)
-    if cached is not None:
+    if cached is not None and any(cached.get("targets", {}).values()):
         return cached
 
     today_dt = getdate(today())
@@ -59,11 +72,18 @@ def get_sol_product_wise_collection(sol_id, zone, financial_year="2026-2027", re
 
         collections = _aggregate_collections(data)
 
-        # Overall target (YTD)
+        # Overall target (YTD cumulative target matching current month)
+        target_month = clean_m if (clean_m and clean_m in MONTH_MAP) else current_month
         overall = frappe.db.sql("""
             SELECT target FROM `tabTarget Vs Achivement`
-            WHERE sol_id = %s AND type = 'YTD' AND financial_year = %s
-        """, (sol_id, fy), as_dict=True)
+            WHERE sol_id = %s AND type = 'YTD' AND month = %s AND financial_year = %s
+        """, (sol_id, target_month, fy), as_dict=True)
+        if not overall:
+            overall = frappe.db.sql("""
+                SELECT target FROM `tabTarget Vs Achivement`
+                WHERE sol_id = %s AND type = 'YTD' AND financial_year = %s
+                ORDER BY modified DESC LIMIT 1
+            """, (sol_id, fy), as_dict=True)
 
     else:
         # MONTH mode
@@ -120,9 +140,16 @@ def get_sol_product_wise_collection(sol_id, zone, financial_year="2026-2027", re
             SELECT a.casa, a.dam, a.dd, a.fd, a.rd, a.smbg
             FROM `tabGL Wise Target Allocation` a
             JOIN `tabGL Wise Target` p ON a.parent = p.name
-            WHERE a.zone = %s AND p.financial_year = %s
+            WHERE a.zone = %s AND (p.financial_year = %s OR p.financial_year IS NULL)
             ORDER BY a.modified DESC LIMIT 1
         """, (zone, fy), as_dict=True)
+        if not target_data:
+            target_data = frappe.db.sql("""
+                SELECT a.casa, a.dam, a.dd, a.fd, a.rd, a.smbg
+                FROM `tabGL Wise Target Allocation` a
+                WHERE a.zone = %s
+                ORDER BY a.modified DESC LIMIT 1
+            """, (zone,), as_dict=True)
         if target_data:
             t = target_data[0]
             for p in targets:
