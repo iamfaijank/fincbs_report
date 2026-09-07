@@ -3033,7 +3033,7 @@
 													:style="{ 
 														color: row.isPostSettlement ? '#94a3b8' : (row.isAdjustedInstallment ? '#7e22ce' : (row.isSupplementary ? '#475569' : (!row.isFromDb ? '#ef4444' : 'inherit'))),
 														opacity: row.isPostSettlement ? '0.7' : '1',
-														background: row.isPostSettlement ? '#fcfcfc' : (row.isAdjustedInstallment ? '#faf5ff' : 'inherit')
+														background: row.isPostSettlement ? '#fcfcfc' : (row.isExceptionalReversal ? (row.isDebit ? '#fff5f5' : '#f0fdf4') : (row.isAdjustedInstallment ? '#faf5ff' : 'inherit'))
 													}"
 												>
 													<td
@@ -3064,6 +3064,13 @@
 															Netwin
 														</div>
 														<div
+															v-if="row.isExceptionalReversal"
+															class="advance-payment-label"
+															:style="{ color: row.isDebit ? '#dc2626' : '#059669', background: row.isDebit ? '#fef2f2' : '#ecfdf5', borderColor: row.isDebit ? '#fca5a5' : '#a7f3d0' }"
+														>
+															[[ row.isDebit ? 'DEBIT REVERSAL' : 'EXCEPTIONAL CREDIT' ]]
+														</div>
+														<div
 															v-if="row.isSupplementary"
 															class="advance-payment-label"
 														>
@@ -3090,7 +3097,9 @@
 														[[ row.particular ]]
 													</td>
 													<td class="col-amt">
-														<span v-if="row.installment !== ''"
+														<span
+															v-if="row.installment !== ''"
+															:style="{ color: row.isDebit ? '#dc2626' : (row.isExceptionalReversal ? '#059669' : 'inherit'), fontWeight: row.isExceptionalReversal ? '700' : 'inherit' }"
 															>[[ formatCurrency(row.installment) ]]</span
 														>
 														<span
@@ -3512,28 +3521,28 @@
 							for (let j = importedTransactions.length - 1; j >= 0; j--) {
 								if (
 									importedTransactions[j].type === "C" &&
+									!importedTransactions[j].is_exceptional_reversal &&
 									Math.abs(importedTransactions[j].amount - debitAmount) < 0.01
 								) {
-									importedTransactions.splice(j, 1);
+									importedTransactions[j].is_exceptional_reversal = true;
 									matched = true;
 									break;
 								}
 							}
-							if (!matched) {
-								importedTransactions.push({
-									date: this.formatDate(this.toISODate(parsedDate)),
-									amount: debitAmount,
-									type: "D",
-									particular:
-										(descriptionIndex !== -1 && columns[descriptionIndex]) ||
-										(typeIndex !== -1 && columns[typeIndex]) ||
-										"Imported Netwin Debit",
-									accrued_interest: 0,
-									scheme_interest: 0,
-									elg_amt: 0,
-									imported_from_csv: true,
-								});
-							}
+							importedTransactions.push({
+								date: this.formatDate(this.toISODate(parsedDate)),
+								amount: debitAmount,
+								type: "D",
+								particular:
+									(descriptionIndex !== -1 && columns[descriptionIndex]) ||
+									(typeIndex !== -1 && columns[typeIndex]) ||
+									"Imported Netwin Debit",
+								accrued_interest: 0,
+								scheme_interest: 0,
+								elg_amt: 0,
+								imported_from_csv: true,
+								is_exceptional_reversal: matched,
+							});
 							continue;
 						}
 
@@ -3551,10 +3560,11 @@
 							scheme_interest: 0,
 							elg_amt: creditAmount,
 							imported_from_csv: true,
+							is_exceptional_reversal: false,
 						});
 					}
 
-					if (!importedTransactions.length) {
+					if (!importedTransactions.some((t) => t.type === "C" && !t.is_exceptional_reversal)) {
 						throw new Error("No credit transactions found in the Netwin statement");
 					}
 
@@ -3596,6 +3606,7 @@
 				},
 				isClosureTransaction(t) {
 					if (!t) return false;
+					if (t.is_exceptional_reversal) return false;
 					const txnType = String(t.type || "").trim().toUpperCase();
 					return this.parseTxnAmount(t.amount) < 0 || txnType === "D";
 				},
@@ -4141,10 +4152,13 @@
 							if (t.type === "C") {
 								const dVal = this.parseDate(t.date);
 								if (dVal < dMaturity && dVal <= dExit) {
-									actualCreditsTotal += this.parseTxnAmount(t.amount);
 									let m_off = getCycleOffset(dVal);
-									rawCreditsByMonth[m_off] = (rawCreditsByMonth[m_off] || 0) + t.amount;
-									monthsWithTransactions.add(m_off);
+									if (!t.is_exceptional_reversal) {
+										actualCreditsTotal += this.parseTxnAmount(t.amount);
+										rawCreditsByMonth[m_off] = (rawCreditsByMonth[m_off] || 0) + t.amount;
+										monthsWithTransactions.add(m_off);
+										if (t.amount > 0 && m_off > maxTxnMonth) maxTxnMonth = m_off;
+									}
 									if (!cycleTransactions[m_off]) {
 										cycleTransactions[m_off] = [];
 									}
@@ -4152,7 +4166,9 @@
 										date: t.date,
 										particular: t.particular || "Transaction posted",
 										amount: t.amount,
+										type: "C",
 										imported_from_csv: !!t.imported_from_csv,
+										is_exceptional_reversal: !!t.is_exceptional_reversal,
 									});
 									if (!actualTxnDates[m_off]) actualTxnDates[m_off] = t.date;
 									if (!actualTxnParticulars[m_off]) {
@@ -4161,7 +4177,29 @@
 									if (t.particular) {
 										actualTxnParticulars[m_off].push(t.particular);
 									}
-									if (t.amount > 0 && m_off > maxTxnMonth) maxTxnMonth = m_off;
+								}
+							} else if (t.type === "D" && t.is_exceptional_reversal) {
+								const dVal = this.parseDate(t.date);
+								if (dVal <= dExit) {
+									let m_off = getCycleOffset(dVal);
+									if (!cycleTransactions[m_off]) {
+										cycleTransactions[m_off] = [];
+									}
+									cycleTransactions[m_off].push({
+										date: t.date,
+										particular: t.particular || "Reversal / Debit",
+										amount: -Math.abs(this.parseTxnAmount(t.amount)),
+										type: "D",
+										imported_from_csv: !!t.imported_from_csv,
+										is_exceptional_reversal: true,
+									});
+									if (!actualTxnDates[m_off]) actualTxnDates[m_off] = t.date;
+									if (!actualTxnParticulars[m_off]) {
+										actualTxnParticulars[m_off] = [];
+									}
+									if (t.particular) {
+										actualTxnParticulars[m_off].push(t.particular);
+									}
 								}
 							}
 						t.accrued_interest = 0;
@@ -4313,13 +4351,46 @@
 							tenureMonths,
 						);
 						const cycleTxns = cycleTransactions[m] || [];
+						const regularCycleTxns = cycleTxns.filter((txn) => !txn.is_exceptional_reversal);
+						const exceptionalCycleTxns = cycleTxns.filter((txn) => txn.is_exceptional_reversal);
+
 						const displayCycleTxns = this.splitCycleTransactionsForDisplay(
-							cycleTxns,
+							regularCycleTxns,
 							plannedInstallment,
 						);
 
+						if (!displayCycleTxns.length && (isAdjustedInstallment || (!exceptionalCycleTxns.length && m < effectiveInterestMonths))) {
+							const particular = isAdjustedInstallment
+								? "ADVANCE ADJUSTED"
+								: "SKIP INSTALLMENT";
+							displayCycleTxns.push({
+								date: rowDate,
+								particular,
+								displayAmount: installment,
+								isSupplementary: false,
+								isSkipRow: !isAdjustedInstallment && parseFloat(installment) === 0,
+								isAdjustedInstallment,
+								isFromDb: false,
+							});
+						}
+
+						exceptionalCycleTxns.forEach((exTxn, exIdx) => {
+							displayCycleTxns.push({
+								...exTxn,
+								displayAmount:
+									exTxn.type === "D"
+										? -Math.abs(this.parseTxnAmount(exTxn.amount))
+										: this.parseTxnAmount(exTxn.amount),
+								isSupplementary: false,
+								isExceptionalReversal: true,
+								isDebit: exTxn.type === "D",
+								splitIndex: 100 + exIdx,
+							});
+						});
+
 						if (displayCycleTxns.length) {
 							displayCycleTxns.forEach((txn, idx) => {
+								const isEx = !!txn.isExceptionalReversal;
 								ledger.push({
 									rowKey: `${m}-${idx}-${txn.date}-${txn.displayAmount}-${txn.splitIndex || 0}`,
 									monthNo: m + 1,
@@ -4327,22 +4398,25 @@
 									tenureCycle: cycleLabel,
 									date: txn.date || rowDate,
 									particular:
-										displayCycleTxns.length > 1
+										txn.particular ||
+										(displayCycleTxns.length > 1
 											? `${txn.particular} | REPRESENTS ${cycleLabel}`
-											: txn.particular || "Transaction posted",
+											: "Transaction posted"),
 									installment:
 										txn.displayAmount !== undefined && txn.displayAmount !== null
 											? Number(txn.displayAmount).toFixed(2)
 											: installment.toFixed(2),
-									balanceBefore: idx === 0 ? balBefore.toFixed(2) : "",
-									rate: idx === 0 && shouldAccrueInterest ? appRate : "",
-									interestAmount: idx === 0 ? m_int.toFixed(2) : "",
-									closingBalance: idx === 0 ? (balBefore + m_int).toFixed(2) : "",
-									isFromDb: true,
+									balanceBefore: !isEx && idx === 0 ? balBefore.toFixed(2) : "",
+									rate: !isEx && idx === 0 && shouldAccrueInterest ? appRate : "",
+									interestAmount: !isEx && idx === 0 ? m_int.toFixed(2) : "",
+									closingBalance: !isEx && idx === 0 ? (balBefore + m_int).toFixed(2) : "",
+									isFromDb: txn.isFromDb !== undefined ? txn.isFromDb : true,
 									imported_from_csv: !!txn.imported_from_csv,
-									isAdjustedInstallment: false,
+									isAdjustedInstallment: !!txn.isAdjustedInstallment,
 									isSupplementary: !!txn.isSupplementary,
-									isSkipRow: false,
+									isExceptionalReversal: isEx,
+									isDebit: !!txn.isDebit || txn.type === "D",
+									isSkipRow: !!txn.isSkipRow,
 									isPostSettlement: m >= effectiveInterestMonths,
 								});
 							});
@@ -4365,6 +4439,8 @@
 								isFromDb: false,
 								isAdjustedInstallment,
 								isSupplementary: false,
+								isExceptionalReversal: false,
+								isDebit: false,
 								isSkipRow: !isAdjustedInstallment && parseFloat(installment) === 0,
 								isPostSettlement: m >= effectiveInterestMonths,
 							});
@@ -4573,6 +4649,15 @@
 					if (v === undefined || v === null)
 						return "₹0" + (decimals > 0 ? "." + "0".repeat(decimals) : "");
 					const num = typeof v === "string" ? parseFloat(v) : v;
+					if (num < 0) {
+						return (
+							"-₹" +
+							Math.abs(num).toLocaleString("en-IN", {
+								minimumFractionDigits: decimals,
+								maximumFractionDigits: decimals,
+							})
+						);
+					}
 					return (
 						"₹" +
 						num.toLocaleString("en-IN", {
@@ -4717,8 +4802,8 @@
 						.map((row) => ({
 							rowKey: row.rowKey,
 							date: row.date,
-							amount: parseFloat(row.installment || 0),
-							type: "C",
+							amount: Math.abs(parseFloat(row.installment || 0)),
+							type: row.isDebit ? "D" : "C",
 							particular: row.particular,
 							accrued_interest: row.interestAmount,
 							rate: row.rate,
@@ -4728,13 +4813,15 @@
 							isSkip: row.isSkipRow,
 							isAdvanceAdjusted: row.isAdjustedInstallment,
 							isSupplementary: row.isSupplementary,
+							isExceptionalReversal: row.isExceptionalReversal,
+							imported_from_csv: row.imported_from_csv,
 							sortMonth: (row.monthNo || 1) - 1,
 							sortIndex: row.displaySrNo || 0,
 						}));
 
 					effectiveTransactions.forEach((t, idx) => {
 						const txnType = String(t.type || "").trim().toUpperCase();
-						if (txnType === "C") return;
+						if (txnType === "C" || t.is_exceptional_reversal) return;
 						const monthOffset = this.getTransactionCycleOffset(
 							this.data.acct_opn_date,
 							t.date,
