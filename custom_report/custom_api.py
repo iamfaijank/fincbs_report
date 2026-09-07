@@ -36,7 +36,7 @@ def get_sol_product_wise_collection(sol_id, zone=None, financial_year="2026-2027
                 pass
 
     clean_zone = (zone or "").strip()
-    cache_key = f"sol_pw_coll_v3_{sol_str}_{clean_zone}_{financial_year or 'default'}_{mode}_{clean_m}"
+    cache_key = f"sol_pw_coll_v4_{sol_str}_{clean_zone}_{financial_year or 'default'}_{mode}_{clean_m}_{report_date or ''}"
     cached = frappe.cache().get_value(cache_key)
     if cached is not None and any(cached.get("targets", {}).values()):
         return cached
@@ -86,42 +86,42 @@ def get_sol_product_wise_collection(sol_id, zone=None, financial_year="2026-2027
             """, (sol_id, fy), as_dict=True)
 
     else:
-        # MONTH mode
+        # MONTH mode: T-1 single date snapshot (not monthly aggregate)
         clean_m = (month or "").strip().upper() if month else ""
         if clean_m and clean_m in MONTH_MAP:
             sel_month = clean_m
+        elif report_date:
+            sel_month = getdate(report_date).strftime('%b').upper()
         else:
             sel_month = current_month
 
-        mnum = MONTH_MAP[sel_month]
+        mnum = MONTH_MAP.get(sel_month, today_dt.month)
         fy_start_year = int(fy.split("-")[0])
         cal_year = fy_start_year if mnum >= 4 else fy_start_year + 1
-        start_date = f"{cal_year}-{mnum:02d}-01"
 
         is_current_month = (mnum == today_dt.month and cal_year == today_dt.year)
-        if is_current_month:
-            # 01 till today - 1 (yesterday)
-            end_date = str(yesterday_dt)
-            end_date_obj = yesterday_dt
+        if report_date:
+            t1_date_str = str(report_date)
+        elif is_current_month:
+            # T-1 (yesterday) or latest available date up to yesterday
+            t1_date_str = _get_latest_pwr_date(sol_id, yesterday_dt) or str(yesterday_dt)
         else:
-            # 01 till that month end
+            # Selected past month: latest available date in that month
             last_day = calendar.monthrange(cal_year, mnum)[1]
-            end_date = f"{cal_year}-{mnum:02d}-{last_day:02d}"
-            end_date_obj = getdate(end_date)
+            month_end = f"{cal_year}-{mnum:02d}-{last_day:02d}"
+            t1_date_str = _get_latest_pwr_date(sol_id, month_end) or month_end
 
-        if not (month and month.strip()) or start_date == end_date:
-            period_label = f"As of: {end_date_obj.strftime('%d/%m/%Y')}"
-        else:
-            period_label = f"01 {sel_month.title()} {cal_year} – {end_date_obj.strftime('%d %b %Y')}"
-        actual_date = end_date_obj
+        t1_date_obj = getdate(t1_date_str)
+        period_label = f"As of: {t1_date_obj.strftime('%d/%m/%Y')}"
+        actual_date = t1_date_obj
 
-        # Month Collection Query (Sum from 01 till end_date)
+        # T-1 Single Date Collection Query
         data = frappe.db.sql("""
             SELECT product, SUM(amount) as total_amount
             FROM `tabProduct Wise Report`
-            WHERE sol_id = %s AND date >= %s AND date <= %s
+            WHERE sol_id = %s AND date = %s
             GROUP BY product
-        """, (sol_id, start_date, end_date), as_dict=True)
+        """, (sol_id, str(t1_date_str)), as_dict=True)
 
         collections = _aggregate_collections(data)
 
