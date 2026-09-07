@@ -16,7 +16,52 @@ const getRemainingWorkingDaysExcludingSundays = (year, monthIndex, currentDay) =
 	return workingDays;
 };
 
+const checkAndTriggerDailyCacheClear = () => {
+	try {
+		const todayStr = (frappe.datetime && frappe.datetime.get_today)
+			? frappe.datetime.get_today()
+			: new Date().toISOString().slice(0, 10);
+		const user = (frappe.session && frappe.session.user) ? frappe.session.user : "user";
+		const storageKey = `drishti_daily_cache_cleared_${user}`;
+		const lastCleared = localStorage.getItem(storageKey);
+
+		if (lastCleared !== todayStr) {
+			// Mark today as cleared immediately to guarantee loop protection
+			localStorage.setItem(storageKey, todayStr);
+
+			// Clear dashboard specific backend cache as well
+			if (frappe.xcall) {
+				frappe.xcall(
+					"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_branch_category_report_cache"
+				).catch(() => null);
+			}
+
+			// Call Frappe's standard toolbar clear_cache method
+			if (frappe.ui && frappe.ui.toolbar && typeof frappe.ui.toolbar.clear_cache === "function") {
+				frappe.ui.toolbar.clear_cache();
+			} else if (frappe.assets && frappe.assets.clear_local_storage) {
+				frappe.assets.clear_local_storage();
+				frappe.xcall("frappe.sessions.clear").then((message) => {
+					frappe.show_alert({
+						message: message,
+						indicator: "info",
+					});
+					location.reload(true);
+				});
+			}
+			return true;
+		}
+	} catch (e) {
+		console.error("Daily cache clear check error:", e);
+	}
+	return false;
+};
+
 frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
+	if (checkAndTriggerDailyCacheClear()) {
+		return;
+	}
+
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
 		title: "Drishti",
@@ -39,6 +84,9 @@ frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 };
 
 frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
+	if (checkAndTriggerDailyCacheClear()) {
+		return;
+	}
 	// Inject Drishti title
 	document.title = "Drishti";
 	if ($("head title").length) {
