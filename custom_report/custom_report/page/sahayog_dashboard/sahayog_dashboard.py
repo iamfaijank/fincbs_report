@@ -736,6 +736,7 @@ def get_branch_category_report_monthly_data(eff_date):
         next_month = dt.replace(month=dt.month + 1, day=1)
     month_end = next_month - timedelta(days=1)
 
+    # First attempt: get latest records on or before eff_date (dt) within the month
     rows = frappe.db.sql("""
         SELECT bcr.sol_id, bcr.zone, bcr.region, bcr.district, bcr.branch, bcr.achievement, bcr.yearly_achievement
         FROM `tabBranch Category Report` bcr
@@ -745,7 +746,20 @@ def get_branch_category_report_monthly_data(eff_date):
             WHERE date >= %s AND date <= %s
             GROUP BY sol_id
         ) latest ON latest.sol_id = bcr.sol_id AND latest.max_date = bcr.date
-    """, (month_start, month_end), as_dict=True)
+    """, (month_start, dt), as_dict=True)
+
+    # Fallback: if no records exist on or before dt within that month, look across the full month
+    if not rows:
+        rows = frappe.db.sql("""
+            SELECT bcr.sol_id, bcr.zone, bcr.region, bcr.district, bcr.branch, bcr.achievement, bcr.yearly_achievement
+            FROM `tabBranch Category Report` bcr
+            INNER JOIN (
+                SELECT sol_id, MAX(date) AS max_date
+                FROM `tabBranch Category Report`
+                WHERE date >= %s AND date <= %s
+                GROUP BY sol_id
+            ) latest ON latest.sol_id = bcr.sol_id AND latest.max_date = bcr.date
+        """, (month_start, month_end), as_dict=True)
 
     result = []
     for r in rows:

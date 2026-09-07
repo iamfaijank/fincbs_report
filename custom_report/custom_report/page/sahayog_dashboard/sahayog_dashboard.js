@@ -7205,6 +7205,7 @@ class DrishtiDashboard {
 						];
 						const monthNum = parseInt(val.split("-")[1], 10); // 1-12
 						self.state.selectedMonth = monthNames[monthNum - 1];
+						self.page.main.find("#month-selector").val(monthNum);
 
 						self.updateUrlFromState();
 						self._dataLoaded = false;
