@@ -3480,8 +3480,10 @@
 						if (!parsedDate) continue;
 
 						let creditAmount = creditIndex !== -1 ? this.parseTxnAmount(columns[creditIndex]) : 0;
-						if (!(creditAmount > 0) && typeIndex !== -1) {
-							const txnType = String(columns[typeIndex] || "").trim().toUpperCase();
+						let debitAmount = debitIndex !== -1 ? this.parseTxnAmount(columns[debitIndex]) : 0;
+						const txnType = typeIndex !== -1 ? String(columns[typeIndex] || "").trim().toUpperCase() : "";
+
+						if (!(creditAmount > 0) && !(debitAmount > 0) && txnType) {
 							if (["CREDIT", "CR", "C"].includes(txnType)) {
 								for (let colIdx = 0; colIdx < columns.length; colIdx++) {
 									if (colIdx === dateIndex || colIdx === descriptionIndex || colIdx === typeIndex)
@@ -3492,8 +3494,49 @@
 										break;
 									}
 								}
+							} else if (["DEBIT", "DR", "D"].includes(txnType)) {
+								for (let colIdx = 0; colIdx < columns.length; colIdx++) {
+									if (colIdx === dateIndex || colIdx === descriptionIndex || colIdx === typeIndex)
+										continue;
+									const amt = this.parseTxnAmount(columns[colIdx]);
+									if (amt > 0) {
+										debitAmount = amt;
+										break;
+									}
+								}
 							}
 						}
+
+						if (debitAmount > 0) {
+							let matched = false;
+							for (let j = importedTransactions.length - 1; j >= 0; j--) {
+								if (
+									importedTransactions[j].type === "C" &&
+									Math.abs(importedTransactions[j].amount - debitAmount) < 0.01
+								) {
+									importedTransactions.splice(j, 1);
+									matched = true;
+									break;
+								}
+							}
+							if (!matched) {
+								importedTransactions.push({
+									date: this.formatDate(this.toISODate(parsedDate)),
+									amount: debitAmount,
+									type: "D",
+									particular:
+										(descriptionIndex !== -1 && columns[descriptionIndex]) ||
+										(typeIndex !== -1 && columns[typeIndex]) ||
+										"Imported Netwin Debit",
+									accrued_interest: 0,
+									scheme_interest: 0,
+									elg_amt: 0,
+									imported_from_csv: true,
+								});
+							}
+							continue;
+						}
+
 						if (!(creditAmount > 0)) continue;
 
 						importedTransactions.push({
