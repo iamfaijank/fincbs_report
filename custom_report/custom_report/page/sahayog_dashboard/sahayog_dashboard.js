@@ -6563,8 +6563,7 @@ class DrishtiDashboard {
 		// Show loading skeleton in data container
 		const dataContainer = this.page.main.find("#data-container");
 		if (dataContainer.length) {
-			dataContainer.css("opacity", 0);
-			dataContainer.html(this._buildLoadingSkeleton());
+			dataContainer.html(this._buildLoadingSkeleton()).css("opacity", 1);
 		}
 
 		// Show loading in summary cards
@@ -6578,26 +6577,137 @@ class DrishtiDashboard {
 	}
 
 	_buildLoadingSkeleton() {
+		const activeTab = (this.state && this.state.activeTab) ? this.state.activeTab : "zone";
+		const tabTitles = {
+			zone: "Zone Wise",
+			branch: "Branch Wise",
+			category: "Category Wise",
+			product: "Product Wise",
+			agent: "Agent Wise",
+			product_tgt_ach: "Product Wise TGT VS ACH"
+		};
+		const tabLabel = tabTitles[activeTab] || "Zone Wise";
+
 		return `
 			<style>
 				@keyframes drishti-shimmer {
-					0% { background-position: 400px 0; }
-					100% { background-position: -400px 0; }
+					0% { background-position: -800px 0; }
+					100% { background-position: 800px 0; }
 				}
-				.drishti-skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 800px 100%; animation: drishti-shimmer 1.5s ease-in-out infinite; border-radius: 4px; }
+				@keyframes drishti-spin {
+					to { transform: rotate(360deg); }
+				}
+				.drishti-skeleton-pulse {
+					background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+					background-size: 800px 100%;
+					animation: drishti-shimmer 1.5s ease-in-out infinite;
+					border-radius: 4px;
+					display: inline-block;
+				}
+				.drishti-zone-loader-card {
+					background: #ffffff;
+					border: 1px solid #e2e8f0;
+					border-radius: 8px;
+					padding: 14px 16px;
+					box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+				}
+				.drishti-zone-skeleton-table {
+					width: 100%;
+					border-collapse: separate;
+					border-spacing: 0;
+					background: #ffffff;
+					border: 1px solid #e2e8f0;
+					border-radius: 8px;
+					overflow: hidden;
+				}
+				.drishti-zone-skeleton-table th {
+					padding: 10px 12px;
+					background: #f8fafc;
+					border-bottom: 1px solid #e2e8f0;
+					border-right: 1px solid #f1f5f9;
+					vertical-align: middle;
+				}
+				.drishti-zone-skeleton-table td {
+					padding: 10px 12px;
+					border-bottom: 1px solid #f1f5f9;
+					border-right: 1px solid #f8fafc;
+					vertical-align: middle;
+				}
 			</style>
-			<div style="padding: 16px; font-family: 'Inter', sans-serif;">
-				<div style="display: flex; gap: 12px; margin-bottom: 16px;">
-					${[1,2,3,4].map(() => `<div class="drishti-skeleton" style="flex: 1; height: 80px; border-radius: 8px;"></div>`).join('')}
+			<div class="drishti-skeleton" style="padding: 16px 20px; font-family: 'Inter', sans-serif;">
+				<!-- Active Loader Banner -->
+				<div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; margin-bottom: 16px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+					<div style="display: flex; align-items: center; gap: 12px;">
+						<div style="width: 20px; height: 20px; border: 2.5px solid #cbd5e1; border-top-color: #417d81; border-radius: 50%; animation: drishti-spin 0.75s linear infinite; flex-shrink: 0;"></div>
+						<div>
+							<div style="font-size: 14px; font-weight: 700; color: #417d81; line-height: 1.2;">Loading ${tabLabel} Performance Data...</div>
+							<div style="font-size: 11px; color: #64748b; font-weight: 500; margin-top: 2px;">Please wait while records and hierarchy metrics are calculated</div>
+						</div>
+					</div>
+					<div style="display: flex; align-items: center; gap: 6px;">
+						<span class="drishti-skeleton-pulse" style="width: 80px; height: 24px; border-radius: 12px;"></span>
+					</div>
 				</div>
-				<div style="display: flex; gap: 8px; margin-bottom: 12px;">
-					${[1,2,3,4,5,6].map(() => `<div class="drishti-skeleton" style="width: 90px; height: 32px; border-radius: 6px;"></div>`).join('')}
+
+				<!-- Summary Metrics Cards Skeleton -->
+				<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px;">
+					${[1, 2, 3, 4].map(() => `
+						<div class="drishti-zone-loader-card">
+							<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+								<div class="drishti-skeleton-pulse" style="width: 50%; height: 13px;"></div>
+								<div class="drishti-skeleton-pulse" style="width: 16px; height: 16px; border-radius: 50%;"></div>
+							</div>
+							<div class="drishti-skeleton-pulse" style="width: 70%; height: 24px; margin-bottom: 8px;"></div>
+							<div class="drishti-skeleton-pulse" style="width: 45%; height: 11px;"></div>
+						</div>
+					`).join('')}
 				</div>
-				<div class="drishti-skeleton" style="width: 100%; height: 36px; border-radius: 6px; margin-bottom: 4px;"></div>
-				<div class="drishti-skeleton" style="width: 100%; height: 36px; border-radius: 6px; margin-bottom: 4px;"></div>
-				<div class="drishti-skeleton" style="width: 100%; height: 36px; border-radius: 6px; margin-bottom: 4px;"></div>
-				<div class="drishti-skeleton" style="width: 100%; height: 36px; border-radius: 6px; margin-bottom: 4px;"></div>
-				<div class="drishti-skeleton" style="width: 70%; height: 36px; border-radius: 6px;"></div>
+
+				<!-- Zone Wise Table Skeleton -->
+				<div style="overflow-x: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border-radius: 8px;">
+					<table class="drishti-zone-skeleton-table">
+						<thead>
+							<tr>
+								<th style="width: 40px; text-align: center;"><div class="drishti-skeleton-pulse" style="width: 16px; height: 16px; border-radius: 3px;"></div></th>
+								<th style="width: 45px; text-align: center;"><div class="drishti-skeleton-pulse" style="width: 22px; height: 14px;"></div></th>
+								<th style="width: 240px;"><div class="drishti-skeleton-pulse" style="width: 120px; height: 14px;"></div></th>
+								<th style="width: 100px; text-align: center;"><div class="drishti-skeleton-pulse" style="width: 60px; height: 14px; margin: auto;"></div></th>
+								<th colspan="5" style="text-align: center; background: #f1f5f9;"><div class="drishti-skeleton-pulse" style="width: 130px; height: 15px; margin: auto;"></div></th>
+							</tr>
+							<tr style="background: #ffffff;">
+								<th></th>
+								<th></th>
+								<th></th>
+								<th></th>
+								<th style="text-align: right; width: 110px;"><div class="drishti-skeleton-pulse" style="width: 60px; height: 12px; margin-left: auto;"></div></th>
+								<th style="text-align: right; width: 110px;"><div class="drishti-skeleton-pulse" style="width: 60px; height: 12px; margin-left: auto;"></div></th>
+								<th style="text-align: right; width: 80px;"><div class="drishti-skeleton-pulse" style="width: 45px; height: 12px; margin-left: auto;"></div></th>
+								<th style="text-align: right; width: 110px;"><div class="drishti-skeleton-pulse" style="width: 60px; height: 12px; margin-left: auto;"></div></th>
+								<th style="text-align: right; width: 80px;"><div class="drishti-skeleton-pulse" style="width: 45px; height: 12px; margin-left: auto;"></div></th>
+							</tr>
+						</thead>
+						<tbody>
+							${[1, 2, 3, 4, 5, 6, 7, 8].map((i) => `
+								<tr style="background: ${i % 2 === 0 ? '#f8fafc' : '#ffffff'};">
+									<td style="text-align: center;"><div class="drishti-skeleton-pulse" style="width: 14px; height: 14px; border-radius: 3px;"></div></td>
+									<td style="text-align: center;"><div class="drishti-skeleton-pulse" style="width: 18px; height: 14px;"></div></td>
+									<td>
+										<div style="display: flex; align-items: center; gap: 8px;">
+											<div class="drishti-skeleton-pulse" style="width: 12px; height: 12px; border-radius: 2px;"></div>
+											<div class="drishti-skeleton-pulse" style="width: ${110 + (i * 20) % 90}px; height: 16px;"></div>
+										</div>
+									</td>
+									<td style="text-align: center;"><div class="drishti-skeleton-pulse" style="width: 48px; height: 16px; border-radius: 10px; margin: auto;"></div></td>
+									<td style="text-align: right;"><div class="drishti-skeleton-pulse" style="width: ${75 + (i * 9) % 30}px; height: 14px; margin-left: auto;"></div></td>
+									<td style="text-align: right;"><div class="drishti-skeleton-pulse" style="width: ${70 + (i * 13) % 30}px; height: 14px; margin-left: auto;"></div></td>
+									<td style="text-align: right;"><div class="drishti-skeleton-pulse" style="width: 44px; height: 14px; margin-left: auto;"></div></td>
+									<td style="text-align: right;"><div class="drishti-skeleton-pulse" style="width: ${65 + (i * 7) % 30}px; height: 14px; margin-left: auto;"></div></td>
+									<td style="text-align: right;"><div class="drishti-skeleton-pulse" style="width: 42px; height: 14px; margin-left: auto;"></div></td>
+								</tr>
+							`).join('')}
+						</tbody>
+					</table>
+				</div>
 			</div>
 		`;
 	}
@@ -8864,7 +8974,7 @@ class DrishtiDashboard {
                 <div id="error-message" style="color: #0d1b2a; display: none; padding: 10px; background: #ffebee; border-radius: 4px;"></div>
 
                 <div id="tab-content" style="overflow: auto; max-height: 75vh;">
-                    <div id="data-container" style="transition: opacity 0.2s ease-in-out;"></div>
+                    <div id="data-container" style="transition: opacity 0.2s ease-in-out;">${this._buildLoadingSkeleton()}</div>
                 </div>
             </div>
         `;
@@ -9188,11 +9298,9 @@ class DrishtiDashboard {
 		// Reset data loaded flag so loadData() fetches fresh for new tab
 		this._dataLoaded = false;
 
-		// Clear data container immediately to remove old tab content
+		// Clear data container immediately to remove old tab content and show skeleton
 		const dataContainer = this.page.main.find("#data-container");
-		dataContainer.css("opacity", 0);
-		dataContainer.html(this._buildLoadingSkeleton());
-		dataContainer.css("opacity", 1);
+		dataContainer.html(this._buildLoadingSkeleton()).css("opacity", 1);
 		this.page.main.find("#summary-cards-container").hide();
 
 		// Update tab button UI immediately to show the tab as active
@@ -9262,10 +9370,8 @@ class DrishtiDashboard {
 
 		// Show loading skeleton in data container
 		const dataContainer = this.page.main.find("#data-container");
-		if (dataContainer.length && !dataContainer.find(".drishti-skeleton").length) {
-			dataContainer.css("opacity", 0);
-			dataContainer.html(this._buildLoadingSkeleton());
-			dataContainer.css("opacity", 1);
+		if (dataContainer.length && !dataContainer.find(".drishti-zone-skeleton-table").length) {
+			dataContainer.html(this._buildLoadingSkeleton()).css("opacity", 1);
 		}
 		// Hide summary cards while loading
 		this.page.main.find("#summary-cards-container").hide();
@@ -9439,10 +9545,8 @@ class DrishtiDashboard {
 
 		// Show loading skeleton in data container
 		const dataContainer = this.page.main.find("#data-container");
-		if (dataContainer.length && !dataContainer.find(".drishti-skeleton").length) {
-			dataContainer.css("opacity", 0);
-			dataContainer.html(this._buildLoadingSkeleton());
-			dataContainer.css("opacity", 1);
+		if (dataContainer.length && !dataContainer.find(".drishti-zone-skeleton-table").length) {
+			dataContainer.html(this._buildLoadingSkeleton()).css("opacity", 1);
 		}
 		// Hide summary cards while loading
 		this.page.main.find("#summary-cards-container").hide();
