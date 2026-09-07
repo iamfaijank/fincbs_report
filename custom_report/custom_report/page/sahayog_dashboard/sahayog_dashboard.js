@@ -9142,37 +9142,27 @@ class DrishtiDashboard {
 
 		// Reset & Refresh (Clear Cache & Reload)
 		this.page.main.find("#clear-filters").on("click", function () {
-			const $btn = $(this);
-			$btn.prop("disabled", true).html("🔄 Clearing Cache...");
-
 			// 1. Reset URL parameters to clean state
 			history.pushState({}, "", window.location.pathname);
 
-			// 2. Clear frontend asset local storage
-			if (frappe.assets && typeof frappe.assets.clear_local_storage === "function") {
-				frappe.assets.clear_local_storage();
-			}
-
-			// 3. Clear session cache and dashboard backend cache
-			const clearSessionPromise = frappe.xcall("frappe.sessions.clear");
-			const clearDashboardCachePromise = frappe.xcall(
+			// 2. Clear dashboard specific backend cache
+			frappe.xcall(
 				"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_branch_category_report_cache"
 			).catch(() => null);
 
-			Promise.all([clearSessionPromise, clearDashboardCachePromise])
-				.then(([message]) => {
+			// 3. Call Frappe's standard toolbar clear_cache method directly
+			if (frappe.ui && frappe.ui.toolbar && typeof frappe.ui.toolbar.clear_cache === "function") {
+				frappe.ui.toolbar.clear_cache();
+			} else {
+				frappe.assets.clear_local_storage();
+				frappe.xcall("frappe.sessions.clear").then((message) => {
 					frappe.show_alert({
-						message: message || __("Cache Cleared"),
-						indicator: "green",
+						message: message,
+						indicator: "info",
 					});
-					setTimeout(() => {
-						location.reload(true);
-					}, 300);
-				})
-				.catch((err) => {
-					console.error("Cache Clear Error:", err);
 					location.reload(true);
 				});
+			}
 		});
 
 		// Segment Filter
