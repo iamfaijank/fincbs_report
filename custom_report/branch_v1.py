@@ -182,7 +182,7 @@ def get_branch_complete_profile(sol_id: str, fy: str = None):
         return {"status": "error", "message": "SOL ID is required"}
 
     sol_id_str = str(sol_id).strip()
-    cache_key = f"branch_complete_profile_{sol_id_str}_{fy or 'default'}"
+    cache_key = f"branch_complete_profile_v3_{sol_id_str}_{fy or 'default'}"
     cached = frappe.cache().get_value(cache_key)
     if cached is not None:
         return cached
@@ -1254,50 +1254,133 @@ def get_fiscal_year(date_str: str) -> str:
     return f"{year - 1}-{year}"
 
 
-def get_targets(sol_id: str, fiscal_year: str) -> Dict[str, float]:
+def get_targets(sol_id: str, fiscal_year: str, report_date=None) -> Dict[str, Optional[float]]:
     """
-    Get targets from Target Vs Achievement doctype
+    Get targets from Target Vs Achivement doctype strictly for the given sol_id, fiscal_year, and month.
+    Target types in Target Vs Achivement:
+      - Monthly: matches type='Monthly' AND month=<month_key>
+      - YTD: matches type='YTD' AND month=<month_key>
+      - Yearly: matches type='Yearly'
+    Returns None if a target record does not exist (strictly no fallback/fake values).
     """
-    rows = frappe.db.get_all(
-        "Target Vs Achivement",
-        filters={
-            "sol_id": sol_id,
-            "financial_year": fiscal_year,
-        },
-        fields=["type", "target"],
-    )
+    month_key = ""
+    if report_date:
+        try:
+            month_key = getdate(report_date).strftime("%b").upper()
+        except Exception:
+            pass
 
-    return {
-        row.type.lower().strip(): float(row.target or 0)
-        for row in rows
+    rows = frappe.db.sql("""
+        SELECT type, month, target
+        FROM `tabTarget Vs Achivement`
+        WHERE sol_id = %s AND financial_year = %s
+    """, (str(sol_id).strip(), str(fiscal_year).strip()), as_dict=True)
+
+    result = {
+        "monthly": None,
+        "ytd": None,
+        "yearly": None
     }
+
+    if not rows:
+        return result
+
+    for row in rows:
+        target_type = (row.get("type") or "").strip().lower()
+        target_month = (row.get("month") or "").strip().upper()
+        target_val = row.get("target")
+
+        target_num = None
+        if target_val is not None:
+            try:
+                target_num = float(target_val)
+            except (ValueError, TypeError):
+                target_num = None
+
+        if target_type == "monthly":
+            if month_key and target_month == month_key:
+                result["monthly"] = target_num
+            elif not month_key and result["monthly"] is None:
+                result["monthly"] = target_num
+        elif target_type == "ytd":
+            if month_key and target_month == month_key:
+                result["ytd"] = target_num
+            elif not month_key and result["ytd"] is None:
+                result["ytd"] = target_num
+        elif target_type == "yearly":
+            result["yearly"] = target_num
+
+    return result
+
 
 def get_achievement_category(percentage):
     """
-    Returns only the Category Name based on percentage
+    Returns only the Category Name based on percentage:
+      > 100%   : Pinnacle
+      80-100%  : Master
+      60-80%   : Accelerator
+      40-60%   : Starter
+      20-40%   : Learner
+      0-20%    : Zero
     """
-    p = flt(percentage)
+    if percentage is None:
+        return None
+    try:
+        p = flt(percentage)
+    except (ValueError, TypeError):
+        return None
+
     if p > 100: return "Pinnacle"
     if p >= 80: return "Master"
     if p >= 60: return "Accelerator"
     if p >= 40: return "Starter"
     if p >= 20: return "Learner"
-    return "Zero Level"
+    if p >= 0: return "Zero"
+    return "Zero"
+
 
 def format_ui_output(achievement, target):
     """
-    Calculates percentage and formats it as '00.00 %'
+    Calculates percentage and category strictly from achievement and target.
+    No fallback values: if either target or achievement is missing/None or target <= 0,
+    percentage and category return None.
     """
-    ach = flt(achievement)
-    tar = flt(target)
-    perc = (ach / tar * 100) if tar > 0 else 0
-    
+    if target is None or achievement is None:
+        return {
+            "target": target,
+            "achievement": achievement,
+            "percentage": None,
+            "category": None
+        }
+
+    try:
+        tar = flt(target)
+        ach = flt(achievement)
+    except (ValueError, TypeError):
+        return {
+            "target": None,
+            "achievement": None,
+            "percentage": None,
+            "category": None
+        }
+
+    if tar <= 0:
+        return {
+            "target": tar,
+            "achievement": ach,
+            "percentage": None,
+            "category": None
+        }
+
+    perc = (ach / tar) * 100
     return {
         "target": tar,
         "achievement": ach,
-        "percentage": "{:05.2f} %".format(perc),
+        "percentage": "{:.2f}%".format(perc),
+        "percentage_raw": round(perc, 2),
         "category": get_achievement_category(perc)
     }
+
 
 @frappe.whitelist()
 def get_performance_data(sol_id, date=None, fy=None):
@@ -1309,7 +1392,7 @@ def get_performance_data(sol_id, date=None, fy=None):
         }
 
     sol_id_str = str(sol_id).strip()
-    cache_key = f"perf_data_{sol_id_str}_{fy or 'default'}"
+    cache_key = f"perf_data_v3_{sol_id_str}_{fy or 'default'}_{date or 'latest'}"
     cached = frappe.cache().get_value(cache_key)
     if cached is not None:
         return cached
@@ -1326,49 +1409,82 @@ def get_performance_data(sol_id, date=None, fy=None):
             except Exception:
                 pass
 
-        # 1. Fetch Latest Record for the SOL
-        if start_date and end_date:
+        # 1. Fetch Latest Record for the SOL from Branch Category Report
+        if date:
             latest_record = frappe.db.sql("""
-                SELECT date, achievement, yearly_achievement 
+                SELECT date, achievement, yearly_achievement, branch_category 
+                FROM `tabBranch Category Report`
+                WHERE sol_id = %s AND date <= %s
+                ORDER BY date DESC 
+                LIMIT 1
+            """, (sol_id_str, date), as_dict=True)
+        elif start_date and end_date:
+            latest_record = frappe.db.sql("""
+                SELECT date, achievement, yearly_achievement, branch_category 
                 FROM `tabBranch Category Report`
                 WHERE sol_id = %s AND date >= %s AND date <= %s
                 ORDER BY date DESC 
                 LIMIT 1
-            """, (sol_id_str, start_date, end_date), as_dict=1)
+            """, (sol_id_str, start_date, end_date), as_dict=True)
         else:
             latest_record = frappe.db.sql("""
-                SELECT date, achievement, yearly_achievement 
+                SELECT date, achievement, yearly_achievement, branch_category 
                 FROM `tabBranch Category Report`
                 WHERE sol_id = %s 
                 ORDER BY date DESC 
                 LIMIT 1
-            """, (sol_id_str,), as_dict=1)
+            """, (sol_id_str,), as_dict=True)
 
         if not latest_record:
-            return {
+            no_data_resp = {
                 "status": "no_data",
-                "message": "No data found for this branch",
-                "data_exists": False
+                "message": "No data found for this branch in Branch Category Report",
+                "data_exists": False,
+                "sol_id": sol_id_str,
+                "financial_year": fy or "",
+                "report_date": None,
+                "performance": {
+                    "monthly": {"target": None, "achievement": None, "percentage": None, "category": None},
+                    "ytd": {"target": None, "achievement": None, "percentage": None, "category": None},
+                    "yearly": {"target": None, "achievement": None, "percentage": None, "category": None}
+                }
             }
+            frappe.cache().set_value(cache_key, no_data_resp, expires_in_sec=300)
+            return no_data_resp
 
         res = latest_record[0]
         report_date = res.date
-        
-        # 2. Get Targets
-        fiscal_year = fy or get_fiscal_year(report_date)
-        targets = get_targets(sol_id_str, fiscal_year) 
+        fiscal_year = fy or get_fiscal_year(str(report_date))
 
-        # 3. Final Response with Monthly, YTD, and Yearly segments
+        # 2. Get Targets strictly from Target Vs Achivement
+        targets = get_targets(sol_id_str, fiscal_year, report_date=report_date)
+
+        # 3. Parse achievements strictly from Branch Category Report
+        ach_monthly = None
+        if res.get("achievement") is not None and str(res.get("achievement")).strip() != "":
+            try:
+                ach_monthly = float(res.get("achievement"))
+            except (ValueError, TypeError):
+                ach_monthly = None
+
+        ach_yearly = None
+        if res.get("yearly_achievement") is not None and str(res.get("yearly_achievement")).strip() != "":
+            try:
+                ach_yearly = float(res.get("yearly_achievement"))
+            except (ValueError, TypeError):
+                ach_yearly = None
+
+        # 4. Final Response with Monthly, YTD, and Yearly segments
         result = {
             "status": "success",
             "data_exists": True,
             "sol_id": sol_id_str,
-            "report_date": report_date.strftime('%Y-%m-%d'),
+            "report_date": report_date.strftime('%Y-%m-%d') if report_date else None,
             "financial_year": fiscal_year,
             "performance": {
-                "monthly": format_ui_output(res.achievement, targets.get("monthly", 0)),
-                "ytd": format_ui_output(res.yearly_achievement, targets.get("ytd", 0)),
-                "yearly": format_ui_output(res.yearly_achievement, targets.get("yearly", 0))
+                "monthly": format_ui_output(ach_monthly, targets.get("monthly")),
+                "ytd": format_ui_output(ach_yearly, targets.get("ytd")),
+                "yearly": format_ui_output(ach_yearly, targets.get("yearly"))
             }
         }
         frappe.cache().set_value(cache_key, result, expires_in_sec=1800)
@@ -1378,7 +1494,8 @@ def get_performance_data(sol_id, date=None, fy=None):
         frappe.log_error(f"Branch Performance Error: {sol_id_str}", frappe.get_traceback())
         return {
             "status": "error", 
-            "message": str(e)
+            "message": str(e),
+            "data_exists": False
         }
 
 

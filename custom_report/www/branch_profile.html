@@ -1708,18 +1708,18 @@
 						<div style="font-size: 13px; color: #64748b; font-weight: 600;">Current Performance Level</div>
 						<div id="performance-status"
 							style="font-size: 20px; font-weight: 800; color: var(--primary-1); margin: 4px 0;">
-							Accelerator</div>
+							--</div>
 
 						<div class="category-hierarchy" id="category-hierarchy">
 							<div class="hierarchy-badge" data-level="pinnacle">
 								<span>Pinnacle</span>
-								<span class="criteria">>100%</span>
+								<span class="criteria">&gt;100%</span>
 							</div>
 							<div class="hierarchy-badge" data-level="master">
 								<span>Master</span>
 								<span class="criteria">80-100%</span>
 							</div>
-							<div class="hierarchy-badge active" data-level="accelerator">
+							<div class="hierarchy-badge" data-level="accelerator">
 								<span>Accelerator</span>
 								<span class="criteria">60-80%</span>
 							</div>
@@ -1743,20 +1743,18 @@
 						<div>
 							<div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">
 								Target</div>
-							<div id="cat-target-val" style="font-size: 15px; font-weight: 700; color: #333333;">₹
-								50,00,000</div>
+							<div id="cat-target-val" style="font-size: 15px; font-weight: 700; color: #333333;">--</div>
 						</div>
 						<div>
 							<div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">
 								Achievement</div>
-							<div id="cat-achievement-val" style="font-size: 15px; font-weight: 700; color: var(--primary-1);">₹
-								42,50,000</div>
+							<div id="cat-achievement-val" style="font-size: 15px; font-weight: 700; color: var(--primary-1);">--</div>
 						</div>
 						<div>
 							<div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">%
 								Ach.</div>
 							<div id="cat-percentage-val"
-								style="font-size: 15px; font-weight: 700; color: var(--primary-1);">85.00%</div>
+								style="font-size: 15px; font-weight: 700; color: var(--primary-1);">--</div>
 						</div>
 					</div>
 				</section>
@@ -3867,18 +3865,25 @@
 				},
 
 				updateCategoryUI(period) {
-					if (!this.state.performanceData) return;
+					if (!this.state.performanceData) {
+						this.clearCategoryUI();
+						return;
+					}
 
 					const data = this.state.performanceData[period];
-					if (!data) return;
+					if (!data || (data.target === null && data.achievement === null && data.category === null)) {
+						this.clearCategoryUI();
+						return;
+					}
 
-					// Update Labels
-					this.el.performanceStatus.textContent = data.category;
-					this.el.catTargetVal.textContent = this.formatAmount(data.target);
-					this.el.catAchievementVal.textContent = this.formatAmount(data.achievement);
-					this.el.catPercentageVal.textContent = data.percentage;
+					// Update Labels strictly from backend data (no fallbacks)
+					const hasCategory = Boolean(data.category);
+					if (this.el.performanceStatus) this.el.performanceStatus.textContent = hasCategory ? data.category : "--";
+					if (this.el.catTargetVal) this.el.catTargetVal.textContent = (data.target !== null && data.target !== undefined && data.target !== "") ? this.formatAmount(data.target) : "--";
+					if (this.el.catAchievementVal) this.el.catAchievementVal.textContent = (data.achievement !== null && data.achievement !== undefined && data.achievement !== "") ? this.formatAmount(data.achievement) : "--";
+					if (this.el.catPercentageVal) this.el.catPercentageVal.textContent = (data.percentage !== null && data.percentage !== undefined && data.percentage !== "") ? data.percentage : "--";
 
-					// Apply Color to performanceStatus and percentage
+					// Apply Color to performanceStatus and values
 					const categoryConfig = {
 						"Pinnacle":    { text: "#6D28D9", bg: "#F5F3FF", border: "#C4B5FD" }, // Purple
 						"Master":      { text: "#1D4ED8", bg: "#EFF6FF", border: "#93C5FD" }, // Blue
@@ -3888,10 +3893,10 @@
 						"Zero Level":  { text: "#991B1B", bg: "#FEF2F2", border: "#FECACA" }, // Deep Red
 						"Zero":        { text: "#991B1B", bg: "#FEF2F2", border: "#FECACA" }
 					};
-					const config = categoryConfig[data.category] || { text: "var(--primary-1)", bg: "#fff", border: "#e2e8f0" };
-					if (this.el.performanceStatus) this.el.performanceStatus.style.color = config.text;
-					if (this.el.catAchievementVal) this.el.catAchievementVal.style.color = config.text;
-					if (this.el.catPercentageVal) this.el.catPercentageVal.style.color = config.text;
+					const config = (hasCategory && categoryConfig[data.category]) ? categoryConfig[data.category] : { text: "#64748b", bg: "#fff", border: "#e2e8f0" };
+					if (this.el.performanceStatus) this.el.performanceStatus.style.color = hasCategory ? config.text : "#64748b";
+					if (this.el.catAchievementVal) this.el.catAchievementVal.style.color = hasCategory ? config.text : "#1e293b";
+					if (this.el.catPercentageVal) this.el.catPercentageVal.style.color = hasCategory ? config.text : "#1e293b";
 
 					const sectionEl = document.getElementById("category-card");
 					if (sectionEl) {
@@ -3901,22 +3906,24 @@
 					}
 
 					// Update Hierarchy Badges
-					const badges = this.el.categoryHierarchy.querySelectorAll('.hierarchy-badge');
+					const badges = this.el.categoryHierarchy ? this.el.categoryHierarchy.querySelectorAll('.hierarchy-badge') : [];
 					badges.forEach(b => b.classList.remove('active'));
 
-					const categoryMap = {
-						"Pinnacle": 0,
-						"Master": 1,
-						"Accelerator": 2,
-						"Starter": 3,
-						"Learner": 4,
-						"Zero Level": 5,
-						"Zero": 5
-					};
+					if (hasCategory) {
+						const categoryMap = {
+							"Pinnacle": 0,
+							"Master": 1,
+							"Accelerator": 2,
+							"Starter": 3,
+							"Learner": 4,
+							"Zero Level": 5,
+							"Zero": 5
+						};
 
-					const index = categoryMap[data.category];
-					if (index !== undefined && badges[index]) {
-						badges[index].classList.add('active');
+						const index = categoryMap[data.category];
+						if (index !== undefined && badges[index]) {
+							badges[index].classList.add('active');
+						}
 					}
 				},
 
@@ -5028,10 +5035,22 @@
 				},
 
 				clearCategoryUI() {
-					this.el.performanceStatus.textContent = "--";
-					this.el.catTargetVal.textContent = "--";
-					this.el.catAchievementVal.textContent = "--";
-					this.el.catPercentageVal.textContent = "0.00%";
+					if (this.el.performanceStatus) {
+						this.el.performanceStatus.textContent = "--";
+						this.el.performanceStatus.style.color = "#64748b";
+					}
+					if (this.el.catTargetVal) {
+						this.el.catTargetVal.textContent = "--";
+						this.el.catTargetVal.style.color = "#1e293b";
+					}
+					if (this.el.catAchievementVal) {
+						this.el.catAchievementVal.textContent = "--";
+						this.el.catAchievementVal.style.color = "#1e293b";
+					}
+					if (this.el.catPercentageVal) {
+						this.el.catPercentageVal.textContent = "--";
+						this.el.catPercentageVal.style.color = "#1e293b";
+					}
 					
 					const sectionEl = document.getElementById("category-card");
 					if (sectionEl) {
@@ -5039,8 +5058,10 @@
 						sectionEl.style.borderColor = "#e2e8f0";
 					}
 
-					const badges = this.el.categoryHierarchy.querySelectorAll('.hierarchy-badge');
-					badges.forEach(b => b.classList.remove('active'));
+					if (this.el.categoryHierarchy) {
+						const badges = this.el.categoryHierarchy.querySelectorAll('.hierarchy-badge');
+						badges.forEach(b => b.classList.remove('active'));
+					}
 				},
 			};
 			document.addEventListener("DOMContentLoaded", () => BranchDashboard.init());
