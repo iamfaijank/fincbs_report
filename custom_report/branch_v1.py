@@ -1641,14 +1641,17 @@ def download_bm_checklist(start_date=None, end_date=None, sol_id=None, employee_
     if not records:
         frappe.throw("No records found for the selected date range.")
 
-    tasks_query = """
-        SELECT parent, task, is_completed, remark
-        FROM `tabBM checklist Task`
-        WHERE parent IN ({})
-        ORDER BY idx ASC
-    """.format(", ".join(["%s"] * len(records)))
+    parent_names = [r.name for r in records]
+    placeholders = ", ".join(["%s"] * len(parent_names))
+    task_records = frappe.db.sql(
+        f"SELECT parent, task, is_completed, remark FROM `tabBM checklist Task` WHERE parent IN ({placeholders}) ORDER BY idx ASC",
+        parent_names,
+        as_dict=True
+    )
 
-    task_records = frappe.db.sql(tasks_query, [r.name for r in records], as_dict=True)
+    frappe.log_error(f"DEBUG: parents={parent_names}, tasks_found={len(task_records)}", "BM DL")
+    for t in task_records[:5]:
+        frappe.log_error(f"DEBUG: parent={t.parent} task={t.task} is_completed={t.is_completed} remark='{t.remark}'", "BM DL")
 
     tasks_by_parent = {}
     for tr in task_records:
@@ -1675,7 +1678,8 @@ def download_bm_checklist(start_date=None, end_date=None, sol_id=None, employee_
                 row = base[:]
                 row.append(t.task or "")
                 row.append(t.remark or "")
-                row.append("Complete" if t.is_completed else "Pending")
+                status = "Complete" if int(t.is_completed or 0) == 1 else "Pending"
+                row.append(status)
                 writer.writerow(row)
         else:
             row = base[:]
