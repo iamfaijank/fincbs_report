@@ -6512,6 +6512,65 @@ class DrishtiDashboard {
 		this.loadFinancialYears();
 		this.switchDashboardMode(this.state.dashboardMode);
 	}
+	refreshZoneWiseCache($btn) {
+		const self = this;
+		const $btnEl = $btn && $btn.length ? $btn : this.page.main.find(".btn-refresh-zone-cache");
+		const $icon = $btnEl.find("i");
+		$icon.addClass("fa-spin");
+		$btnEl.prop("disabled", true);
+
+		frappe.call({
+			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_zone_wise_cache",
+			callback: (r) => {
+				$icon.removeClass("fa-spin");
+				if ($btn) $btn.prop("disabled", false);
+				frappe.show_alert({
+					message: __("Zone Wise Redis cache cleared successfully!"),
+					indicator: "green",
+				}, 3);
+				self.resetAllCaches();
+				self.loadData();
+			},
+			error: (err) => {
+				$icon.removeClass("fa-spin");
+				if ($btn) $btn.prop("disabled", false);
+				frappe.show_alert({
+					message: __("Failed to clear Zone Wise cache"),
+					indicator: "red",
+				}, 4);
+			},
+		});
+	}
+
+	refreshProductWiseCache($btn) {
+		const self = this;
+		const $btnEl = $btn && $btn.length ? $btn : this.page.main.find(".btn-refresh-product-cache");
+		const $icon = $btnEl.find("i");
+		$icon.addClass("fa-spin");
+		$btnEl.prop("disabled", true);
+
+		frappe.call({
+			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_product_wise_cache",
+			callback: (r) => {
+				$icon.removeClass("fa-spin");
+				if ($btn) $btn.prop("disabled", false);
+				frappe.show_alert({
+					message: __("Product Wise Redis cache cleared successfully!"),
+					indicator: "green",
+				}, 3);
+				self.resetAllCaches();
+				self.loadData();
+			},
+			error: (err) => {
+				$icon.removeClass("fa-spin");
+				if ($btn) $btn.prop("disabled", false);
+				frappe.show_alert({
+					message: __("Failed to clear Product Wise cache"),
+					indicator: "red",
+				}, 4);
+			},
+		});
+	}
 
 	resetAllCaches() {
 		// Reset data loading flag so loadData() always fetches fresh
@@ -7710,6 +7769,12 @@ class DrishtiDashboard {
 			}
 			.region-detail-row td.sr-col {
 				border-left: 4px solid #417d81 !important;
+			}
+			.btn-refresh-zone-cache:hover,
+			.btn-refresh-product-cache:hover {
+				background: #417d81 !important;
+				color: #ffffff !important;
+				border-color: #417d81 !important;
 			}
 
 			.branch-table td.sr-col,
@@ -8992,6 +9057,20 @@ class DrishtiDashboard {
 		this.page.main.find(".tab-btn").on("click", function () {
 			const tabId = $(this).data("tab");
 			self.switchTab(tabId);
+		});
+
+		// Refresh Zone Wise Cache
+		this.page.main.off("click", ".btn-refresh-zone-cache").on("click", ".btn-refresh-zone-cache", function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			self.refreshZoneWiseCache($(this));
+		});
+
+		// Refresh Product Wise Cache
+		this.page.main.off("click", ".btn-refresh-product-cache").on("click", ".btn-refresh-product-cache", function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			self.refreshProductWiseCache($(this));
 		});
 
 		// Branch Search with debounce
@@ -10337,7 +10416,14 @@ class DrishtiDashboard {
 			            <tr class="zone-table-header">
 			                <th rowspan="2" style="text-align: center; width: 40px;"><input type="checkbox" class="zone-check-all" style="cursor: pointer;"></th>
 			                <th rowspan="2" class="sr-col" style="width: 40px;">Sr</th>
-			                <th rowspan="2" class="zone-col" style="text-align: left;">Z/R/DIS</th>
+			                <th rowspan="2" class="zone-col" style="text-align: left;">
+			                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+			                        <span>Z/R/DIS</span>
+			                        <button type="button" class="btn-refresh-zone-cache" title="Refresh Zone Wise Data (Clear Redis Cache)" style="background: transparent; border: 1px solid rgba(65, 125, 129, 0.35); cursor: pointer; color: #417d81; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; font-weight: 600; line-height: 1; transition: all 0.2s;">
+			                            <i class="fa fa-refresh"></i>
+			                        </button>
+			                    </div>
+			                </th>
 			                <th rowspan="2" class="branches-col">Branches</th>
 			    `;
 
@@ -10799,6 +10885,15 @@ class DrishtiDashboard {
 
 				self.render();
 			});
+
+		this.page.main
+			.find(".btn-refresh-zone-cache")
+			.off("click")
+			.on("click", function (e) {
+				e.preventDefault();
+				e.stopPropagation();
+				self.refreshZoneWiseCache($(this));
+			});
 	}
 
 	// ========================================================================
@@ -10830,7 +10925,14 @@ class DrishtiDashboard {
 					<tr class="zone-table-header">
 						<th rowspan="2" style="width:32px;" class="row-checkbox"></th>
 						<th rowspan="2" style="width:60px;">SR</th>
-						<th rowspan="2" style="text-align: left;">Z/R/DIS/SOL</th>
+						<th rowspan="2" style="text-align: left;">
+							<div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+								<span>Z/R/DIS/SOL</span>
+								<button type="button" class="btn-refresh-product-cache" title="Refresh Product Wise Data (Clear Redis Cache)" style="background: transparent; border: 1px solid rgba(65, 125, 129, 0.35); cursor: pointer; color: #417d81; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; font-weight: 600; line-height: 1; transition: all 0.2s;">
+									<i class="fa fa-refresh"></i>
+								</button>
+							</div>
+						</th>
 		`;
 
 		allProducts.forEach((product) => {
@@ -10984,6 +11086,15 @@ class DrishtiDashboard {
 					self.state.expandedProductRows[path] = !self.state.expandedProductRows[path];
 					self.render();
 				}
+			});
+
+		this.page.main
+			.find(".btn-refresh-product-cache")
+			.off("click")
+			.on("click", function (e) {
+				e.preventDefault();
+				e.stopPropagation();
+				self.refreshProductWiseCache($(this));
 			});
 	}
 

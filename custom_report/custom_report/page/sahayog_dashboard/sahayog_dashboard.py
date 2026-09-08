@@ -181,6 +181,27 @@ def clear_branch_category_report_cache(doc=None, method=None):
 
 
 @frappe.whitelist()
+def clear_zone_wise_cache():
+    """Clears Redis cache specific to Zone Wise and sahayog dashboard data."""
+    frappe.cache.delete_keys("sahayog_cache|get_sahayog_dashboard|*")
+    frappe.cache.delete_keys("sahayog_cache|get_branch_category_report_monthly_data|*")
+    frappe.cache.delete_keys("targets_map|*")
+    return {"status": "success", "message": "Zone Wise Redis cache cleared successfully."}
+
+
+@frappe.whitelist()
+def clear_product_wise_cache():
+    """Clears Redis cache specific to Product Wise and dashboard data."""
+    frappe.cache.delete_keys("sahayog_cache|get_sahayog_dashboard|*")
+    frappe.cache.delete_keys("sahayog_cache|get_product_wise_tgt_vs_ach_data|*")
+    frappe.cache.delete_value("sahayog_products_list")
+    frappe.cache.delete_value("sahayog_product_group_map")
+    frappe.cache.delete_value("sahayog_products_map")
+    frappe.cache.delete_keys("targets_map|*")
+    return {"status": "success", "message": "Product Wise Redis cache cleared successfully."}
+
+
+@frappe.whitelist()
 def get_user_sol_ids():
     user = frappe.session.user
     perms = get_user_report_permissions(user)
