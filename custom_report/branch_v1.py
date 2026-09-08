@@ -1654,44 +1654,35 @@ def download_bm_checklist(start_date=None, end_date=None, sol_id=None, employee_
     for tr in task_records:
         tasks_by_parent.setdefault(tr.parent, []).append(tr)
 
-    all_task_names = []
-    seen = set()
-    for r in records:
-        for t in tasks_by_parent.get(r.name, []):
-            if t.task not in seen:
-                all_task_names.append(t.task)
-                seen.add(t.task)
-
     output = io.StringIO()
     writer = csv.writer(output)
 
-    header = ["Date", "Employee ID", "Employee Name", "Designation", "SOL ID", "Checklist Name"]
-    for tn in all_task_names:
-        header.append(tn + " (Completed)")
-        header.append(tn + " (Remark)")
+    header = ["Employee ID", "Employee Name", "Designation", "SOL ID", "Date", "Checklist Name", "Task", "Remark", "Status"]
     writer.writerow(header)
 
     for r in records:
-        row = [
-            str(r.date) if r.date else "",
+        base = [
             r.bm_employee_id or "",
             r.name1 or "",
             r.designation or "",
             r.sol_id or "",
+            str(r.date) if r.date else "",
             r.name or ""
         ]
-        task_map = {}
-        for t in tasks_by_parent.get(r.name, []):
-            task_map[t.task] = t
-        for tn in all_task_names:
-            t = task_map.get(tn)
-            if t:
-                row.append("Yes" if t.is_completed else "No")
+        tasks = tasks_by_parent.get(r.name, [])
+        if tasks:
+            for t in tasks:
+                row = base[:]
+                row.append(t.task or "")
                 row.append(t.remark or "")
-            else:
-                row.append("")
-                row.append("")
-        writer.writerow(row)
+                row.append("Complete" if t.is_completed else "Pending")
+                writer.writerow(row)
+        else:
+            row = base[:]
+            row.append("")
+            row.append("")
+            row.append("")
+            writer.writerow(row)
 
     period_label = f"{start_date}_to_{end_date}"
     filename = f"BM_Checklist_{period_label}.csv"
