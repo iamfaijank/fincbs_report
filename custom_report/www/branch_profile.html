@@ -3376,8 +3376,8 @@
 						if (toggle) {
 							e.preventDefault();
 							e.stopPropagation();
-							const wrapper = toggle.closest(".download-dropdown-wrapper");
-							const menu = wrapper ? wrapper.querySelector(".download-dropdown-menu") : null;
+							const btnGroup = toggle.closest(".daily-planning-btn-group");
+							const menu = btnGroup ? btnGroup.querySelector(".download-dropdown-menu") : null;
 							if (menu) {
 								const isVisible = menu.style.display === "block";
 								document.querySelectorAll(".download-dropdown-menu").forEach(m => m.style.display = "none");
@@ -3395,7 +3395,7 @@
 							document.querySelectorAll(".download-dropdown-menu").forEach(m => m.style.display = "none");
 							return;
 						}
-						if (!e.target.closest(".download-dropdown-wrapper")) {
+						if (!e.target.closest(".daily-planning-btn-group")) {
 							document.querySelectorAll(".download-dropdown-menu").forEach(m => m.style.display = "none");
 						}
 						const dayChip = e.target.closest(".daily-planning-day-chip");
@@ -4499,22 +4499,20 @@
 								<div class="bm-right">
 									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
 										<div class="bm-title" style="margin-bottom: 0;">Branch Manager</div>
-										<div style="display: inline-flex; align-items: stretch; font-size: 12px;">
-											<div style="display: inline-flex; align-items: stretch; background: #f0fdfa; border-radius: 6px 0 0 6px; border: 1px solid rgba(9, 124, 128, 0.4);">
+										<div class="daily-planning-btn-group" style="display: inline-flex; align-items: stretch; border-radius: 6px; border: 1px solid rgba(9, 124, 128, 0.4); box-shadow: 0 2px 4px rgba(0,0,0,0.06); font-size: 12px; background: #fff; position: relative;">
+											<div style="display: inline-flex; align-items: stretch; background: #f0fdfa; border-right: 1px solid rgba(9, 124, 128, 0.4);">
 												${daysHtml}
 											</div>
-											<a href="${fallbackUrl}" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" class="daily-planning-sheet-btn" style="display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; font-weight: 600; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease; border-top: 1px solid rgba(9, 124, 128, 0.4); border-bottom: 1px solid rgba(9, 124, 128, 0.4); border-right: none;">
+											<a href="${fallbackUrl}" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" class="daily-planning-sheet-btn" style="display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; font-weight: 600; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease; border-right: 1px solid rgba(255,255,255,0.3);">
 												<i class="fa fa-file-text-o" style="font-size: 11px;"></i> Daily Planning Sheet
 											</a>
-											<div class="download-dropdown-wrapper" style="position:relative; display:inline-block;">
-												<a href="javascript:void(0);" class="daily-planning-download-btn download-dropdown-toggle" style="display: inline-flex; align-items: center; padding: 5px 10px; font-weight: 600; font-size: 11px; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease; border-radius: 0 6px 6px 0; border: 1px solid rgba(9, 124, 128, 0.4);">
-													Download <i class="fa fa-caret-down" style="margin-left:4px;"></i>
-												</a>
-												<div class="download-dropdown-menu" style="display:none; position:absolute; top:100%; right:0; margin-top:4px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.12); z-index:100; min-width:120px; overflow:hidden;">
-													<a href="javascript:void(0);" class="download-dropdown-item" data-period="month" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" data-url="${fallbackUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; transition:background 0.15s;">Month</a>
-													<a href="javascript:void(0);" class="download-dropdown-item" data-period="quarter" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" data-url="${fallbackUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; border-top:1px solid #f1f5f9; transition:background 0.15s;">Quarter</a>
-													<a href="javascript:void(0);" class="download-dropdown-item" data-period="year" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" data-url="${fallbackUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; border-top:1px solid #f1f5f9; transition:background 0.15s;">Year</a>
-												</div>
+											<a href="javascript:void(0);" class="daily-planning-download-btn download-dropdown-toggle" style="display: inline-flex; align-items: center; padding: 5px 10px; font-weight: 600; font-size: 11px; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease;">
+												Download <i class="fa fa-caret-down" style="margin-left:4px;"></i>
+											</a>
+											<div class="download-dropdown-menu" style="display:none; position:absolute; top:100%; right:0; margin-top:4px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.12); z-index:100; min-width:120px; overflow:hidden;">
+												<a href="javascript:void(0);" class="download-dropdown-item" data-period="month" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" data-url="${fallbackUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; transition:background 0.15s;">Month</a>
+												<a href="javascript:void(0);" class="download-dropdown-item" data-period="quarter" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" data-url="${fallbackUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; border-top:1px solid #f1f5f9; transition:background 0.15s;">Quarter</a>
+												<a href="javascript:void(0);" class="download-dropdown-item" data-period="year" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" data-url="${fallbackUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; border-top:1px solid #f1f5f9; transition:background 0.15s;">Year</a>
 											</div>
 										</div>
 									</div>
@@ -4562,22 +4560,20 @@
 								<div class="bm-right">
 									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
 										<div class="bm-title" style="margin-bottom: 0;">${this.value(bm.designation)} ${bmIndexBadge}</div>
-										<div style="display: inline-flex; align-items: stretch; font-size: 12px;">
-											<div style="display: inline-flex; align-items: stretch; background: #f0fdfa; border-radius: 6px 0 0 6px; border: 1px solid rgba(9, 124, 128, 0.4);">
+										<div class="daily-planning-btn-group" style="display: inline-flex; align-items: stretch; border-radius: 6px; border: 1px solid rgba(9, 124, 128, 0.4); box-shadow: 0 2px 4px rgba(0,0,0,0.06); font-size: 12px; background: #fff; position: relative;">
+											<div style="display: inline-flex; align-items: stretch; background: #f0fdfa; border-right: 1px solid rgba(9, 124, 128, 0.4);">
 												${daysHtml}
 											</div>
-											<a href="${planningUrl}" data-emp-id="${empId}" data-sol-id="${solId}" class="daily-planning-sheet-btn" style="display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; font-weight: 600; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease; border-top: 1px solid rgba(9, 124, 128, 0.4); border-bottom: 1px solid rgba(9, 124, 128, 0.4); border-right: none;">
+											<a href="${planningUrl}" data-emp-id="${empId}" data-sol-id="${solId}" class="daily-planning-sheet-btn" style="display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; font-weight: 600; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease; border-right: 1px solid rgba(255,255,255,0.3);">
 												<i class="fa fa-file-text-o" style="font-size: 11px;"></i> Daily Planning Sheet
 											</a>
-											<div class="download-dropdown-wrapper" style="position:relative; display:inline-block;">
-												<a href="javascript:void(0);" class="daily-planning-download-btn download-dropdown-toggle" style="display: inline-flex; align-items: center; padding: 5px 10px; font-weight: 600; font-size: 11px; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease; border-radius: 0 6px 6px 0; border: 1px solid rgba(9, 124, 128, 0.4);">
-													Download <i class="fa fa-caret-down" style="margin-left:4px;"></i>
-												</a>
-												<div class="download-dropdown-menu" style="display:none; position:absolute; top:100%; right:0; margin-top:4px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.12); z-index:100; min-width:120px; overflow:hidden;">
-													<a href="javascript:void(0);" class="download-dropdown-item" data-period="month" data-emp-id="${empId}" data-sol-id="${solId}" data-url="${planningUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; transition:background 0.15s;">Month</a>
-													<a href="javascript:void(0);" class="download-dropdown-item" data-period="quarter" data-emp-id="${empId}" data-sol-id="${solId}" data-url="${planningUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; border-top:1px solid #f1f5f9; transition:background 0.15s;">Quarter</a>
-													<a href="javascript:void(0);" class="download-dropdown-item" data-period="year" data-emp-id="${empId}" data-sol-id="${solId}" data-url="${planningUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; border-top:1px solid #f1f5f9; transition:background 0.15s;">Year</a>
-												</div>
+											<a href="javascript:void(0);" class="daily-planning-download-btn download-dropdown-toggle" style="display: inline-flex; align-items: center; padding: 5px 10px; font-weight: 600; font-size: 11px; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease;">
+												Download <i class="fa fa-caret-down" style="margin-left:4px;"></i>
+											</a>
+											<div class="download-dropdown-menu" style="display:none; position:absolute; top:100%; right:0; margin-top:4px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.12); z-index:100; min-width:120px; overflow:hidden;">
+												<a href="javascript:void(0);" class="download-dropdown-item" data-period="month" data-emp-id="${empId}" data-sol-id="${solId}" data-url="${planningUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; transition:background 0.15s;">Month</a>
+												<a href="javascript:void(0);" class="download-dropdown-item" data-period="quarter" data-emp-id="${empId}" data-sol-id="${solId}" data-url="${planningUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; border-top:1px solid #f1f5f9; transition:background 0.15s;">Quarter</a>
+												<a href="javascript:void(0);" class="download-dropdown-item" data-period="year" data-emp-id="${empId}" data-sol-id="${solId}" data-url="${planningUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; border-top:1px solid #f1f5f9; transition:background 0.15s;">Year</a>
 											</div>
 										</div>
 									</div>
