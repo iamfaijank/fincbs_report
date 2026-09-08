@@ -4362,7 +4362,7 @@
 							console.log("[BM STATUS] response:", msg, "| final status:", status);
 							let label = status;
 							if (status === "Resign" && typeof msg.relieving_in_days === "number" && msg.relieving_in_days > 0) {
-								label = "Resign (relieving in " + msg.relieving_in_days + " days)";
+								label = "Resign (relieving in " + msg.relieving_in_days + (msg.relieving_in_days === 1 ? " day" : " days") + ")";
 							}
 							if (!this.state.bmStatusCache) this.state.bmStatusCache = {};
 							this.state.bmStatusCache[employeeId] = {
