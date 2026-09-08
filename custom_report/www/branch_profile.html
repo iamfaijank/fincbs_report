@@ -2753,7 +2753,7 @@
 			/* =========================================================
 	   BRANCH DASHBOARD (HEADER + SEARCH)
 	   ========================================================= */
-			function showDownloadPeriodModal(url, period) {
+			function showDownloadPeriodModal(url, period, empId, solId) {
 				const modal = document.getElementById("download-period-modal");
 				if (!modal) return;
 				const title = modal.querySelector("#dl-modal-title");
@@ -2772,14 +2772,19 @@
 					for (let i = 0; i < 12; i++) {
 						opts += '<option value="' + (i + 1) + '"' + (i === currentMonth ? ' selected' : '') + '>' + monthNames[i] + '</option>';
 					}
+					const pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+					const firstOfCurrentMonth = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-01';
+					const todayStr = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
 					html = '<div style="display:flex; flex-direction:column; gap:14px;">'
-						+ '<div><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Start Date</label>'
-						+ '<input type="date" id="dl-start-date" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;" /></div>'
-						+ '<div><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">End Date</label>'
-						+ '<input type="date" id="dl-end-date" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;" /></div>'
 						+ '<div><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Month</label>'
 						+ '<select id="dl-month-select" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;">'
-						+ opts + '</select></div></div>';
+						+ opts + '</select></div>'
+						+ '<div style="display:flex; gap:10px;">'
+						+ '<div style="flex:1;"><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Start Date</label>'
+						+ '<input type="date" id="dl-start-date" value="' + firstOfCurrentMonth + '" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;" /></div>'
+						+ '<div style="flex:1;"><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">End Date</label>'
+						+ '<input type="date" id="dl-end-date" value="' + todayStr + '" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;" /></div>'
+						+ '</div></div>';
 				} else if (period === "quarter") {
 					const quarters = [
 						{ label: "Q1 (Apr - Jun)", value: "Q1" },
@@ -2818,6 +2823,8 @@
 				if (body) body.innerHTML = html;
 				modal.dataset.url = url;
 				modal.dataset.period = period;
+				modal.dataset.empId = empId || "";
+				modal.dataset.solId = solId || "";
 				modal.style.display = "flex";
 			}
 
@@ -3473,8 +3480,10 @@
 							e.preventDefault();
 							const url = item.getAttribute("data-url");
 							const period = item.getAttribute("data-period");
+							const empId = item.getAttribute("data-emp-id") || "";
+							const solId = item.getAttribute("data-sol-id") || "";
 							document.querySelectorAll(".download-dropdown-menu").forEach(m => m.style.display = "none");
-							showDownloadPeriodModal(url, period);
+							showDownloadPeriodModal(url, period, empId, solId);
 							return;
 						}
 						if (!e.target.closest(".daily-planning-btn-group")) {
@@ -3507,28 +3516,78 @@
 						dlModal.querySelector("#dl-modal-cancel").addEventListener("click", () => dlModal.style.display = "none");
 						dlModal.addEventListener("click", (e) => { if (e.target === dlModal) dlModal.style.display = "none"; });
 						dlModal.querySelector("#dl-modal-submit").addEventListener("click", () => {
-							const url = dlModal.dataset.url || "";
 							const period = dlModal.dataset.period || "";
-							let sep = url.includes("?") ? "&" : "?";
-							let params = "download_period=" + period;
+							const empId = dlModal.dataset.empId || "";
+							const solId = dlModal.dataset.solId || "";
+							const pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+							const now = new Date();
+							let startDate = "";
+							let endDate = "";
+
 							if (period === "month") {
-								const start = dlModal.querySelector("#dl-start-date");
-								const end = dlModal.querySelector("#dl-end-date");
-								const month = dlModal.querySelector("#dl-month-select");
-								if (start && start.value) params += "&start_date=" + start.value;
-								if (end && end.value) params += "&end_date=" + end.value;
-								if (month && month.value) params += "&month=" + month.value;
+								const sel = dlModal.querySelector("#dl-month-select");
+								const monthIdx = sel ? parseInt(sel.value, 10) : (now.getMonth() + 1);
+								const yr = now.getFullYear();
+								if (monthIdx === (now.getMonth() + 1)) {
+									startDate = yr + '-' + pad(monthIdx) + '-01';
+									endDate = yr + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+								} else {
+									const lastDay = new Date(yr, monthIdx, 0).getDate();
+									startDate = yr + '-' + pad(monthIdx) + '-01';
+									endDate = yr + '-' + pad(monthIdx) + '-' + pad(lastDay);
+								}
 							} else if (period === "quarter") {
 								const fy = dlModal.querySelector("#dl-fy-select");
 								const q = dlModal.querySelector("#dl-quarter-select");
-								if (fy && fy.value) params += "&financial_year=" + encodeURIComponent(fy.value);
-								if (q && q.value) params += "&quarter=" + q.value;
+								const fyVal = fy ? fy.value : "";
+								const qVal = q ? q.value : "Q1";
+								const fyStart = fyVal ? parseInt(fyVal.split("-")[0], 10) : now.getFullYear();
+								const qMap = { "Q1": [4, 6], "Q2": [7, 9], "Q3": [10, 12], "Q4": [1, 3] };
+								const range = qMap[qVal] || [4, 6];
+								const startMonth = range[0];
+								const endMonth = range[1];
+								const startYear = startMonth >= 4 ? fyStart : fyStart + 1;
+								const endYear = endMonth >= 4 ? fyStart : fyStart + 1;
+								const lastDay = new Date(endYear, endMonth, 0).getDate();
+								startDate = startYear + '-' + pad(startMonth) + '-01';
+								endDate = endYear + '-' + pad(endMonth) + '-' + pad(lastDay);
 							} else if (period === "year") {
 								const yr = dlModal.querySelector("#dl-year-select");
-								if (yr && yr.value) params += "&financial_year=" + encodeURIComponent(yr.value);
+								const fyStart = yr ? parseInt(yr.value.split("-")[0], 10) : now.getFullYear();
+								startDate = fyStart + '-04-01';
+								endDate = (fyStart + 1) + '-03-31';
 							}
-							window.open(url + sep + params, "_blank");
+
+							if (!startDate || !endDate) {
+								alert("Please select valid dates.");
+								return;
+							}
+
+							let apiUrl = "/api/method/custom_report.branch_v1.download_bm_checklist";
+							apiUrl += "?start_date=" + encodeURIComponent(startDate);
+							apiUrl += "&end_date=" + encodeURIComponent(endDate);
+							if (empId) apiUrl += "&employee_id=" + encodeURIComponent(empId);
+							if (solId) apiUrl += "&sol_id=" + encodeURIComponent(solId);
+							window.open(apiUrl, "_blank");
 							dlModal.style.display = "none";
+						});
+						dlModal.addEventListener("change", (e) => {
+							if (e.target && e.target.id === "dl-month-select") {
+								const sel = parseInt(e.target.value, 10);
+								const now = new Date();
+								const yr = now.getFullYear();
+								const pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+								const startEl = dlModal.querySelector("#dl-start-date");
+								const endEl = dlModal.querySelector("#dl-end-date");
+								if (sel === (now.getMonth() + 1)) {
+									if (startEl) startEl.value = yr + '-' + pad(sel) + '-01';
+									if (endEl) endEl.value = yr + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+								} else {
+									const lastDay = new Date(yr, sel, 0).getDate();
+									if (startEl) startEl.value = yr + '-' + pad(sel) + '-01';
+									if (endEl) endEl.value = yr + '-' + pad(sel) + '-' + pad(lastDay);
+								}
+							}
 						});
 					}
 
