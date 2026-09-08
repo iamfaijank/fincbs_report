@@ -3311,25 +3311,32 @@
 
 					container.innerHTML = tasks.map((t, idx) => {
 						const isChecked = Boolean(t.is_completed == 1 || t.is_completed === true);
+						const isTemplate = Boolean(t.is_template == 1 || t.is_template === true);
 						const taskText = (t.task || "").replace(/"/g, "&quot;");
 						const descText = (t.description || "").replace(/"/g, "&quot;");
 						const remarkText = (t.remark || "").replace(/"/g, "&quot;");
 						const rowBg = isChecked ? "background: #f0fdf4;" : (idx % 2 === 0 ? "background: #ffffff;" : "background: #fafafa;");
+						const templateBorder = isTemplate ? "border-left: 3px solid #0d9488;" : "";
+						const taskInput = isTemplate
+							? '<div style="width: 100%; font-size: 13px; font-weight: 600; color: ' + (isChecked ? '#94a3b8; text-decoration: line-through;' : '#1e293b;') + ' padding: 4px 6px;">' + taskText + '</div>'
+							: '<input type="text" value="' + taskText + '" placeholder="Task description..." onchange="BranchDashboard.updateTaskText(' + idx + ', this.value)" style="width: 100%; box-sizing: border-box; font-size: 13px; font-weight: 600; color: ' + (isChecked ? '#94a3b8; text-decoration: line-through;' : '#1e293b;') + '; border: 1px solid transparent; background: transparent; padding: 4px 6px; border-radius: 6px;" onfocus="this.style.borderColor=\'#99f6e4\'; this.style.background=\'#fff\';" onblur="this.style.borderColor=\'transparent\'; this.style.background=\'transparent\';" />';
+						const deleteBtn = isTemplate
+							? ''
+							: '<button type="button" onclick="BranchDashboard.removeCustomTaskRow(' + idx + ')" style="background: transparent; border: none; color: #cbd5e1; cursor: pointer; padding: 4px 8px; border-radius: 6px; font-size: 14px; flex-shrink: 0; margin-top: 2px;" onmouseover="this.style.color=\'#ef4444\';" onmouseout="this.style.color=\'#cbd5e1\';" title="Remove task"><i class="fa fa-trash-o"></i></button>';
+						const templateLabel = isTemplate ? '<span style="display: inline-block; font-size: 10px; color: #0d9488; background: #ccfbf1; padding: 1px 6px; border-radius: 4px; margin-left: 6px; font-weight: 500;">Template</span>' : '';
 
 						return `
-							<div class="dp-task-row" style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; ${rowBg}">
+							<div class="dp-task-row" style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; ${rowBg} ${templateBorder}">
 								<div style="display: flex; align-items: flex-start; gap: 14px;">
 									<input type="checkbox" ${isChecked ? "checked" : ""} onchange="BranchDashboard.toggleTaskCompletion(${idx}, this.checked)" style="width: 18px; height: 18px; margin-top: 2px; accent-color: #0d9488; cursor: pointer; flex-shrink: 0;" />
 									<div style="flex: 1; min-width: 0;">
-										<input type="text" value="${taskText}" placeholder="Task description..." onchange="BranchDashboard.updateTaskText(${idx}, this.value)" style="width: 100%; box-sizing: border-box; font-size: 13px; font-weight: 600; color: ${isChecked ? '#94a3b8; text-decoration: line-through;' : '#1e293b;'} border: 1px solid transparent; background: transparent; padding: 4px 6px; border-radius: 6px;" onfocus="this.style.borderColor='#99f6e4'; this.style.background='#fff';" onblur="this.style.borderColor='transparent'; this.style.background='transparent';" />
+										<div style="display: flex; align-items: center;">${taskInput}${templateLabel}</div>
 										${descText ? '<div style="padding-left: 20px; margin-top: 2px; font-size: 12px; color: #64748b; line-height: 1.5;">' + descText + '</div>' : ''}
 										<div style="padding-left: 20px; margin-top: 4px;">
 											<input type="text" value="${remarkText}" placeholder="Add remark..." onchange="BranchDashboard.updateTaskRemark(${idx}, this.value)" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 5px 10px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; color: #475569;" />
 										</div>
 									</div>
-									<button type="button" onclick="BranchDashboard.removeCustomTaskRow(${idx})" style="background: transparent; border: none; color: #cbd5e1; cursor: pointer; padding: 4px 8px; border-radius: 6px; font-size: 14px; flex-shrink: 0; margin-top: 2px;" onmouseover="this.style.color='#ef4444';" onmouseout="this.style.color='#cbd5e1';" title="Remove task">
-										<i class="fa fa-trash-o"></i>
-									</button>
+									${deleteBtn}
 								</div>
 							</div>
 						`;
@@ -3361,7 +3368,8 @@
 					this.currentChecklistDoc.table_lqft.push({
 						task: "",
 						is_completed: 0,
-						remark: ""
+						remark: "",
+						is_template: 0
 					});
 					this.renderChecklistTasks();
 				},
