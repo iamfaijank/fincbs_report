@@ -4365,20 +4365,27 @@
 								label = "Resign (relieving in " + msg.relieving_in_days + " days)";
 							}
 							if (!this.state.bmStatusCache) this.state.bmStatusCache = {};
-							this.state.bmStatusCache[employeeId] = label;
-							badge.textContent = label;
-							if (status === "Resign") {
-								badge.style.background = "#fee2e2";
-								badge.style.color = "#dc2626";
-							} else {
-								badge.style.background = "#dcfce7";
-								badge.style.color = "#16a34a";
-							}
+							this.state.bmStatusCache[employeeId] = {
+								label: label,
+								isResign: status === "Resign"
+							};
+							this.applyBadgeStyle(badge, status === "Resign", label);
 						})
 						.catch(function (err) {
 							console.error("[BM STATUS] fetch error:", err);
 							badge.textContent = "Active";
 						});
+				},
+
+				applyBadgeStyle(badge, isResign, label) {
+					badge.textContent = label;
+					if (isResign) {
+						badge.style.background = "#fee2e2";
+						badge.style.color = "#dc2626";
+					} else {
+						badge.style.background = "#dcfce7";
+						badge.style.color = "#16a34a";
+					}
 				},
 
 				updateSessionStatusBadge() {
@@ -4479,7 +4486,7 @@
 										</div>
 									</div>
 									<div class="bm-name-row" style="display:flex; align-items:center; gap:8px;">
-										<div class="bm-name">${this.value(d.bm_name)}</div><span id="bm-status-single-badge" class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; background:#dcfce7; color:#16a34a;">${(this.state.bmStatusCache && this.state.bmStatusCache[d.bm_employee_id]) ? this.state.bmStatusCache[d.bm_employee_id] : 'Loading...'}</span>
+										<div class="bm-name">${this.value(d.bm_name)}</div><span id="bm-status-single-badge" class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; ${(this.state.bmStatusCache && this.state.bmStatusCache[d.bm_employee_id] && this.state.bmStatusCache[d.bm_employee_id].isResign) ? 'background:#fee2e2; color:#dc2626;' : 'background:#dcfce7; color:#16a34a;'}">${(this.state.bmStatusCache && this.state.bmStatusCache[d.bm_employee_id]) ? this.state.bmStatusCache[d.bm_employee_id].label : 'Loading...'}</span>
 									</div>
 									<div class="bm-sub">
 										<span>${this.value(d.branch_name)}</span> •
@@ -4538,7 +4545,7 @@
 										<div class="bm-name">
 											${this.value(bm.employee_name)}
 											<!-- ${empId ? `<span style="font-size: 12px; color: #0369a1; font-weight: 700; background: #e0f2fe; padding: 2px 8px; border-radius: 4px; margin-left: 6px;">ID: ${empId}</span>` : ""} -->
-										</div><span id="bm-status-badge-${idx}" class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; background:#dcfce7; color:#16a34a;">${(this.state.bmStatusCache && this.state.bmStatusCache[empId]) ? this.state.bmStatusCache[empId] : 'Loading...'}</span>
+										</div><span id="bm-status-badge-${idx}" class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; ${(this.state.bmStatusCache && this.state.bmStatusCache[empId] && this.state.bmStatusCache[empId].isResign) ? 'background:#fee2e2; color:#dc2626;' : 'background:#dcfce7; color:#16a34a;'}">${(this.state.bmStatusCache && this.state.bmStatusCache[empId]) ? this.state.bmStatusCache[empId].label : 'Loading...'}</span>
 									</div>
 									<div class="bm-sub">
 										<span>${this.value(d.branch_name)}</span> •
