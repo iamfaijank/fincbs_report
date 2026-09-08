@@ -9,7 +9,8 @@
    "is_completed",
    "task",
    "description",
-   "remark"
+   "remark",
+   "is_template"
   ],
   "fields": [
    {
@@ -36,6 +37,13 @@
     "fieldtype": "Small Text",
     "in_list_view": 1,
     "label": "Remark"
+   },
+   {
+    "default": "0",
+    "fieldname": "is_template",
+    "fieldtype": "Check",
+    "hidden": 1,
+    "label": "Is Template"
    }
   ],
  "grid_page_length": 50,

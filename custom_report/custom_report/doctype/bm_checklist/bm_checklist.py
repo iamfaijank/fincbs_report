@@ -27,7 +27,8 @@ class BMchecklist(Document):
 					"task": task_data.get("subject", ""),
 					"description": task_data.get("description", ""),
 					"is_completed": 0,
-					"remark": ""
+					"remark": "",
+					"is_template": 1
 				})
 
 
@@ -163,7 +164,8 @@ def get_bm_checklist_details(name=None, employee_id=None, date=None, sol_id=None
 			"task": task_data.get("subject", ""),
 			"description": task_data.get("description", ""),
 			"is_completed": 0,
-			"remark": ""
+			"remark": "",
+			"is_template": 1
 		})
 
 	new_doc = {
@@ -213,7 +215,8 @@ def save_bm_checklist_doc(data=None):
 				"task": row.get("task", ""),
 				"description": row.get("description", "") or "",
 				"is_completed": 1 if row.get("is_completed") in (1, "1", True) else 0,
-				"remark": row.get("remark", "") or ""
+				"remark": row.get("remark", "") or "",
+				"is_template": 1 if row.get("is_template") in (1, "1", True) else 0
 			})
 
 		doc.save(ignore_permissions=True)
@@ -239,7 +242,8 @@ def save_bm_checklist_doc(data=None):
 					"task": row.get("task", ""),
 					"description": row.get("description", "") or "",
 					"is_completed": 1 if row.get("is_completed") in (1, "1", True) else 0,
-					"remark": row.get("remark", "") or ""
+					"remark": row.get("remark", "") or "",
+					"is_template": 1 if row.get("is_template") in (1, "1", True) else 0
 				})
 			doc.save(ignore_permissions=True)
 			frappe.db.commit()
@@ -262,7 +266,8 @@ def save_bm_checklist_doc(data=None):
 				"task": row.get("task", ""),
 				"description": row.get("description", "") or "",
 				"is_completed": 1 if row.get("is_completed") in (1, "1", True) else 0,
-				"remark": row.get("remark", "") or ""
+				"remark": row.get("remark", "") or "",
+				"is_template": 1 if row.get("is_template") in (1, "1", True) else 0
 			})
 
 		doc.insert(ignore_permissions=True)
