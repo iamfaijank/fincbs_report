@@ -2734,10 +2734,93 @@
 			</div>
 		</div>
 
+		<!-- Download Period Modal -->
+		<div id="download-period-modal" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(15,23,42,0.55); backdrop-filter:blur(4px); justify-content:center; align-items:center; padding:16px; box-sizing:border-box;">
+			<div style="background:#fff; border-radius:12px; width:100%; max-width:380px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.25); overflow:hidden;">
+				<div style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid #e2e8f0; background:#f8fafc;">
+					<span id="dl-modal-title" style="font-size:15px; font-weight:700; color:#0f172a;">Download</span>
+					<button id="dl-modal-close" style="background:none; border:none; font-size:20px; color:#64748b; cursor:pointer; padding:0 4px; line-height:1;">&times;</button>
+				</div>
+				<div id="dl-modal-body" style="padding:20px; overflow-y:auto; flex:1;"></div>
+				<div style="display:flex; justify-content:flex-end; gap:8px; padding:12px 20px; border-top:1px solid #e2e8f0; background:#f8fafc;">
+					<button id="dl-modal-cancel" style="padding:8px 16px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; font-weight:600; color:#475569; background:#fff; cursor:pointer; transition:all 0.15s;">Cancel</button>
+					<button id="dl-modal-submit" style="padding:8px 20px; border:none; border-radius:6px; font-size:13px; font-weight:600; color:#fff; background:var(--primary-1, #097c80); cursor:pointer; transition:all 0.15s;">Download</button>
+				</div>
+			</div>
+		</div>
+
 		<script>
 			/* =========================================================
 	   BRANCH DASHBOARD (HEADER + SEARCH)
 	   ========================================================= */
+			function showDownloadPeriodModal(url, period) {
+				const modal = document.getElementById("download-period-modal");
+				if (!modal) return;
+				const title = modal.querySelector("#dl-modal-title");
+				const body = modal.querySelector("#dl-modal-body");
+				if (title) title.textContent = "Download - " + period.charAt(0).toUpperCase() + period.slice(1);
+
+				const today = new Date();
+				const currentYear = today.getFullYear();
+				const currentMonth = today.getMonth();
+				const currentFyStart = currentMonth >= 3 ? currentYear : currentYear - 1;
+
+				let html = "";
+				if (period === "month") {
+					const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+					let opts = "";
+					for (let i = 0; i < 12; i++) {
+						opts += '<option value="' + (i + 1) + '"' + (i === currentMonth ? ' selected' : '') + '>' + monthNames[i] + '</option>';
+					}
+					html = '<div style="display:flex; flex-direction:column; gap:14px;">'
+						+ '<div><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Start Date</label>'
+						+ '<input type="date" id="dl-start-date" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;" /></div>'
+						+ '<div><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">End Date</label>'
+						+ '<input type="date" id="dl-end-date" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;" /></div>'
+						+ '<div><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Month</label>'
+						+ '<select id="dl-month-select" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;">'
+						+ opts + '</select></div></div>';
+				} else if (period === "quarter") {
+					const quarters = [
+						{ label: "Q1 (Apr - Jun)", value: "Q1" },
+						{ label: "Q2 (Jul - Sep)", value: "Q2" },
+						{ label: "Q3 (Oct - Dec)", value: "Q3" },
+						{ label: "Q4 (Jan - Mar)", value: "Q4" }
+					];
+					const fyQ = currentMonth >= 3 ? (currentMonth < 6 ? 1 : currentMonth < 9 ? 2 : currentMonth < 12 ? 3 : 4) : (currentMonth < 3 ? 4 : currentMonth < 6 ? 1 : currentMonth < 9 ? 2 : 3);
+					let fyOpts = "";
+					for (let i = 0; i < 6; i++) {
+						const yr = currentFyStart - i;
+						fyOpts += '<option value="' + yr + '-' + (yr + 1) + '"' + (yr === currentFyStart ? ' selected' : '') + '>' + yr + '-' + (yr + 1) + '</option>';
+					}
+					let qOpts = "";
+					for (let j = 0; j < quarters.length; j++) {
+						qOpts += '<option value="' + quarters[j].value + '"' + (quarters[j].value === ("Q" + fyQ) ? ' selected' : '') + '>' + quarters[j].label + '</option>';
+					}
+					html = '<div style="display:flex; flex-direction:column; gap:14px;">'
+						+ '<div><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Financial Year</label>'
+						+ '<select id="dl-fy-select" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;">'
+						+ fyOpts + '</select></div>'
+						+ '<div><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Quarter</label>'
+						+ '<select id="dl-quarter-select" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;">'
+						+ qOpts + '</select></div></div>';
+				} else if (period === "year") {
+					let yrOpts = "";
+					for (let i = 0; i < 10; i++) {
+						const yr = currentFyStart - i;
+						yrOpts += '<option value="' + yr + '-' + (yr + 1) + '"' + (yr === currentFyStart ? ' selected' : '') + '>' + yr + '-' + (yr + 1) + '</option>';
+					}
+					html = '<div style="display:flex; flex-direction:column; gap:14px;">'
+						+ '<div><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Financial Year</label>'
+						+ '<select id="dl-year-select" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;">'
+						+ yrOpts + '</select></div></div>';
+				}
+				if (body) body.innerHTML = html;
+				modal.dataset.url = url;
+				modal.dataset.period = period;
+				modal.style.display = "flex";
+			}
+
 			const BranchDashboard = {
 				state: {
 					currentSolId: null,
@@ -3390,9 +3473,8 @@
 							e.preventDefault();
 							const url = item.getAttribute("data-url");
 							const period = item.getAttribute("data-period");
-							const sep = url.includes("?") ? "&" : "?";
-							window.open(url + sep + "download_period=" + period, "_blank");
 							document.querySelectorAll(".download-dropdown-menu").forEach(m => m.style.display = "none");
+							showDownloadPeriodModal(url, period);
 							return;
 						}
 						if (!e.target.closest(".daily-planning-btn-group")) {
@@ -3417,6 +3499,38 @@
 							this.handlePlanningTrigger(targetUrl, empId, solId, null);
 						}
 					});
+
+					// Download modal close/submit
+					const dlModal = document.getElementById("download-period-modal");
+					if (dlModal) {
+						dlModal.querySelector("#dl-modal-close").addEventListener("click", () => dlModal.style.display = "none");
+						dlModal.querySelector("#dl-modal-cancel").addEventListener("click", () => dlModal.style.display = "none");
+						dlModal.addEventListener("click", (e) => { if (e.target === dlModal) dlModal.style.display = "none"; });
+						dlModal.querySelector("#dl-modal-submit").addEventListener("click", () => {
+							const url = dlModal.dataset.url || "";
+							const period = dlModal.dataset.period || "";
+							let sep = url.includes("?") ? "&" : "?";
+							let params = "download_period=" + period;
+							if (period === "month") {
+								const start = dlModal.querySelector("#dl-start-date");
+								const end = dlModal.querySelector("#dl-end-date");
+								const month = dlModal.querySelector("#dl-month-select");
+								if (start && start.value) params += "&start_date=" + start.value;
+								if (end && end.value) params += "&end_date=" + end.value;
+								if (month && month.value) params += "&month=" + month.value;
+							} else if (period === "quarter") {
+								const fy = dlModal.querySelector("#dl-fy-select");
+								const q = dlModal.querySelector("#dl-quarter-select");
+								if (fy && fy.value) params += "&financial_year=" + encodeURIComponent(fy.value);
+								if (q && q.value) params += "&quarter=" + q.value;
+							} else if (period === "year") {
+								const yr = dlModal.querySelector("#dl-year-select");
+								if (yr && yr.value) params += "&financial_year=" + encodeURIComponent(yr.value);
+							}
+							window.open(url + sep + params, "_blank");
+							dlModal.style.display = "none";
+						});
+					}
 
 					// Populate dynamic financial years starting from 2025-2026 up to current year
 					const fySelectEl = document.getElementById("fy-select");
