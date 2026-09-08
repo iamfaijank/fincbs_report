@@ -1644,14 +1644,10 @@ def download_bm_checklist(start_date=None, end_date=None, sol_id=None, employee_
     parent_names = [r.name for r in records]
     placeholders = ", ".join(["%s"] * len(parent_names))
     task_records = frappe.db.sql(
-        f"SELECT parent, task, is_completed, remark FROM `tabBM checklist Task` WHERE parent IN ({placeholders}) ORDER BY idx ASC",
+        f"SELECT parent, task, description, is_completed, remark FROM `tabBM checklist Task` WHERE parent IN ({placeholders}) ORDER BY idx ASC",
         parent_names,
         as_dict=True
     )
-
-    frappe.log_error(f"DEBUG: parents={parent_names}, tasks_found={len(task_records)}", "BM DL")
-    for t in task_records[:5]:
-        frappe.log_error(f"DEBUG: parent={t.parent} task={t.task} is_completed={t.is_completed} remark='{t.remark}'", "BM DL")
 
     tasks_by_parent = {}
     for tr in task_records:
@@ -1660,7 +1656,7 @@ def download_bm_checklist(start_date=None, end_date=None, sol_id=None, employee_
     output = io.StringIO()
     writer = csv.writer(output)
 
-    header = ["Employee ID", "Employee Name", "Designation", "SOL ID", "Date", "Checklist Name", "Task", "Remark", "Status"]
+    header = ["Employee ID", "Employee Name", "Designation", "SOL ID", "Date", "Checklist Name", "Task", "Description", "Remark", "Status"]
     writer.writerow(header)
 
     for r in records:
@@ -1677,6 +1673,7 @@ def download_bm_checklist(start_date=None, end_date=None, sol_id=None, employee_
             for t in tasks:
                 row = base[:]
                 row.append(t.task or "")
+                row.append(t.description or "")
                 row.append(t.remark or "")
                 status = "Complete" if int(t.is_completed or 0) == 1 else "Pending"
                 row.append(status)

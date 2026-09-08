@@ -22,9 +22,10 @@ class BMchecklist(Document):
 	def populate_default_tasks(self):
 		if not self.get("table_lqft"):
 			tasks = get_bm_template_tasks()
-			for task_subject in tasks:
+			for task_data in tasks:
 				self.append("table_lqft", {
-					"task": task_subject,
+					"task": task_data.get("subject", ""),
+					"description": task_data.get("description", ""),
 					"is_completed": 0,
 					"remark": ""
 				})
@@ -42,13 +43,18 @@ def get_bm_template_tasks():
 
 	for row in template.get("tasks", []):
 		subject = (row.subject or "").strip()
+		description = ""
 		if not subject and row.task:
 			subject = frappe.db.get_value("Task", row.task, "subject") or ""
 			subject = subject.strip()
+		if row.task:
+			raw_desc = frappe.db.get_value("Task", row.task, "description") or ""
+			import re
+			description = re.sub(r'<[^>]+>', '', raw_desc).strip()
 
 		if subject and subject.lower() not in seen:
 			seen.add(subject.lower())
-			tasks.append(subject)
+			tasks.append({"subject": subject, "description": description})
 
 	return tasks
 
@@ -152,9 +158,10 @@ def get_bm_checklist_details(name=None, employee_id=None, date=None, sol_id=None
 
 	template_tasks = get_bm_template_tasks()
 	tasks = []
-	for task_subj in template_tasks:
+	for task_data in template_tasks:
 		tasks.append({
-			"task": task_subj,
+			"task": task_data.get("subject", ""),
+			"description": task_data.get("description", ""),
 			"is_completed": 0,
 			"remark": ""
 		})
@@ -204,6 +211,7 @@ def save_bm_checklist_doc(data=None):
 		for row in doc_data.get("table_lqft", []):
 			doc.append("table_lqft", {
 				"task": row.get("task", ""),
+				"description": row.get("description", "") or "",
 				"is_completed": 1 if row.get("is_completed") in (1, "1", True) else 0,
 				"remark": row.get("remark", "") or ""
 			})
@@ -229,6 +237,7 @@ def save_bm_checklist_doc(data=None):
 			for row in doc_data.get("table_lqft", []):
 				doc.append("table_lqft", {
 					"task": row.get("task", ""),
+					"description": row.get("description", "") or "",
 					"is_completed": 1 if row.get("is_completed") in (1, "1", True) else 0,
 					"remark": row.get("remark", "") or ""
 				})
@@ -251,6 +260,7 @@ def save_bm_checklist_doc(data=None):
 		for row in doc_data.get("table_lqft", []):
 			doc.append("table_lqft", {
 				"task": row.get("task", ""),
+				"description": row.get("description", "") or "",
 				"is_completed": 1 if row.get("is_completed") in (1, "1", True) else 0,
 				"remark": row.get("remark", "") or ""
 			})
