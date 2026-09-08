@@ -1,4 +1,6 @@
 import frappe
+import csv
+import io
 from typing import Dict, Optional
 from frappe.utils import flt, getdate
 
@@ -406,7 +408,6 @@ def get_bm_details_from_employee(sol_id: str):
     possible_branch_values = get_possible_branch_values(sol_id_str)
 
     conditions = [
-        "emp.status = 'Active'",
         "emp.designation LIKE %(bm_desig)s",
         "emp.designation NOT LIKE %(excl_assist)s",
         "emp.designation NOT LIKE %(excl_jll)s",
@@ -1592,3 +1593,101 @@ def get_attrition_rate(sol_id: str, period: str = "3"):
             "rates": {"3": 0.0, "6": 0.0, "12": 0.0},
             "counts": {"3": {"left": 0, "headcount": 0}, "6": {"left": 0, "headcount": 0}, "12": {"left": 0, "headcount": 0}}
         }
+
+
+# ============================================================================
+# BM CHECKLIST DOWNLOAD
+# ============================================================================
+
+@frappe.whitelist(methods=["GET"])
+def download_bm_checklist(start_date=None, end_date=None, sol_id=None, employee_id=None):
+    """Download BM checklist records as CSV for the given date range."""
+    if not start_date or not end_date:
+        frappe.throw("Start date and end date are required.")
+
+    conditions = []
+    values = []
+
+    if employee_id:
+        clean_emp = str(employee_id).strip()
+        emp_names = [clean_emp]
+        emp_doc = frappe.db.get_value("Employee", {"employee_number": clean_emp}, "name")
+        if emp_doc and emp_doc not in emp_names:
+            emp_names.append(emp_doc)
+        emp_num = frappe.db.get_value("Employee", {"name": clean_emp}, "employee_number")
+        if emp_num and emp_num not in emp_names:
+            emp_names.append(emp_num)
+        placeholders = ", ".join(["%s"] * len(emp_names))
+        conditions.append(f"bm_employee_id IN ({placeholders})")
+        values.extend(emp_names)
+
+    if sol_id:
+        conditions.append("sol_id = %s")
+        values.append(str(sol_id).strip())
+
+    conditions.append("date BETWEEN %s AND %s")
+    values.extend([str(start_date), str(end_date)])
+
+    where = " WHERE " + " AND ".join(conditions) if conditions else ""
+
+    query = f"""
+        SELECT name, date, bm_employee_id, sol_id, name1, designation
+        FROM `tabBM checklist`
+        {where}
+        ORDER BY date ASC, bm_employee_id ASC
+    """
+    records = frappe.db.sql(query, values, as_dict=True)
+
+    if not records:
+        frappe.throw("No records found for the selected date range.")
+
+    parent_names = [r.name for r in records]
+    placeholders = ", ".join(["%s"] * len(parent_names))
+    task_records = frappe.db.sql(
+        f"SELECT parent, task, description, is_completed, remark FROM `tabBM checklist Task` WHERE parent IN ({placeholders}) ORDER BY idx ASC",
+        parent_names,
+        as_dict=True
+    )
+
+    tasks_by_parent = {}
+    for tr in task_records:
+        tasks_by_parent.setdefault(tr.parent, []).append(tr)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    header = ["Employee ID", "Employee Name", "Designation", "SOL ID", "Date", "Checklist Name", "Task", "Description", "Remark", "Status"]
+    writer.writerow(header)
+
+    for r in records:
+        base = [
+            r.bm_employee_id or "",
+            r.name1 or "",
+            r.designation or "",
+            r.sol_id or "",
+            str(r.date) if r.date else "",
+            r.name or ""
+        ]
+        tasks = tasks_by_parent.get(r.name, [])
+        if tasks:
+            for t in tasks:
+                row = base[:]
+                row.append(t.task or "")
+                row.append(t.description or "")
+                row.append(t.remark or "")
+                status = "Complete" if int(t.is_completed or 0) == 1 else "Pending"
+                row.append(status)
+                writer.writerow(row)
+        else:
+            row = base[:]
+            row.append("")
+            row.append("")
+            row.append("")
+            writer.writerow(row)
+
+    period_label = f"{start_date}_to_{end_date}"
+    filename = f"BM_Checklist_{period_label}.csv"
+
+    frappe.local.response.filename = filename
+    frappe.local.response.filecontent = output.getvalue()
+    frappe.local.response.type = "download"

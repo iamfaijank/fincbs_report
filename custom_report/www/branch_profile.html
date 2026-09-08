@@ -2734,10 +2734,100 @@
 			</div>
 		</div>
 
+		<!-- Download Period Modal -->
+		<div id="download-period-modal" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(15,23,42,0.55); backdrop-filter:blur(4px); justify-content:center; align-items:center; padding:16px; box-sizing:border-box;">
+			<div style="background:#fff; border-radius:12px; width:100%; max-width:380px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.25); overflow:hidden;">
+				<div style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid #e2e8f0; background:#f8fafc;">
+					<span id="dl-modal-title" style="font-size:15px; font-weight:700; color:#0f172a;">Download</span>
+					<button id="dl-modal-close" style="background:none; border:none; font-size:20px; color:#64748b; cursor:pointer; padding:0 4px; line-height:1;">&times;</button>
+				</div>
+				<div id="dl-modal-body" style="padding:20px; overflow-y:auto; flex:1;"></div>
+				<div style="display:flex; justify-content:flex-end; gap:8px; padding:12px 20px; border-top:1px solid #e2e8f0; background:#f8fafc;">
+					<button id="dl-modal-cancel" style="padding:8px 16px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; font-weight:600; color:#475569; background:#fff; cursor:pointer; transition:all 0.15s;">Cancel</button>
+					<button id="dl-modal-submit" style="padding:8px 20px; border:none; border-radius:6px; font-size:13px; font-weight:600; color:#fff; background:var(--primary-1, #097c80); cursor:pointer; transition:all 0.15s;">Download</button>
+				</div>
+			</div>
+		</div>
+
 		<script>
 			/* =========================================================
 	   BRANCH DASHBOARD (HEADER + SEARCH)
 	   ========================================================= */
+			function showDownloadPeriodModal(url, period, empId, solId) {
+				const modal = document.getElementById("download-period-modal");
+				if (!modal) return;
+				const title = modal.querySelector("#dl-modal-title");
+				const body = modal.querySelector("#dl-modal-body");
+				if (title) title.textContent = "Download - " + period.charAt(0).toUpperCase() + period.slice(1);
+
+				const today = new Date();
+				const currentYear = today.getFullYear();
+				const currentMonth = today.getMonth();
+				const currentFyStart = currentMonth >= 3 ? currentYear : currentYear - 1;
+
+				let html = "";
+				if (period === "month") {
+					const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+					let opts = "";
+					for (let i = 0; i < 12; i++) {
+						opts += '<option value="' + (i + 1) + '"' + (i === currentMonth ? ' selected' : '') + '>' + monthNames[i] + '</option>';
+					}
+					const pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+					const firstOfCurrentMonth = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-01';
+					const todayStr = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
+					html = '<div style="display:flex; flex-direction:column; gap:14px;">'
+						+ '<div><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Month</label>'
+						+ '<select id="dl-month-select" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;">'
+						+ opts + '</select></div>'
+						+ '<div style="display:flex; gap:10px;">'
+						+ '<div style="flex:1;"><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Start Date</label>'
+						+ '<input type="date" id="dl-start-date" value="' + firstOfCurrentMonth + '" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;" /></div>'
+						+ '<div style="flex:1;"><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">End Date</label>'
+						+ '<input type="date" id="dl-end-date" value="' + todayStr + '" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;" /></div>'
+						+ '</div></div>';
+				} else if (period === "quarter") {
+					const quarters = [
+						{ label: "Q1 (Apr - Jun)", value: "Q1" },
+						{ label: "Q2 (Jul - Sep)", value: "Q2" },
+						{ label: "Q3 (Oct - Dec)", value: "Q3" },
+						{ label: "Q4 (Jan - Mar)", value: "Q4" }
+					];
+					const fyQ = currentMonth >= 3 ? (currentMonth < 6 ? 1 : currentMonth < 9 ? 2 : currentMonth < 12 ? 3 : 4) : (currentMonth < 3 ? 4 : currentMonth < 6 ? 1 : currentMonth < 9 ? 2 : 3);
+					let fyOpts = "";
+					for (let i = 0; i < 6; i++) {
+						const yr = currentFyStart - i;
+						fyOpts += '<option value="' + yr + '-' + (yr + 1) + '"' + (yr === currentFyStart ? ' selected' : '') + '>' + yr + '-' + (yr + 1) + '</option>';
+					}
+					let qOpts = "";
+					for (let j = 0; j < quarters.length; j++) {
+						qOpts += '<option value="' + quarters[j].value + '"' + (quarters[j].value === ("Q" + fyQ) ? ' selected' : '') + '>' + quarters[j].label + '</option>';
+					}
+					html = '<div style="display:flex; flex-direction:column; gap:14px;">'
+						+ '<div><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Financial Year</label>'
+						+ '<select id="dl-fy-select" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;">'
+						+ fyOpts + '</select></div>'
+						+ '<div><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Quarter</label>'
+						+ '<select id="dl-quarter-select" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;">'
+						+ qOpts + '</select></div></div>';
+				} else if (period === "year") {
+					let yrOpts = "";
+					for (let i = 0; i < 10; i++) {
+						const yr = currentFyStart - i;
+						yrOpts += '<option value="' + yr + '-' + (yr + 1) + '"' + (yr === currentFyStart ? ' selected' : '') + '>' + yr + '-' + (yr + 1) + '</option>';
+					}
+					html = '<div style="display:flex; flex-direction:column; gap:14px;">'
+						+ '<div><label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Financial Year</label>'
+						+ '<select id="dl-year-select" style="width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box;">'
+						+ yrOpts + '</select></div></div>';
+				}
+				if (body) body.innerHTML = html;
+				modal.dataset.url = url;
+				modal.dataset.period = period;
+				modal.dataset.empId = empId || "";
+				modal.dataset.solId = solId || "";
+				modal.style.display = "flex";
+			}
+
 			const BranchDashboard = {
 				state: {
 					currentSolId: null,
@@ -3222,21 +3312,25 @@
 					container.innerHTML = tasks.map((t, idx) => {
 						const isChecked = Boolean(t.is_completed == 1 || t.is_completed === true);
 						const taskText = (t.task || "").replace(/"/g, "&quot;");
+						const descText = (t.description || "").replace(/"/g, "&quot;");
 						const remarkText = (t.remark || "").replace(/"/g, "&quot;");
 						const rowBg = isChecked ? "background: #f0fdf4;" : (idx % 2 === 0 ? "background: #ffffff;" : "background: #fafafa;");
 
 						return `
-							<div class="dp-task-row" style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 14px; ${rowBg}">
-								<input type="checkbox" ${isChecked ? "checked" : ""} onchange="BranchDashboard.toggleTaskCompletion(${idx}, this.checked)" style="width: 18px; height: 18px; accent-color: #0d9488; cursor: pointer;" />
-								<div style="flex: 1; min-width: 0;">
-									<input type="text" value="${taskText}" placeholder="Task description..." onchange="BranchDashboard.updateTaskText(${idx}, this.value)" style="width: 100%; box-sizing: border-box; font-size: 13px; font-weight: 600; color: ${isChecked ? '#94a3b8; text-decoration: line-through;' : '#1e293b;'} border: 1px solid transparent; background: transparent; padding: 4px 6px; border-radius: 6px;" onfocus="this.style.borderColor='#99f6e4'; this.style.background='#fff';" onblur="this.style.borderColor='transparent'; this.style.background='transparent';" />
+							<div class="dp-task-row" style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; ${rowBg}">
+								<div style="display: flex; align-items: flex-start; gap: 14px;">
+									<input type="checkbox" ${isChecked ? "checked" : ""} onchange="BranchDashboard.toggleTaskCompletion(${idx}, this.checked)" style="width: 18px; height: 18px; margin-top: 2px; accent-color: #0d9488; cursor: pointer; flex-shrink: 0;" />
+									<div style="flex: 1; min-width: 0;">
+										<input type="text" value="${taskText}" placeholder="Task description..." onchange="BranchDashboard.updateTaskText(${idx}, this.value)" style="width: 100%; box-sizing: border-box; font-size: 13px; font-weight: 600; color: ${isChecked ? '#94a3b8; text-decoration: line-through;' : '#1e293b;'} border: 1px solid transparent; background: transparent; padding: 4px 6px; border-radius: 6px;" onfocus="this.style.borderColor='#99f6e4'; this.style.background='#fff';" onblur="this.style.borderColor='transparent'; this.style.background='transparent';" />
+										${descText ? '<div style="padding-left: 20px; margin-top: 2px; font-size: 12px; color: #64748b; line-height: 1.5;">' + descText + '</div>' : ''}
+										<div style="padding-left: 20px; margin-top: 4px;">
+											<input type="text" value="${remarkText}" placeholder="Add remark..." onchange="BranchDashboard.updateTaskRemark(${idx}, this.value)" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 5px 10px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; color: #475569;" />
+										</div>
+									</div>
+									<button type="button" onclick="BranchDashboard.removeCustomTaskRow(${idx})" style="background: transparent; border: none; color: #cbd5e1; cursor: pointer; padding: 4px 8px; border-radius: 6px; font-size: 14px; flex-shrink: 0; margin-top: 2px;" onmouseover="this.style.color='#ef4444';" onmouseout="this.style.color='#cbd5e1';" title="Remove task">
+										<i class="fa fa-trash-o"></i>
+									</button>
 								</div>
-								<div style="width: 240px; flex-shrink: 0;">
-									<input type="text" value="${remarkText}" placeholder="Add remark..." onchange="BranchDashboard.updateTaskRemark(${idx}, this.value)" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 10px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155;" />
-								</div>
-								<button type="button" onclick="BranchDashboard.removeCustomTaskRow(${idx})" style="background: transparent; border: none; color: #cbd5e1; cursor: pointer; padding: 4px 8px; border-radius: 6px; font-size: 14px;" onmouseover="this.style.color='#ef4444';" onmouseout="this.style.color='#cbd5e1';" title="Remove task">
-									<i class="fa fa-trash-o"></i>
-								</button>
 							</div>
 						`;
 					}).join("");
@@ -3372,6 +3466,33 @@
 				init() {
 					// Delegate Daily Planning Sheet and Date Chip click events
 					document.addEventListener("click", (e) => {
+						const toggle = e.target.closest(".download-dropdown-toggle");
+						if (toggle) {
+							e.preventDefault();
+							e.stopPropagation();
+							const btnGroup = toggle.closest(".daily-planning-btn-group");
+							const menu = btnGroup ? btnGroup.querySelector(".download-dropdown-menu") : null;
+							if (menu) {
+								const isVisible = menu.style.display === "block";
+								document.querySelectorAll(".download-dropdown-menu").forEach(m => m.style.display = "none");
+								if (!isVisible) menu.style.display = "block";
+							}
+							return;
+						}
+						const item = e.target.closest(".download-dropdown-item");
+						if (item) {
+							e.preventDefault();
+							const url = item.getAttribute("data-url");
+							const period = item.getAttribute("data-period");
+							const empId = item.getAttribute("data-emp-id") || "";
+							const solId = item.getAttribute("data-sol-id") || "";
+							document.querySelectorAll(".download-dropdown-menu").forEach(m => m.style.display = "none");
+							showDownloadPeriodModal(url, period, empId, solId);
+							return;
+						}
+						if (!e.target.closest(".daily-planning-btn-group")) {
+							document.querySelectorAll(".download-dropdown-menu").forEach(m => m.style.display = "none");
+						}
 						const dayChip = e.target.closest(".daily-planning-day-chip");
 						const btn = e.target.closest(".daily-planning-sheet-btn");
 						if (dayChip) {
@@ -3391,6 +3512,88 @@
 							this.handlePlanningTrigger(targetUrl, empId, solId, null);
 						}
 					});
+
+					// Download modal close/submit
+					const dlModal = document.getElementById("download-period-modal");
+					if (dlModal) {
+						dlModal.querySelector("#dl-modal-close").addEventListener("click", () => dlModal.style.display = "none");
+						dlModal.querySelector("#dl-modal-cancel").addEventListener("click", () => dlModal.style.display = "none");
+						dlModal.addEventListener("click", (e) => { if (e.target === dlModal) dlModal.style.display = "none"; });
+						dlModal.querySelector("#dl-modal-submit").addEventListener("click", () => {
+							const period = dlModal.dataset.period || "";
+							const empId = dlModal.dataset.empId || "";
+							const solId = dlModal.dataset.solId || "";
+							const pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+							const now = new Date();
+							let startDate = "";
+							let endDate = "";
+
+							if (period === "month") {
+								const sel = dlModal.querySelector("#dl-month-select");
+								const monthIdx = sel ? parseInt(sel.value, 10) : (now.getMonth() + 1);
+								const yr = now.getFullYear();
+								if (monthIdx === (now.getMonth() + 1)) {
+									startDate = yr + '-' + pad(monthIdx) + '-01';
+									endDate = yr + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+								} else {
+									const lastDay = new Date(yr, monthIdx, 0).getDate();
+									startDate = yr + '-' + pad(monthIdx) + '-01';
+									endDate = yr + '-' + pad(monthIdx) + '-' + pad(lastDay);
+								}
+							} else if (period === "quarter") {
+								const fy = dlModal.querySelector("#dl-fy-select");
+								const q = dlModal.querySelector("#dl-quarter-select");
+								const fyVal = fy ? fy.value : "";
+								const qVal = q ? q.value : "Q1";
+								const fyStart = fyVal ? parseInt(fyVal.split("-")[0], 10) : now.getFullYear();
+								const qMap = { "Q1": [4, 6], "Q2": [7, 9], "Q3": [10, 12], "Q4": [1, 3] };
+								const range = qMap[qVal] || [4, 6];
+								const startMonth = range[0];
+								const endMonth = range[1];
+								const startYear = startMonth >= 4 ? fyStart : fyStart + 1;
+								const endYear = endMonth >= 4 ? fyStart : fyStart + 1;
+								const lastDay = new Date(endYear, endMonth, 0).getDate();
+								startDate = startYear + '-' + pad(startMonth) + '-01';
+								endDate = endYear + '-' + pad(endMonth) + '-' + pad(lastDay);
+							} else if (period === "year") {
+								const yr = dlModal.querySelector("#dl-year-select");
+								const fyStart = yr ? parseInt(yr.value.split("-")[0], 10) : now.getFullYear();
+								startDate = fyStart + '-04-01';
+								endDate = (fyStart + 1) + '-03-31';
+							}
+
+							if (!startDate || !endDate) {
+								alert("Please select valid dates.");
+								return;
+							}
+
+							let apiUrl = "/api/method/custom_report.branch_v1.download_bm_checklist";
+							apiUrl += "?start_date=" + encodeURIComponent(startDate);
+							apiUrl += "&end_date=" + encodeURIComponent(endDate);
+							if (empId) apiUrl += "&employee_id=" + encodeURIComponent(empId);
+							if (solId) apiUrl += "&sol_id=" + encodeURIComponent(solId);
+							window.open(apiUrl, "_blank");
+							dlModal.style.display = "none";
+						});
+						dlModal.addEventListener("change", (e) => {
+							if (e.target && e.target.id === "dl-month-select") {
+								const sel = parseInt(e.target.value, 10);
+								const now = new Date();
+								const yr = now.getFullYear();
+								const pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+								const startEl = dlModal.querySelector("#dl-start-date");
+								const endEl = dlModal.querySelector("#dl-end-date");
+								if (sel === (now.getMonth() + 1)) {
+									if (startEl) startEl.value = yr + '-' + pad(sel) + '-01';
+									if (endEl) endEl.value = yr + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+								} else {
+									const lastDay = new Date(yr, sel, 0).getDate();
+									if (startEl) startEl.value = yr + '-' + pad(sel) + '-01';
+									if (endEl) endEl.value = yr + '-' + pad(sel) + '-' + pad(lastDay);
+								}
+							}
+						});
+					}
 
 					// Populate dynamic financial years starting from 2025-2026 up to current year
 					const fySelectEl = document.getElementById("fy-select");
@@ -3709,7 +3912,8 @@
 					manpowerSortCol: 'employee_number',
 					attritionPeriod: '3',
 					attritionData: null,
-					checklistStatusMap: {}
+					checklistStatusMap: {},
+					bmStatusCache: {}
 				},
 
 				fetchChecklistStatus(solId, empId) {
@@ -4348,31 +4552,43 @@
 				refreshBadge(badge, employeeId) {
 					if (!badge) return;
 					const body = employeeId ? JSON.stringify({ employee_id: employeeId }) : JSON.stringify({});
+					console.log("[BM STATUS] employeeId:", employeeId, "| badge:", badge.id);
 					fetch("/api/method/custom_report.www.drishti.get_current_user_employee_status", {
 						method: "POST",
 						headers: { "Content-Type": "application/json", "Accept": "application/json" },
 						body: body
 					})
 						.then(function (r) { return r.json(); })
-						.then(function (data) {
+						.then((data) => {
 							const msg = (data && data.message) || {};
 							const status = msg.status || "Active";
+							console.log("[BM STATUS] response:", msg, "| final status:", status);
 							let label = status;
 							if (status === "Resign" && typeof msg.relieving_in_days === "number" && msg.relieving_in_days > 0) {
-								label = "Resign (relieving in " + msg.relieving_in_days + " days)";
+								label = "Resign (relieving in " + msg.relieving_in_days + (msg.relieving_in_days === 1 ? " day" : " days") + ")";
 							}
-							badge.textContent = label;
-							if (status === "Resign") {
-								badge.style.background = "#fee2e2";
-								badge.style.color = "#dc2626";
-							} else {
-								badge.style.background = "#dcfce7";
-								badge.style.color = "#16a34a";
-							}
+							if (!this.state.bmStatusCache) this.state.bmStatusCache = {};
+							this.state.bmStatusCache[employeeId] = {
+								label: label,
+								isResign: status === "Resign"
+							};
+							this.applyBadgeStyle(badge, status === "Resign", label);
 						})
-						.catch(function () {
+						.catch(function (err) {
+							console.error("[BM STATUS] fetch error:", err);
 							badge.textContent = "Active";
 						});
+				},
+
+				applyBadgeStyle(badge, isResign, label) {
+					badge.textContent = label;
+					if (isResign) {
+						badge.style.background = "#fee2e2";
+						badge.style.color = "#dc2626";
+					} else {
+						badge.style.background = "#dcfce7";
+						badge.style.color = "#16a34a";
+					}
 				},
 
 				updateSessionStatusBadge() {
@@ -4460,17 +4676,25 @@
 								<div class="bm-right">
 									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
 										<div class="bm-title" style="margin-bottom: 0;">Branch Manager</div>
-										<div class="daily-planning-btn-group" style="display: inline-flex; align-items: stretch; border-radius: 6px; overflow: hidden; border: 1px solid rgba(9, 124, 128, 0.4); box-shadow: 0 2px 4px rgba(0,0,0,0.06); font-size: 12px; background: #fff;">
-											<div style="display: inline-flex; align-items: stretch; background: #f0fdfa;">
+										<div class="daily-planning-btn-group" style="display: inline-flex; align-items: stretch; border-radius: 6px; border: 1px solid rgba(9, 124, 128, 0.4); box-shadow: 0 2px 4px rgba(0,0,0,0.06); font-size: 12px; background: #fff; position: relative;">
+											<div style="display: inline-flex; align-items: stretch; background: #f0fdfa; border-right: 1px solid rgba(9, 124, 128, 0.4);">
 												${daysHtml}
 											</div>
-											<a href="${fallbackUrl}" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" class="daily-planning-sheet-btn" style="display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; font-weight: 600; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease;">
+											<a href="${fallbackUrl}" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" class="daily-planning-sheet-btn" style="display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; font-weight: 600; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease; border-right: 1px solid rgba(255,255,255,0.3);">
 												<i class="fa fa-file-text-o" style="font-size: 11px;"></i> Daily Planning Sheet
 											</a>
+											<a href="javascript:void(0);" class="daily-planning-download-btn download-dropdown-toggle" style="display: inline-flex; align-items: center; padding: 5px 10px; font-weight: 600; font-size: 11px; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease;">
+												Download <i class="fa fa-caret-down" style="margin-left:4px;"></i>
+											</a>
+											<div class="download-dropdown-menu" style="display:none; position:absolute; top:100%; right:0; margin-top:4px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.12); z-index:100; min-width:120px; overflow:hidden;">
+												<a href="javascript:void(0);" class="download-dropdown-item" data-period="month" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" data-url="${fallbackUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; transition:background 0.15s;">Month</a>
+												<a href="javascript:void(0);" class="download-dropdown-item" data-period="quarter" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" data-url="${fallbackUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; border-top:1px solid #f1f5f9; transition:background 0.15s;">Quarter</a>
+												<a href="javascript:void(0);" class="download-dropdown-item" data-period="year" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" data-url="${fallbackUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; border-top:1px solid #f1f5f9; transition:background 0.15s;">Year</a>
+											</div>
 										</div>
 									</div>
 									<div class="bm-name-row" style="display:flex; align-items:center; gap:8px;">
-										<div class="bm-name">${this.value(d.bm_name)}</div><span id="bm-status-single-badge" class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; background:#dcfce7; color:#16a34a;">Active</span>
+										<div class="bm-name">${this.value(d.bm_name)}</div><span id="bm-status-single-badge" class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; ${(this.state.bmStatusCache && this.state.bmStatusCache[d.bm_employee_id] && this.state.bmStatusCache[d.bm_employee_id].isResign) ? 'background:#fee2e2; color:#dc2626;' : 'background:#dcfce7; color:#16a34a;'}">${(this.state.bmStatusCache && this.state.bmStatusCache[d.bm_employee_id]) ? this.state.bmStatusCache[d.bm_employee_id].label : 'Loading...'}</span>
 									</div>
 									<div class="bm-sub">
 										<span>${this.value(d.branch_name)}</span> •
@@ -4513,20 +4737,28 @@
 								<div class="bm-right">
 									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
 										<div class="bm-title" style="margin-bottom: 0;">${this.value(bm.designation)} ${bmIndexBadge}</div>
-										<div class="daily-planning-btn-group" style="display: inline-flex; align-items: stretch; border-radius: 6px; overflow: hidden; border: 1px solid rgba(9, 124, 128, 0.4); box-shadow: 0 2px 4px rgba(0,0,0,0.06); font-size: 12px; background: #fff;">
-											<div style="display: inline-flex; align-items: stretch; background: #f0fdfa;">
+										<div class="daily-planning-btn-group" style="display: inline-flex; align-items: stretch; border-radius: 6px; border: 1px solid rgba(9, 124, 128, 0.4); box-shadow: 0 2px 4px rgba(0,0,0,0.06); font-size: 12px; background: #fff; position: relative;">
+											<div style="display: inline-flex; align-items: stretch; background: #f0fdfa; border-right: 1px solid rgba(9, 124, 128, 0.4);">
 												${daysHtml}
 											</div>
-											<a href="${planningUrl}" data-emp-id="${empId}" data-sol-id="${solId}" class="daily-planning-sheet-btn" style="display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; font-weight: 600; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease;">
+											<a href="${planningUrl}" data-emp-id="${empId}" data-sol-id="${solId}" class="daily-planning-sheet-btn" style="display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; font-weight: 600; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease; border-right: 1px solid rgba(255,255,255,0.3);">
 												<i class="fa fa-file-text-o" style="font-size: 11px;"></i> Daily Planning Sheet
 											</a>
+											<a href="javascript:void(0);" class="daily-planning-download-btn download-dropdown-toggle" style="display: inline-flex; align-items: center; padding: 5px 10px; font-weight: 600; font-size: 11px; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease;">
+												Download <i class="fa fa-caret-down" style="margin-left:4px;"></i>
+											</a>
+											<div class="download-dropdown-menu" style="display:none; position:absolute; top:100%; right:0; margin-top:4px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.12); z-index:100; min-width:120px; overflow:hidden;">
+												<a href="javascript:void(0);" class="download-dropdown-item" data-period="month" data-emp-id="${empId}" data-sol-id="${solId}" data-url="${planningUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; transition:background 0.15s;">Month</a>
+												<a href="javascript:void(0);" class="download-dropdown-item" data-period="quarter" data-emp-id="${empId}" data-sol-id="${solId}" data-url="${planningUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; border-top:1px solid #f1f5f9; transition:background 0.15s;">Quarter</a>
+												<a href="javascript:void(0);" class="download-dropdown-item" data-period="year" data-emp-id="${empId}" data-sol-id="${solId}" data-url="${planningUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; border-top:1px solid #f1f5f9; transition:background 0.15s;">Year</a>
+											</div>
 										</div>
 									</div>
 									<div class="bm-name-row" style="display:flex; align-items:center; gap:8px;">
 										<div class="bm-name">
 											${this.value(bm.employee_name)}
 											<!-- ${empId ? `<span style="font-size: 12px; color: #0369a1; font-weight: 700; background: #e0f2fe; padding: 2px 8px; border-radius: 4px; margin-left: 6px;">ID: ${empId}</span>` : ""} -->
-										</div><span id="bm-status-badge-${idx}" class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; background:#dcfce7; color:#16a34a;">Active</span>
+										</div><span id="bm-status-badge-${idx}" class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; ${(this.state.bmStatusCache && this.state.bmStatusCache[empId] && this.state.bmStatusCache[empId].isResign) ? 'background:#fee2e2; color:#dc2626;' : 'background:#dcfce7; color:#16a34a;'}">${(this.state.bmStatusCache && this.state.bmStatusCache[empId]) ? this.state.bmStatusCache[empId].label : 'Loading...'}</span>
 									</div>
 									<div class="bm-sub">
 										<span>${this.value(d.branch_name)}</span> •
