@@ -406,7 +406,6 @@ def get_bm_details_from_employee(sol_id: str):
     possible_branch_values = get_possible_branch_values(sol_id_str)
 
     conditions = [
-        "emp.status = 'Active'",
         "emp.designation LIKE %(bm_desig)s",
         "emp.designation NOT LIKE %(excl_assist)s",
         "emp.designation NOT LIKE %(excl_jll)s",

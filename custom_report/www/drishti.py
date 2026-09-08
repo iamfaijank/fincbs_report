@@ -88,6 +88,8 @@ def _employee_status_dict(employee):
 	if relieving_date:
 		relieving_in_days = (frappe.utils.getdate(relieving_date) - frappe.utils.getdate(frappe.utils.today())).days
 
+	print(f"[BM STATUS] Employee: {employee} | resignation_letter_date: {resignation_date} | relieving_date: {relieving_date} | _resign: {_resign} | status: {'Resign' if _resign else 'Active'}", flush=True)
+
 	return {
 		"status": "Resign" if _resign else "Active",
 		"resignation_letter_date": str(resignation_date) if resignation_date else None,
@@ -107,10 +109,16 @@ def get_current_user_employee_status(employee_id=None):
 			by_number = frappe.db.get_value("Employee", {"employee_number": employee_id}, "name")
 			if by_number:
 				employee = by_number
-			elif "@" not in str(employee_id):
-				candidate = f"{employee_id}@sahayog.com"
-				if frappe.db.exists("Employee", candidate):
-					employee = candidate
+			else:
+				by_user_id = frappe.db.get_value("Employee", {"user_id": employee_id}, "name")
+				if by_user_id:
+					employee = by_user_id
+				elif "@" not in str(employee_id):
+					candidate = f"{employee_id}@sahayog.com"
+					if frappe.db.exists("Employee", candidate):
+						employee = candidate
+
+		print(f"[BM STATUS] employee_id input: {employee_id} | resolved employee: {employee}", flush=True)
 
 		if employee:
 			return _employee_status_dict(employee)
