@@ -2,6 +2,15 @@ import frappe
 from frappe.model.document import Document
 
 
+def _doc_as_dict_with_template(doc):
+	"""as_dict() may skip hidden fields; explicitly include is_template from child objects."""
+	d = doc.as_dict()
+	for i, row_obj in enumerate(doc.get("table_lqft", [])):
+		if i < len(d.get("table_lqft", [])):
+			d["table_lqft"][i]["is_template"] = row_obj.get("is_template", 0)
+	return d
+
+
 class BMchecklist(Document):
 	def autoname(self):
 		date_str = str(self.date or frappe.utils.today())
@@ -137,7 +146,7 @@ def get_bm_checklist_details(name=None, employee_id=None, date=None, sol_id=None
 		return {
 			"status": "success",
 			"is_new": False,
-			"doc": doc.as_dict()
+			"doc": _doc_as_dict_with_template(doc)
 		}
 
 	# Create clean new template structure
@@ -226,7 +235,7 @@ def save_bm_checklist_doc(data=None):
 			"status": "success",
 			"message": "BM Checklist updated successfully",
 			"is_new": False,
-			"doc": doc.as_dict()
+			"doc": _doc_as_dict_with_template(doc)
 		}
 	else:
 		# Check if already exists for this date and emp
@@ -251,7 +260,7 @@ def save_bm_checklist_doc(data=None):
 				"status": "success",
 				"message": "BM Checklist updated successfully",
 				"is_new": False,
-				"doc": doc.as_dict()
+				"doc": _doc_as_dict_with_template(doc)
 			}
 
 		doc = frappe.new_doc("BM checklist")
@@ -277,7 +286,7 @@ def save_bm_checklist_doc(data=None):
 			"status": "success",
 			"message": "BM Checklist created successfully",
 			"is_new": True,
-			"doc": doc.as_dict()
+			"doc": _doc_as_dict_with_template(doc)
 		}
 
 
