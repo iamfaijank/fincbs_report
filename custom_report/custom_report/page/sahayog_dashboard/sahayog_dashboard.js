@@ -5398,6 +5398,10 @@ class DrishtiDashboard {
 						return;
 					}
 
+					// Only Administrator can view commission popup
+					dashboardInstance.canViewCommission = false;
+					callback(false);
+					/*
 					frappe.db.get_value("Employee", { user_id: frappe.session.user }, "cxo_level")
 						.then(r => {
 							const cxo = r && r.message ? (r.message.cxo_level !== undefined ? r.message.cxo_level : r.message) : 0;
@@ -5408,6 +5412,7 @@ class DrishtiDashboard {
 							dashboardInstance.canViewCommission = false;
 							callback(false);
 						});
+					*/
 				},
 				rmDetails: {},
 				expandedRms: {},
