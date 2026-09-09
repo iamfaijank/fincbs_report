@@ -78,23 +78,34 @@ def get_report_preference():
 
 
 def _employee_status_dict(employee):
-	resignation_date, relieving_date = frappe.db.get_value(
-		"Employee", employee, ["resignation_letter_date", "relieving_date"]
-	) or (None, None)
+	status, resignation_date, relieving_date = frappe.db.get_value(
+		"Employee", employee, ["status", "resignation_letter_date", "relieving_date"]
+	) or ("Active", None, None)
+
+	# If employee status is Left, hide BM entirely
+	if status == "Left":
+		return {"status": "Left", "hide": True}
 
 	_resign = resignation_date and str(resignation_date).strip() not in ("", "None", "0001-01-01")
+	_has_relieving = relieving_date and str(relieving_date).strip() not in ("", "None", "0001-01-01")
 
 	relieving_in_days = None
-	if relieving_date:
+	if _has_relieving:
 		relieving_in_days = (frappe.utils.getdate(relieving_date) - frappe.utils.getdate(frappe.utils.today())).days
 
-	print(f"[BM STATUS] Employee: {employee} | resignation_letter_date: {resignation_date} | relieving_date: {relieving_date} | _resign: {_resign} | status: {'Resign' if _resign else 'Active'}", flush=True)
+	# Resign if resignation_letter_date available AND relieving_date NOT available
+	# OR if resignation_letter_date NOT available AND relieving_date available AND in future
+	final_status = "Active"
+	if _resign and not _has_relieving:
+		final_status = "Resign"
+	elif not _resign and _has_relieving and relieving_in_days is not None and relieving_in_days > 0:
+		final_status = "Resign"
 
 	return {
-		"status": "Resign" if _resign else "Active",
+		"status": final_status,
 		"resignation_letter_date": str(resignation_date) if resignation_date else None,
 		"relieving_date": str(relieving_date) if relieving_date else None,
-		"relieving_in_days": relieving_in_days,
+		"relieving_in_days": relieving_in_days if final_status == "Resign" else None,
 	}
 
 
@@ -117,8 +128,6 @@ def get_current_user_employee_status(employee_id=None):
 					candidate = f"{employee_id}@sahayog.com"
 					if frappe.db.exists("Employee", candidate):
 						employee = candidate
-
-		print(f"[BM STATUS] employee_id input: {employee_id} | resolved employee: {employee}", flush=True)
 
 		if employee:
 			return _employee_status_dict(employee)
