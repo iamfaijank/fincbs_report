@@ -3936,6 +3936,9 @@
 						.then(data => {
 							self.state.checklistStatusMap = (data && data.message) ? data.message : {};
 							self.renderBmData();
+							if (self.state.bmList && self.state.bmList.length) {
+								self.updateBmListStatuses();
+							}
 							return self.state.checklistStatusMap;
 						})
 						.catch(e => {
@@ -4154,7 +4157,11 @@
 					if (this.state.bmList && this.state.bmList.length) {
 						this.updateBmListStatuses();
 					} else {
-						this.updateSessionStatusBadge();
+						const singleBadge = document.getElementById("bm-status-single-badge");
+						const cardBadge = document.getElementById("bm-status-card-badge");
+						const singleEmpId = d.bm_employee_id || d.bm_name || "";
+						this.refreshBadge(singleBadge, singleEmpId);
+						this.refreshBadge(cardBadge, singleEmpId);
 					}
 					if (this.el.mobile) this.el.mobile.textContent = this.value(d.bm_mob_no);
 					if (this.el.vintage) this.el.vintage.textContent = this.calculateExperience(d.bm_doj);
@@ -4560,7 +4567,6 @@
 				refreshBadge(badge, employeeId) {
 					if (!badge) return;
 					const body = employeeId ? JSON.stringify({ employee_id: employeeId }) : JSON.stringify({});
-					console.log("[BM STATUS] employeeId:", employeeId, "| badge:", badge.id);
 					fetch("/api/method/custom_report.www.drishti.get_current_user_employee_status", {
 						method: "POST",
 						headers: { "Content-Type": "application/json", "Accept": "application/json" },
@@ -4570,10 +4576,20 @@
 						.then((data) => {
 							const msg = (data && data.message) || {};
 							const status = msg.status || "Active";
-							console.log("[BM STATUS] response:", msg, "| final status:", status);
+							const shouldHide = msg.hide === true;
+
+							if (shouldHide) {
+								badge.textContent = "Left";
+								badge.style.background = "#fee2e2";
+								badge.style.color = "#dc2626";
+								const card = badge.closest(".bm-card, .staff-detail-section, tr, .bm-card-item");
+								if (card) card.style.display = "none";
+								return;
+							}
+
 							let label = status;
 							if (status === "Resign" && typeof msg.relieving_in_days === "number" && msg.relieving_in_days > 0) {
-								label = "Resign (relieving in " + msg.relieving_in_days + (msg.relieving_in_days === 1 ? " day" : " days") + ")";
+								label = "Resign (" + msg.relieving_in_days + (msg.relieving_in_days === 1 ? " day left" : " days left") + ")";
 							}
 							if (!this.state.bmStatusCache) this.state.bmStatusCache = {};
 							this.state.bmStatusCache[employeeId] = {
@@ -4702,7 +4718,7 @@
 										</div>
 									</div>
 									<div class="bm-name-row" style="display:flex; align-items:center; gap:8px;">
-										<div class="bm-name">${this.value(d.bm_name)}</div><span id="bm-status-single-badge" class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; ${(this.state.bmStatusCache && this.state.bmStatusCache[d.bm_employee_id] && this.state.bmStatusCache[d.bm_employee_id].isResign) ? 'background:#fee2e2; color:#dc2626;' : 'background:#dcfce7; color:#16a34a;'}">${(this.state.bmStatusCache && this.state.bmStatusCache[d.bm_employee_id]) ? this.state.bmStatusCache[d.bm_employee_id].label : 'Loading...'}</span>
+										<div class="bm-name">${this.value(d.bm_name)}</div><span id="bm-status-card-badge" class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; ${(this.state.bmStatusCache && this.state.bmStatusCache[d.bm_employee_id] && this.state.bmStatusCache[d.bm_employee_id].isResign) ? 'background:#fee2e2; color:#dc2626;' : 'background:#dcfce7; color:#16a34a;'}">${(this.state.bmStatusCache && this.state.bmStatusCache[d.bm_employee_id]) ? this.state.bmStatusCache[d.bm_employee_id].label : 'Loading...'}</span>
 									</div>
 									<div class="bm-sub">
 										<span>${this.value(d.branch_name)}</span> •
@@ -4920,6 +4936,7 @@
 									const firstEmp = this.state.bmList[0] ? (this.state.bmList[0].name || this.state.bmList[0].employee_number) : "";
 									this.fetchChecklistStatus(solId, firstEmp);
 									this.renderBmData();
+									this.updateBmListStatuses();
 									this.setSectionSkeleton("bm-profiles-wrapper", false);
 								}
 							})
