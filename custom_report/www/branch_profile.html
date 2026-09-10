@@ -1965,9 +1965,9 @@
 			<section class="staff-detail-section" id="deposit-book-section">
 				<div class="collapsible-section-header" onclick="BranchManagerProfile.toggleDepositBookSection()" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; padding-bottom: 8px;">
 					<h2 style="margin: 0;">Deposit & Book Position</h2>
-					<div style="display: flex; align-items: center; gap: 8px;" onclick="event.stopPropagation();">
-						<input type="date" id="deposit-book-date" style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; background: #fff; color: #1b263b; outline: none;" />
-						<span id="deposit-book-toggle-icon" style="font-size: 14px; font-weight: 700; color: #64748b; transition: transform 0.2s ease;">▶</span>
+					<div style="display: flex; align-items: center; gap: 8px;">
+						<input type="date" id="deposit-book-date" onclick="event.stopPropagation();" style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; background: #fff; color: #1b263b; outline: none;" />
+						<span id="deposit-book-toggle-icon" style="font-size: 14px; font-weight: 700; color: #64748b; transition: transform 0.2s ease; cursor: pointer;">▶</span>
 					</div>
 				</div>
 				<div class="financial-table-container" id="deposit-book-content" style="display: none;">
