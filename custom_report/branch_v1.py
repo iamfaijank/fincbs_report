@@ -873,17 +873,19 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
     init_rd_smbg_pending = flt(bpd.get("rd_smbg_pending") or 0.0)
 
     result = {
-        "sa_book": 0.0, "ca_book": 0.0, "fd_book": 0.0,
-        "rd_book": 0.0, "dds_book": 0.0, "smbg_book": 0.0, "dam_book": 0.0,
+        "sa_book": 0.0, "ca_book": 0.0, "tasc_book": 0.0, "fd_book": 0.0,
+        "rd_book": 0.0, "dds_book": 0.0, "smbg_book": 0.0, "dam_book": 0.0, "share_book": 0.0,
         "total_book": 0.0,
         
         "sa_accounts_opened": 0, "sa_accounts_total": 0,
         "ca_accounts_opened": 0, "ca_accounts_total": 0,
+        "tasc_accounts_opened": 0, "tasc_accounts_total": 0,
         "fd_accounts_opened": 0, "fd_accounts_total": 0,
         "rd_accounts_opened": 0, "rd_accounts_total": 0,
         "dds_accounts_opened": 0, "dds_accounts_total": 0,
         "smbg_accounts_opened": 0, "smbg_accounts_total": 0,
         "dam_accounts_opened": 0, "dam_accounts_total": 0,
+        "share_accounts_opened": 0, "share_accounts_total": 0,
         "total_accounts_opened": 0, "total_accounts_total": 0,
         
         "rd_demand": init_rd_demand,
@@ -945,6 +947,10 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
             result["ca_book"] += balance
             result["ca_accounts_opened"] += opened
             result["ca_accounts_total"] += total
+        elif g_subname == "TASC" or (g_name == "CASA" and g_subname == "TASC"):
+            result["tasc_book"] += balance
+            result["tasc_accounts_opened"] += opened
+            result["tasc_accounts_total"] += total
         elif g_name == "FD":
             result["fd_book"] += balance
             result["fd_accounts_opened"] += opened
@@ -965,22 +971,26 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
             result["dam_book"] += balance
             result["dam_accounts_opened"] += opened
             result["dam_accounts_total"] += total
+        elif g_name == "SHARE":
+            result["share_book"] += balance
+            result["share_accounts_opened"] += opened
+            result["share_accounts_total"] += total
             
         total_balance += balance
 
     result["total_book"] = (
-        result["sa_book"] + result["ca_book"] + result["fd_book"] +
-        result["rd_book"] + result["dds_book"] + result["smbg_book"] + result["dam_book"]
+        result["sa_book"] + result["ca_book"] + result["tasc_book"] + result["fd_book"] +
+        result["rd_book"] + result["dds_book"] + result["smbg_book"] + result["dam_book"] + result["share_book"]
     )
     
     result["total_accounts_opened"] = (
-        result["sa_accounts_opened"] + result["ca_accounts_opened"] + result["fd_accounts_opened"] +
-        result["rd_accounts_opened"] + result["dds_accounts_opened"] + result["smbg_accounts_opened"] + result["dam_accounts_opened"]
+        result["sa_accounts_opened"] + result["ca_accounts_opened"] + result["tasc_accounts_opened"] + result["fd_accounts_opened"] +
+        result["rd_accounts_opened"] + result["dds_accounts_opened"] + result["smbg_accounts_opened"] + result["dam_accounts_opened"] + result["share_accounts_opened"]
     )
     
     result["total_accounts_total"] = (
-        result["sa_accounts_total"] + result["ca_accounts_total"] + result["fd_accounts_total"] +
-        result["rd_accounts_total"] + result["dds_accounts_total"] + result["smbg_accounts_total"] + result["dam_accounts_total"]
+        result["sa_accounts_total"] + result["ca_accounts_total"] + result["tasc_accounts_total"] + result["fd_accounts_total"] +
+        result["rd_accounts_total"] + result["dds_accounts_total"] + result["smbg_accounts_total"] + result["dam_accounts_total"] + result["share_accounts_total"]
     )
     
     # Fetch DDS Demand, Collection from 'DD Tracker Report' for this sol_id
@@ -1044,8 +1054,10 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
         from frappe.utils import getdate
         dt = getdate(latest_date)
         result["latest_month"] = dt.strftime("%B").upper()
+        result["date"] = str(latest_date)
     else:
         result["latest_month"] = ""
+        result["date"] = ""
 
     frappe.cache().set_value(cache_key, result, expires_in_sec=1800)
     return result

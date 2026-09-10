@@ -1121,6 +1121,14 @@
 			background: #06b6d4;
 		}
 
+		.acc-dot.share {
+			background: #6366f1;
+		}
+
+		.acc-dot.tasc {
+			background: #14b8a6;
+		}
+
 		/* FY Filter Styles */
 		.fy-filter-wrapper {
 			display: flex;
@@ -1488,15 +1496,7 @@
 
 					<div class="bm-right">
 						<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-							<div class="bm-title" style="margin-bottom: 0;">Branch Manager</div>
-							<a href="/app/bm-checklist/new-bm-checklist-tcthxsxvlh" class="daily-planning-sheet-btn" style="display: inline-flex; align-items: center; border-radius: 6px; overflow: hidden; border: 1px solid rgba(9, 124, 128, 0.4); text-decoration: none; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.08); font-size: 12px; transition: all 0.2s ease;">
-								<span id="bm-header-week-range" style="padding: 5px 10px; font-weight: 600; background-color: #e6f4f4; color: #097c80; border-right: 1px solid rgba(9, 124, 128, 0.25); display: inline-flex; align-items: center; gap: 5px;">
-									<i class="fa fa-calendar" style="font-size: 11px; opacity: 0.85;"></i> This Week
-								</span>
-								<span style="padding: 5px 12px; font-weight: 600; background-color: var(--primary-1, #097c80); color: #fff;">
-									Daily Planning Sheet
-								</span>
-							</a>
+							<div class="bm-title" style="margin-bottom: 0;">BM</div>
 						</div>
 
 						<div class="bm-name-row" style="display:flex; align-items:center; gap:8px;">
@@ -1770,7 +1770,6 @@
 							<button type="button" class="pw-mode-btn active" data-mode="month" style="border: none; background: transparent; padding: 5px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; cursor: pointer; color: #475569; text-transform: uppercase; opacity: 0.7;">Month</button>
 							<button type="button" class="pw-mode-btn" data-mode="ytd" style="border: none; background: transparent; padding: 5px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; cursor: pointer; color: #475569; text-transform: uppercase; opacity: 0.7;">YTD</button>
 						</div>
-						<span id="product-wise-date-badge" style="font-size: 12px; font-weight: 600; color: #475569; background: #f1f5f9; padding: 4px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">--</span>
 					</div>
 				</div>
 				<div class="financial-table-container" style="overflow-x: auto;">
@@ -1966,7 +1965,7 @@
 				<div class="collapsible-section-header" onclick="BranchManagerProfile.toggleDepositBookSection()" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; padding-bottom: 8px;">
 					<h2 style="margin: 0;">Deposit & Book Position</h2>
 					<div style="display: flex; align-items: center; gap: 8px;">
-						<input type="date" id="deposit-book-date" onclick="event.stopPropagation();" style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; background: #fff; color: #1b263b; outline: none;" />
+						<span id="deposit-book-as-of" style="font-size: 13px; font-weight: 700; color: #346569; background: #e0f2fe; padding: 4px 10px; border-radius: 4px; border: 1px solid #7dd3fc;">AS OF: --</span>
 						<span id="deposit-book-toggle-icon" style="font-size: 14px; font-weight: 700; color: #64748b; transition: transform 0.2s ease; cursor: pointer;">▶</span>
 					</div>
 				</div>
@@ -2107,6 +2106,40 @@
 											<div class="comp-bar-fill" id="dam-book-bar"></div>
 										</div>
 										<span class="perc-share" id="dam-book-perc">--</span>
+									</div>
+								</td>
+							</tr>
+							<tr class="sub-item">
+								<td class="label-col">
+									<span class="acc-dot share"></span>
+									<span>SHARE</span>
+								</td>
+								<td class="amount-col">
+									<span id="share-book">--</span>
+								</td>
+								<td class="bar-col">
+									<div class="bar-wrapper">
+										<div class="comp-bar-bg">
+											<div class="comp-bar-fill" id="share-book-bar"></div>
+										</div>
+										<span class="perc-share" id="share-book-perc">--</span>
+									</div>
+								</td>
+							</tr>
+							<tr class="sub-item">
+								<td class="label-col">
+									<span class="acc-dot tasc"></span>
+									<span>TASC</span>
+								</td>
+								<td class="amount-col">
+									<span id="tasc-book">--</span>
+								</td>
+								<td class="bar-col">
+									<div class="bar-wrapper">
+										<div class="comp-bar-bg">
+											<div class="comp-bar-fill" id="tasc-book-bar"></div>
+										</div>
+										<span class="perc-share" id="tasc-book-perc">--</span>
 									</div>
 								</td>
 							</tr>
@@ -2284,6 +2317,46 @@
 											<div class="comp-bar-fill" id="dam-cust-bar"></div>
 										</div>
 										<span class="perc-share" id="dam-cust-perc">--</span>
+									</div>
+								</td>
+							</tr>
+							<tr class="sub-item">
+								<td class="label-col">
+									<span class="acc-dot share"></span>
+									<span>SHARE</span>
+								</td>
+								<td class="amount-col">
+									<span id="share-accounts-opened">--</span>
+								</td>
+								<td class="amount-col">
+									<span id="total-share-no-of-customers">--</span>
+								</td>
+								<td class="bar-col">
+									<div class="bar-wrapper">
+										<div class="comp-bar-bg">
+											<div class="comp-bar-fill" id="share-cust-bar"></div>
+										</div>
+										<span class="perc-share" id="share-cust-perc">--</span>
+									</div>
+								</td>
+							</tr>
+							<tr class="sub-item">
+								<td class="label-col">
+									<span class="acc-dot tasc"></span>
+									<span>TASC</span>
+								</td>
+								<td class="amount-col">
+									<span id="tasc-accounts-opened">--</span>
+								</td>
+								<td class="amount-col">
+									<span id="total-tasc-no-of-customers">--</span>
+								</td>
+								<td class="bar-col">
+									<div class="bar-wrapper">
+										<div class="comp-bar-bg">
+											<div class="comp-bar-fill" id="tasc-cust-bar"></div>
+										</div>
+										<span class="perc-share" id="tasc-cust-perc">--</span>
 									</div>
 								</td>
 							</tr>
@@ -3874,7 +3947,8 @@
 					ssInactiveCount: document.getElementById("ss-inactive-count"),
 					ssInactivePerc: document.getElementById("ss-inactive-perc"),
 
-					// Deposit & Book Position (Direct mappings removed, handled by updateComp)
+					// Deposit & Book Position
+					depositBookAsOf: document.getElementById("deposit-book-as-of"),
 					totalBook: document.getElementById("total-book"),
 
 					// Customer Base Snapshot
@@ -4286,6 +4360,10 @@
 					);
 
 					// --- COMPOSITION UPDATES (DEPOSIT & BOOK) ---
+					if (this.el.depositBookAsOf) {
+						const asOfDate = d.date || (this.state.rawData && this.state.rawData.date);
+						this.el.depositBookAsOf.textContent = asOfDate ? `AS OF: ${this.formatDate(asOfDate)}` : "AS OF: --";
+					}
 					const totalBookVal = parseFloat(d.total_book) || 0;
 					this.el.totalBook.textContent = this.formatAmount(d.total_book);
 
@@ -4303,22 +4381,26 @@
 
 					updateComp('sa-book', d.sa_book, totalBookVal);
 					updateComp('ca-book', d.ca_book, totalBookVal);
+					updateComp('tasc-book', d.tasc_book, totalBookVal);
 					updateComp('fd-book', d.fd_book, totalBookVal);
 					updateComp('rd-book', d.rd_book, totalBookVal);
 					updateComp('dds-book', d.dds_book, totalBookVal);
 					updateComp('smbg-book', d.smbg_book, totalBookVal);
 					updateComp('dam-book', d.dam_book, totalBookVal);
+					updateComp('share-book', d.share_book, totalBookVal);
 
 					// --- COMPOSITION UPDATES (CUSTOMERS) ---
 					let totalCustVal = parseFloat(d.total_accounts_total) || 0;
 					if (!totalCustVal) {
 						totalCustVal = (parseFloat(d.sa_accounts_total) || 0) +
 						               (parseFloat(d.ca_accounts_total) || 0) +
+						               (parseFloat(d.tasc_accounts_total) || 0) +
 						               (parseFloat(d.fd_accounts_total) || 0) +
 						               (parseFloat(d.rd_accounts_total) || 0) +
 						               (parseFloat(d.dds_accounts_total) || 0) +
 						               (parseFloat(d.smbg_accounts_total) || 0) +
-						               (parseFloat(d.dam_accounts_total) || 0);
+						               (parseFloat(d.dam_accounts_total) || 0) +
+						               (parseFloat(d.share_accounts_total) || 0);
 					}
 					this.el.totalCustomersId.textContent = this.formatIndianNumber(totalCustVal);
 					
@@ -4344,11 +4426,13 @@
 
 					updateCustComp('sa-accounts-opened', 'total-sa-no-of-customers', 'sa-cust', d.sa_accounts_opened, d.sa_accounts_total, totalCustVal);
 					updateCustComp('ca-accounts-opened', 'total-ca-no-of-customers', 'ca-cust', d.ca_accounts_opened, d.ca_accounts_total, totalCustVal);
+					updateCustComp('tasc-accounts-opened', 'total-tasc-no-of-customers', 'tasc-cust', d.tasc_accounts_opened, d.tasc_accounts_total || d.total_tasc_no_of_customers, totalCustVal);
 					updateCustComp('fd-accounts-opened', 'total-fd-no-of-customers', 'fd-cust', d.fd_accounts_opened, d.fd_accounts_total, totalCustVal);
 					updateCustComp('rd-accounts-opened', 'total-rd-no-of-customers', 'rd-cust', d.rd_accounts_opened, d.rd_accounts_total, totalCustVal);
 					updateCustComp('dds-accounts-opened', 'total-dds-no-of-customers', 'dds-cust', d.dds_accounts_opened, d.dds_accounts_total, totalCustVal);
 					updateCustComp('smbg-accounts-opened', 'total-smbg-no-of-customers', 'smbg-cust', d.smbg_accounts_opened, d.smbg_accounts_total, totalCustVal);
 					updateCustComp('dam-accounts-opened', 'total-dam-no-of-customers', 'dam-cust', d.dam_accounts_opened, d.dam_accounts_total || d.total_dam_no_of_customers, totalCustVal);
+					updateCustComp('share-accounts-opened', 'total-share-no-of-customers', 'share-cust', d.share_accounts_opened, d.share_accounts_total || d.total_share_no_of_customers, totalCustVal);
 
 					// Populate Demand & Collection Performance
 					if (this.el.demandCollectionAsOf) {
@@ -4699,23 +4783,7 @@
 								</div>
 								<div class="bm-right">
 									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-										<div class="bm-title" style="margin-bottom: 0;">Branch Manager</div>
-										<div class="daily-planning-btn-group" style="display: inline-flex; align-items: stretch; border-radius: 6px; border: 1px solid rgba(9, 124, 128, 0.4); box-shadow: 0 2px 4px rgba(0,0,0,0.06); font-size: 12px; background: #fff; position: relative;">
-											<div style="display: inline-flex; align-items: stretch; background: #f0fdfa; border-right: 1px solid rgba(9, 124, 128, 0.4);">
-												${daysHtml}
-											</div>
-											<a href="${fallbackUrl}" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" class="daily-planning-sheet-btn" style="display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; font-weight: 600; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease; border-right: 1px solid rgba(255,255,255,0.3);">
-												<i class="fa fa-file-text-o" style="font-size: 11px;"></i> Daily Planning Sheet
-											</a>
-											<a href="javascript:void(0);" class="daily-planning-download-btn download-dropdown-toggle" style="display: inline-flex; align-items: center; padding: 5px 10px; font-weight: 600; font-size: 11px; background-color: var(--primary-1, #097c80); color: #fff; text-decoration: none; cursor: pointer; transition: all 0.2s ease;">
-												Download <i class="fa fa-caret-down" style="margin-left:4px;"></i>
-											</a>
-											<div class="download-dropdown-menu" style="display:none; position:absolute; top:100%; right:0; margin-top:4px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.12); z-index:100; min-width:120px; overflow:hidden;">
-												<a href="javascript:void(0);" class="download-dropdown-item" data-period="month" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" data-url="${fallbackUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; transition:background 0.15s;">Month</a>
-												<a href="javascript:void(0);" class="download-dropdown-item" data-period="quarter" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" data-url="${fallbackUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; border-top:1px solid #f1f5f9; transition:background 0.15s;">Quarter</a>
-												<a href="javascript:void(0);" class="download-dropdown-item" data-period="year" data-emp-id="${fallbackEmpId}" data-sol-id="${solId}" data-url="${fallbackUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; border-top:1px solid #f1f5f9; transition:background 0.15s;">Year</a>
-											</div>
-										</div>
+										<div class="bm-title" style="margin-bottom: 0;">BM</div>
 									</div>
 									<div class="bm-name-row" style="display:flex; align-items:center; gap:8px;">
 										<div class="bm-name">${this.value(d.bm_name)}</div><span id="bm-status-card-badge" class="bm-status-badge" style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; ${(this.state.bmStatusCache && this.state.bmStatusCache[d.bm_employee_id] && this.state.bmStatusCache[d.bm_employee_id].isResign) ? 'background:#fee2e2; color:#dc2626;' : 'background:#dcfce7; color:#16a34a;'}">${(this.state.bmStatusCache && this.state.bmStatusCache[d.bm_employee_id]) ? this.state.bmStatusCache[d.bm_employee_id].label : 'Loading...'}</span>
@@ -4745,11 +4813,11 @@
 						const avatarSrc = bm.image || "/assets/frappe/images/default-avatar.png";
 						const empId = bm.name || bm.employee_number || "";
 						const solId = d.sol_id || "";
+						const isBranchManager = (bm.designation || "").trim().toLowerCase() === "branch manager";
 						const planningUrl = empId 
 							? `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?bm_employee_id=${encodeURIComponent(empId)}`
 							: (solId ? `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?sol_id=${encodeURIComponent(solId)}` : `/app/bm-checklist/new-bm-checklist-tcthxsxvlh`);
-						const bmIndexBadge = bmList.length > 1 ? `<span style="font-size: 11px; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 8px; border-radius: 12px; margin-left: 8px;">BM #${idx + 1} of ${bmList.length}</span>` : "";
-						const daysHtml = renderDaysHtmlForEmp(empId);
+						const daysHtml = isBranchManager ? renderDaysHtmlForEmp(empId) : "";
 
 						const cardHtml = `
 							<section class="bm-card" style="margin-bottom: 20px;">
@@ -4760,7 +4828,8 @@
 								</div>
 								<div class="bm-right">
 									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-										<div class="bm-title" style="margin-bottom: 0;">${this.value(bm.designation)} ${bmIndexBadge}</div>
+										<div class="bm-title" style="margin-bottom: 0;">BM</div>
+										${isBranchManager ? `
 										<div class="daily-planning-btn-group" style="display: inline-flex; align-items: stretch; border-radius: 6px; border: 1px solid rgba(9, 124, 128, 0.4); box-shadow: 0 2px 4px rgba(0,0,0,0.06); font-size: 12px; background: #fff; position: relative;">
 											<div style="display: inline-flex; align-items: stretch; background: #f0fdfa; border-right: 1px solid rgba(9, 124, 128, 0.4);">
 												${daysHtml}
@@ -4777,6 +4846,7 @@
 												<a href="javascript:void(0);" class="download-dropdown-item" data-period="year" data-emp-id="${empId}" data-sol-id="${solId}" data-url="${planningUrl}" style="display:block; padding:8px 14px; font-size:12px; font-weight:500; color:#1e293b; text-decoration:none; border-top:1px solid #f1f5f9; transition:background 0.15s;">Year</a>
 											</div>
 										</div>
+										` : ''}
 									</div>
 									<div class="bm-name-row" style="display:flex; align-items:center; gap:8px;">
 										<div class="bm-name">
@@ -4870,7 +4940,11 @@
 					const latestDate = dates[0];
 					const oldestDate = dates[dates.length - 1];
 
-					const inputs = ["account-month-filter", "deposit-book-date"];
+					if (this.el.depositBookAsOf && latestDate) {
+						this.el.depositBookAsOf.textContent = `AS OF: ${this.formatDate(latestDate)}`;
+					}
+
+					const inputs = ["account-month-filter"];
 					inputs.forEach(id => {
 						const input = document.getElementById(id);
 						if (!input) return;
@@ -5146,17 +5220,6 @@
 				renderProductCollections() {
 					const data = this.state.productCollectionsData;
 					if(!data) return;
-
-					if (data.report_date) {
-						const dateBadge = document.getElementById("product-wise-date-badge");
-						if (dateBadge) {
-							if (data.period_label) {
-								dateBadge.textContent = data.period_label;
-							} else {
-								dateBadge.textContent = "As of: " + this.formatDate(data.report_date);
-							}
-						}
-					}
 
 					if (data.month) {
 						const ms = document.getElementById("pw-month-select");
