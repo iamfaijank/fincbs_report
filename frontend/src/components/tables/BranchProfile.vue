@@ -175,8 +175,10 @@ async function loadChecklistDoc(specificDate) {
         table_lqft: (data.doc.table_lqft || []).map(row => ({
           name: row.name || '',
           task: row.task || '',
+          description: row.description || '',
           is_completed: Boolean(row.is_completed == 1 || row.is_completed === true),
-          remark: row.remark || ''
+          remark: row.remark || '',
+          is_template: Boolean(row.is_template == 1 || row.is_template === true)
         }))
       }
       isNewChecklist.value = Boolean(data.is_new)
@@ -211,8 +213,10 @@ function addTaskRow() {
   checklistDoc.value.table_lqft.push({
     name: '',
     task: '',
+    description: '',
     is_completed: false,
-    remark: ''
+    remark: '',
+    is_template: 0
   })
 }
 
@@ -234,8 +238,10 @@ async function saveChecklistDoc() {
     table_lqft: checklistDoc.value.table_lqft.map(t => ({
       name: t.name,
       task: t.task,
+      description: t.description || '',
       is_completed: t.is_completed ? 1 : 0,
-      remark: t.remark
+      remark: t.remark,
+      is_template: t.is_template ? 1 : 0
     }))
   }
 
@@ -283,8 +289,57 @@ const employeeStatusClass = computed(() =>
     ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
     : 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
 )
+
+// Daily Planning Sheet visibility: admin no restriction, else only if session user == BM card user
+const currentUser = ref(
+  (typeof window !== 'undefined' && window.frappe && window.frappe.session && window.frappe.session.user) ||
+  (typeof window !== 'undefined' && window.frappe && window.frappe.boot && (window.frappe.boot.user?.name || window.frappe.boot.user)) ||
+  ''
+)
+const bmUserId = ref('')
+const isAdmin = computed(() => currentUser.value === 'Administrator')
+const canSeePlanning = computed(() => isAdmin.value || (bmUserId.value && currentUser.value === bmUserId.value))
+
+async function fetchCurrentUser() {
+  if (currentUser.value) return
+  try {
+    const res = await frappeRequest({ url: '/api/method/frappe.auth.get_logged_user', method: 'GET' })
+    const user = res?.message || res || ''
+    if (typeof user === 'string' && user) currentUser.value = user
+    else if (user?.user) currentUser.value = user.user
+  } catch (e) {}
+  if (!currentUser.value && typeof window !== 'undefined' && window.frappe) {
+    currentUser.value = window.frappe.session?.user || window.frappe.boot?.user?.name || window.frappe.boot?.user || ''
+  }
+}
+
+async function fetchBmUserId() {
+  const solId = props.branch?.sol_id || props.branchProfile?.sol_id || ''
+  if (!solId) {
+    bmUserId.value = ''
+    return
+  }
+  try {
+    const res = await frappeRequest({
+      url: '/api/method/custom_report.branch_v1.get_bm_details_from_employee',
+      params: { sol_id: solId }
+    })
+    if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
+      bmUserId.value = res.data[0].user_id || res.data[0].userId || ''
+    } else if (res && res.user_id) {
+      bmUserId.value = res.user_id
+    } else {
+      bmUserId.value = ''
+    }
+  } catch (e) {
+    bmUserId.value = ''
+  }
+}
+
 onMounted(async () => {
+  await fetchCurrentUser()
   fetchChecklistStatus()
+  fetchBmUserId()
   try {
     const res = await frappeRequest({
       url: '/api/method/custom_report.www.drishti.get_current_user_employee_status',
@@ -299,6 +354,7 @@ onMounted(async () => {
 
 watch(() => [props.branchProfile, props.branch], () => {
   fetchChecklistStatus()
+  fetchBmUserId()
 }, { deep: true })
 
 const STATUS_META = {
@@ -505,9 +561,15 @@ function scrollToManpowerDetails() {
                   v-model="t.task"
                   type="text"
                   placeholder="Task description..."
-                  class="w-full text-xs font-semibold bg-transparent border-b border-transparent focus:border-teal-500 focus:bg-white dark:focus:bg-gray-800 px-1 py-1 rounded transition text-gray-800 dark:text-gray-100 focus:outline-none"
+                  class="hidden"
                   :class="t.is_completed ? 'line-through text-gray-400 dark:text-gray-500' : ''"
                 />
+                <div
+                  v-if="t.description"
+                  class="w-full text-xs font-semibold bg-transparent px-1 py-1 rounded whitespace-pre-wrap break-words leading-relaxed text-gray-800 dark:text-gray-100"
+                  style="white-space: pre-wrap; word-break: break-word;"
+                  :class="t.is_completed ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-gray-100'"
+                >{{ t.description }}</div>
               </div>
 
               <div class="w-full sm:w-64 flex-shrink-0">
@@ -560,7 +622,7 @@ function scrollToManpowerDetails() {
       <div class="mx-5 my-4 sb-card flex-shrink-0">
       <div class="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
         <div class="text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">Branch Information</div>
-        <div class="inline-flex items-stretch rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700 text-xs shadow-sm hover:shadow transition bg-[var(--bg)]">
+        <div v-if="canSeePlanning" class="daily-planning-btn-group inline-flex items-stretch rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700 text-xs shadow-sm hover:shadow transition bg-[var(--bg)]">
           <!-- Left side: Every working day date of current week (Mon-Sat) with color variation -->
           <div class="flex items-stretch divide-x divide-slate-200 dark:divide-slate-800">
             <button
@@ -1316,9 +1378,15 @@ function scrollToManpowerDetails() {
                       v-model="t.task"
                       type="text"
                       placeholder="Task description..."
-                      class="w-full text-xs font-semibold bg-transparent border-b border-transparent focus:border-teal-500 focus:bg-white dark:focus:bg-gray-800 px-1 py-1 rounded transition text-gray-800 dark:text-gray-100 focus:outline-none"
+                      class="hidden"
                       :class="t.is_completed ? 'line-through text-gray-400 dark:text-gray-500' : ''"
                     />
+                    <div
+                      v-if="t.description"
+                      class="w-full text-xs font-semibold bg-transparent px-1 py-1 rounded whitespace-pre-wrap break-words leading-relaxed text-gray-800 dark:text-gray-100"
+                      style="white-space: pre-wrap; word-break: break-word;"
+                      :class="t.is_completed ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-gray-100'"
+                    >{{ t.description }}</div>
                   </div>
 
                   <!-- Remark Input -->

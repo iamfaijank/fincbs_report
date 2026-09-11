@@ -122,7 +122,7 @@ def get_rd_smbg_pending_table_data():
 		COALESCE(SUM(pending_amount), 0) AS pending_amount,
 		COALESCE(SUM(pending_instalments), 0) AS pending_instalments
 	FROM `tabRD and SMBG Pending`
-	WHERE `date` = %s
+	WHERE `date` = %s AND (schm_code IS NULL OR schm_code != '2016')
 	GROUP BY sol_id, sol_desc
 	ORDER BY sol_id
 	"""
@@ -139,7 +139,7 @@ def get_rd_smbg_pending_table_data():
 		COALESCE(SUM(pending_amount), 0) AS pending_amount,
 		COALESCE(SUM(pending_instalments), 0) AS pending_instalments
 	FROM `tabRD and SMBG Pending`
-	WHERE `date` = %s AND sol_id = %s
+	WHERE `date` = %s AND sol_id = %s AND (schm_code IS NULL OR schm_code != '2016')
 	GROUP BY sol_id, rm_id, rm_name, auth_id, auth_role_id
 	ORDER BY rm_id
 	"""

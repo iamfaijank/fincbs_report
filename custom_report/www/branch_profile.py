@@ -30,3 +30,7 @@ def get_context(context):
     if employee and employee.designation:
         user_designation = employee.designation.upper().strip()
     context.is_branch_manager = (user_designation == "BRANCH MANAGER")
+
+    # Daily Planning Sheet visibility: admin unrestricted, else own BM card
+    context.current_user = user
+    context.is_admin = (user == "Administrator")

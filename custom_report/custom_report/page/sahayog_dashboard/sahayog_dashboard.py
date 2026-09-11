@@ -1654,7 +1654,7 @@ def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
         if latest_date:
             target_date = str(latest_date)
 
-    conditions = ["`date` = %s"]
+    conditions = ["`date` = %s", "(schm_code IS NULL OR schm_code != '2016')"]
     values = [target_date]
 
     if sol_ids:

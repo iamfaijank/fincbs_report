@@ -1038,15 +1038,15 @@ def get_book_position_details(sol_id: str = None, selected_date: str = None):
 
     result["rd_smbg_collection"] = rd_collection_val + smbg_collection_val
 
-    # Query yesterday's RD & SMBG Pending sum
+    # Query yesterday's RD & SMBG Pending sum (exclude schm_code 2016)
     from datetime import date, timedelta
     target_date = date.today() - timedelta(days=1)
     target_date_str = target_date.strftime('%Y-%m-%d')
-    pending_sum = frappe.db.get_value(
-        "RD and SMBG Pending",
-        {"sol_id": sol_id_str, "date": target_date_str},
-        "sum(pending_amount)"
+    pending_row = frappe.db.sql(
+        "SELECT SUM(pending_amount) FROM `tabRD and SMBG Pending` WHERE sol_id = %s AND `date` = %s AND (schm_code IS NULL OR schm_code != '2016')",
+        (sol_id_str, target_date_str),
     )
+    pending_sum = pending_row[0][0] if pending_row and pending_row[0] else None
     if pending_sum is not None:
         result["rd_smbg_pending"] = float(pending_sum)
 
