@@ -6498,6 +6498,24 @@ class DrishtiDashboard {
 		}
 	}
 
+	renderActiveTab() {
+		// Fix for checkUserDesignation: re-render current branch tab after BM filtering
+		try {
+			if (this.state && this.state.activeTab === "branch") {
+				if (this.data) {
+					this.render();
+				} else {
+					this.loadData();
+				}
+			} else if (this.switchTab) {
+				// Fallback: if not on branch, ensure branch tab is shown for BM
+				this.switchTab("branch");
+			}
+		} catch (e) {
+			console.error("renderActiveTab failed:", e);
+		}
+	}
+
 	init() {
 		this.checkUserDesignation();
 		this.setupLegacyStyles();
