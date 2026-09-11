@@ -59,8 +59,18 @@ def get_bm_template_tasks():
 			subject = subject.strip()
 		if row.task:
 			raw_desc = frappe.db.get_value("Task", row.task, "description") or ""
-			import re
-			description = re.sub(r'<[^>]+>', '', raw_desc).strip()
+			import re, html
+			# Preserve formatting exactly as typed: block close tags => single newline,
+			# <br> => newline, keep blank line from empty <p><br></p>, avoid double-newline per <p>
+			tmp = re.sub(r'<br\s*/?>', '\n', raw_desc, flags=re.IGNORECASE)
+			tmp = re.sub(r'</(p|div|li|ul|ol|h[1-6]|tr|table|blockquote)>', '\n', tmp, flags=re.IGNORECASE)
+			tmp = re.sub(r'<[^>]+>', '', tmp)
+			tmp = html.unescape(tmp)
+			# Preserve blank lines: empty <p><br></p> becomes \n\n, consecutive <p> gives \n
+			# Keep leading spaces? strip only trailing per line, keep blank lines
+			lines = [ln.rstrip() for ln in tmp.split('\n')]
+			description = '\n'.join(lines).strip()
+			description = re.sub(r'\n{3,}', '\n\n', description)
 
 		if subject and subject.lower() not in seen:
 			seen.add(subject.lower())
@@ -288,6 +298,26 @@ def save_bm_checklist_doc(data=None):
 			"is_new": True,
 			"doc": _doc_as_dict_with_template(doc)
 		}
+
+
+@frappe.whitelist()
+def fix_bm_task_descriptions_formatting():
+	"""One-time fix: re-derive description for template tasks to preserve blank line exactly (1 line, blank, 3 lines)."""
+	import re, html
+	template_tasks = get_bm_template_tasks()
+	# subject -> correct description
+	correct_map = {t["subject"].strip().lower(): t["description"] for t in template_tasks if t.get("subject")}
+	fixed = 0
+	# Update all BM checklist Task rows where task matches template subject (regardless of is_template)
+	rows = frappe.db.sql("SELECT name, parent, task, description FROM `tabBM checklist Task`", as_dict=True)
+	for r in rows:
+		key = (r.task or "").strip().lower()
+		correct = correct_map.get(key)
+		if correct is not None and (r.description or "") != correct:
+			frappe.db.set_value("BM checklist Task", r.name, "description", correct, update_modified=False)
+			fixed += 1
+	frappe.db.commit()
+	return {"fixed": fixed, "total_rows": len(rows)}
 
 
 

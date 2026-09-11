@@ -3385,9 +3385,10 @@
 					container.innerHTML = tasks.map((t, idx) => {
 						const isChecked = Boolean(t.is_completed == 1 || t.is_completed === true);
 						const isTemplate = Boolean(t.is_template == 1 || t.is_template === true);
-						const taskText = (t.task || "").replace(/"/g, "&quot;");
-						const descText = (t.description || "").replace(/"/g, "&quot;");
-						const remarkText = (t.remark || "").replace(/"/g, "&quot;");
+						const esc = (s) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+						const taskText = esc(t.task);
+						const descText = esc(t.description);
+						const remarkText = esc(t.remark);
 						const rowBg = isChecked ? "background: #f0fdf4;" : (idx % 2 === 0 ? "background: #ffffff;" : "background: #fafafa;");
 						const templateBorder = isTemplate ? "border-left: 3px solid #0d9488;" : "";
 						const taskInput = isTemplate
@@ -3403,8 +3404,8 @@
 								<div style="display: flex; align-items: flex-start; gap: 14px;">
 									<input type="checkbox" ${isChecked ? "checked" : ""} onchange="BranchDashboard.toggleTaskCompletion(${idx}, this.checked)" style="width: 18px; height: 18px; margin-top: 2px; accent-color: #0d9488; cursor: pointer; flex-shrink: 0;" />
 									<div style="flex: 1; min-width: 0;">
-										<div style="display: flex; align-items: center;">${taskInput}${templateLabel}</div>
-										${descText ? '<div style="padding-left: 20px; margin-top: 2px; font-size: 12px; color: #64748b; line-height: 1.5;">' + descText + '</div>' : ''}
+										<div style="display: none; align-items: center;">${taskInput}${templateLabel}</div>
+										${descText ? '<div style="padding-left: 20px; font-size: 13px; font-weight: 600; color: ' + (isChecked ? '#94a3b8; text-decoration: line-through;' : '#1e293b;') + ' line-height: 1.5; white-space: pre-wrap; word-break: break-word; padding: 4px 6px;">' + descText + '</div>' : ''}
 										<div style="padding-left: 20px; margin-top: 4px;">
 											<input type="text" value="${remarkText}" placeholder="Add remark..." onchange="BranchDashboard.updateTaskRemark(${idx}, this.value)" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 5px 10px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; color: #475569;" />
 										</div>
@@ -4814,10 +4815,14 @@
 						const empId = bm.name || bm.employee_number || "";
 						const solId = d.sol_id || "";
 						const isBranchManager = (bm.designation || "").trim().toLowerCase() === "branch manager";
+						const currentUser = (typeof frappe !== 'undefined' && frappe.session && frappe.session.user) || (typeof frappe !== 'undefined' && frappe.boot && (frappe.boot.user?.name || frappe.boot.user)) || "{{ current_user }}" || "";
+						const isAdmin = currentUser === "Administrator" || {{ 'true' if is_admin else 'false' }};
+						const bmUserId = bm.user_id || bm.userId || "";
+						const canSeePlanning = isAdmin || (bmUserId && currentUser && currentUser === bmUserId);
 						const planningUrl = empId 
 							? `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?bm_employee_id=${encodeURIComponent(empId)}`
 							: (solId ? `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?sol_id=${encodeURIComponent(solId)}` : `/app/bm-checklist/new-bm-checklist-tcthxsxvlh`);
-						const daysHtml = isBranchManager ? renderDaysHtmlForEmp(empId) : "";
+						const daysHtml = (isBranchManager && canSeePlanning) ? renderDaysHtmlForEmp(empId) : "";
 
 						const cardHtml = `
 							<section class="bm-card" style="margin-bottom: 20px;">
@@ -4829,7 +4834,7 @@
 								<div class="bm-right">
 									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
 										<div class="bm-title" style="margin-bottom: 0;">BM</div>
-										${isBranchManager ? `
+										${(isBranchManager && canSeePlanning) ? `
 										<div class="daily-planning-btn-group" style="display: inline-flex; align-items: stretch; border-radius: 6px; border: 1px solid rgba(9, 124, 128, 0.4); box-shadow: 0 2px 4px rgba(0,0,0,0.06); font-size: 12px; background: #fff; position: relative;">
 											<div style="display: inline-flex; align-items: stretch; background: #f0fdfa; border-right: 1px solid rgba(9, 124, 128, 0.4);">
 												${daysHtml}
