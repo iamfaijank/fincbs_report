@@ -4831,7 +4831,7 @@
 						const empId = bm.name || bm.employee_number || "";
 						const solId = d.sol_id || "";
 						const isBranchManager = (bm.designation || "").trim().toLowerCase() === "branch manager";
-						const currentUser = (typeof frappe !== 'undefined' && frappe.session && frappe.session.user) || (typeof frappe !== 'undefined' && frappe.boot && (frappe.boot.user?.name || frappe.boot.user)) || "{{ current_user }}" || "";
+						const currentUser = "{{ current_user }}" || (typeof frappe !== 'undefined' && frappe.session && frappe.session.user) || (typeof frappe !== 'undefined' && frappe.boot && (frappe.boot.user?.name || frappe.boot.user)) || "";
 						const isAdmin = currentUser === "Administrator" || {{ 'true' if is_admin else 'false' }};
 						const bmUserId = bm.user_id || bm.userId || "";
 						const canSeePlanning = isAdmin || (bmUserId && currentUser && currentUser === bmUserId);
