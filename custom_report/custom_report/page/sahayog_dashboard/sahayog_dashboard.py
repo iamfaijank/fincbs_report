@@ -1683,6 +1683,18 @@ def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
     try:
         rows = frappe.db.sql(query, tuple(values), as_dict=True)
 
+        excluded_2016_query = f"""
+            SELECT
+                COALESCE(SUM(pending_amount), 0) AS excluded_amount,
+                COUNT(*) AS excluded_accounts
+            FROM `tabRD and SMBG Pending`
+            WHERE `date` = %s AND schm_code = '2016'
+        """
+        excluded_2016 = frappe.db.sql(excluded_2016_query, (target_date,), as_dict=True)
+        if excluded_2016:
+            print(f"[RD Pending] schm_code=2016 EXCLUDED | accounts: {excluded_2016[0].get('excluded_accounts', 0)} | pending_amount: {excluded_2016[0].get('excluded_amount', 0)}", flush=True)
+            frappe.log_error(f"[RD Pending] schm_code=2016 EXCLUDED | accounts: {excluded_2016[0].get('excluded_accounts', 0)} | pending_amount: {excluded_2016[0].get('excluded_amount', 0)}", "RD Pending 2016 Excluded")
+
         sol_ids_found = [r.sol_id.strip() for r in rows if r.sol_id]
         branch_map = {}
         if sol_ids_found:
