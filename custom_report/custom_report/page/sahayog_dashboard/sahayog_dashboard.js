@@ -5691,6 +5691,8 @@ class DrishtiDashboard {
 							else if (node.level === 4) rowBg = '#ffffff';
 							else if (node.level === 5) rowBg = '#f0fdfa';
 
+							const levelDisplay = node.level === 5 ? ((node.code || "").toUpperCase().startsWith("DD") ? "VS" : (node.code || "").toUpperCase().startsWith("RD") ? "SS" : node.type) : node.type;
+
 							html += `
 								<tr class="tree-master-row" data-node-id="${node.id}" data-level="${node.level}" data-agent-code="${node.code}" style="cursor: pointer; background: ${rowBg}; border-bottom: 1px solid #e2e8f0;">
 									<td style="padding: 8px 12px; text-align: left; padding-left: ${indent}px; font-weight: ${node.level < 5 ? '700' : '600'}; color: #1e293b;">
@@ -5699,7 +5701,7 @@ class DrishtiDashboard {
 									</td>
 									<td style="padding: 8px 12px; text-align: left; font-size: 12px; font-weight: 700; color: #417d81;">${node.code}</td>
 									<td style="padding: 8px 12px; text-align: left; font-size: 11px;">
-										<span style="background: ${typeBadgeBg}; color: ${typeBadgeColor}; border: 1px solid ${typeBadgeBorder}; padding: 2px 8px; border-radius: 12px; font-weight: 700;">${node.type}</span>
+										<span style="background: ${typeBadgeBg}; color: ${typeBadgeColor}; border: 1px solid ${typeBadgeBorder}; padding: 2px 8px; border-radius: 12px; font-weight: 700;">${levelDisplay}</span>
 									</td>
 									<td style="padding: 8px 12px; text-align: right;">${activeColHtml}</td>
 									<td style="padding: 8px 12px; text-align: right;">${inactiveColHtml}</td>
