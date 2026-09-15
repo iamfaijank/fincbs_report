@@ -4835,6 +4835,7 @@
 						const isAdmin = currentUser === "Administrator" || {{ 'true' if is_admin else 'false' }};
 						const bmUserId = bm.user_id || bm.userId || "";
 						const canSeePlanning = isAdmin || (bmUserId && currentUser && currentUser === bmUserId);
+						console.log("[DailyPlanning] currentUser:", currentUser, "| isAdmin:", isAdmin, "| bmUserId:", bmUserId, "| isBranchManager:", isBranchManager, "| canSeePlanning:", canSeePlanning);
 						const planningUrl = empId 
 							? `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?bm_employee_id=${encodeURIComponent(empId)}`
 							: (solId ? `/app/bm-checklist/new-bm-checklist-tcthxsxvlh?sol_id=${encodeURIComponent(solId)}` : `/app/bm-checklist/new-bm-checklist-tcthxsxvlh`);
