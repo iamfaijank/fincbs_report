@@ -280,6 +280,7 @@ class DrishtiDashboard {
 			selectedSegment: "all",
 			dashboardMode: "drishti",
 			selectedMisReport: "rd_smbg_pending",
+			categoryViewMode: "table",
 		};
 		// Store selected date per tab
 		this.tabDates = {
@@ -9966,8 +9967,8 @@ class DrishtiDashboard {
 	// DATA FILTERING AND AGGREGATION UTILITIES
 	// ========================================================================
 
-	getFilteredBranches() {
-		let filtered = this.branchData ? [...this.branchData] : [];
+	getFilteredBranches(customBranchData, ignoreCategoryFilter = false) {
+		let filtered = (customBranchData || this.branchData) ? [...(customBranchData || this.branchData)] : [];
 
 		if (this.isBranchManager && this.userSolId) {
 			const targetSol = String(this.userSolId).trim();
@@ -9981,8 +9982,8 @@ class DrishtiDashboard {
 			this.state.selectedMonth ||
 			(this.months && this.months.length > 0 ? this.months[0].key : null);
 
-		// 1. Category filter (applied for the selected/latest month)
-		if (this.state.selectedCategories.length > 0 && filterMonthKey) {
+		// 1. Category filter (applied for the selected/latest month, skip if ignoreCategoryFilter is true)
+		if (!ignoreCategoryFilter && this.state.selectedCategories.length > 0 && filterMonthKey) {
 			filtered = filtered.filter((branch) => {
 				const monthData = branch.months[filterMonthKey];
 				return monthData && this.state.selectedCategories.includes(monthData.category);
@@ -10374,7 +10375,9 @@ class DrishtiDashboard {
 				});
 				console.log(`📊 [ZONE WISE] Date: ${this.state.selectedDate || 'Default'} | Branches: ${totalBranches} | Target: ₹ ${totalTgt.toLocaleString('en-IN')} | Achievement: ₹ ${totalAch.toLocaleString('en-IN')}`);
 			} else if (this.state.activeTab === "category") {
-				htmlContent = this.renderCategoryTable(reaggregatedCategoryData);
+				htmlContent = this.state.categoryViewMode === "chart"
+					? this.renderCategoryChartContainer()
+					: this.renderCategoryTable(reaggregatedCategoryData);
 			} else if (this.state.activeTab === "product") {
 				const filteredProductData = this.getFilteredProductData();
 				htmlContent = this.renderProductTable(filteredProductData);
@@ -10409,11 +10412,16 @@ class DrishtiDashboard {
 				this.attachProductExpandHandlers();
 				this.attachProductDrilldownHandlers();
 			} else if (this.state.activeTab === "category") {
-				this.attachMovementPopupHandlers();
-				this.attachCategoryExpandHandlers();
-				this.attachDrillHandlers();
-				this.attachZoneDrillHandlers();
-				this.attachTotalMovementPopupHandler();
+				this.attachCategoryViewToggleHandlers();
+				if (this.state.categoryViewMode === "chart") {
+					this.renderCategoryChart();
+				} else {
+					this.attachMovementPopupHandlers();
+					this.attachCategoryExpandHandlers();
+					this.attachDrillHandlers();
+					this.attachZoneDrillHandlers();
+					this.attachTotalMovementPopupHandler();
+				}
 			} else if (this.state.activeTab === "agent") {
 				this.attachAgentExpandHandlers();
 			} else if (this.state.activeTab === "product_tgt_ach") {
@@ -11507,7 +11515,17 @@ class DrishtiDashboard {
                 <th style="width: 15%;">Performance Band</th>
                 <th style="width: 15%;">Branch Count</th>
                 <th style="width: 20%;">Movement (vs Prev. Day)</th>
-                <th style="width: 25%;">Health Status</th>
+                <th style="width: 25%; position: relative;">
+                    Health Status
+                    <div class="category-view-toggle btn-group" role="group" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: #ffffff; padding: 2px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">
+                        <button type="button" class="btn btn-xs cat-toggle-btn ${this.state.categoryViewMode === "chart" ? "active btn-primary" : "btn-default"}" data-mode="chart" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: ${this.state.categoryViewMode === "chart" ? "#ffffff" : "#475569"}; background-color: ${this.state.categoryViewMode === "chart" ? "#346569" : "transparent"};">
+                            <i class="fa fa-bar-chart" style="margin-right: 4px;"></i>Chart
+                        </button>
+                        <button type="button" class="btn btn-xs cat-toggle-btn ${this.state.categoryViewMode !== "chart" ? "active btn-primary" : "btn-default"}" data-mode="table" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: ${this.state.categoryViewMode !== "chart" ? "#ffffff" : "#475569"}; background-color: ${this.state.categoryViewMode !== "chart" ? "#346569" : "transparent"};">
+                            <i class="fa fa-table" style="margin-right: 4px;"></i>Table
+                        </button>
+                    </div>
+                </th>
             </tr>
         </thead>
         <tbody>
@@ -11922,6 +11940,257 @@ class DrishtiDashboard {
 
 				self.render();
 			});
+	}
+
+	renderCategoryChartContainer() {
+		const fy = this.state.financialYear || "Current Financial Year";
+		const periodText = `Branch movement across performance categories for FY ${fy}`;
+
+		return `
+			<div class="category-chart-wrapper" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9;">
+					<div style="text-align: center; width: 100%;">
+						<h5 style="margin: 0; font-weight: 700; color: #0f172a; font-size: 16px;">Branch Performance Category Movement</h5>
+						<p id="category-chart-period-text" style="margin: 2px 0 0; font-size: 12px; color: #64748b; font-style: italic;">${periodText}</p>
+					</div>
+					<div class="category-view-toggle btn-group" role="group" style="background: #f1f5f9; padding: 3px; border-radius: 6px; white-space: nowrap; margin-left: auto;">
+						<button type="button" class="btn btn-xs cat-toggle-btn active btn-primary" data-mode="chart" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #ffffff; background-color: #346569;">
+							<i class="fa fa-bar-chart" style="margin-right: 4px;"></i>Chart
+						</button>
+						<button type="button" class="btn btn-xs cat-toggle-btn btn-default" data-mode="table" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #475569; background-color: transparent;">
+							<i class="fa fa-table" style="margin-right: 4px;"></i>Table
+						</button>
+					</div>
+				</div>
+				<div id="category-stacked-bar-chart" style="width: 100%; height: 520px;"></div>
+			</div>
+		`;
+	}
+
+	attachCategoryViewToggleHandlers() {
+		const self = this;
+		this.page.main.find(".cat-toggle-btn").off("click").on("click", function (e) {
+			e.stopPropagation();
+			const mode = $(this).data("mode");
+			if (self.state.categoryViewMode !== mode) {
+				self.state.categoryViewMode = mode;
+				self.render();
+			}
+		});
+	}
+
+	renderCategoryChart() {
+		const chartDom = this.page.main.find("#category-stacked-bar-chart")[0];
+		if (!chartDom) return;
+
+		const renderWithData = (monthsData, branchData) => {
+			const initChart = () => {
+				if (typeof echarts === "undefined") return;
+				const existingChart = echarts.getInstanceByDom(chartDom);
+				if (existingChart) existingChart.dispose();
+				const chart = echarts.init(chartDom);
+
+				// Filter out future months: only include elapsed months up to selectedDate/today
+				const asOfDate = new Date(this.state.selectedDate || frappe.datetime.get_today());
+				const asOfYear = asOfDate.getFullYear(), asOfMonth = asOfDate.getMonth();
+				const monthsList = (monthsData || [])
+					.filter((m) => {
+						if (!m.date) return false;
+						const d = new Date(m.date);
+						return d.getFullYear() < asOfYear || (d.getFullYear() === asOfYear && d.getMonth() <= asOfMonth);
+					})
+					.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+				const monthKeys = monthsList.map((m) => m.key);
+				const monthDisplays = monthsList.map((m) => m.display || m.key);
+
+				if (monthsList.length > 0) {
+					const fromMonth = monthsList[0].display || monthsList[0].key;
+					const toMonth = monthsList[monthsList.length - 1].display || monthsList[monthsList.length - 1].key;
+					this.page.main.find("#category-chart-period-text").text(
+						`Branch movement across performance categories from ${fromMonth} to ${toMonth}`
+					);
+				}
+
+				// Colors identical to category filter tags
+				const categoryConfig = {
+					Pinnacle: { color: "rgba(109, 40, 217, 0.22)", border: "#6D28D9", text: "#4C1D95", legendColor: "#6D28D9" },
+					Master: { color: "rgba(29, 78, 216, 0.22)", border: "#1D4ED8", text: "#1E3A8A", legendColor: "#1D4ED8" },
+					Accelerator: { color: "rgba(4, 120, 87, 0.22)", border: "#047857", text: "#064E3B", legendColor: "#047857" },
+					Starter: { color: "rgba(180, 83, 9, 0.22)", border: "#B45309", text: "#78350F", legendColor: "#B45309" },
+					Learner: { color: "rgba(190, 24, 93, 0.22)", border: "#BE185D", text: "#831843", legendColor: "#BE185D" },
+					"Zero Level": { color: "rgba(153, 27, 27, 0.22)", border: "#991B1B", text: "#7F1D1D", legendColor: "#991B1B" }
+				};
+
+				const categories = ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Zero Level"];
+				const counts = Object.fromEntries(categories.map((cat) => [cat, monthKeys.map(() => 0)]));
+				const mIndexMap = Object.fromEntries(monthKeys.map((k, i) => [k, i]));
+
+				// Fast single-pass branch counting
+				const filteredBranches = this.getFilteredBranches(branchData, true);
+				for (let i = 0, len = filteredBranches.length; i < len; i++) {
+					const bMonths = filteredBranches[i].months;
+					if (!bMonths) continue;
+					for (const mKey in bMonths) {
+						const idx = mIndexMap[mKey];
+						if (idx !== undefined) {
+							const cat = bMonths[mKey]?.category;
+							if (counts[cat]) counts[cat][idx]++;
+						}
+					}
+				}
+
+				const series = categories.map((cat) => {
+					const cfg = categoryConfig[cat];
+					return {
+						name: cat,
+						type: "bar",
+						stack: "total",
+						barWidth: 46,
+						emphasis: {
+							focus: "series",
+							itemStyle: { color: cfg.color, borderColor: cfg.border, borderWidth: 2, shadowBlur: 8, shadowColor: "rgba(0,0,0,0.3)" },
+							label: { color: cfg.text, fontWeight: 900 }
+						},
+						blur: {
+							itemStyle: { opacity: 0.15, borderColor: "rgba(203,213,225,0.3)" },
+							label: { show: false }
+						},
+						label: {
+							show: true,
+							position: "inside",
+							formatter: (params) => (params.value > 0 ? params.value : ""),
+							color: cfg.text,
+							fontSize: 12,
+							fontWeight: 800
+						},
+						itemStyle: { color: cfg.color, borderColor: cfg.border, borderWidth: 1.5, borderRadius: 2 },
+						data: counts[cat].map((val) => ({
+							value: val,
+							itemStyle: { borderWidth: val === 0 ? 0 : 1.5, opacity: val === 0 ? 0 : 1 }
+						}))
+					};
+				});
+
+				const buildLegendData = (activeName = null) => {
+					return categories.map((cat) => {
+						const isDimmed = activeName && activeName !== cat;
+						const cfg = categoryConfig[cat];
+						return {
+							name: cat,
+							itemStyle: { color: isDimmed ? "#cbd5e1" : cfg.legendColor, opacity: isDimmed ? 0.4 : 1 },
+							textStyle: { color: isDimmed ? "#94a3b8" : "#334155", fontWeight: activeName === cat ? 800 : 600 }
+						};
+					});
+				};
+
+				chart.setOption({
+					tooltip: {
+						trigger: "axis",
+						axisPointer: { type: "shadow" },
+						backgroundColor: "rgba(15, 23, 42, 0.94)",
+						borderColor: "#334155",
+						borderWidth: 1,
+						padding: [10, 14],
+						textStyle: { color: "#ffffff", fontSize: 12 },
+						formatter: (params) => {
+							let total = 0;
+							let html = `<div style="font-weight:700;font-size:13px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:4px;">${params[0]?.axisValue || ""}</div>`;
+							const sorted = [...params].sort((a, b) => categories.indexOf(a.seriesName) - categories.indexOf(b.seriesName));
+							sorted.forEach((item) => {
+								const val = item.value || 0;
+								total += val;
+								const dotColor = categoryConfig[item.seriesName]?.legendColor || "#64748B";
+								html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin:3px 0;">
+									<span style="display:flex;align-items:center;gap:8px;">
+										<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${dotColor};box-shadow:0 0 4px ${dotColor};"></span>
+										<span style="font-weight:500;">${item.seriesName}</span>
+									</span>
+									<strong style="color:#ffffff;font-size:13px;">${val}</strong>
+								</div>`;
+							});
+							html += `<div style="margin-top:6px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.2);display:flex;justify-content:space-between;font-weight:700;"><span>Total Branches</span><span>${total}</span></div>`;
+							return html;
+						}
+					},
+					legend: { bottom: 4, data: buildLegendData(), icon: "circle", itemWidth: 10, itemHeight: 10 },
+					grid: { left: "4%", right: "4%", top: "6%", bottom: "12%", containLabel: true },
+					xAxis: {
+						type: "category",
+						data: monthDisplays,
+						name: "Month",
+						nameLocation: "middle",
+						nameGap: 30,
+						nameTextStyle: { color: "#64748b", fontSize: 12, fontWeight: 600 },
+						axisLine: { lineStyle: { color: "#cbd5e1" } },
+						axisLabel: { color: "#334155", fontWeight: 600 }
+					},
+					yAxis: {
+						type: "value",
+						name: "Sum of Branch Count",
+						nameTextStyle: { color: "#64748b", fontSize: 12, fontWeight: 600 },
+						axisLine: { show: false },
+						splitLine: { lineStyle: { color: "#f1f5f9" } },
+						axisLabel: { color: "#475569" }
+					},
+					series: series
+				});
+
+				// Highlight hovered category in legend & dim other legend items
+				let currentHighlightCat = null;
+				const updateLegendFocus = (catName) => {
+					if (currentHighlightCat === catName) return;
+					currentHighlightCat = catName;
+					chart.setOption({ legend: { data: buildLegendData(catName) } });
+				};
+
+				chart.on("mouseover", (p) => p.seriesName && updateLegendFocus(p.seriesName));
+				chart.on("mouseout", () => updateLegendFocus(null));
+				chart.on("legendselectchanged", () => updateLegendFocus(null));
+				chart.on("legendmouseover", (p) => p.name && updateLegendFocus(p.name));
+				chart.on("legendmouseout", () => updateLegendFocus(null));
+
+				$(window).off("resize.categoryChart").on("resize.categoryChart", () => chart.resize());
+			};
+
+			if (typeof echarts === "undefined") {
+				frappe.require("/assets/custom_report/js/echarts.min.js", initChart);
+			} else {
+				initChart();
+			}
+		};
+
+		// If current loaded months is only 1 (Monthly view) or we need full FY data
+		if (this.months && this.months.length > 1 && this.state.viewType === "Yearly") {
+			renderWithData(this.months, this.branchData);
+		} else if (this._fyChartData && this._fyChartData.fy === this.state.financialYear) {
+			renderWithData(this._fyChartData.months, this._fyChartData.branch_wise);
+		} else {
+			$(chartDom).html('<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;font-weight:600;"><i class="fa fa-spinner fa-spin" style="margin-right:8px;"></i>Loading FY Chart Data...</div>');
+			frappe.call({
+				method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_sahayog_dashboard",
+				args: {
+					financial_year: this.state.financialYear,
+					view: "Yearly",
+					target_type: this.normalizeTargetType(this.state.targetType),
+					filters: JSON.stringify({ zones: [] }),
+					selected_date: this.state.selectedDate || frappe.datetime.get_today()
+				},
+				callback: (r) => {
+					if (r.message && r.message.months) {
+						this._fyChartData = {
+							fy: this.state.financialYear,
+							months: r.message.months,
+							branch_wise: r.message.branch_wise || []
+						};
+						$(chartDom).empty();
+						renderWithData(r.message.months, r.message.branch_wise || []);
+					} else {
+						renderWithData(this.months, this.branchData);
+					}
+				}
+			});
+		}
 	}
 
 	getChangesBadge(catData) {
