@@ -4838,8 +4838,8 @@
 						const solId = d.sol_id || "";
 						const isBranchManager = (bm.designation || "").trim().toLowerCase() === "branch manager";
 						const serverUser = "{{ current_user }}" || "";
-						const clientUser = (typeof frappe !== 'undefined' && frappe.session && frappe.session.user) || (typeof frappe !== 'undefined' && frappe.boot && (frappe.boot.user?.name || frappe.boot.user)) || "";
-						const currentUser = (clientUser && clientUser !== serverUser) ? clientUser : serverUser;
+						const clientUser = (typeof frappe !== 'undefined' && frappe.boot && frappe.boot.user && frappe.boot.user.name) || (typeof frappe !== 'undefined' && frappe.session && frappe.session.user) || "";
+						const currentUser = clientUser || serverUser;
 						const isAdmin = currentUser === "Administrator" || {{ 'true' if is_admin else 'false' }};
 						const bmUserId = bm.user_id || bm.userId || "";
 						const canSeePlanning = isAdmin || (bmUserId && currentUser && currentUser === bmUserId);
