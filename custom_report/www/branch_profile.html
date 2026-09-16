@@ -3580,6 +3580,7 @@
 						const btn = e.target.closest(".daily-planning-sheet-btn");
 						if (dayChip) {
 							e.preventDefault();
+							if (dayChip.getAttribute("data-future") === "true") return;
 							const group = dayChip.closest(".daily-planning-btn-group");
 							const targetBtn = group ? group.querySelector(".daily-planning-sheet-btn") : null;
 							const targetUrl = targetBtn ? targetBtn.getAttribute("href") : "/app/bm-checklist/new-bm-checklist-tcthxsxvlh";
@@ -3772,6 +3773,7 @@
 							if (!btn) return;
 
 							this.state.formatMode = btn.dataset.mode;
+							BranchDashboard.state.formatMode = btn.dataset.mode;
 
 							// Update UI
 							formatToggle.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
@@ -3782,6 +3784,9 @@
 							BranchManagerProfile.renderManpowerDetails();
 							if(typeof BranchManagerProfile.renderProductCollections === 'function') {
 								BranchManagerProfile.renderProductCollections();
+							}
+							if (BranchManagerProfile.state.productivityData) {
+								BranchManagerProfile.applyProductivityData(BranchManagerProfile.state.productivityData);
 							}
 						});
 					}
@@ -4765,15 +4770,16 @@
 								dateColor = "#991b1b;";
 								statusLabel = "Pending / Missing";
 							} else {
-								// GRAY: Future dates
+								// GRAY: Future dates - read only
 								bgStyle = "background: #f8fafc; border-color: rgba(226, 232, 240, 0.6);";
 								dayColor = "#94a3b8;";
 								dateColor = "#64748b;";
 								statusLabel = "Upcoming";
 							}
+							const isFuture = item.isoDate > todayStr;
 
 							return `
-								<div class="daily-planning-day-chip" data-date="${item.isoDate}" data-emp-id="${targetEmpId || ''}" style="padding: 2px 7px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-right: 1px solid rgba(0, 0, 0, 0.08); ${bgStyle}" title="${item.fullDisplay} • Status: ${statusLabel}">
+								<div class="daily-planning-day-chip" data-date="${item.isoDate}" data-emp-id="${targetEmpId || ''}" ${isFuture ? 'data-future="true"' : ''} style="padding: 2px 7px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; cursor: ${isFuture ? 'not-allowed' : 'pointer'}; border-right: 1px solid rgba(0, 0, 0, 0.08); ${bgStyle}" title="${item.fullDisplay} • Status: ${statusLabel}">
 									<span style="font-size: 9px; text-transform: uppercase; color: ${dayColor} line-height: 1.1; font-weight: 700;">${item.dayName}</span>
 									<span style="font-size: 11px; color: ${dateColor} font-weight: 800; line-height: 1.2;">${item.dateNum}</span>
 								</div>
@@ -4832,8 +4838,8 @@
 						const solId = d.sol_id || "";
 						const isBranchManager = (bm.designation || "").trim().toLowerCase() === "branch manager";
 						const serverUser = "{{ current_user }}" || "";
-						const clientUser = (typeof frappe !== 'undefined' && frappe.session && frappe.session.user) || (typeof frappe !== 'undefined' && frappe.boot && (frappe.boot.user?.name || frappe.boot.user)) || "";
-						const currentUser = (clientUser && clientUser !== serverUser) ? clientUser : serverUser;
+						const clientUser = (typeof frappe !== 'undefined' && frappe.boot && frappe.boot.user && frappe.boot.user.name) || (typeof frappe !== 'undefined' && frappe.session && frappe.session.user) || "";
+						const currentUser = clientUser || serverUser;
 						const isAdmin = currentUser === "Administrator" || {{ 'true' if is_admin else 'false' }};
 						const bmUserId = bm.user_id || bm.userId || "";
 						const canSeePlanning = isAdmin || (bmUserId && currentUser && currentUser === bmUserId);
@@ -5100,8 +5106,10 @@
 
 							// Apply Productivity Details
 							if (res.productivity && res.productivity.status === 'success') {
+								this.state.productivityData = res.productivity;
 								this.applyProductivityData(res.productivity);
 							} else {
+								this.state.productivityData = null;
 								this.clearProductivityUI();
 							}
 						}
