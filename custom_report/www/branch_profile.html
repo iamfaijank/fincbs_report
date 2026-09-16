@@ -3580,6 +3580,7 @@
 						const btn = e.target.closest(".daily-planning-sheet-btn");
 						if (dayChip) {
 							e.preventDefault();
+							if (dayChip.getAttribute("data-future") === "true") return;
 							const group = dayChip.closest(".daily-planning-btn-group");
 							const targetBtn = group ? group.querySelector(".daily-planning-sheet-btn") : null;
 							const targetUrl = targetBtn ? targetBtn.getAttribute("href") : "/app/bm-checklist/new-bm-checklist-tcthxsxvlh";
@@ -4765,15 +4766,16 @@
 								dateColor = "#991b1b;";
 								statusLabel = "Pending / Missing";
 							} else {
-								// GRAY: Future dates
+								// GRAY: Future dates - read only
 								bgStyle = "background: #f8fafc; border-color: rgba(226, 232, 240, 0.6);";
 								dayColor = "#94a3b8;";
 								dateColor = "#64748b;";
 								statusLabel = "Upcoming";
 							}
+							const isFuture = item.isoDate > todayStr;
 
 							return `
-								<div class="daily-planning-day-chip" data-date="${item.isoDate}" data-emp-id="${targetEmpId || ''}" style="padding: 2px 7px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-right: 1px solid rgba(0, 0, 0, 0.08); ${bgStyle}" title="${item.fullDisplay} • Status: ${statusLabel}">
+								<div class="daily-planning-day-chip" data-date="${item.isoDate}" data-emp-id="${targetEmpId || ''}" ${isFuture ? 'data-future="true"' : ''} style="padding: 2px 7px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; cursor: ${isFuture ? 'not-allowed' : 'pointer'}; border-right: 1px solid rgba(0, 0, 0, 0.08); ${bgStyle}" title="${item.fullDisplay} • Status: ${statusLabel}">
 									<span style="font-size: 9px; text-transform: uppercase; color: ${dayColor} line-height: 1.1; font-weight: 700;">${item.dayName}</span>
 									<span style="font-size: 11px; color: ${dateColor} font-weight: 800; line-height: 1.2;">${item.dateNum}</span>
 								</div>
