@@ -3773,6 +3773,7 @@
 							if (!btn) return;
 
 							this.state.formatMode = btn.dataset.mode;
+							BranchDashboard.state.formatMode = btn.dataset.mode;
 
 							// Update UI
 							formatToggle.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
@@ -3783,6 +3784,9 @@
 							BranchManagerProfile.renderManpowerDetails();
 							if(typeof BranchManagerProfile.renderProductCollections === 'function') {
 								BranchManagerProfile.renderProductCollections();
+							}
+							if (BranchManagerProfile.state.productivityData) {
+								BranchManagerProfile.applyProductivityData(BranchManagerProfile.state.productivityData);
 							}
 						});
 					}
@@ -5102,8 +5106,10 @@
 
 							// Apply Productivity Details
 							if (res.productivity && res.productivity.status === 'success') {
+								this.state.productivityData = res.productivity;
 								this.applyProductivityData(res.productivity);
 							} else {
+								this.state.productivityData = null;
 								this.clearProductivityUI();
 							}
 						}
