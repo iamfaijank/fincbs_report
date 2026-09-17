@@ -4032,9 +4032,6 @@
 						.then(data => {
 							self.state.checklistStatusMap = (data && data.message) ? data.message : {};
 							self.renderBmData();
-							if (self.state.bmList && self.state.bmList.length) {
-								self.updateBmListStatuses();
-							}
 							return self.state.checklistStatusMap;
 						})
 						.catch(e => {
@@ -4251,7 +4248,7 @@
 					// Header Info Fallback safety checks
 					if (this.el.name) this.el.name.textContent = this.value(d.bm_name);
 					if (this.state.bmList && this.state.bmList.length) {
-						this.updateBmListStatuses();
+						// List badges are refreshed inside renderBmData after cards exist.
 					} else {
 						const singleBadge = document.getElementById("bm-status-single-badge");
 						const cardBadge = document.getElementById("bm-status-card-badge");
@@ -4947,6 +4944,11 @@
 
 						wrapper.insertAdjacentHTML("beforeend", cardHtml);
 					});
+
+					// Badges now exist in the DOM — refresh statuses here so
+					// Left-status BMs get hidden (renderBmData is async, callers
+					// must not call updateBmListStatuses before it resolves).
+					this.updateBmListStatuses();
 				},
 
 				setAllSkeletons(isLoading) {
@@ -5051,7 +5053,6 @@
 									const firstEmp = this.state.bmList[0] ? (this.state.bmList[0].name || this.state.bmList[0].employee_number) : "";
 									this.fetchChecklistStatus(solId, firstEmp);
 									this.renderBmData();
-									this.updateBmListStatuses();
 									this.setSectionSkeleton("bm-profiles-wrapper", false);
 								}
 							})
