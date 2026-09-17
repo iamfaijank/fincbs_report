@@ -290,26 +290,24 @@ const employeeStatusClass = computed(() =>
     : 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
 )
 
-// Daily Planning Sheet visibility: admin no restriction, else only if session user == BM card user
-const currentUser = ref(
-  (typeof window !== 'undefined' && window.frappe && window.frappe.session && window.frappe.session.user) ||
-  (typeof window !== 'undefined' && window.frappe && window.frappe.boot && (window.frappe.boot.user?.name || window.frappe.boot.user)) ||
-  ''
-)
+// Daily Planning Sheet visibility: live user only (no session/boot fallback).
+// Fail closed: empty/Guest hides planning.
+const currentUser = ref('')
 const bmUserId = ref('')
 const isAdmin = computed(() => currentUser.value === 'Administrator')
 const canSeePlanning = computed(() => isAdmin.value || (bmUserId.value && currentUser.value === bmUserId.value))
 
 async function fetchCurrentUser() {
-  if (currentUser.value) return
+  // Live user only — no frappe.session/boot fallback. Fail closed: '' hides planning.
   try {
     const res = await frappeRequest({ url: '/api/method/frappe.auth.get_logged_user', method: 'GET' })
     const user = res?.message || res || ''
-    if (typeof user === 'string' && user) currentUser.value = user
-    else if (user?.user) currentUser.value = user.user
-  } catch (e) {}
-  if (!currentUser.value && typeof window !== 'undefined' && window.frappe) {
-    currentUser.value = window.frappe.session?.user || window.frappe.boot?.user?.name || window.frappe.boot?.user || ''
+    if (typeof user === 'string' && user && user !== 'Guest') currentUser.value = user
+    else if (user?.user && user.user !== 'Guest') currentUser.value = user.user
+    else currentUser.value = ''
+  } catch (e) {
+    console.error('[DailyPlanning] live user fetch failed, hiding planning:', e)
+    currentUser.value = ''
   }
 }
 
