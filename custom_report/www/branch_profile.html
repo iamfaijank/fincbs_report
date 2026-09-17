@@ -4735,7 +4735,7 @@
 					});
 				},
 
-				renderBmData() {
+				async renderBmData() {
 					const wrapper = document.getElementById("bm-profiles-wrapper");
 					if (!wrapper) return;
 
@@ -4745,6 +4745,21 @@
 					const weekDays = this.getCurrentWeekWorkingDays();
 					const todayStr = new Date().toISOString().split('T')[0];
 					const statusMap = this.state.checklistStatusMap || {};
+
+					// Live user only — no server-baked or frappe.boot/session fallback.
+					// Fail closed: empty/Guest hides DailyPlanning.
+					let liveUser = "";
+					try {
+						const userRes = await fetch("/api/method/frappe.auth.get_logged_user", { credentials: "same-origin", cache: "no-store" });
+						const userJson = await userRes.json();
+						liveUser = (userJson && userJson.message) || "";
+						if (typeof liveUser !== "string") liveUser = "";
+					} catch (e) {
+						console.error("[DailyPlanning] live user fetch failed, hiding planning:", e);
+						liveUser = "";
+					}
+					const currentUser = liveUser;
+					const isAdmin = currentUser === "Administrator";
 
 					const renderDaysHtmlForEmp = (targetEmpId) => {
 						return weekDays.map(item => {
@@ -4837,10 +4852,6 @@
 						const empId = bm.name || bm.employee_number || "";
 						const solId = d.sol_id || "";
 						const isBranchManager = (bm.designation || "").trim().toLowerCase() === "branch manager";
-						const serverUser = "{{ current_user }}" || "";
-						const clientUser = (typeof frappe !== 'undefined' && frappe.boot && frappe.boot.user && frappe.boot.user.name) || (typeof frappe !== 'undefined' && frappe.session && frappe.session.user) || "";
-						const currentUser = clientUser || serverUser;
-						const isAdmin = currentUser === "Administrator" || {{ 'true' if is_admin else 'false' }};
 						const bmUserId = bm.user_id || bm.userId || "";
 						const canSeePlanning = isAdmin || (bmUserId && currentUser && currentUser === bmUserId);
 						console.log("[DailyPlanning] currentUser:", currentUser, "| isAdmin:", isAdmin, "| bmUserId:", bmUserId, "| isBranchManager:", isBranchManager, "| canSeePlanning:", canSeePlanning);
