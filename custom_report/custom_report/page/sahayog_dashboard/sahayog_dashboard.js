@@ -9268,8 +9268,13 @@ class DrishtiDashboard {
 				self.state.selectedRegions = [...self.availableFilters.regions];
 			}
 			self.updateRegionDropdownUI();
+			self.updateDistrictOptions();
 			self.updateUrlFromState();
-			self.loadData();
+			if (self._dataLoaded) {
+				self.render();
+			} else {
+				self.loadData();
+			}
 		});
 
 		// Region Filter - Individual checkbox change
@@ -9294,8 +9299,13 @@ class DrishtiDashboard {
 			}
 
 			self.updateRegionDropdownUI();
+			self.updateDistrictOptions();
 			self.updateUrlFromState();
-			self.loadData();
+			if (self._dataLoaded) {
+				self.render();
+			} else {
+				self.loadData();
+			}
 		});
 
 		// Prevent dropdown from closing when clicking inside the menu
@@ -9787,17 +9797,38 @@ class DrishtiDashboard {
 			</li>
 		`);
 
-		this.availableFilters.districts.forEach((district) => {
-			const isChecked = this.state.selectedDistricts.includes(district);
-			menu.append(`
-				<li class="district-item" style="padding: 6px 12px; white-space: nowrap; display: flex; align-items: center;">
-					<label style="font-weight: normal; margin-bottom: 0; cursor: pointer; display: flex; align-items: center; width: 100%; color: #1b263b;">
-						<input type="checkbox" class="district-checkbox" value="${district}" ${isChecked ? "checked" : ""} style="position: relative !important; margin: 0 8px 0 0 !important; cursor: pointer; width: 14px; height: 14px; vertical-align: middle;" />
-						${district}
-					</label>
-				</li>
-			`);
+		// If regions are selected, restrict the district list to districts within those regions
+		const regionNorms = this.state.selectedRegions.map((r) => this.getLocationIdentifier(r));
+		const regionRestricted = regionNorms.length > 0;
+		const districtSet = new Set();
+		this.zoneData.forEach((item) => {
+			if (
+				item.district &&
+				item.district !== item.zone &&
+				item.district !== item.region &&
+				!item.isZoneTotal &&
+				!item.isRegionTotal
+			) {
+				if (regionRestricted && !regionNorms.includes(this.getLocationIdentifier(item.region))) {
+					return;
+				}
+				districtSet.add(item.district);
+			}
 		});
+
+		Array.from(districtSet)
+			.sort()
+			.forEach((district) => {
+				const isChecked = this.state.selectedDistricts.includes(district);
+				menu.append(`
+					<li class="district-item" style="padding: 6px 12px; white-space: nowrap; display: flex; align-items: center;">
+						<label style="font-weight: normal; margin-bottom: 0; cursor: pointer; display: flex; align-items: center; width: 100%; color: #1b263b;">
+							<input type="checkbox" class="district-checkbox" value="${district}" ${isChecked ? "checked" : ""} style="position: relative !important; margin: 0 8px 0 0 !important; cursor: pointer; width: 14px; height: 14px; vertical-align: middle;" />
+							${district}
+						</label>
+					</li>
+				`);
+			});
 
 		this.updateDistrictDropdownUI();
 	}
@@ -12290,7 +12321,7 @@ class DrishtiDashboard {
 
 	drillDownToBranchView(zone, region = null, district = null) {
 
-		this.state.selectedZones = district ? [] : [zone];
+		this.state.selectedZones = (region || district) ? [] : [zone];
 		this.state.selectedRegions = region ? [region] : [];
 		this.state.selectedDistricts = district ? [district] : [];
 		this.state.drillDownActive = true;
