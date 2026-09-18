@@ -13031,6 +13031,10 @@ class DrishtiDashboard {
                     color: #ffffff !important;
                 }
 
+                .filter-tag.active .zone-tag-pct {
+                    color: #ffffff !important;
+                }
+
                 .category-tag {
                     flex-direction: row;
                     align-items: center;
