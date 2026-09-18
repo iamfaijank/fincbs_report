@@ -8270,6 +8270,7 @@ class DrishtiDashboard {
 		// Update filter tags for zones and categories
 		this.updateFilterTagsUI();
 		this.applyBranchManagerRestrictions();
+		this.updateClearFilterVisibility();
 	}
 
 	repopulateHeaderFilters() {
@@ -8856,6 +8857,23 @@ class DrishtiDashboard {
 			});
 	}
 
+	hasActiveFilters() {
+		return (
+			(this.state.selectedZones && this.state.selectedZones.length > 0) ||
+			(this.state.selectedRegions && this.state.selectedRegions.length > 0) ||
+			(this.state.selectedDistricts && this.state.selectedDistricts.length > 0) ||
+			(this.state.selectedCategories && this.state.selectedCategories.length > 0) ||
+			(this.state.branchSearchTerm && this.state.branchSearchTerm.trim() !== "") ||
+			(this.state.selectedSegment && this.state.selectedSegment !== "all")
+		);
+	}
+
+	updateClearFilterVisibility() {
+		const $btn = this.page.main.find("#clear-filter-btn");
+		if (!$btn.length) return;
+		$btn.toggle(this.hasActiveFilters());
+	}
+
 	updateFilterTagsUI() {
 		// Zone tags
 		this.page.main.find(".zone-tag").removeClass("active");
@@ -9022,6 +9040,11 @@ class DrishtiDashboard {
                             <button type="button" class="btn btn-sm format-toggle-btn" data-format="words">Words</button>
                         </div>
                     </div>
+
+                    <!-- Clear Filter -->
+                    <button type="button" class="btn btn-sm" id="clear-filter-btn" title="Clear all filters (Zone, Category, Region, District, Search, Segment)" style="display: none; background: #ffffff; border: 1px solid #cbd5e1; color: #417d81; font-weight: 600; cursor: pointer;">
+                        ✕ Clear Filter
+                    </button>
                 </div>
 
                 <div id="tab-buttons" style="display: flex; align-items: center; gap: 24px; margin-bottom: 0; border-bottom: 2px solid #cbd5e1; width: 100%;">
@@ -9268,8 +9291,13 @@ class DrishtiDashboard {
 				self.state.selectedRegions = [...self.availableFilters.regions];
 			}
 			self.updateRegionDropdownUI();
+			self.updateDistrictOptions();
 			self.updateUrlFromState();
-			self.loadData();
+			if (self._dataLoaded) {
+				self.render();
+			} else {
+				self.loadData();
+			}
 		});
 
 		// Region Filter - Individual checkbox change
@@ -9294,8 +9322,13 @@ class DrishtiDashboard {
 			}
 
 			self.updateRegionDropdownUI();
+			self.updateDistrictOptions();
 			self.updateUrlFromState();
-			self.loadData();
+			if (self._dataLoaded) {
+				self.render();
+			} else {
+				self.loadData();
+			}
 		});
 
 		// Prevent dropdown from closing when clicking inside the menu
@@ -9354,6 +9387,29 @@ class DrishtiDashboard {
 				const label = $(this).find("label").text().trim().toLowerCase();
 				$(this).toggle(label.includes(searchText));
 			});
+		});
+
+		// Clear Filter - clears only the filter selections (keeps FY/date/view/target)
+		this.page.main.off("click", "#clear-filter-btn").on("click", "#clear-filter-btn", function () {
+			self.state.selectedZones = [];
+			self.state.selectedRegions = [];
+			self.state.selectedDistricts = [];
+			self.state.selectedCategories = [];
+			self.state.branchSearchTerm = "";
+			self.state.selectedSegment = "all";
+			self.page.main.find("#branch-search").val("");
+			self.page.main.find("#segment-filter").val("all");
+			self.updateFilterTagsUI();
+			self.updateRegionDropdownUI();
+			self.updateDistrictDropdownUI();
+			self.updateDistrictOptions();
+			self.updateUrlFromState();
+			self.updateClearFilterVisibility();
+			if (self._dataLoaded) {
+				self.render();
+			} else {
+				self.loadData();
+			}
 		});
 
 		// Reset & Refresh (Clear Cache & Reload)
@@ -9787,17 +9843,38 @@ class DrishtiDashboard {
 			</li>
 		`);
 
-		this.availableFilters.districts.forEach((district) => {
-			const isChecked = this.state.selectedDistricts.includes(district);
-			menu.append(`
-				<li class="district-item" style="padding: 6px 12px; white-space: nowrap; display: flex; align-items: center;">
-					<label style="font-weight: normal; margin-bottom: 0; cursor: pointer; display: flex; align-items: center; width: 100%; color: #1b263b;">
-						<input type="checkbox" class="district-checkbox" value="${district}" ${isChecked ? "checked" : ""} style="position: relative !important; margin: 0 8px 0 0 !important; cursor: pointer; width: 14px; height: 14px; vertical-align: middle;" />
-						${district}
-					</label>
-				</li>
-			`);
+		// If regions are selected, restrict the district list to districts within those regions
+		const regionNorms = this.state.selectedRegions.map((r) => this.getLocationIdentifier(r));
+		const regionRestricted = regionNorms.length > 0;
+		const districtSet = new Set();
+		this.zoneData.forEach((item) => {
+			if (
+				item.district &&
+				item.district !== item.zone &&
+				item.district !== item.region &&
+				!item.isZoneTotal &&
+				!item.isRegionTotal
+			) {
+				if (regionRestricted && !regionNorms.includes(this.getLocationIdentifier(item.region))) {
+					return;
+				}
+				districtSet.add(item.district);
+			}
 		});
+
+		Array.from(districtSet)
+			.sort()
+			.forEach((district) => {
+				const isChecked = this.state.selectedDistricts.includes(district);
+				menu.append(`
+					<li class="district-item" style="padding: 6px 12px; white-space: nowrap; display: flex; align-items: center;">
+						<label style="font-weight: normal; margin-bottom: 0; cursor: pointer; display: flex; align-items: center; width: 100%; color: #1b263b;">
+							<input type="checkbox" class="district-checkbox" value="${district}" ${isChecked ? "checked" : ""} style="position: relative !important; margin: 0 8px 0 0 !important; cursor: pointer; width: 14px; height: 14px; vertical-align: middle;" />
+							${district}
+						</label>
+					</li>
+				`);
+			});
 
 		this.updateDistrictDropdownUI();
 	}
@@ -10328,6 +10405,7 @@ class DrishtiDashboard {
 		this.clearViewControlsHighlight();
 		this.page.main.find("#error-message").hide();
 		this.updateBranchSearchVisibility();
+		this.updateClearFilterVisibility();
 		const dataContainer = this.page.main.find("#data-container");
 
 		dataContainer.css("opacity", 0);
@@ -12290,7 +12368,7 @@ class DrishtiDashboard {
 
 	drillDownToBranchView(zone, region = null, district = null) {
 
-		this.state.selectedZones = [zone];
+		this.state.selectedZones = (region || district) ? [] : [zone];
 		this.state.selectedRegions = region ? [region] : [];
 		this.state.selectedDistricts = district ? [district] : [];
 		this.state.drillDownActive = true;
@@ -13028,6 +13106,10 @@ class DrishtiDashboard {
 
                 .filter-tag.active .filter-tag-count {
                     background: rgba(255, 255, 255, 0.25) !important;
+                    color: #ffffff !important;
+                }
+
+                .filter-tag.active .zone-tag-pct {
                     color: #ffffff !important;
                 }
 
