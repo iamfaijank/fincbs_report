@@ -12290,7 +12290,7 @@ class DrishtiDashboard {
 
 	drillDownToBranchView(zone, region = null, district = null) {
 
-		this.state.selectedZones = [zone];
+		this.state.selectedZones = district ? [] : [zone];
 		this.state.selectedRegions = region ? [region] : [];
 		this.state.selectedDistricts = district ? [district] : [];
 		this.state.drillDownActive = true;
