@@ -8270,6 +8270,7 @@ class DrishtiDashboard {
 		// Update filter tags for zones and categories
 		this.updateFilterTagsUI();
 		this.applyBranchManagerRestrictions();
+		this.updateClearFilterVisibility();
 	}
 
 	repopulateHeaderFilters() {
@@ -8856,6 +8857,23 @@ class DrishtiDashboard {
 			});
 	}
 
+	hasActiveFilters() {
+		return (
+			(this.state.selectedZones && this.state.selectedZones.length > 0) ||
+			(this.state.selectedRegions && this.state.selectedRegions.length > 0) ||
+			(this.state.selectedDistricts && this.state.selectedDistricts.length > 0) ||
+			(this.state.selectedCategories && this.state.selectedCategories.length > 0) ||
+			(this.state.branchSearchTerm && this.state.branchSearchTerm.trim() !== "") ||
+			(this.state.selectedSegment && this.state.selectedSegment !== "all")
+		);
+	}
+
+	updateClearFilterVisibility() {
+		const $btn = this.page.main.find("#clear-filter-btn");
+		if (!$btn.length) return;
+		$btn.toggle(this.hasActiveFilters());
+	}
+
 	updateFilterTagsUI() {
 		// Zone tags
 		this.page.main.find(".zone-tag").removeClass("active");
@@ -9024,7 +9042,7 @@ class DrishtiDashboard {
                     </div>
 
                     <!-- Clear Filter -->
-                    <button type="button" class="btn btn-sm" id="clear-filter-btn" title="Clear all filters (Zone, Category, Region, District, Search, Segment)" style="background: #ffffff; border: 1px solid #cbd5e1; color: #417d81; font-weight: 600; cursor: pointer;">
+                    <button type="button" class="btn btn-sm" id="clear-filter-btn" title="Clear all filters (Zone, Category, Region, District, Search, Segment)" style="display: none; background: #ffffff; border: 1px solid #cbd5e1; color: #417d81; font-weight: 600; cursor: pointer;">
                         ✕ Clear Filter
                     </button>
                 </div>
@@ -9386,6 +9404,7 @@ class DrishtiDashboard {
 			self.updateDistrictDropdownUI();
 			self.updateDistrictOptions();
 			self.updateUrlFromState();
+			self.updateClearFilterVisibility();
 			if (self._dataLoaded) {
 				self.render();
 			} else {
@@ -10386,6 +10405,7 @@ class DrishtiDashboard {
 		this.clearViewControlsHighlight();
 		this.page.main.find("#error-message").hide();
 		this.updateBranchSearchVisibility();
+		this.updateClearFilterVisibility();
 		const dataContainer = this.page.main.find("#data-container");
 
 		dataContainer.css("opacity", 0);
