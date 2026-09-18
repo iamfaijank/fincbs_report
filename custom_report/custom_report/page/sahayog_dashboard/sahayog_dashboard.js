@@ -9022,6 +9022,11 @@ class DrishtiDashboard {
                             <button type="button" class="btn btn-sm format-toggle-btn" data-format="words">Words</button>
                         </div>
                     </div>
+
+                    <!-- Clear Filter -->
+                    <button type="button" class="btn btn-sm" id="clear-filter-btn" title="Clear all filters (Zone, Category, Region, District, Search, Segment)" style="background: #ffffff; border: 1px solid #cbd5e1; color: #417d81; font-weight: 600; cursor: pointer;">
+                        ✕ Clear Filter
+                    </button>
                 </div>
 
                 <div id="tab-buttons" style="display: flex; align-items: center; gap: 24px; margin-bottom: 0; border-bottom: 2px solid #cbd5e1; width: 100%;">
@@ -9364,6 +9369,28 @@ class DrishtiDashboard {
 				const label = $(this).find("label").text().trim().toLowerCase();
 				$(this).toggle(label.includes(searchText));
 			});
+		});
+
+		// Clear Filter - clears only the filter selections (keeps FY/date/view/target)
+		this.page.main.off("click", "#clear-filter-btn").on("click", "#clear-filter-btn", function () {
+			self.state.selectedZones = [];
+			self.state.selectedRegions = [];
+			self.state.selectedDistricts = [];
+			self.state.selectedCategories = [];
+			self.state.branchSearchTerm = "";
+			self.state.selectedSegment = "all";
+			self.page.main.find("#branch-search").val("");
+			self.page.main.find("#segment-filter").val("all");
+			self.updateFilterTagsUI();
+			self.updateRegionDropdownUI();
+			self.updateDistrictDropdownUI();
+			self.updateDistrictOptions();
+			self.updateUrlFromState();
+			if (self._dataLoaded) {
+				self.render();
+			} else {
+				self.loadData();
+			}
 		});
 
 		// Reset & Refresh (Clear Cache & Reload)
