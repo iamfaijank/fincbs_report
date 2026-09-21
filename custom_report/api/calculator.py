@@ -1,8 +1,53 @@
 import frappe
 import json
+import psycopg2
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from custom_report.db_connection import get_dr_connection
+
+
+def _resolve_db_env(db_env=None):
+    """
+    Return "migration" only when explicitly selected by a user with the
+    `Migration` role; otherwise always fall back to "production".
+    Production is the default for every user.
+    """
+    if str(db_env or "").strip().lower() != "migration":
+        return "production"
+    try:
+        if "Migration" in (frappe.get_roles(frappe.session.user) or []):
+            return "migration"
+    except Exception:
+        pass
+    return "production"
+
+
+def _get_finacle_connection(db_env=None, retries=3, retry_delay=2, timeout=15):
+    """
+    Request-scoped Finacle connection for the interest calculator.
+    Resolves the `Database Configuration` record pointed by
+    `Banking API Settings` (`finacle_production_dr` for Production,
+    `finacle_migration` for Migration). Falls back to the legacy
+    `get_dr_connection()` when the new settings are not configured.
+    """
+    env = _resolve_db_env(db_env)
+    try:
+        field = "finacle_migration" if env == "migration" else "finacle_production_dr"
+        config_name = frappe.db.get_single_value("Banking API Settings", field)
+        if config_name and frappe.db.exists("Database Configuration", config_name):
+            doc = frappe.get_doc("Database Configuration", config_name)
+            if doc.host and doc.user:
+                return psycopg2.connect(
+                    host=doc.host,
+                    port=int(doc.port) if doc.port else 5432,
+                    database=doc.database_name or "postgres",
+                    user=doc.user,
+                    password=doc.get_password(fieldname="password", raise_exception=False) or "",
+                    connect_timeout=timeout or 15,
+                )
+    except Exception:
+        pass
+    return get_dr_connection(retries=retries, retry_delay=retry_delay, timeout=timeout)
 
 # Excel Slab Mapping based on Audit Formula
 SCHEME_CODE_ALIASES = {
@@ -142,7 +187,7 @@ def get_service_charge_percent(schm_code, months_held):
     return 0.0
 
 @frappe.whitelist()
-def get_account_details(foracid=None, settlement_date=None):
+def get_account_details(foracid=None, settlement_date=None, db_env=None):
     if not foracid: return {"success": False, "error": "Account number is required"}
     
     if not settlement_date: sett_dt = datetime.now()
@@ -154,7 +199,7 @@ def get_account_details(foracid=None, settlement_date=None):
 
     conn = None
     try:
-        conn = get_dr_connection()
+        conn = _get_finacle_connection(db_env=db_env)
         cursor = conn.cursor()
         cursor.execute("""
             SELECT g.acid, g.cif_id, g.acct_name, s.sol_id, s.sol_desc, g.acct_opn_date, g.schm_code, 
@@ -376,10 +421,10 @@ def get_account_details(foracid=None, settlement_date=None):
         if conn: conn.close()
 
 @frappe.whitelist()
-def get_scheme_details(schm_code):
+def get_scheme_details(schm_code, db_env=None):
     conn = None
     try:
-        conn = get_dr_connection()
+        conn = _get_finacle_connection(db_env=db_env)
         cursor = conn.cursor()
         cursor.execute("SELECT schm_desc FROM tbaadm.gsp WHERE schm_code = %s", (schm_code,))
         result = cursor.fetchone()
