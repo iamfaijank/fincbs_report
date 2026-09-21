@@ -5,15 +5,30 @@ from datetime import date, datetime
 from decimal import Decimal
 
 
+def _has_access():
+	user = frappe.session.user
+	if user == "Administrator":
+		return True
+	return frappe.db.exists("Has Role", {"parent": user, "role": "Double Transaction Utility Tool"})
+
+
+def get_context(context):
+	if not _has_access():
+		context.show_form = False
+	else:
+		context.show_form = True
+	context.is_admin = frappe.session.user == "Administrator"
+
+
 @frappe.whitelist(allow_guest=True)
 def check_db_connectivity():
 	"""Check DR database connectivity status."""
+	if not _has_access():
+		frappe.throw("Access Denied", frappe.PermissionError)
 	from custom_report.db_connection import get_dr_connection
 	import time
 
 	is_admin = frappe.session.user == "Administrator"
-	if not is_admin:
-		return {"status": "forbidden", "message": "Only administrators can view this."}
 
 	try:
 		start = time.time()
@@ -68,6 +83,8 @@ def _build_csv(rows, include_header=True):
 @frappe.whitelist(allow_guest=True)
 def download_transactions():
 	"""API endpoint for batch CSV download of transactions."""
+	if not _has_access():
+		frappe.throw("Access Denied", frappe.PermissionError)
 	from custom_report.db_connection import execute_dr_query
 
 	account_type = frappe.form_dict.get("account_type")

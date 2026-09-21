@@ -187,6 +187,13 @@
 <main>
 <h1>Transaction Double Leg</h1>
 
+{% if not show_form %}
+<div style="text-align: center; padding: 60px 20px;">
+  <p style="font-size: 18px; color: #a6262b; font-weight: 600;">Access Denied</p>
+  <p style="color: #687280; margin-top: 8px;">You do not have permission to access this page.</p>
+</div>
+{% else %}
+
   <div class="demo" id="demoBanner" hidden>
     Demo mode is on. The download contains sample data and no server is called.
 </div>
@@ -241,6 +248,7 @@
     <div class="status" id="status" role="status" aria-live="polite" hidden></div>
 </form>
 
+{% if is_admin %}
 <div id="db-status-section" style="margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px;">
   <div style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;" id="db-status-toggle">
     <span style="font-weight: 500; font-size: 14px; color: var(--ink);">Database Connectivity</span>
@@ -254,6 +262,9 @@
     <div id="db-status-info" style="font-size: 12px; color: var(--muted); line-height: 1.6;"></div>
   </div>
 </div>
+{% endif %}
+
+{% endif %}
 
 </main>
 
