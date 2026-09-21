@@ -1,7 +1,7 @@
 // ---- Configuration -------------------------------------------------------
 const CONFIG = {
 	// Backend endpoint that runs the SQL and returns one batch of CSV rows per call.
-	endpoint: "/api/method/custom_report.www.double_leg_transition.download_transactions",
+	endpoint: "/api/method/custom_report.www.double_leg_transaction.download_transactions",
 	// Rows fetched per request. A 9-10 lakh row report is downloaded in batches of this size.
 	batchSize: 50000,
 	// How many times a failed batch is retried before the download stops.
@@ -384,7 +384,7 @@ if (dbToggle) {
 			dbText.textContent = "Checking connection...";
 
 			try {
-				const res = await fetch("/api/method/custom_report.www.double_leg_transition.check_db_connectivity");
+				const res = await fetch("/api/method/custom_report.www.double_leg_transaction.check_db_connectivity");
 				const data = await res.json();
 				const result = data.message || data;
 
