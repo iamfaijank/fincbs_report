@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transaction Double Leg</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #e9edf1;
+    --surface: #ffffff;
+    --ink: #17232f;
+    --muted: #5b6b7a;
+    --line: #c8d1d9;
+    --accent: #0e5a68;
+    --accent-ink: #ffffff;
+    --accent-soft: #e2eff1;
+    --danger: #a6262b;
+    --danger-soft: #fbeaea;
+    --ok: #1d6b3c;
+    --ok-soft: #e6f3ea;
+    --warn-soft: #fff4d6;
+    --warn: #7a5a00;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 48px 16px;
+  }
+  main { width: 100%; max-width: 560px; }
+
+  h1 { font-size: 26px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .lede { margin: 0 0 24px; color: var(--muted); max-width: 46ch; }
+
+  .demo {
+    background: var(--warn-soft);
+    color: var(--warn);
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 13.5px;
+  }
+  .demo[hidden] { display: none; }
+
+  form {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 28px;
+  }
+  .field { margin-bottom: 22px; }
+  label, legend { display: block; font-weight: 500; margin-bottom: 6px; padding: 0; }
+  fieldset { border: 0; margin: 0 0 22px; padding: 0; min-width: 0; }
+
+  .seg { display: flex; flex-wrap: wrap; gap: 8px; }
+  .seg label { flex: 1 1 auto; margin: 0; font-weight: 400; cursor: pointer; position: relative; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg span {
+    display: block;
+    text-align: center;
+    padding: 10px 12px;
+    border: 1px solid #9aa9b5;
+    border-radius: 6px;
+    min-height: 44px;
+    line-height: 22px;
+    background: #fff;
+    white-space: nowrap;
+  }
+  .seg input:checked + span {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .seg input:focus-visible + span { outline: 3px solid #7fb8c4; outline-offset: 1px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+
+  input[type="text"], input[type="date"] {
+    width: 100%;
+    font: inherit;
+    color: var(--ink);
+    background: #fff;
+    border: 1px solid #9aa9b5;
+    border-radius: 6px;
+    padding: 10px 12px;
+    min-height: 44px;
+  }
+  input:focus-visible, button:focus-visible {
+    outline: 3px solid #7fb8c4;
+    outline-offset: 1px;
+  }
+  input[aria-invalid="true"] { border-color: var(--danger); background: var(--danger-soft); }
+  .err { color: var(--danger); font-size: 13px; margin: 6px 0 0; }
+  .err:empty { display: none; }
+
+  .dates { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 22px; }
+  .dates .field { margin: 0; }
+
+  .divider { border: 0; border-top: 1px solid var(--line); margin: 26px 0 22px; }
+
+  button.download {
+    width: 100%;
+    font: inherit;
+    font-weight: 600;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: 0;
+    border-radius: 6px;
+    min-height: 48px;
+    padding: 12px 16px;
+    cursor: pointer;
+  }
+  button.download:hover:not(:disabled) { background: #0a4854; }
+  button.download:disabled { background: #7d9aa1; cursor: progress; }
+
+  /* Progress + timer */
+  .progress { margin-top: 18px; }
+  .progress[hidden] { display: none; }
+  .progress-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  .timer { font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 600; }
+  .bar {
+    height: 10px;
+    background: #dbe3e9;
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    width: 0;
+    background: var(--accent);
+    border-radius: 999px;
+    transition: width 0.2s ease-out;
+  }
+  .bar.indeterminate .bar-fill {
+    position: absolute;
+    width: 35%;
+    transition: none;
+    animation: slide 1.2s ease-in-out infinite;
+  }
+  .bar.done .bar-fill { background: var(--ok); }
+  @keyframes slide {
+    0%   { left: -35%; }
+    100% { left: 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bar.indeterminate .bar-fill { animation: none; left: 0; width: 100%; opacity: 0.5; }
+  }
+  .progress-detail { color: var(--muted); font-size: 13px; margin: 8px 0 0; min-height: 20px; }
+
+  .status {
+    margin-top: 16px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  .status[hidden] { display: none; }
+  .status.error { background: var(--danger-soft); color: var(--danger); }
+  .status.success { background: var(--ok-soft); color: var(--ok); }
+
+  @media (max-width: 480px) {
+    body { padding: 24px 12px; }
+    form { padding: 20px; }
+    .dates { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+<h1>Transaction Double Leg</h1>
+
+  <div class="demo" id="demoBanner" hidden>
+    Demo mode is on. The download contains sample data and no server is called.
+</div>
+
+  <form id="reportForm" novalidate>
+<fieldset>
+<legend>Search by</legend>
+<div class="seg">
+<label><input type="radio" name="account_type" value="bacid" checked><span>BACID</span></label>
+<label><input type="radio" name="account_type" value="foracid"><span>Account No.</span></label>
+<label><input type="radio" name="account_type" value="gl_sub_head_code"><span>GL SUB HEAD CODE</span></label>
+</div>
+</fieldset>
+
+    <div class="field">
+<label for="accountValue" id="accountLabel">BACID</label>
+<input type="text" id="accountValue" name="account_value" autocomplete="off"
+             placeholder="Enter BACID"
+             aria-describedby="accountHint accountErr" required>
+<p class="hint" id="accountHint">Only transactions for accounts with this BACID are included.</p>
+<p class="err" id="accountErr"></p>
+</div>
+
+    <div class="dates">
+<div class="field">
+<label for="startDate">Start date</label>
+<input type="date" id="startDate" name="start_date" aria-describedby="startErr" required>
+<p class="err" id="startErr"></p>
+</div>
+<div class="field">
+<label for="endDate">End date</label>
+<input type="date" id="endDate" name="end_date" aria-describedby="endErr" required>
+<p class="err" id="endErr"></p>
+</div>
+</div>
+
+    <hr class="divider">
+
+    <button type="submit" class="download" id="downloadBtn">Download report</button>
+
+    <div class="progress" id="progress" hidden>
+<div class="progress-head">
+<span id="progressLabel">Preparing report...</span>
+<span class="timer" id="timer" aria-label="Elapsed time">00:00</span>
+</div>
+<div class="bar indeterminate" id="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-labelledby="progressLabel">
+<div class="bar-fill" id="barFill"></div>
+</div>
+<p class="progress-detail" id="progressDetail"></p>
+</div>
+
+    <div class="status" id="status" role="status" aria-live="polite" hidden></div>
+</form>
+
+<div id="db-status-section" style="margin-top: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px;">
+  <div style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;" id="db-status-toggle">
+    <span style="font-weight: 500; font-size: 14px; color: var(--ink);">Database Connectivity</span>
+    <span id="db-status-icon" style="font-size: 12px; color: var(--muted);">▶</span>
+  </div>
+  <div id="db-status-details" style="display: none; margin-top: 12px;">
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+      <div id="db-status-dot" style="width: 10px; height: 10px; border-radius: 50%; background: #ccc;"></div>
+      <span id="db-status-text" style="font-size: 13px; color: var(--muted);">Checking...</span>
+    </div>
+    <div id="db-status-info" style="font-size: 12px; color: var(--muted); line-height: 1.6;"></div>
+  </div>
+</div>
+
+</main>
+
+<script src="/assets/custom_report/js/double_leg_transition.js"></script>
+</body>
+</html>
