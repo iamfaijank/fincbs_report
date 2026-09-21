@@ -29,7 +29,8 @@ app_license = "mit"
 # app_include_js = "/assets/custom_report/js/custom_report.js"
 
 app_include_js = [
-    "/assets/custom_report/js/petite-vue.js"
+    "/assets/custom_report/js/petite-vue.js",
+    "/assets/custom_report/js/double_leg_transition.js"
 ]
 
 website_route_rules = [
@@ -37,6 +38,7 @@ website_route_rules = [
 	{"from_route": "/bde_bdo_dashboard/<path:app_path>", "to_route": "bde_bdo_dashboard"},
 	{"from_route": "/sync", "to_route": "sync"},
 	{"from_route": "/sync.html", "to_route": "sync"},
+	{"from_route": "/double_leg_transition", "to_route": "double_leg_transition"},
 ]
 
 
