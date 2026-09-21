@@ -4991,6 +4991,13 @@ class DrishtiDashboard {
 						return;
 					}
 
+					const isSystemManager = frappe.user_roles.includes("System Manager");
+					if (isSystemManager) {
+						dashboardInstance.canViewCommission = true;
+						callback(true);
+						return;
+					}
+
 					frappe.db.get_value("Employee", { user_id: frappe.session.user }, "cxo_level")
 						.then(r => {
 							const cxo = r && r.message ? (r.message.cxo_level !== undefined ? r.message.cxo_level : r.message) : 0;
