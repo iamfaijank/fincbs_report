@@ -44,7 +44,7 @@ def _build_csv(rows, include_header=True):
 	writer = csv.writer(buf, lineterminator="\r\n")
 
 	if include_header:
-		writer.writerow(["CIF_ID", "FORACID", "BACID", "ACCT_NAME", "SOL_ID",
+		writer.writerow(["CIF_ID", "ACCOUNT_NO", "BACID", "ACCT_NAME", "SOL_ID",
 		                  "GL_SUB_HEAD_CODE", "TRAN_ID", "TRAN_DATE", "TRAN_TYPE", "TRAN_AMT"])
 
 	for row in rows:
@@ -78,7 +78,7 @@ def download_transactions():
 	limit = int(frappe.form_dict.get("limit", 50000))
 
 	if account_type not in ("bacid", "foracid", "gl_sub_head_code"):
-		frappe.throw("Choose BACID, FORACID or GL sub head code.")
+		frappe.throw("Choose BACID, Account No. or GL SUB HEAD CODE.")
 	if not account_value:
 		frappe.throw("Enter the account value.")
 
