@@ -1296,7 +1296,7 @@
 		</style>
 	</head>
 	<body>
-		<div id="app" v-scope @vue:mounted="init()" v-cloak>
+		<div id="app" v-scope @vue:mounted="init()" v-cloak data-can-switch-db="{{ '1' if can_switch_db else '0' }}" data-csrf-token="{{ csrf_token }}">
 			<div class="bg-dots"></div>
 			<div class="app-container">
 				<div class="branding-header">
@@ -1321,6 +1321,10 @@
 						</a>
 						<span style="color: #cbd5e1; margin: 0 4px">|</span>
 						<span class="tagline">Interest Calculator</span>
+					</div>
+					<div v-if="canSwitchDb" style="display: flex; align-items: center; gap: 6px; background: #f1f5f9; border-radius: 999px; padding: 4px;" :style="{ opacity: step !== 1 ? '0.5' : '1' }">
+						<button type="button" @click="setDbEnv('production')" :disabled="step !== 1" :title="step !== 1 ? 'Environment locked after Next' : 'Production'" :style="{ background: getDbEnv() === 'production' ? 'var(--primary)' : 'transparent', color: getDbEnv() === 'production' ? '#fff' : '#64748b', cursor: step !== 1 ? 'not-allowed' : 'pointer' }" style="border: none; border-radius: 999px; padding: 4px 10px; font-size: 10px; font-weight: 800;">PROD</button>
+						<button type="button" @click="setDbEnv('migration')" :disabled="step !== 1" :title="step !== 1 ? 'Environment locked after Next' : 'Migration'" :style="{ background: getDbEnv() === 'migration' ? 'var(--primary)' : 'transparent', color: getDbEnv() === 'migration' ? '#fff' : '#64748b', cursor: step !== 1 ? 'not-allowed' : 'pointer' }" style="border: none; border-radius: 999px; padding: 4px 10px; font-size: 10px; font-weight: 800;">MIGR</button>
 					</div>
 					<div class="step-container">
 						<div class="step-item" :class="{ active: step >= 1 }">
@@ -3209,6 +3213,9 @@
 				glCodeHint: "",
 				netwinAccountNumber: "",
 				isSchemeValid: true,
+				canSwitchDb:
+					document.getElementById("app")?.dataset.canSwitchDb === "1",
+				dbEnv: sessionStorage.getItem("interest_calculator_db_env") || "production",
 				calculationSteps: [
 					{ label: "Connecting", status: "pending" },
 					{ label: "Verifying", status: "pending" },
@@ -3304,6 +3311,9 @@
 				exitDate: new Date().toISOString().split("T")[0],
 
 				init() {
+					if (!this.canSwitchDb || (this.dbEnv !== "migration" && this.dbEnv !== "production")) {
+						this.dbEnv = "production";
+					}
 					this.selectedProduct = this.products[0];
 					this.focusInput();
 
@@ -3338,6 +3348,27 @@
 				},
 				closeNoteHeader() {
 					this.showNoteHeader = false;
+				},
+				getDbEnv() {
+					if (!this.canSwitchDb) return "production";
+					return this.dbEnv === "migration" ? "migration" : "production";
+				},
+				setDbEnv(env) {
+					if (this.step !== 1) return;
+					this.dbEnv = env === "migration" ? "migration" : "production";
+					try {
+						sessionStorage.setItem("interest_calculator_db_env", this.dbEnv);
+					} catch (e) {}
+				},
+				getCsrfToken() {
+					return document.getElementById("app")?.dataset.csrfToken || "";
+				},
+				getApiHeaders() {
+					const token = this.getCsrfToken();
+					return {
+						"Content-Type": "application/json",
+						...(token ? { "X-Frappe-CSRF-Token": token } : {}),
+					};
 				},
 
 				parseDate(str) {
@@ -3835,7 +3866,7 @@
 							"/api/method/custom_report.api.netwin_statement.download_netwin_statement",
 							{
 								method: "POST",
-								headers: { "Content-Type": "application/json" },
+								headers: this.getApiHeaders(),
 								body: JSON.stringify({
 									branch_code: String(this.branchCode || "").trim().toUpperCase(),
 									ac_code: String(this.glCode || "").trim().toUpperCase(),
@@ -3902,7 +3933,7 @@
 						const res = await (
 							await fetch("/api/method/custom_report.api.calculator.get_branch_code", {
 								method: "POST",
-								headers: { "Content-Type": "application/json" },
+								headers: this.getApiHeaders(),
 								body: JSON.stringify({ branch_prefix: prefix }),
 							})
 						).json();
@@ -3952,8 +3983,8 @@
 									"/api/method/custom_report.api.calculator.get_scheme_details",
 									{
 										method: "POST",
-										headers: { "Content-Type": "application/json" },
-										body: JSON.stringify({ schm_code: code }),
+										headers: this.getApiHeaders(),
+										body: JSON.stringify({ schm_code: code, db_env: this.getDbEnv() }),
 									},
 								)
 							).json();
@@ -3994,10 +4025,11 @@
 								"/api/method/custom_report.api.calculator.get_account_details",
 								{
 									method: "POST",
-									headers: { "Content-Type": "application/json" },
+									headers: this.getApiHeaders(),
 									body: JSON.stringify({
 										foracid,
 										settlement_date: this.exitDate,
+										db_env: this.getDbEnv(),
 									}),
 								},
 							)
