@@ -239,16 +239,20 @@ def get_account_details(foracid=None, settlement_date=None, db_env=None):
             and row[0] <= sett_dt
         ]
 
-        # Account closure handling:
-        # first debit/negative amount indicates closure, so exclude that row and
-        # all rows on/after that calendar date from further calculation/display.
+        # Account closure vs Reversal handling:
+        # If a debit is not followed by any credits and is large, it's likely a closure.
+        # Otherwise, we treat it as an exceptional reversal.
         closure_date = None
-        for val_date, amt, p_type, particular in raw_trans:
+        total_credits = sum(float(amt or 0) for val_date, amt, p_type, particular in raw_trans if (p_type or "").strip().upper() == 'C')
+        for i, (val_date, amt, p_type, particular) in enumerate(raw_trans):
             txn_amt = float(amt or 0)
             txn_type = (p_type or "").strip().upper()
             if txn_amt < 0 or txn_type == "D":
-                closure_date = val_date
-                break
+                has_subsequent_credits = any((t[2] or "").strip().upper() == 'C' for t in raw_trans[i+1:])
+                if not has_subsequent_credits and txn_amt > 0.8 * total_credits:
+                    closure_date = val_date
+                    break
+
         if closure_date:
             closure_day = closure_date.date() if hasattr(closure_date, "date") else closure_date
             raw_trans = [
@@ -265,11 +269,13 @@ def get_account_details(foracid=None, settlement_date=None, db_env=None):
         max_credit_month = 0
         for val_date, amt, p_type, particular in raw_trans:
             m_v = get_cycle_offset(opn_dt, val_date)
-            
+            p_type = (p_type or "").strip().upper()
             if p_type == 'C':
                 raw_credits_by_month[m_v] = raw_credits_by_month.get(m_v, 0) + float(amt or 0)
                 if m_v > max_credit_month:
                     max_credit_month = m_v
+            elif p_type == 'D':
+                raw_credits_by_month[m_v] = raw_credits_by_month.get(m_v, 0) - float(amt or 0)
 
         # Settlement cycle offset
         sett_m_offset = get_cycle_offset(opn_dt, sett_dt)
@@ -361,8 +367,10 @@ def get_account_details(foracid=None, settlement_date=None, db_env=None):
         monthly_interest_assigned = set()
         for val_date, amt, p_type, particular in raw_trans:
             amt = float(amt or 0)
+            p_type = (p_type or "").strip().upper()
             row_int = 0.0
             row_scheme_int = 0.0
+            is_exceptional_reversal = False
             
             if p_type == 'C':
                 total_principal_for_sc += amt
@@ -379,6 +387,9 @@ def get_account_details(foracid=None, settlement_date=None, db_env=None):
                     row_scheme_int = monthly_data[m_offset]["base_int"]
                     processed_months.add(m_offset)
                     monthly_interest_assigned.add(m_offset)
+            elif p_type == 'D':
+                is_exceptional_reversal = True
+                total_principal_for_sc -= amt
 
             transactions.append({
                 "date": val_date.strftime("%d/%m/%Y") if val_date else "N/A",
@@ -387,7 +398,8 @@ def get_account_details(foracid=None, settlement_date=None, db_env=None):
                 "particular": particular or "",
                 "accrued_interest": int(row_int + 0.5),
                 "scheme_interest": int(row_scheme_int + 0.5),
-                "elg_amt": amt
+                "elg_amt": amt,
+                "is_exceptional_reversal": is_exceptional_reversal
             })
 
         transactions.reverse()

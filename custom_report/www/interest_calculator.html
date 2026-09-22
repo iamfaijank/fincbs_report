@@ -4214,6 +4214,11 @@
 								const dVal = this.parseDate(t.date);
 								if (dVal <= dExit) {
 									let m_off = getCycleOffset(dVal);
+									let debitAmt = Math.abs(this.parseTxnAmount(t.amount));
+									actualCreditsTotal -= debitAmt;
+									rawCreditsByMonth[m_off] = (rawCreditsByMonth[m_off] || 0) - debitAmt;
+									monthsWithTransactions.add(m_off);
+									
 									if (!cycleTransactions[m_off]) {
 										cycleTransactions[m_off] = [];
 									}
@@ -4391,10 +4396,10 @@
 							plannedInstallment,
 						);
 
-						if (!displayCycleTxns.length && (isAdjustedInstallment || (!exceptionalCycleTxns.length && m < effectiveInterestMonths))) {
+						if (!displayCycleTxns.length && (isAdjustedInstallment || m < effectiveInterestMonths)) {
 							const particular = isAdjustedInstallment
 								? "ADVANCE ADJUSTED"
-								: "SKIP INSTALLMENT";
+								: (installment < 0 ? "REVERSAL ADJUSTED" : "SKIP INSTALLMENT");
 							displayCycleTxns.push({
 								date: rowDate,
 								particular,
