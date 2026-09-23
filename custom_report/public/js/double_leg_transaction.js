@@ -53,6 +53,11 @@ const SEARCH_TYPES = {
 		placeholder: "Enter GL sub head code",
 		hint: "Only transactions for accounts under this GL sub head code are included.",
 	},
+	schm_code: {
+		label: "SCHM CODE",
+		placeholder: "Enter SCHM CODE",
+		hint: "Only transactions for accounts with this scheme code are included.",
+	},
 };
 const accountLabel = document.getElementById("accountLabel");
 const accountHint = document.getElementById("accountHint");
@@ -78,8 +83,8 @@ const today = new Date();
 const todayStr = new Date(today.getTime() - today.getTimezoneOffset() * 60000)
 	.toISOString()
 	.slice(0, 10);
-fields.start.input.max = todayStr;
-fields.end.input.max = todayStr;
+if (fields.start.input) fields.start.input.max = todayStr;
+if (fields.end.input) fields.end.input.max = todayStr;
 
 // ---- Helpers -------------------------------------------------------------
 function setError(key, message) {
