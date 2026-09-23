@@ -17,7 +17,9 @@ def get_context(context):
 		context.show_form = False
 	else:
 		context.show_form = True
-	context.is_admin = frappe.session.user == "Administrator"
+	# Hide DB status when not admin, or when admin is impersonating another user
+	impersonated_by = frappe.session.data.get("impersonated_by") if frappe.session else None
+	context.is_admin = frappe.session.user == "Administrator" and not impersonated_by
 
 
 @frappe.whitelist(allow_guest=True)
@@ -28,7 +30,10 @@ def check_db_connectivity():
 	from custom_report.db_connection import get_dr_connection
 	import time
 
-	is_admin = frappe.session.user == "Administrator"
+	impersonated_by = frappe.session.data.get("impersonated_by") if frappe.session else None
+	is_admin = frappe.session.user == "Administrator" and not impersonated_by
+	if not is_admin:
+		frappe.throw("Access Denied", frappe.PermissionError)
 
 	try:
 		start = time.time()
