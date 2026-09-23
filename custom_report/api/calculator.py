@@ -1,8 +1,53 @@
 import frappe
 import json
+import psycopg2
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from custom_report.db_connection import get_dr_connection
+
+
+def _resolve_db_env(db_env=None):
+    """
+    Return "migration" only when explicitly selected by a user with the
+    `Migration` role; otherwise always fall back to "production".
+    Production is the default for every user.
+    """
+    if str(db_env or "").strip().lower() != "migration":
+        return "production"
+    try:
+        if "Migration" in (frappe.get_roles(frappe.session.user) or []):
+            return "migration"
+    except Exception:
+        pass
+    return "production"
+
+
+def _get_finacle_connection(db_env=None, retries=3, retry_delay=2, timeout=15):
+    """
+    Request-scoped Finacle connection for the interest calculator.
+    Resolves the `Database Configuration` record pointed by
+    `Banking API Settings` (`finacle_production_dr` for Production,
+    `finacle_migration` for Migration). Falls back to the legacy
+    `get_dr_connection()` when the new settings are not configured.
+    """
+    env = _resolve_db_env(db_env)
+    try:
+        field = "finacle_migration" if env == "migration" else "finacle_production_dr"
+        config_name = frappe.db.get_single_value("Banking API Settings", field)
+        if config_name and frappe.db.exists("Database Configuration", config_name):
+            doc = frappe.get_doc("Database Configuration", config_name)
+            if doc.host and doc.user:
+                return psycopg2.connect(
+                    host=doc.host,
+                    port=int(doc.port) if doc.port else 5432,
+                    database=doc.database_name or "postgres",
+                    user=doc.user,
+                    password=doc.get_password(fieldname="password", raise_exception=False) or "",
+                    connect_timeout=timeout or 15,
+                )
+    except Exception:
+        pass
+    return get_dr_connection(retries=retries, retry_delay=retry_delay, timeout=timeout)
 
 # Excel Slab Mapping based on Audit Formula
 SCHEME_CODE_ALIASES = {
@@ -142,7 +187,7 @@ def get_service_charge_percent(schm_code, months_held):
     return 0.0
 
 @frappe.whitelist()
-def get_account_details(foracid=None, settlement_date=None):
+def get_account_details(foracid=None, settlement_date=None, db_env=None):
     if not foracid: return {"success": False, "error": "Account number is required"}
     
     if not settlement_date: sett_dt = datetime.now()
@@ -154,7 +199,7 @@ def get_account_details(foracid=None, settlement_date=None):
 
     conn = None
     try:
-        conn = get_dr_connection()
+        conn = _get_finacle_connection(db_env=db_env)
         cursor = conn.cursor()
         cursor.execute("""
             SELECT g.acid, g.cif_id, g.acct_name, s.sol_id, s.sol_desc, g.acct_opn_date, g.schm_code, 
@@ -194,16 +239,20 @@ def get_account_details(foracid=None, settlement_date=None):
             and row[0] <= sett_dt
         ]
 
-        # Account closure handling:
-        # first debit/negative amount indicates closure, so exclude that row and
-        # all rows on/after that calendar date from further calculation/display.
+        # Account closure vs Reversal handling:
+        # If a debit is not followed by any credits and is large, it's likely a closure.
+        # Otherwise, we treat it as an exceptional reversal.
         closure_date = None
-        for val_date, amt, p_type, particular in raw_trans:
+        total_credits = sum(float(amt or 0) for val_date, amt, p_type, particular in raw_trans if (p_type or "").strip().upper() == 'C')
+        for i, (val_date, amt, p_type, particular) in enumerate(raw_trans):
             txn_amt = float(amt or 0)
             txn_type = (p_type or "").strip().upper()
             if txn_amt < 0 or txn_type == "D":
-                closure_date = val_date
-                break
+                has_subsequent_credits = any((t[2] or "").strip().upper() == 'C' for t in raw_trans[i+1:])
+                if not has_subsequent_credits and txn_amt > 0.8 * total_credits:
+                    closure_date = val_date
+                    break
+
         if closure_date:
             closure_day = closure_date.date() if hasattr(closure_date, "date") else closure_date
             raw_trans = [
@@ -220,11 +269,13 @@ def get_account_details(foracid=None, settlement_date=None):
         max_credit_month = 0
         for val_date, amt, p_type, particular in raw_trans:
             m_v = get_cycle_offset(opn_dt, val_date)
-            
+            p_type = (p_type or "").strip().upper()
             if p_type == 'C':
                 raw_credits_by_month[m_v] = raw_credits_by_month.get(m_v, 0) + float(amt or 0)
                 if m_v > max_credit_month:
                     max_credit_month = m_v
+            elif p_type == 'D':
+                raw_credits_by_month[m_v] = raw_credits_by_month.get(m_v, 0) - float(amt or 0)
 
         # Settlement cycle offset
         sett_m_offset = get_cycle_offset(opn_dt, sett_dt)
@@ -316,8 +367,10 @@ def get_account_details(foracid=None, settlement_date=None):
         monthly_interest_assigned = set()
         for val_date, amt, p_type, particular in raw_trans:
             amt = float(amt or 0)
+            p_type = (p_type or "").strip().upper()
             row_int = 0.0
             row_scheme_int = 0.0
+            is_exceptional_reversal = False
             
             if p_type == 'C':
                 total_principal_for_sc += amt
@@ -334,6 +387,9 @@ def get_account_details(foracid=None, settlement_date=None):
                     row_scheme_int = monthly_data[m_offset]["base_int"]
                     processed_months.add(m_offset)
                     monthly_interest_assigned.add(m_offset)
+            elif p_type == 'D':
+                is_exceptional_reversal = True
+                total_principal_for_sc -= amt
 
             transactions.append({
                 "date": val_date.strftime("%d/%m/%Y") if val_date else "N/A",
@@ -342,7 +398,8 @@ def get_account_details(foracid=None, settlement_date=None):
                 "particular": particular or "",
                 "accrued_interest": int(row_int + 0.5),
                 "scheme_interest": int(row_scheme_int + 0.5),
-                "elg_amt": amt
+                "elg_amt": amt,
+                "is_exceptional_reversal": is_exceptional_reversal
             })
 
         transactions.reverse()
@@ -376,10 +433,10 @@ def get_account_details(foracid=None, settlement_date=None):
         if conn: conn.close()
 
 @frappe.whitelist()
-def get_scheme_details(schm_code):
+def get_scheme_details(schm_code, db_env=None):
     conn = None
     try:
-        conn = get_dr_connection()
+        conn = _get_finacle_connection(db_env=db_env)
         cursor = conn.cursor()
         cursor.execute("SELECT schm_desc FROM tbaadm.gsp WHERE schm_code = %s", (schm_code,))
         result = cursor.fetchone()
