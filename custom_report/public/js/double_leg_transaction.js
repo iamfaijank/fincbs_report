@@ -44,13 +44,13 @@ const SEARCH_TYPES = {
 		hint: "Only transactions for accounts with this BACID are included.",
 	},
 	foracid: {
-		label: "FORACID",
-		placeholder: "Enter FORACID",
+		label: "Account No.",
+		placeholder: "Enter Account No.",
 		hint: "Only transactions for this account number (FORACID) are included.",
 	},
 	gl_sub_head_code: {
-		label: "GL sub head code",
-		placeholder: "Enter GL sub head code",
+		label: "GL SUB HEAD CODE",
+		placeholder: "Enter GL SUB HEAD CODE",
 		hint: "Only transactions for accounts under this GL sub head code are included.",
 	},
 	schm_code: {
@@ -63,11 +63,14 @@ const accountLabel = document.getElementById("accountLabel");
 const accountHint = document.getElementById("accountHint");
 
 function currentType() {
-	return form.elements["account_type"].value;
+	const el = form.elements["account_type"];
+	if (!el) return "bacid";
+	return el.value || "bacid";
 }
 
 function applySearchType() {
-	const t = SEARCH_TYPES[currentType()];
+	const t = SEARCH_TYPES[currentType()] || SEARCH_TYPES.bacid;
+	if (!t) return;
 	accountLabel.textContent = t.label;
 	fields.account.input.placeholder = t.placeholder;
 	accountHint.textContent = t.hint;
@@ -77,6 +80,7 @@ if (form) {
 	form.querySelectorAll('input[name="account_type"]').forEach((r) =>
 		r.addEventListener("change", applySearchType),
 	);
+	applySearchType();
 }
 
 const today = new Date();
@@ -161,7 +165,7 @@ function validate() {
 	const start = fields.start.input.value;
 	const end = fields.end.input.value;
 
-	setError("account", !account ? "Enter the " + SEARCH_TYPES[currentType()].label + "." : "");
+	setError("account", !account ? "Enter the " + (SEARCH_TYPES[currentType()] || SEARCH_TYPES.bacid).label + "." : "");
 	setError("start", !start ? "Choose a start date." : "");
 	setError("end", !end ? "Choose an end date." : "");
 	if (start && end && start > end)
