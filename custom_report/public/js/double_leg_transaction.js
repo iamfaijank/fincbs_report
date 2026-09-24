@@ -411,7 +411,7 @@ form.addEventListener("submit", async (e) => {
 			fmtBytes(blob.size);
 
 		saveBlob(blob, reportName);
-		showStatus("success", "Report downloaded: " + reportName);
+		showStatus("success", "Report downloaded: " + reportName + " · " + nf.format(total) + " rows");
 	} catch (err) {
 		stopTimer();
 		progressBox.hidden = true;
