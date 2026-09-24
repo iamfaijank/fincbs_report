@@ -368,7 +368,7 @@ form.addEventListener("submit", async (e) => {
 		showStatus("error", err.message || "Something went wrong. Try again.");
 	} finally {
 		btn.disabled = false;
-		btn.textContent = "Download report";
+		btn.textContent = "Download";
 	}
 });
 
