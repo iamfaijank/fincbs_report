@@ -4,7 +4,6 @@ import { useNumberFormat } from '@/composables/useNumberFormat.js'
 import { useFilters } from '@/composables/useFilters.js'
 import { useExpandableSet } from '@/composables/useExpandableSet.js'
 import { useNameFormat } from '@/composables/useNameFormat.js'
-import ProgressBar from './ProgressBar.vue'
 
 const { formatNumber } = useNumberFormat()
 const { isZoneSelected, isRegionSelected } = useFilters()
@@ -133,7 +132,7 @@ const totals = computed(() => {
                 {{ formatNumber(getMonthData(zoneData).achievement) }}
               </td>
               <td v-if="activeMonth" class="px-5 py-3 text-center font-mono text-sm text-[var(--text)]">
-                <ProgressBar :value="getMonthData(zoneData).percentage" />
+                {{ Math.round(getMonthData(zoneData).percentage || 0) }}%
               </td>
             </tr>
 
@@ -174,7 +173,7 @@ const totals = computed(() => {
                     {{ formatNumber(getMonthData(region).achievement) }}
                   </td>
                   <td v-if="activeMonth" class="px-5 py-3 text-center font-mono text-sm text-[var(--text)]">
-                    <ProgressBar :value="getMonthData(region).percentage" />
+                    {{ Math.round(getMonthData(region).percentage || 0) }}%
                   </td>
                 </tr>
 
@@ -198,7 +197,7 @@ const totals = computed(() => {
                       {{ formatNumber(branch.months?.[activeMonth.key]?.achievement || 0) }}
                     </td>
                     <td v-if="activeMonth" class="px-5 py-2 text-center font-mono text-xs text-[var(--text)]">
-                      <ProgressBar :value="branch.months?.[activeMonth.key]?.percentage || 0" />
+                      {{ Math.round(branch.months?.[activeMonth.key]?.percentage || 0) }}%
                     </td>
                   </tr>
                 </template>
@@ -212,7 +211,7 @@ const totals = computed(() => {
             <td class="border-r border-[var(--border)] px-5 py-3 text-sm text-[var(--text)]">{{ totals.branches }}</td>
             <td v-if="activeMonth" class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(totals.target) }}</td>
             <td v-if="activeMonth" class="border-r border-[var(--border)] px-5 py-3 text-right font-mono text-sm text-[var(--text)]">{{ formatNumber(totals.achievement) }}</td>
-            <td v-if="activeMonth" class="px-5 py-3 text-center font-mono text-sm text-[var(--text)]"><ProgressBar :value="totals.percentage" /></td>
+            <td v-if="activeMonth" class="px-5 py-3 text-center font-mono text-sm text-[var(--text)]">{{ Math.round(totals.percentage || 0) }}%</td>
           </tr>
         </tbody>
       </table>

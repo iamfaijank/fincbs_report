@@ -255,6 +255,29 @@ function _autoExpandSearchResults(self, data) {
 	});
 }
 
+function _getFilteredMISData(self) {
+	let data = self.tableData || [];
+	const term = (self.searchTerm || "").trim();
+	if (term) {
+		const terms = term.split(",").map(t => t.trim().toLowerCase()).filter(t => t);
+		if (terms.length) {
+			data = data.filter(row => {
+				const br = (row.branch_name || row.sol_desc || "").toLowerCase();
+				const id = (row.sol_id || "").toLowerCase();
+				const dt = (row.district || "").toLowerCase();
+				const zone = (row.zone || "").toLowerCase();
+				const region = (row.region || "").toLowerCase();
+				const auth = ((row.auth_id || "") + " " + (row.auth_name || "")).toLowerCase();
+				return terms.some(t => br.includes(t) || id.includes(t) || dt.includes(t) || zone.includes(t) || region.includes(t) || auth.includes(t));
+			});
+		}
+	}
+	if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+		data = data.filter(row => self.selectedMisZones.includes(row.zone));
+	}
+	return data;
+}
+
 class DrishtiDashboard {
 	constructor(page) {
 		this.page = page;
@@ -452,6 +475,7 @@ class DrishtiDashboard {
 							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 							}
 						}, 300);
 					});
@@ -478,7 +502,7 @@ class DrishtiDashboard {
 				},
 				renderKPI: function (container, dashboardInstance) {
 					const self = this;
-					const data = self.tableData || [];
+					const data = _getFilteredMISData(self);
 					const totalAccounts = data.reduce((s, r) => s + (r.total_accounts || 0), 0);
 					const totalCollection = data.reduce((s, r) => s + (r.total_collection || 0), 0);
 					const pendingAccounts = data.reduce((s, r) => s + (r.pending_accounts || 0), 0);
@@ -572,6 +596,7 @@ class DrishtiDashboard {
 						}
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 					});
 				},
 				aggregateByZone: function () {
@@ -945,7 +970,7 @@ class DrishtiDashboard {
 				},
 				renderKPI: function (container, dashboardInstance) {
 					const self = this;
-					const data = self.tableData || [];
+					const data = _getFilteredMISData(self);
 					let totSA = 0, totCA = 0, totTASC = 0, totRD = 0, totSMBG = 0, totDD = 0, totFD = 0, totAll = 0;
 					data.forEach(r => {
 						totSA += r.sa || 0; totCA += r.ca || 0; totTASC += r.tasc || 0; totRD += r.rd || 0;
@@ -1015,6 +1040,7 @@ class DrishtiDashboard {
 						else { const idx = self.selectedMisZones.indexOf(zone); if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); } }
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 					});
 				},
 				aggregateByZone: function () {
@@ -1080,7 +1106,7 @@ class DrishtiDashboard {
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
 							_autoExpandSearchResults(self, self.tableData);
-							if (self.tableData) { self.renderMisTable(container.find("#mis-table-container"), dashboardInstance); }
+							if (self.tableData) { self.renderMisTable(container.find("#mis-table-container"), dashboardInstance); self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance); }
 						}, 300);
 					});
 					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function () {
@@ -2004,6 +2030,7 @@ class DrishtiDashboard {
 					`);
 
 					if (self.tableData && self.tableData.length > 0) {
+						self.expandGLHierarchy();
 						self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
 						self.renderZoneFilterTags(container, dashboardInstance);
 						container.find("#mis-controls, #mis-table-container, #mis-zone-filter-row").show();
@@ -2020,6 +2047,7 @@ class DrishtiDashboard {
 							if (r.message) {
 								self.tableData = r.message.product_wise || [];
 								self.allProducts = r.message.all_products || [];
+								self.expandGLHierarchy();
 								self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
 								self.renderZoneFilterTags(container, dashboardInstance);
 							}
@@ -2063,30 +2091,8 @@ class DrishtiDashboard {
 
 						if (!self.expandedTreeNodes) self.expandedTreeNodes = {};
 
-						if (expand) {
-							self.tableData.forEach(row => {
-								const z = (row.zone || row.parent_zone || "").trim();
-								const r = (row.region || (row.parent_region ? row.parent_region.split("/").pop() : "") || "").trim();
-								const d = (row.district || (row.parent_district ? row.parent_district.split("/").pop() : "") || "").trim();
-
-								if (z) {
-									self.expandedTreeNodes[z] = true;
-									self.expandedTreeNodes[`z_${z}`] = true;
-									self.expandedZones[z] = true;
-								}
-								if (z && r) {
-									self.expandedTreeNodes[`r_${z}_${r}`] = true;
-									self.expandedRegions[z + "::" + r] = true;
-								}
-								if (z && r && d) {
-									self.expandedTreeNodes[`d_${z}_${r}_${d}`] = true;
-								}
-							});
-						} else {
-							self.expandedTreeNodes = {};
-							self.expandedZones = {};
-							self.expandedRegions = {};
-						}
+						// Show full hierarchy down to SOL (Zone → Region → District → SOL) in both states
+						self.expandGLHierarchy();
 
 						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
 						self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
@@ -2103,6 +2109,36 @@ class DrishtiDashboard {
 						self.checkedRows = {};
 						dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
 						self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
+					});
+				},
+				expandGLHierarchy: function () {
+					const self = this;
+					if (!self.tableData || !self.tableData.length) return;
+					if (!self.expandedTreeNodes) self.expandedTreeNodes = {};
+
+					self.tableData.forEach(row => {
+						if (row.type === "sol") {
+							if (row.parent_zone) self.expandedZones[row.parent_zone] = true;
+							if (row.parent_region) self.expandedZones[row.parent_region] = true;
+							if (row.parent_district) self.expandedZones[row.parent_district] = true;
+						} else if (row.path) {
+							self.expandedZones[row.path] = true;
+						}
+						const z = (row.zone || row.parent_zone || "").trim();
+						const r = (row.region || (row.parent_region ? row.parent_region.split("/").pop() : "") || "").trim();
+						const d = (row.district || (row.parent_district ? row.parent_district.split("/").pop() : "") || "").trim();
+
+						if (z) {
+							self.expandedTreeNodes[z] = true;
+							self.expandedTreeNodes[`z_${z}`] = true;
+						}
+						if (z && r) {
+							self.expandedTreeNodes[`r_${z}_${r}`] = true;
+							self.expandedRegions[z + "::" + r] = true;
+						}
+						if (z && r && d) {
+							self.expandedTreeNodes[`d_${z}_${r}_${d}`] = true;
+						}
 					});
 				},
 				renderGLWiseTable: function (tableContainer, dashboardInstance) {
@@ -2511,6 +2547,7 @@ class DrishtiDashboard {
 							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 							}
 						}, 300);
 					});
@@ -2537,7 +2574,7 @@ class DrishtiDashboard {
 				},
 				renderKPI: function (container, dashboardInstance) {
 					const self = this;
-					const data = self.tableData || [];
+					const data = _getFilteredMISData(self);
 					const totalAccounts = data.reduce((s, r) => s + (r.grand_total || 0), 0);
 					const excessCount = data.reduce((s, r) => s + (r.Excess || 0), 0);
 					const aCount = data.reduce((s, r) => s + (r.A || 0), 0);
@@ -2634,6 +2671,7 @@ class DrishtiDashboard {
 						}
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 					});
 				},
 				aggregateByZone: function () {
@@ -3027,6 +3065,7 @@ class DrishtiDashboard {
 							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 							}
 						}, 300);
 					});
@@ -3056,7 +3095,7 @@ class DrishtiDashboard {
 				},
 				renderKPI: function (container, dashboardInstance) {
 					const self = this;
-					const data = self.tableData || [];
+					const data = _getFilteredMISData(self);
 					const totalNewAccounts = data.reduce((s, r) => s + (parseInt(r.new_ac) || 0), 0);
 					const totalDepositAmount = data.reduce((s, r) => s + (parseFloat(r.deposit_amount) || 0.0), 0.0);
 					const avgDeposit = totalNewAccounts > 0 ? (totalDepositAmount / totalNewAccounts) : 0.0;
@@ -3156,6 +3195,7 @@ class DrishtiDashboard {
 						}
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 					});
 				},
 				aggregateByZone: function () {
@@ -3579,6 +3619,7 @@ class DrishtiDashboard {
 							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 							}
 						}, 300);
 					});
@@ -3608,7 +3649,7 @@ class DrishtiDashboard {
 				},
 				renderKPI: function (container, dashboardInstance) {
 					const self = this;
-					const data = self.tableData || [];
+					const data = _getFilteredMISData(self);
 					const totalDemand = data.reduce((s, r) => s + (parseFloat(r.monthly_demand_amount) || 0.0), 0.0);
 					const totalCollection = data.reduce((s, r) => s + (parseFloat(r.monthly_collection) || 0.0), 0.0);
 					const overallPct = totalDemand > 0 ? ((totalCollection / totalDemand) * 100).toFixed(2) + "%" : "0.00%";
@@ -3707,6 +3748,7 @@ class DrishtiDashboard {
 						}
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 					});
 				},
 				aggregateByZone: function () {
@@ -4147,6 +4189,7 @@ class DrishtiDashboard {
 							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 							}
 						}, 300);
 					});
@@ -4176,7 +4219,7 @@ class DrishtiDashboard {
 				},
 				renderKPI: function (container, dashboardInstance) {
 					const self = this;
-					const data = self.tableData || [];
+					const data = _getFilteredMISData(self);
 					const totalDemand = data.reduce((s, r) => s + (parseFloat(r.monthly_demand_amount) || 0.0), 0.0);
 					const totalCollection = data.reduce((s, r) => s + (parseFloat(r.monthly_collection) || 0.0), 0.0);
 					const overallPct = totalDemand > 0 ? ((totalCollection / totalDemand) * 100).toFixed(2) + "%" : "0.00%";
@@ -4275,6 +4318,7 @@ class DrishtiDashboard {
 						}
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 					});
 				},
 				aggregateByZone: function () {
@@ -4753,6 +4797,7 @@ class DrishtiDashboard {
 							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 							}
 						}, 300);
 					});
@@ -4782,7 +4827,7 @@ class DrishtiDashboard {
 				},
 				renderKPI: function (container, dashboardInstance) {
 					const self = this;
-					const data = self.tableData || [];
+					const data = _getFilteredMISData(self);
 					const totalAccounts = data.reduce((s, r) => s + (parseInt(r.account_count || 0, 10)), 0);
 					const totalPaid = data.reduce((s, r) => s + (parseFloat(r.maturity_paid || 0.0)), 0.0);
 					const totalDeposit = data.reduce((s, r) => s + (parseFloat(r.total_deposit_amount || 0.0)), 0.0);
@@ -4883,6 +4928,7 @@ class DrishtiDashboard {
 						}
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 					});
 				},
 				aggregateByZone: function () {
@@ -10095,6 +10141,44 @@ class DrishtiDashboard {
 	// DATA FILTERING AND AGGREGATION UTILITIES
 	// ========================================================================
 
+	assignPerformanceSegments(branches) {
+		if (!branches || branches.length === 0) return branches;
+
+		const months = this.months || [];
+		const sortMonthKey =
+			this.state.selectedMonth || (months.length > 0 ? months[months.length - 1].key : null);
+
+		const sortedBranches = [...branches].sort((a, b) => {
+			const aPct = sortMonthKey ? (a.months?.[sortMonthKey]?.percentage || 0) : 0;
+			const bPct = sortMonthKey ? (b.months?.[sortMonthKey]?.percentage || 0) : 0;
+			return bPct - aPct;
+		});
+
+		const total = sortedBranches.length;
+		sortedBranches.forEach((branch, index) => {
+			if (total < 4) {
+				branch.performanceSegment = "N/A";
+				branch.rowStyle = "";
+			} else {
+				const top25_index = Math.floor(total * 0.25);
+				const next25_index = Math.floor(total * 0.5);
+				const mid25_index = Math.floor(total * 0.75);
+
+				if (index < top25_index) {
+					branch.performanceSegment = "Top 25%";
+				} else if (index < next25_index) {
+					branch.performanceSegment = "Next 25%";
+				} else if (index < mid25_index) {
+					branch.performanceSegment = "Mid 25%";
+				} else {
+					branch.performanceSegment = "Bottom 25%";
+				}
+				branch.rowStyle = "";
+			}
+		});
+		return branches;
+	}
+
 	getFilteredBranches(customBranchData, ignoreCategoryFilter = false) {
 		let filtered = (customBranchData || this.branchData) ? [...(customBranchData || this.branchData)] : [];
 
@@ -10186,6 +10270,14 @@ class DrishtiDashboard {
 					);
 				});
 			}
+		}
+
+		// 6. Performance segment filter — segments assigned on the full filtered set
+		this.assignPerformanceSegments(filtered);
+		if (this.state.selectedSegment && this.state.selectedSegment !== "all") {
+			filtered = filtered.filter(
+				(branch) => branch.performanceSegment === this.state.selectedSegment,
+			);
 		}
 
 		return filtered;
@@ -10807,7 +10899,6 @@ class DrishtiDashboard {
                  <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">
  					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
  						<span class="pct-value" style="color: #ffffff !important; min-width: 45px; text-align: right; font-weight: bold;">${totalGapPct.toFixed(2)}%</span>
- 						${this.renderProgressBar(totalGapPct, this.getPctColor(100 - totalGapPct))}
  					</div>
  				</td>
             `;
@@ -10855,8 +10946,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 					100 - gapPct,
-				)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
-									${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
+								)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
 								</div>
 							</td>
 			            `;
@@ -10906,8 +10996,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 					100 - gapPct,
-				)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
-									${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
+								)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
 								</div>
 							</td>
 			            `;
@@ -10958,8 +11047,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 					100 - gapPct,
-				)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
-									${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
+								)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
 								</div>
 							</td>
 			            `;
@@ -12440,53 +12528,12 @@ class DrishtiDashboard {
 			displayMonths = months.filter((m) => m.key === this.state.selectedMonth);
 		}
 
-		// --- Correct Performance Segmentation Logic ---
-
-		// 1. Determine the metric for sorting (latest month's percentage)
-		const sortMonthKey =
-			this.state.selectedMonth || (months.length > 0 ? months[months.length - 1].key : null);
-
-		// 2. Create a safe copy of the filtered data and sort it by performance
-		const sortedBranches = [...branchData].sort((a, b) => {
-			const aPct = a.months[sortMonthKey]?.percentage || 0;
-			const bPct = b.months[sortMonthKey]?.percentage || 0;
-			return bPct - aPct; // Descending sort
-		});
-
-		// 3. Calculate quartile boundaries and assign segments to the sorted branches
-		const total = sortedBranches.length;
-		sortedBranches.forEach((branch, index) => {
-			if (total < 4) {
-				branch.performanceSegment = "N/A";
-				branch.rowStyle = "";
-			} else {
-				const top25_index = Math.floor(total * 0.25);
-				const next25_index = Math.floor(total * 0.5);
-				const mid25_index = Math.floor(total * 0.75);
-
-				if (index < top25_index) {
-					branch.performanceSegment = "Top 25%";
-					branch.rowStyle = "";
-				} else if (index < next25_index) {
-					branch.performanceSegment = "Next 25%";
-					branch.rowStyle = "";
-				} else if (index < mid25_index) {
-					branch.performanceSegment = "Mid 25%";
-					branch.rowStyle = "";
-				} else {
-					branch.performanceSegment = "Bottom 25%";
-					branch.rowStyle = "";
-				}
-			}
-		});
-
-		// 4. Filter the now-segmented list based on the user's segment selection
-		let filteredBranchData = sortedBranches;
-		if (this.state.selectedSegment && this.state.selectedSegment !== "all") {
-			filteredBranchData = sortedBranches.filter(
-				(branch) => branch.performanceSegment === this.state.selectedSegment,
-			);
+		// --- Performance Segmentation is assigned (and filtered) upstream in getFilteredBranches() ---
+		// Defensive re-assign only if segments are missing (e.g. called with raw data).
+		if (branchData.length > 0 && branchData.some((b) => !b.performanceSegment)) {
+			this.assignPerformanceSegments(branchData);
 		}
+		const filteredBranchData = branchData;
 
 		const header = this.buildBranchTableHeader(displayMonths);
 		const body = filteredBranchData
