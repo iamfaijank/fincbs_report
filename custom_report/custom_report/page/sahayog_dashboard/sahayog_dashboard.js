@@ -2030,6 +2030,7 @@ class DrishtiDashboard {
 					`);
 
 					if (self.tableData && self.tableData.length > 0) {
+						self.expandGLHierarchy();
 						self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
 						self.renderZoneFilterTags(container, dashboardInstance);
 						container.find("#mis-controls, #mis-table-container, #mis-zone-filter-row").show();
@@ -2046,6 +2047,7 @@ class DrishtiDashboard {
 							if (r.message) {
 								self.tableData = r.message.product_wise || [];
 								self.allProducts = r.message.all_products || [];
+								self.expandGLHierarchy();
 								self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
 								self.renderZoneFilterTags(container, dashboardInstance);
 							}
@@ -2090,30 +2092,7 @@ class DrishtiDashboard {
 						if (!self.expandedTreeNodes) self.expandedTreeNodes = {};
 
 						// Show full hierarchy down to SOL (Zone → Region → District → SOL) in both states
-						self.tableData.forEach(row => {
-							if (row.type === "sol") {
-								if (row.parent_zone) self.expandedZones[row.parent_zone] = true;
-								if (row.parent_region) self.expandedZones[row.parent_region] = true;
-								if (row.parent_district) self.expandedZones[row.parent_district] = true;
-							} else if (row.path) {
-								self.expandedZones[row.path] = true;
-							}
-							const z = (row.zone || row.parent_zone || "").trim();
-							const r = (row.region || (row.parent_region ? row.parent_region.split("/").pop() : "") || "").trim();
-							const d = (row.district || (row.parent_district ? row.parent_district.split("/").pop() : "") || "").trim();
-
-							if (z) {
-								self.expandedTreeNodes[z] = true;
-								self.expandedTreeNodes[`z_${z}`] = true;
-							}
-							if (z && r) {
-								self.expandedTreeNodes[`r_${z}_${r}`] = true;
-								self.expandedRegions[z + "::" + r] = true;
-							}
-							if (z && r && d) {
-								self.expandedTreeNodes[`d_${z}_${r}_${d}`] = true;
-							}
-						});
+						self.expandGLHierarchy();
 
 						$(this).text(expand ? "▲ Collapse All" : "▼ Expand All");
 						self.renderGLWiseTable(container.find("#mis-table-container"), dashboardInstance);
@@ -2130,6 +2109,36 @@ class DrishtiDashboard {
 						self.checkedRows = {};
 						dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
 						self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
+					});
+				},
+				expandGLHierarchy: function () {
+					const self = this;
+					if (!self.tableData || !self.tableData.length) return;
+					if (!self.expandedTreeNodes) self.expandedTreeNodes = {};
+
+					self.tableData.forEach(row => {
+						if (row.type === "sol") {
+							if (row.parent_zone) self.expandedZones[row.parent_zone] = true;
+							if (row.parent_region) self.expandedZones[row.parent_region] = true;
+							if (row.parent_district) self.expandedZones[row.parent_district] = true;
+						} else if (row.path) {
+							self.expandedZones[row.path] = true;
+						}
+						const z = (row.zone || row.parent_zone || "").trim();
+						const r = (row.region || (row.parent_region ? row.parent_region.split("/").pop() : "") || "").trim();
+						const d = (row.district || (row.parent_district ? row.parent_district.split("/").pop() : "") || "").trim();
+
+						if (z) {
+							self.expandedTreeNodes[z] = true;
+							self.expandedTreeNodes[`z_${z}`] = true;
+						}
+						if (z && r) {
+							self.expandedTreeNodes[`r_${z}_${r}`] = true;
+							self.expandedRegions[z + "::" + r] = true;
+						}
+						if (z && r && d) {
+							self.expandedTreeNodes[`d_${z}_${r}_${d}`] = true;
+						}
 					});
 				},
 				renderGLWiseTable: function (tableContainer, dashboardInstance) {
