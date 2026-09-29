@@ -10141,6 +10141,44 @@ class DrishtiDashboard {
 	// DATA FILTERING AND AGGREGATION UTILITIES
 	// ========================================================================
 
+	assignPerformanceSegments(branches) {
+		if (!branches || branches.length === 0) return branches;
+
+		const months = this.months || [];
+		const sortMonthKey =
+			this.state.selectedMonth || (months.length > 0 ? months[months.length - 1].key : null);
+
+		const sortedBranches = [...branches].sort((a, b) => {
+			const aPct = sortMonthKey ? (a.months?.[sortMonthKey]?.percentage || 0) : 0;
+			const bPct = sortMonthKey ? (b.months?.[sortMonthKey]?.percentage || 0) : 0;
+			return bPct - aPct;
+		});
+
+		const total = sortedBranches.length;
+		sortedBranches.forEach((branch, index) => {
+			if (total < 4) {
+				branch.performanceSegment = "N/A";
+				branch.rowStyle = "";
+			} else {
+				const top25_index = Math.floor(total * 0.25);
+				const next25_index = Math.floor(total * 0.5);
+				const mid25_index = Math.floor(total * 0.75);
+
+				if (index < top25_index) {
+					branch.performanceSegment = "Top 25%";
+				} else if (index < next25_index) {
+					branch.performanceSegment = "Next 25%";
+				} else if (index < mid25_index) {
+					branch.performanceSegment = "Mid 25%";
+				} else {
+					branch.performanceSegment = "Bottom 25%";
+				}
+				branch.rowStyle = "";
+			}
+		});
+		return branches;
+	}
+
 	getFilteredBranches(customBranchData, ignoreCategoryFilter = false) {
 		let filtered = (customBranchData || this.branchData) ? [...(customBranchData || this.branchData)] : [];
 
@@ -10232,6 +10270,14 @@ class DrishtiDashboard {
 					);
 				});
 			}
+		}
+
+		// 6. Performance segment filter — segments assigned on the full filtered set
+		this.assignPerformanceSegments(filtered);
+		if (this.state.selectedSegment && this.state.selectedSegment !== "all") {
+			filtered = filtered.filter(
+				(branch) => branch.performanceSegment === this.state.selectedSegment,
+			);
 		}
 
 		return filtered;
@@ -12482,53 +12528,12 @@ class DrishtiDashboard {
 			displayMonths = months.filter((m) => m.key === this.state.selectedMonth);
 		}
 
-		// --- Correct Performance Segmentation Logic ---
-
-		// 1. Determine the metric for sorting (latest month's percentage)
-		const sortMonthKey =
-			this.state.selectedMonth || (months.length > 0 ? months[months.length - 1].key : null);
-
-		// 2. Create a safe copy of the filtered data and sort it by performance
-		const sortedBranches = [...branchData].sort((a, b) => {
-			const aPct = a.months[sortMonthKey]?.percentage || 0;
-			const bPct = b.months[sortMonthKey]?.percentage || 0;
-			return bPct - aPct; // Descending sort
-		});
-
-		// 3. Calculate quartile boundaries and assign segments to the sorted branches
-		const total = sortedBranches.length;
-		sortedBranches.forEach((branch, index) => {
-			if (total < 4) {
-				branch.performanceSegment = "N/A";
-				branch.rowStyle = "";
-			} else {
-				const top25_index = Math.floor(total * 0.25);
-				const next25_index = Math.floor(total * 0.5);
-				const mid25_index = Math.floor(total * 0.75);
-
-				if (index < top25_index) {
-					branch.performanceSegment = "Top 25%";
-					branch.rowStyle = "";
-				} else if (index < next25_index) {
-					branch.performanceSegment = "Next 25%";
-					branch.rowStyle = "";
-				} else if (index < mid25_index) {
-					branch.performanceSegment = "Mid 25%";
-					branch.rowStyle = "";
-				} else {
-					branch.performanceSegment = "Bottom 25%";
-					branch.rowStyle = "";
-				}
-			}
-		});
-
-		// 4. Filter the now-segmented list based on the user's segment selection
-		let filteredBranchData = sortedBranches;
-		if (this.state.selectedSegment && this.state.selectedSegment !== "all") {
-			filteredBranchData = sortedBranches.filter(
-				(branch) => branch.performanceSegment === this.state.selectedSegment,
-			);
+		// --- Performance Segmentation is assigned (and filtered) upstream in getFilteredBranches() ---
+		// Defensive re-assign only if segments are missing (e.g. called with raw data).
+		if (branchData.length > 0 && branchData.some((b) => !b.performanceSegment)) {
+			this.assignPerformanceSegments(branchData);
 		}
+		const filteredBranchData = branchData;
 
 		const header = this.buildBranchTableHeader(displayMonths);
 		const body = filteredBranchData
