@@ -255,6 +255,29 @@ function _autoExpandSearchResults(self, data) {
 	});
 }
 
+function _getFilteredMISData(self) {
+	let data = self.tableData || [];
+	const term = (self.searchTerm || "").trim();
+	if (term) {
+		const terms = term.split(",").map(t => t.trim().toLowerCase()).filter(t => t);
+		if (terms.length) {
+			data = data.filter(row => {
+				const br = (row.branch_name || row.sol_desc || "").toLowerCase();
+				const id = (row.sol_id || "").toLowerCase();
+				const dt = (row.district || "").toLowerCase();
+				const zone = (row.zone || "").toLowerCase();
+				const region = (row.region || "").toLowerCase();
+				const auth = ((row.auth_id || "") + " " + (row.auth_name || "")).toLowerCase();
+				return terms.some(t => br.includes(t) || id.includes(t) || dt.includes(t) || zone.includes(t) || region.includes(t) || auth.includes(t));
+			});
+		}
+	}
+	if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+		data = data.filter(row => self.selectedMisZones.includes(row.zone));
+	}
+	return data;
+}
+
 class DrishtiDashboard {
 	constructor(page) {
 		this.page = page;
@@ -452,6 +475,7 @@ class DrishtiDashboard {
 							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 							}
 						}, 300);
 					});
@@ -478,7 +502,7 @@ class DrishtiDashboard {
 				},
 				renderKPI: function (container, dashboardInstance) {
 					const self = this;
-					const data = self.tableData || [];
+					const data = _getFilteredMISData(self);
 					const totalAccounts = data.reduce((s, r) => s + (r.total_accounts || 0), 0);
 					const totalCollection = data.reduce((s, r) => s + (r.total_collection || 0), 0);
 					const pendingAccounts = data.reduce((s, r) => s + (r.pending_accounts || 0), 0);
@@ -572,6 +596,7 @@ class DrishtiDashboard {
 						}
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 					});
 				},
 				aggregateByZone: function () {
@@ -945,7 +970,7 @@ class DrishtiDashboard {
 				},
 				renderKPI: function (container, dashboardInstance) {
 					const self = this;
-					const data = self.tableData || [];
+					const data = _getFilteredMISData(self);
 					let totSA = 0, totCA = 0, totTASC = 0, totRD = 0, totSMBG = 0, totDD = 0, totFD = 0, totAll = 0;
 					data.forEach(r => {
 						totSA += r.sa || 0; totCA += r.ca || 0; totTASC += r.tasc || 0; totRD += r.rd || 0;
@@ -1015,6 +1040,7 @@ class DrishtiDashboard {
 						else { const idx = self.selectedMisZones.indexOf(zone); if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); } }
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 					});
 				},
 				aggregateByZone: function () {
@@ -1080,7 +1106,7 @@ class DrishtiDashboard {
 						searchTimeout = setTimeout(() => {
 							self.searchTerm = $(this).val().toLowerCase().trim();
 							_autoExpandSearchResults(self, self.tableData);
-							if (self.tableData) { self.renderMisTable(container.find("#mis-table-container"), dashboardInstance); }
+							if (self.tableData) { self.renderMisTable(container.find("#mis-table-container"), dashboardInstance); self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance); }
 						}, 300);
 					});
 					container.off("click", "#mis-expand-toggle").on("click", "#mis-expand-toggle", function () {
@@ -2511,6 +2537,7 @@ class DrishtiDashboard {
 							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 							}
 						}, 300);
 					});
@@ -2537,7 +2564,7 @@ class DrishtiDashboard {
 				},
 				renderKPI: function (container, dashboardInstance) {
 					const self = this;
-					const data = self.tableData || [];
+					const data = _getFilteredMISData(self);
 					const totalAccounts = data.reduce((s, r) => s + (r.grand_total || 0), 0);
 					const excessCount = data.reduce((s, r) => s + (r.Excess || 0), 0);
 					const aCount = data.reduce((s, r) => s + (r.A || 0), 0);
@@ -2634,6 +2661,7 @@ class DrishtiDashboard {
 						}
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 					});
 				},
 				aggregateByZone: function () {
@@ -3027,6 +3055,7 @@ class DrishtiDashboard {
 							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 							}
 						}, 300);
 					});
@@ -3056,7 +3085,7 @@ class DrishtiDashboard {
 				},
 				renderKPI: function (container, dashboardInstance) {
 					const self = this;
-					const data = self.tableData || [];
+					const data = _getFilteredMISData(self);
 					const totalNewAccounts = data.reduce((s, r) => s + (parseInt(r.new_ac) || 0), 0);
 					const totalDepositAmount = data.reduce((s, r) => s + (parseFloat(r.deposit_amount) || 0.0), 0.0);
 					const avgDeposit = totalNewAccounts > 0 ? (totalDepositAmount / totalNewAccounts) : 0.0;
@@ -3156,6 +3185,7 @@ class DrishtiDashboard {
 						}
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 					});
 				},
 				aggregateByZone: function () {
@@ -3579,6 +3609,7 @@ class DrishtiDashboard {
 							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 							}
 						}, 300);
 					});
@@ -3608,7 +3639,7 @@ class DrishtiDashboard {
 				},
 				renderKPI: function (container, dashboardInstance) {
 					const self = this;
-					const data = self.tableData || [];
+					const data = _getFilteredMISData(self);
 					const totalDemand = data.reduce((s, r) => s + (parseFloat(r.monthly_demand_amount) || 0.0), 0.0);
 					const totalCollection = data.reduce((s, r) => s + (parseFloat(r.monthly_collection) || 0.0), 0.0);
 					const overallPct = totalDemand > 0 ? ((totalCollection / totalDemand) * 100).toFixed(2) + "%" : "0.00%";
@@ -3707,6 +3738,7 @@ class DrishtiDashboard {
 						}
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 					});
 				},
 				aggregateByZone: function () {
@@ -4147,6 +4179,7 @@ class DrishtiDashboard {
 							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 							}
 						}, 300);
 					});
@@ -4176,7 +4209,7 @@ class DrishtiDashboard {
 				},
 				renderKPI: function (container, dashboardInstance) {
 					const self = this;
-					const data = self.tableData || [];
+					const data = _getFilteredMISData(self);
 					const totalDemand = data.reduce((s, r) => s + (parseFloat(r.monthly_demand_amount) || 0.0), 0.0);
 					const totalCollection = data.reduce((s, r) => s + (parseFloat(r.monthly_collection) || 0.0), 0.0);
 					const overallPct = totalDemand > 0 ? ((totalCollection / totalDemand) * 100).toFixed(2) + "%" : "0.00%";
@@ -4275,6 +4308,7 @@ class DrishtiDashboard {
 						}
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 					});
 				},
 				aggregateByZone: function () {
@@ -4753,6 +4787,7 @@ class DrishtiDashboard {
 							_autoExpandSearchResults(self, self.tableData);
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 							}
 						}, 300);
 					});
@@ -4782,7 +4817,7 @@ class DrishtiDashboard {
 				},
 				renderKPI: function (container, dashboardInstance) {
 					const self = this;
-					const data = self.tableData || [];
+					const data = _getFilteredMISData(self);
 					const totalAccounts = data.reduce((s, r) => s + (parseInt(r.account_count || 0, 10)), 0);
 					const totalPaid = data.reduce((s, r) => s + (parseFloat(r.maturity_paid || 0.0)), 0.0);
 					const totalDeposit = data.reduce((s, r) => s + (parseFloat(r.total_deposit_amount || 0.0)), 0.0);
@@ -4883,6 +4918,7 @@ class DrishtiDashboard {
 						}
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 					});
 				},
 				aggregateByZone: function () {
