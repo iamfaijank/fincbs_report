@@ -10853,7 +10853,6 @@ class DrishtiDashboard {
                  <td style="position: sticky; bottom: 0; z-index: 7; background-color: ${cellBg}; color: #ffffff !important;">
  					<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
  						<span class="pct-value" style="color: #ffffff !important; min-width: 45px; text-align: right; font-weight: bold;">${totalGapPct.toFixed(2)}%</span>
- 						${this.renderProgressBar(totalGapPct, this.getPctColor(100 - totalGapPct))}
  					</div>
  				</td>
             `;
@@ -10901,8 +10900,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 					100 - gapPct,
-				)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
-									${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
+								)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
 								</div>
 							</td>
 			            `;
@@ -10952,8 +10950,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 					100 - gapPct,
-				)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
-									${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
+								)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
 								</div>
 							</td>
 			            `;
@@ -11004,8 +11001,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
 									<span class="pct-value" style="color: ${this.getPctColor(
 					100 - gapPct,
-				)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
-									${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
+								)}; min-width: 45px; text-align: right;">${gapPct.toFixed(2)}%</span>
 								</div>
 							</td>
 			            `;
