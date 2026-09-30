@@ -425,6 +425,337 @@ REPORT_CONFIG = {
 		"derived_fields": {"account_close_flag": "acct_cls_date"},
 		"date_fields": ["account_open_date", "account_close_date", "cif_opening_date"],
 	},
+	"DD": {
+		"title": "DD Productivity",
+		"query": """
+			WITH account_data AS (
+				SELECT
+					d.rm_id,
+					g2.emp_name AS rm_name,
+					d2.auth_id,
+					d2.auth_role_id,
+					g.cif_id,
+					g.acct_opn_date,
+					a2.relationshipopeningdate AS cif_id_opening_date,
+					d2.operacc,
+					g.foracid,
+					g.acct_name AS customer_name,
+					g.clr_bal_amt,
+					tam.deposit_period_mths,
+					tam.deposit_period_days,
+					tam.deposit_amount,
+					tam.maturity_amount,
+					tam.maturity_date,
+					g.sol_id,
+					sol.sol_desc,
+					g.schm_code,
+					gsp.schm_desc,
+					g.acct_cls_date,
+					g.acct_cls_flg
+				FROM custom.dsamap AS d
+				INNER JOIN tbaadm.gam AS g
+					ON g.foracid = d.account_number
+					AND g.schm_code = '2004'
+				LEFT JOIN crmuser.accounts AS a2
+					ON g.cif_id = a2.orgkey
+				LEFT JOIN tbaadm.sol AS sol
+					ON g.sol_id = sol.sol_id
+				LEFT JOIN tbaadm.gsp AS gsp
+					ON g.schm_code = gsp.schm_code
+				LEFT JOIN custom.dsaauth AS d2
+					ON d.rm_id = d2.user_id
+				LEFT JOIN tbaadm.get AS g2
+					ON d2.user_id = g2.emp_id
+				LEFT JOIN tbaadm.tam AS tam
+					ON g.acid = tam.acid
+				WHERE g.acct_cls_flg <> 'Y'
+					OR g.acct_cls_date >= DATE_TRUNC('month', %(sync_date)s::DATE)::DATE
+			),
+			demand_data AS (
+				SELECT
+					ad.foracid,
+					ad.schm_code,
+					CASE
+						WHEN ad.acct_opn_date::DATE < DATE_TRUNC('month', %(sync_date)s::DATE)::DATE
+							AND ad.maturity_date::DATE > (DATE_TRUNC('month', %(sync_date)s::DATE) + INTERVAL '1 month' - INTERVAL '1 day')::DATE
+						THEN ad.deposit_amount * (
+							(DATE_TRUNC('month', %(sync_date)s::DATE) + INTERVAL '1 month' - INTERVAL '1 day')::DATE
+							- DATE_TRUNC('month', %(sync_date)s::DATE)::DATE + 1
+						)
+						WHEN ad.maturity_date::DATE >= DATE_TRUNC('month', %(sync_date)s::DATE)::DATE
+							AND ad.maturity_date::DATE <= (DATE_TRUNC('month', %(sync_date)s::DATE) + INTERVAL '1 month' - INTERVAL '1 day')::DATE
+						THEN ad.deposit_amount * (
+							ad.maturity_date::DATE - DATE_TRUNC('month', %(sync_date)s::DATE)::DATE
+						)
+						WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', %(sync_date)s::DATE)::DATE
+							AND ad.acct_opn_date::DATE <= (DATE_TRUNC('month', %(sync_date)s::DATE) + INTERVAL '1 month' - INTERVAL '1 day')::DATE
+						THEN ad.deposit_amount * (
+							ad.acct_opn_date::DATE - DATE_TRUNC('month', %(sync_date)s::DATE)::DATE + 1
+						)
+						ELSE 0
+					END AS demand_amount
+				FROM account_data AS ad
+			),
+			flow_data AS (
+				SELECT
+					d.rm_id,
+					g.foracid,
+					g.schm_code,
+					SUM(tdt.flow_amt) AS total_flow_amount
+				FROM custom.dsamap AS d
+				INNER JOIN tbaadm.gam AS g
+					ON g.foracid = d.account_number
+					AND g.schm_code = '2004'
+				INNER JOIN tbaadm.tdt AS tdt
+					ON tdt.acid = g.acid
+					AND tdt.flow_code = 'NI'
+				WHERE tdt.flow_date BETWEEN %(start_date)s AND %(sync_date)s
+					AND (
+						g.acct_cls_flg <> 'Y'
+						OR g.acct_cls_date >= DATE_TRUNC('month', %(sync_date)s::DATE)::DATE
+					)
+				GROUP BY d.rm_id, g.foracid, g.schm_code
+				HAVING SUM(tdt.flow_amt) > 0
+			),
+			tran_data AS (
+				SELECT
+					d.rm_id,
+					g.foracid,
+					g.schm_code,
+					SUM(dtt.tran_amt) AS total_tran_amt
+				FROM custom.dsamap AS d
+				INNER JOIN tbaadm.gam AS g
+					ON g.foracid = d.account_number
+					AND g.schm_code = '2004'
+				INNER JOIN tbaadm.dtt AS dtt
+					ON dtt.acid = g.acid
+					AND dtt.flow_code = 'NI'
+				WHERE dtt.value_date BETWEEN %(start_date)s AND %(sync_date)s
+					AND (
+						g.acct_cls_flg <> 'Y'
+						OR g.acct_cls_date >= DATE_TRUNC('month', %(sync_date)s::DATE)::DATE
+					)
+				GROUP BY d.rm_id, g.foracid, g.schm_code
+				HAVING SUM(dtt.tran_amt) > 0
+			),
+			reference_data AS (
+				SELECT
+					ed.referencenumber,
+					da.user_id AS rm_id
+				FROM crmuser.entitydocument AS ed
+				INNER JOIN tbaadm.gam AS g
+					ON ed.orgkey = g.cif_id
+				INNER JOIN custom.dsaauth AS da
+					ON g.foracid = da.operacc
+				WHERE ed.doccode = 'PAN'
+			)
+			SELECT
+				ad.rm_id,
+				ad.rm_name,
+				ad.operacc,
+				ad.operacc AS account_number,
+				ad.auth_id,
+				ad.auth_role_id AS auth_name,
+				ad.auth_role_id,
+				ad.cif_id,
+				ad.acct_opn_date,
+				CASE
+					WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', %(sync_date)s::DATE) - INTERVAL '12 months'
+					THEN 'M' || (
+						(
+							EXTRACT(YEAR FROM AGE(
+								DATE_TRUNC('month', %(sync_date)s::DATE),
+								DATE_TRUNC('month', ad.acct_opn_date::DATE)
+							)) * 12
+							+
+							EXTRACT(MONTH FROM AGE(
+								DATE_TRUNC('month', %(sync_date)s::DATE),
+								DATE_TRUNC('month', ad.acct_opn_date::DATE)
+							))
+						)::INT
+					)::TEXT
+					ELSE 'M12+'
+				END AS bucket,
+				ad.cif_id_opening_date,
+				LEAST(GREATEST(%(sync_date)s::DATE - ad.acct_opn_date::DATE, 0), 365) AS account_age,
+				ad.foracid,
+				ad.customer_name,
+				ad.customer_name AS account_name,
+				ad.schm_code,
+				ad.schm_code AS scheme_code,
+				ad.schm_desc,
+				ad.sol_id,
+				ad.sol_desc,
+				ad.deposit_period_mths::INT AS deposit_period_mths,
+				ad.deposit_period_days::INT AS deposit_period_days,
+				ad.deposit_amount,
+				ad.maturity_amount,
+				ad.maturity_date,
+				ad.acct_cls_date,
+				CASE
+					WHEN ad.acct_cls_date IS NULL THEN 'ACTIVE'
+					ELSE 'CLOSED'
+				END AS account_status,
+				COALESCE(fd.total_flow_amount, 0) AS total_flow_amount,
+				COALESCE(td.total_tran_amt, 0) AS total_tran_amt,
+				COALESCE(dd.demand_amount, 0) AS monthly_demand_amount,
+				COALESCE(dd.demand_amount, 0) AS demand,
+				COALESCE(td.total_tran_amt, 0) AS monthly_collection,
+				LEAST(
+					ROUND(COALESCE(dd.demand_amount, 0) / NULLIF(ad.deposit_amount, 0), 2),
+					365
+				)::INT AS monthly_demand_days,
+				LEAST(GREATEST(%(sync_date)s::DATE - ad.acct_opn_date::DATE, 0), 365) * ad.deposit_amount AS ytd_demand_amount,
+				COALESCE(ad.clr_bal_amt, 0) AS ytd_collection,
+				LEAST(GREATEST(%(sync_date)s::DATE - ad.acct_opn_date::DATE, 0), 365)::INT AS ytd_demand_days,
+				CASE
+					WHEN (LEAST(GREATEST(%(sync_date)s::DATE - ad.acct_opn_date::DATE, 0), 365) * ad.deposit_amount) = 0
+					THEN 0
+					ELSE ROUND(
+						(
+							COALESCE(ad.clr_bal_amt, 0)::NUMERIC
+							/
+							(
+								LEAST(GREATEST(%(sync_date)s::DATE - ad.acct_opn_date::DATE, 0), 365)
+								* ad.deposit_amount
+							)
+						) * 100
+					)
+				END AS ytd_coll_pct,
+				CASE
+					WHEN (LEAST(GREATEST(%(sync_date)s::DATE - ad.acct_opn_date::DATE, 0), 365) * ad.deposit_amount) = 0
+					THEN 'DEFAULT'
+					WHEN (
+						(
+							COALESCE(ad.clr_bal_amt, 0)::NUMERIC
+							/
+							(
+								LEAST(GREATEST(%(sync_date)s::DATE - ad.acct_opn_date::DATE, 0), 365)
+								* ad.deposit_amount
+							)
+						) * 100
+					) > 100 THEN 'Excess'
+					WHEN (
+						(
+							COALESCE(ad.clr_bal_amt, 0)::NUMERIC
+							/
+							(
+								LEAST(GREATEST(%(sync_date)s::DATE - ad.acct_opn_date::DATE, 0), 365)
+								* ad.deposit_amount
+							)
+						) * 100
+					) > 75 THEN 'A'
+					WHEN (
+						(
+							COALESCE(ad.clr_bal_amt, 0)::NUMERIC
+							/
+							(
+								LEAST(GREATEST(%(sync_date)s::DATE - ad.acct_opn_date::DATE, 0), 365)
+								* ad.deposit_amount
+							)
+						) * 100
+					) > 50 THEN 'B'
+					WHEN (
+						(
+							COALESCE(ad.clr_bal_amt, 0)::NUMERIC
+							/
+							(
+								LEAST(GREATEST(%(sync_date)s::DATE - ad.acct_opn_date::DATE, 0), 365)
+								* ad.deposit_amount
+							)
+						) * 100
+					) > 25 THEN 'C'
+					WHEN (
+						(
+							COALESCE(ad.clr_bal_amt, 0)::NUMERIC
+							/
+							(
+								LEAST(GREATEST(%(sync_date)s::DATE - ad.acct_opn_date::DATE, 0), 365)
+								* ad.deposit_amount
+							)
+						) * 100
+					) > 0 THEN 'D'
+					ELSE 'DEFAULT'
+				END AS colle_category,
+				ROUND(
+					CASE
+						WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 100000 THEN
+							0.035 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+						WHEN LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) > 100000
+							AND LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0)) <= 200000 THEN
+							0.04 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+						ELSE
+							0.05 * LEAST(COALESCE(fd.total_flow_amount, 0), COALESCE(td.total_tran_amt, 0))
+					END
+				) AS commission,
+				COALESCE(rd.referencenumber, 'N/A') AS referencenumber
+			FROM account_data AS ad
+			LEFT JOIN flow_data AS fd
+				ON ad.rm_id = fd.rm_id
+				AND ad.foracid = fd.foracid
+				AND ad.schm_code = fd.schm_code
+			LEFT JOIN tran_data AS td
+				ON ad.rm_id = td.rm_id
+				AND ad.foracid = td.foracid
+				AND ad.schm_code = td.schm_code
+			LEFT JOIN demand_data AS dd
+				ON ad.foracid = dd.foracid
+				AND ad.schm_code = dd.schm_code
+			LEFT JOIN reference_data AS rd
+				ON ad.rm_id = rd.rm_id
+			WHERE (fd.total_flow_amount > 0 OR td.total_tran_amt > 0)
+			ORDER BY ad.foracid, ad.rm_id, ad.schm_code
+		""",
+		"mapping": {
+			"rm_id": "rm_id",
+			"rm_name": "rm_name",
+			"operacc": "operacc",
+			"account_number": "account_number",
+			"auth_id": "auth_id",
+			"auth_name": "auth_name",
+			"auth_role_id": "auth_role_id",
+			"cif_id": "cif_id",
+			"acct_opn_date": "account_open_date",
+			"bucket": "bucket",
+			"cif_id_opening_date": "cif_opening_date",
+			"account_age": "account_age",
+			"foracid": "foracid",
+			"customer_name": "customer_name",
+			"account_name": "account_name",
+			"scheme_code": "scheme_code",
+			"schm_desc": "schm_desc",
+			"sol_id": "sol_id",
+			"sol_desc": "sol_desc",
+			"deposit_period_mths": "deposit_period_mths",
+			"deposit_period_days": "deposit_period_days",
+			"deposit_amount": "deposit_amount",
+			"maturity_amount": "maturity_amount",
+			"maturity_date": "maturity_date",
+			"acct_cls_date": "account_close_date",
+			"account_status": "account_status",
+			"total_flow_amount": "total_flow_amount",
+			"total_tran_amt": "total_tran_amt",
+			"monthly_demand_amount": "monthly_demand_amount",
+			"demand": "demand",
+			"monthly_collection": "monthly_collection",
+			"monthly_demand_days": "monthly_demand_days",
+			"ytd_demand_amount": "ytd_demand_amount",
+			"ytd_collection": "ytd_collection",
+			"ytd_demand_days": "ytd_demand_days",
+			"ytd_coll_pct": "ytd_coll_pct",
+			"colle_category": "colle_category",
+			"commission": "commission",
+			"referencenumber": "referencenumber",
+		},
+		"mirror_fields": {"pan_number": "referencenumber"},
+		"derived_fields": {"account_close_flag": "acct_cls_date"},
+		"date_fields": [
+			"account_open_date",
+			"account_close_date",
+			"cif_opening_date",
+			"maturity_date",
+		],
+	},
 }
 
 
