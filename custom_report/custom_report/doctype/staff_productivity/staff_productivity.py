@@ -756,6 +756,230 @@ REPORT_CONFIG = {
 			"maturity_date",
 		],
 	},
+	"CASA": {
+		"title": "CASA Productivity",
+		"query": """
+			WITH excluded_accts AS (
+				SELECT column_value AS account_number
+				FROM (VALUES
+					('100110020002993'),
+					('100110020101562'),
+					('100111020003840'),
+					('100144590010496'),
+					('110544207002485')
+				) t(column_value)
+			),
+			opening_period AS (
+				SELECT
+					(DATE_TRUNC('month', %(sync_date)s::DATE) - INTERVAL '1 month')::DATE AS opening_start_date,
+					(DATE_TRUNC('month', %(sync_date)s::DATE) - INTERVAL '1 day')::DATE AS opening_end_date
+			),
+			sol_gl_transferred_accts AS (
+				SELECT DISTINCT acid
+				FROM tbaadm.htd
+				WHERE (tran_particular ILIKE '%%Ac xfr from Sol%%'
+				       OR tran_particular ILIKE '%%Ac xfr from gl%%')
+				  AND tran_date >= %(start_date)s::DATE
+				  AND tran_date <= %(sync_date)s::DATE
+			),
+			balance_duration AS (
+				SELECT
+					gam.acid,
+					gam.foracid,
+					gam.sol_id,
+					s.sol_desc,
+					gam.schm_code,
+					gam.acct_name,
+					gam.cif_id,
+					gam.acct_opn_date,
+					gam.acct_cls_flg,
+					gam.acct_cls_date,
+					a.relationshipopeningdate AS CIF_ID_Opening_Date,
+					eab.tran_date_bal AS balance,
+					eab.tran_date_bal,
+					eab.eod_date,
+					gam.clr_bal_amt,
+					EXTRACT(
+						DAY FROM (
+							LEAST(
+								CASE
+									WHEN eab.end_eod_date = DATE '2099-12-31' THEN %(sync_date)s::DATE
+									ELSE eab.end_eod_date
+								END,
+								%(sync_date)s::DATE
+							)
+							- GREATEST(eab.eod_date, %(start_date)s::DATE)
+						)
+					) + 1 AS active_days
+				FROM tbaadm.gam gam
+				INNER JOIN tbaadm.eab eab ON gam.acid = eab.acid
+				INNER JOIN tbaadm.sol s ON s.sol_id = gam.sol_id
+				LEFT JOIN crmuser.accounts a ON a.orgkey = gam.cif_id
+				WHERE gam.schm_code IN ('1002','1102','1103','1104','1011')
+					AND NOT EXISTS (
+						SELECT 1 FROM excluded_accts x WHERE x.account_number = gam.foracid
+					)
+					AND eab.eod_date <= %(sync_date)s::DATE
+					AND (
+						CASE
+							WHEN eab.end_eod_date = DATE '2099-12-31' THEN %(sync_date)s::DATE
+							ELSE eab.end_eod_date
+						END
+					) >= %(start_date)s::DATE
+					AND (
+						gam.acct_cls_date IS NULL
+						OR (
+							gam.acct_cls_date >= %(start_date)s::DATE
+							AND gam.acct_cls_date < CURRENT_DATE
+						)
+					)
+			),
+			weighted_balances AS (
+				SELECT
+					bd.*,
+					t.deposit_amount,
+					(bd.balance * bd.active_days) AS weighted_balance
+				FROM balance_duration bd
+				LEFT JOIN tbaadm.tam t ON bd.acid = t.acid
+			),
+			closing_calc_raw AS (
+				SELECT
+					wb.foracid,
+					SUM(wb.weighted_balance) AS total_weighted_balance,
+					((%(sync_date)s::DATE - %(start_date)s::DATE) + 1) AS total_days,
+					SUM(wb.weighted_balance)::numeric
+						/ NULLIF(((%(sync_date)s::DATE - %(start_date)s::DATE) + 1), 0) AS raw_avg
+				FROM weighted_balances wb
+				GROUP BY wb.foracid
+			),
+			closing_calc AS (
+				SELECT
+					foracid,
+					total_weighted_balance,
+					total_days,
+					CASE
+						WHEN raw_avg - FLOOR(raw_avg) = 0.5 THEN
+							CASE
+								WHEN MOD(FLOOR(raw_avg)::bigint, 2) = 0 THEN FLOOR(raw_avg)
+								ELSE FLOOR(raw_avg) + 1
+							END
+						ELSE ROUND(raw_avg, 0)
+					END AS closing_mab
+				FROM closing_calc_raw
+			),
+			opening_balance_duration AS (
+				SELECT
+					gam.foracid,
+					eab.tran_date_bal,
+					EXTRACT(
+						DAY FROM (
+							LEAST(
+								CASE
+									WHEN eab.end_eod_date = DATE '2099-12-31' THEN op.opening_end_date
+									ELSE eab.end_eod_date
+								END,
+								op.opening_end_date
+							)
+							- GREATEST(eab.eod_date, op.opening_start_date)
+						)
+					) + 1 AS active_days
+				FROM tbaadm.gam gam
+				JOIN tbaadm.eab eab ON gam.acid = eab.acid
+				CROSS JOIN opening_period op
+				WHERE gam.schm_code IN ('1002','1102','1103','1104','1011')
+					AND NOT EXISTS (
+						SELECT 1 FROM excluded_accts x WHERE x.account_number = gam.foracid
+					)
+					AND eab.eod_date <= op.opening_end_date
+					AND (
+						CASE
+							WHEN eab.end_eod_date = DATE '2099-12-31' THEN op.opening_end_date
+							ELSE eab.end_eod_date
+						END
+					) >= op.opening_start_date
+					AND (
+						gam.acct_cls_date IS NULL
+						OR gam.acct_cls_date >= op.opening_start_date
+					)
+			),
+			opening_calc_raw AS (
+				SELECT
+					ob.foracid,
+					SUM(ob.tran_date_bal * ob.active_days)::numeric
+						/ NULLIF((SELECT (opening_end_date - opening_start_date) + 1 FROM opening_period), 0) AS raw_avg
+				FROM opening_balance_duration ob
+				GROUP BY ob.foracid
+			),
+			opening_mab_calc AS (
+				SELECT
+					foracid,
+					CASE
+						WHEN raw_avg - FLOOR(raw_avg) = 0.5 THEN
+							CASE
+								WHEN MOD(FLOOR(raw_avg)::bigint, 2) = 0 THEN FLOOR(raw_avg)
+								ELSE FLOOR(raw_avg) + 1
+							END
+						ELSE ROUND(raw_avg, 0)
+					END AS opening_mab
+				FROM opening_calc_raw
+			),
+			final_output AS (
+				SELECT
+					wb.foracid,
+					wb.schm_code,
+					cc.closing_mab,
+					CASE
+						WHEN sgt.acid IS NOT NULL THEN 0
+						ELSE COALESCE(om.opening_mab, 0)
+					END AS opening_mab,
+					cc.closing_mab - CASE
+						WHEN sgt.acid IS NOT NULL THEN 0
+						ELSE COALESCE(om.opening_mab, 0)
+					END AS inc_mab,
+					get.emp_name,
+					d2.auth_id,
+					d2.auth_role_id
+				FROM weighted_balances wb
+				INNER JOIN closing_calc cc ON cc.foracid = wb.foracid
+				LEFT JOIN custom.dsamap dsamap ON dsamap.account_number = wb.foracid
+				LEFT JOIN tbaadm.get get ON dsamap.rm_id = get.emp_id
+				LEFT JOIN custom.dsaauth d2 ON dsamap.rm_id = d2.user_id
+				LEFT JOIN opening_mab_calc om ON om.foracid = wb.foracid
+				LEFT JOIN sol_gl_transferred_accts sgt ON sgt.acid = wb.acid
+				GROUP BY
+					wb.foracid, wb.schm_code, cc.closing_mab,
+					get.emp_name, d2.auth_id, d2.auth_role_id,
+					om.opening_mab, sgt.acid
+			)
+			SELECT
+				fo.auth_id AS auth_id,
+				fo.auth_role_id AS auth_role_id,
+				MAX(fo.emp_name) AS auth_name,
+				COUNT(*) AS account_count,
+				COUNT(*) FILTER (WHERE fo.schm_code = '1002') AS sa,
+				COUNT(*) FILTER (WHERE fo.schm_code IN ('1102','1103')) AS ca,
+				COUNT(*) FILTER (WHERE fo.schm_code IN ('1011','1104')) AS tasc,
+				SUM(fo.closing_mab) AS total_closing_mab,
+				SUM(fo.opening_mab) AS total_opening_mab,
+				SUM(fo.inc_mab) AS total_inc_mab
+			FROM final_output fo
+			WHERE fo.auth_id IS NOT NULL
+			GROUP BY fo.auth_id, fo.auth_role_id
+			ORDER BY total_inc_mab DESC
+		""",
+		"mapping": {
+			"auth_id": "auth_id",
+			"auth_role_id": "auth_role_id",
+			"auth_name": "auth_name",
+			"account_count": "account_count",
+			"sa": "sa",
+			"ca": "ca",
+			"tasc": "tasc",
+			"total_closing_mab": "total_closing_mab",
+			"total_opening_mab": "total_opening_mab",
+			"total_inc_mab": "total_inc_mab",
+		},
+	},
 }
 
 
