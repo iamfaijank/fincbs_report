@@ -1,0 +1,474 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-09-28 11:13:28.371372",
+ "default_view": "Report",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "basic_info_sb",
+  "report_type",
+  "date",
+  "staff_agent_sb",
+  "staff_details_column",
+  "auth_id",
+  "auth_name",
+  "rm_id",
+  "rm_name",
+  "auth_role_id",
+  "cb_staff_1",
+  "agent_id",
+  "agent_name",
+  "account_customer_sb",
+  "cif_id",
+  "cif_opening_date",
+  "foracid",
+  "account_number",
+  "account_name",
+  "customer_name",
+  "cb_acc_1",
+  "account_open_date",
+  "account_close_date",
+  "account_status",
+  "account_close_flag",
+  "account_age",
+  "branch_scheme_sb",
+  "sol_id",
+  "sol_desc",
+  "cb_branch_1",
+  "scheme_code",
+  "schm_desc",
+  "financial_tx_sb",
+  "deposit_amount",
+  "clr_bal_amt",
+  "total_flow_amount",
+  "total_tran_amt",
+  "cb_fin_1",
+  "demand",
+  "commission",
+  "referencenumber",
+  "operacc_sb",
+  "operacc",
+  "dd_details_sb",
+  "bucket",
+  "deposit_period_mths",
+  "deposit_period_days",
+  "maturity_amount",
+  "maturity_date",
+  "monthly_demand_amount",
+  "monthly_collection",
+  "cb_dd_1",
+  "monthly_demand_days",
+  "ytd_demand_amount",
+  "ytd_collection",
+  "ytd_demand_days",
+  "ytd_coll_pct",
+  "colle_category",
+  "smbg_details_sb",
+  "pan_number",
+  "cb_smbg_1",
+  "is_within_one_year",
+  "casa_details_sb",
+  "account_count",
+  "sa",
+  "ca",
+  "tasc",
+  "cb_casa_1",
+  "total_closing_mab",
+  "total_opening_mab",
+  "total_inc_mab"
+ ],
+ "fields": [
+  {
+   "fieldname": "report_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Report Type",
+   "options": "BDE & BDO\nRD\nSMBG\nDD\nCASA",
+   "reqd": 1
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "basic_info_sb",
+   "fieldtype": "Section Break",
+   "label": "Basic Information"
+  },
+  {
+   "fieldname": "staff_agent_sb",
+   "fieldtype": "Section Break",
+   "label": "Staff & Agent Details"
+  },
+  {
+   "fieldname": "auth_id",
+   "fieldtype": "Data",
+   "label": "Staff ID"
+  },
+  {
+   "fieldname": "auth_name",
+   "fieldtype": "Data",
+   "label": "Staff Name"
+  },
+  {
+   "fieldname": "rm_id",
+   "fieldtype": "Data",
+   "label": "RM ID"
+  },
+  {
+   "fieldname": "rm_name",
+   "fieldtype": "Data",
+   "label": "RM Name"
+  },
+  {
+   "fieldname": "auth_role_id",
+   "fieldtype": "Data",
+   "label": "Auth Role ID"
+  },
+  {
+   "fieldname": "cb_staff_1",
+   "fieldtype": "Column Break",
+   "label": "Agent Details"
+  },
+  {
+   "fieldname": "agent_id",
+   "fieldtype": "Data",
+   "label": "Agent ID"
+  },
+  {
+   "fieldname": "agent_name",
+   "fieldtype": "Data",
+   "label": "Agent Name"
+  },
+  {
+   "fieldname": "account_customer_sb",
+   "fieldtype": "Section Break",
+   "label": "Account / Customer Details"
+  },
+  {
+   "fieldname": "cif_id",
+   "fieldtype": "Data",
+   "label": "CIF ID"
+  },
+  {
+   "fieldname": "cif_opening_date",
+   "fieldtype": "Date",
+   "label": "CIF Opening Date"
+  },
+  {
+   "fieldname": "foracid",
+   "fieldtype": "Data",
+   "label": "FORACID"
+  },
+  {
+   "fieldname": "account_number",
+   "fieldtype": "Data",
+   "label": "Account Number"
+  },
+  {
+   "fieldname": "account_name",
+   "fieldtype": "Data",
+   "label": "Account Name"
+  },
+  {
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name"
+  },
+  {
+   "fieldname": "cb_acc_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "account_open_date",
+   "fieldtype": "Date",
+   "label": "Account Open Date"
+  },
+  {
+   "fieldname": "account_close_date",
+   "fieldtype": "Date",
+   "label": "Account Close Date"
+  },
+  {
+   "fieldname": "account_status",
+   "fieldtype": "Data",
+   "label": "Account Status"
+  },
+  {
+   "default": "0",
+   "fieldname": "account_close_flag",
+   "fieldtype": "Check",
+   "label": "Account Close Flag"
+  },
+  {
+   "fieldname": "account_age",
+   "fieldtype": "Data",
+   "label": "Account Age"
+  },
+  {
+   "fieldname": "branch_scheme_sb",
+   "fieldtype": "Section Break",
+   "label": "Branch & Scheme Details"
+  },
+  {
+   "fieldname": "sol_id",
+   "fieldtype": "Data",
+   "label": "SOL ID"
+  },
+  {
+   "fieldname": "sol_desc",
+   "fieldtype": "Data",
+   "label": "SOL Description"
+  },
+  {
+   "fieldname": "cb_branch_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "scheme_code",
+   "fieldtype": "Data",
+   "label": "Scheme Code"
+  },
+  {
+   "fieldname": "schm_desc",
+   "fieldtype": "Data",
+   "label": "Scheme Description"
+  },
+  {
+   "fieldname": "financial_tx_sb",
+   "fieldtype": "Section Break",
+   "label": "Financial / Transaction Details"
+  },
+  {
+   "fieldname": "deposit_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Deposit Amount"
+  },
+  {
+   "fieldname": "clr_bal_amt",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Clearing Balance Amount"
+  },
+  {
+   "fieldname": "total_flow_amount",
+   "fieldtype": "Currency",
+   "label": "Total Flow Amount"
+  },
+  {
+   "fieldname": "total_tran_amt",
+   "fieldtype": "Currency",
+   "label": "Total Transaction Amount"
+  },
+  {
+   "fieldname": "cb_fin_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "demand",
+   "fieldtype": "Currency",
+   "label": "Demand"
+  },
+  {
+   "fieldname": "commission",
+   "fieldtype": "Currency",
+   "label": "Commission"
+  },
+  {
+   "fieldname": "referencenumber",
+   "fieldtype": "Data",
+   "label": "Reference Number"
+  },
+  {
+   "fieldname": "operacc_sb",
+   "fieldtype": "Section Break",
+   "label": "Operational Account"
+  },
+  {
+   "fieldname": "operacc",
+   "fieldtype": "Data",
+   "label": "Operational Account"
+  },
+  {
+   "depends_on": "eval:doc.report_type==\"DD\"",
+   "fieldname": "dd_details_sb",
+   "fieldtype": "Section Break",
+   "label": "DD Details"
+  },
+  {
+   "fieldname": "bucket",
+   "fieldtype": "Data",
+   "label": "Bucket"
+  },
+  {
+   "fieldname": "deposit_period_mths",
+   "fieldtype": "Int",
+   "label": "Deposit Period (Months)"
+  },
+  {
+   "fieldname": "deposit_period_days",
+   "fieldtype": "Int",
+   "label": "Deposit Period (Days)"
+  },
+  {
+   "fieldname": "maturity_amount",
+   "fieldtype": "Currency",
+   "label": "Maturity Amount"
+  },
+  {
+   "fieldname": "maturity_date",
+   "fieldtype": "Date",
+   "label": "Maturity Date"
+  },
+  {
+   "fieldname": "monthly_demand_amount",
+   "fieldtype": "Currency",
+   "label": "Monthly Demand Amount"
+  },
+  {
+   "fieldname": "monthly_collection",
+   "fieldtype": "Currency",
+   "label": "Monthly Collection"
+  },
+  {
+   "fieldname": "cb_dd_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "monthly_demand_days",
+   "fieldtype": "Int",
+   "label": "Monthly Demand Days"
+  },
+  {
+   "fieldname": "ytd_demand_amount",
+   "fieldtype": "Currency",
+   "label": "YTD Demand Amount"
+  },
+  {
+   "fieldname": "ytd_collection",
+   "fieldtype": "Currency",
+   "label": "YTD Collection"
+  },
+  {
+   "fieldname": "ytd_demand_days",
+   "fieldtype": "Int",
+   "label": "YTD Demand Days"
+  },
+  {
+   "fieldname": "ytd_coll_pct",
+   "fieldtype": "Percent",
+   "label": "YTD Collection %"
+  },
+  {
+   "fieldname": "colle_category",
+   "fieldtype": "Data",
+   "label": "Collection Category"
+  },
+  {
+   "depends_on": "eval:doc.report_type==\"SMBG\"",
+   "fieldname": "smbg_details_sb",
+   "fieldtype": "Section Break",
+   "label": "SMBG Details"
+  },
+  {
+   "fieldname": "pan_number",
+   "fieldtype": "Data",
+   "label": "PAN Number"
+  },
+  {
+   "fieldname": "cb_smbg_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_within_one_year",
+   "fieldtype": "Check",
+   "label": "Is Within One Year"
+  },
+  {
+   "depends_on": "eval:doc.report_type==\"CASA\"",
+   "fieldname": "casa_details_sb",
+   "fieldtype": "Section Break",
+   "label": "CASA Details"
+  },
+  {
+   "fieldname": "account_count",
+   "fieldtype": "Int",
+   "label": "Account Count"
+  },
+  {
+   "fieldname": "sa",
+   "fieldtype": "Int",
+   "label": "SA"
+  },
+  {
+   "fieldname": "ca",
+   "fieldtype": "Int",
+   "label": "CA"
+  },
+  {
+   "fieldname": "tasc",
+   "fieldtype": "Int",
+   "label": "TASC"
+  },
+  {
+   "fieldname": "cb_casa_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_closing_mab",
+   "fieldtype": "Currency",
+   "label": "Total Closing MAB"
+  },
+  {
+   "fieldname": "total_opening_mab",
+   "fieldtype": "Currency",
+   "label": "Total Opening MAB"
+  },
+  {
+   "fieldname": "total_inc_mab",
+   "fieldtype": "Currency",
+   "label": "Total Incremental MAB"
+  },
+  {
+   "fieldname": "staff_details_column",
+   "fieldtype": "Column Break",
+   "label": "Staff Details"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-30 16:49:52.618386",
+ "modified_by": "Administrator",
+ "module": "custom_report",
+ "name": "Staff Productivity",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
