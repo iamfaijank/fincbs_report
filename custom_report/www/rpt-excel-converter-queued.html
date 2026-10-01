@@ -1096,6 +1096,19 @@
       setStatus('cancelling after current file...', 'warn');
     }
 
+    function isPageBreakNoise(line) {
+      if (/^\s*$/.test(line)) return true;
+      if (line.includes('\f') || line.includes('␌')) return true;
+      if (/^[\s\-]{20,}$/.test(line) && line.includes('-')) return true;
+      if (/ACCOUNT\s+NUM/i.test(line)) return true;
+      if (/^\s*ERROR\s+MESSAGE[\s]*$/i.test(line)) return true;
+      if (/INTEREST\s+BOOKING\s+FAILURE\s+REPORT/i.test(line)) return true;
+      if (/-Page:\s*\d+/i.test(line)) return true;
+      if (/^\s*\d{2}-\d{2}-\d{4}\s+\d{1,2}:\d{2}:\d{2}/.test(line)) return true;
+      if (/^\s*[A-Z0-9][A-Z0-9 &'(\-.\/]*BRANCH\s*$/.test(line)) return true;
+      return false;
+    }
+
     async function parseRPTFileInChunks(file, filename) {
       const decoder = new TextDecoder('utf-8');
       let offset = 0;
@@ -1105,6 +1118,69 @@
       let dashCount = 0;
       let pendingRecord = null;
       let stopFile = false;
+      let skipToPageRule = false;
+
+      function processLine(line) {
+        const isRecordLine = /^\s*\d{8,}/.test(line);
+        const isRuleLine = /^[\s\-]{20,}$/.test(line) && line.includes('-');
+
+        if (pendingRecord) {
+          if (isRecordLine) {
+            result.push(pendingRecord);
+            pendingRecord = null;
+            skipToPageRule = false;
+          } else if (/\*{2,}/.test(line)) {
+            result.push(pendingRecord);
+            pendingRecord = null;
+            stopFile = true;
+            return true;
+          } else if (skipToPageRule) {
+            if (isRuleLine || /ACCOUNT\s+NUM/i.test(line) || /INTEREST\s+BOOKING\s+FAILURE\s+REPORT/i.test(line)) {
+              skipToPageRule = false;
+            }
+            return false;
+          } else if (isPageBreakNoise(line)) {
+            if (/-Page:\s*\d+/i.test(line)) skipToPageRule = true;
+            return false;
+          } else {
+            pendingRecord.error_message = cleanField(line);
+            result.push(pendingRecord);
+            pendingRecord = null;
+            return false;
+          }
+        }
+
+        if (isRuleLine) {
+          dashCount++;
+          if (dashCount >= 1) inData = true;
+          return false;
+        }
+
+        if (!inData) return false;
+        if (/^\s*$/.test(line)) return false;
+        if (/ACCOUNT\s+NUM/i.test(line)) return false;
+        if (/^\s*ERROR\s+MESSAGE[\s]*$/i.test(line)) return false;
+
+        if (/\*{2,}/.test(line)) {
+          stopFile = true;
+          return true;
+        }
+
+        if (isRecordLine) {
+          const parts = line.trim().split(/\s+/);
+
+          pendingRecord = {
+            source: filename,
+            account_num: cleanField(parts[0] || ''),
+            dr_cr: cleanField(parts[1] || ''),
+            start_date: cleanField(parts[2] || ''),
+            end_date: cleanField(parts[3] || ''),
+            master_ac: cleanField(parts[4] || ''),
+            error_message: ''
+          };
+        }
+        return false;
+      }
 
       while (offset < file.size) {
         if (cancelRequested) break;
@@ -1118,44 +1194,7 @@
         carry = lines.pop() || '';
 
         for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-
-          if (pendingRecord) {
-            pendingRecord.error_message = cleanField(line);
-            result.push(pendingRecord);
-            pendingRecord = null;
-            continue;
-          }
-
-          if (/^[\s\-]{20,}$/.test(line) && line.includes('-')) {
-            dashCount++;
-            if (dashCount >= 1) inData = true;
-            continue;
-          }
-
-          if (!inData) continue;
-          if (/^\s*$/.test(line)) continue;
-          if (/ACCOUNT\s+NUM/i.test(line)) continue;
-          if (/^[\s]*ERROR\s+MESSAGE[\s]*$/i.test(line)) continue;
-
-          if (/\*{2,}/.test(line)) {
-            stopFile = true;
-            break;
-          }
-
-          if (/^\s*\d{8,}/.test(line)) {
-            const parts = line.trim().split(/\s+/);
-
-            pendingRecord = {
-              source: filename,
-              account_num: cleanField(parts[0] || ''),
-              dr_cr: cleanField(parts[1] || ''),
-              start_date: cleanField(parts[2] || ''),
-              end_date: cleanField(parts[3] || ''),
-              master_ac: cleanField(parts[4] || ''),
-              error_message: ''
-            };
-          }
+          if (processLine(lines[i])) break;
         }
 
         if (stopFile) break;
@@ -1164,8 +1203,11 @@
         await yieldToBrowser();
       }
 
-      if (carry.trim() && pendingRecord) {
-        pendingRecord.error_message = cleanField(carry);
+      if (!cancelRequested && !stopFile && carry.trim()) {
+        processLine(carry);
+      }
+
+      if (pendingRecord) {
         result.push(pendingRecord);
       }
 
