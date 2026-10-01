@@ -1994,7 +1994,7 @@ def get_ntb_evr_data(selected_date=None):
     dt = getdate(selected_date)
     report_end = dt
     report_start = dt.replace(day=1)
-    prev_month_end = add_months(report_start, -1)
+    prev_month_end = report_start - datetime.timedelta(days=1)
     prev_month_start = prev_month_end.replace(day=1)
 
     if dt.month >= 4:
@@ -2170,7 +2170,7 @@ def get_ntb_evr_data(selected_date=None):
 
 
 @frappe.whitelist()
-def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0, selected_zones=None):
+def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0, selected_zones=None, search=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate, add_months
     import datetime
@@ -2214,7 +2214,7 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0, selected_
     dt = getdate(selected_date)
     report_end = dt
     report_start = dt.replace(day=1)
-    prev_month_end = add_months(report_start, -1)
+    prev_month_end = report_start - datetime.timedelta(days=1)
     prev_month_start = prev_month_end.replace(day=1)
 
     report_start_str = str(report_start)
@@ -2396,8 +2396,31 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0, selected_
         )
 
     base_query_no_order = query.rsplit("ORDER BY", 1)[0]
-    count_query = f"SELECT COUNT(*) FROM ({base_query_no_order}) sub"
-    paginated_query = f"{query} LIMIT {limit} OFFSET {offset}"
+
+    search = (search or "").strip()
+    if search:
+        safe_search = search.replace("'", "''")
+        like = f"%{safe_search}%"
+        if search.isdigit():
+            search_cols = ["sub.sol_id"]
+        elif any(c.isalpha() for c in search) and any(c.isdigit() for c in search):
+            search_cols = ["sub.rm_id"]
+        elif search.isalpha():
+            search_cols = ["sub.emp_name", "sub.sol_desc"]
+        else:
+            search_cols = ["sub.sol_id", "sub.sol_desc", "sub.rm_id", "sub.emp_name"]
+        or_clause = " OR ".join(
+            f"COALESCE({col}, '') ILIKE '{like}'" for col in search_cols
+        )
+        search_where = f"WHERE ({or_clause})"
+        count_query = f"SELECT COUNT(*) FROM ({base_query_no_order}) sub {search_where}"
+        paginated_query = (
+            f"SELECT * FROM ({base_query_no_order}) sub {search_where} "
+            f"ORDER BY circle_office_name, region_name, sol_id LIMIT {limit} OFFSET {offset}"
+        )
+    else:
+        count_query = f"SELECT COUNT(*) FROM ({base_query_no_order}) sub"
+        paginated_query = f"{query} LIMIT {limit} OFFSET {offset}"
 
     conn = get_dr_connection()
     if not conn:

@@ -1450,7 +1450,7 @@ class DrishtiDashboard {
 							.cavg-page-btn.cfg-loaded:hover:not(.cavg-active) { background: #dcfce7; }
 						</style>
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="cavg-controls">
-							<input type="text" id="cavg-search" placeholder="Search account, CIF, branch..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 220px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<input type="text" id="cavg-search" placeholder="Search: digits=SOL ID, alphanumeric=RM ID, letters=branch/emp name..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 220px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="cavg-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
@@ -1618,16 +1618,7 @@ class DrishtiDashboard {
 
 
 						if (self.searchTerm) {
-							const pageData = self.cachedPages[self.currentPage] || [];
-							const normSolId = (v) => String(v == null ? "" : v).replace(/^0+/, "").trim();
-							const bmSol = (dashboardInstance.isBranchManager && dashboardInstance.userSolId)
-								? normSolId(dashboardInstance.userSolId)
-								: null;
-							const filteredCount = pageData.filter(r =>
-								(!bmSol || normSolId(r.sol_id) === bmSol) &&
-								Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm))
-							).length;
-							container.find("#cavg-count").text(`${filteredCount.toLocaleString()} matching records (Page ${self.currentPage})`);
+							container.find("#cavg-count").text(`${(self.totalRows || 0).toLocaleString()} matching records${self.totalPages > 1 ? ` (Page ${self.currentPage} of ${self.totalPages})` : ""}`);
 							return;
 						}
 
@@ -1689,9 +1680,29 @@ class DrishtiDashboard {
 						const bmSol = (dashboardInstance.isBranchManager && dashboardInstance.userSolId)
 							? normSolId(dashboardInstance.userSolId)
 							: null;
-						let filtered = self.searchTerm
-							? pageData.filter(r => Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm)))
-							: pageData;
+						let filtered = pageData;
+						if (self.searchTerm) {
+							const st = self.searchTerm;
+							const hasAlpha = /[a-z]/i.test(st);
+							const hasDigit = /[0-9]/.test(st);
+							let matchRow;
+							if (/^[0-9]+$/.test(st)) {
+								matchRow = r => r.sol_id != null && String(r.sol_id).toLowerCase().includes(st);
+							} else if (hasAlpha && hasDigit) {
+								matchRow = r => r.rm_id != null && String(r.rm_id).toLowerCase().includes(st);
+							} else if (/^[a-z]+$/i.test(st)) {
+								matchRow = r =>
+									(r.emp_name != null && String(r.emp_name).toLowerCase().includes(st)) ||
+									(r.sol_desc != null && String(r.sol_desc).toLowerCase().includes(st));
+							} else {
+								matchRow = r =>
+									(r.sol_id != null && String(r.sol_id).toLowerCase().includes(st)) ||
+									(r.sol_desc != null && String(r.sol_desc).toLowerCase().includes(st)) ||
+									(r.rm_id != null && String(r.rm_id).toLowerCase().includes(st)) ||
+									(r.emp_name != null && String(r.emp_name).toLowerCase().includes(st));
+							}
+							filtered = pageData.filter(matchRow);
+						}
 						if (bmSol) {
 							filtered = filtered.filter(r => normSolId(r.sol_id) === bmSol);
 						}
@@ -1716,8 +1727,10 @@ class DrishtiDashboard {
 
 					const fetchPageAjax = (pageNum) => {
 						return new Promise((resolve) => {
+							const seq = self._renderSeq;
 							const selDate = dashboardInstance.state.selectedDate || frappe.datetime.get_today();
 							const zoneKey = (self.selectedMisZones || []).slice().sort().join("_");
+							const searchKey = self.searchTerm ? `_s_${self.searchTerm}` : "";
 
 							// Check memory cache
 							if (self.cachedPages[pageNum] && self.cacheDate === selDate) {
@@ -1726,8 +1739,8 @@ class DrishtiDashboard {
 							}
 
 							// Check sessionStorage cache fallback
-							const ssKey = `sahayog_cavg_p_${frappe.session.user}_${selDate}_${zoneKey}_${pageNum}`;
-							const metaKey = `sahayog_cavg_meta_${frappe.session.user}_${selDate}_${zoneKey}`;
+							const ssKey = `sahayog_cavg_p_${frappe.session.user}_${selDate}_${zoneKey}${searchKey}_${pageNum}`;
+							const metaKey = `sahayog_cavg_meta_${frappe.session.user}_${selDate}_${zoneKey}${searchKey}`;
 							try {
 								const sData = sessionStorage.getItem(ssKey);
 								const sMeta = sessionStorage.getItem(metaKey);
@@ -1753,9 +1766,11 @@ class DrishtiDashboard {
 									selected_date: selDate,
 									limit: self.pageSize,
 									offset: offset,
-									selected_zones: JSON.stringify(self.selectedMisZones || [])
+									selected_zones: JSON.stringify(self.selectedMisZones || []),
+									search: self.searchTerm || ""
 								},
 								callback: function (r) {
+									if (seq !== self._renderSeq) { resolve(false); return; }
 									if (r.message && r.message.data) {
 										self.totalRows = r.message.total_rows || 0;
 										self.totalPages = Math.ceil(self.totalRows / self.pageSize) || 1;
@@ -1841,8 +1856,29 @@ class DrishtiDashboard {
 					container.off("input", "#cavg-search").on("input", "#cavg-search", function () {
 						clearTimeout(self._searchTimeout);
 						self._searchTimeout = setTimeout(() => {
-							self.searchTerm = $(this).val().toLowerCase().trim();
-							if (Object.keys(self.cachedPages).length > 0) renderPage();
+							const newTerm = $(this).val().toLowerCase().trim();
+							if (newTerm === self.searchTerm) return;
+							self.searchTerm = newTerm;
+							self.cachedPages = {};
+							self.currentPage = 1;
+							self.totalRows = 0;
+							self.totalPages = 0;
+							self.cacheDate = null;
+							self._bgRunning = false;
+							self._renderSeq++;
+							container.find("#cavg-loading").show();
+							container.find("#cavg-table-container").hide();
+							fetchPageAjax(1).then((ok) => {
+								container.find("#cavg-loading").hide();
+								if (ok) {
+									container.find("#cavg-table-container").show();
+									self.currentPage = 1;
+									renderPage();
+									startBgFetch(2);
+								} else {
+									updateCount();
+								}
+							});
 						}, 300);
 					});
 
