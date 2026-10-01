@@ -1994,7 +1994,7 @@ def get_ntb_evr_data(selected_date=None):
     dt = getdate(selected_date)
     report_end = dt
     report_start = dt.replace(day=1)
-    prev_month_end = add_months(report_start, -1)
+    prev_month_end = report_start - datetime.timedelta(days=1)
     prev_month_start = prev_month_end.replace(day=1)
 
     if dt.month >= 4:
@@ -2214,7 +2214,7 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0, selected_
     dt = getdate(selected_date)
     report_end = dt
     report_start = dt.replace(day=1)
-    prev_month_end = add_months(report_start, -1)
+    prev_month_end = report_start - datetime.timedelta(days=1)
     prev_month_start = prev_month_end.replace(day=1)
 
     report_start_str = str(report_start)
