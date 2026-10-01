@@ -1618,19 +1618,7 @@ class DrishtiDashboard {
 
 
 						if (self.searchTerm) {
-							const pageData = self.cachedPages[self.currentPage] || [];
-							const normSolId = (v) => String(v == null ? "" : v).replace(/^0+/, "").trim();
-							const bmSol = (dashboardInstance.isBranchManager && dashboardInstance.userSolId)
-								? normSolId(dashboardInstance.userSolId)
-								: null;
-							const filteredCount = pageData.filter(r =>
-								(!bmSol || normSolId(r.sol_id) === bmSol) &&
-								((r.sol_id != null && String(r.sol_id).toLowerCase().includes(self.searchTerm)) ||
-								(r.sol_desc != null && String(r.sol_desc).toLowerCase().includes(self.searchTerm)) ||
-								(r.rm_id != null && String(r.rm_id).toLowerCase().includes(self.searchTerm)) ||
-								(r.emp_name != null && String(r.emp_name).toLowerCase().includes(self.searchTerm)))
-							).length;
-							container.find("#cavg-count").text(`${filteredCount.toLocaleString()} matching records (Page ${self.currentPage})`);
+							container.find("#cavg-count").text(`${(self.totalRows || 0).toLocaleString()} matching records${self.totalPages > 1 ? ` (Page ${self.currentPage} of ${self.totalPages})` : ""}`);
 							return;
 						}
 
@@ -1724,8 +1712,10 @@ class DrishtiDashboard {
 
 					const fetchPageAjax = (pageNum) => {
 						return new Promise((resolve) => {
+							const seq = self._renderSeq;
 							const selDate = dashboardInstance.state.selectedDate || frappe.datetime.get_today();
 							const zoneKey = (self.selectedMisZones || []).slice().sort().join("_");
+							const searchKey = self.searchTerm ? `_s_${self.searchTerm}` : "";
 
 							// Check memory cache
 							if (self.cachedPages[pageNum] && self.cacheDate === selDate) {
@@ -1734,8 +1724,8 @@ class DrishtiDashboard {
 							}
 
 							// Check sessionStorage cache fallback
-							const ssKey = `sahayog_cavg_p_${frappe.session.user}_${selDate}_${zoneKey}_${pageNum}`;
-							const metaKey = `sahayog_cavg_meta_${frappe.session.user}_${selDate}_${zoneKey}`;
+							const ssKey = `sahayog_cavg_p_${frappe.session.user}_${selDate}_${zoneKey}${searchKey}_${pageNum}`;
+							const metaKey = `sahayog_cavg_meta_${frappe.session.user}_${selDate}_${zoneKey}${searchKey}`;
 							try {
 								const sData = sessionStorage.getItem(ssKey);
 								const sMeta = sessionStorage.getItem(metaKey);
@@ -1761,9 +1751,11 @@ class DrishtiDashboard {
 									selected_date: selDate,
 									limit: self.pageSize,
 									offset: offset,
-									selected_zones: JSON.stringify(self.selectedMisZones || [])
+									selected_zones: JSON.stringify(self.selectedMisZones || []),
+									search: self.searchTerm || ""
 								},
 								callback: function (r) {
+									if (seq !== self._renderSeq) { resolve(false); return; }
 									if (r.message && r.message.data) {
 										self.totalRows = r.message.total_rows || 0;
 										self.totalPages = Math.ceil(self.totalRows / self.pageSize) || 1;
@@ -1849,8 +1841,29 @@ class DrishtiDashboard {
 					container.off("input", "#cavg-search").on("input", "#cavg-search", function () {
 						clearTimeout(self._searchTimeout);
 						self._searchTimeout = setTimeout(() => {
-							self.searchTerm = $(this).val().toLowerCase().trim();
-							if (Object.keys(self.cachedPages).length > 0) renderPage();
+							const newTerm = $(this).val().toLowerCase().trim();
+							if (newTerm === self.searchTerm) return;
+							self.searchTerm = newTerm;
+							self.cachedPages = {};
+							self.currentPage = 1;
+							self.totalRows = 0;
+							self.totalPages = 0;
+							self.cacheDate = null;
+							self._bgRunning = false;
+							self._renderSeq++;
+							container.find("#cavg-loading").show();
+							container.find("#cavg-table-container").hide();
+							fetchPageAjax(1).then((ok) => {
+								container.find("#cavg-loading").hide();
+								if (ok) {
+									container.find("#cavg-table-container").show();
+									self.currentPage = 1;
+									renderPage();
+									startBgFetch(2);
+								} else {
+									updateCount();
+								}
+							});
 						}, 300);
 					});
 
