@@ -1680,14 +1680,29 @@ class DrishtiDashboard {
 						const bmSol = (dashboardInstance.isBranchManager && dashboardInstance.userSolId)
 							? normSolId(dashboardInstance.userSolId)
 							: null;
-						let filtered = self.searchTerm
-							? pageData.filter(r =>
-								(r.sol_id != null && String(r.sol_id).toLowerCase().includes(self.searchTerm)) ||
-								(r.sol_desc != null && String(r.sol_desc).toLowerCase().includes(self.searchTerm)) ||
-								(r.rm_id != null && String(r.rm_id).toLowerCase().includes(self.searchTerm)) ||
-								(r.emp_name != null && String(r.emp_name).toLowerCase().includes(self.searchTerm))
-							)
-							: pageData;
+						let filtered = pageData;
+						if (self.searchTerm) {
+							const st = self.searchTerm;
+							const hasAlpha = /[a-z]/i.test(st);
+							const hasDigit = /[0-9]/.test(st);
+							let matchRow;
+							if (/^[0-9]+$/.test(st)) {
+								matchRow = r => r.sol_id != null && String(r.sol_id).toLowerCase().includes(st);
+							} else if (hasAlpha && hasDigit) {
+								matchRow = r => r.rm_id != null && String(r.rm_id).toLowerCase().includes(st);
+							} else if (/^[a-z]+$/i.test(st)) {
+								matchRow = r =>
+									(r.emp_name != null && String(r.emp_name).toLowerCase().includes(st)) ||
+									(r.sol_desc != null && String(r.sol_desc).toLowerCase().includes(st));
+							} else {
+								matchRow = r =>
+									(r.sol_id != null && String(r.sol_id).toLowerCase().includes(st)) ||
+									(r.sol_desc != null && String(r.sol_desc).toLowerCase().includes(st)) ||
+									(r.rm_id != null && String(r.rm_id).toLowerCase().includes(st)) ||
+									(r.emp_name != null && String(r.emp_name).toLowerCase().includes(st));
+							}
+							filtered = pageData.filter(matchRow);
+						}
 						if (bmSol) {
 							filtered = filtered.filter(r => normSolId(r.sol_id) === bmSol);
 						}
