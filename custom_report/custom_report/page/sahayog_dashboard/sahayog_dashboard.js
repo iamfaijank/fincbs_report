@@ -1450,7 +1450,7 @@ class DrishtiDashboard {
 							.cavg-page-btn.cfg-loaded:hover:not(.cavg-active) { background: #dcfce7; }
 						</style>
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="cavg-controls">
-							<input type="text" id="cavg-search" placeholder="Search SOL ID, branch, RM ID, emp name..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 220px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<input type="text" id="cavg-search" placeholder="Search: digits=SOL ID, alphanumeric=RM ID, letters=branch/emp name..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 220px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="cavg-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
