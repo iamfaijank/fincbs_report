@@ -2401,12 +2401,18 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0, selected_
     if search:
         safe_search = search.replace("'", "''")
         like = f"%{safe_search}%"
-        search_where = (
-            "WHERE (COALESCE(sub.sol_id, '') ILIKE '{like}' "
-            "OR COALESCE(sub.sol_desc, '') ILIKE '{like}' "
-            "OR COALESCE(sub.rm_id, '') ILIKE '{like}' "
-            "OR COALESCE(sub.emp_name, '') ILIKE '{like}')"
-        ).format(like=like)
+        if search.isdigit():
+            search_cols = ["sub.sol_id"]
+        elif any(c.isalpha() for c in search) and any(c.isdigit() for c in search):
+            search_cols = ["sub.rm_id"]
+        elif search.isalpha():
+            search_cols = ["sub.emp_name", "sub.sol_desc"]
+        else:
+            search_cols = ["sub.sol_id", "sub.sol_desc", "sub.rm_id", "sub.emp_name"]
+        or_clause = " OR ".join(
+            f"COALESCE({col}, '') ILIKE '{like}'" for col in search_cols
+        )
+        search_where = f"WHERE ({or_clause})"
         count_query = f"SELECT COUNT(*) FROM ({base_query_no_order}) sub {search_where}"
         paginated_query = (
             f"SELECT * FROM ({base_query_no_order}) sub {search_where} "
