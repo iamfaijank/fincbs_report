@@ -1625,7 +1625,8 @@ class DrishtiDashboard {
 								: null;
 							const filteredCount = pageData.filter(r =>
 								(!bmSol || normSolId(r.sol_id) === bmSol) &&
-								Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm))
+								((r.sol_id != null && String(r.sol_id).toLowerCase().includes(self.searchTerm)) ||
+								(r.sol_desc != null && String(r.sol_desc).toLowerCase().includes(self.searchTerm)))
 							).length;
 							container.find("#cavg-count").text(`${filteredCount.toLocaleString()} matching records (Page ${self.currentPage})`);
 							return;
@@ -1690,7 +1691,10 @@ class DrishtiDashboard {
 							? normSolId(dashboardInstance.userSolId)
 							: null;
 						let filtered = self.searchTerm
-							? pageData.filter(r => Object.values(r).some(v => v !== null && String(v).toLowerCase().includes(self.searchTerm)))
+							? pageData.filter(r =>
+								(r.sol_id != null && String(r.sol_id).toLowerCase().includes(self.searchTerm)) ||
+								(r.sol_desc != null && String(r.sol_desc).toLowerCase().includes(self.searchTerm))
+							)
 							: pageData;
 						if (bmSol) {
 							filtered = filtered.filter(r => normSolId(r.sol_id) === bmSol);
