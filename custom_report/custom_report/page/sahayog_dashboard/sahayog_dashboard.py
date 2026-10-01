@@ -2170,7 +2170,7 @@ def get_ntb_evr_data(selected_date=None):
 
 
 @frappe.whitelist()
-def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0, selected_zones=None):
+def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0, selected_zones=None, search=None):
     from custom_report.db_connection import get_dr_connection
     from frappe.utils import getdate, add_months
     import datetime
@@ -2396,8 +2396,25 @@ def get_cust_wise_avg_balance(selected_date=None, limit=500, offset=0, selected_
         )
 
     base_query_no_order = query.rsplit("ORDER BY", 1)[0]
-    count_query = f"SELECT COUNT(*) FROM ({base_query_no_order}) sub"
-    paginated_query = f"{query} LIMIT {limit} OFFSET {offset}"
+
+    search = (search or "").strip()
+    if search:
+        safe_search = search.replace("'", "''")
+        like = f"%{safe_search}%"
+        search_where = (
+            "WHERE (COALESCE(sub.sol_id, '') ILIKE '{like}' "
+            "OR COALESCE(sub.sol_desc, '') ILIKE '{like}' "
+            "OR COALESCE(sub.rm_id, '') ILIKE '{like}' "
+            "OR COALESCE(sub.emp_name, '') ILIKE '{like}')"
+        ).format(like=like)
+        count_query = f"SELECT COUNT(*) FROM ({base_query_no_order}) sub {search_where}"
+        paginated_query = (
+            f"SELECT * FROM ({base_query_no_order}) sub {search_where} "
+            f"ORDER BY circle_office_name, region_name, sol_id LIMIT {limit} OFFSET {offset}"
+        )
+    else:
+        count_query = f"SELECT COUNT(*) FROM ({base_query_no_order}) sub"
+        paginated_query = f"{query} LIMIT {limit} OFFSET {offset}"
 
     conn = get_dr_connection()
     if not conn:
