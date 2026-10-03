@@ -12713,7 +12713,7 @@ class DrishtiDashboard {
                  <td>
 					<div style="display: flex; align-items: center; gap: 4px; justify-content: center;">
 						<span class="pct-value" style="color: ${this.getPctColor(100 - gapPct)}; min-width: 36px; text-align: right;">${gapPct.toFixed(2)}%</span>
-						${this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct))}
+						${"" /* hidden: this.renderProgressBar(gapPct, this.getPctColor(100 - gapPct)) */}
 					</div>
 				</td>
             `;
