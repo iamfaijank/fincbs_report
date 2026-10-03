@@ -17,6 +17,14 @@ const getRemainingWorkingDaysExcludingSundays = (year, monthIndex, currentDay) =
 };
 
 frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
+	// Drop per-tab CASA AVG page cache on every load/refresh so Report Preference
+	// permission changes are reflected immediately (sessionStorage survives reloads).
+	try {
+		Object.keys(sessionStorage).forEach((k) => {
+			if (k && k.startsWith("sahayog_cavg_")) sessionStorage.removeItem(k);
+		});
+	} catch (e) {}
+
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
 		title: "Drishti",
@@ -1894,11 +1902,10 @@ class DrishtiDashboard {
 
 						try {
 							const selDate = dashboardInstance.state.selectedDate;
-							const prefix = `sahayog_cavg_p_${selDate}_`;
-							const metaKey = `sahayog_cavg_meta_${selDate}`;
-							sessionStorage.removeItem(metaKey);
+							const pagePrefix = `sahayog_cavg_p_${frappe.session.user}_${selDate}_`;
+							const metaPrefix = `sahayog_cavg_meta_${frappe.session.user}_${selDate}`;
 							Object.keys(sessionStorage).forEach(k => {
-								if (k && k.startsWith(prefix)) sessionStorage.removeItem(k);
+								if (k && (k.startsWith(pagePrefix) || k.startsWith(metaPrefix))) sessionStorage.removeItem(k);
 							});
 						} catch (e) { }
 

@@ -37,9 +37,12 @@ def sahayog_cache(ttl=86400):
                 pos_params = [p for p in sig.parameters.values() if p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)]
                 filtered_args = args[:len(pos_params)]
 
-            # Generate deterministic cache key based on function name, session user, and filtered arguments
+            # Generate deterministic cache key based on function name, session user, live permission
+            # fingerprint and filtered arguments. The fingerprint makes any Report Preference / Employee
+            # change produce a new key instantly, so stale permission results are never served.
             current_user = getattr(frappe.session, "user", "Guest")
-            args_str = f"{current_user}_{filtered_args}_{json.dumps(filtered_kwargs, sort_keys=True, default=str)}"
+            perm_fp = _get_permission_fingerprint(current_user)
+            args_str = f"{current_user}_{perm_fp}_{filtered_args}_{json.dumps(filtered_kwargs, sort_keys=True, default=str)}"
             key_hash = hashlib.md5(args_str.encode('utf-8')).hexdigest()
             cache_key = f"sahayog_cache|{func.__name__}|{key_hash}"
             
@@ -65,6 +68,22 @@ def sahayog_cache(ttl=86400):
         wrapper.__doc__ = func.__doc__
         return wrapper
     return decorator
+
+
+def _get_permission_fingerprint(user):
+    """
+    Hash of the user's live Report Preference / Employee permissions (read from DB, never cached
+    across requests). Memoized per request so multiple cached calls in one request reuse it.
+    """
+    import hashlib
+
+    memo = frappe.local.flags.setdefault("sahayog_perm_fp", {})
+    if user not in memo:
+        perms = get_user_report_permissions(user)
+        memo[user] = hashlib.md5(
+            json.dumps(perms, sort_keys=True, default=str).encode("utf-8")
+        ).hexdigest()
+    return memo[user]
 
 
 CATEGORY_ORDER = ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Zero Level"]
@@ -159,8 +178,12 @@ def clear_sahayog_branches_cache(doc=None, method=None):
 
 @frappe.whitelist()
 def clear_user_permissions_cache(doc=None, method=None):
-    """Clears the cached report permissions from Redis."""
-    frappe.cache.delete_keys("sahayog_cache|get_user_report_permissions|*")
+    """
+    Permissions are never cached: every sahayog_cache key embeds a live permission fingerprint,
+    so a Report Preference change takes effect on the next request. Here we only drop the
+    per-request memo so the current request (e.g. the save itself) re-reads permissions.
+    """
+    frappe.local.flags.pop("sahayog_perm_fp", None)
     return {"status": "success", "message": "User report permissions cache cleared."}
 
 
