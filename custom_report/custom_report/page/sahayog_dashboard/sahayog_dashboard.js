@@ -8720,6 +8720,26 @@ class DrishtiDashboard {
                         <i class="fa fa-users"></i>
                     </div>
                 </div>
+                <div class="summary-card">
+                    <div class="summary-info">
+                        <span class="summary-label">Actual DRR</span>
+                        <span class="summary-value" id="summary-actual-drr">-</span>
+                        <span class="summary-subtext success">&nbsp;</span>
+                    </div>
+                    <div class="summary-icon-box">
+                        <i class="fa fa-percent"></i>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-info">
+                        <span class="summary-label">Required DRR</span>
+                        <span class="summary-value" id="summary-required-drr">-</span>
+                        <span class="summary-subtext success">&nbsp;</span>
+                    </div>
+                    <div class="summary-icon-box">
+                        <i class="fa fa-balance-scale"></i>
+                    </div>
+                </div>
             </div>
             <div class="filter-tags-row">
                 <!-- Zone Selection -->
