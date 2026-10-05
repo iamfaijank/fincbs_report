@@ -8,6 +8,7 @@ import ZoneFilter from '@/components/sidebar/ZoneFilter.vue'
 import RegionFilter from '@/components/sidebar/RegionFilter.vue'
 import DistrictFilter from '@/components/sidebar/DistrictFilter.vue'
 import BranchFilter from '@/components/sidebar/BranchFilter.vue'
+import ViewToggle from '@/components/tables/ViewToggle.vue'
 
 const { collapsed, toggleSidebar } = useSidebar()
 const { numberFormat } = useNumberFormat()
@@ -25,6 +26,7 @@ const asOfDate = ref('')
 const asOfMonth = ref('6')
 const segmentSelect = ref('all')
 const isDark = ref(localStorage.getItem('theme') === 'dark')
+const chartTableViewMode = ref('table')
 
 const categories = ref([
   { name: 'Pinnacle', range: '>100%', color: '#4fffb0', count: 42, enabled: true },
@@ -116,6 +118,10 @@ watch(financialYear, (val) => {
   localStorage.setItem('financialYear', val)
 })
 
+watch(chartTableViewMode, (val) => {
+  localStorage.setItem('chartTableViewMode', val)
+})
+
 const PREFS_KEY = 'drishti_sidebar_prefs'
 
 function loadPrefs() {
@@ -130,6 +136,12 @@ function loadPrefs() {
       if (p.numberFormat) numberFormat.value = p.numberFormat
     }
   } catch {}
+  
+  // Load chart/table view mode separately
+  const savedChartTableViewMode = localStorage.getItem('chartTableViewMode')
+  if (savedChartTableViewMode && ['table', 'chart'].includes(savedChartTableViewMode)) {
+    chartTableViewMode.value = savedChartTableViewMode
+  }
 }
 
 function savePrefs() {
@@ -303,6 +315,14 @@ initFilters()
               <span class="toggle-slider"></span>
             </label>
           </div>
+        </div>
+      </div>
+
+      <!-- CHART/TABLE VIEW TOGGLE -->
+      <div class="sb-section">
+        <div class="sb-label">View Type</div>
+        <div class="flex justify-center">
+          <ViewToggle v-model="chartTableViewMode" color="#065f46" />
         </div>
       </div>
 
