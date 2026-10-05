@@ -12844,7 +12844,8 @@ class DrishtiDashboard {
 	spellCardValue(value) {
 		const raw = parseFloat(value);
 		const n = Math.abs(raw || 0);
-		if (n >= 100 && n < 1000) return (raw < 0 ? "-" : "") + (n / 100).toFixed(2) + " H";
+		if (n === 0) return "Zero";
+		if (n < 1000) return (raw < 0 ? "-" : "") + (n / 1000).toFixed(3) + " K";
 		return this.spellNumber(value);
 	}
 
