@@ -5249,6 +5249,7 @@ class DrishtiDashboard {
 										<td style="padding: 6px 14px; color: #475569; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtPerc(branch.renewal_amount, branch.maturity_paid)}</td>
 									</tr>`;
 
+									/* commented out: per-CIF record rows (Maturity Tracker last level)
 									if (canViewCif) {
 										branch.records.forEach((rec, ai) => {
 											const showRecord = zoneExpanded && regionExpanded && districtExpanded && branchExpanded;
@@ -5270,9 +5271,10 @@ class DrishtiDashboard {
 												<td style="padding: 6px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${rec.deposit_done_flag || "No"}</td>
 <td style="padding: 6px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtAmt(rec.renewal_amount)}</td>
 											<td style="padding: 6px 14px; color: #64748b; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtPerc(rec.renewal_amount, rec.maturity_paid)}</td>
-										</tr>`;
+												</tr>`;
 										});
 									}
+									*/
 								});
 							});
 						});
