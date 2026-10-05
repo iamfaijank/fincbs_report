@@ -524,12 +524,15 @@ class DrishtiDashboard {
 						if (!val || val === 0) return "₹0";
 						return "₹" + dashboardInstance.formatCurrency(val);
 					};
+					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
+					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellCardValue(val) : fmtCount(val);
+					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellCardValue(val) : fmtAmt(val);
 					const kpiCards = [
-						{ label: "Total Accounts", value: fmtCount(totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
-						{ label: "Total Collection", value: fmtAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
-						{ label: "Pending Accounts", value: fmtCount(pendingAccounts), color: "#f59e0b", bg: "#fffbeb", icon: "⏳" },
-						{ label: "Pending Instalments", value: fmtCount(pendingInstalments), color: "#f97316", bg: "#fff7ed", icon: "📅" },
-						{ label: "Pending Amount", value: fmtAmt(pendingAmount), color: "#ef4444", bg: "#fef2f2", icon: "🔴" }
+						{ label: "Total Accounts", value: cardCount(totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
+						{ label: "Total Collection", value: cardAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
+						{ label: "Pending Accounts", value: cardCount(pendingAccounts), color: "#f59e0b", bg: "#fffbeb", icon: "⏳" },
+						{ label: "Pending Instalments", value: cardCount(pendingInstalments), color: "#f97316", bg: "#fff7ed", icon: "📅" },
+						{ label: "Pending Amount", value: cardAmt(pendingAmount), color: "#ef4444", bg: "#fef2f2", icon: "🔴" }
 					];
 					container.html(`
 						<style>
@@ -984,14 +987,16 @@ class DrishtiDashboard {
 						totSA += r.sa || 0; totCA += r.ca || 0; totTASC += r.tasc || 0; totRD += r.rd || 0;
 						totSMBG += r.smbg || 0; totDD += r.dd || 0; totFD += r.fd || 0; totAll += r.total || 0;
 					});
+					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
+					const cardVal = (v) => (wordsMode && Math.abs(parseFloat(v) || 0) < 1000) ? dashboardInstance.spellCardValue(v) : new Intl.NumberFormat("en-IN").format(v);
 					container.html(`
 						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px;">
 							${[
 							{ l: "SA Accounts", v: totSA }, { l: "CA Accounts", v: totCA }, { l: "TASC Accounts", v: totTASC },
 							{ l: "RD Accounts", v: totRD }, { l: "SMBG Accounts", v: totSMBG }, { l: "DD Accounts", v: totDD },
 							{ l: "FD Accounts", v: totFD }
-						].map(c => `<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;"><div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">${c.l}</div><div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(c.v)}</div></div>`).join('')}
-							<div style="padding: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; text-align: center;"><div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase;">Total Opened</div><div style="font-size: 20px; font-weight: 800; color: #15803d; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totAll)}</div></div>
+						].map(c => `<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;"><div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">${c.l}</div><div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${cardVal(c.v)}</div></div>`).join('')}
+							<div style="padding: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; text-align: center;"><div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase;">Total Opened</div><div style="font-size: 20px; font-weight: 800; color: #15803d; margin-top: 4px;">${cardVal(totAll)}</div></div>
 						</div>
 					`);
 					container.show();
@@ -1235,6 +1240,7 @@ class DrishtiDashboard {
 						const evr = d.reduce((s, r) => s + (r.evr || 0), 0);
 						const total = ntb + evr;
 						const fmt = (v) => {
+							if (dashboardInstance.state.formatMode === 'words' && Math.abs(parseFloat(v) || 0) < 1000) return dashboardInstance.spellCardValue(v);
 							if (dashboardInstance.state.formatMode === 'words') return dashboardInstance.formatCurrency(v);
 							return new Intl.NumberFormat('en-IN').format(v);
 						};
@@ -2637,14 +2643,17 @@ class DrishtiDashboard {
 						return new Intl.NumberFormat("en-IN").format(val);
 					};
 
+					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
+					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellCardValue(val) : fmtCount(val);
+					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellCardValue(val) : fmtAmt(val);
 					const kpiCards = [
-						{ label: "Total Accounts", value: fmtCount(totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
-						{ label: "Cat A (75%+)", value: fmtCount(aCount), color: "#06b6d4", bg: "#ecfeff", icon: "🟢" },
-						{ label: "Cat B (50%+)", value: fmtCount(bCount), color: "#f59e0b", bg: "#fffbeb", icon: "🟡" },
-						{ label: "Cat C (25%+)", value: fmtCount(cCount), color: "#f97316", bg: "#fff7ed", icon: "🟠" },
-						{ label: "Cat D (<25%)", value: fmtCount(dCount), color: "#ef4444", bg: "#fef2f2", icon: "🔴" },
-						{ label: "Default", value: fmtCount(defaultCount), color: "#64748b", bg: "#f8fafc", icon: "⏳" },
-						{ label: "Excess (>100%)", value: fmtCount(excessCount), color: "#10b981", bg: "#ecfdf5", icon: "📈" }
+						{ label: "Total Accounts", value: cardCount(totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
+						{ label: "Cat A (75%+)", value: cardCount(aCount), color: "#06b6d4", bg: "#ecfeff", icon: "🟢" },
+						{ label: "Cat B (50%+)", value: cardCount(bCount), color: "#f59e0b", bg: "#fffbeb", icon: "🟡" },
+						{ label: "Cat C (25%+)", value: cardCount(cCount), color: "#f97316", bg: "#fff7ed", icon: "🟠" },
+						{ label: "Cat D (<25%)", value: cardCount(dCount), color: "#ef4444", bg: "#fef2f2", icon: "🔴" },
+						{ label: "Default", value: cardCount(defaultCount), color: "#64748b", bg: "#f8fafc", icon: "⏳" },
+						{ label: "Excess (>100%)", value: cardCount(excessCount), color: "#10b981", bg: "#ecfdf5", icon: "📈" }
 					];
 					container.html(`
 						<style>
@@ -3163,12 +3172,15 @@ class DrishtiDashboard {
 						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
 					};
 
+					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
+					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellCardValue(val) : fmtCount(val);
+					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellCardValue(val) : fmtAmt(val);
 					const kpiCards = [
-						{ label: "New Accounts", value: fmtCount(totalNewAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
-						{ label: "Total Deposit Amt", value: fmtAmt(totalDepositAmount), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
-						{ label: "Avg Deposit/Ac", value: fmtAmt(avgDeposit), color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
-						{ label: "Active Branches", value: fmtCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
-						{ label: "Active Authorizers", value: fmtCount(activeAuthorizers), color: "#f97316", bg: "#fff7ed", icon: "👥" }
+						{ label: "New Accounts", value: cardCount(totalNewAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
+						{ label: "Total Deposit Amt", value: cardAmt(totalDepositAmount), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
+						{ label: "Avg Deposit/Ac", value: cardAmt(avgDeposit), color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
+						{ label: "Active Branches", value: cardCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
+						{ label: "Active Authorizers", value: cardCount(activeAuthorizers), color: "#f97316", bg: "#fff7ed", icon: "👥" }
 					];
 
 					container.html(`
@@ -3716,12 +3728,15 @@ class DrishtiDashboard {
 						return new Intl.NumberFormat("en-IN").format(val);
 					};
 
+					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
+					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellCardValue(val) : fmtCount(val);
+					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellCardValue(val) : fmtAmt(val);
 					const kpiCards = [
-						{ label: "Total Demand", value: fmtAmt(totalDemand), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
-						{ label: "Total Collection", value: fmtAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
-						{ label: "Collection %", value: overallPct, color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
-						{ label: "Active Branches", value: fmtCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
-						{ label: "Active Authorizers", value: fmtCount(activeAuthorizers), color: "#f97316", bg: "#fff7ed", icon: "👥" }
+						{ label: "Total Demand", value: cardAmt(totalDemand), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
+						{ label: "Total Collection", value: cardAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
+						{ label: "Collection %", value: wordsMode ? dashboardInstance.spellPercent(overallPct) : overallPct, color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
+						{ label: "Active Branches", value: cardCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
+						{ label: "Active Authorizers", value: cardCount(activeAuthorizers), color: "#f97316", bg: "#fff7ed", icon: "👥" }
 					];
 
 					container.html(`
@@ -4286,12 +4301,15 @@ class DrishtiDashboard {
 						return new Intl.NumberFormat("en-IN").format(val);
 					};
 
+					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
+					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellCardValue(val) : fmtCount(val);
+					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellCardValue(val) : fmtAmt(val);
 					const kpiCards = [
-						{ label: "Total Demand", value: fmtAmt(totalDemand), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
-						{ label: "Total Collection", value: fmtAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
-						{ label: "Collection %", value: overallPct, color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
-						{ label: "Active Branches", value: fmtCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
-						{ label: "Active Agents", value: fmtCount(activeAgents), color: "#f97316", bg: "#fff7ed", icon: "👥" }
+						{ label: "Total Demand", value: cardAmt(totalDemand), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
+						{ label: "Total Collection", value: cardAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
+						{ label: "Collection %", value: wordsMode ? dashboardInstance.spellPercent(overallPct) : overallPct, color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
+						{ label: "Active Branches", value: cardCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
+						{ label: "Active Agents", value: cardCount(activeAgents), color: "#f97316", bg: "#fff7ed", icon: "👥" }
 					];
 
 					container.html(`
@@ -4895,13 +4913,16 @@ class DrishtiDashboard {
 						return new Intl.NumberFormat("en-IN").format(val);
 					};
 
+					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
+					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellCardValue(val) : fmtCount(val);
+					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellCardValue(val) : fmtAmt(val);
 					const kpiCards = [
-						{ label: "Maturity Paid", value: fmtAmt(totalPaid), color: "#ef4444", bg: "#fef2f2", icon: "💰" },
-						{ label: "Total Deposit Amount", value: fmtAmt(totalDeposit), color: "#10b981", bg: "#ecfdf5", icon: "📊" },
-						{ label: "Renewal Amount", value: fmtAmt(totalRenewal), color: "#3b82f6", bg: "#eff6ff", icon: "📈" },
-						{ label: "Renewal %", value: totalRenewalPerc, color: "#8b5cf6", bg: "#f5f3ff", icon: "📊" },
-						{ label: "Total Accounts", value: fmtCount(totalAccounts), color: "#8b5cf6", bg: "#f5f3ff", icon: "🔢" },
-						{ label: "Deposit Done Count", value: fmtCount(depositDoneCount), color: "#06b6d4", bg: "#ecfeff", icon: "✅" }
+						{ label: "Maturity Paid", value: cardAmt(totalPaid), color: "#ef4444", bg: "#fef2f2", icon: "💰" },
+						{ label: "Total Deposit Amount", value: cardAmt(totalDeposit), color: "#10b981", bg: "#ecfdf5", icon: "📊" },
+						{ label: "Renewal Amount", value: cardAmt(totalRenewal), color: "#3b82f6", bg: "#eff6ff", icon: "📈" },
+						{ label: "Renewal %", value: wordsMode ? dashboardInstance.spellPercent(totalRenewalPerc) : totalRenewalPerc, color: "#8b5cf6", bg: "#f5f3ff", icon: "📊" },
+						{ label: "Total Accounts", value: cardCount(totalAccounts), color: "#8b5cf6", bg: "#f5f3ff", icon: "🔢" },
+						{ label: "Deposit Done Count", value: cardCount(depositDoneCount), color: "#06b6d4", bg: "#ecfeff", icon: "✅" }
 					];
 
 					container.html(`
@@ -5169,14 +5190,14 @@ class DrishtiDashboard {
 							<td style="padding: 10px 14px; text-align: center; white-space: nowrap; width: 30px; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="zone::${z.zone}" ${zoneChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; width: 40px; font-size: 14px;">${sr}</td>
 							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;"><span class="mis-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>${z.zone}</td>
-							<td></td>
-							<td></td>
-							<td></td>
+							<!-- <td></td> -->
+							<!-- <td></td> -->
+							<!-- <td></td> -->
 							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; font-size: 14px;">${fmtCount(zoneRow.account_count)}</td>
 							<td style="padding: 10px 14px; font-weight: 700; color: #ef4444; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(zoneRow.maturity_paid)}</td>
-							<td></td>
+							<!-- <td></td> -->
 							<td style="padding: 10px 14px; font-weight: 700; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(zoneRow.total_deposit_amount)}</td>
-							<td></td>
+							<!-- <td></td> -->
 <td style="padding: 10px 14px; font-weight: 700; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(zoneRow.renewal_amount)}</td>
 										<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: right; white-space: nowrap; font-size: 14px;">${fmtPerc(zoneRow.renewal_amount, zoneRow.maturity_paid)}</td>
 									</tr>`;
@@ -5192,14 +5213,14 @@ class DrishtiDashboard {
 								<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${regionKey}" ${regionChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 								<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 24px; font-weight: 600;"><span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${region}</td>
-								<td></td>
-								<td></td>
-								<td></td>
+								<!-- <td></td> -->
+								<!-- <td></td> -->
+								<!-- <td></td> -->
 								<td style="padding: 8px 14px; color: #334155; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtCount(regionRow.account_count)}</td>
 								<td style="padding: 8px 14px; color: #ef4444; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(regionRow.maturity_paid)}</td>
-								<td></td>
+								<!-- <td></td> -->
 								<td style="padding: 8px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(regionRow.total_deposit_amount)}</td>
-								<td></td>
+								<!-- <td></td> -->
 								<td style="padding: 8px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(regionRow.renewal_amount)}</td>
 									<td style="padding: 8px 14px; color: #334155; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtPerc(regionRow.renewal_amount, regionRow.maturity_paid)}</td>
 								</tr>`;
@@ -5215,14 +5236,14 @@ class DrishtiDashboard {
 									<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${districtKey}" ${districtChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 									<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}</td>
-									<td></td>
-									<td></td>
-									<td></td>
+									<!-- <td></td> -->
+									<!-- <td></td> -->
+									<!-- <td></td> -->
 									<td style="padding: 8px 14px; color: #44403c; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtCount(districtObj.data.account_count)}</td>
 									<td style="padding: 8px 14px; color: #ef4444; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(districtObj.data.maturity_paid)}</td>
-									<td></td>
+									<!-- <td></td> -->
 									<td style="padding: 8px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(districtObj.data.total_deposit_amount)}</td>
-									<td></td>
+									<!-- <td></td> -->
 									<td style="padding: 8px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(districtObj.data.renewal_amount)}</td>
 									<td style="padding: 8px 14px; color: #44403c; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtPerc(districtObj.data.renewal_amount, districtObj.data.maturity_paid)}</td>
 								</tr>`;
@@ -5237,18 +5258,19 @@ class DrishtiDashboard {
 										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${branchKey}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 600;">${canViewCif ? `<span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${branchExpanded ? "▼" : "▶"}</span>` : ""}${branch.sol_id} - ${branch.sol_desc}</td>
-										<td></td>
-										<td></td>
-										<td></td>
+										<!-- <td></td> -->
+										<!-- <td></td> -->
+										<!-- <td></td> -->
 										<td style="padding: 6px 14px; color: #475569; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtCount(branch.account_count)}</td>
 										<td style="padding: 6px 14px; color: #ef4444; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(branch.maturity_paid)}</td>
-										<td></td>
+										<!-- <td></td> -->
 										<td style="padding: 6px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(branch.total_deposit_amount)}</td>
-										<td></td>
+										<!-- <td></td> -->
 										<td style="padding: 6px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(branch.renewal_amount)}</td>
 										<td style="padding: 6px 14px; color: #475569; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtPerc(branch.renewal_amount, branch.maturity_paid)}</td>
 									</tr>`;
 
+									/* commented out: per-CIF record rows (Maturity Tracker last level)
 									if (canViewCif) {
 										branch.records.forEach((rec, ai) => {
 											const showRecord = zoneExpanded && regionExpanded && districtExpanded && branchExpanded;
@@ -5270,9 +5292,10 @@ class DrishtiDashboard {
 												<td style="padding: 6px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${rec.deposit_done_flag || "No"}</td>
 <td style="padding: 6px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtAmt(rec.renewal_amount)}</td>
 											<td style="padding: 6px 14px; color: #64748b; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtPerc(rec.renewal_amount, rec.maturity_paid)}</td>
-										</tr>`;
+												</tr>`;
 										});
 									}
+									*/
 								});
 							});
 						});
@@ -5300,14 +5323,14 @@ class DrishtiDashboard {
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Z / R / D / SOL Name</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 100px;">CIF ID</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 160px;">Customer Name</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 160px;">Account Numbers</th>
+									<!-- <th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 100px;">CIF ID</th> -->
+									<!-- <th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 160px;">Customer Name</th> -->
+									<!-- <th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 160px;">Account Numbers</th> -->
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 100px;">Account Count</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 140px;">Maturity Paid</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 120px;">Last Debit Date</th>
+									<!-- <th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 120px;">Last Debit Date</th> -->
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 140px;">Total Deposit</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 100px;">Deposit Done</th>
+									<!-- <th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 100px;">Deposit Done</th> -->
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 140px;">Renewal Amount</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 100px;">Renewal %</th>
 								</tr></thead>
@@ -5316,14 +5339,14 @@ class DrishtiDashboard {
 									<td style="padding: 10px 12px; text-align: center;"></td>
 									<td style="padding: 10px 12px; text-align: center;"></td>
 									<td style="padding: 10px 12px; text-align: left; white-space: nowrap; font-size: 14px;">TOTAL</td>
-									<td></td>
-									<td></td>
-									<td></td>
+									<!-- <td></td> -->
+									<!-- <td></td> -->
+									<!-- <td></td> -->
 									<td style="padding: 10px 12px; text-align: center; white-space: nowrap; font-size: 14px;">${fmtCount(grandTotal.account_count)}</td>
 									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(grandTotal.maturity_paid)}</td>
-									<td></td>
+									<!-- <td></td> -->
 									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(grandTotal.total_deposit_amount)}</td>
-									<td></td>
+									<!-- <td></td> -->
 									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(grandTotal.renewal_amount)}</td>
 									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtPerc(grandTotal.renewal_amount, grandTotal.maturity_paid)}</td>
 								</tr></tfoot>
@@ -5590,6 +5613,9 @@ class DrishtiDashboard {
 
 					const totalAgents = totalActive + totalInactive;
 
+					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
+					const cardNum = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellCardValue(val) : fmtNum(val);
+					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellCardValue(val) : fmtAmt(val);
 					const kpiCardsHtml = `
 						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
 							<!-- Card 1: Total VS & SS -->
@@ -5598,17 +5624,17 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: stretch; justify-content: center; gap: 12px; margin-top: 10px; text-align: center;">
 									<div style="flex: 1;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Active</div>
-										<div style="font-size: 22px; font-weight: 800; color: #15803d; line-height: 1.2;">${fmtNum(totalActive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #15803d; line-height: 1.2;">${cardNum(totalActive)}</div>
 									</div>
 									<div style="width: 1px; background: #e2e8f0;"></div>
 									<div style="flex: 1;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Inactive</div>
-										<div style="font-size: 22px; font-weight: 800; color: #dc2626; line-height: 1.2;">${fmtNum(totalInactive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #dc2626; line-height: 1.2;">${cardNum(totalInactive)}</div>
 									</div>
 									<div style="display: flex; align-items: center; font-size: 18px; font-weight: 800; color: #94a3b8;">=</div>
 									<div style="flex: 1; padding: 2px 4px;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total</div>
-										<div style="font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.2;">${fmtNum(totalActive + totalInactive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.2;">${cardNum(totalActive + totalInactive)}</div>
 									</div>
 								</div>
 							</div>
@@ -5619,17 +5645,17 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: stretch; justify-content: center; gap: 12px; margin-top: 10px; text-align: center;">
 									<div style="flex: 1;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Active</div>
-										<div style="font-size: 22px; font-weight: 800; color: #15803d; line-height: 1.2;">${fmtNum(dddsActive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #15803d; line-height: 1.2;">${cardNum(dddsActive)}</div>
 									</div>
 									<div style="width: 1px; background: #e2e8f0;"></div>
 									<div style="flex: 1;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Inactive</div>
-										<div style="font-size: 22px; font-weight: 800; color: #dc2626; line-height: 1.2;">${fmtNum(dddsInactive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #dc2626; line-height: 1.2;">${cardNum(dddsInactive)}</div>
 									</div>
 									<div style="display: flex; align-items: center; font-size: 18px; font-weight: 800; color: #94a3b8;">=</div>
 									<div style="flex: 1; padding: 2px 4px;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total</div>
-										<div style="font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.2;">${fmtNum(dddsActive + dddsInactive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.2;">${cardNum(dddsActive + dddsInactive)}</div>
 									</div>
 								</div>
 							</div>
@@ -5640,17 +5666,17 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: stretch; justify-content: center; gap: 12px; margin-top: 10px; text-align: center;">
 									<div style="flex: 1;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Active</div>
-										<div style="font-size: 22px; font-weight: 800; color: #15803d; line-height: 1.2;">${fmtNum(rddsActive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #15803d; line-height: 1.2;">${cardNum(rddsActive)}</div>
 									</div>
 									<div style="width: 1px; background: #e2e8f0;"></div>
 									<div style="flex: 1;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Inactive</div>
-										<div style="font-size: 22px; font-weight: 800; color: #dc2626; line-height: 1.2;">${fmtNum(rddsInactive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #dc2626; line-height: 1.2;">${cardNum(rddsInactive)}</div>
 									</div>
 									<div style="display: flex; align-items: center; font-size: 18px; font-weight: 800; color: #94a3b8;">=</div>
 									<div style="flex: 1; padding: 2px 4px;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total</div>
-										<div style="font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.2;">${fmtNum(rddsActive + rddsInactive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.2;">${cardNum(rddsActive + rddsInactive)}</div>
 									</div>
 								</div>
 							</div>
@@ -5662,7 +5688,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: stretch; justify-content: center; margin-top: 10px; text-align: center;">
 									<div style="flex: 1; padding: 2px 4px;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Amount</div>
-										<div style="font-size: 22px; font-weight: 800; color: #417d81; line-height: 1.2;">${fmtAmt(grandTotalComm)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #417d81; line-height: 1.2;">${cardAmt(grandTotalComm)}</div>
 									</div>
 								</div>
 							</div>
@@ -5778,7 +5804,19 @@ class DrishtiDashboard {
 						});
 					});
 
-					rootNodes.sort((a, b) => b.total_commission - a.total_commission);
+					// Arrange zones by zone number: ZONE-1 first, then ZONE-2, ZONE-3...
+					const zoneNum = (name) => {
+						const m = String(name).toUpperCase().match(/ZONE-(\d+)/);
+						return m ? parseInt(m[1], 10) : null;
+					};
+					rootNodes.sort((a, b) => {
+						const na = zoneNum(a.name);
+						const nb = zoneNum(b.name);
+						if (na !== null && nb !== null) return na - nb;
+						if (na !== null) return -1;
+						if (nb !== null) return 1;
+						return String(a.name).localeCompare(String(b.name));
+					});
 
 					const allNodeIds = [];
 					const collectAllNodeIds = (nodes) => {
@@ -8718,6 +8756,26 @@ class DrishtiDashboard {
                     </div>
                     <div class="summary-icon-box">
                         <i class="fa fa-users"></i>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-info">
+                        <span class="summary-label">Actual DRR</span>
+                        <span class="summary-value" id="summary-actual-drr">-</span>
+                        <span class="summary-subtext success">&nbsp;</span>
+                    </div>
+                    <div class="summary-icon-box">
+                        <i class="fa fa-percent"></i>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-info">
+                        <span class="summary-label">Required DRR</span>
+                        <span class="summary-value" id="summary-required-drr">-</span>
+                        <span class="summary-subtext success">&nbsp;</span>
+                    </div>
+                    <div class="summary-icon-box">
+                        <i class="fa fa-balance-scale"></i>
                     </div>
                 </div>
             </div>
@@ -12765,6 +12823,46 @@ class DrishtiDashboard {
 		return isNegative ? `-${formatted}` : formatted;
 	}
 
+	spellNumber(value) {
+		const raw = parseFloat(value);
+		const n = Math.round(Math.abs(raw || 0));
+		if (n === 0) return "Zero";
+		const ones = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+		const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+		const words = (x) => {
+			if (x === 0) return "";
+			if (x >= 10000000) return words(Math.floor(x / 10000000)) + " Crore" + (x % 10000000 ? " " + words(x % 10000000) : "");
+			if (x >= 100000) return words(Math.floor(x / 100000)) + " Lakh" + (x % 100000 ? " " + words(x % 100000) : "");
+			if (x >= 1000) return words(Math.floor(x / 1000)) + " Thousand" + (x % 1000 ? " " + words(x % 1000) : "");
+			if (x >= 100) return ones[Math.floor(x / 100)] + " Hundred" + (x % 100 ? " " + words(x % 100) : "");
+			if (x >= 20) return tens[Math.floor(x / 10)] + (x % 10 ? " " + ones[x % 10] : "");
+			return ones[x];
+		};
+		return (raw < 0 ? "-" : "") + words(n);
+	}
+
+	spellCardValue(value) {
+		const raw = parseFloat(value);
+		const n = Math.abs(raw || 0);
+		if (n === 0) return "Zero";
+		if (n < 1000) return (raw < 0 ? "-" : "") + (n / 1000).toFixed(3) + " K";
+		return this.spellNumber(value);
+	}
+
+	spellPercent(value) {
+		const raw = parseFloat(value);
+		if (isNaN(raw) || Math.abs(raw) >= 1000) return value;
+		const sign = raw < 0 ? "-" : "";
+		const abs = Math.abs(raw);
+		const intPart = Math.floor(abs);
+		let decPart = Math.round((abs - intPart) * 100);
+		let whole = intPart;
+		if (decPart === 100) { whole += 1; decPart = 0; }
+		let out = this.spellNumber(whole);
+		if (decPart > 0) out += " Point " + this.spellNumber(decPart);
+		return sign + out + " Percent";
+	}
+
 
 	getPctColor(pct) {
 		const hue = Math.min(120, Math.max(0, (pct / 100) * 120));
@@ -12909,6 +13007,27 @@ class DrishtiDashboard {
 		// 4. Active Zones - Unique zones in reaggregated data
 		const activeZonesCount = reaggregatedZoneData.filter((item) => item.isZoneTotal).length;
 		this.page.main.find("#summary-active-zones").text(activeZonesCount + " Zones");
+
+		// 5. DRR - Daily Required Rate
+		const drrDate = this.state.selectedDate ? new Date(this.state.selectedDate) : new Date();
+		const drrYear = drrDate.getFullYear();
+		const drrMonth = drrDate.getMonth();
+		const drrDay = drrDate.getDate();
+		const daysElapsed = drrDay;
+		const remainingWorkingDays = getRemainingWorkingDaysExcludingSundays(drrYear, drrMonth, drrDay);
+
+		// Actual DRR = Achievement Till Date / Days Elapsed in the month
+		const actualDrr = daysElapsed > 0 ? totalAch / daysElapsed : null;
+		this.page.main
+			.find("#summary-actual-drr")
+			.text(actualDrr != null ? "₹" + this.formatCurrency(actualDrr) : "-");
+
+		// Required DRR = (Monthly Target - Achievement Till Date) / Remaining Working Days
+		const requiredGap = Math.max(0, totalTarget - totalAch);
+		const requiredDrr = remainingWorkingDays > 0 ? requiredGap / remainingWorkingDays : null;
+		this.page.main
+			.find("#summary-required-drr")
+			.text(requiredDrr != null ? "₹" + this.formatCurrency(requiredDrr) : "-");
 	}
 
 	// ========================================================================
