@@ -524,12 +524,15 @@ class DrishtiDashboard {
 						if (!val || val === 0) return "₹0";
 						return "₹" + dashboardInstance.formatCurrency(val);
 					};
+					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
+					const cardCount = (val) => wordsMode ? dashboardInstance.spellNumber(val) : fmtCount(val);
+					const cardAmt = (val) => wordsMode ? "₹" + dashboardInstance.spellNumber(val) : fmtAmt(val);
 					const kpiCards = [
-						{ label: "Total Accounts", value: fmtCount(totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
-						{ label: "Total Collection", value: fmtAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
-						{ label: "Pending Accounts", value: fmtCount(pendingAccounts), color: "#f59e0b", bg: "#fffbeb", icon: "⏳" },
-						{ label: "Pending Instalments", value: fmtCount(pendingInstalments), color: "#f97316", bg: "#fff7ed", icon: "📅" },
-						{ label: "Pending Amount", value: fmtAmt(pendingAmount), color: "#ef4444", bg: "#fef2f2", icon: "🔴" }
+						{ label: "Total Accounts", value: cardCount(totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
+						{ label: "Total Collection", value: cardAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
+						{ label: "Pending Accounts", value: cardCount(pendingAccounts), color: "#f59e0b", bg: "#fffbeb", icon: "⏳" },
+						{ label: "Pending Instalments", value: cardCount(pendingInstalments), color: "#f97316", bg: "#fff7ed", icon: "📅" },
+						{ label: "Pending Amount", value: cardAmt(pendingAmount), color: "#ef4444", bg: "#fef2f2", icon: "🔴" }
 					];
 					container.html(`
 						<style>
@@ -984,14 +987,16 @@ class DrishtiDashboard {
 						totSA += r.sa || 0; totCA += r.ca || 0; totTASC += r.tasc || 0; totRD += r.rd || 0;
 						totSMBG += r.smbg || 0; totDD += r.dd || 0; totFD += r.fd || 0; totAll += r.total || 0;
 					});
+					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
+					const cardVal = (v) => wordsMode ? dashboardInstance.spellNumber(v) : new Intl.NumberFormat("en-IN").format(v);
 					container.html(`
 						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px;">
 							${[
 							{ l: "SA Accounts", v: totSA }, { l: "CA Accounts", v: totCA }, { l: "TASC Accounts", v: totTASC },
 							{ l: "RD Accounts", v: totRD }, { l: "SMBG Accounts", v: totSMBG }, { l: "DD Accounts", v: totDD },
 							{ l: "FD Accounts", v: totFD }
-						].map(c => `<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;"><div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">${c.l}</div><div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(c.v)}</div></div>`).join('')}
-							<div style="padding: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; text-align: center;"><div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase;">Total Opened</div><div style="font-size: 20px; font-weight: 800; color: #15803d; margin-top: 4px;">${new Intl.NumberFormat("en-IN").format(totAll)}</div></div>
+						].map(c => `<div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; text-align: center;"><div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">${c.l}</div><div style="font-size: 20px; font-weight: 800; color: #417d81; margin-top: 4px;">${cardVal(c.v)}</div></div>`).join('')}
+							<div style="padding: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; text-align: center;"><div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase;">Total Opened</div><div style="font-size: 20px; font-weight: 800; color: #15803d; margin-top: 4px;">${cardVal(totAll)}</div></div>
 						</div>
 					`);
 					container.show();
@@ -1235,7 +1240,7 @@ class DrishtiDashboard {
 						const evr = d.reduce((s, r) => s + (r.evr || 0), 0);
 						const total = ntb + evr;
 						const fmt = (v) => {
-							if (dashboardInstance.state.formatMode === 'words') return dashboardInstance.formatCurrency(v);
+							if (dashboardInstance.state.formatMode === 'words') return dashboardInstance.spellNumber(v);
 							return new Intl.NumberFormat('en-IN').format(v);
 						};
 						container.find("#ntb-kpi-inline").html(`
@@ -2637,14 +2642,17 @@ class DrishtiDashboard {
 						return new Intl.NumberFormat("en-IN").format(val);
 					};
 
+					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
+					const cardCount = (val) => wordsMode ? dashboardInstance.spellNumber(val) : fmtCount(val);
+					const cardAmt = (val) => wordsMode ? "₹" + dashboardInstance.spellNumber(val) : fmtAmt(val);
 					const kpiCards = [
-						{ label: "Total Accounts", value: fmtCount(totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
-						{ label: "Cat A (75%+)", value: fmtCount(aCount), color: "#06b6d4", bg: "#ecfeff", icon: "🟢" },
-						{ label: "Cat B (50%+)", value: fmtCount(bCount), color: "#f59e0b", bg: "#fffbeb", icon: "🟡" },
-						{ label: "Cat C (25%+)", value: fmtCount(cCount), color: "#f97316", bg: "#fff7ed", icon: "🟠" },
-						{ label: "Cat D (<25%)", value: fmtCount(dCount), color: "#ef4444", bg: "#fef2f2", icon: "🔴" },
-						{ label: "Default", value: fmtCount(defaultCount), color: "#64748b", bg: "#f8fafc", icon: "⏳" },
-						{ label: "Excess (>100%)", value: fmtCount(excessCount), color: "#10b981", bg: "#ecfdf5", icon: "📈" }
+						{ label: "Total Accounts", value: cardCount(totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
+						{ label: "Cat A (75%+)", value: cardCount(aCount), color: "#06b6d4", bg: "#ecfeff", icon: "🟢" },
+						{ label: "Cat B (50%+)", value: cardCount(bCount), color: "#f59e0b", bg: "#fffbeb", icon: "🟡" },
+						{ label: "Cat C (25%+)", value: cardCount(cCount), color: "#f97316", bg: "#fff7ed", icon: "🟠" },
+						{ label: "Cat D (<25%)", value: cardCount(dCount), color: "#ef4444", bg: "#fef2f2", icon: "🔴" },
+						{ label: "Default", value: cardCount(defaultCount), color: "#64748b", bg: "#f8fafc", icon: "⏳" },
+						{ label: "Excess (>100%)", value: cardCount(excessCount), color: "#10b981", bg: "#ecfdf5", icon: "📈" }
 					];
 					container.html(`
 						<style>
@@ -3163,12 +3171,15 @@ class DrishtiDashboard {
 						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
 					};
 
+					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
+					const cardCount = (val) => wordsMode ? dashboardInstance.spellNumber(val) : fmtCount(val);
+					const cardAmt = (val) => wordsMode ? "₹" + dashboardInstance.spellNumber(val) : fmtAmt(val);
 					const kpiCards = [
-						{ label: "New Accounts", value: fmtCount(totalNewAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
-						{ label: "Total Deposit Amt", value: fmtAmt(totalDepositAmount), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
-						{ label: "Avg Deposit/Ac", value: fmtAmt(avgDeposit), color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
-						{ label: "Active Branches", value: fmtCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
-						{ label: "Active Authorizers", value: fmtCount(activeAuthorizers), color: "#f97316", bg: "#fff7ed", icon: "👥" }
+						{ label: "New Accounts", value: cardCount(totalNewAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
+						{ label: "Total Deposit Amt", value: cardAmt(totalDepositAmount), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
+						{ label: "Avg Deposit/Ac", value: cardAmt(avgDeposit), color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
+						{ label: "Active Branches", value: cardCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
+						{ label: "Active Authorizers", value: cardCount(activeAuthorizers), color: "#f97316", bg: "#fff7ed", icon: "👥" }
 					];
 
 					container.html(`
@@ -3716,12 +3727,15 @@ class DrishtiDashboard {
 						return new Intl.NumberFormat("en-IN").format(val);
 					};
 
+					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
+					const cardCount = (val) => wordsMode ? dashboardInstance.spellNumber(val) : fmtCount(val);
+					const cardAmt = (val) => wordsMode ? "₹" + dashboardInstance.spellNumber(val) : fmtAmt(val);
 					const kpiCards = [
-						{ label: "Total Demand", value: fmtAmt(totalDemand), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
-						{ label: "Total Collection", value: fmtAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
+						{ label: "Total Demand", value: cardAmt(totalDemand), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
+						{ label: "Total Collection", value: cardAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
 						{ label: "Collection %", value: overallPct, color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
-						{ label: "Active Branches", value: fmtCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
-						{ label: "Active Authorizers", value: fmtCount(activeAuthorizers), color: "#f97316", bg: "#fff7ed", icon: "👥" }
+						{ label: "Active Branches", value: cardCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
+						{ label: "Active Authorizers", value: cardCount(activeAuthorizers), color: "#f97316", bg: "#fff7ed", icon: "👥" }
 					];
 
 					container.html(`
@@ -4286,12 +4300,15 @@ class DrishtiDashboard {
 						return new Intl.NumberFormat("en-IN").format(val);
 					};
 
+					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
+					const cardCount = (val) => wordsMode ? dashboardInstance.spellNumber(val) : fmtCount(val);
+					const cardAmt = (val) => wordsMode ? "₹" + dashboardInstance.spellNumber(val) : fmtAmt(val);
 					const kpiCards = [
-						{ label: "Total Demand", value: fmtAmt(totalDemand), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
-						{ label: "Total Collection", value: fmtAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
+						{ label: "Total Demand", value: cardAmt(totalDemand), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
+						{ label: "Total Collection", value: cardAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
 						{ label: "Collection %", value: overallPct, color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
-						{ label: "Active Branches", value: fmtCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
-						{ label: "Active Agents", value: fmtCount(activeAgents), color: "#f97316", bg: "#fff7ed", icon: "👥" }
+						{ label: "Active Branches", value: cardCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
+						{ label: "Active Agents", value: cardCount(activeAgents), color: "#f97316", bg: "#fff7ed", icon: "👥" }
 					];
 
 					container.html(`
@@ -4895,13 +4912,16 @@ class DrishtiDashboard {
 						return new Intl.NumberFormat("en-IN").format(val);
 					};
 
+					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
+					const cardCount = (val) => wordsMode ? dashboardInstance.spellNumber(val) : fmtCount(val);
+					const cardAmt = (val) => wordsMode ? "₹" + dashboardInstance.spellNumber(val) : fmtAmt(val);
 					const kpiCards = [
-						{ label: "Maturity Paid", value: fmtAmt(totalPaid), color: "#ef4444", bg: "#fef2f2", icon: "💰" },
-						{ label: "Total Deposit Amount", value: fmtAmt(totalDeposit), color: "#10b981", bg: "#ecfdf5", icon: "📊" },
-						{ label: "Renewal Amount", value: fmtAmt(totalRenewal), color: "#3b82f6", bg: "#eff6ff", icon: "📈" },
+						{ label: "Maturity Paid", value: cardAmt(totalPaid), color: "#ef4444", bg: "#fef2f2", icon: "💰" },
+						{ label: "Total Deposit Amount", value: cardAmt(totalDeposit), color: "#10b981", bg: "#ecfdf5", icon: "📊" },
+						{ label: "Renewal Amount", value: cardAmt(totalRenewal), color: "#3b82f6", bg: "#eff6ff", icon: "📈" },
 						{ label: "Renewal %", value: totalRenewalPerc, color: "#8b5cf6", bg: "#f5f3ff", icon: "📊" },
-						{ label: "Total Accounts", value: fmtCount(totalAccounts), color: "#8b5cf6", bg: "#f5f3ff", icon: "🔢" },
-						{ label: "Deposit Done Count", value: fmtCount(depositDoneCount), color: "#06b6d4", bg: "#ecfeff", icon: "✅" }
+						{ label: "Total Accounts", value: cardCount(totalAccounts), color: "#8b5cf6", bg: "#f5f3ff", icon: "🔢" },
+						{ label: "Deposit Done Count", value: cardCount(depositDoneCount), color: "#06b6d4", bg: "#ecfeff", icon: "✅" }
 					];
 
 					container.html(`
@@ -5592,6 +5612,9 @@ class DrishtiDashboard {
 
 					const totalAgents = totalActive + totalInactive;
 
+					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
+					const cardNum = (val) => wordsMode ? dashboardInstance.spellNumber(val) : fmtNum(val);
+					const cardAmt = (val) => wordsMode ? "₹" + dashboardInstance.spellNumber(val) : fmtAmt(val);
 					const kpiCardsHtml = `
 						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
 							<!-- Card 1: Total VS & SS -->
@@ -5600,17 +5623,17 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: stretch; justify-content: center; gap: 12px; margin-top: 10px; text-align: center;">
 									<div style="flex: 1;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Active</div>
-										<div style="font-size: 22px; font-weight: 800; color: #15803d; line-height: 1.2;">${fmtNum(totalActive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #15803d; line-height: 1.2;">${cardNum(totalActive)}</div>
 									</div>
 									<div style="width: 1px; background: #e2e8f0;"></div>
 									<div style="flex: 1;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Inactive</div>
-										<div style="font-size: 22px; font-weight: 800; color: #dc2626; line-height: 1.2;">${fmtNum(totalInactive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #dc2626; line-height: 1.2;">${cardNum(totalInactive)}</div>
 									</div>
 									<div style="display: flex; align-items: center; font-size: 18px; font-weight: 800; color: #94a3b8;">=</div>
 									<div style="flex: 1; padding: 2px 4px;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total</div>
-										<div style="font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.2;">${fmtNum(totalActive + totalInactive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.2;">${cardNum(totalActive + totalInactive)}</div>
 									</div>
 								</div>
 							</div>
@@ -5621,17 +5644,17 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: stretch; justify-content: center; gap: 12px; margin-top: 10px; text-align: center;">
 									<div style="flex: 1;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Active</div>
-										<div style="font-size: 22px; font-weight: 800; color: #15803d; line-height: 1.2;">${fmtNum(dddsActive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #15803d; line-height: 1.2;">${cardNum(dddsActive)}</div>
 									</div>
 									<div style="width: 1px; background: #e2e8f0;"></div>
 									<div style="flex: 1;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Inactive</div>
-										<div style="font-size: 22px; font-weight: 800; color: #dc2626; line-height: 1.2;">${fmtNum(dddsInactive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #dc2626; line-height: 1.2;">${cardNum(dddsInactive)}</div>
 									</div>
 									<div style="display: flex; align-items: center; font-size: 18px; font-weight: 800; color: #94a3b8;">=</div>
 									<div style="flex: 1; padding: 2px 4px;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total</div>
-										<div style="font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.2;">${fmtNum(dddsActive + dddsInactive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.2;">${cardNum(dddsActive + dddsInactive)}</div>
 									</div>
 								</div>
 							</div>
@@ -5642,17 +5665,17 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: stretch; justify-content: center; gap: 12px; margin-top: 10px; text-align: center;">
 									<div style="flex: 1;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Active</div>
-										<div style="font-size: 22px; font-weight: 800; color: #15803d; line-height: 1.2;">${fmtNum(rddsActive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #15803d; line-height: 1.2;">${cardNum(rddsActive)}</div>
 									</div>
 									<div style="width: 1px; background: #e2e8f0;"></div>
 									<div style="flex: 1;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Inactive</div>
-										<div style="font-size: 22px; font-weight: 800; color: #dc2626; line-height: 1.2;">${fmtNum(rddsInactive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #dc2626; line-height: 1.2;">${cardNum(rddsInactive)}</div>
 									</div>
 									<div style="display: flex; align-items: center; font-size: 18px; font-weight: 800; color: #94a3b8;">=</div>
 									<div style="flex: 1; padding: 2px 4px;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total</div>
-										<div style="font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.2;">${fmtNum(rddsActive + rddsInactive)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1.2;">${cardNum(rddsActive + rddsInactive)}</div>
 									</div>
 								</div>
 							</div>
@@ -5664,7 +5687,7 @@ class DrishtiDashboard {
 								<div style="display: flex; align-items: stretch; justify-content: center; margin-top: 10px; text-align: center;">
 									<div style="flex: 1; padding: 2px 4px;">
 										<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Amount</div>
-										<div style="font-size: 22px; font-weight: 800; color: #417d81; line-height: 1.2;">${fmtAmt(grandTotalComm)}</div>
+										<div style="font-size: 22px; font-weight: 800; color: #417d81; line-height: 1.2;">${cardAmt(grandTotalComm)}</div>
 									</div>
 								</div>
 							</div>
@@ -12797,6 +12820,24 @@ class DrishtiDashboard {
 		}
 
 		return isNegative ? `-${formatted}` : formatted;
+	}
+
+	spellNumber(value) {
+		const raw = parseFloat(value);
+		const n = Math.round(Math.abs(raw || 0));
+		if (n === 0) return "Zero";
+		const ones = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+		const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+		const words = (x) => {
+			if (x === 0) return "";
+			if (x >= 10000000) return words(Math.floor(x / 10000000)) + " Crore" + (x % 10000000 ? " " + words(x % 10000000) : "");
+			if (x >= 100000) return words(Math.floor(x / 100000)) + " Lakh" + (x % 100000 ? " " + words(x % 100000) : "");
+			if (x >= 1000) return words(Math.floor(x / 1000)) + " Thousand" + (x % 1000 ? " " + words(x % 1000) : "");
+			if (x >= 100) return ones[Math.floor(x / 100)] + " Hundred" + (x % 100 ? " " + words(x % 100) : "");
+			if (x >= 20) return tens[Math.floor(x / 10)] + (x % 10 ? " " + ones[x % 10] : "");
+			return ones[x];
+		};
+		return (raw < 0 ? "-" : "") + words(n);
 	}
 
 
