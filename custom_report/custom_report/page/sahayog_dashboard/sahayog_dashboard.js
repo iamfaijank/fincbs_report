@@ -312,6 +312,10 @@ class DrishtiDashboard {
 			dashboardMode: "drishti",
 			selectedMisReport: "rd_smbg_pending",
 			categoryViewMode: "table",
+			zoneViewMode: "table",
+			productViewMode: "table",
+			agentViewMode: "table",
+			branchViewMode: "table",
 		};
 		// Store selected date per tab
 		this.tabDates = {
@@ -10683,7 +10687,9 @@ class DrishtiDashboard {
 			let htmlContent = "";
 
 			if (this.state.activeTab === "zone") {
-				htmlContent = this.renderZoneTable(reaggregatedZoneData);
+				htmlContent = this.state.zoneViewMode === "chart"
+					? this.renderZoneChartContainer()
+					: this.renderZoneTable(reaggregatedZoneData);
 				const totalBranches = (filteredBranches || []).length;
 				let totalAch = 0;
 				let totalTgt = 0;
@@ -10702,7 +10708,9 @@ class DrishtiDashboard {
 					: this.renderCategoryTable(reaggregatedCategoryData);
 			} else if (this.state.activeTab === "product") {
 				const filteredProductData = this.getFilteredProductData();
-				htmlContent = this.renderProductTable(filteredProductData);
+				htmlContent = this.state.productViewMode === "chart"
+					? this.renderProductChartContainer()
+					: this.renderProductTable(filteredProductData);
 				const solSet = new Set();
 				let totalProdAmt = 0;
 				(filteredProductData || []).forEach((item) => {
@@ -10716,9 +10724,13 @@ class DrishtiDashboard {
 				const branchCount = solSet.size || (filteredBranches || []).length;
 				console.log(`📦 [PRODUCT WISE] Date: ${this.state.selectedDate || 'Default'} | Branches: ${branchCount} | Total Amount: ₹ ${totalProdAmt.toLocaleString('en-IN')}`);
 			} else if (this.state.activeTab === "agent") {
-				htmlContent = this.renderAgentWiseTable(this.agentData);
+				htmlContent = this.state.agentViewMode === "chart"
+					? this.renderAgentChartContainer()
+					: this.renderAgentWiseTable(this.agentData);
 			} else if (this.state.activeTab === "branch") {
-				htmlContent = this.buildBranchTable(filteredBranches, this.months);
+				htmlContent = this.state.branchViewMode === "chart"
+					? this.renderBranchChartContainer()
+					: this.buildBranchTable(filteredBranches, this.months);
 			} else if (this.state.activeTab === "product_tgt_ach") {
 				htmlContent = this.renderProductWiseTgtVsAchTable(filteredBranches);
 			}
@@ -10728,11 +10740,21 @@ class DrishtiDashboard {
 			// Attach handlers after rendering
 
 			if (this.state.activeTab === "zone") {
-				this.attachZoneExpandHandlers();
-				this.attachZoneDrilldownHandlers();
+				this.attachZoneViewToggleHandlers();
+				if (this.state.zoneViewMode === "chart") {
+					this.renderZoneChart(reaggregatedZoneData);
+				} else {
+					this.attachZoneExpandHandlers();
+					this.attachZoneDrilldownHandlers();
+				}
 			} else if (this.state.activeTab === "product") {
-				this.attachProductExpandHandlers();
-				this.attachProductDrilldownHandlers();
+				this.attachProductViewToggleHandlers();
+				if (this.state.productViewMode === "chart") {
+					this.renderProductChart(this.getFilteredProductData());
+				} else {
+					this.attachProductExpandHandlers();
+					this.attachProductDrilldownHandlers();
+				}
 			} else if (this.state.activeTab === "category") {
 				this.attachCategoryViewToggleHandlers();
 				if (this.state.categoryViewMode === "chart") {
@@ -10745,7 +10767,17 @@ class DrishtiDashboard {
 					this.attachTotalMovementPopupHandler();
 				}
 			} else if (this.state.activeTab === "agent") {
-				this.attachAgentExpandHandlers();
+				this.attachAgentViewToggleHandlers();
+				if (this.state.agentViewMode === "chart") {
+					this.renderAgentChart(this.agentData);
+				} else {
+					this.attachAgentExpandHandlers();
+				}
+			} else if (this.state.activeTab === "branch") {
+				this.attachBranchViewToggleHandlers();
+				if (this.state.branchViewMode === "chart") {
+					this.renderBranchChart(filteredBranches);
+				}
 			} else if (this.state.activeTab === "product_tgt_ach") {
 				this.attachProductTgtAchExpandHandlers();
 			}
@@ -10774,9 +10806,12 @@ class DrishtiDashboard {
 			                <th rowspan="2" class="zone-col" style="text-align: left;">
 			                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
 			                        <span>Z/R/DIS</span>
-			                        <button type="button" class="btn-refresh-zone-cache" title="Refresh Zone Wise Data (Clear Redis Cache)" style="background: transparent; border: 1px solid rgba(65, 125, 129, 0.35); cursor: pointer; color: #417d81; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; font-weight: 600; line-height: 1; transition: all 0.2s;">
-			                            <i class="fa fa-refresh"></i>
-			                        </button>
+			                        <div style="display: flex; align-items: center; gap: 6px;">
+			                            <button type="button" class="btn-refresh-zone-cache" title="Refresh Zone Wise Data (Clear Redis Cache)" style="background: transparent; border: 1px solid rgba(65, 125, 129, 0.35); cursor: pointer; color: #417d81; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; font-weight: 600; line-height: 1; transition: all 0.2s;">
+			                                <i class="fa fa-refresh"></i>
+			                            </button>
+			                            ${this.renderViewToggleHtml("zone", this.state.zoneViewMode)}
+			                        </div>
 			                    </div>
 			                </th>
 			                <th rowspan="2" class="branches-col">Branches</th>
@@ -11277,9 +11312,12 @@ class DrishtiDashboard {
 						<th rowspan="2" style="text-align: left;">
 							<div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
 								<span>Z/R/DIS/SOL</span>
-								<button type="button" class="btn-refresh-product-cache" title="Refresh Product Wise Data (Clear Redis Cache)" style="background: transparent; border: 1px solid rgba(65, 125, 129, 0.35); cursor: pointer; color: #417d81; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; font-weight: 600; line-height: 1; transition: all 0.2s;">
-									<i class="fa fa-refresh"></i>
-								</button>
+								<div style="display: flex; align-items: center; gap: 6px;">
+									<button type="button" class="btn-refresh-product-cache" title="Refresh Product Wise Data (Clear Redis Cache)" style="background: transparent; border: 1px solid rgba(65, 125, 129, 0.35); cursor: pointer; color: #417d81; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; font-weight: 600; line-height: 1; transition: all 0.2s;">
+										<i class="fa fa-refresh"></i>
+									</button>
+									${this.renderViewToggleHtml("product", this.state.productViewMode)}
+								</div>
 							</div>
 						</th>
 		`;
@@ -11482,7 +11520,12 @@ class DrishtiDashboard {
 				<thead>
 					<tr class="branch-table-header">
 						<th rowspan="2" class="sr-col">SR</th>
-						<th rowspan="2">ZONE / REGION</th>
+						<th rowspan="2">
+							<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+								<span>ZONE / REGION</span>
+								${this.renderViewToggleHtml("agent", this.state.agentViewMode)}
+							</div>
+						</th>
 						<th rowspan="2">SS TARGET</th>
 						<th rowspan="2">SS ACHIEVEMENT</th>
 						<th rowspan="2">SS SHORTFALL</th>
@@ -12504,6 +12547,674 @@ class DrishtiDashboard {
 		}
 	}
 
+	renderViewToggleHtml(tabName, currentMode) {
+		const isChart = currentMode === "chart";
+		return `
+			<div class="${tabName}-view-toggle btn-group" role="group" style="display: inline-flex; align-items: center; background: #ffffff; padding: 2px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); margin-left: 8px;">
+				<button type="button" class="btn btn-xs ${tabName}-toggle-btn ${isChart ? "active btn-primary" : "btn-default"}" data-mode="chart" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: ${isChart ? "#ffffff" : "#475569"}; background-color: ${isChart ? "#346569" : "transparent"};">
+					<i class="fa fa-bar-chart" style="margin-right: 4px;"></i>Chart
+				</button>
+				<button type="button" class="btn btn-xs ${tabName}-toggle-btn ${!isChart ? "active btn-primary" : "btn-default"}" data-mode="table" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: ${!isChart ? "#ffffff" : "#475569"}; background-color: ${!isChart ? "#346569" : "transparent"};">
+					<i class="fa fa-table" style="margin-right: 4px;"></i>Table
+				</button>
+			</div>
+		`;
+	}
+
+	// ========================================================================
+	// ZONE WISE CHART
+	// ========================================================================
+	renderZoneChartContainer() {
+		const fy = this.state.financialYear || "Current Financial Year";
+		const dateStr = this.state.selectedDate || frappe.datetime.get_today();
+		return `
+			<div class="zone-chart-wrapper" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9;">
+					<div style="text-align: center; width: 100%;">
+						<h5 style="margin: 0; font-weight: 700; color: #0f172a; font-size: 16px;">Zone Performance Overview</h5>
+						<p style="margin: 2px 0 0; font-size: 12px; color: #64748b; font-style: italic;">Zone Target vs Achievement for FY ${fy} (As of ${dateStr})</p>
+					</div>
+					<div class="zone-view-toggle btn-group" role="group" style="background: #f1f5f9; padding: 3px; border-radius: 6px; white-space: nowrap; margin-left: auto;">
+						<button type="button" class="btn btn-xs zone-toggle-btn active btn-primary" data-mode="chart" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #ffffff; background-color: #346569;">
+							<i class="fa fa-bar-chart" style="margin-right: 4px;"></i>Chart
+						</button>
+						<button type="button" class="btn btn-xs zone-toggle-btn btn-default" data-mode="table" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #475569; background-color: transparent;">
+							<i class="fa fa-table" style="margin-right: 4px;"></i>Table
+						</button>
+					</div>
+				</div>
+				<div id="zone-performance-chart" style="width: 100%; height: 520px;"></div>
+			</div>
+		`;
+	}
+
+	attachZoneViewToggleHandlers() {
+		const self = this;
+		this.page.main.find(".zone-toggle-btn").off("click").on("click", function (e) {
+			e.stopPropagation();
+			const mode = $(this).data("mode");
+			if (self.state.zoneViewMode !== mode) {
+				self.state.zoneViewMode = mode;
+				self.render();
+			}
+		});
+	}
+
+	renderZoneChart(zoneData) {
+		const chartDom = this.page.main.find("#zone-performance-chart")[0];
+		if (!chartDom) return;
+
+		const initChart = () => {
+			if (typeof echarts === "undefined") return;
+			const existingChart = echarts.getInstanceByDom(chartDom);
+			if (existingChart) existingChart.dispose();
+			const chart = echarts.init(chartDom);
+
+			const activeMonthKey = this.months && this.months.length > 0 ? this.months[this.months.length - 1].key : null;
+			const zoneRows = (zoneData || []).filter(z => z.isZoneTotal);
+
+			const zoneNames = [];
+			const targets = [];
+			const achievements = [];
+			const percentages = [];
+
+			zoneRows.forEach(z => {
+				const m = activeMonthKey && z.months ? z.months[activeMonthKey] : null;
+				const tgt = m ? (m.target || 0) : 0;
+				const ach = m ? (m.achievement || 0) : 0;
+				const pct = tgt > 0 ? Math.round((ach / tgt) * 100) : 0;
+
+				zoneNames.push(z.zone || "Unknown");
+				targets.push(tgt);
+				achievements.push(ach);
+				percentages.push(pct);
+			});
+
+			const fmt = (v) => {
+				if (v >= 1e7) return "₹" + (v / 1e7).toFixed(2) + " Cr";
+				if (v >= 1e5) return "₹" + (v / 1e5).toFixed(2) + " L";
+				return "₹" + (v || 0).toLocaleString("en-IN");
+			};
+
+			const option = {
+				tooltip: {
+					trigger: "axis",
+					axisPointer: { type: "shadow" },
+					formatter: function (params) {
+						let tip = `<strong>${params[0].axisValue}</strong><br/>`;
+						params.forEach(p => {
+							if (p.seriesName.includes("%")) {
+								tip += `${p.marker} ${p.seriesName}: <b>${p.value}%</b><br/>`;
+							} else {
+								tip += `${p.marker} ${p.seriesName}: <b>${fmt(p.value)}</b><br/>`;
+							}
+						});
+						return tip;
+					}
+				},
+				legend: {
+					data: ["Target", "Achievement", "Ach %"],
+					top: 0
+				},
+				grid: {
+					left: "3%",
+					right: "4%",
+					bottom: "10%",
+					containLabel: true
+				},
+				xAxis: {
+					type: "category",
+					data: zoneNames,
+					axisLabel: { interval: 0, rotate: 25, fontSize: 11 }
+				},
+				yAxis: [
+					{
+						type: "value",
+						name: "Amount (₹)",
+						axisLabel: {
+							formatter: function (val) {
+								if (val >= 1e7) return (val / 1e7).toFixed(1) + " Cr";
+								if (val >= 1e5) return (val / 1e5).toFixed(0) + " L";
+								return val;
+							}
+						}
+					},
+					{
+						type: "value",
+						name: "Ach %",
+						axisLabel: { formatter: "{value}%" },
+						splitLine: { show: false }
+					}
+				],
+				series: [
+					{
+						name: "Target",
+						type: "bar",
+						data: targets,
+						itemStyle: { color: "#3b82f6", borderRadius: [4, 4, 0, 0] }
+					},
+					{
+						name: "Achievement",
+						type: "bar",
+						data: achievements,
+						itemStyle: { color: "#10b981", borderRadius: [4, 4, 0, 0] }
+					},
+					{
+						name: "Ach %",
+						type: "line",
+						yAxisIndex: 1,
+						data: percentages,
+						itemStyle: { color: "#f59e0b" },
+						lineStyle: { width: 3 },
+						symbol: "circle",
+						symbolSize: 8,
+						label: {
+							show: true,
+							position: "top",
+							formatter: "{c}%",
+							fontSize: 10,
+							color: "#d97706",
+							fontWeight: "bold"
+						}
+					}
+				]
+			};
+
+			chart.setOption(option);
+			$(window).off("resize.zoneChart").on("resize.zoneChart", () => chart.resize());
+		};
+
+		if (typeof echarts === "undefined") {
+			frappe.require("/assets/custom_report/js/echarts.min.js", initChart);
+		} else {
+			initChart();
+		}
+	}
+
+	// ========================================================================
+	// PRODUCT WISE CHART
+	// ========================================================================
+	renderProductChartContainer() {
+		const dateStr = this.state.selectedDate || frappe.datetime.get_today();
+		return `
+			<div class="product-chart-wrapper" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9;">
+					<div style="text-align: center; width: 100%;">
+						<h5 style="margin: 0; font-weight: 700; color: #0f172a; font-size: 16px;">Product Wise Collection & Performance</h5>
+						<p style="margin: 2px 0 0; font-size: 12px; color: #64748b; font-style: italic;">Collection distribution by product (As of ${dateStr})</p>
+					</div>
+					<div class="product-view-toggle btn-group" role="group" style="background: #f1f5f9; padding: 3px; border-radius: 6px; white-space: nowrap; margin-left: auto;">
+						<button type="button" class="btn btn-xs product-toggle-btn active btn-primary" data-mode="chart" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #ffffff; background-color: #346569;">
+							<i class="fa fa-bar-chart" style="margin-right: 4px;"></i>Chart
+						</button>
+						<button type="button" class="btn btn-xs product-toggle-btn btn-default" data-mode="table" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #475569; background-color: transparent;">
+							<i class="fa fa-table" style="margin-right: 4px;"></i>Table
+						</button>
+					</div>
+				</div>
+				<div id="product-performance-chart" style="width: 100%; height: 520px;"></div>
+			</div>
+		`;
+	}
+
+	attachProductViewToggleHandlers() {
+		const self = this;
+		this.page.main.find(".product-toggle-btn").off("click").on("click", function (e) {
+			e.stopPropagation();
+			const mode = $(this).data("mode");
+			if (self.state.productViewMode !== mode) {
+				self.state.productViewMode = mode;
+				self.render();
+			}
+		});
+	}
+
+	renderProductChart(productData) {
+		const chartDom = this.page.main.find("#product-performance-chart")[0];
+		if (!chartDom) return;
+
+		const initChart = () => {
+			if (typeof echarts === "undefined") return;
+			const existingChart = echarts.getInstanceByDom(chartDom);
+			if (existingChart) existingChart.dispose();
+			const chart = echarts.init(chartDom);
+
+			const allProducts = (this.allProducts || []).filter(p => p !== "SHARE" && p !== "OTHER");
+			const productTotals = {};
+			allProducts.forEach(p => productTotals[p] = 0);
+
+			let grandTotal = 0;
+			(productData || []).forEach(item => {
+				if (item.type === "zone") {
+					allProducts.forEach(p => {
+						const amt = item.products?.[p] || 0;
+						productTotals[p] += amt;
+						grandTotal += amt;
+					});
+				}
+			});
+
+			const sortedProducts = allProducts
+				.map(p => ({ name: p, value: productTotals[p] || 0 }))
+				.sort((a, b) => b.value - a.value);
+
+			const names = sortedProducts.map(p => p.name).reverse();
+			const values = sortedProducts.map(p => p.value).reverse();
+
+			const fmt = (v) => {
+				if (v >= 1e7) return "₹" + (v / 1e7).toFixed(2) + " Cr";
+				if (v >= 1e5) return "₹" + (v / 1e5).toFixed(2) + " L";
+				return "₹" + (v || 0).toLocaleString("en-IN");
+			};
+
+			const option = {
+				tooltip: {
+					trigger: "axis",
+					axisPointer: { type: "shadow" },
+					formatter: function (params) {
+						const p = params[0];
+						const pct = grandTotal > 0 ? ((p.value / grandTotal) * 100).toFixed(1) : 0;
+						return `<strong>${p.name}</strong><br/>Collection: <b>${fmt(p.value)}</b> (${pct}% of Total)`;
+					}
+				},
+				grid: {
+					left: "4%",
+					right: "12%",
+					bottom: "5%",
+					top: "5%",
+					containLabel: true
+				},
+				xAxis: {
+					type: "value",
+					axisLabel: {
+						formatter: function (val) {
+							if (val >= 1e7) return (val / 1e7).toFixed(1) + " Cr";
+							if (val >= 1e5) return (val / 1e5).toFixed(0) + " L";
+							return val;
+						}
+					}
+				},
+				yAxis: {
+					type: "category",
+					data: names,
+					axisLabel: { fontSize: 12, fontWeight: 500 }
+				},
+				series: [
+					{
+						name: "Collection",
+						type: "bar",
+						data: values,
+						itemStyle: {
+							color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+								{ offset: 0, color: "#6366f1" },
+								{ offset: 1, color: "#8b5cf6" }
+							]),
+							borderRadius: [0, 4, 4, 0]
+						},
+						label: {
+							show: true,
+							position: "right",
+							formatter: (p) => fmt(p.value),
+							fontSize: 11,
+							color: "#475569"
+						}
+					}
+				]
+			};
+
+			chart.setOption(option);
+			$(window).off("resize.productChart").on("resize.productChart", () => chart.resize());
+		};
+
+		if (typeof echarts === "undefined") {
+			frappe.require("/assets/custom_report/js/echarts.min.js", initChart);
+		} else {
+			initChart();
+		}
+	}
+
+	// ========================================================================
+	// AGENT WISE CHART
+	// ========================================================================
+	renderAgentChartContainer() {
+		const dateStr = this.state.selectedDate || frappe.datetime.get_today();
+		return `
+			<div class="agent-chart-wrapper" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9;">
+					<div style="text-align: center; width: 100%;">
+						<h5 style="margin: 0; font-weight: 700; color: #0f172a; font-size: 16px;">Agent Wise SS & VS Performance Overview</h5>
+						<p style="margin: 2px 0 0; font-size: 12px; color: #64748b; font-style: italic;">Zone-wise Agent Target, Achievement & Active status (As of ${dateStr})</p>
+					</div>
+					<div class="agent-view-toggle btn-group" role="group" style="background: #f1f5f9; padding: 3px; border-radius: 6px; white-space: nowrap; margin-left: auto;">
+						<button type="button" class="btn btn-xs agent-toggle-btn active btn-primary" data-mode="chart" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #ffffff; background-color: #346569;">
+							<i class="fa fa-bar-chart" style="margin-right: 4px;"></i>Chart
+						</button>
+						<button type="button" class="btn btn-xs agent-toggle-btn btn-default" data-mode="table" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #475569; background-color: transparent;">
+							<i class="fa fa-table" style="margin-right: 4px;"></i>Table
+						</button>
+					</div>
+				</div>
+				<div id="agent-performance-chart" style="width: 100%; height: 520px;"></div>
+			</div>
+		`;
+	}
+
+	attachAgentViewToggleHandlers() {
+		const self = this;
+		this.page.main.find(".agent-toggle-btn").off("click").on("click", function (e) {
+			e.stopPropagation();
+			const mode = $(this).data("mode");
+			if (self.state.agentViewMode !== mode) {
+				self.state.agentViewMode = mode;
+				self.render();
+			}
+		});
+	}
+
+	renderAgentChart(agentData) {
+		const chartDom = this.page.main.find("#agent-performance-chart")[0];
+		if (!chartDom) return;
+
+		const initChart = () => {
+			if (typeof echarts === "undefined") return;
+			const existingChart = echarts.getInstanceByDom(chartDom);
+			if (existingChart) existingChart.dispose();
+			const chart = echarts.init(chartDom);
+
+			const grouped = {};
+			(agentData || []).forEach(row => {
+				if (!grouped[row.zone]) grouped[row.zone] = [];
+				grouped[row.zone].push(row);
+			});
+
+			const sortedZones = Object.keys(grouped).sort((a, b) => {
+				const aNum = a.match(/ZONE-(\d+)/)?.[1];
+				const bNum = b.match(/ZONE-(\d+)/)?.[1];
+				return aNum && bNum ? parseInt(aNum) - parseInt(bNum) : a.localeCompare(b);
+			});
+
+			const zoneNames = [];
+			const ssAch = [];
+			const vsAch = [];
+			const ssPercent = [];
+			const vsPercent = [];
+
+			sortedZones.forEach(zone => {
+				const rows = grouped[zone];
+				let sTarget = 0, sAch = 0, vTarget = 0, vAch = 0;
+				rows.forEach(r => {
+					sTarget += parseFloat(r.ss_target || 0);
+					sAch += parseFloat(r.ss_achievement || 0);
+					vTarget += parseFloat(r.target || 0);
+					vAch += parseFloat(r.achievement || 0);
+				});
+
+				const sPct = sTarget > 0 ? Math.round((sAch / sTarget) * 100) : 0;
+				const vPct = vTarget > 0 ? Math.round((vAch / vTarget) * 100) : 0;
+
+				zoneNames.push(zone);
+				ssAch.push(sAch);
+				vsAch.push(vAch);
+				ssPercent.push(sPct);
+				vsPercent.push(vPct);
+			});
+
+			const fmt = (v) => {
+				if (v >= 1e7) return "₹" + (v / 1e7).toFixed(2) + " Cr";
+				if (v >= 1e5) return "₹" + (v / 1e5).toFixed(2) + " L";
+				return "₹" + (v || 0).toLocaleString("en-IN");
+			};
+
+			const option = {
+				tooltip: {
+					trigger: "axis",
+					axisPointer: { type: "shadow" },
+					formatter: function (params) {
+						let tip = `<strong>${params[0].axisValue}</strong><br/>`;
+						params.forEach(p => {
+							if (p.seriesName.includes("%")) {
+								tip += `${p.marker} ${p.seriesName}: <b>${p.value}%</b><br/>`;
+							} else {
+								tip += `${p.marker} ${p.seriesName}: <b>${fmt(p.value)}</b><br/>`;
+							}
+						});
+						return tip;
+					}
+				},
+				legend: {
+					data: ["SS Achievement", "VS Achievement", "SS Ach %", "VS Ach %"],
+					top: 0
+				},
+				grid: {
+					left: "3%",
+					right: "4%",
+					bottom: "10%",
+					containLabel: true
+				},
+				xAxis: {
+					type: "category",
+					data: zoneNames,
+					axisLabel: { interval: 0, rotate: 25, fontSize: 11 }
+				},
+				yAxis: [
+					{
+						type: "value",
+						name: "Amount (₹)",
+						axisLabel: {
+							formatter: function (val) {
+								if (val >= 1e7) return (val / 1e7).toFixed(1) + " Cr";
+								if (val >= 1e5) return (val / 1e5).toFixed(0) + " L";
+								return val;
+							}
+						}
+					},
+					{
+						type: "value",
+						name: "Ach %",
+						axisLabel: { formatter: "{value}%" },
+						splitLine: { show: false }
+					}
+				],
+				series: [
+					{
+						name: "SS Achievement",
+						type: "bar",
+						data: ssAch,
+						itemStyle: { color: "#2563eb", borderRadius: [4, 4, 0, 0] }
+					},
+					{
+						name: "VS Achievement",
+						type: "bar",
+						data: vsAch,
+						itemStyle: { color: "#7c3aed", borderRadius: [4, 4, 0, 0] }
+					},
+					{
+						name: "SS Ach %",
+						type: "line",
+						yAxisIndex: 1,
+						data: ssPercent,
+						itemStyle: { color: "#059669" },
+						lineStyle: { width: 2 }
+					},
+					{
+						name: "VS Ach %",
+						type: "line",
+						yAxisIndex: 1,
+						data: vsPercent,
+						itemStyle: { color: "#d97706" },
+						lineStyle: { width: 2 }
+					}
+				]
+			};
+
+			chart.setOption(option);
+			$(window).off("resize.agentChart").on("resize.agentChart", () => chart.resize());
+		};
+
+		if (typeof echarts === "undefined") {
+			frappe.require("/assets/custom_report/js/echarts.min.js", initChart);
+		} else {
+			initChart();
+		}
+	}
+
+	// ========================================================================
+	// BRANCH WISE CHART
+	// ========================================================================
+	renderBranchChartContainer() {
+		const fy = this.state.financialYear || "Current Financial Year";
+		const dateStr = this.state.selectedDate || frappe.datetime.get_today();
+		return `
+			<div class="branch-chart-wrapper" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9;">
+					<div style="text-align: center; width: 100%;">
+						<h5 style="margin: 0; font-weight: 700; color: #0f172a; font-size: 16px;">Top Performing Branches Overview</h5>
+						<p style="margin: 2px 0 0; font-size: 12px; color: #64748b; font-style: italic;">Top 15 branches by Achievement % for FY ${fy} (As of ${dateStr})</p>
+					</div>
+					<div class="branch-view-toggle btn-group" role="group" style="background: #f1f5f9; padding: 3px; border-radius: 6px; white-space: nowrap; margin-left: auto;">
+						<button type="button" class="btn btn-xs branch-toggle-btn active btn-primary" data-mode="chart" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #ffffff; background-color: #346569;">
+							<i class="fa fa-bar-chart" style="margin-right: 4px;"></i>Chart
+						</button>
+						<button type="button" class="btn btn-xs branch-toggle-btn btn-default" data-mode="table" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #475569; background-color: transparent;">
+							<i class="fa fa-table" style="margin-right: 4px;"></i>Table
+						</button>
+					</div>
+				</div>
+				<div id="branch-performance-chart" style="width: 100%; height: 550px;"></div>
+			</div>
+		`;
+	}
+
+	attachBranchViewToggleHandlers() {
+		const self = this;
+		this.page.main.find(".branch-toggle-btn").off("click").on("click", function (e) {
+			e.stopPropagation();
+			const mode = $(this).data("mode");
+			if (self.state.branchViewMode !== mode) {
+				self.state.branchViewMode = mode;
+				self.render();
+			}
+		});
+	}
+
+	renderBranchChart(branchData) {
+		const chartDom = this.page.main.find("#branch-performance-chart")[0];
+		if (!chartDom) return;
+
+		const initChart = () => {
+			if (typeof echarts === "undefined") return;
+			const existingChart = echarts.getInstanceByDom(chartDom);
+			if (existingChart) existingChart.dispose();
+			const chart = echarts.init(chartDom);
+
+			const activeMonthKey = this.months && this.months.length > 0 ? this.months[this.months.length - 1].key : null;
+
+			const parsedBranches = [];
+			(branchData || []).forEach(b => {
+				const m = activeMonthKey && b.months ? b.months[activeMonthKey] : null;
+				const tgt = m ? (m.target || 0) : 0;
+				const ach = m ? (m.achievement || 0) : 0;
+				const pct = m && m.percentage !== undefined ? m.percentage : (tgt > 0 ? (ach / tgt) * 100 : 0);
+
+				if (tgt > 0 || ach > 0) {
+					parsedBranches.push({
+						name: `${b.branch || b.code || "Branch"}`,
+						sol: b.code || b.sol_id || "",
+						zone: b.zone || "",
+						region: b.region || "",
+						category: m ? m.category : "",
+						target: tgt,
+						achievement: ach,
+						percentage: Math.round(pct)
+					});
+				}
+			});
+
+			parsedBranches.sort((a, b) => b.percentage - a.percentage);
+			const top15 = parsedBranches.slice(0, 15).reverse();
+
+			const names = top15.map(b => b.name);
+			const percentages = top15.map(b => b.percentage);
+
+			const fmt = (v) => {
+				if (v >= 1e7) return "₹" + (v / 1e7).toFixed(2) + " Cr";
+				if (v >= 1e5) return "₹" + (v / 1e5).toFixed(2) + " L";
+				return "₹" + (v || 0).toLocaleString("en-IN");
+			};
+
+			const option = {
+				tooltip: {
+					trigger: "axis",
+					axisPointer: { type: "shadow" },
+					formatter: function (params) {
+						const idx = params[0].dataIndex;
+						const b = top15[idx];
+						return `
+							<strong>${b.name} (${b.sol})</strong><br/>
+							Zone: ${b.zone} | Region: ${b.region}<br/>
+							Category: <b>${b.category || "—"}</b><br/>
+							Ach %: <b>${b.percentage}%</b><br/>
+							Achievement: <b>${fmt(b.achievement)}</b><br/>
+							Target: <b>${fmt(b.target)}</b>
+						`;
+					}
+				},
+				grid: {
+					left: "4%",
+					right: "12%",
+					bottom: "5%",
+					top: "5%",
+					containLabel: true
+				},
+				xAxis: {
+					type: "value",
+					name: "Ach %",
+					axisLabel: { formatter: "{value}%" }
+				},
+				yAxis: {
+					type: "category",
+					data: names,
+					axisLabel: { fontSize: 11, fontWeight: 500 }
+				},
+				series: [
+					{
+						name: "Ach %",
+						type: "bar",
+						data: percentages,
+						itemStyle: {
+							color: function (params) {
+								const val = params.value;
+								if (val >= 100) return "#10b981";
+								if (val >= 80) return "#0d9488";
+								if (val >= 60) return "#3b82f6";
+								if (val >= 40) return "#f59e0b";
+								return "#ef4444";
+							},
+							borderRadius: [0, 4, 4, 0]
+						},
+						label: {
+							show: true,
+							position: "right",
+							formatter: "{c}%",
+							fontSize: 11,
+							fontWeight: "bold",
+							color: "#334155"
+						}
+					}
+				]
+			};
+
+			chart.setOption(option);
+			$(window).off("resize.branchChart").on("resize.branchChart", () => chart.resize());
+		};
+
+		if (typeof echarts === "undefined") {
+			frappe.require("/assets/custom_report/js/echarts.min.js", initChart);
+		} else {
+			initChart();
+		}
+	}
+
 	getChangesBadge(catData) {
 		const monthKey = this.months[0]?.key;
 
@@ -12661,7 +13372,12 @@ class DrishtiDashboard {
             <thead>
                 <tr class="branch-table-header">
                     <th rowspan="2" class="sr-col">Sr. No.</th>
-                    <th rowspan="2" class="branch-col">Branch</th>
+                    <th rowspan="2" class="branch-col">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <span>Branch</span>
+                            ${this.renderViewToggleHtml("branch", this.state.branchViewMode)}
+                        </div>
+                    </th>
 					<th rowspan="2" class="segment-col">Segments</th>
         `;
 
