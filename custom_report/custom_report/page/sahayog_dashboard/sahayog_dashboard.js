@@ -12929,6 +12929,27 @@ class DrishtiDashboard {
 		// 4. Active Zones - Unique zones in reaggregated data
 		const activeZonesCount = reaggregatedZoneData.filter((item) => item.isZoneTotal).length;
 		this.page.main.find("#summary-active-zones").text(activeZonesCount + " Zones");
+
+		// 5. DRR - Daily Required Rate
+		const drrDate = this.state.selectedDate ? new Date(this.state.selectedDate) : new Date();
+		const drrYear = drrDate.getFullYear();
+		const drrMonth = drrDate.getMonth();
+		const drrDay = drrDate.getDate();
+		const daysElapsed = drrDay;
+		const remainingWorkingDays = getRemainingWorkingDaysExcludingSundays(drrYear, drrMonth, drrDay);
+
+		// Actual DRR = Achievement Till Date / Days Elapsed in the month
+		const actualDrr = daysElapsed > 0 ? totalAch / daysElapsed : null;
+		this.page.main
+			.find("#summary-actual-drr")
+			.text(actualDrr != null ? "₹" + this.formatCurrency(actualDrr) : "-");
+
+		// Required DRR = (Monthly Target - Achievement Till Date) / Remaining Working Days
+		const requiredGap = Math.max(0, totalTarget - totalAch);
+		const requiredDrr = remainingWorkingDays > 0 ? requiredGap / remainingWorkingDays : null;
+		this.page.main
+			.find("#summary-required-drr")
+			.text(requiredDrr != null ? "₹" + this.formatCurrency(requiredDrr) : "-");
 	}
 
 	// ========================================================================
