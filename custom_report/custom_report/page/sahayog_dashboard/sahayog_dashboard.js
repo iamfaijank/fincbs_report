@@ -5778,7 +5778,19 @@ class DrishtiDashboard {
 						});
 					});
 
-					rootNodes.sort((a, b) => b.total_commission - a.total_commission);
+					// Arrange zones by zone number: ZONE-1 first, then ZONE-2, ZONE-3...
+					const zoneNum = (name) => {
+						const m = String(name).toUpperCase().match(/ZONE-(\d+)/);
+						return m ? parseInt(m[1], 10) : null;
+					};
+					rootNodes.sort((a, b) => {
+						const na = zoneNum(a.name);
+						const nb = zoneNum(b.name);
+						if (na !== null && nb !== null) return na - nb;
+						if (na !== null) return -1;
+						if (nb !== null) return 1;
+						return String(a.name).localeCompare(String(b.name));
+					});
 
 					const allNodeIds = [];
 					const collectAllNodeIds = (nodes) => {
