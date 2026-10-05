@@ -5169,14 +5169,14 @@ class DrishtiDashboard {
 							<td style="padding: 10px 14px; text-align: center; white-space: nowrap; width: 30px; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="zone::${z.zone}" ${zoneChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; width: 40px; font-size: 14px;">${sr}</td>
 							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;"><span class="mis-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>${z.zone}</td>
-							<td></td>
-							<td></td>
-							<td></td>
+							<!-- <td></td> -->
+							<!-- <td></td> -->
+							<!-- <td></td> -->
 							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; font-size: 14px;">${fmtCount(zoneRow.account_count)}</td>
 							<td style="padding: 10px 14px; font-weight: 700; color: #ef4444; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(zoneRow.maturity_paid)}</td>
-							<td></td>
+							<!-- <td></td> -->
 							<td style="padding: 10px 14px; font-weight: 700; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(zoneRow.total_deposit_amount)}</td>
-							<td></td>
+							<!-- <td></td> -->
 <td style="padding: 10px 14px; font-weight: 700; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(zoneRow.renewal_amount)}</td>
 										<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: right; white-space: nowrap; font-size: 14px;">${fmtPerc(zoneRow.renewal_amount, zoneRow.maturity_paid)}</td>
 									</tr>`;
@@ -5192,14 +5192,14 @@ class DrishtiDashboard {
 								<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${regionKey}" ${regionChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 								<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 24px; font-weight: 600;"><span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${region}</td>
-								<td></td>
-								<td></td>
-								<td></td>
+								<!-- <td></td> -->
+								<!-- <td></td> -->
+								<!-- <td></td> -->
 								<td style="padding: 8px 14px; color: #334155; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtCount(regionRow.account_count)}</td>
 								<td style="padding: 8px 14px; color: #ef4444; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(regionRow.maturity_paid)}</td>
-								<td></td>
+								<!-- <td></td> -->
 								<td style="padding: 8px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(regionRow.total_deposit_amount)}</td>
-								<td></td>
+								<!-- <td></td> -->
 								<td style="padding: 8px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(regionRow.renewal_amount)}</td>
 									<td style="padding: 8px 14px; color: #334155; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtPerc(regionRow.renewal_amount, regionRow.maturity_paid)}</td>
 								</tr>`;
@@ -5215,14 +5215,14 @@ class DrishtiDashboard {
 									<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${districtKey}" ${districtChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 									<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}</td>
-									<td></td>
-									<td></td>
-									<td></td>
+									<!-- <td></td> -->
+									<!-- <td></td> -->
+									<!-- <td></td> -->
 									<td style="padding: 8px 14px; color: #44403c; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtCount(districtObj.data.account_count)}</td>
 									<td style="padding: 8px 14px; color: #ef4444; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(districtObj.data.maturity_paid)}</td>
-									<td></td>
+									<!-- <td></td> -->
 									<td style="padding: 8px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(districtObj.data.total_deposit_amount)}</td>
-									<td></td>
+									<!-- <td></td> -->
 									<td style="padding: 8px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(districtObj.data.renewal_amount)}</td>
 									<td style="padding: 8px 14px; color: #44403c; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtPerc(districtObj.data.renewal_amount, districtObj.data.maturity_paid)}</td>
 								</tr>`;
@@ -5237,14 +5237,14 @@ class DrishtiDashboard {
 										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${branchKey}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 600;">${canViewCif ? `<span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${branchExpanded ? "▼" : "▶"}</span>` : ""}${branch.sol_id} - ${branch.sol_desc}</td>
-										<td></td>
-										<td></td>
-										<td></td>
+										<!-- <td></td> -->
+										<!-- <td></td> -->
+										<!-- <td></td> -->
 										<td style="padding: 6px 14px; color: #475569; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtCount(branch.account_count)}</td>
 										<td style="padding: 6px 14px; color: #ef4444; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(branch.maturity_paid)}</td>
-										<td></td>
+										<!-- <td></td> -->
 										<td style="padding: 6px 14px; color: #10b981; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(branch.total_deposit_amount)}</td>
-										<td></td>
+										<!-- <td></td> -->
 										<td style="padding: 6px 14px; color: #3b82f6; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtAmt(branch.renewal_amount)}</td>
 										<td style="padding: 6px 14px; color: #475569; text-align: right; white-space: nowrap; font-size: 14px; font-weight: 600;">${fmtPerc(branch.renewal_amount, branch.maturity_paid)}</td>
 									</tr>`;
@@ -5302,14 +5302,14 @@ class DrishtiDashboard {
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 30px;"><input type="checkbox" class="mis-check-all" style="cursor: pointer; width: 14px; height: 14px;"></th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Z / R / D / SOL Name</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 100px;">CIF ID</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 160px;">Customer Name</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 160px;">Account Numbers</th>
+									<!-- <th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 100px;">CIF ID</th> -->
+									<!-- <th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 160px;">Customer Name</th> -->
+									<!-- <th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap; width: 160px;">Account Numbers</th> -->
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 100px;">Account Count</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 140px;">Maturity Paid</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 120px;">Last Debit Date</th>
+									<!-- <th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 120px;">Last Debit Date</th> -->
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 140px;">Total Deposit</th>
-									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 100px;">Deposit Done</th>
+									<!-- <th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 100px;">Deposit Done</th> -->
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 140px;">Renewal Amount</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; white-space: nowrap; width: 100px;">Renewal %</th>
 								</tr></thead>
@@ -5318,14 +5318,14 @@ class DrishtiDashboard {
 									<td style="padding: 10px 12px; text-align: center;"></td>
 									<td style="padding: 10px 12px; text-align: center;"></td>
 									<td style="padding: 10px 12px; text-align: left; white-space: nowrap; font-size: 14px;">TOTAL</td>
-									<td></td>
-									<td></td>
-									<td></td>
+									<!-- <td></td> -->
+									<!-- <td></td> -->
+									<!-- <td></td> -->
 									<td style="padding: 10px 12px; text-align: center; white-space: nowrap; font-size: 14px;">${fmtCount(grandTotal.account_count)}</td>
 									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(grandTotal.maturity_paid)}</td>
-									<td></td>
+									<!-- <td></td> -->
 									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(grandTotal.total_deposit_amount)}</td>
-									<td></td>
+									<!-- <td></td> -->
 									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtAmt(grandTotal.renewal_amount)}</td>
 									<td style="padding: 10px 12px; text-align: right; white-space: nowrap; font-size: 14px;">${fmtPerc(grandTotal.renewal_amount, grandTotal.maturity_paid)}</td>
 								</tr></tfoot>
