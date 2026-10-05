@@ -525,8 +525,8 @@ class DrishtiDashboard {
 						return "₹" + dashboardInstance.formatCurrency(val);
 					};
 					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
-					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellNumber(val) : fmtCount(val);
-					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellNumber(val) : fmtAmt(val);
+					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellCardValue(val) : fmtCount(val);
+					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellCardValue(val) : fmtAmt(val);
 					const kpiCards = [
 						{ label: "Total Accounts", value: cardCount(totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
 						{ label: "Total Collection", value: cardAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
@@ -988,7 +988,7 @@ class DrishtiDashboard {
 						totSMBG += r.smbg || 0; totDD += r.dd || 0; totFD += r.fd || 0; totAll += r.total || 0;
 					});
 					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
-					const cardVal = (v) => (wordsMode && Math.abs(parseFloat(v) || 0) < 1000) ? dashboardInstance.spellNumber(v) : new Intl.NumberFormat("en-IN").format(v);
+					const cardVal = (v) => (wordsMode && Math.abs(parseFloat(v) || 0) < 1000) ? dashboardInstance.spellCardValue(v) : new Intl.NumberFormat("en-IN").format(v);
 					container.html(`
 						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px;">
 							${[
@@ -1240,7 +1240,7 @@ class DrishtiDashboard {
 						const evr = d.reduce((s, r) => s + (r.evr || 0), 0);
 						const total = ntb + evr;
 						const fmt = (v) => {
-							if (dashboardInstance.state.formatMode === 'words' && Math.abs(parseFloat(v) || 0) < 1000) return dashboardInstance.spellNumber(v);
+							if (dashboardInstance.state.formatMode === 'words' && Math.abs(parseFloat(v) || 0) < 1000) return dashboardInstance.spellCardValue(v);
 							if (dashboardInstance.state.formatMode === 'words') return dashboardInstance.formatCurrency(v);
 							return new Intl.NumberFormat('en-IN').format(v);
 						};
@@ -2644,8 +2644,8 @@ class DrishtiDashboard {
 					};
 
 					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
-					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellNumber(val) : fmtCount(val);
-					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellNumber(val) : fmtAmt(val);
+					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellCardValue(val) : fmtCount(val);
+					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellCardValue(val) : fmtAmt(val);
 					const kpiCards = [
 						{ label: "Total Accounts", value: cardCount(totalAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
 						{ label: "Cat A (75%+)", value: cardCount(aCount), color: "#06b6d4", bg: "#ecfeff", icon: "🟢" },
@@ -3173,8 +3173,8 @@ class DrishtiDashboard {
 					};
 
 					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
-					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellNumber(val) : fmtCount(val);
-					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellNumber(val) : fmtAmt(val);
+					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellCardValue(val) : fmtCount(val);
+					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellCardValue(val) : fmtAmt(val);
 					const kpiCards = [
 						{ label: "New Accounts", value: cardCount(totalNewAccounts), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
 						{ label: "Total Deposit Amt", value: cardAmt(totalDepositAmount), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
@@ -3729,8 +3729,8 @@ class DrishtiDashboard {
 					};
 
 					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
-					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellNumber(val) : fmtCount(val);
-					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellNumber(val) : fmtAmt(val);
+					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellCardValue(val) : fmtCount(val);
+					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellCardValue(val) : fmtAmt(val);
 					const kpiCards = [
 						{ label: "Total Demand", value: cardAmt(totalDemand), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
 						{ label: "Total Collection", value: cardAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
@@ -4302,8 +4302,8 @@ class DrishtiDashboard {
 					};
 
 					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
-					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellNumber(val) : fmtCount(val);
-					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellNumber(val) : fmtAmt(val);
+					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellCardValue(val) : fmtCount(val);
+					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellCardValue(val) : fmtAmt(val);
 					const kpiCards = [
 						{ label: "Total Demand", value: cardAmt(totalDemand), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
 						{ label: "Total Collection", value: cardAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
@@ -4914,8 +4914,8 @@ class DrishtiDashboard {
 					};
 
 					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
-					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellNumber(val) : fmtCount(val);
-					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellNumber(val) : fmtAmt(val);
+					const cardCount = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellCardValue(val) : fmtCount(val);
+					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellCardValue(val) : fmtAmt(val);
 					const kpiCards = [
 						{ label: "Maturity Paid", value: cardAmt(totalPaid), color: "#ef4444", bg: "#fef2f2", icon: "💰" },
 						{ label: "Total Deposit Amount", value: cardAmt(totalDeposit), color: "#10b981", bg: "#ecfdf5", icon: "📊" },
@@ -5614,8 +5614,8 @@ class DrishtiDashboard {
 					const totalAgents = totalActive + totalInactive;
 
 					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
-					const cardNum = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellNumber(val) : fmtNum(val);
-					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellNumber(val) : fmtAmt(val);
+					const cardNum = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? dashboardInstance.spellCardValue(val) : fmtNum(val);
+					const cardAmt = (val) => (wordsMode && Math.abs(parseFloat(val) || 0) < 1000) ? "₹" + dashboardInstance.spellCardValue(val) : fmtAmt(val);
 					const kpiCardsHtml = `
 						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
 							<!-- Card 1: Total VS & SS -->
@@ -12839,6 +12839,13 @@ class DrishtiDashboard {
 			return ones[x];
 		};
 		return (raw < 0 ? "-" : "") + words(n);
+	}
+
+	spellCardValue(value) {
+		const raw = parseFloat(value);
+		const n = Math.abs(raw || 0);
+		if (n >= 100 && n < 1000) return (raw < 0 ? "-" : "") + (n / 100).toFixed(2) + " H";
+		return this.spellNumber(value);
 	}
 
 	spellPercent(value) {
