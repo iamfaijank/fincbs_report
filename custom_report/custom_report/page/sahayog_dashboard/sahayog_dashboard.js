@@ -12829,22 +12829,27 @@ class DrishtiDashboard {
 			const allProducts = (this.allProducts || []).filter(p => p !== "SHARE" && p !== "OTHER");
 			const zoneItems = (productData || []).filter(item => item.type === "zone");
 
-			// Column totals to keep highest-earning products on the left
-			const productTotals = {};
-			allProducts.forEach(p => productTotals[p] = 0);
-			let grandTotal = 0;
-			zoneItems.forEach(item => {
-				allProducts.forEach(p => {
-					const amt = item.products?.[p] || 0;
-					productTotals[p] += amt;
-					grandTotal += amt;
-				});
-			});
+			// Fixed header order: CASA DAM DD FD RD SMBG + ACHIEVEMENT
+			const desired = ["CASA", "DAM", "DD", "FD", "RD", "SMBG"];
+			const available = new Set(allProducts);
+			const present = desired.filter(p => available.has(p));
+			const productCols = present.length ? present : allProducts;
+			const columns = productCols.concat("ACHIEVEMENT");
 
-			const columns = allProducts
-				.map(p => ({ name: p, total: productTotals[p] || 0 }))
-				.sort((a, b) => b.total - a.total)
-				.map(p => p.name);
+			const cellValue = (zone, col) => {
+				if (col === "ACHIEVEMENT") {
+					return allProducts.reduce((sum, p) => sum + (zone.products?.[p] || 0), 0);
+				}
+				return zone.products?.[col] || 0;
+			};
+
+			// Totals for tooltip percentages
+			let productTotal = 0;
+			let achievementTotal = 0;
+			zoneItems.forEach(zone => {
+				productCols.forEach(p => productTotal += zone.products?.[p] || 0);
+				achievementTotal += cellValue(zone, "ACHIEVEMENT");
+			});
 			const rows = zoneItems.map(z => z.name || "Unknown");
 
 			const fmt = (v) => {
@@ -12856,15 +12861,15 @@ class DrishtiDashboard {
 			// [x, y, amount] per zone/product cell; white label on darker cells
 			const cells = [];
 			let maxAmount = 0;
-			zoneItems.forEach(item => {
+			zoneItems.forEach(zone => {
 				columns.forEach(p => {
-					const amt = item.products?.[p] || 0;
+					const amt = cellValue(zone, p);
 					if (amt > maxAmount) maxAmount = amt;
 				});
 			});
 			zoneItems.forEach((zone, y) => {
 				columns.forEach((prod, x) => {
-					const amt = zone.products?.[prod] || 0;
+					const amt = cellValue(zone, prod);
 					const dark = maxAmount > 0 && amt / maxAmount > 0.6;
 					cells.push({
 						value: [x, y, amt],
@@ -12879,7 +12884,8 @@ class DrishtiDashboard {
 						const zone = rows[p.value[1]];
 						const prod = columns[p.value[0]];
 						const amt = p.value[2];
-						const pct = grandTotal > 0 ? ((amt / grandTotal) * 100).toFixed(2) : 0;
+						const base = prod === "ACHIEVEMENT" ? achievementTotal : productTotal;
+						const pct = base > 0 ? ((amt / base) * 100).toFixed(2) : 0;
 						return `<strong>${zone} — ${prod}</strong><br/>Collection: <b>${fmt(amt)}</b> (${pct}% of Total)`;
 					}
 				},
