@@ -13186,17 +13186,19 @@ class DrishtiDashboard {
 						</button>
 					</div>
 				</div>
-				<div id="agent-donuts-row" style="display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px;">
-					<div style="text-align: center;">
-						<div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 2px;">SS — Active vs Inactive</div>
-						<div id="agent-ss-donut" style="width: 250px; height: 220px;"></div>
+				<div id="agent-charts-row" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+					<div id="agent-donuts-col" style="display: flex; flex-direction: column; gap: 10px; align-items: center; flex: 0 0 260px; max-width: 260px;">
+						<div style="text-align: center;">
+							<div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 2px;">SS — Active vs Inactive</div>
+							<div id="agent-ss-donut" style="width: 250px; height: 220px;"></div>
+						</div>
+						<div style="text-align: center;">
+							<div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 2px;">VS — Active vs Inactive</div>
+							<div id="agent-vs-donut" style="width: 250px; height: 220px;"></div>
+						</div>
 					</div>
-					<div style="text-align: center;">
-						<div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 2px;">VS — Active vs Inactive</div>
-						<div id="agent-vs-donut" style="width: 250px; height: 220px;"></div>
-					</div>
+					<div id="agent-performance-chart" style="flex: 1 1 60%; min-width: 0; height: 480px;"></div>
 				</div>
-				<div id="agent-performance-chart" style="width: 100%; height: 520px;"></div>
 			</div>
 		`;
 	}
