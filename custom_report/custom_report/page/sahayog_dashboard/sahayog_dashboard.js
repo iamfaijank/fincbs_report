@@ -187,6 +187,11 @@ frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
 						<div class="dvm-kpi-sub">Live on Drishti</div>
 					</div>
 					<div class="dvm-kpi-card">
+						<div class="dvm-kpi-label">Zones Active</div>
+						<div class="dvm-kpi-value text-purple" id="dvm-kpi-zones">...</div>
+						<div class="dvm-kpi-sub">Zone coverage</div>
+					</div>
+					<div class="dvm-kpi-card">
 						<div class="dvm-kpi-label">Departments</div>
 						<div class="dvm-kpi-value text-teal" id="dvm-kpi-depts">...</div>
 						<div class="dvm-kpi-sub">Active teams</div>
@@ -200,7 +205,12 @@ frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
 							<circle cx="11" cy="11" r="8"></circle>
 							<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
 						</svg>
-						<input type="text" id="dvm-search-input" placeholder="Search visitors by name, email, department..." autocomplete="off">
+						<input type="text" id="dvm-search-input" placeholder="Search visitors by name, zone, department..." autocomplete="off">
+					</div>
+					<div class="dvm-zone-filter-box">
+						<select id="dvm-zone-select" class="dvm-zone-select">
+							<option value="all">All Zones</option>
+						</select>
 					</div>
 					<div class="dvm-filter-pills">
 						<button type="button" class="dvm-pill-btn active" data-filter="all">All (<span id="dvm-pill-all-count">0</span>)</button>
@@ -208,17 +218,54 @@ frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
 					</div>
 				</div>
 
-				<!-- List Container -->
-				<div class="dvm-body" id="dvm-body-list">
-					<div class="dvm-loading">
-						<div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-						<span>Loading live analytics...</span>
+				<!-- Two-column Content Container -->
+				<div class="dvm-main-grid">
+					<!-- Left Column: Zone Bar Chart Widget -->
+					<div class="dvm-chart-pane">
+						<div class="dvm-pane-header">
+							<div class="dvm-pane-title">
+								<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+									<line x1="18" y1="20" x2="18" y2="10"></line>
+									<line x1="12" y1="20" x2="12" y2="4"></line>
+									<line x1="6" y1="20" x2="6" y2="14"></line>
+								</svg>
+								Zone Distribution
+							</div>
+							<span class="dvm-pane-subtitle" id="dvm-chart-total-sub">0 zones</span>
+						</div>
+						<div class="dvm-chart-body" id="dvm-zone-chart-body">
+							<div class="dvm-loading dvm-pane-loading">
+								<div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Right Column: Visitor List Widget -->
+					<div class="dvm-list-pane">
+						<div class="dvm-pane-header">
+							<div class="dvm-pane-title">
+								<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+									<circle cx="9" cy="7" r="4"></circle>
+									<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+									<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+								</svg>
+								Visitors Log
+							</div>
+							<span class="dvm-pane-subtitle" id="dvm-list-count-sub">Showing 0 visitors</span>
+						</div>
+						<div class="dvm-body" id="dvm-body-list">
+							<div class="dvm-loading">
+								<div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+								<span>Loading live analytics...</span>
+							</div>
+						</div>
 					</div>
 				</div>
 
 				<!-- Footer -->
 				<div class="dvm-footer">
-					<span class="dvm-footer-hint">Live heartbeat updates every 25s • Press Esc to close</span>
+					<span class="dvm-footer-hint">Live heartbeat updates every 25s • Click any bar to filter zone</span>
 					<a href="javascript:void(0)" class="dvm-footer-link" id="dvm-footer-desk-link">View All Desk Users</a>
 				</div>
 			</div>
@@ -229,7 +276,9 @@ frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
 	setTimeout(() => $("#drishti-visitor-modal-backdrop").addClass("show"), 10);
 
 	let allVisitors = [];
+	let zoneBreakdown = {};
 	let currentFilter = "all";
+	let selectedZone = "all";
 
 	const getAvatarColor = (str) => {
 		let hash = 0;
@@ -247,10 +296,76 @@ frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
 			: name.slice(0, 2).toUpperCase();
 	};
 
+	const renderZoneChart = () => {
+		const zones = Object.keys(zoneBreakdown);
+		if (!zones.length) {
+			$("#dvm-zone-chart-body").html(`
+				<div class="dvm-empty-state" style="padding: 24px 10px;">
+					<div class="dvm-empty-title">No zone data available</div>
+				</div>
+			`);
+			return;
+		}
+
+		// Sort zones by visitor count descending
+		zones.sort((a, b) => (zoneBreakdown[b] || 0) - (zoneBreakdown[a] || 0));
+		const maxCount = Math.max(...zones.map((z) => zoneBreakdown[z] || 0), 1);
+		const totalVisitorsInZones = zones.reduce((acc, z) => acc + (zoneBreakdown[z] || 0), 0);
+
+		$("#dvm-chart-total-sub").text(`${zones.length} zones active`);
+
+		let chartHtml = `<div class="dvm-bar-chart">`;
+		zones.forEach((z) => {
+			const count = zoneBreakdown[z] || 0;
+			const pct = Math.round((count / maxCount) * 100);
+			const sharePct = totalVisitorsInZones > 0 ? Math.round((count / totalVisitorsInZones) * 100) : 0;
+			const isSelected = selectedZone === z;
+
+			chartHtml += `
+				<div class="dvm-bar-item ${isSelected ? 'active-zone' : ''}" data-zone="${frappe.utils.escape_html(z)}" title="Filter by ${frappe.utils.escape_html(z)} (${count} visitors)">
+					<div class="dvm-bar-label-row">
+						<span class="dvm-bar-label">${frappe.utils.escape_html(z)}</span>
+						<span class="dvm-bar-meta"><b>${count}</b> <span class="dvm-bar-pct">(${sharePct}%)</span></span>
+					</div>
+					<div class="dvm-bar-track">
+						<div class="dvm-bar-fill" style="width: ${pct}%"></div>
+					</div>
+				</div>
+			`;
+		});
+		chartHtml += `</div>`;
+
+		$("#dvm-zone-chart-body").html(chartHtml);
+
+		// Click on chart bar to select/deselect zone filter
+		$("#dvm-zone-chart-body").off("click", ".dvm-bar-item").on("click", ".dvm-bar-item", function () {
+			const clickedZone = $(this).data("zone");
+			if (selectedZone === clickedZone) {
+				selectedZone = "all";
+			} else {
+				selectedZone = clickedZone;
+			}
+			$("#dvm-zone-select").val(selectedZone);
+			renderZoneChart();
+			renderList();
+		});
+	};
+
+	const populateZoneSelect = () => {
+		const zones = Object.keys(zoneBreakdown).sort();
+		let options = `<option value="all">All Zones (${allVisitors.length})</option>`;
+		zones.forEach((z) => {
+			const cnt = zoneBreakdown[z] || 0;
+			options += `<option value="${frappe.utils.escape_html(z)}" ${selectedZone === z ? 'selected' : ''}>${frappe.utils.escape_html(z)} (${cnt})</option>`;
+		});
+		$("#dvm-zone-select").html(options);
+	};
+
 	const renderList = () => {
 		const searchVal = ($("#dvm-search-input").val() || "").toLowerCase().trim();
 		let filtered = allVisitors.filter((v) => {
 			if (currentFilter === "live" && !v.is_live) return false;
+			if (selectedZone !== "all" && (v.zone || "Unassigned") !== selectedZone) return false;
 			if (searchVal) {
 				const q = searchVal;
 				const nameMatch = (v.full_name || "").toLowerCase().includes(q);
@@ -258,20 +373,23 @@ frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
 				const deptMatch = (v.department || "").toLowerCase().includes(q);
 				const desigMatch = (v.designation || "").toLowerCase().includes(q);
 				const branchMatch = (v.branch || "").toLowerCase().includes(q);
-				return nameMatch || emailMatch || deptMatch || desigMatch || branchMatch;
+				const zoneMatch = (v.zone || "").toLowerCase().includes(q);
+				return nameMatch || emailMatch || deptMatch || desigMatch || branchMatch || zoneMatch;
 			}
 			return true;
 		});
 
+		$("#dvm-list-count-sub").text(`Showing ${filtered.length} of ${allVisitors.length}`);
+
 		if (!filtered.length) {
 			$("#dvm-body-list").html(`
 				<div class="dvm-empty-state">
-					<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+					<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
 						<circle cx="12" cy="12" r="10"></circle>
 						<line x1="8" y1="12" x2="16" y2="12"></line>
 					</svg>
 					<div class="dvm-empty-title">No visitors match this filter</div>
-					<div class="dvm-empty-sub">Try adjusting your search query or filter</div>
+					<div class="dvm-empty-sub">Try selecting another zone or clearing filters</div>
 				</div>
 			`);
 			return;
@@ -282,10 +400,11 @@ frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
 			const initials = getInitials(v.full_name || v.user);
 			const color = getAvatarColor(v.user || v.full_name);
 			const avatarHtml = v.user_image
-				? `<img src="${v.user_image}" class="dvm-avatar-img" alt="${v.full_name}" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'dvm-avatar-initials\\' style=\\'background-color:${color}\\'>${initials}</div>'">`
+				? `<img src="${v.user_image}" class="dvm-avatar-img" alt="${frappe.utils.escape_html(v.full_name)}" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'dvm-avatar-initials\\' style=\\'background-color:${color}\\'>${initials}</div>'">`
 				: `<div class="dvm-avatar-initials" style="background-color: ${color};">${initials}</div>`;
 
 			const deptInfo = [v.designation, v.department, v.branch].filter(Boolean).join(" • ") || "Drishti Viewer";
+			const zoneBadge = v.zone ? `<span class="dvm-zone-tag" title="Employee Zone">${frappe.utils.escape_html(v.zone)}</span>` : '';
 
 			html += `
 				<div class="dvm-user-item ${v.is_live ? 'is-live-card' : ''}">
@@ -295,12 +414,15 @@ frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
 					</div>
 					<div class="dvm-user-info">
 						<div class="dvm-user-name-row">
-							<span class="dvm-user-name">${v.full_name || v.user}</span>
+							<div class="dvm-user-name-group">
+								<span class="dvm-user-name">${frappe.utils.escape_html(v.full_name || v.user)}</span>
+								${zoneBadge}
+							</div>
 							${v.is_live
 								? '<span class="dvm-badge-live"><span class="dvm-live-dot-pulse"></span>Live Now</span>'
 								: `<span class="dvm-badge-seen">Last: ${v.last_visit || ''}</span>`}
 						</div>
-						<div class="dvm-user-dept" title="${deptInfo}">${deptInfo}</div>
+						<div class="dvm-user-dept" title="${frappe.utils.escape_html(deptInfo)}">${frappe.utils.escape_html(deptInfo)}</div>
 						<div class="dvm-user-meta">
 							<span>First visit: <b>${v.first_visit || ''}</b></span>
 							<span class="dvm-meta-sep">•</span>
@@ -329,6 +451,10 @@ frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
 					const deptCount = Object.keys(data.department_breakdown || {}).length;
 					$("#dvm-kpi-depts").text(deptCount || 0);
 
+					zoneBreakdown = data.zone_breakdown || {};
+					const zoneCount = Object.keys(zoneBreakdown).length;
+					$("#dvm-kpi-zones").text(zoneCount || 0);
+
 					$("#dvm-pill-all-count").text(data.today_visitors_count || 0);
 					$("#dvm-pill-live-count").text(data.live_viewers_count || 0);
 
@@ -351,22 +477,36 @@ frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
 								<div class="dvm-restricted-sub">Individual visitor names and timing logs are visible to CXO members and Administrators. Page visitor totals are reflected above in real-time.</div>
 							</div>
 						`);
+						$("#dvm-zone-chart-body").html(`
+							<div class="dvm-restricted-state" style="padding: 20px 10px;">
+								<div class="dvm-restricted-sub">Zone analytics available with CXO/Admin privileges.</div>
+							</div>
+						`);
 						return;
 					}
 
 					allVisitors = data.visitors || [];
+					populateZoneSelect();
+					renderZoneChart();
 					renderList();
 				}
 			},
 			error: function () {
 				$("#dvm-refresh-btn").removeClass("spinning");
 				$("#dvm-body-list").html('<div class="dvm-empty-state"><div class="dvm-empty-title">Failed to load visitor data</div></div>');
+				$("#dvm-zone-chart-body").html('<div class="dvm-empty-state"><div class="dvm-empty-title">Failed to load chart</div></div>');
 			},
 		});
 	};
 
 	// Event Listeners
 	$("#dvm-search-input").on("input", renderList);
+
+	$("#dvm-zone-select").on("change", function () {
+		selectedZone = $(this).val();
+		renderZoneChart();
+		renderList();
+	});
 
 	$(".dvm-pill-btn").on("click", function () {
 		$(".dvm-pill-btn").removeClass("active");
@@ -14769,9 +14909,9 @@ class DrishtiDashboard {
                 .drishti-visitor-modal-card {
                     background: #ffffff;
                     border-radius: 16px;
-                    width: 90%;
-                    max-width: 560px;
-                    max-height: 85vh;
+                    width: 92%;
+                    max-width: 860px;
+                    max-height: 88vh;
                     box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(226, 232, 240, 0.8);
                     display: flex;
                     flex-direction: column;
@@ -14786,7 +14926,7 @@ class DrishtiDashboard {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    padding: 16px 20px;
+                    padding: 14px 20px;
                     border-bottom: 1px solid #e2e8f0;
                     background: #ffffff;
                 }
@@ -14849,9 +14989,9 @@ class DrishtiDashboard {
                 }
                 .dvm-kpis {
                     display: grid;
-                    grid-template-columns: repeat(3, 1fr);
+                    grid-template-columns: repeat(4, 1fr);
                     gap: 10px;
-                    padding: 14px 20px;
+                    padding: 12px 20px;
                     background: #f8fafc;
                     border-bottom: 1px solid #e2e8f0;
                 }
@@ -14859,18 +14999,18 @@ class DrishtiDashboard {
                     background: #ffffff;
                     border: 1px solid #e2e8f0;
                     border-radius: 10px;
-                    padding: 10px 12px;
+                    padding: 8px 12px;
                     text-align: left;
                 }
                 .dvm-kpi-label {
-                    font-size: 10.5px;
+                    font-size: 10px;
                     font-weight: 600;
                     text-transform: uppercase;
                     letter-spacing: 0.3px;
                     color: #64748b;
                 }
                 .dvm-kpi-value {
-                    font-size: 20px;
+                    font-size: 19px;
                     font-weight: 800;
                     line-height: 1.2;
                     margin: 2px 0;
@@ -14880,6 +15020,7 @@ class DrishtiDashboard {
                 }
                 .dvm-kpi-value.text-blue { color: #0284c7; }
                 .dvm-kpi-value.text-green { color: #059669; }
+                .dvm-kpi-value.text-purple { color: #7c3aed; }
                 .dvm-kpi-value.text-teal { color: #0d9488; }
                 .dvm-live-dot {
                     width: 8px;
@@ -14891,15 +15032,16 @@ class DrishtiDashboard {
                     animation: drishtiPulseAnim 2s infinite;
                 }
                 .dvm-kpi-sub {
-                    font-size: 10px;
+                    font-size: 9.5px;
                     color: #94a3b8;
                 }
                 .dvm-toolbar {
                     display: flex;
                     align-items: center;
                     gap: 10px;
-                    padding: 12px 20px;
+                    padding: 10px 20px;
                     border-bottom: 1px solid #f1f5f9;
+                    background: #ffffff;
                 }
                 .dvm-search-box {
                     flex: 1;
@@ -14929,6 +15071,26 @@ class DrishtiDashboard {
                     width: 100%;
                     color: #1e293b;
                 }
+                .dvm-zone-filter-box {
+                    min-width: 150px;
+                }
+                .dvm-zone-select {
+                    width: 100%;
+                    border: 1px solid #cbd5e1;
+                    background: #ffffff;
+                    border-radius: 8px;
+                    padding: 6px 10px;
+                    font-size: 11.5px;
+                    font-weight: 600;
+                    color: #334155;
+                    outline: none;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                }
+                .dvm-zone-select:focus {
+                    border-color: #417d81;
+                    box-shadow: 0 0 0 3px rgba(65, 125, 129, 0.12);
+                }
                 .dvm-filter-pills {
                     display: flex;
                     gap: 4px;
@@ -14950,11 +15112,128 @@ class DrishtiDashboard {
                     color: #ffffff;
                     border-color: #0f172a;
                 }
+
+                /* 2-Column Main Grid */
+                .dvm-main-grid {
+                    display: grid;
+                    grid-template-columns: 320px 1fr;
+                    flex: 1;
+                    min-height: 380px;
+                    max-height: 440px;
+                    overflow: hidden;
+                    background: #ffffff;
+                }
+                .dvm-chart-pane {
+                    border-right: 1px solid #e2e8f0;
+                    background: #fafbfc;
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
+                }
+                .dvm-list-pane {
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
+                    background: #ffffff;
+                }
+                .dvm-pane-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 8px 16px;
+                    background: #f1f5f9;
+                    border-bottom: 1px solid #e2e8f0;
+                }
+                .dvm-pane-title {
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: #334155;
+                    text-transform: uppercase;
+                    letter-spacing: 0.4px;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+                .dvm-pane-subtitle {
+                    font-size: 10.5px;
+                    color: #64748b;
+                    font-weight: 500;
+                }
+                .dvm-chart-body {
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 12px 14px;
+                }
+                .dvm-bar-chart {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+                .dvm-bar-item {
+                    cursor: pointer;
+                    padding: 6px 8px;
+                    border-radius: 8px;
+                    border: 1px solid transparent;
+                    transition: all 0.15s ease;
+                }
+                .dvm-bar-item:hover {
+                    background: #f1f5f9;
+                    border-color: #cbd5e1;
+                }
+                .dvm-bar-item.active-zone {
+                    background: #eff6ff;
+                    border-color: #93c5fd;
+                    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.08);
+                }
+                .dvm-bar-label-row {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    font-size: 11.5px;
+                    margin-bottom: 4px;
+                }
+                .dvm-bar-label {
+                    font-weight: 600;
+                    color: #1e293b;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                .dvm-bar-item.active-zone .dvm-bar-label {
+                    color: #1d4ed8;
+                    font-weight: 700;
+                }
+                .dvm-bar-meta {
+                    font-size: 11px;
+                    color: #475569;
+                    font-weight: 600;
+                }
+                .dvm-bar-pct {
+                    color: #94a3b8;
+                    font-size: 10px;
+                    font-weight: 500;
+                }
+                .dvm-bar-track {
+                    width: 100%;
+                    height: 7px;
+                    background: #e2e8f0;
+                    border-radius: 4px;
+                    overflow: hidden;
+                }
+                .dvm-bar-fill {
+                    height: 100%;
+                    background: linear-gradient(90deg, #417d81 0%, #10b981 100%);
+                    border-radius: 4px;
+                    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                .dvm-bar-item.active-zone .dvm-bar-fill {
+                    background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%);
+                }
+
                 .dvm-body {
                     flex: 1;
                     overflow-y: auto;
-                    padding: 12px 20px;
-                    max-height: 380px;
+                    padding: 12px 16px;
                     display: flex;
                     flex-direction: column;
                     gap: 8px;
@@ -14963,7 +15242,7 @@ class DrishtiDashboard {
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    padding: 10px 12px;
+                    padding: 9px 12px;
                     border-radius: 10px;
                     background: #ffffff;
                     border: 1px solid #f1f5f9;
@@ -14980,27 +15259,27 @@ class DrishtiDashboard {
                 }
                 .dvm-user-avatar {
                     position: relative;
-                    width: 38px;
-                    height: 38px;
+                    width: 36px;
+                    height: 36px;
                     flex-shrink: 0;
                 }
                 .dvm-avatar-img {
-                    width: 38px;
-                    height: 38px;
+                    width: 36px;
+                    height: 36px;
                     border-radius: 50%;
                     object-fit: cover;
                     border: 1.5px solid #e2e8f0;
                 }
                 .dvm-avatar-initials {
-                    width: 38px;
-                    height: 38px;
+                    width: 36px;
+                    height: 36px;
                     border-radius: 50%;
                     color: #ffffff;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     font-weight: 700;
-                    font-size: 12px;
+                    font-size: 11.5px;
                     border: 1.5px solid #ffffff;
                     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
                 }
@@ -15024,16 +15303,34 @@ class DrishtiDashboard {
                     justify-content: space-between;
                     gap: 8px;
                 }
+                .dvm-user-name-group {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    min-width: 0;
+                }
                 .dvm-user-name {
-                    font-size: 13px;
+                    font-size: 12.5px;
                     font-weight: 700;
                     color: #1e293b;
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
                 }
+                .dvm-zone-tag {
+                    display: inline-block;
+                    font-size: 9.5px;
+                    font-weight: 700;
+                    padding: 1px 6px;
+                    background: #f3e8ff;
+                    color: #6b21a8;
+                    border: 1px solid #e9d5ff;
+                    border-radius: 4px;
+                    white-space: nowrap;
+                    line-height: 1.2;
+                }
                 .dvm-badge-live {
-                    font-size: 10px;
+                    font-size: 9.5px;
                     font-weight: 700;
                     color: #047857;
                     background: #dcfce7;
@@ -15054,7 +15351,7 @@ class DrishtiDashboard {
                     animation: drishtiPulseAnim 1.8s infinite;
                 }
                 .dvm-badge-seen {
-                    font-size: 10px;
+                    font-size: 9.5px;
                     color: #64748b;
                     background: #f1f5f9;
                     padding: 2px 6px;
@@ -15063,15 +15360,15 @@ class DrishtiDashboard {
                 .dvm-user-dept {
                     font-size: 11px;
                     color: #64748b;
-                    margin-top: 2px;
+                    margin-top: 1px;
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
                 }
                 .dvm-user-meta {
-                    font-size: 10.5px;
+                    font-size: 10px;
                     color: #94a3b8;
-                    margin-top: 3px;
+                    margin-top: 2px;
                     display: flex;
                     align-items: center;
                     gap: 6px;
@@ -15101,7 +15398,7 @@ class DrishtiDashboard {
                     text-decoration: underline;
                 }
                 .dvm-loading, .dvm-empty-state, .dvm-restricted-state {
-                    padding: 36px 20px;
+                    padding: 32px 16px;
                     text-align: center;
                     color: #64748b;
                     display: flex;
@@ -15111,13 +15408,31 @@ class DrishtiDashboard {
                     gap: 8px;
                 }
                 .dvm-empty-title, .dvm-restricted-title {
-                    font-size: 13px;
+                    font-size: 12.5px;
                     font-weight: 700;
                     color: #1e293b;
                 }
                 .dvm-empty-sub, .dvm-restricted-sub {
-                    font-size: 11.5px;
+                    font-size: 11px;
                     color: #64748b;
+                    max-width: 320px;
+                    line-height: 1.4;
+                }
+
+                @media (max-width: 768px) {
+                    .dvm-main-grid {
+                        grid-template-columns: 1fr;
+                        max-height: 70vh;
+                    }
+                    .dvm-chart-pane {
+                        border-right: none;
+                        border-bottom: 1px solid #e2e8f0;
+                        max-height: 180px;
+                    }
+                    .dvm-kpis {
+                        grid-template-columns: repeat(2, 1fr);
+                    }
+                }
                     max-width: 380px;
                     line-height: 1.4;
                 }
