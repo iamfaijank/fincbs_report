@@ -13389,8 +13389,8 @@ class DrishtiDashboard {
 
 			chart.setOption(option);
 			this.renderAgentDonuts({
-				ss: { achieved: ssAchTotal, target: ssTargetTotal, color: "#2563eb" },
-				vs: { achieved: vsAchTotal, target: vsTargetTotal, color: "#7c3aed" }
+				ss: { achieved: ssAchTotal, target: ssTargetTotal, color: "#0f766e", shortfallColor: "#ef4444" },
+				vs: { achieved: vsAchTotal, target: vsTargetTotal, color: "#14b8a6", shortfallColor: "#f87171" }
 			});
 			$(window).off("resize.agentChart").on("resize.agentChart", () => {
 				chart.resize();
@@ -13462,7 +13462,7 @@ class DrishtiDashboard {
 						},
 						data: [
 							{ name: label + " Achieved", value: Math.round(achieved), itemStyle: { color: cfg.color } },
-							{ name: label + " Shortfall", value: Math.round(shortfall), itemStyle: { color: "#e2e8f0" } }
+							{ name: label + " Shortfall", value: Math.round(shortfall), itemStyle: { color: cfg.shortfallColor || "#ef4444" } }
 						]
 					}
 				]
