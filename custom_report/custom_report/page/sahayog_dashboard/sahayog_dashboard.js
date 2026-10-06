@@ -12688,16 +12688,11 @@ class DrishtiDashboard {
 				},
 				grid: {
 					left: "3%",
-					right: "4%",
+					right: "6%",
 					bottom: "10%",
 					containLabel: true
 				},
-				xAxis: {
-					type: "category",
-					data: zoneNames,
-					axisLabel: { interval: 0, rotate: 25, fontSize: 11 }
-				},
-				yAxis: [
+				xAxis: [
 					{
 						type: "value",
 						name: "Amount (₹)",
@@ -12712,8 +12707,17 @@ class DrishtiDashboard {
 					{
 						type: "value",
 						name: "Ach %",
+						position: "top",
 						axisLabel: { formatter: "{value}%" },
 						splitLine: { show: false }
+					}
+				],
+				yAxis: [
+					{
+						type: "category",
+						data: zoneNames,
+						inverse: true,
+						axisLabel: { fontSize: 11 }
 					}
 				],
 				series: [
@@ -12721,18 +12725,18 @@ class DrishtiDashboard {
 						name: "Target",
 						type: "bar",
 						data: targets,
-						itemStyle: { color: "#3b82f6", borderRadius: [4, 4, 0, 0] }
+						itemStyle: { color: "#3b82f6", borderRadius: [0, 4, 4, 0] }
 					},
 					{
 						name: "Achievement",
 						type: "bar",
 						data: achievements,
-						itemStyle: { color: "#10b981", borderRadius: [4, 4, 0, 0] }
+						itemStyle: { color: "#10b981", borderRadius: [0, 4, 4, 0] }
 					},
 					{
 						name: "Ach %",
 						type: "line",
-						yAxisIndex: 1,
+						xAxisIndex: 1,
 						data: percentages,
 						itemStyle: { color: "#f59e0b" },
 						lineStyle: { width: 3 },
@@ -12740,7 +12744,7 @@ class DrishtiDashboard {
 						symbolSize: 8,
 						label: {
 							show: true,
-							position: "top",
+							position: "right",
 							formatter: "{c}%",
 							fontSize: 10,
 							color: "#d97706",
