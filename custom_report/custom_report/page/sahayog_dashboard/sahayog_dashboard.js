@@ -13242,6 +13242,8 @@ class DrishtiDashboard {
 			const vsPercent = [];
 			const ssInactive = [];
 			const vsInactive = [];
+			const ssShort = [];
+			const vsShort = [];
 			let ssAchTotal = 0, ssTargetTotal = 0, vsAchTotal = 0, vsTargetTotal = 0;
 
 			sortedZones.forEach(zone => {
@@ -13271,6 +13273,8 @@ class DrishtiDashboard {
 				vsPercent.push(vPct);
 				ssInactive.push(Math.round(sInact));
 				vsInactive.push(Math.round(vInact));
+				ssShort.push(Math.max(sTarget - sAch, 0));
+				vsShort.push(Math.max(vTarget - vAch, 0));
 			});
 
 			const fmt = (v) => {
@@ -13298,7 +13302,7 @@ class DrishtiDashboard {
 					}
 				},
 				legend: {
-					data: ["SS Achievement", "VS Achievement", "SS Inactive", "VS Inactive", "SS Ach %", "VS Ach %"],
+					data: ["SS Achievement", "SS Shortfall", "VS Achievement", "VS Shortfall", "SS Inactive", "VS Inactive", "SS Ach %", "VS Ach %"],
 					top: 0
 				},
 				grid: {
@@ -13345,14 +13349,30 @@ class DrishtiDashboard {
 					{
 						name: "SS Achievement",
 						type: "bar",
+						stack: "ss",
 						data: ssAch,
-						itemStyle: { color: "#0f766e", borderRadius: [4, 4, 0, 0] }
+						itemStyle: { color: "#0f766e" }
+					},
+					{
+						name: "SS Shortfall",
+						type: "bar",
+						stack: "ss",
+						data: ssShort,
+						itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] }
 					},
 					{
 						name: "VS Achievement",
 						type: "bar",
+						stack: "vs",
 						data: vsAch,
-						itemStyle: { color: "#14b8a6", borderRadius: [4, 4, 0, 0] }
+						itemStyle: { color: "#14b8a6" }
+					},
+					{
+						name: "VS Shortfall",
+						type: "bar",
+						stack: "vs",
+						data: vsShort,
+						itemStyle: { color: "#f87171", borderRadius: [4, 4, 0, 0] }
 					},
 					{
 						name: "SS Inactive",
