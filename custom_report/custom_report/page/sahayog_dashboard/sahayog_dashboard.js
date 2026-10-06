@@ -13353,14 +13353,23 @@ class DrishtiDashboard {
 						type: "bar",
 						stack: "vs",
 						data: vsAch,
-						itemStyle: { color: "#14b8a6" }
+						itemStyle: {
+							color: this.diagonalPattern("#14b8a6", "#ffffff"),
+							borderColor: "#14b8a6",
+							borderWidth: 1
+						}
 					},
 					{
 						name: "VS Shortfall",
 						type: "bar",
 						stack: "vs",
 						data: vsShort,
-						itemStyle: { color: "#f87171", borderRadius: [4, 4, 0, 0] }
+						itemStyle: {
+							color: this.diagonalPattern("#f87171", "#ffffff"),
+							borderColor: "#f87171",
+							borderWidth: 1,
+							borderRadius: [4, 4, 0, 0]
+						}
 					},
 					{
 						name: "SS Ach %",
@@ -13397,6 +13406,20 @@ class DrishtiDashboard {
 		} else {
 			initChart();
 		}
+	}
+
+	diagonalPattern(lineColor, bgColor) {
+		const svg =
+			`<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8">` +
+			`<rect width="8" height="8" fill="${bgColor}"/>` +
+			`<path d="M-2,2 L2,-2 M0,8 L8,0 M6,10 L10,6" stroke="${lineColor}" stroke-width="3"/>` +
+			`</svg>`;
+		return {
+			image: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
+			repeat: "repeat",
+			imageWidth: 8,
+			imageHeight: 8
+		};
 	}
 
 	renderAgentDonuts(totals) {
