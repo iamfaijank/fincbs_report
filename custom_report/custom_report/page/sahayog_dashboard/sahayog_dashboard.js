@@ -13478,8 +13478,24 @@ class DrishtiDashboard {
 							itemStyle: { shadowBlur: 8, shadowColor: "rgba(0,0,0,0.2)" }
 						},
 						data: [
-							{ name: label + " Active", value: Math.round(active), itemStyle: { color: cfg.color } },
-							{ name: label + " Inactive", value: Math.round(inactive), itemStyle: { color: cfg.inactiveColor || "#ef4444" } }
+							{
+								name: label + " Active",
+								value: Math.round(active),
+								itemStyle: {
+									color: key === "vs" ? this.diagonalPattern(cfg.color, "#ffffff") : cfg.color,
+									borderColor: cfg.color,
+									borderWidth: 1
+								}
+							},
+							{
+								name: label + " Inactive",
+								value: Math.round(inactive),
+								itemStyle: {
+									color: key === "vs" ? this.diagonalPattern(cfg.inactiveColor || "#ef4444", "#ffffff") : (cfg.inactiveColor || "#ef4444"),
+									borderColor: cfg.inactiveColor || "#ef4444",
+									borderWidth: 1
+								}
+							}
 						]
 					}
 				]
