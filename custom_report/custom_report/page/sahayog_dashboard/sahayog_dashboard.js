@@ -13186,6 +13186,16 @@ class DrishtiDashboard {
 						</button>
 					</div>
 				</div>
+				<div id="agent-donuts-row" style="display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px;">
+					<div style="text-align: center;">
+						<div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 2px;">SS — Achieved vs Shortfall</div>
+						<div id="agent-ss-donut" style="width: 250px; height: 220px;"></div>
+					</div>
+					<div style="text-align: center;">
+						<div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 2px;">VS — Achieved vs Shortfall</div>
+						<div id="agent-vs-donut" style="width: 250px; height: 220px;"></div>
+					</div>
+				</div>
 				<div id="agent-performance-chart" style="width: 100%; height: 520px;"></div>
 			</div>
 		`;
@@ -13230,6 +13240,7 @@ class DrishtiDashboard {
 			const vsAch = [];
 			const ssPercent = [];
 			const vsPercent = [];
+			let ssAchTotal = 0, ssTargetTotal = 0, vsAchTotal = 0, vsTargetTotal = 0;
 
 			sortedZones.forEach(zone => {
 				const rows = grouped[zone];
@@ -13240,6 +13251,11 @@ class DrishtiDashboard {
 					vTarget += parseFloat(r.target || 0);
 					vAch += parseFloat(r.achievement || 0);
 				});
+
+				ssAchTotal += sAch;
+				ssTargetTotal += sTarget;
+				vsAchTotal += vAch;
+				vsTargetTotal += vTarget;
 
 				const sPct = sTarget > 0 ? Math.round((sAch / sTarget) * 100) : 0;
 				const vPct = vTarget > 0 ? Math.round((vAch / vTarget) * 100) : 0;
@@ -13340,7 +13356,14 @@ class DrishtiDashboard {
 			};
 
 			chart.setOption(option);
-			$(window).off("resize.agentChart").on("resize.agentChart", () => chart.resize());
+			this.renderAgentDonuts({
+				ss: { achieved: ssAchTotal, target: ssTargetTotal, color: "#2563eb" },
+				vs: { achieved: vsAchTotal, target: vsTargetTotal, color: "#7c3aed" }
+			});
+			$(window).off("resize.agentChart").on("resize.agentChart", () => {
+				chart.resize();
+				this.resizeAgentDonuts();
+			});
 		};
 
 		if (typeof echarts === "undefined") {
@@ -13348,6 +13371,81 @@ class DrishtiDashboard {
 		} else {
 			initChart();
 		}
+	}
+
+	renderAgentDonuts(totals) {
+		if (typeof echarts === "undefined") return;
+
+		["agent-ss-donut", "agent-vs-donut"].forEach((domId) => {
+			const dom = this.page.main.find("#" + domId)[0];
+			if (!dom) return;
+
+			const key = domId === "agent-ss-donut" ? "ss" : "vs";
+			const cfg = totals[key] || {};
+			const achieved = cfg.achieved || 0;
+			const target = cfg.target || 0;
+			const shortfall = Math.max(target - achieved, 0);
+			const pct = target > 0 ? Math.round((achieved / target) * 100) : 0;
+			const label = key === "ss" ? "SS" : "VS";
+
+			const existing = echarts.getInstanceByDom(dom);
+			if (existing) existing.dispose();
+			const chart = echarts.init(dom);
+
+			chart.setOption({
+				tooltip: {
+					trigger: "item",
+					formatter: function (p) {
+						return `<strong>${p.name}</strong><br/>Amount: <b>${p.value.toLocaleString("en-IN")}</b><br/>Share: <b>${p.percent}%</b>`;
+					}
+				},
+				title: {
+					text: pct + "%",
+					subtext: label + " Achieved",
+					left: "center",
+					top: "36%",
+					textStyle: { fontSize: 24, fontWeight: 700, color: "#0f172a" },
+					subtextStyle: { fontSize: 11, color: "#64748b" }
+				},
+				legend: {
+					bottom: 0,
+					icon: "circle",
+					itemWidth: 10,
+					itemHeight: 10,
+					textStyle: { fontSize: 11, color: "#334155" },
+					data: [label + " Achieved", label + " Shortfall"]
+				},
+				series: [
+					{
+						name: label,
+						type: "pie",
+						radius: ["58%", "76%"],
+						center: ["50%", "45%"],
+						avoidLabelOverlap: true,
+						label: { show: false },
+						labelLine: { show: false },
+						emphasis: {
+							scale: false,
+							itemStyle: { shadowBlur: 8, shadowColor: "rgba(0,0,0,0.2)" }
+						},
+						data: [
+							{ name: label + " Achieved", value: Math.round(achieved), itemStyle: { color: cfg.color } },
+							{ name: label + " Shortfall", value: Math.round(shortfall), itemStyle: { color: "#e2e8f0" } }
+						]
+					}
+				]
+			});
+		});
+	}
+
+	resizeAgentDonuts() {
+		if (typeof echarts === "undefined") return;
+		["agent-ss-donut", "agent-vs-donut"].forEach((domId) => {
+			const dom = this.page.main.find("#" + domId)[0];
+			if (!dom) return;
+			const inst = echarts.getInstanceByDom(dom);
+			if (inst) inst.resize();
+		});
 	}
 
 	// ========================================================================
