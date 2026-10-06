@@ -10806,7 +10806,7 @@ class DrishtiDashboard {
 			} else if (this.state.activeTab === "branch") {
 				this.attachBranchViewToggleHandlers();
 				if (this.state.branchViewMode === "chart") {
-					this.renderBranchChart(filteredBranches);
+					this.renderBranchQuartiles(filteredBranches);
 				}
 			} else if (this.state.activeTab === "product_tgt_ach") {
 				this.attachProductTgtAchExpandHandlers();
@@ -13524,7 +13524,7 @@ class DrishtiDashboard {
 				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9;">
 					<div style="text-align: center; width: 100%;">
 						<h5 style="margin: 0; font-weight: 700; color: #0f172a; font-size: 16px;">Top Performing Branches Overview</h5>
-						<p style="margin: 2px 0 0; font-size: 12px; color: #64748b; font-style: italic;">Top 15 branches by Achievement % for FY ${fy} (As of ${dateStr})</p>
+						<p style="margin: 2px 0 0; font-size: 12px; color: #64748b; font-style: italic;">Branch quartiles by Achievement % for FY ${fy} (As of ${dateStr})</p>
 					</div>
 					<div class="branch-view-toggle btn-group" role="group" style="background: #f1f5f9; padding: 3px; border-radius: 6px; white-space: nowrap; margin-left: auto;">
 						<button type="button" class="btn btn-xs branch-toggle-btn active btn-primary" data-mode="chart" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #ffffff; background-color: #346569;">
@@ -13535,7 +13535,7 @@ class DrishtiDashboard {
 						</button>
 					</div>
 				</div>
-				<div id="branch-performance-chart" style="width: 100%; height: 550px;"></div>
+				<div id="branch-quartile-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;"></div>
 			</div>
 		`;
 	}
@@ -13668,6 +13668,64 @@ class DrishtiDashboard {
 		} else {
 			initChart();
 		}
+	}
+
+	renderBranchQuartiles(branchData) {
+		const grid = this.page.main.find("#branch-quartile-grid")[0];
+		if (!grid) return;
+
+		const activeMonthKey = this.months && this.months.length > 0 ? this.months[this.months.length - 1].key : null;
+
+		const parsedBranches = [];
+		(branchData || []).forEach(b => {
+			const m = activeMonthKey && b.months ? b.months[activeMonthKey] : null;
+			const tgt = m ? (m.target || 0) : 0;
+			const ach = m ? (m.achievement || 0) : 0;
+			if (tgt > 0 || ach > 0) {
+				parsedBranches.push({
+					target: tgt,
+					achievement: ach,
+					percentage: m && m.percentage !== undefined ? m.percentage : (tgt > 0 ? (ach / tgt) * 100 : 0)
+				});
+			}
+		});
+
+		parsedBranches.sort((a, b) => b.percentage - a.percentage);
+
+		const total = parsedBranches.length;
+		const quartileSize = total > 0 ? Math.ceil(total / 4) : 0;
+		const boxes = [
+			{ title: "Top 25%", color: "#15803d", bg: "#f0fdf4" },
+			{ title: "Mid 25%", color: "#0f766e", bg: "#f0fdfa" },
+			{ title: "Next 25%", color: "#d97706", bg: "#fffbeb" },
+			{ title: "Bottom 25%", color: "#dc2626", bg: "#fef2f2" }
+		]
+			.map((meta, i) => {
+				const from = quartileSize * i;
+				const to = i === 3 ? total : quartileSize * (i + 1);
+				const slice = parsedBranches.slice(from, to);
+				const count = slice.length;
+				const tgtSum = slice.reduce((s, x) => s + x.target, 0);
+				const achSum = slice.reduce((s, x) => s + x.achievement, 0);
+				let pct = 0;
+				if (tgtSum > 0) {
+					pct = Math.round((achSum / tgtSum) * 100);
+				} else if (count > 0) {
+					pct = Math.round(slice.reduce((s, x) => s + x.percentage, 0) / count);
+				}
+
+				return `
+					<div style="background: ${meta.bg}; border: 1px solid #e2e8f0; border-left: 5px solid ${meta.color}; border-radius: 8px; padding: 18px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+						<div style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">${meta.title}</div>
+						<div style="font-size: 30px; font-weight: 800; color: ${meta.color}; line-height: 1.2; margin-top: 4px;">${pct}%</div>
+						<div style="font-size: 11px; font-weight: 600; color: #94a3b8;">Achievement %</div>
+						<div style="font-size: 13px; font-weight: 700; color: #334155; margin-top: 8px;">${count} branches</div>
+					</div>
+				`;
+			})
+			.join("");
+
+		$(grid).html(boxes);
 	}
 
 	getChangesBadge(catData) {
