@@ -1659,48 +1659,60 @@ def build_agent_wise(selected_date=None, perms=None):
 
 @frappe.whitelist()
 def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
-    from custom_report.rd_smbg_pending_report import get_sol_summary, resolve_target_date
+    from custom_report.rd_smbg_pending_report import get_cached_report
 
+    # Cached for 24 hrs per (date, sol_ids): the DB work runs once a day at most.
+    # Report permissions are applied after the cache, per user.
+    cache_key = "rd_smbg_pending:mis:{}:{}".format(selected_date or "", sol_ids or "ALL")
     try:
-        target_date = resolve_target_date(selected_date)
-        rows = get_sol_summary(target_date, sol_ids=sol_ids)
-
-        sol_ids_found = [r.sol_id.strip() for r in rows if r.sol_id]
-        branch_map = {}
-        if sol_ids_found:
-            branches_map = get_sahayog_branches_cached()
-            for sid in sol_ids_found:
-                b = branches_map.get(sid) or branches_map.get(sid.lstrip('0')) or {}
-                branch_map[sid] = {
-                    "zone": b.get("zone") or "",
-                    "region": b.get("region") or "",
-                    "district": b.get("district") or "",
-                    "branch_name": b.get("branch_name") or ""
-                }
-
-        result = []
-        for r in rows:
-            sid = str(r.sol_id).strip()
-            sb = branch_map.get(sid) or {}
-            result.append({
-                "sol_id": sid,
-                "sol_desc": r.sol_desc or "",
-                "zone": sb.get("zone") or "",
-                "region": sb.get("region") or "",
-                "district": sb.get("district") or "",
-                "branch_name": sb.get("branch_name") or "",
-                "total_accounts": r.total_accounts or 0,
-                "total_collection": float(r.total_collection or 0),
-                "pending_accounts": r.pending_accounts or 0,
-                "pending_amount": float(r.pending_amount or 0),
-                "pending_instalments": r.pending_instalments or 0
-            })
-
-        # Apply User Report Permissions filtering
-        return _apply_report_prefs_filter(result)
+        rows = get_cached_report(
+            cache_key,
+            lambda: _build_rd_smbg_rows(sol_ids=sol_ids, selected_date=selected_date),
+        )
+        return _apply_report_prefs_filter(rows)
     except Exception as e:
         frappe.log_error(f"Error executing RD/SMBG table query: {str(e)}", "RD SMBG Table API")
         return []
+
+
+def _build_rd_smbg_rows(sol_ids=None, selected_date=None):
+    from custom_report.rd_smbg_pending_report import get_sol_summary, resolve_target_date
+
+    target_date = resolve_target_date(selected_date)
+    rows = get_sol_summary(target_date, sol_ids=sol_ids)
+
+    sol_ids_found = [r.sol_id.strip() for r in rows if r.sol_id]
+    branch_map = {}
+    if sol_ids_found:
+        branches_map = get_sahayog_branches_cached()
+        for sid in sol_ids_found:
+            b = branches_map.get(sid) or branches_map.get(sid.lstrip('0')) or {}
+            branch_map[sid] = {
+                "zone": b.get("zone") or "",
+                "region": b.get("region") or "",
+                "district": b.get("district") or "",
+                "branch_name": b.get("branch_name") or ""
+            }
+
+    result = []
+    for r in rows:
+        sid = str(r.sol_id).strip()
+        sb = branch_map.get(sid) or {}
+        result.append({
+            "sol_id": sid,
+            "sol_desc": r.sol_desc or "",
+            "zone": sb.get("zone") or "",
+            "region": sb.get("region") or "",
+            "district": sb.get("district") or "",
+            "branch_name": sb.get("branch_name") or "",
+            "total_accounts": r.total_accounts or 0,
+            "total_collection": float(r.total_collection or 0),
+            "pending_accounts": r.pending_accounts or 0,
+            "pending_amount": float(r.pending_amount or 0),
+            "pending_instalments": r.pending_instalments or 0
+        })
+
+    return result
 
 
 @frappe.whitelist()
