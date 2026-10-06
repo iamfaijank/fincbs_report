@@ -14,6 +14,35 @@ from frappe.utils import getdate, nowdate
 # SMBG (schm_code 2016) is intentionally excluded from every report read.
 SCHM_EXCLUDE_FILTER = "(schm_code IS NULL OR schm_code != '2016')"
 
+# Report payloads are cached for a full day so the queries run at most once
+# in 24 hours instead of on every dashboard load.
+REPORT_CACHE_TTL_SECONDS = 24 * 60 * 60
+
+
+def get_cached_report(cache_key, builder):
+	"""Return the cached report payload, building it at most once per 24 hours.
+
+	`builder` is only called on a cache miss (or after the entry expires).
+	Failures propagate and are never cached, so the next call retries.
+	"""
+	cache = frappe.cache()
+	payload = cache.get_value(cache_key, expires=True)
+	if payload is not None:
+		return payload
+
+	payload = builder()
+	if payload is not None:
+		cache.set_value(cache_key, payload, expires_in_sec=REPORT_CACHE_TTL_SECONDS)
+	return payload
+
+
+def clear_report_cache(cache_key):
+	"""Drop a cached report entry (e.g. after a manual re-sync)."""
+	try:
+		frappe.cache().delete_key(cache_key)
+	except Exception:
+		frappe.logger("rd_smbg").debug(f"Failed to clear RD & SMBG cache key: {cache_key}")
+
 
 def resolve_target_date(preferred=None):
 	"""Return the newest date that actually has data (never later than `preferred`).
