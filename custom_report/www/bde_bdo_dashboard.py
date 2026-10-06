@@ -103,31 +103,38 @@ def _extract_emp_id(auth_id):
 
 @frappe.whitelist(allow_guest=True)
 def get_rd_smbg_pending_table_data():
-	from custom_report.rd_smbg_pending_report import get_rm_details, get_sol_summary, resolve_target_date
+	from custom_report.rd_smbg_pending_report import get_cached_report
 
+	# One cache entry for the day: the report is rebuilt at most once in 24 hrs.
 	try:
-		target_date = resolve_target_date()
-		rows = get_sol_summary(target_date)
-		sol_ids_found = [r.sol_id.strip() for r in rows if r.sol_id]
-
-		branch_map = {}
-		if sol_ids_found:
-			sb_data = frappe.get_all("Sahayog Branch", filters={"name": ["in", sol_ids_found]}, fields=["name as sol_id", "zone", "region", "district", "branch"])
-			for b in sb_data:
-				branch_map[b.sol_id] = {"zone": b.zone or "", "region": b.region or "", "district": b.district or "", "branch_name": b.branch or ""}
-
-		# Single grouped query instead of one detail query per branch.
-		detail_map = get_rm_details(target_date)
-
-		result = []
-		for r in rows:
-			sid = str(r.sol_id).strip()
-			sb = branch_map.get(sid, {})
-			result.append({"sol_id": sid, "sol_desc": r.sol_desc or "", "zone": sb.get("zone", ""), "region": sb.get("region", ""), "district": sb.get("district", ""), "branch_name": sb.get("branch_name", ""), "total_accounts": r.total_accounts or 0, "total_collection": float(r.total_collection or 0), "pending_accounts": r.pending_accounts or 0, "pending_amount": float(r.pending_amount or 0), "pending_instalments": r.pending_instalments or 0, "details": detail_map.get(sid, [])})
-		return result
+		return get_cached_report("rd_smbg_pending:bde", _build_rd_smbg_rows)
 	except Exception as e:
 		frappe.log_error(f"RD/SMBG query error: {str(e)}", "RD SMBG API")
 		return []
+
+
+def _build_rd_smbg_rows():
+	from custom_report.rd_smbg_pending_report import get_rm_details, get_sol_summary, resolve_target_date
+
+	target_date = resolve_target_date()
+	rows = get_sol_summary(target_date)
+	sol_ids_found = [r.sol_id.strip() for r in rows if r.sol_id]
+
+	branch_map = {}
+	if sol_ids_found:
+		sb_data = frappe.get_all("Sahayog Branch", filters={"name": ["in", sol_ids_found]}, fields=["name as sol_id", "zone", "region", "district", "branch"])
+		for b in sb_data:
+			branch_map[b.sol_id] = {"zone": b.zone or "", "region": b.region or "", "district": b.district or "", "branch_name": b.branch or ""}
+
+	# Single grouped query instead of one detail query per branch.
+	detail_map = get_rm_details(target_date)
+
+	result = []
+	for r in rows:
+		sid = str(r.sol_id).strip()
+		sb = branch_map.get(sid, {})
+		result.append({"sol_id": sid, "sol_desc": r.sol_desc or "", "zone": sb.get("zone", ""), "region": sb.get("region", ""), "district": sb.get("district", ""), "branch_name": sb.get("branch_name", ""), "total_accounts": r.total_accounts or 0, "total_collection": float(r.total_collection or 0), "pending_accounts": r.pending_accounts or 0, "pending_amount": float(r.pending_amount or 0), "pending_instalments": r.pending_instalments or 0, "details": detail_map.get(sid, [])})
+	return result
 
 
 @frappe.whitelist(allow_guest=True)
