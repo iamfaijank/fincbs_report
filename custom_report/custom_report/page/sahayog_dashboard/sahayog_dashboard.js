@@ -461,10 +461,17 @@ frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
 					const deptCount = Object.keys(data.department_breakdown || {}).length;
 					$("#dvm-kpi-depts").text(deptCount || 0);
 
-					allVisitors = (data.visitors || []).map((v) => {
-						v.zone = normalizeZone(v.zone);
-						return v;
-					});
+					const isAdminUser = (u) => {
+						const str = String(u || "").toLowerCase().trim();
+						return str === "administrator" || str === "guest" || str.startsWith("administrator@");
+					};
+
+					allVisitors = (data.visitors || [])
+						.filter((v) => !isAdminUser(v.user) && !isAdminUser(v.full_name))
+						.map((v) => {
+							v.zone = normalizeZone(v.zone);
+							return v;
+						});
 
 					// Re-bucket zone breakdown to standardized format
 					zoneBreakdown = {};
