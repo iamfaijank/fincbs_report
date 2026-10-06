@@ -13188,11 +13188,11 @@ class DrishtiDashboard {
 				</div>
 				<div id="agent-donuts-row" style="display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px;">
 					<div style="text-align: center;">
-						<div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 2px;">SS — Achieved vs Shortfall</div>
+						<div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 2px;">SS — Active vs Inactive</div>
 						<div id="agent-ss-donut" style="width: 250px; height: 220px;"></div>
 					</div>
 					<div style="text-align: center;">
-						<div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 2px;">VS — Achieved vs Shortfall</div>
+						<div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 2px;">VS — Active vs Inactive</div>
 						<div id="agent-vs-donut" style="width: 250px; height: 220px;"></div>
 					</div>
 				</div>
@@ -13240,28 +13240,28 @@ class DrishtiDashboard {
 			const vsAch = [];
 			const ssPercent = [];
 			const vsPercent = [];
-			const ssInactive = [];
-			const vsInactive = [];
 			const ssShort = [];
 			const vsShort = [];
-			let ssAchTotal = 0, ssTargetTotal = 0, vsAchTotal = 0, vsTargetTotal = 0;
+			let ssActiveTotal = 0, ssInactiveTotal = 0, vsActiveTotal = 0, vsInactiveTotal = 0;
 
 			sortedZones.forEach(zone => {
 				const rows = grouped[zone];
-				let sTarget = 0, sAch = 0, vTarget = 0, vAch = 0, sInact = 0, vInact = 0;
+				let sTarget = 0, sAch = 0, vTarget = 0, vAch = 0, sAct = 0, sInact = 0, vAct = 0, vInact = 0;
 				rows.forEach(r => {
 					sTarget += parseFloat(r.ss_target || 0);
 					sAch += parseFloat(r.ss_achievement || 0);
 					vTarget += parseFloat(r.target || 0);
 					vAch += parseFloat(r.achievement || 0);
+					sAct += parseFloat(r.ss_active || 0);
 					sInact += parseFloat(r.ss_inactive || 0);
+					vAct += parseFloat(r.active || 0);
 					vInact += parseFloat(r.inactive || 0);
 				});
 
-				ssAchTotal += sAch;
-				ssTargetTotal += sTarget;
-				vsAchTotal += vAch;
-				vsTargetTotal += vTarget;
+				ssActiveTotal += sAct;
+				ssInactiveTotal += sInact;
+				vsActiveTotal += vAct;
+				vsInactiveTotal += vInact;
 
 				const sPct = sTarget > 0 ? Math.round((sAch / sTarget) * 100) : 0;
 				const vPct = vTarget > 0 ? Math.round((vAch / vTarget) * 100) : 0;
@@ -13271,8 +13271,6 @@ class DrishtiDashboard {
 				vsAch.push(vAch);
 				ssPercent.push(sPct);
 				vsPercent.push(vPct);
-				ssInactive.push(Math.round(sInact));
-				vsInactive.push(Math.round(vInact));
 				ssShort.push(Math.max(sTarget - sAch, 0));
 				vsShort.push(Math.max(vTarget - vAch, 0));
 			});
@@ -13292,8 +13290,6 @@ class DrishtiDashboard {
 						params.forEach(p => {
 							if (p.seriesName.includes("%")) {
 								tip += `${p.marker} ${p.seriesName}: <b>${p.value}%</b><br/>`;
-							} else if (p.seriesName.includes("Inactive")) {
-								tip += `${p.marker} ${p.seriesName}: <b>${p.value}</b><br/>`;
 							} else {
 								tip += `${p.marker} ${p.seriesName}: <b>${fmt(p.value)}</b><br/>`;
 							}
@@ -13302,12 +13298,12 @@ class DrishtiDashboard {
 					}
 				},
 				legend: {
-					data: ["SS Achievement", "SS Shortfall", "VS Achievement", "VS Shortfall", "SS Inactive", "VS Inactive", "SS Ach %", "VS Ach %"],
+					data: ["SS Achievement", "SS Shortfall", "VS Achievement", "VS Shortfall", "SS Ach %", "VS Ach %"],
 					top: 0
 				},
 				grid: {
 					left: "3%",
-					right: "9%",
+					right: "4%",
 					bottom: "10%",
 					containLabel: true
 				},
@@ -13332,16 +13328,6 @@ class DrishtiDashboard {
 						type: "value",
 						name: "Ach %",
 						axisLabel: { formatter: "{value}%" },
-						splitLine: { show: false }
-					},
-					{
-						type: "value",
-						name: "Agents",
-						position: "right",
-						offset: 62,
-						axisLabel: { formatter: "{value}", color: "#dc2626" },
-						axisLine: { lineStyle: { color: "#dc2626" } },
-						nameTextStyle: { color: "#dc2626" },
 						splitLine: { show: false }
 					}
 				],
@@ -13375,20 +13361,6 @@ class DrishtiDashboard {
 						itemStyle: { color: "#f87171", borderRadius: [4, 4, 0, 0] }
 					},
 					{
-						name: "SS Inactive",
-						type: "bar",
-						yAxisIndex: 2,
-						data: ssInactive,
-						itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] }
-					},
-					{
-						name: "VS Inactive",
-						type: "bar",
-						yAxisIndex: 2,
-						data: vsInactive,
-						itemStyle: { color: "#f87171", borderRadius: [4, 4, 0, 0] }
-					},
-					{
 						name: "SS Ach %",
 						type: "line",
 						yAxisIndex: 1,
@@ -13409,8 +13381,8 @@ class DrishtiDashboard {
 
 			chart.setOption(option);
 			this.renderAgentDonuts({
-				ss: { achieved: ssAchTotal, target: ssTargetTotal, color: "#0f766e", shortfallColor: "#ef4444" },
-				vs: { achieved: vsAchTotal, target: vsTargetTotal, color: "#14b8a6", shortfallColor: "#f87171" }
+				ss: { active: ssActiveTotal, inactive: ssInactiveTotal, color: "#0f766e", inactiveColor: "#ef4444" },
+				vs: { active: vsActiveTotal, inactive: vsInactiveTotal, color: "#14b8a6", inactiveColor: "#f87171" }
 			});
 			$(window).off("resize.agentChart").on("resize.agentChart", () => {
 				chart.resize();
@@ -13434,10 +13406,10 @@ class DrishtiDashboard {
 
 			const key = domId === "agent-ss-donut" ? "ss" : "vs";
 			const cfg = totals[key] || {};
-			const achieved = cfg.achieved || 0;
-			const target = cfg.target || 0;
-			const shortfall = Math.max(target - achieved, 0);
-			const pct = target > 0 ? Math.round((achieved / target) * 100) : 0;
+			const active = cfg.active || 0;
+			const inactive = cfg.inactive || 0;
+			const total = active + inactive;
+			const pct = total > 0 ? Math.round((active / total) * 100) : 0;
 			const label = key === "ss" ? "SS" : "VS";
 
 			const existing = echarts.getInstanceByDom(dom);
@@ -13448,12 +13420,12 @@ class DrishtiDashboard {
 				tooltip: {
 					trigger: "item",
 					formatter: function (p) {
-						return `<strong>${p.name}</strong><br/>Amount: <b>${p.value.toLocaleString("en-IN")}</b><br/>Share: <b>${p.percent}%</b>`;
+						return `<strong>${p.name}</strong><br/>Agents: <b>${p.value.toLocaleString("en-IN")}</b><br/>Share: <b>${p.percent}%</b>`;
 					}
 				},
 				title: {
 					text: pct + "%",
-					subtext: label + " Achieved",
+					subtext: label + " Active",
 					left: "center",
 					top: "36%",
 					textStyle: { fontSize: 24, fontWeight: 700, color: "#0f172a" },
@@ -13465,7 +13437,7 @@ class DrishtiDashboard {
 					itemWidth: 10,
 					itemHeight: 10,
 					textStyle: { fontSize: 11, color: "#334155" },
-					data: [label + " Achieved", label + " Shortfall"]
+					data: [label + " Active", label + " Inactive"]
 				},
 				series: [
 					{
@@ -13481,8 +13453,8 @@ class DrishtiDashboard {
 							itemStyle: { shadowBlur: 8, shadowColor: "rgba(0,0,0,0.2)" }
 						},
 						data: [
-							{ name: label + " Achieved", value: Math.round(achieved), itemStyle: { color: cfg.color } },
-							{ name: label + " Shortfall", value: Math.round(shortfall), itemStyle: { color: cfg.shortfallColor || "#ef4444" } }
+							{ name: label + " Active", value: Math.round(active), itemStyle: { color: cfg.color } },
+							{ name: label + " Inactive", value: Math.round(inactive), itemStyle: { color: cfg.inactiveColor || "#ef4444" } }
 						]
 					}
 				]
