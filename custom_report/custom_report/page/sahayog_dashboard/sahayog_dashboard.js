@@ -13240,16 +13240,20 @@ class DrishtiDashboard {
 			const vsAch = [];
 			const ssPercent = [];
 			const vsPercent = [];
+			const ssInactive = [];
+			const vsInactive = [];
 			let ssAchTotal = 0, ssTargetTotal = 0, vsAchTotal = 0, vsTargetTotal = 0;
 
 			sortedZones.forEach(zone => {
 				const rows = grouped[zone];
-				let sTarget = 0, sAch = 0, vTarget = 0, vAch = 0;
+				let sTarget = 0, sAch = 0, vTarget = 0, vAch = 0, sInact = 0, vInact = 0;
 				rows.forEach(r => {
 					sTarget += parseFloat(r.ss_target || 0);
 					sAch += parseFloat(r.ss_achievement || 0);
 					vTarget += parseFloat(r.target || 0);
 					vAch += parseFloat(r.achievement || 0);
+					sInact += parseFloat(r.ss_inactive || 0);
+					vInact += parseFloat(r.inactive || 0);
 				});
 
 				ssAchTotal += sAch;
@@ -13265,6 +13269,8 @@ class DrishtiDashboard {
 				vsAch.push(vAch);
 				ssPercent.push(sPct);
 				vsPercent.push(vPct);
+				ssInactive.push(Math.round(sInact));
+				vsInactive.push(Math.round(vInact));
 			});
 
 			const fmt = (v) => {
@@ -13282,6 +13288,8 @@ class DrishtiDashboard {
 						params.forEach(p => {
 							if (p.seriesName.includes("%")) {
 								tip += `${p.marker} ${p.seriesName}: <b>${p.value}%</b><br/>`;
+							} else if (p.seriesName.includes("Inactive")) {
+								tip += `${p.marker} ${p.seriesName}: <b>${p.value}</b><br/>`;
 							} else {
 								tip += `${p.marker} ${p.seriesName}: <b>${fmt(p.value)}</b><br/>`;
 							}
@@ -13290,12 +13298,12 @@ class DrishtiDashboard {
 					}
 				},
 				legend: {
-					data: ["SS Achievement", "VS Achievement", "SS Ach %", "VS Ach %"],
+					data: ["SS Achievement", "VS Achievement", "SS Inactive", "VS Inactive", "SS Ach %", "VS Ach %"],
 					top: 0
 				},
 				grid: {
 					left: "3%",
-					right: "4%",
+					right: "9%",
 					bottom: "10%",
 					containLabel: true
 				},
@@ -13321,6 +13329,16 @@ class DrishtiDashboard {
 						name: "Ach %",
 						axisLabel: { formatter: "{value}%" },
 						splitLine: { show: false }
+					},
+					{
+						type: "value",
+						name: "Agents",
+						position: "right",
+						offset: 62,
+						axisLabel: { formatter: "{value}", color: "#dc2626" },
+						axisLine: { lineStyle: { color: "#dc2626" } },
+						nameTextStyle: { color: "#dc2626" },
+						splitLine: { show: false }
 					}
 				],
 				series: [
@@ -13328,13 +13346,27 @@ class DrishtiDashboard {
 						name: "SS Achievement",
 						type: "bar",
 						data: ssAch,
-						itemStyle: { color: "#2563eb", borderRadius: [4, 4, 0, 0] }
+						itemStyle: { color: "#0f766e", borderRadius: [4, 4, 0, 0] }
 					},
 					{
 						name: "VS Achievement",
 						type: "bar",
 						data: vsAch,
-						itemStyle: { color: "#7c3aed", borderRadius: [4, 4, 0, 0] }
+						itemStyle: { color: "#14b8a6", borderRadius: [4, 4, 0, 0] }
+					},
+					{
+						name: "SS Inactive",
+						type: "bar",
+						yAxisIndex: 2,
+						data: ssInactive,
+						itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] }
+					},
+					{
+						name: "VS Inactive",
+						type: "bar",
+						yAxisIndex: 2,
+						data: vsInactive,
+						itemStyle: { color: "#f87171", borderRadius: [4, 4, 0, 0] }
 					},
 					{
 						name: "SS Ach %",
