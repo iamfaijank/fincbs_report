@@ -3572,7 +3572,11 @@
 								scheme_interest: 0,
 								elg_amt: 0,
 								imported_from_csv: true,
-								is_exceptional_reversal: matched,
+								// An unmatched Netwin debit is a partial withdrawal (e.g. a
+								// transfer to another account), not an account closure, so it
+								// is kept in the reversal flow instead of truncating the ledger.
+								is_exceptional_reversal: true,
+								is_partial_withdrawal: !matched,
 							});
 							continue;
 						}
@@ -4225,7 +4229,7 @@
 								// Skip the deduction when this debit only reverses a credit
 								// that was already excluded, otherwise the pair is counted
 								// twice and the principal is understated.
-								const reversesExcludedCredit = effectiveTransactions.some(
+								const reversesExcludedCredit = !t.is_partial_withdrawal && effectiveTransactions.some(
 									(ot) =>
 										ot.type === "C" &&
 										ot.is_exceptional_reversal &&
