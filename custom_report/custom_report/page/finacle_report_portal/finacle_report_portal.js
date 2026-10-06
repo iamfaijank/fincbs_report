@@ -111,7 +111,7 @@ frappe.pages['finacle-report-portal'].on_page_load = function (wrapper) {
                         </p>
                         <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:15px;margin-bottom:20px;">
                             <p style="color:#856404;font-size:13px;margin:0;line-height:1.5;">
-                                <strong>⚠️ Note:</strong> Minimum screen width of 1024px is required.
+                                <strong>⚠️ Note:</strong> This restriction applies even if you enable "Desktop Mode" in your mobile browser.
                             </p>
                         </div>
                         <button onclick="window.location.href='/'" style="margin-top:10px;background:#196767;color:white;border:none;padding:10px 26px;font-weight:600;border-radius:6px;cursor:pointer;font-size:14px;">
