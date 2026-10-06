@@ -12688,7 +12688,7 @@ class DrishtiDashboard {
 				},
 				grid: {
 					left: "3%",
-					right: "6%",
+					right: "12%",
 					bottom: "10%",
 					containLabel: true
 				},
@@ -12725,12 +12725,25 @@ class DrishtiDashboard {
 						name: "Target",
 						type: "bar",
 						data: targets,
-						itemStyle: { color: "#3b82f6", borderRadius: [0, 4, 4, 0] }
+						barWidth: 22,
+						z: 1,
+						itemStyle: { color: "rgba(59, 130, 246, 0.25)", borderColor: "#3b82f6", borderWidth: 1, borderRadius: [0, 4, 4, 0] },
+						label: {
+							show: true,
+							position: "right",
+							formatter: function (p) { return fmt(p.value); },
+							fontSize: 10,
+							fontWeight: "bold",
+							color: "#1d4ed8"
+						}
 					},
 					{
 						name: "Achievement",
 						type: "bar",
 						data: achievements,
+						barWidth: 22,
+						barGap: "-100%",
+						z: 2,
 						itemStyle: { color: "#10b981", borderRadius: [0, 4, 4, 0] }
 					},
 					{
