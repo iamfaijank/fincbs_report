@@ -8455,6 +8455,35 @@ class DrishtiDashboard {
 		this.updateFilterTagsUI();
 		this.applyBranchManagerRestrictions();
 		this.updateClearFilterVisibility();
+		this.applyProductTabFilterVisibility();
+	}
+
+	// Product Wise tab keeps only Zone / Region / District / Branch filters in the toolbar
+	applyProductTabFilterVisibility() {
+		const main = this.page.main;
+		if (!main.find("#view-controls-container").length) return;
+
+		const isProduct = this.state.activeTab === "product";
+
+		[
+			".fy-header-control",
+			"#date-selector-container",
+			"#days-left-container",
+			"#view-controls-container",
+			"#target-controls-container",
+			"#format-controls-container",
+			"#segment-filter",
+			".category-filter-container",
+		].forEach((sel) => main.find(sel).toggle(!isProduct));
+
+		if (isProduct) {
+			main.find("#month-selector-container").hide();
+		} else {
+			main.find("#month-selector-container").toggle(this.state.viewType === "Monthly");
+		}
+
+		this.updateClearFilterVisibility();
+		this.updateBranchSearchVisibility();
 	}
 
 	repopulateHeaderFilters() {
@@ -9178,12 +9207,12 @@ class DrishtiDashboard {
                     </div>
 
                     <!-- Days Left countdown -->
-                    <div style="display: flex; align-items: center;">
+                    <div id="days-left-container" style="display: flex; align-items: center;">
                         <span id="drishti-live-timer" style="font-size: 13px; font-weight: 600; color: #64748b; white-space: nowrap;"></span>
                     </div>
 
                     <!-- View Toggle Buttons -->
-                    <div style="display: flex; align-items: center;">
+                    <div id="view-controls-container" style="display: flex; align-items: center;">
                         <label style="font-weight: bold; color: #0d1b2a; margin-bottom: 0;">View:</label>
                         <div class="btn-group" id="view-controls" role="group" style="margin-left: 8px;">
                             <button type="button" class="btn btn-sm view-toggle-btn" data-view="Monthly">Monthly</button>
@@ -9203,7 +9232,7 @@ class DrishtiDashboard {
                     </div>
  
                     <!-- Target Toggle Buttons -->
-                    <div style="display: flex; align-items: center;">
+                    <div id="target-controls-container" style="display: flex; align-items: center;">
                         <label style="font-weight: bold; color: #0d1b2a; margin-bottom: 0;">Target:</label>
                         <div class="btn-group" role="group" style="margin-left: 8px;">
                             <button type="button" class="btn btn-sm target-toggle-btn" data-target="Monthly">Monthly</button>
@@ -9235,7 +9264,7 @@ class DrishtiDashboard {
                     </div>
 
                     <!-- Format Control -->
-                    <div style="display: flex; align-items: center; gap: 6px;">
+                    <div id="format-controls-container" style="display: flex; align-items: center; gap: 6px;">
                         <span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
                         <div class="btn-group" role="group">
                             <button type="button" class="btn btn-sm format-toggle-btn" data-format="number">Numbers</button>
@@ -10749,6 +10778,7 @@ class DrishtiDashboard {
 				}
 			} else if (this.state.activeTab === "product") {
 				this.attachProductViewToggleHandlers();
+				this.attachProductChartFilters();
 				if (this.state.productViewMode === "chart") {
 					this.renderProductChart(this.getFilteredProductData());
 				} else {
@@ -12799,9 +12829,135 @@ class DrishtiDashboard {
 						</button>
 					</div>
 				</div>
+				${this.buildProductChartFilterBar()}
 				<div id="product-performance-chart" style="width: 100%; height: 520px;"></div>
 			</div>
 		`;
+	}
+
+	// Zone / Region / District / Branch filters shown inside the Product Wise header row
+	buildProductChartFilterBar() {
+		const openId = this._openProductFilter || null;
+		const zoneSel = new Set(this.state.selectedZones || []);
+		const regionSel = new Set(this.state.selectedRegions || []);
+		const districtSel = new Set(this.state.selectedDistricts || []);
+		const branchVal = this.state.branchSearchTerm || "";
+
+		const dropdown = (id, label, options, selSet) => {
+			const count = selSet.size;
+			const summary = count === 0 ? "All" : count === 1 ? [...selSet][0] : `${count} selected`;
+			const isOpen = openId === id;
+			return `
+				<div class="dropdown" style="position: relative;">
+					<button type="button" class="btn btn-sm pfilter-btn" data-pfilter="${id}" style="min-width: 160px; max-width: 230px; display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; background: #ffffff; border: 1px solid #cbd5e1; color: #1b263b; font-size: 12px; font-weight: 600; cursor: pointer;">
+						<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: #64748b;">${label}:</span> ${summary}</span>
+						<span class="caret" style="margin-left: 4px;"></span>
+					</button>
+					<ul class="dropdown-menu pfilter-menu" data-pfilter-menu="${id}" style="display: ${isOpen ? "block" : "none"}; position: absolute; top: 100%; left: 0; margin-top: 4px; min-width: 210px; max-height: 240px; overflow-y: auto; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); padding: 4px 0; z-index: 40;">
+						<li data-pfilter-all="${id}" style="padding: 7px 12px; cursor: pointer; font-weight: 700; color: #417d81; border-bottom: 1px solid #f1f5f9; font-size: 12px;">All ${label}</li>
+						${(options || [])
+							.map(
+								(o) => `
+							<li data-pfilter-opt="${id}" data-value="${o}" style="padding: 7px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #334155;">
+								<input type="checkbox" ${selSet.has(o) ? "checked" : ""} style="pointer-events: none; margin: 0;"> ${o}
+							</li>`,
+							)
+							.join("")}
+					</ul>
+				</div>`;
+		};
+
+		return `
+			<div id="product-chart-filters" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; padding: 8px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+				<span style="font-weight: 700; color: #334155; font-size: 12px;">Filters:</span>
+				${dropdown("zone", "Zone", this.availableFilters.zones, zoneSel)}
+				${dropdown("region", "Region", this.availableFilters.regions, regionSel)}
+				${dropdown("district", "District", this.availableFilters.districts, districtSel)}
+				<input type="text" id="product-filter-branch" placeholder="Search branch or SOL ID..." value="${branchVal.replace(/"/g, "&quot;")}" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; background: #ffffff; color: #1b263b; min-width: 220px; font-size: 12px;" />
+			</div>
+		`;
+	}
+
+	attachProductChartFilters() {
+		const self = this;
+		const main = this.page.main;
+		if (!main.find("#product-chart-filters").length) return;
+
+		main.off("click.pf", "#product-chart-filters .pfilter-btn").on("click.pf", "#product-chart-filters .pfilter-btn", function (e) {
+			e.stopPropagation();
+			const id = $(this).attr("data-pfilter");
+			const menu = main.find(`.pfilter-menu[data-pfilter-menu="${id}"]`);
+			const isOpen = menu.is(":visible");
+			main.find("#product-chart-filters .pfilter-menu").hide();
+			self._openProductFilter = null;
+			if (!isOpen) {
+				menu.show();
+				self._openProductFilter = id;
+			}
+		});
+
+		main.off("click.pf", "#product-chart-filters .pfilter-menu").on("click.pf", "#product-chart-filters .pfilter-menu", function (e) {
+			e.stopPropagation();
+		});
+
+		main.off("click.pf", "#product-chart-filters [data-pfilter-all]").on("click.pf", "#product-chart-filters [data-pfilter-all]", function (e) {
+			e.stopPropagation();
+			self.setProductFilter($(this).attr("data-pfilter-all"), []);
+		});
+
+		main.off("click.pf", "#product-chart-filters [data-pfilter-opt]").on("click.pf", "#product-chart-filters [data-pfilter-opt]", function (e) {
+			e.stopPropagation();
+			const type = $(this).attr("data-pfilter-opt");
+			const value = $(this).attr("data-value");
+			const key = self.productFilterStateKey(type);
+			const values = [...(self.state[key] || [])];
+			const idx = values.indexOf(value);
+			if (idx > -1) {
+				values.splice(idx, 1);
+			} else {
+				values.push(value);
+			}
+			self.setProductFilter(type, values);
+		});
+
+		$(document).off("click.pf").on("click.pf", function () {
+			self._openProductFilter = null;
+			main.find("#product-chart-filters .pfilter-menu").hide();
+		});
+
+		let searchTimeout;
+		main.off("input.pf", "#product-filter-branch").on("input.pf", "#product-filter-branch", function () {
+			const val = $(this).val() || "";
+			clearTimeout(searchTimeout);
+			searchTimeout = setTimeout(() => {
+				self.state.branchSearchTerm = val;
+				self.page.main.find("#branch-search").val(val);
+				self.updateUrlFromState();
+				self.render();
+			}, 300);
+		});
+	}
+
+	productFilterStateKey(type) {
+		return { zone: "selectedZones", region: "selectedRegions", district: "selectedDistricts" }[type];
+	}
+
+	setProductFilter(type, values) {
+		const key = this.productFilterStateKey(type);
+		if (!key) return;
+		this.state[key] = values;
+
+		if (type === "zone") this.updateFilterTagsUI();
+		if (type === "region") {
+			if (typeof this.updateRegionDropdownUI === "function") this.updateRegionDropdownUI();
+			if (typeof this.updateDistrictOptions === "function") this.updateDistrictOptions();
+		}
+		if (type === "district" && typeof this.updateDistrictDropdownUI === "function") {
+			this.updateDistrictDropdownUI();
+		}
+
+		this.updateUrlFromState();
+		this.render();
 	}
 
 	attachProductViewToggleHandlers() {
@@ -12827,9 +12983,45 @@ class DrishtiDashboard {
 			const chart = echarts.init(chartDom);
 
 			const allProducts = (this.allProducts || []).filter(p => p !== "SHARE" && p !== "OTHER");
+
+			// Zone rows built from branch-level (sol) rows so Zone/Region/District/Branch filters apply
+			const selZones = this.state.selectedZones || [];
+			const selRegions = this.state.selectedRegions || [];
+			const selDistricts = this.state.selectedDistricts || [];
+			const searchTerms = (this.state.branchSearchTerm || "")
+				.toLowerCase()
+				.split(",")
+				.map((s) => s.trim())
+				.filter(Boolean);
+
+			const solItems = (productData || []).filter((item) => item.type === "sol");
+			const zoneAgg = {};
+			solItems.forEach((item) => {
+				const zone = item.parent_zone || item.zone;
+				if (!zone) return;
+				if (selZones.length && !selZones.includes(zone)) return;
+				const regionName = (item.parent_region || "").split("/").pop();
+				if (selRegions.length && !selRegions.includes(regionName)) return;
+				const districtName = (item.parent_district || "").split("/").pop();
+				if (selDistricts.length && !selDistricts.includes(districtName)) return;
+				if (searchTerms.length) {
+					const nm = (item.name || "").toLowerCase();
+					if (!searchTerms.some((t) => nm.includes(t))) return;
+				}
+				const agg = zoneAgg[zone] || (zoneAgg[zone] = {});
+				Object.entries(item.products || {}).forEach(([p, v]) => {
+					agg[p] = (agg[p] || 0) + (v || 0);
+				});
+			});
+
+			// Fallback to zone rows when branch-level rows are unavailable
+			let zoneItems = Object.keys(zoneAgg).map((name) => ({ name, products: zoneAgg[name] }));
+			if (solItems.length === 0) {
+				zoneItems = (productData || []).filter((item) => item.type === "zone");
+			}
+
 			// Zones ascending: Z1, Z2, Z3 ... (numeric-aware)
-			const zoneItems = (productData || [])
-				.filter(item => item.type === "zone")
+			zoneItems = zoneItems
 				.slice()
 				.sort((a, b) =>
 					String(a.name || "").localeCompare(String(b.name || ""), undefined, {
