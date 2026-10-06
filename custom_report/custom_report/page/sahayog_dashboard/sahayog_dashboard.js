@@ -10782,9 +10782,39 @@ class DrishtiDashboard {
 				this.attachProductTgtAchExpandHandlers();
 			}
 
+			this.relocateViewToggle();
 
 			dataContainer.css("opacity", 1);
 		}, 200);
+	}
+
+	relocateViewToggle() {
+		const segmentFilter = this.page.main.find("#segment-filter");
+		if (!segmentFilter.length) return;
+
+		const activeTab = this.state.activeTab;
+		const toggleSelector =
+			".zone-view-toggle, .category-view-toggle, .product-view-toggle, .agent-view-toggle, .branch-view-toggle";
+
+		// Remove any toggle moved on a previous render (now outside #data-container)
+		this.page.main.find(toggleSelector).each(function () {
+			if (!$(this).closest("#data-container").length) {
+				$(this).remove();
+			}
+		});
+
+		// Move the active tab's view toggle (chart or table variant) before the segment filter
+		this.page.main
+			.find(`#data-container .${activeTab}-view-toggle`)
+			.first()
+			.css({
+				position: "static",
+				right: "",
+				top: "",
+				transform: "",
+				"margin-left": "",
+			})
+			.insertBefore(segmentFilter);
 	}
 
 	// ========================================================================
