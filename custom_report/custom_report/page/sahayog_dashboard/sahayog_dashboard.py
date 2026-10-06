@@ -1659,64 +1659,11 @@ def build_agent_wise(selected_date=None, perms=None):
 
 @frappe.whitelist()
 def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
-    from datetime import datetime
-    import re
-
-    if selected_date:
-        if isinstance(selected_date, str):
-            ref_date = selected_date
-        else:
-            ref_date = selected_date.strftime("%Y-%m-%d")
-    else:
-        ref_date = datetime.now().strftime("%Y-%m-%d")
-
-    target_date = ref_date
-    has_date_records = frappe.db.exists("RD and SMBG Pending", {"date": target_date})
-    if not has_date_records:
-        latest_date = frappe.db.sql("SELECT MAX(date) FROM `tabRD and SMBG Pending`")[0][0]
-        if latest_date:
-            target_date = str(latest_date)
-
-    conditions = ["`date` = %s", "(schm_code IS NULL OR schm_code != '2016')"]
-    values = [target_date]
-
-    if sol_ids:
-        sol_list = [s.strip() for s in sol_ids.split(",") if s.strip()]
-        if sol_list:
-            conditions.append("`sol_id` IN ({})".format(",".join(["%s"] * len(sol_list))))
-            values.extend(sol_list)
-
-    where_clause = " WHERE " + " AND ".join(conditions)
-
-    query = f"""
-        SELECT
-            sol_id,
-            sol_desc,
-            COUNT(*) AS total_accounts,
-            COALESCE(SUM(total_instalment_paid), 0) AS total_collection,
-            COALESCE(SUM(CASE WHEN pending_amount > 0 THEN 1 ELSE 0 END), 0) AS pending_accounts,
-            COALESCE(SUM(pending_amount), 0) AS pending_amount,
-            COALESCE(SUM(pending_instalments), 0) AS pending_instalments
-        FROM `tabRD and SMBG Pending`
-        {where_clause}
-        GROUP BY sol_id, sol_desc
-        ORDER BY sol_id
-    """
+    from custom_report.rd_smbg_pending_report import get_sol_summary, resolve_target_date
 
     try:
-        rows = frappe.db.sql(query, tuple(values), as_dict=True)
-
-        excluded_2016_query = f"""
-            SELECT
-                COALESCE(SUM(pending_amount), 0) AS excluded_amount,
-                COUNT(*) AS excluded_accounts
-            FROM `tabRD and SMBG Pending`
-            WHERE `date` = %s AND schm_code = '2016'
-        """
-        excluded_2016 = frappe.db.sql(excluded_2016_query, (target_date,), as_dict=True)
-        if excluded_2016:
-            print(f"[RD Pending] schm_code=2016 EXCLUDED | accounts: {excluded_2016[0].get('excluded_accounts', 0)} | pending_amount: {excluded_2016[0].get('excluded_amount', 0)}", flush=True)
-            frappe.log_error(f"[RD Pending] schm_code=2016 EXCLUDED | accounts: {excluded_2016[0].get('excluded_accounts', 0)} | pending_amount: {excluded_2016[0].get('excluded_amount', 0)}", "RD Pending 2016 Excluded")
+        target_date = resolve_target_date(selected_date)
+        rows = get_sol_summary(target_date, sol_ids=sol_ids)
 
         sol_ids_found = [r.sol_id.strip() for r in rows if r.sol_id]
         branch_map = {}
