@@ -12853,14 +12853,23 @@ class DrishtiDashboard {
 				return "₹" + (v || 0).toLocaleString("en-IN");
 			};
 
-			// [x, y, amount] per zone/product cell
+			// [x, y, amount] per zone/product cell; white label on darker cells
 			const cells = [];
 			let maxAmount = 0;
+			zoneItems.forEach(item => {
+				columns.forEach(p => {
+					const amt = item.products?.[p] || 0;
+					if (amt > maxAmount) maxAmount = amt;
+				});
+			});
 			zoneItems.forEach((zone, y) => {
 				columns.forEach((prod, x) => {
 					const amt = zone.products?.[prod] || 0;
-					if (amt > maxAmount) maxAmount = amt;
-					cells.push([x, y, amt]);
+					const dark = maxAmount > 0 && amt / maxAmount > 0.6;
+					cells.push({
+						value: [x, y, amt],
+						label: { color: dark ? "#ffffff" : "#0f172a" }
+					});
 				});
 			});
 
@@ -12903,7 +12912,7 @@ class DrishtiDashboard {
 					bottom: 0,
 					text: ["High", "Low"],
 					inRange: {
-						color: ["#f8fafc", "#bae6fd", "#38bdf8", "#0284c7", "#075985"]
+						color: ["#f0fdfa", "#ccfbf1", "#99f6e4", "#5eead4", "#2dd4bf", "#14b8a6", "#0f766e", "#115e59"]
 					},
 					formatter: function (v) {
 						if (v >= 1e7) return (v / 1e7).toFixed(1) + " Cr";
