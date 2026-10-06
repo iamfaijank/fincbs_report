@@ -103,58 +103,22 @@ def _extract_emp_id(auth_id):
 
 @frappe.whitelist(allow_guest=True)
 def get_rd_smbg_pending_table_data():
-	import datetime
-	ref_date = datetime.date.today().strftime("%Y-%m-%d")
+	from custom_report.rd_smbg_pending_report import get_rm_details, get_sol_summary, resolve_target_date
 
-	has_date_records = frappe.db.exists("RD and SMBG Pending", {"date": ref_date})
-	if not has_date_records:
-		latest_date = frappe.db.sql("SELECT MAX(date) FROM `tabRD and SMBG Pending`")[0][0]
-		if latest_date:
-			ref_date = str(latest_date)
-
-	query = """
-	SELECT
-		sol_id,
-		sol_desc,
-		COUNT(*) AS total_accounts,
-		COALESCE(SUM(total_instalment_paid), 0) AS total_collection,
-		COALESCE(SUM(CASE WHEN pending_amount > 0 THEN 1 ELSE 0 END), 0) AS pending_accounts,
-		COALESCE(SUM(pending_amount), 0) AS pending_amount,
-		COALESCE(SUM(pending_instalments), 0) AS pending_instalments
-	FROM `tabRD and SMBG Pending`
-	WHERE `date` = %s AND (schm_code IS NULL OR schm_code != '2016')
-	GROUP BY sol_id, sol_desc
-	ORDER BY sol_id
-	"""
-	detail_query = """
-	SELECT
-		sol_id,
-		rm_id,
-		rm_name,
-		auth_id,
-		auth_role_id,
-		COUNT(*) AS total_accounts,
-		COALESCE(SUM(total_instalment_paid), 0) AS total_collection,
-		COALESCE(SUM(CASE WHEN pending_amount > 0 THEN 1 ELSE 0 END), 0) AS pending_accounts,
-		COALESCE(SUM(pending_amount), 0) AS pending_amount,
-		COALESCE(SUM(pending_instalments), 0) AS pending_instalments
-	FROM `tabRD and SMBG Pending`
-	WHERE `date` = %s AND sol_id = %s AND (schm_code IS NULL OR schm_code != '2016')
-	GROUP BY sol_id, rm_id, rm_name, auth_id, auth_role_id
-	ORDER BY rm_id
-	"""
 	try:
-		rows = frappe.db.sql(query, (ref_date,), as_dict=True)
+		target_date = resolve_target_date()
+		rows = get_sol_summary(target_date)
 		sol_ids_found = [r.sol_id.strip() for r in rows if r.sol_id]
+
 		branch_map = {}
 		if sol_ids_found:
 			sb_data = frappe.get_all("Sahayog Branch", filters={"name": ["in", sol_ids_found]}, fields=["name as sol_id", "zone", "region", "district", "branch"])
 			for b in sb_data:
 				branch_map[b.sol_id] = {"zone": b.zone or "", "region": b.region or "", "district": b.district or "", "branch_name": b.branch or ""}
-		detail_map = {}
-		for sid in sol_ids_found:
-			details = frappe.db.sql(detail_query, (ref_date, sid), as_dict=True)
-			detail_map[sid] = [{"rm_id": d.rm_id or "", "rm_name": d.rm_name or "", "auth_id": d.auth_id or "", "auth_role_id": d.auth_role_id or "", "total_accounts": d.total_accounts or 0, "total_collection": float(d.total_collection or 0), "pending_accounts": d.pending_accounts or 0, "pending_amount": float(d.pending_amount or 0), "pending_instalments": d.pending_instalments or 0} for d in details]
+
+		# Single grouped query instead of one detail query per branch.
+		detail_map = get_rm_details(target_date)
+
 		result = []
 		for r in rows:
 			sid = str(r.sol_id).strip()
