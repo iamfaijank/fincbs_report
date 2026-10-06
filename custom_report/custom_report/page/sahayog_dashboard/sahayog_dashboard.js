@@ -46,6 +46,364 @@ frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 	wrapper.dashboard = new DrishtiDashboard(page);
 };
 
+frappe.pages["sahayog_dashboard"].initVisitorTracking = function (wrapper) {
+	const updateBadgeUI = (todayCount, liveCount) => {
+		frappe.pages["sahayog_dashboard"].lastVisitorStats = {
+			today_visitors_count: todayCount,
+			live_viewers_count: liveCount,
+		};
+		const $badge = $("#drishti-header-visitors-badge");
+		if ($badge.length) {
+			$badge.find(".drishti-v-today-val").text(todayCount != null ? todayCount : 0);
+			$badge.find(".drishti-v-live-val").text(liveCount != null ? liveCount : 0);
+		}
+	};
+
+	// 1. Record Page Visit immediately on open
+	frappe.call({
+		method: "sahayog.api.custom_api.record_page_visit",
+		args: { page: "sahayog_dashboard" },
+		callback: function (r) {
+			if (r && r.message && r.message.status === "success") {
+				updateBadgeUI(r.message.today_visitors_count, r.message.live_viewers_count);
+				frappe.pages["sahayog_dashboard"].lastVisitorResponse = r.message;
+			}
+		},
+	});
+
+	// 2. Clear existing interval if any
+	if (frappe.pages["sahayog_dashboard"].visitor_heartbeat) {
+		clearInterval(frappe.pages["sahayog_dashboard"].visitor_heartbeat);
+	}
+
+	// 3. Heartbeat every 25 seconds when visible
+	frappe.pages["sahayog_dashboard"].visitor_heartbeat = setInterval(() => {
+		if (document.visibilityState === "visible") {
+			frappe.call({
+				method: "sahayog.api.custom_api.ping_page_heartbeat",
+				args: { page: "sahayog_dashboard" },
+				callback: function (r) {
+					if (r && r.message && r.message.status === "success") {
+						updateBadgeUI(r.message.today_visitors_count, r.message.live_viewers_count);
+					}
+				},
+			});
+		}
+	}, 25000);
+
+	// 4. Tab visibility change ping
+	if (!frappe.pages["sahayog_dashboard"]._visListenerAttached) {
+		document.addEventListener("visibilitychange", function () {
+			if (document.visibilityState === "visible" && window.location.pathname.includes("sahayog_dashboard")) {
+				frappe.call({
+					method: "sahayog.api.custom_api.ping_page_heartbeat",
+					args: { page: "sahayog_dashboard" },
+					callback: function (r) {
+						if (r && r.message && r.message.status === "success") {
+							updateBadgeUI(r.message.today_visitors_count, r.message.live_viewers_count);
+						}
+					},
+				});
+			}
+		});
+		frappe.pages["sahayog_dashboard"]._visListenerAttached = true;
+	}
+
+	// 5. Cleanup on unload
+	if (!frappe.pages["sahayog_dashboard"]._unloadAttached) {
+		window.addEventListener("beforeunload", function () {
+			try {
+				navigator.sendBeacon("/api/method/sahayog.api.custom_api.leave_page", new URLSearchParams({ page: "sahayog_dashboard" }));
+			} catch (e) {}
+		});
+		frappe.pages["sahayog_dashboard"]._unloadAttached = true;
+	}
+};
+
+frappe.pages["sahayog_dashboard"].cleanupVisitorTracking = function () {
+	if (frappe.pages["sahayog_dashboard"].visitor_heartbeat) {
+		clearInterval(frappe.pages["sahayog_dashboard"].visitor_heartbeat);
+		frappe.pages["sahayog_dashboard"].visitor_heartbeat = null;
+	}
+	frappe.call({
+		method: "sahayog.api.custom_api.leave_page",
+		args: { page: "sahayog_dashboard" },
+		async: true,
+	});
+};
+
+frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
+	$(".drishti-visitor-modal-backdrop").remove();
+
+	const todayFormatted = frappe.datetime ? frappe.datetime.str_to_user(frappe.datetime.get_today()) : new Date().toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' });
+
+	const modalHtml = `
+		<div class="drishti-visitor-modal-backdrop" id="drishti-visitor-modal-backdrop">
+			<div class="drishti-visitor-modal-card">
+				<!-- Header -->
+				<div class="dvm-header">
+					<div class="dvm-title-wrap">
+						<div class="dvm-icon">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+								<circle cx="12" cy="12" r="3"></circle>
+							</svg>
+						</div>
+						<div>
+							<div class="dvm-title">Drishti Page Visitors</div>
+							<div class="dvm-subtitle">Visitor analytics for today (${todayFormatted})</div>
+						</div>
+					</div>
+					<div class="dvm-header-actions">
+						<button type="button" class="dvm-btn-icon" id="dvm-refresh-btn" title="Refresh analytics">
+							<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+								<polyline points="23 4 23 10 17 10"></polyline>
+								<polyline points="1 20 1 14 7 14"></polyline>
+								<path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+							</svg>
+						</button>
+						<button type="button" class="dvm-btn-icon" id="dvm-close-btn" title="Close">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+								<line x1="18" y1="6" x2="6" y2="18"></line>
+								<line x1="6" y1="6" x2="18" y2="18"></line>
+							</svg>
+						</button>
+					</div>
+				</div>
+
+				<!-- Stats KPI Row -->
+				<div class="dvm-kpis">
+					<div class="dvm-kpi-card">
+						<div class="dvm-kpi-label">Total Visits Today</div>
+						<div class="dvm-kpi-value text-blue" id="dvm-kpi-today">...</div>
+						<div class="dvm-kpi-sub">Unique members</div>
+					</div>
+					<div class="dvm-kpi-card">
+						<div class="dvm-kpi-label">Viewing Right Now</div>
+						<div class="dvm-kpi-value text-green" id="dvm-kpi-live">
+							<span class="dvm-live-dot"></span>
+							<span id="dvm-kpi-live-val">...</span>
+						</div>
+						<div class="dvm-kpi-sub">Live on Drishti</div>
+					</div>
+					<div class="dvm-kpi-card">
+						<div class="dvm-kpi-label">Departments</div>
+						<div class="dvm-kpi-value text-teal" id="dvm-kpi-depts">...</div>
+						<div class="dvm-kpi-sub">Active teams</div>
+					</div>
+				</div>
+
+				<!-- Filter & Search Toolbar -->
+				<div class="dvm-toolbar">
+					<div class="dvm-search-box">
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<circle cx="11" cy="11" r="8"></circle>
+							<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+						</svg>
+						<input type="text" id="dvm-search-input" placeholder="Search visitors by name, email, department..." autocomplete="off">
+					</div>
+					<div class="dvm-filter-pills">
+						<button type="button" class="dvm-pill-btn active" data-filter="all">All (<span id="dvm-pill-all-count">0</span>)</button>
+						<button type="button" class="dvm-pill-btn" data-filter="live">🟢 Live (<span id="dvm-pill-live-count">0</span>)</button>
+					</div>
+				</div>
+
+				<!-- List Container -->
+				<div class="dvm-body" id="dvm-body-list">
+					<div class="dvm-loading">
+						<div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+						<span>Loading live analytics...</span>
+					</div>
+				</div>
+
+				<!-- Footer -->
+				<div class="dvm-footer">
+					<span class="dvm-footer-hint">Live heartbeat updates every 25s • Press Esc to close</span>
+					<a href="javascript:void(0)" class="dvm-footer-link" id="dvm-footer-desk-link">View All Desk Users</a>
+				</div>
+			</div>
+		</div>
+	`;
+
+	$("body").append(modalHtml);
+	setTimeout(() => $("#drishti-visitor-modal-backdrop").addClass("show"), 10);
+
+	let allVisitors = [];
+	let currentFilter = "all";
+
+	const getAvatarColor = (str) => {
+		let hash = 0;
+		for (let i = 0; i < (str || "").length; i++) {
+			hash = str.charCodeAt(i) + ((hash << 5) - hash);
+		}
+		return `hsl(${Math.abs(hash % 360)}, 60%, 45%)`;
+	};
+
+	const getInitials = (name) => {
+		if (!name) return "?";
+		const parts = name.trim().split(" ");
+		return parts.length > 1 && parts[0] && parts[1]
+			? (parts[0][0] + parts[1][0]).toUpperCase()
+			: name.slice(0, 2).toUpperCase();
+	};
+
+	const renderList = () => {
+		const searchVal = ($("#dvm-search-input").val() || "").toLowerCase().trim();
+		let filtered = allVisitors.filter((v) => {
+			if (currentFilter === "live" && !v.is_live) return false;
+			if (searchVal) {
+				const q = searchVal;
+				const nameMatch = (v.full_name || "").toLowerCase().includes(q);
+				const emailMatch = (v.user || "").toLowerCase().includes(q);
+				const deptMatch = (v.department || "").toLowerCase().includes(q);
+				const desigMatch = (v.designation || "").toLowerCase().includes(q);
+				const branchMatch = (v.branch || "").toLowerCase().includes(q);
+				return nameMatch || emailMatch || deptMatch || desigMatch || branchMatch;
+			}
+			return true;
+		});
+
+		if (!filtered.length) {
+			$("#dvm-body-list").html(`
+				<div class="dvm-empty-state">
+					<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+						<circle cx="12" cy="12" r="10"></circle>
+						<line x1="8" y1="12" x2="16" y2="12"></line>
+					</svg>
+					<div class="dvm-empty-title">No visitors match this filter</div>
+					<div class="dvm-empty-sub">Try adjusting your search query or filter</div>
+				</div>
+			`);
+			return;
+		}
+
+		let html = "";
+		filtered.forEach((v) => {
+			const initials = getInitials(v.full_name || v.user);
+			const color = getAvatarColor(v.user || v.full_name);
+			const avatarHtml = v.user_image
+				? `<img src="${v.user_image}" class="dvm-avatar-img" alt="${v.full_name}" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'dvm-avatar-initials\\' style=\\'background-color:${color}\\'>${initials}</div>'">`
+				: `<div class="dvm-avatar-initials" style="background-color: ${color};">${initials}</div>`;
+
+			const deptInfo = [v.designation, v.department, v.branch].filter(Boolean).join(" • ") || "Drishti Viewer";
+
+			html += `
+				<div class="dvm-user-item ${v.is_live ? 'is-live-card' : ''}">
+					<div class="dvm-user-avatar">
+						${avatarHtml}
+						${v.is_live ? '<span class="dvm-avatar-live-indicator" title="Active on page now"></span>' : ''}
+					</div>
+					<div class="dvm-user-info">
+						<div class="dvm-user-name-row">
+							<span class="dvm-user-name">${v.full_name || v.user}</span>
+							${v.is_live
+								? '<span class="dvm-badge-live"><span class="dvm-live-dot-pulse"></span>Live Now</span>'
+								: `<span class="dvm-badge-seen">Last: ${v.last_visit || ''}</span>`}
+						</div>
+						<div class="dvm-user-dept" title="${deptInfo}">${deptInfo}</div>
+						<div class="dvm-user-meta">
+							<span>First visit: <b>${v.first_visit || ''}</b></span>
+							<span class="dvm-meta-sep">•</span>
+							<span><b>${v.visit_count || 1}</b> ${(v.visit_count || 1) === 1 ? 'visit' : 'visits'} today</span>
+						</div>
+					</div>
+				</div>
+			`;
+		});
+
+		$("#dvm-body-list").html(html);
+	};
+
+	const fetchVisitors = () => {
+		$("#dvm-refresh-btn").addClass("spinning");
+		frappe.call({
+			method: "sahayog.api.custom_api.get_page_visitors",
+			args: { page: "sahayog_dashboard" },
+			callback: function (r) {
+				$("#dvm-refresh-btn").removeClass("spinning");
+				if (r && r.message && r.message.status === "success") {
+					const data = r.message;
+					$("#dvm-kpi-today").text(data.today_visitors_count || 0);
+					$("#dvm-kpi-live-val").text(data.live_viewers_count || 0);
+
+					const deptCount = Object.keys(data.department_breakdown || {}).length;
+					$("#dvm-kpi-depts").text(deptCount || 0);
+
+					$("#dvm-pill-all-count").text(data.today_visitors_count || 0);
+					$("#dvm-pill-live-count").text(data.live_viewers_count || 0);
+
+					const $badge = $("#drishti-header-visitors-badge");
+					if ($badge.length) {
+						$badge.find(".drishti-v-today-val").text(data.today_visitors_count || 0);
+						$badge.find(".drishti-v-live-val").text(data.live_viewers_count || 0);
+					}
+
+					if (!data.has_cxo_access) {
+						$("#dvm-body-list").html(`
+							<div class="dvm-restricted-state">
+								<div class="dvm-restricted-icon">
+									<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+										<path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+									</svg>
+								</div>
+								<div class="dvm-restricted-title">Detailed User Audit Trail Restricted</div>
+								<div class="dvm-restricted-sub">Individual visitor names and timing logs are visible to CXO members and Administrators. Page visitor totals are reflected above in real-time.</div>
+							</div>
+						`);
+						return;
+					}
+
+					allVisitors = data.visitors || [];
+					renderList();
+				}
+			},
+			error: function () {
+				$("#dvm-refresh-btn").removeClass("spinning");
+				$("#dvm-body-list").html('<div class="dvm-empty-state"><div class="dvm-empty-title">Failed to load visitor data</div></div>');
+			},
+		});
+	};
+
+	// Event Listeners
+	$("#dvm-search-input").on("input", renderList);
+
+	$(".dvm-pill-btn").on("click", function () {
+		$(".dvm-pill-btn").removeClass("active");
+		$(this).addClass("active");
+		currentFilter = $(this).data("filter");
+		renderList();
+	});
+
+	$("#dvm-refresh-btn").on("click", fetchVisitors);
+
+	const closeModal = () => {
+		const $m = $("#drishti-visitor-modal-backdrop");
+		$m.removeClass("show");
+		setTimeout(() => $m.remove(), 200);
+	};
+
+	$("#dvm-close-btn").on("click", closeModal);
+
+	$("#drishti-visitor-modal-backdrop").on("click", function (e) {
+		if (e.target === this) closeModal();
+	});
+
+	$(document).off("keydown.dvm").on("keydown.dvm", function (e) {
+		if (e.key === "Escape") {
+			$(document).off("keydown.dvm");
+			closeModal();
+		}
+	});
+
+	$("#dvm-footer-desk-link").on("click", function () {
+		closeModal();
+		$(".active-users-icon").trigger("click");
+	});
+
+	fetchVisitors();
+};
+
 frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 	// Inject Drishti title
 	document.title = "Drishti";
@@ -54,6 +412,10 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 	} else {
 		$("<title>Drishti</title>").appendTo("head");
 	}
+
+	// Initialize Visitor Tracking
+	frappe.pages["sahayog_dashboard"].initVisitorTracking(wrapper);
+
 
 	// Reset all caches so dashboard behaves like a fresh load every time
 	if (wrapper.dashboard) {
@@ -173,7 +535,13 @@ frappe.pages["sahayog_dashboard"].on_page_hide = function (wrapper) {
 		clearInterval(frappe.pages["sahayog_dashboard"].timer_interval);
 		frappe.pages["sahayog_dashboard"].timer_interval = null;
 	}
+
+	// Cleanup visitor heartbeat and notify leave
+	if (frappe.pages["sahayog_dashboard"].cleanupVisitorTracking) {
+		frappe.pages["sahayog_dashboard"].cleanupVisitorTracking();
+	}
 };
+
 
 const filterMisTableDataByUserPermissions = function (data, filterOptions) {
 	if (!data || !Array.isArray(data)) return [];
@@ -8481,10 +8849,23 @@ class DrishtiDashboard {
 					<button type="button" class="dashboard-toggle-btn ${self.state.dashboardMode === 'drishti' ? 'active' : ''}" data-value="drishti">Drishti</button>
 					<button type="button" class="dashboard-toggle-btn ${self.state.dashboardMode === 'mis' ? 'active' : ''}" data-value="mis">MIS Reports</button>
 				</div>
+				<button type="button" class="drishti-header-visitors-badge" id="drishti-header-visitors-badge" title="Drishti Visitors Today • Click to view live visitor details">
+					<span class="drishti-v-pulse"></span>
+					<span class="drishti-v-today">Today: <b class="drishti-v-today-val">...</b></span>
+					<span class="drishti-v-divider">|</span>
+					<span class="drishti-v-live"><span class="drishti-v-live-dot"></span>Live: <b class="drishti-v-live-val">...</b></span>
+				</button>
 			</div>
 		`;
 
 		header.append(toggleHtml);
+
+		// Populate cached visitor counts if already available
+		if (frappe.pages["sahayog_dashboard"] && frappe.pages["sahayog_dashboard"].lastVisitorStats) {
+			const s = frappe.pages["sahayog_dashboard"].lastVisitorStats;
+			header.find(".drishti-v-today-val").text(s.today_visitors_count != null ? s.today_visitors_count : 0);
+			header.find(".drishti-v-live-val").text(s.live_viewers_count != null ? s.live_viewers_count : 0);
+		}
 
 		header.off("click", ".dashboard-toggle-btn").on("click", ".dashboard-toggle-btn", function () {
 			const val = $(this).data("value");
@@ -8493,7 +8874,16 @@ class DrishtiDashboard {
 			self.switchDashboardMode(val);
 			self.updateUrlFromState();
 		});
+
+		header.off("click", "#drishti-header-visitors-badge").on("click", "#drishti-header-visitors-badge", function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			if (frappe.pages["sahayog_dashboard"] && frappe.pages["sahayog_dashboard"].showVisitorModal) {
+				frappe.pages["sahayog_dashboard"].showVisitorModal();
+			}
+		});
 	}
+
 
 	switchDashboardMode(mode) {
 		this.state.dashboardMode = mode;
@@ -14250,6 +14640,7 @@ class DrishtiDashboard {
                     display: flex;
                     align-items: center;
                     justify-content: center;
+                    gap: 8px;
                 }
                 .dashboard-toggle-switch-container {
                     display: inline-flex;
@@ -14281,6 +14672,456 @@ class DrishtiDashboard {
                 .dashboard-toggle-btn:hover:not(.active) {
                     color: #1e293b !important;
                 }
+
+                /* Drishti Live Visitors Badge */
+                .drishti-header-visitors-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    background: #ffffff;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 6px;
+                    padding: 4px 10px;
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: #334155;
+                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+                    cursor: pointer;
+                    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+                    font-family: 'Inter', sans-serif;
+                    user-select: none;
+                    line-height: 1;
+                    outline: none !important;
+                }
+                .drishti-header-visitors-badge:hover {
+                    background: #f8fafc;
+                    border-color: #417d81;
+                    box-shadow: 0 2px 6px rgba(65, 125, 129, 0.15);
+                    transform: translateY(-1px);
+                }
+                .drishti-v-pulse {
+                    display: inline-block;
+                    width: 7px;
+                    height: 7px;
+                    background-color: #10b981;
+                    border-radius: 50%;
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+                    animation: drishtiPulseAnim 2s infinite;
+                }
+                @keyframes drishtiPulseAnim {
+                    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+                    70% { box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+                }
+                .drishti-v-today {
+                    color: #475569;
+                }
+                .drishti-v-today b {
+                    color: #0f172a;
+                    font-weight: 700;
+                }
+                .drishti-v-divider {
+                    color: #cbd5e1;
+                    font-weight: 300;
+                    font-size: 10px;
+                }
+                .drishti-v-live {
+                    color: #059669;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 3px;
+                }
+                .drishti-v-live b {
+                    color: #047857;
+                    font-weight: 700;
+                }
+                .drishti-v-live-dot {
+                    width: 5px;
+                    height: 5px;
+                    background: #10b981;
+                    border-radius: 50%;
+                    display: inline-block;
+                }
+
+                /* Drishti Visitor Modal Styles with Backdrop Blur */
+                .drishti-visitor-modal-backdrop {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    background: rgba(15, 23, 42, 0.45);
+                    backdrop-filter: blur(8px);
+                    -webkit-backdrop-filter: blur(8px);
+                    z-index: 1060;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    opacity: 0;
+                    pointer-events: none;
+                    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+                }
+                .drishti-visitor-modal-backdrop.show {
+                    opacity: 1;
+                    pointer-events: auto;
+                }
+                .drishti-visitor-modal-card {
+                    background: #ffffff;
+                    border-radius: 16px;
+                    width: 90%;
+                    max-width: 560px;
+                    max-height: 85vh;
+                    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(226, 232, 240, 0.8);
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
+                    transform: scale(0.95) translateY(8px);
+                    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                .drishti-visitor-modal-backdrop.show .drishti-visitor-modal-card {
+                    transform: scale(1) translateY(0);
+                }
+                .dvm-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 16px 20px;
+                    border-bottom: 1px solid #e2e8f0;
+                    background: #ffffff;
+                }
+                .dvm-title-wrap {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+                .dvm-icon {
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 10px;
+                    background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%);
+                    color: #0d9488;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border: 1px solid #99f6e4;
+                }
+                .dvm-title {
+                    font-size: 15px;
+                    font-weight: 700;
+                    color: #0f172a;
+                    line-height: 1.2;
+                }
+                .dvm-subtitle {
+                    font-size: 11.5px;
+                    color: #64748b;
+                    margin-top: 2px;
+                }
+                .dvm-header-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+                .dvm-btn-icon {
+                    background: transparent;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    width: 32px;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #64748b;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                }
+                .dvm-btn-icon:hover {
+                    background: #f1f5f9;
+                    color: #0f172a;
+                    border-color: #cbd5e1;
+                }
+                .dvm-btn-icon.spinning svg {
+                    animation: dvmSpin 0.75s linear infinite;
+                }
+                @keyframes dvmSpin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+                .dvm-kpis {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 10px;
+                    padding: 14px 20px;
+                    background: #f8fafc;
+                    border-bottom: 1px solid #e2e8f0;
+                }
+                .dvm-kpi-card {
+                    background: #ffffff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 10px;
+                    padding: 10px 12px;
+                    text-align: left;
+                }
+                .dvm-kpi-label {
+                    font-size: 10.5px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.3px;
+                    color: #64748b;
+                }
+                .dvm-kpi-value {
+                    font-size: 20px;
+                    font-weight: 800;
+                    line-height: 1.2;
+                    margin: 2px 0;
+                    display: flex;
+                    align-items: center;
+                    gap: 5px;
+                }
+                .dvm-kpi-value.text-blue { color: #0284c7; }
+                .dvm-kpi-value.text-green { color: #059669; }
+                .dvm-kpi-value.text-teal { color: #0d9488; }
+                .dvm-live-dot {
+                    width: 8px;
+                    height: 8px;
+                    background-color: #10b981;
+                    border-radius: 50%;
+                    display: inline-block;
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+                    animation: drishtiPulseAnim 2s infinite;
+                }
+                .dvm-kpi-sub {
+                    font-size: 10px;
+                    color: #94a3b8;
+                }
+                .dvm-toolbar {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    padding: 12px 20px;
+                    border-bottom: 1px solid #f1f5f9;
+                }
+                .dvm-search-box {
+                    flex: 1;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    background: #f1f5f9;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    padding: 6px 12px;
+                    transition: all 0.15s ease;
+                }
+                .dvm-search-box:focus-within {
+                    background: #ffffff;
+                    border-color: #417d81;
+                    box-shadow: 0 0 0 3px rgba(65, 125, 129, 0.12);
+                }
+                .dvm-search-box svg {
+                    color: #94a3b8;
+                    flex-shrink: 0;
+                }
+                .dvm-search-box input {
+                    border: none;
+                    background: transparent;
+                    outline: none;
+                    font-size: 12px;
+                    width: 100%;
+                    color: #1e293b;
+                }
+                .dvm-filter-pills {
+                    display: flex;
+                    gap: 4px;
+                }
+                .dvm-pill-btn {
+                    border: 1px solid #e2e8f0;
+                    background: #ffffff;
+                    border-radius: 8px;
+                    padding: 5px 10px;
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: #64748b;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                    line-height: 1;
+                }
+                .dvm-pill-btn.active {
+                    background: #0f172a;
+                    color: #ffffff;
+                    border-color: #0f172a;
+                }
+                .dvm-body {
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 12px 20px;
+                    max-height: 380px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                .dvm-user-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 10px 12px;
+                    border-radius: 10px;
+                    background: #ffffff;
+                    border: 1px solid #f1f5f9;
+                    transition: all 0.15s ease;
+                }
+                .dvm-user-item:hover {
+                    background: #f8fafc;
+                    border-color: #cbd5e1;
+                    transform: translateX(2px);
+                }
+                .dvm-user-item.is-live-card {
+                    border-color: #a7f3d0;
+                    background: #f0fdf4;
+                }
+                .dvm-user-avatar {
+                    position: relative;
+                    width: 38px;
+                    height: 38px;
+                    flex-shrink: 0;
+                }
+                .dvm-avatar-img {
+                    width: 38px;
+                    height: 38px;
+                    border-radius: 50%;
+                    object-fit: cover;
+                    border: 1.5px solid #e2e8f0;
+                }
+                .dvm-avatar-initials {
+                    width: 38px;
+                    height: 38px;
+                    border-radius: 50%;
+                    color: #ffffff;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: 700;
+                    font-size: 12px;
+                    border: 1.5px solid #ffffff;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                }
+                .dvm-avatar-live-indicator {
+                    position: absolute;
+                    bottom: -1px;
+                    right: -1px;
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 50%;
+                    background-color: #10b981;
+                    border: 2px solid #ffffff;
+                }
+                .dvm-user-info {
+                    flex: 1;
+                    min-width: 0;
+                }
+                .dvm-user-name-row {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 8px;
+                }
+                .dvm-user-name {
+                    font-size: 13px;
+                    font-weight: 700;
+                    color: #1e293b;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                .dvm-badge-live {
+                    font-size: 10px;
+                    font-weight: 700;
+                    color: #047857;
+                    background: #dcfce7;
+                    border: 1px solid #86efac;
+                    padding: 2px 7px;
+                    border-radius: 12px;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    line-height: 1.2;
+                }
+                .dvm-live-dot-pulse {
+                    width: 5px;
+                    height: 5px;
+                    background-color: #10b981;
+                    border-radius: 50%;
+                    display: inline-block;
+                    animation: drishtiPulseAnim 1.8s infinite;
+                }
+                .dvm-badge-seen {
+                    font-size: 10px;
+                    color: #64748b;
+                    background: #f1f5f9;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                }
+                .dvm-user-dept {
+                    font-size: 11px;
+                    color: #64748b;
+                    margin-top: 2px;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                .dvm-user-meta {
+                    font-size: 10.5px;
+                    color: #94a3b8;
+                    margin-top: 3px;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+                .dvm-user-meta b {
+                    color: #475569;
+                }
+                .dvm-meta-sep {
+                    color: #cbd5e1;
+                }
+                .dvm-footer {
+                    padding: 10px 20px;
+                    background: #f8fafc;
+                    border-top: 1px solid #e2e8f0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    font-size: 11px;
+                    color: #64748b;
+                }
+                .dvm-footer-link {
+                    color: #417d81;
+                    font-weight: 600;
+                    text-decoration: none;
+                }
+                .dvm-footer-link:hover {
+                    text-decoration: underline;
+                }
+                .dvm-loading, .dvm-empty-state, .dvm-restricted-state {
+                    padding: 36px 20px;
+                    text-align: center;
+                    color: #64748b;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                }
+                .dvm-empty-title, .dvm-restricted-title {
+                    font-size: 13px;
+                    font-weight: 700;
+                    color: #1e293b;
+                }
+                .dvm-empty-sub, .dvm-restricted-sub {
+                    font-size: 11.5px;
+                    color: #64748b;
+                    max-width: 380px;
+                    line-height: 1.4;
+                }
+
                 .mis-report-tab-btn {
                     padding: 6px 16px !important;
                     background: transparent !important;

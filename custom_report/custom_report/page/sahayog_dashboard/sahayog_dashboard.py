@@ -6794,3 +6794,28 @@ def get_rm_wise_category_breakdown(rm_id, selected_date=None):
         "grand_4m_total": round(grand_4m_total, 2),
         "comm_dict": comm_dict
     }
+
+
+@frappe.whitelist()
+def record_page_visit(page="sahayog_dashboard"):
+    from sahayog.api.custom_api import record_page_visit as _record
+    return _record(page=page)
+
+
+@frappe.whitelist()
+def ping_page_heartbeat(page="sahayog_dashboard"):
+    from sahayog.api.custom_api import ping_page_heartbeat as _ping
+    return _ping(page=page)
+
+
+@frappe.whitelist()
+def leave_page(page="sahayog_dashboard"):
+    from sahayog.api.custom_api import leave_page as _leave
+    return _leave(page=page)
+
+
+@frappe.whitelist()
+def get_page_visitors(page="sahayog_dashboard"):
+    from sahayog.api.custom_api import get_page_visitors as _get
+    return _get(page=page)
+
