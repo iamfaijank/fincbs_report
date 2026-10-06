@@ -12827,26 +12827,25 @@ class DrishtiDashboard {
 			const chart = echarts.init(chartDom);
 
 			const allProducts = (this.allProducts || []).filter(p => p !== "SHARE" && p !== "OTHER");
+			const zoneItems = (productData || []).filter(item => item.type === "zone");
+
+			// Column totals to keep highest-earning products on the left
 			const productTotals = {};
 			allProducts.forEach(p => productTotals[p] = 0);
-
 			let grandTotal = 0;
-			(productData || []).forEach(item => {
-				if (item.type === "zone") {
-					allProducts.forEach(p => {
-						const amt = item.products?.[p] || 0;
-						productTotals[p] += amt;
-						grandTotal += amt;
-					});
-				}
+			zoneItems.forEach(item => {
+				allProducts.forEach(p => {
+					const amt = item.products?.[p] || 0;
+					productTotals[p] += amt;
+					grandTotal += amt;
+				});
 			});
 
-			const sortedProducts = allProducts
-				.map(p => ({ name: p, value: productTotals[p] || 0 }))
-				.sort((a, b) => b.value - a.value);
-
-			const names = sortedProducts.map(p => p.name).reverse();
-			const values = sortedProducts.map(p => p.value).reverse();
+			const columns = allProducts
+				.map(p => ({ name: p, total: productTotals[p] || 0 }))
+				.sort((a, b) => b.total - a.total)
+				.map(p => p.name);
+			const rows = zoneItems.map(z => z.name || "Unknown");
 
 			const fmt = (v) => {
 				if (v >= 1e7) return "₹" + (v / 1e7).toFixed(2) + " Cr";
@@ -12854,56 +12853,85 @@ class DrishtiDashboard {
 				return "₹" + (v || 0).toLocaleString("en-IN");
 			};
 
+			// [x, y, amount] per zone/product cell
+			const cells = [];
+			let maxAmount = 0;
+			zoneItems.forEach((zone, y) => {
+				columns.forEach((prod, x) => {
+					const amt = zone.products?.[prod] || 0;
+					if (amt > maxAmount) maxAmount = amt;
+					cells.push([x, y, amt]);
+				});
+			});
+
 			const option = {
 				tooltip: {
-					trigger: "axis",
-					axisPointer: { type: "shadow" },
-					formatter: function (params) {
-						const p = params[0];
-						const pct = grandTotal > 0 ? ((p.value / grandTotal) * 100).toFixed(1) : 0;
-						return `<strong>${p.name}</strong><br/>Collection: <b>${fmt(p.value)}</b> (${pct}% of Total)`;
+					formatter: function (p) {
+						const zone = rows[p.value[1]];
+						const prod = columns[p.value[0]];
+						const amt = p.value[2];
+						const pct = grandTotal > 0 ? ((amt / grandTotal) * 100).toFixed(2) : 0;
+						return `<strong>${zone} — ${prod}</strong><br/>Collection: <b>${fmt(amt)}</b> (${pct}% of Total)`;
 					}
 				},
 				grid: {
 					left: "4%",
-					right: "12%",
-					bottom: "5%",
-					top: "5%",
+					right: "10%",
+					bottom: "12%",
+					top: "8%",
 					containLabel: true
 				},
 				xAxis: {
-					type: "value",
-					axisLabel: {
-						formatter: function (val) {
-							if (val >= 1e7) return (val / 1e7).toFixed(1) + " Cr";
-							if (val >= 1e5) return (val / 1e5).toFixed(0) + " L";
-							return val;
-						}
-					}
+					type: "category",
+					data: columns,
+					position: "top",
+					splitArea: { show: true },
+					axisLabel: { fontSize: 11, fontWeight: 600, rotate: 30, color: "#334155" }
 				},
 				yAxis: {
 					type: "category",
-					data: names,
-					axisLabel: { fontSize: 12, fontWeight: 500 }
+					data: rows,
+					splitArea: { show: true },
+					axisLabel: { fontSize: 11, fontWeight: 600, color: "#334155" }
+				},
+				visualMap: {
+					min: 0,
+					max: maxAmount || 1,
+					calculable: true,
+					orient: "horizontal",
+					left: "center",
+					bottom: 0,
+					text: ["High", "Low"],
+					inRange: {
+						color: ["#f8fafc", "#bae6fd", "#38bdf8", "#0284c7", "#075985"]
+					},
+					formatter: function (v) {
+						if (v >= 1e7) return (v / 1e7).toFixed(1) + " Cr";
+						if (v >= 1e5) return (v / 1e5).toFixed(0) + " L";
+						return v;
+					}
 				},
 				series: [
 					{
 						name: "Collection",
-						type: "bar",
-						data: values,
-						itemStyle: {
-							color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-								{ offset: 0, color: "#6366f1" },
-								{ offset: 1, color: "#8b5cf6" }
-							]),
-							borderRadius: [0, 4, 4, 0]
-						},
+						type: "heatmap",
+						data: cells,
 						label: {
 							show: true,
-							position: "right",
-							formatter: (p) => fmt(p.value),
-							fontSize: 11,
-							color: "#475569"
+							formatter: function (p) { return fmt(p.value[2]); },
+							fontSize: 10,
+							color: "#0f172a"
+						},
+						emphasis: {
+							itemStyle: {
+								shadowBlur: 8,
+								shadowColor: "rgba(0, 0, 0, 0.35)"
+							}
+						},
+						itemStyle: {
+							borderColor: "#ffffff",
+							borderWidth: 2,
+							borderRadius: 4
 						}
 					}
 				]
