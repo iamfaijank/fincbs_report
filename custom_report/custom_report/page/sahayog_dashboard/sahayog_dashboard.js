@@ -12827,7 +12827,16 @@ class DrishtiDashboard {
 			const chart = echarts.init(chartDom);
 
 			const allProducts = (this.allProducts || []).filter(p => p !== "SHARE" && p !== "OTHER");
-			const zoneItems = (productData || []).filter(item => item.type === "zone");
+			// Zones ascending: Z1, Z2, Z3 ... (numeric-aware)
+			const zoneItems = (productData || [])
+				.filter(item => item.type === "zone")
+				.slice()
+				.sort((a, b) =>
+					String(a.name || "").localeCompare(String(b.name || ""), undefined, {
+						numeric: true,
+						sensitivity: "base"
+					})
+				);
 
 			// Fixed header order: CASA DAM DD FD RD SMBG + ACHIEVEMENT
 			const desired = ["CASA", "DAM", "DD", "FD", "RD", "SMBG"];
@@ -12906,6 +12915,7 @@ class DrishtiDashboard {
 				yAxis: {
 					type: "category",
 					data: rows,
+					inverse: true,
 					splitArea: { show: true },
 					axisLabel: { fontSize: 11, fontWeight: 600, color: "#334155" }
 				},
