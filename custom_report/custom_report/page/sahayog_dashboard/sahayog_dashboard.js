@@ -296,6 +296,16 @@ frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
 			: name.slice(0, 2).toUpperCase();
 	};
 
+	const normalizeZone = (val) => {
+		if (!val) return "Unassigned";
+		const s = String(val).trim();
+		const m = s.match(/\d+/);
+		if (m) {
+			return "Zone-" + m[0];
+		}
+		return s || "Unassigned";
+	};
+
 	const renderZoneChart = () => {
 		const zones = Object.keys(zoneBreakdown);
 		if (!zones.length) {
@@ -451,14 +461,19 @@ frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
 					const deptCount = Object.keys(data.department_breakdown || {}).length;
 					$("#dvm-kpi-depts").text(deptCount || 0);
 
-					allVisitors = data.visitors || [];
+					allVisitors = (data.visitors || []).map((v) => {
+						v.zone = normalizeZone(v.zone);
+						return v;
+					});
 
-					// Zone breakdown fallback: compute from visitors array if not provided or empty
-					zoneBreakdown = (data.zone_breakdown && Object.keys(data.zone_breakdown).length)
-						? data.zone_breakdown
-						: {};
-
-					if (!Object.keys(zoneBreakdown).length && allVisitors.length) {
+					// Re-bucket zone breakdown to standardized format
+					zoneBreakdown = {};
+					if (data.zone_breakdown && Object.keys(data.zone_breakdown).length) {
+						Object.keys(data.zone_breakdown).forEach((k) => {
+							const normK = normalizeZone(k);
+							zoneBreakdown[normK] = (zoneBreakdown[normK] || 0) + data.zone_breakdown[k];
+						});
+					} else {
 						allVisitors.forEach((v) => {
 							const z = v.zone || "Unassigned";
 							zoneBreakdown[z] = (zoneBreakdown[z] || 0) + 1;
