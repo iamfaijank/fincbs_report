@@ -151,7 +151,10 @@ frappe.pages["sahayog_dashboard"].initVisitorTracking = function (wrapper) {
 	if (!frappe.pages["sahayog_dashboard"]._unloadAttached) {
 		window.addEventListener("beforeunload", function () {
 			try {
-				navigator.sendBeacon("/api/method/sahayog.api.custom_api.leave_page", new URLSearchParams({ page: "sahayog_dashboard" }));
+				navigator.sendBeacon(
+					"/api/method/sahayog.api.custom_api.leave_page",
+					new URLSearchParams({ page: "sahayog_dashboard", csrf_token: frappe.csrf_token }),
+				);
 			} catch (e) {}
 		});
 		frappe.pages["sahayog_dashboard"]._unloadAttached = true;
