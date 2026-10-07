@@ -6,6 +6,7 @@ import { useFilters } from '@/composables/useFilters.js'
 import { useExpandableSet } from '@/composables/useExpandableSet.js'
 import { useNameFormat } from '@/composables/useNameFormat.js'
 import AchievementBadge from './AchievementBadge.vue'
+import ViewToggle from './ViewToggle.vue'
 
 const { formatNumber } = useNumberFormat()
 const { isZoneSelected, isRegionSelected } = useFilters()
@@ -14,6 +15,7 @@ const { formatZone, formatRegion } = useNameFormat()
 
 const rawAgentWise = ref([])
 const loading = ref(true)
+const viewMode = ref('table')
 
 onMounted(async () => {
   try {
@@ -59,6 +61,64 @@ function getZoneTotals(zoneData) {
   t.achPercent = t.target > 0 ? Math.round((t.achievement / t.target) * 100) : 0
   return t
 }
+
+// Chart data for agent-wise view
+const agentChartData = computed(() => {
+  const zones = rawAgentWise.value.filter(r => isZoneSelected(r.zone) && isRegionSelected(r.region))
+  
+  // Group by zone for chart
+  const zoneMap = {}
+  zones.forEach(agent => {
+    if (!zoneMap[agent.zone]) {
+      zoneMap[agent.zone] = {
+        zone: formatZone(agent.zone),
+        ssTarget: 0,
+        ssAchievement: 0,
+        ssActive: 0,
+        ssInactive: 0,
+        agentTarget: 0,
+        agentAchievement: 0,
+        agentActive: 0,
+        agentInactive: 0,
+        achPercent: 0
+      }
+    }
+    zoneMap[agent.zone].ssTarget += agent.ss_target || 0
+    zoneMap[agent.zone].ssAchievement += agent.ss_achievement || 0
+    zoneMap[agent.zone].ssActive += agent.ss_active || 0
+    zoneMap[agent.zone].ssInactive += agent.ss_inactive || 0
+    zoneMap[agent.zone].agentTarget += agent.target || 0
+    zoneMap[agent.zone].agentAchievement += agent.achievement || 0
+    zoneMap[agent.zone].agentActive += agent.active || 0
+    zoneMap[agent.zone].agentInactive += agent.inactive || 0
+  })
+  
+  // Calculate percentages
+  Object.values(zoneMap).forEach(zone => {
+    const totalTarget = zone.agentTarget
+    zone.achPercent = totalTarget > 0 ? Math.round((zone.agentAchievement / totalTarget) * 100) : 0
+    zone.totalActive = zone.ssActive + zone.agentActive
+    zone.totalInactive = zone.ssInactive + zone.agentInactive
+  })
+  
+  return Object.values(zoneMap).sort((a, b) => b.achPercent - a.achPercent)
+})
+
+const chartOptions = computed(() => {
+  const maxTarget = Math.max(...agentChartData.value.map(d => Math.max(d.ssTarget, d.agentTarget)), 1)
+  const maxAchievement = Math.max(...agentChartData.value.map(d => Math.max(d.ssAchievement, d.agentAchievement)), 1)
+  
+  return {
+    maxTarget,
+    maxAchievement,
+    colors: {
+      ss: '#3b82f6',
+      agent: '#22c55e',
+      active: '#10b981',
+      inactive: '#ef4444'
+    }
+  }
+})
 </script>
 
 <template>
@@ -66,35 +126,164 @@ function getZoneTotals(zoneData) {
     <div v-if="loading" class="p-8 text-center text-sm text-[var(--text3)]">Loading...</div>
     <div v-else-if="filteredAgentData.length === 0" class="p-8 text-center text-sm text-[var(--text3)]">No agent data available for the selected date.</div>
     <div v-else>
-      <table class="w-full">
-        <thead>
-          <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
-            <th rowspan="2" class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-              ZONE/REGION
-            </th>
-            <th colspan="5" class="border-b border-r border-[var(--border)] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-              SS
-            </th>
-            <th colspan="5" class="border-b border-r border-[var(--border)] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-              Agent
-            </th>
-            <th rowspan="2" class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
-              ACH %
-            </th>
-          </tr>
-          <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
-            <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Target</th>
-            <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Ach</th>
-            <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Shortfall</th>
-            <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Active</th>
-            <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Inactive</th>
-            <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Target</th>
-            <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Ach</th>
-            <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Shortfall</th>
-            <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Active</th>
-            <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Inactive</th>
-          </tr>
-        </thead>
+      <!-- View Toggle Header -->
+      <div class="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg2)] px-5 py-3">
+        <div class="text-sm font-semibold text-[var(--text3)] uppercase tracking-wider">
+          Agent Performance
+        </div>
+        <ViewToggle v-model:viewMode="viewMode" color="#115e59" />
+      </div>
+      
+      <!-- Chart View -->
+      <div v-if="viewMode === 'chart' && agentChartData.length > 0" class="p-6">
+        <!-- Zone Performance Overview -->
+        <div class="mb-8">
+          <h3 class="text-sm font-semibold text-[var(--text3)] mb-4">Zone-wise Agent Performance</h3>
+          
+          <div class="space-y-4">
+            <div v-for="(zone, index) in agentChartData" :key="zone.zone" class="chart-item">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-3">
+                  <span class="w-6 text-right text-xs font-medium text-[var(--text3)]">{{ index + 1 }}.</span>
+                  <span class="text-sm font-medium text-[var(--text)]">{{ zone.zone }}</span>
+                  <AchievementBadge :value="zone.achPercent" />
+                </div>
+                <div class="text-xs text-[var(--text3)]">
+                  {{ zone.totalActive }} active / {{ zone.totalInactive }} inactive
+                </div>
+              </div>
+              
+              <!-- SS vs Agent Comparison -->
+              <div class="mb-3">
+                <div class="text-xs text-[var(--text3)] mb-2">SS Performance</div>
+                <div class="relative h-3 bg-[var(--bg2)] rounded-full overflow-hidden mb-2">
+                  <div 
+                    class="absolute top-0 left-0 h-full rounded-full"
+                    :style="{
+                      width: `${Math.min(100, (zone.ssAchievement / chartOptions.maxAchievement) * 100)}%`,
+                      backgroundColor: chartOptions.colors.ss
+                    }"
+                  ></div>
+                </div>
+                <div class="flex justify-between text-xs">
+                  <span class="text-[var(--text3)]">Ach: {{ formatNumber(zone.ssAchievement) }}</span>
+                  <span class="text-[var(--text3)]">Target: {{ formatNumber(zone.ssTarget) }}</span>
+                </div>
+              </div>
+              
+              <div>
+                <div class="text-xs text-[var(--text3)] mb-2">Agent Performance</div>
+                <div class="relative h-3 bg-[var(--bg2)] rounded-full overflow-hidden mb-2">
+                  <div 
+                    class="absolute top-0 left-0 h-full rounded-full"
+                    :style="{
+                      width: `${Math.min(100, (zone.agentAchievement / chartOptions.maxAchievement) * 100)}%`,
+                      backgroundColor: chartOptions.colors.agent
+                    }"
+                  ></div>
+                </div>
+                <div class="flex justify-between text-xs">
+                  <span class="text-[var(--text3)]">Ach: {{ formatNumber(zone.agentAchievement) }}</span>
+                  <span class="text-[var(--text3)]">Target: {{ formatNumber(zone.agentTarget) }}</span>
+                </div>
+              </div>
+              
+              <!-- Active/Inactive Status -->
+              <div class="mt-3 pt-3 border-t border-[var(--border)]">
+                <div class="text-xs text-[var(--text3)] mb-2">Status Distribution</div>
+                <div class="flex gap-2">
+                  <div class="flex-1">
+                    <div class="text-center mb-1">
+                      <span class="text-xs font-medium" :style="{ color: chartOptions.colors.active }">Active</span>
+                    </div>
+                    <div class="relative h-3 bg-[var(--bg2)] rounded-full overflow-hidden">
+                      <div 
+                        class="absolute top-0 left-0 h-full rounded-full"
+                        :style="{
+                          width: `${Math.min(100, (zone.totalActive / (zone.totalActive + zone.totalInactive)) * 100)}%`,
+                          backgroundColor: chartOptions.colors.active
+                        }"
+                      ></div>
+                    </div>
+                  </div>
+                  <div class="flex-1">
+                    <div class="text-center mb-1">
+                      <span class="text-xs font-medium" :style="{ color: chartOptions.colors.inactive }">Inactive</span>
+                    </div>
+                    <div class="relative h-3 bg-[var(--bg2)] rounded-full overflow-hidden">
+                      <div 
+                        class="absolute top-0 left-0 h-full rounded-full"
+                        :style="{
+                          width: `${Math.min(100, (zone.totalInactive / (zone.totalActive + zone.totalInactive)) * 100)}%`,
+                          backgroundColor: chartOptions.colors.inactive
+                        }"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Summary Stats -->
+        <div class="mt-8 pt-6 border-t border-[var(--border)] grid grid-cols-4 gap-4">
+          <div class="text-center">
+            <div class="text-xs text-[var(--text3)] mb-1">Avg. Achievement</div>
+            <div class="text-2xl font-bold text-[var(--text)]">
+              {{ Math.round(agentChartData.reduce((sum, zone) => sum + zone.achPercent, 0) / agentChartData.length) }}%
+            </div>
+          </div>
+          <div class="text-center">
+            <div class="text-xs text-[var(--text3)] mb-1">Total Active</div>
+            <div class="text-2xl font-bold text-[var(--text)]">
+              {{ agentChartData.reduce((sum, zone) => sum + zone.totalActive, 0) }}
+            </div>
+          </div>
+          <div class="text-center">
+            <div class="text-xs text-[var(--text3)] mb-1">Total Inactive</div>
+            <div class="text-2xl font-bold text-[var(--text)]">
+              {{ agentChartData.reduce((sum, zone) => sum + zone.totalInactive, 0) }}
+            </div>
+          </div>
+          <div class="text-center">
+            <div class="text-xs text-[var(--text3)] mb-1">Total Zones</div>
+            <div class="text-2xl font-bold text-[var(--text)]">{{ agentChartData.length }}</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Table View -->
+      <div v-else-if="viewMode === 'table'">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+              <th rowspan="2" class="border-r border-[var(--border)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                ZONE/REGION
+              </th>
+              <th colspan="5" class="border-b border-r border-[var(--border)] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                SS
+              </th>
+              <th colspan="5" class="border-b border-r border-[var(--border)] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                Agent
+              </th>
+              <th rowspan="2" class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-[var(--text3)]">
+                ACH %
+              </th>
+            </tr>
+            <tr class="border-b border-[var(--border)] bg-[var(--bg2)]">
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Target</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Ach</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Shortfall</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Active</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Inactive</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Target</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Ach</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Shortfall</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Active</th>
+              <th class="border-r border-[var(--border)] px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">Inactive</th>
+            </tr>
+          </thead>
         <tbody>
           <template v-for="zoneData in filteredAgentData" :key="zoneData.zone">
             <tr
@@ -150,6 +339,17 @@ function getZoneTotals(zoneData) {
           </template>
         </tbody>
       </table>
+      </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.chart-item {
+  @apply p-3 border border-[var(--border)] rounded-lg bg-[var(--bg1)];
+}
+
+.chart-item:not(:last-child) {
+  @apply mb-3;
+}
+</style>

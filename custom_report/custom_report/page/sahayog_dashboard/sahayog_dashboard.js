@@ -3,15 +3,53 @@
 // Version: 6.0.0 | All Issues Fixed
 // ============================================================================
 
+// Holiday dates (e.g. Gandhi Jayanti, Dashera) from Holiday List "Maharashtra - <year>"
+const DRISHTI_HOLIDAYS = {}; // year -> ["YYYY-MM-DD", ...]
+const DRISHTI_HOLIDAY_PROMISES = {}; // year -> Promise
+
+const loadDrishtiHolidays = (year) => {
+	if (DRISHTI_HOLIDAYS[year]) return DRISHTI_HOLIDAY_PROMISES[year];
+	if (!DRISHTI_HOLIDAY_PROMISES[year]) {
+		DRISHTI_HOLIDAY_PROMISES[year] = new Promise((resolve) => {
+			frappe.call({
+				method:
+					"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_working_holiday_dates",
+				args: { year: year },
+				callback: function (r) {
+					DRISHTI_HOLIDAYS[year] = (r && r.message) || [];
+					resolve(DRISHTI_HOLIDAYS[year]);
+				},
+				error: function () {
+					// do not cache failures - allow retry on next render
+					delete DRISHTI_HOLIDAYS[year];
+					delete DRISHTI_HOLIDAY_PROMISES[year];
+				},
+			});
+		});
+	}
+	return DRISHTI_HOLIDAY_PROMISES[year];
+};
+
 const getRemainingWorkingDaysExcludingSundays = (year, monthIndex, currentDay) => {
 	const lastDayOfMonth = new Date(year, monthIndex + 1, 0).getDate();
+	const holidays = DRISHTI_HOLIDAYS[year];
 	let workingDays = 0;
 	for (let day = currentDay; day <= lastDayOfMonth; day++) {
 		const date = new Date(year, monthIndex, day);
-		if (date.getDay() !== 0) {
+		if (date.getDay() === 0) {
 			// 0 represents Sunday
-			workingDays++;
+			continue;
 		}
+		if (holidays && holidays.length) {
+			const key =
+				year +
+				"-" +
+				String(monthIndex + 1).padStart(2, "0") +
+				"-" +
+				String(day).padStart(2, "0");
+			if (holidays.indexOf(key) !== -1) continue; // national / state holiday
+		}
+		workingDays++;
 	}
 	return workingDays;
 };
@@ -598,6 +636,11 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 		},
 	});
 
+	// Preload national/state holidays so working-day counts (DRR, timers) are accurate
+	const _bootYear = new Date().getFullYear();
+	loadDrishtiHolidays(_bootYear);
+	loadDrishtiHolidays(_bootYear - 1);
+
 	// Clean up any old unmanaged container style tags from previous development sessions
 	$("head style").each(function () {
 		const text = $(this).text();
@@ -741,6 +784,16 @@ const filterMisTableDataByUserPermissions = function (data, filterOptions) {
 	});
 };
 
+function _detailHay(d) {
+	return ((d.auth_id || "") + " " + (d.auth_role_id || "") + " " + (d.rm_id || "") + " " + (d.rm_name || "")).toLowerCase();
+}
+
+function _detailsMatch(row, term) {
+	if (!row || !row.details || !row.details.length) return false;
+	const auth = ((row.auth_id || "") + " " + (row.auth_name || "")).toLowerCase();
+	return auth.includes(term) || row.details.some(d => _detailHay(d).includes(term));
+}
+
 function _autoExpandSearchResults(self, data) {
 	const term = (self.searchTerm || "").trim();
 	if (!term || !data || !data.length) return;
@@ -754,7 +807,7 @@ function _autoExpandSearchResults(self, data) {
 			const dt = (row.district || (row.parent_district ? row.parent_district.split("/").pop() : '') || "").toLowerCase();
 			const zone = (row.zone || row.parent_zone || "").toLowerCase();
 			const region = (row.region || (row.parent_region ? row.parent_region.split("/").pop() : '') || "").toLowerCase();
-			return br.includes(t) || id.includes(t) || dt.includes(t) || zone.includes(t) || region.includes(t);
+			return br.includes(t) || id.includes(t) || dt.includes(t) || zone.includes(t) || region.includes(t) || _detailsMatch(row, t);
 		});
 		if (matches) {
 			const z = (row.zone || row.parent_zone || "").trim();
@@ -778,6 +831,14 @@ function _autoExpandSearchResults(self, data) {
 			}
 			if (z && r && d && s) {
 				if (self.expandedTreeNodes) self.expandedTreeNodes[`s_${z}_${r}_${d}_${s}`] = true;
+				if (self.expandedBranches) self.expandedBranches[s] = true;
+				const detMatched = (row.details || []).some(d2 => terms.some(t => _detailHay(d2).includes(t)));
+				if (detMatched) {
+					(row.details || []).forEach(d2 => {
+						const authId = ((d2.auth_id || "").trim()) || "UNKNOWN";
+						if (self.expandedAuths) self.expandedAuths[s + "::" + authId] = true;
+					});
+				}
 			}
 		}
 	});
@@ -832,6 +893,10 @@ class DrishtiDashboard {
 			dashboardMode: "drishti",
 			selectedMisReport: "rd_smbg_pending",
 			categoryViewMode: "table",
+			zoneViewMode: "table",
+			productViewMode: "table",
+			agentViewMode: "table",
+			branchViewMode: "table",
 		};
 		// Store selected date per tab
 		this.tabDates = {
@@ -866,6 +931,8 @@ class DrishtiDashboard {
 				expandedZones: {},
 				expandedRegions: {},
 				expandedDistricts: {},
+				expandedBranches: {},
+				expandedAuths: {},
 				checkedRows: {},
 				searchTerm: "",
 				allExpanded: false,
@@ -874,7 +941,7 @@ class DrishtiDashboard {
 					const self = this;
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
-							<input type="text" id="mis-search" placeholder="Search branch, SOL ID or district..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<input type="text" id="mis-search" placeholder="Search branch, SOL ID, agent or authorizer..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
@@ -1018,6 +1085,15 @@ class DrishtiDashboard {
 								self.expandedRegions[z.zone + "::" + r.region] = expand;
 								r.districts.forEach(d => {
 									self.expandedDistricts[z.zone + "::" + r.region + "::" + d.district] = expand;
+									d.branches.forEach(b => {
+										const sid = b.sol_id;
+										if (!sid) return;
+										self.expandedBranches[sid] = expand;
+										(b.details || []).forEach(det => {
+											const authId = ((det.auth_id || "").trim()) || "UNKNOWN";
+											self.expandedAuths[sid + "::" + authId] = expand;
+										});
+									});
 								});
 							});
 						});
@@ -1078,6 +1154,8 @@ class DrishtiDashboard {
 					self.expandedZones = {};
 					self.expandedRegions = {};
 					self.expandedDistricts = {};
+					self.expandedBranches = {};
+					self.expandedAuths = {};
 					self.checkedRows = {};
 					self.searchTerm = "";
 					self.allExpanded = false;
@@ -1140,7 +1218,7 @@ class DrishtiDashboard {
 							const br = (row.branch_name || row.sol_desc || "").toLowerCase();
 							const id = (row.sol_id || "").toLowerCase();
 							const dt = (row.district || "").toLowerCase();
-							return terms.some(t => br.includes(t) || id.includes(t) || dt.includes(t));
+							return terms.some(t => br.includes(t) || id.includes(t) || dt.includes(t) || _detailsMatch(row, t));
 						});
 					}
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
@@ -1225,6 +1303,7 @@ class DrishtiDashboard {
 						}
 						return "₹" + new Intl.NumberFormat("en-IN").format(Math.round(val));
 					};
+					const _esc = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 					const zoneData = self.aggregateByZone();
 					const totalFilteredBranches = zoneData.reduce((s, z) => s + z.data.branches.length, 0);
 					const totalAllBranches = (self.tableData || []).length;
@@ -1294,13 +1373,59 @@ class DrishtiDashboard {
 									const branchBg = bi % 2 === 0 ? "#ffffff" : "#f1f5f9";
 									const solId = branch.sol_id || "branch_" + bi;
 									const branchChecked = self.checkedRows[solId];
-									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${solId}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0;">
-										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${solId}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
-										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 500;">${branch.sol_id} - ${branch.branch_name || branch.sol_desc}</td>
-										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
-										${metricCols.map(mc => `<td style="padding: 6px 14px; color: #475569; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(branch[mc.key])}</td>`).join('')}
-									</tr>`;
+									const details = branch.details || [];
+									self._rdBranchDetails = self._rdBranchDetails || {};
+									self._rdBranchDetails[solId] = { sol: solId, name: branch.branch_name || branch.sol_desc || "", details: details };
+									const branchExpanded = !!self.expandedBranches[solId];
+									const showAuth = showBranch && branchExpanded;
+									const branchToggle = details.length ? `<span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${branchExpanded ? "▼" : "▶"}</span>` : "";
+									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-sol="${_esc(solId)}" data-check-id="${solId}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0; cursor: ${details.length ? "pointer" : "default"};">
+									<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${solId}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+									<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 500;">${branchToggle}${branch.sol_id} - ${_esc(branch.branch_name || branch.sol_desc)}${details.length ? `<button type="button" class="mis-branch-dl" data-sol="${_esc(solId)}" title="Download this branch's drilldown (CSV)" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; CSV</button><button type="button" class="mis-branch-xls" data-sol="${_esc(solId)}" title="Download this branch's drilldown (Excel)" style="margin-left: 4px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; XLS</button>` : ""}</td>
+									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
+									${metricCols.map(mc => `<td style="padding: 6px 14px; color: #475569; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(branch[mc.key])}</td>`).join('')}
+								</tr>`;
+									if (details.length) {
+										const authMap = {};
+										details.forEach(d => {
+											const authId = ((d.auth_id || "").trim()) || "UNKNOWN";
+											if (!authMap[authId]) {
+												authMap[authId] = { authId, authName: ((d.auth_role_id || "").trim()) || "-", agents: [], total_accounts: 0, total_collection: 0, pending_accounts: 0, pending_amount: 0, pending_instalments: 0 };
+											}
+											const a = authMap[authId];
+											a.agents.push(d);
+											a.total_accounts += d.total_accounts || 0;
+											a.total_collection += d.total_collection || 0;
+											a.pending_accounts += d.pending_accounts || 0;
+											a.pending_amount += d.pending_amount || 0;
+											a.pending_instalments += d.pending_instalments || 0;
+										});
+										Object.keys(authMap).sort().forEach(authId => {
+											const a = authMap[authId];
+											const authKey = solId + "::" + authId;
+											const authExpanded = !!self.expandedAuths[authKey];
+											const showAgents = showAuth && authExpanded;
+											const authLabel = authId === "UNKNOWN" ? "Unassigned" : authId + " - " + a.authName;
+											const authArrow = `<span class="mis-auth-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #b45309;">${authExpanded ? "▼" : "▶"}</span>`;
+											rowsHtml += `<tr class="mis-auth-row" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-sol="${_esc(solId)}" data-auth="${_esc(authId)}" style="display: ${showAuth ? "table-row" : "none"}; background: ${branchBg === "#ffffff" ? "#f8fafc" : "#f1f5f9"}; border-bottom: 1px solid #e2e8f0; cursor: pointer;">
+												<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"></td>
+												<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+												<td style="padding: 6px 14px; color: #92400e; white-space: nowrap; font-size: 14px; padding-left: 78px; font-weight: 600;">${authArrow}Auth: ${_esc(authLabel)}</td>
+												<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${a.agents.length}</td>
+												${metricCols.map(mc => `<td style="padding: 6px 14px; color: #92400e; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(a[mc.key])}</td>`).join('')}
+											</tr>`;
+											a.agents.forEach(agent => {
+												rowsHtml += `<tr class="mis-agent-row" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-sol="${_esc(solId)}" data-auth="${_esc(authId)}" data-rm="${_esc(agent.rm_id)}" style="display: ${showAgents ? "table-row" : "none"}; background: ${branchBg === "#ffffff" ? "#fdfdfd" : "#f8fafc"}; border-bottom: 1px solid #f1f5f9;">
+													<td style="padding: 5px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"></td>
+													<td style="padding: 5px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+													<td style="padding: 5px 14px; color: #64748b; white-space: nowrap; font-size: 13px; padding-left: 96px; font-weight: 500;">Agent: ${_esc((agent.rm_id || "") + " - " + (agent.rm_name || ""))}</td>
+													<td style="padding: 5px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 13px; font-weight: 500;">1</td>
+													${metricCols.map(mc => `<td style="padding: 5px 14px; color: #64748b; text-align: ${mc.align}; white-space: nowrap; font-size: 13px; font-weight: 500;">${mc.fmt(agent[mc.key])}</td>`).join('')}
+												</tr>`;
+											});
+										});
+									}
 								});
 							});
 						});
@@ -1340,6 +1465,20 @@ class DrishtiDashboard {
 							</table>
 						</div>`;
 					tableContainer.html(tableHtml);
+					const revealAuthRows = function ($branchRows) {
+						$branchRows.each(function () {
+							const sol = $(this).attr("data-sol");
+							if (!sol || !self.expandedBranches[sol]) return;
+							const $authRows = tableContainer.find(`.mis-auth-row[data-sol="${sol}"]`);
+							$authRows.stop(true, true).slideDown(200);
+							$authRows.each(function () {
+								const auth = $(this).attr("data-auth");
+								if (self.expandedAuths[sol + "::" + auth]) {
+									tableContainer.find(`.mis-agent-row[data-sol="${sol}"][data-auth="${auth}"]`).stop(true, true).slideDown(200);
+								}
+							});
+						});
+					};
 					tableContainer.off("click", ".mis-zone-row").on("click", ".mis-zone-row", function (e) {
 						if ($(e.target).closest(".mis-region-toggle, .mis-region-row, .mis-district-row, input[type=checkbox]").length) return;
 						const zone = $(this).data("zone");
@@ -1357,12 +1496,16 @@ class DrishtiDashboard {
 									$districtRows.each(function () {
 										const d = $(this).data("district");
 										if (self.expandedDistricts[zone + "::" + r + "::" + d]) {
-											tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${r}"][data-district="${d}"]`).stop(true, true).slideDown(200);
+											const $b = tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${r}"][data-district="${d}"]`);
+											$b.stop(true, true).slideDown(200);
+											revealAuthRows($b);
 										}
 									});
 								}
 							});
 						} else {
+							tableContainer.find(`.mis-agent-row[data-zone="${zone}"]`).stop(true, true).slideUp(150);
+							tableContainer.find(`.mis-auth-row[data-zone="${zone}"]`).stop(true, true).slideUp(150);
 							$branchRows.stop(true, true).slideUp(150);
 							$districtRows.stop(true, true).slideUp(150);
 							$regionRows.stop(true, true).slideUp(200);
@@ -1384,10 +1527,14 @@ class DrishtiDashboard {
 							$districtRows.each(function () {
 								const d = $(this).data("district");
 								if (self.expandedDistricts[zone + "::" + region + "::" + d]) {
-									tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"][data-district="${d}"]`).stop(true, true).slideDown(200);
+									const $b = tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"][data-district="${d}"]`);
+									$b.stop(true, true).slideDown(200);
+									revealAuthRows($b);
 								}
 							});
 						} else {
+							tableContainer.find(`.mis-agent-row[data-zone="${zone}"][data-region="${region}"]`).stop(true, true).slideUp(150);
+							tableContainer.find(`.mis-auth-row[data-zone="${zone}"][data-region="${region}"]`).stop(true, true).slideUp(150);
 							$branchRows.stop(true, true).slideUp(150);
 							$districtRows.stop(true, true).slideUp(150);
 						}
@@ -1403,8 +1550,95 @@ class DrishtiDashboard {
 						self.expandedDistricts[districtKey] = !self.expandedDistricts[districtKey];
 						const show = self.expandedDistricts[districtKey];
 						const $branchRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"][data-district="${district}"]`);
-						if (show) { $branchRows.stop(true, true).slideDown(200); } else { $branchRows.stop(true, true).slideUp(150); }
+						if (show) {
+							$branchRows.stop(true, true).slideDown(200);
+							revealAuthRows($branchRows);
+						} else {
+							tableContainer.find(`.mis-agent-row[data-zone="${zone}"][data-region="${region}"][data-district="${district}"]`).stop(true, true).slideUp(150);
+							tableContainer.find(`.mis-auth-row[data-zone="${zone}"][data-region="${region}"][data-district="${district}"]`).stop(true, true).slideUp(150);
+							$branchRows.stop(true, true).slideUp(150);
+						}
 						$(this).find(".mis-district-toggle").text(show ? "▼" : "▶");
+					});
+					tableContainer.off("click", ".mis-branch-row").on("click", ".mis-branch-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox], .mis-branch-dl, .mis-branch-xls").length) return;
+						const sol = $(this).attr("data-sol");
+						if (!tableContainer.find(`.mis-auth-row[data-sol="${sol}"]`).length) return;
+						e.stopPropagation();
+						self.expandedBranches[sol] = !self.expandedBranches[sol];
+						const show = self.expandedBranches[sol];
+						const $authRows = tableContainer.find(`.mis-auth-row[data-sol="${sol}"]`);
+						if (show) {
+							$authRows.stop(true, true).slideDown(200);
+							$authRows.each(function () {
+								const auth = $(this).attr("data-auth");
+								if (self.expandedAuths[sol + "::" + auth]) {
+									tableContainer.find(`.mis-agent-row[data-sol="${sol}"][data-auth="${auth}"]`).stop(true, true).slideDown(200);
+								}
+							});
+						} else {
+							tableContainer.find(`.mis-agent-row[data-sol="${sol}"]`).stop(true, true).slideUp(150);
+							$authRows.stop(true, true).slideUp(150);
+						}
+						$(this).find(".mis-branch-toggle").text(show ? "▼" : "▶");
+					});
+					tableContainer.off("click", ".mis-auth-row").on("click", ".mis-auth-row", function (e) {
+						e.stopPropagation();
+						const sol = $(this).attr("data-sol");
+						const auth = $(this).attr("data-auth");
+						const authKey = sol + "::" + auth;
+						self.expandedAuths[authKey] = !self.expandedAuths[authKey];
+						const show = self.expandedAuths[authKey];
+						const $agentRows = tableContainer.find(`.mis-agent-row[data-sol="${sol}"][data-auth="${auth}"]`);
+						if (show) { $agentRows.stop(true, true).slideDown(200); } else { $agentRows.stop(true, true).slideUp(150); }
+						$(this).find(".mis-auth-toggle").text(show ? "▼" : "▶");
+					});
+					tableContainer.off("click", ".mis-branch-dl, .mis-branch-xls").on("click", ".mis-branch-dl, .mis-branch-xls", function (e) {
+						e.stopPropagation();
+						const sol = $(this).attr("data-sol");
+						const info = (self._rdBranchDetails || {})[sol] || {};
+						const details = info.details || [];
+						if (!details.length) return;
+						const csvCell = (v) => {
+							const s = String(v == null ? "" : v);
+							return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+						};
+						const rows = [["Branch Name", "Sol ID", "Auth ID", "Auth Name", "Agent ID", "Agent Name", "Total Accounts", "Total Collection", "Pending Accounts", "Pending Instalments", "Pending Amount"]];
+						details.forEach(d => rows.push([
+							info.name || "", info.sol || sol,
+							d.auth_id || "", d.auth_role_id || "", d.rm_id || "", d.rm_name || "",
+							d.total_accounts || 0, d.total_collection || 0, d.pending_accounts || 0,
+							d.pending_instalments || 0, d.pending_amount || 0
+						]));
+						let blob, filename;
+						if ($(this).hasClass("mis-branch-xls")) {
+							const xEsc = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+							const xmlCell = (v, i) => {
+								if (i >= 6 && v !== "" && v != null && isFinite(Number(v))) {
+									return `<Cell><Data ss:Type="Number">${Number(v)}</Data></Cell>`;
+								}
+								return `<Cell><Data ss:Type="String">${xEsc(v)}</Data></Cell>`;
+							};
+							const xml = '<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n' +
+								'<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' +
+								'<Worksheet ss:Name="Drilldown"><Table>' +
+								rows.map(r => "<Row>" + r.map((v, i) => xmlCell(v, i)).join("") + "</Row>").join("") +
+								'</Table></Worksheet></Workbook>';
+							blob = new Blob([xml], { type: "application/vnd.ms-excel;charset=utf-8;" });
+							filename = "RD_SMBG_" + (info.sol || sol) + ".xls";
+						} else {
+							const csv = "\uFEFF" + rows.map(r => r.map(csvCell).join(",")).join("\r\n");
+							blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+							filename = "RD_SMBG_" + (info.sol || sol) + ".csv";
+						}
+						const url = URL.createObjectURL(blob);
+						const a = document.createElement("a");
+						a.href = url;
+						a.download = filename;
+						document.body.appendChild(a);
+						a.click();
+						document.body.removeChild(a);
+						URL.revokeObjectURL(url);
 					});
 					tableContainer.off("change", ".mis-row-check").on("change", ".mis-row-check", function () {
 						const checkId = $(this).data("check-id");
@@ -7656,8 +7890,17 @@ class DrishtiDashboard {
 			});
 		});
 
-		const sortKey = metricCols[metricCols.length - 1].key;
-		rootNodes.sort((a, b) => (b[sortKey] || 0) - (a[sortKey] || 0));
+		// Zones in natural order (ZONE-1, ZONE-2, ... ZONE-10) instead of by value;
+		// OTHER / Unknown zones always last
+		const zoneRank = (n) => (/^(other|unknown)/i.test(String(n || "").trim()) ? 1 : 0);
+		rootNodes.sort(
+			(a, b) =>
+				zoneRank(a.name) - zoneRank(b.name) ||
+				String(a.name || "").localeCompare(String(b.name || ""), undefined, {
+					numeric: true,
+					sensitivity: "base",
+				}),
+		);
 
 		return { rootNodes, grandTotal };
 	}
@@ -8971,6 +9214,35 @@ class DrishtiDashboard {
 		this.updateFilterTagsUI();
 		this.applyBranchManagerRestrictions();
 		this.updateClearFilterVisibility();
+		this.applyProductTabFilterVisibility();
+	}
+
+	// Product Wise tab keeps only Zone / Region / District / Branch filters in the toolbar
+	applyProductTabFilterVisibility() {
+		const main = this.page.main;
+		if (!main.find("#view-controls-container").length) return;
+
+		const isProduct = this.state.activeTab === "product";
+
+		[
+			".fy-header-control",
+			"#date-selector-container",
+			"#days-left-container",
+			"#view-controls-container",
+			"#target-controls-container",
+			"#format-controls-container",
+			"#segment-filter",
+			".category-filter-container",
+		].forEach((sel) => main.find(sel).toggle(!isProduct));
+
+		if (isProduct) {
+			main.find("#month-selector-container").hide();
+		} else {
+			main.find("#month-selector-container").toggle(this.state.viewType === "Monthly");
+		}
+
+		this.updateClearFilterVisibility();
+		this.updateBranchSearchVisibility();
 	}
 
 	repopulateHeaderFilters() {
@@ -9716,12 +9988,12 @@ class DrishtiDashboard {
                     </div>
 
                     <!-- Days Left countdown -->
-                    <div style="display: flex; align-items: center;">
+                    <div id="days-left-container" style="display: flex; align-items: center;">
                         <span id="drishti-live-timer" style="font-size: 13px; font-weight: 600; color: #64748b; white-space: nowrap;"></span>
                     </div>
 
                     <!-- View Toggle Buttons -->
-                    <div style="display: flex; align-items: center;">
+                    <div id="view-controls-container" style="display: flex; align-items: center;">
                         <label style="font-weight: bold; color: #0d1b2a; margin-bottom: 0;">View:</label>
                         <div class="btn-group" id="view-controls" role="group" style="margin-left: 8px;">
                             <button type="button" class="btn btn-sm view-toggle-btn" data-view="Monthly">Monthly</button>
@@ -9741,7 +10013,7 @@ class DrishtiDashboard {
                     </div>
  
                     <!-- Target Toggle Buttons -->
-                    <div style="display: flex; align-items: center;">
+                    <div id="target-controls-container" style="display: flex; align-items: center;">
                         <label style="font-weight: bold; color: #0d1b2a; margin-bottom: 0;">Target:</label>
                         <div class="btn-group" role="group" style="margin-left: 8px;">
                             <button type="button" class="btn btn-sm target-toggle-btn" data-target="Monthly">Monthly</button>
@@ -9773,7 +10045,7 @@ class DrishtiDashboard {
                     </div>
 
                     <!-- Format Control -->
-                    <div style="display: flex; align-items: center; gap: 6px;">
+                    <div id="format-controls-container" style="display: flex; align-items: center; gap: 6px;">
                         <span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
                         <div class="btn-group" role="group">
                             <button type="button" class="btn btn-sm format-toggle-btn" data-format="number">Numbers</button>
@@ -11225,7 +11497,9 @@ class DrishtiDashboard {
 			let htmlContent = "";
 
 			if (this.state.activeTab === "zone") {
-				htmlContent = this.renderZoneTable(reaggregatedZoneData);
+				htmlContent = this.state.zoneViewMode === "chart"
+					? this.renderZoneChartContainer()
+					: this.renderZoneTable(reaggregatedZoneData);
 				const totalBranches = (filteredBranches || []).length;
 				let totalAch = 0;
 				let totalTgt = 0;
@@ -11244,7 +11518,9 @@ class DrishtiDashboard {
 					: this.renderCategoryTable(reaggregatedCategoryData);
 			} else if (this.state.activeTab === "product") {
 				const filteredProductData = this.getFilteredProductData();
-				htmlContent = this.renderProductTable(filteredProductData);
+				htmlContent = this.state.productViewMode === "chart"
+					? this.renderProductChartContainer()
+					: this.renderProductTable(filteredProductData);
 				const solSet = new Set();
 				let totalProdAmt = 0;
 				(filteredProductData || []).forEach((item) => {
@@ -11258,9 +11534,13 @@ class DrishtiDashboard {
 				const branchCount = solSet.size || (filteredBranches || []).length;
 				console.log(`📦 [PRODUCT WISE] Date: ${this.state.selectedDate || 'Default'} | Branches: ${branchCount} | Total Amount: ₹ ${totalProdAmt.toLocaleString('en-IN')}`);
 			} else if (this.state.activeTab === "agent") {
-				htmlContent = this.renderAgentWiseTable(this.agentData);
+				htmlContent = this.state.agentViewMode === "chart"
+					? this.renderAgentChartContainer()
+					: this.renderAgentWiseTable(this.agentData);
 			} else if (this.state.activeTab === "branch") {
-				htmlContent = this.buildBranchTable(filteredBranches, this.months);
+				htmlContent = this.state.branchViewMode === "chart"
+					? this.renderBranchChartContainer()
+					: this.buildBranchTable(filteredBranches, this.months);
 			} else if (this.state.activeTab === "product_tgt_ach") {
 				htmlContent = this.renderProductWiseTgtVsAchTable(filteredBranches);
 			}
@@ -11270,11 +11550,22 @@ class DrishtiDashboard {
 			// Attach handlers after rendering
 
 			if (this.state.activeTab === "zone") {
-				this.attachZoneExpandHandlers();
-				this.attachZoneDrilldownHandlers();
+				this.attachZoneViewToggleHandlers();
+				if (this.state.zoneViewMode === "chart") {
+					this.renderZoneChart(reaggregatedZoneData);
+				} else {
+					this.attachZoneExpandHandlers();
+					this.attachZoneDrilldownHandlers();
+				}
 			} else if (this.state.activeTab === "product") {
-				this.attachProductExpandHandlers();
-				this.attachProductDrilldownHandlers();
+				this.attachProductViewToggleHandlers();
+				this.attachProductChartFilters();
+				if (this.state.productViewMode === "chart") {
+					this.renderProductChart(this.getFilteredProductData());
+				} else {
+					this.attachProductExpandHandlers();
+					this.attachProductDrilldownHandlers();
+				}
 			} else if (this.state.activeTab === "category") {
 				this.attachCategoryViewToggleHandlers();
 				if (this.state.categoryViewMode === "chart") {
@@ -11287,14 +11578,54 @@ class DrishtiDashboard {
 					this.attachTotalMovementPopupHandler();
 				}
 			} else if (this.state.activeTab === "agent") {
-				this.attachAgentExpandHandlers();
+				this.attachAgentViewToggleHandlers();
+				if (this.state.agentViewMode === "chart") {
+					this.renderAgentChart(this.agentData);
+				} else {
+					this.attachAgentExpandHandlers();
+				}
+			} else if (this.state.activeTab === "branch") {
+				this.attachBranchViewToggleHandlers();
+				if (this.state.branchViewMode === "chart") {
+					this.renderBranchQuartiles(filteredBranches);
+				}
 			} else if (this.state.activeTab === "product_tgt_ach") {
 				this.attachProductTgtAchExpandHandlers();
 			}
 
+			this.relocateViewToggle();
 
 			dataContainer.css("opacity", 1);
 		}, 200);
+	}
+
+	relocateViewToggle() {
+		const segmentFilter = this.page.main.find("#segment-filter");
+		if (!segmentFilter.length) return;
+
+		const activeTab = this.state.activeTab;
+		const toggleSelector =
+			".zone-view-toggle, .category-view-toggle, .product-view-toggle, .agent-view-toggle, .branch-view-toggle";
+
+		// Remove any toggle moved on a previous render (now outside #data-container)
+		this.page.main.find(toggleSelector).each(function () {
+			if (!$(this).closest("#data-container").length) {
+				$(this).remove();
+			}
+		});
+
+		// Move the active tab's view toggle (chart or table variant) before the segment filter
+		this.page.main
+			.find(`#data-container .${activeTab}-view-toggle`)
+			.first()
+			.css({
+				position: "static",
+				right: "",
+				top: "",
+				transform: "",
+				"margin-left": "",
+			})
+			.insertBefore(segmentFilter);
 	}
 
 	// ========================================================================
@@ -11316,9 +11647,12 @@ class DrishtiDashboard {
 			                <th rowspan="2" class="zone-col" style="text-align: left;">
 			                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
 			                        <span>Z/R/DIS</span>
-			                        <button type="button" class="btn-refresh-zone-cache" title="Refresh Zone Wise Data (Clear Redis Cache)" style="background: transparent; border: 1px solid rgba(65, 125, 129, 0.35); cursor: pointer; color: #417d81; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; font-weight: 600; line-height: 1; transition: all 0.2s;">
-			                            <i class="fa fa-refresh"></i>
-			                        </button>
+			                        <div style="display: flex; align-items: center; gap: 6px;">
+			                            <button type="button" class="btn-refresh-zone-cache" title="Refresh Zone Wise Data (Clear Redis Cache)" style="background: transparent; border: 1px solid rgba(65, 125, 129, 0.35); cursor: pointer; color: #417d81; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; font-weight: 600; line-height: 1; transition: all 0.2s;">
+			                                <i class="fa fa-refresh"></i>
+			                            </button>
+			                            ${this.renderViewToggleHtml("zone", this.state.zoneViewMode)}
+			                        </div>
 			                    </div>
 			                </th>
 			                <th rowspan="2" class="branches-col">Branches</th>
@@ -11819,9 +12153,12 @@ class DrishtiDashboard {
 						<th rowspan="2" style="text-align: left;">
 							<div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
 								<span>Z/R/DIS/SOL</span>
-								<button type="button" class="btn-refresh-product-cache" title="Refresh Product Wise Data (Clear Redis Cache)" style="background: transparent; border: 1px solid rgba(65, 125, 129, 0.35); cursor: pointer; color: #417d81; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; font-weight: 600; line-height: 1; transition: all 0.2s;">
-									<i class="fa fa-refresh"></i>
-								</button>
+								<div style="display: flex; align-items: center; gap: 6px;">
+									<button type="button" class="btn-refresh-product-cache" title="Refresh Product Wise Data (Clear Redis Cache)" style="background: transparent; border: 1px solid rgba(65, 125, 129, 0.35); cursor: pointer; color: #417d81; padding: 2px 6px; border-radius: 4px; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; font-weight: 600; line-height: 1; transition: all 0.2s;">
+										<i class="fa fa-refresh"></i>
+									</button>
+									${this.renderViewToggleHtml("product", this.state.productViewMode)}
+								</div>
 							</div>
 						</th>
 		`;
@@ -12024,7 +12361,12 @@ class DrishtiDashboard {
 				<thead>
 					<tr class="branch-table-header">
 						<th rowspan="2" class="sr-col">SR</th>
-						<th rowspan="2">ZONE / REGION</th>
+						<th rowspan="2">
+							<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+								<span>ZONE / REGION</span>
+								${this.renderViewToggleHtml("agent", this.state.agentViewMode)}
+							</div>
+						</th>
 						<th rowspan="2">SS TARGET</th>
 						<th rowspan="2">SS ACHIEVEMENT</th>
 						<th rowspan="2">SS SHORTFALL</th>
@@ -13046,6 +13388,1127 @@ class DrishtiDashboard {
 		}
 	}
 
+	renderViewToggleHtml(tabName, currentMode) {
+		const isChart = currentMode === "chart";
+		return `
+			<div class="${tabName}-view-toggle btn-group" role="group" style="display: inline-flex; align-items: center; background: #ffffff; padding: 2px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); margin-left: 8px;">
+				<button type="button" class="btn btn-xs ${tabName}-toggle-btn ${isChart ? "active btn-primary" : "btn-default"}" data-mode="chart" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: ${isChart ? "#ffffff" : "#475569"}; background-color: ${isChart ? "#346569" : "transparent"};">
+					<i class="fa fa-bar-chart" style="margin-right: 4px;"></i>Chart
+				</button>
+				<button type="button" class="btn btn-xs ${tabName}-toggle-btn ${!isChart ? "active btn-primary" : "btn-default"}" data-mode="table" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: ${!isChart ? "#ffffff" : "#475569"}; background-color: ${!isChart ? "#346569" : "transparent"};">
+					<i class="fa fa-table" style="margin-right: 4px;"></i>Table
+				</button>
+			</div>
+		`;
+	}
+
+	// ========================================================================
+	// ZONE WISE CHART
+	// ========================================================================
+	renderZoneChartContainer() {
+		const fy = this.state.financialYear || "Current Financial Year";
+		const dateStr = this.state.selectedDate || frappe.datetime.get_today();
+		return `
+			<div class="zone-chart-wrapper" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9;">
+					<div style="text-align: center; width: 100%;">
+						<h5 style="margin: 0; font-weight: 700; color: #0f172a; font-size: 16px;">Zone Performance Overview</h5>
+						<p style="margin: 2px 0 0; font-size: 12px; color: #64748b; font-style: italic;">Zone Target vs Achievement for FY ${fy} (As of ${dateStr})</p>
+					</div>
+					<div class="zone-view-toggle btn-group" role="group" style="background: #f1f5f9; padding: 3px; border-radius: 6px; white-space: nowrap; margin-left: auto;">
+						<button type="button" class="btn btn-xs zone-toggle-btn active btn-primary" data-mode="chart" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #ffffff; background-color: #346569;">
+							<i class="fa fa-bar-chart" style="margin-right: 4px;"></i>Chart
+						</button>
+						<button type="button" class="btn btn-xs zone-toggle-btn btn-default" data-mode="table" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #475569; background-color: transparent;">
+							<i class="fa fa-table" style="margin-right: 4px;"></i>Table
+						</button>
+					</div>
+				</div>
+				<div id="zone-performance-chart" style="width: 100%; height: 520px;"></div>
+			</div>
+		`;
+	}
+
+	attachZoneViewToggleHandlers() {
+		const self = this;
+		this.page.main.find(".zone-toggle-btn").off("click").on("click", function (e) {
+			e.stopPropagation();
+			const mode = $(this).data("mode");
+			if (self.state.zoneViewMode !== mode) {
+				self.state.zoneViewMode = mode;
+				self.render();
+			}
+		});
+	}
+
+	renderZoneChart(zoneData) {
+		const chartDom = this.page.main.find("#zone-performance-chart")[0];
+		if (!chartDom) return;
+
+		const initChart = () => {
+			if (typeof echarts === "undefined") return;
+			const existingChart = echarts.getInstanceByDom(chartDom);
+			if (existingChart) existingChart.dispose();
+			const chart = echarts.init(chartDom);
+
+			const activeMonthKey = this.months && this.months.length > 0 ? this.months[this.months.length - 1].key : null;
+			const zoneRows = (zoneData || []).filter(z => z.isZoneTotal);
+
+			const zoneNames = [];
+			const targets = [];
+			const achievements = [];
+			const percentages = [];
+
+			zoneRows.forEach(z => {
+				const m = activeMonthKey && z.months ? z.months[activeMonthKey] : null;
+				const tgt = m ? (m.target || 0) : 0;
+				const ach = m ? (m.achievement || 0) : 0;
+				const pct = tgt > 0 ? Math.round((ach / tgt) * 100) : 0;
+
+				zoneNames.push(z.zone || "Unknown");
+				targets.push(tgt);
+				achievements.push(ach);
+				percentages.push(pct);
+			});
+
+			const fmt = (v) => {
+				if (v >= 1e7) return "₹" + (v / 1e7).toFixed(2) + " Cr";
+				if (v >= 1e5) return "₹" + (v / 1e5).toFixed(2) + " L";
+				return "₹" + (v || 0).toLocaleString("en-IN");
+			};
+
+			const option = {
+				tooltip: {
+					trigger: "axis",
+					axisPointer: { type: "shadow" },
+					formatter: function (params) {
+						let tip = `<strong>${params[0].axisValue}</strong><br/>`;
+						params.forEach(p => {
+							if (p.seriesName.includes("%")) {
+								tip += `${p.marker} ${p.seriesName}: <b>${p.value}%</b><br/>`;
+							} else {
+								tip += `${p.marker} ${p.seriesName}: <b>${fmt(p.value)}</b><br/>`;
+							}
+						});
+						return tip;
+					}
+				},
+				legend: {
+					data: ["Target", "Achievement", "Ach %"],
+					top: 0
+				},
+				grid: {
+					left: "3%",
+					right: "12%",
+					bottom: "10%",
+					containLabel: true
+				},
+				xAxis: [
+					{
+						type: "value",
+						name: "Amount (₹)",
+						axisLabel: {
+							formatter: function (val) {
+								if (val >= 1e7) return (val / 1e7).toFixed(1) + " Cr";
+								if (val >= 1e5) return (val / 1e5).toFixed(0) + " L";
+								return val;
+							}
+						}
+					},
+					{
+						type: "value",
+						name: "Ach %",
+						position: "top",
+						axisLabel: { formatter: "{value}%" },
+						splitLine: { show: false }
+					}
+				],
+				yAxis: [
+					{
+						type: "category",
+						data: zoneNames,
+						inverse: true,
+						axisLabel: { fontSize: 11 }
+					}
+				],
+				series: [
+					{
+						name: "Target",
+						type: "bar",
+						data: targets,
+						barWidth: 22,
+						z: 1,
+						itemStyle: { color: "rgba(59, 130, 246, 0.25)", borderColor: "#3b82f6", borderWidth: 1, borderRadius: [0, 4, 4, 0] },
+						label: {
+							show: true,
+							position: "right",
+							formatter: function (p) { return fmt(p.value); },
+							fontSize: 10,
+							fontWeight: "bold",
+							color: "#1d4ed8"
+						}
+					},
+					{
+						name: "Achievement",
+						type: "bar",
+						data: achievements,
+						barWidth: 22,
+						barGap: "-100%",
+						z: 2,
+						itemStyle: { color: "#10b981", borderRadius: [0, 4, 4, 0] }
+					},
+					{
+						name: "Ach %",
+						type: "line",
+						xAxisIndex: 1,
+						data: percentages,
+						itemStyle: { color: "#f59e0b" },
+						lineStyle: { width: 3 },
+						symbol: "circle",
+						symbolSize: 8,
+						label: {
+							show: true,
+							position: "right",
+							formatter: "{c}%",
+							fontSize: 10,
+							color: "#d97706",
+							fontWeight: "bold"
+						}
+					}
+				]
+			};
+
+			chart.setOption(option);
+			$(window).off("resize.zoneChart").on("resize.zoneChart", () => chart.resize());
+		};
+
+		if (typeof echarts === "undefined") {
+			frappe.require("/assets/custom_report/js/echarts.min.js", initChart);
+		} else {
+			initChart();
+		}
+	}
+
+	// ========================================================================
+	// PRODUCT WISE CHART
+	// ========================================================================
+	renderProductChartContainer() {
+		const dateStr = this.state.selectedDate || frappe.datetime.get_today();
+		return `
+			<div class="product-chart-wrapper" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9;">
+					<div style="text-align: center; width: 100%;">
+						<h5 style="margin: 0; font-weight: 700; color: #0f172a; font-size: 16px;">Product Wise Collection & Performance</h5>
+						<p style="margin: 2px 0 0; font-size: 12px; color: #64748b; font-style: italic;">Collection distribution by product (As of ${dateStr})</p>
+					</div>
+					<div class="product-view-toggle btn-group" role="group" style="background: #f1f5f9; padding: 3px; border-radius: 6px; white-space: nowrap; margin-left: auto;">
+						<button type="button" class="btn btn-xs product-toggle-btn active btn-primary" data-mode="chart" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #ffffff; background-color: #346569;">
+							<i class="fa fa-bar-chart" style="margin-right: 4px;"></i>Chart
+						</button>
+						<button type="button" class="btn btn-xs product-toggle-btn btn-default" data-mode="table" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #475569; background-color: transparent;">
+							<i class="fa fa-table" style="margin-right: 4px;"></i>Table
+						</button>
+					</div>
+				</div>
+				${this.buildProductChartFilterBar()}
+				<div id="product-performance-chart" style="width: 100%; height: 520px;"></div>
+			</div>
+		`;
+	}
+
+	// Zone / Region / District / Branch filters shown inside the Product Wise header row
+	buildProductChartFilterBar() {
+		const openId = this._openProductFilter || null;
+		const zoneSel = new Set(this.state.selectedZones || []);
+		const regionSel = new Set(this.state.selectedRegions || []);
+		const districtSel = new Set(this.state.selectedDistricts || []);
+		const branchVal = this.state.branchSearchTerm || "";
+
+		const dropdown = (id, label, options, selSet) => {
+			const count = selSet.size;
+			const summary = count === 0 ? "All" : count === 1 ? [...selSet][0] : `${count} selected`;
+			const isOpen = openId === id;
+			return `
+				<div class="dropdown" style="position: relative;">
+					<button type="button" class="btn btn-sm pfilter-btn" data-pfilter="${id}" style="min-width: 160px; max-width: 230px; display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; background: #ffffff; border: 1px solid #cbd5e1; color: #1b263b; font-size: 12px; font-weight: 600; cursor: pointer;">
+						<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="color: #64748b;">${label}:</span> ${summary}</span>
+						<span class="caret" style="margin-left: 4px;"></span>
+					</button>
+					<ul class="dropdown-menu pfilter-menu" data-pfilter-menu="${id}" style="display: ${isOpen ? "block" : "none"}; position: absolute; top: 100%; left: 0; margin-top: 4px; min-width: 210px; max-height: 240px; overflow-y: auto; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); padding: 4px 0; z-index: 40;">
+						<li data-pfilter-all="${id}" style="padding: 7px 12px; cursor: pointer; font-weight: 700; color: #417d81; border-bottom: 1px solid #f1f5f9; font-size: 12px;">All ${label}</li>
+						${(options || [])
+							.map(
+								(o) => `
+							<li data-pfilter-opt="${id}" data-value="${o}" style="padding: 7px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #334155;">
+								<input type="checkbox" ${selSet.has(o) ? "checked" : ""} style="pointer-events: none; margin: 0;"> ${o}
+							</li>`,
+							)
+							.join("")}
+					</ul>
+				</div>`;
+		};
+
+		return `
+			<div id="product-chart-filters" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; padding: 8px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+				<span style="font-weight: 700; color: #334155; font-size: 12px;">Filters:</span>
+				${dropdown("zone", "Zone", this.availableFilters.zones, zoneSel)}
+				${dropdown("region", "Region", this.availableFilters.regions, regionSel)}
+				${dropdown("district", "District", this.availableFilters.districts, districtSel)}
+				<input type="text" id="product-filter-branch" placeholder="Search branch or SOL ID..." value="${branchVal.replace(/"/g, "&quot;")}" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; background: #ffffff; color: #1b263b; min-width: 220px; font-size: 12px;" />
+			</div>
+		`;
+	}
+
+	attachProductChartFilters() {
+		const self = this;
+		const main = this.page.main;
+		if (!main.find("#product-chart-filters").length) return;
+
+		main.off("click.pf", "#product-chart-filters .pfilter-btn").on("click.pf", "#product-chart-filters .pfilter-btn", function (e) {
+			e.stopPropagation();
+			const id = $(this).attr("data-pfilter");
+			const menu = main.find(`.pfilter-menu[data-pfilter-menu="${id}"]`);
+			const isOpen = menu.is(":visible");
+			main.find("#product-chart-filters .pfilter-menu").hide();
+			self._openProductFilter = null;
+			if (!isOpen) {
+				menu.show();
+				self._openProductFilter = id;
+			}
+		});
+
+		main.off("click.pf", "#product-chart-filters .pfilter-menu").on("click.pf", "#product-chart-filters .pfilter-menu", function (e) {
+			e.stopPropagation();
+		});
+
+		main.off("click.pf", "#product-chart-filters [data-pfilter-all]").on("click.pf", "#product-chart-filters [data-pfilter-all]", function (e) {
+			e.stopPropagation();
+			self.setProductFilter($(this).attr("data-pfilter-all"), []);
+		});
+
+		main.off("click.pf", "#product-chart-filters [data-pfilter-opt]").on("click.pf", "#product-chart-filters [data-pfilter-opt]", function (e) {
+			e.stopPropagation();
+			const type = $(this).attr("data-pfilter-opt");
+			const value = $(this).attr("data-value");
+			const key = self.productFilterStateKey(type);
+			const values = [...(self.state[key] || [])];
+			const idx = values.indexOf(value);
+			if (idx > -1) {
+				values.splice(idx, 1);
+			} else {
+				values.push(value);
+			}
+			self.setProductFilter(type, values);
+		});
+
+		$(document).off("click.pf").on("click.pf", function () {
+			self._openProductFilter = null;
+			main.find("#product-chart-filters .pfilter-menu").hide();
+		});
+
+		let searchTimeout;
+		main.off("input.pf", "#product-filter-branch").on("input.pf", "#product-filter-branch", function () {
+			const val = $(this).val() || "";
+			clearTimeout(searchTimeout);
+			searchTimeout = setTimeout(() => {
+				self.state.branchSearchTerm = val;
+				self.page.main.find("#branch-search").val(val);
+				self.updateUrlFromState();
+				self.render();
+			}, 300);
+		});
+	}
+
+	productFilterStateKey(type) {
+		return { zone: "selectedZones", region: "selectedRegions", district: "selectedDistricts" }[type];
+	}
+
+	setProductFilter(type, values) {
+		const key = this.productFilterStateKey(type);
+		if (!key) return;
+		this.state[key] = values;
+
+		if (type === "zone") this.updateFilterTagsUI();
+		if (type === "region") {
+			if (typeof this.updateRegionDropdownUI === "function") this.updateRegionDropdownUI();
+			if (typeof this.updateDistrictOptions === "function") this.updateDistrictOptions();
+		}
+		if (type === "district" && typeof this.updateDistrictDropdownUI === "function") {
+			this.updateDistrictDropdownUI();
+		}
+
+		this.updateUrlFromState();
+		this.render();
+	}
+
+	attachProductViewToggleHandlers() {
+		const self = this;
+		this.page.main.find(".product-toggle-btn").off("click").on("click", function (e) {
+			e.stopPropagation();
+			const mode = $(this).data("mode");
+			if (self.state.productViewMode !== mode) {
+				self.state.productViewMode = mode;
+				self.render();
+			}
+		});
+	}
+
+	renderProductChart(productData) {
+		const chartDom = this.page.main.find("#product-performance-chart")[0];
+		if (!chartDom) return;
+
+		const initChart = () => {
+			if (typeof echarts === "undefined") return;
+			const existingChart = echarts.getInstanceByDom(chartDom);
+			if (existingChart) existingChart.dispose();
+			const chart = echarts.init(chartDom);
+
+			const allProducts = (this.allProducts || []).filter(p => p !== "SHARE" && p !== "OTHER");
+
+			// Zone rows built from branch-level (sol) rows so Zone/Region/District/Branch filters apply
+			const selZones = this.state.selectedZones || [];
+			const selRegions = this.state.selectedRegions || [];
+			const selDistricts = this.state.selectedDistricts || [];
+			const searchTerms = (this.state.branchSearchTerm || "")
+				.toLowerCase()
+				.split(",")
+				.map((s) => s.trim())
+				.filter(Boolean);
+
+			const solItems = (productData || []).filter((item) => item.type === "sol");
+			const zoneAgg = {};
+			solItems.forEach((item) => {
+				const zone = item.parent_zone || item.zone;
+				if (!zone) return;
+				if (selZones.length && !selZones.includes(zone)) return;
+				const regionName = (item.parent_region || "").split("/").pop();
+				if (selRegions.length && !selRegions.includes(regionName)) return;
+				const districtName = (item.parent_district || "").split("/").pop();
+				if (selDistricts.length && !selDistricts.includes(districtName)) return;
+				if (searchTerms.length) {
+					const nm = (item.name || "").toLowerCase();
+					if (!searchTerms.some((t) => nm.includes(t))) return;
+				}
+				const agg = zoneAgg[zone] || (zoneAgg[zone] = {});
+				Object.entries(item.products || {}).forEach(([p, v]) => {
+					agg[p] = (agg[p] || 0) + (v || 0);
+				});
+			});
+
+			// Fallback to zone rows when branch-level rows are unavailable
+			let zoneItems = Object.keys(zoneAgg).map((name) => ({ name, products: zoneAgg[name] }));
+			if (solItems.length === 0) {
+				zoneItems = (productData || []).filter((item) => item.type === "zone");
+			}
+
+			// Zones ascending: Z1, Z2, Z3 ... (numeric-aware)
+			zoneItems = zoneItems
+				.slice()
+				.sort((a, b) =>
+					String(a.name || "").localeCompare(String(b.name || ""), undefined, {
+						numeric: true,
+						sensitivity: "base"
+					})
+				);
+
+			// Fixed header order: CASA DAM DD FD RD SMBG + ACHIEVEMENT
+			const desired = ["CASA", "DAM", "DD", "FD", "RD", "SMBG"];
+			const available = new Set(allProducts);
+			const present = desired.filter(p => available.has(p));
+			const productCols = present.length ? present : allProducts;
+			const columns = productCols.concat("ACHIEVEMENT");
+
+			const cellValue = (zone, col) => {
+				if (col === "ACHIEVEMENT") {
+					return allProducts.reduce((sum, p) => sum + (zone.products?.[p] || 0), 0);
+				}
+				return zone.products?.[col] || 0;
+			};
+
+			// Totals for tooltip percentages
+			let productTotal = 0;
+			let achievementTotal = 0;
+			zoneItems.forEach(zone => {
+				productCols.forEach(p => productTotal += zone.products?.[p] || 0);
+				achievementTotal += cellValue(zone, "ACHIEVEMENT");
+			});
+			const rows = zoneItems.map(z => z.name || "Unknown");
+
+			const fmt = (v) => {
+				if (v >= 1e7) return "₹" + (v / 1e7).toFixed(2) + " Cr";
+				if (v >= 1e5) return "₹" + (v / 1e5).toFixed(2) + " L";
+				return "₹" + (v || 0).toLocaleString("en-IN");
+			};
+
+			// [x, y, amount] per zone/product cell; white label on darker cells
+			const cells = [];
+			let maxAmount = 0;
+			zoneItems.forEach(zone => {
+				columns.forEach(p => {
+					const amt = cellValue(zone, p);
+					if (amt > maxAmount) maxAmount = amt;
+				});
+			});
+			zoneItems.forEach((zone, y) => {
+				columns.forEach((prod, x) => {
+					const amt = cellValue(zone, prod);
+					const dark = maxAmount > 0 && amt / maxAmount > 0.6;
+					cells.push({
+						value: [x, y, amt],
+						label: { color: dark ? "#ffffff" : "#0f172a" }
+					});
+				});
+			});
+
+			const option = {
+				tooltip: {
+					formatter: function (p) {
+						const zone = rows[p.value[1]];
+						const prod = columns[p.value[0]];
+						const amt = p.value[2];
+						const base = prod === "ACHIEVEMENT" ? achievementTotal : productTotal;
+						const pct = base > 0 ? ((amt / base) * 100).toFixed(2) : 0;
+						return `<strong>${zone} — ${prod}</strong><br/>Collection: <b>${fmt(amt)}</b> (${pct}% of Total)`;
+					}
+				},
+				grid: {
+					left: "4%",
+					right: "10%",
+					bottom: "12%",
+					top: "8%",
+					containLabel: true
+				},
+				xAxis: {
+					type: "category",
+					data: columns,
+					position: "top",
+					splitArea: { show: true },
+					axisLabel: { fontSize: 11, fontWeight: 600, rotate: 30, color: "#334155" }
+				},
+				yAxis: {
+					type: "category",
+					data: rows,
+					inverse: true,
+					splitArea: { show: true },
+					axisLabel: { fontSize: 11, fontWeight: 600, color: "#334155" }
+				},
+				visualMap: {
+					min: 0,
+					max: maxAmount || 1,
+					calculable: true,
+					orient: "horizontal",
+					left: "center",
+					bottom: 0,
+					text: ["High", "Low"],
+					inRange: {
+						color: ["#f0fdfa", "#ccfbf1", "#99f6e4", "#5eead4", "#2dd4bf", "#14b8a6", "#0f766e", "#115e59"]
+					},
+					formatter: function (v) {
+						if (v >= 1e7) return (v / 1e7).toFixed(1) + " Cr";
+						if (v >= 1e5) return (v / 1e5).toFixed(0) + " L";
+						return v;
+					}
+				},
+				series: [
+					{
+						name: "Collection",
+						type: "heatmap",
+						data: cells,
+						label: {
+							show: true,
+							formatter: function (p) { return fmt(p.value[2]); },
+							fontSize: 10,
+							color: "#0f172a"
+						},
+						emphasis: {
+							itemStyle: {
+								shadowBlur: 8,
+								shadowColor: "rgba(0, 0, 0, 0.35)"
+							}
+						},
+						itemStyle: {
+							borderColor: "#ffffff",
+							borderWidth: 2,
+							borderRadius: 4
+						}
+					}
+				]
+			};
+
+			chart.setOption(option);
+			$(window).off("resize.productChart").on("resize.productChart", () => chart.resize());
+		};
+
+		if (typeof echarts === "undefined") {
+			frappe.require("/assets/custom_report/js/echarts.min.js", initChart);
+		} else {
+			initChart();
+		}
+	}
+
+	// ========================================================================
+	// AGENT WISE CHART
+	// ========================================================================
+	renderAgentChartContainer() {
+		const dateStr = this.state.selectedDate || frappe.datetime.get_today();
+		return `
+			<div class="agent-chart-wrapper" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9;">
+					<div style="text-align: center; width: 100%;">
+						<h5 style="margin: 0; font-weight: 700; color: #0f172a; font-size: 16px;">Agent Wise SS & VS Performance Overview</h5>
+						<p style="margin: 2px 0 0; font-size: 12px; color: #64748b; font-style: italic;">Zone-wise Agent Target, Achievement & Active status (As of ${dateStr})</p>
+					</div>
+					<div class="agent-view-toggle btn-group" role="group" style="background: #f1f5f9; padding: 3px; border-radius: 6px; white-space: nowrap; margin-left: auto;">
+						<button type="button" class="btn btn-xs agent-toggle-btn active btn-primary" data-mode="chart" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #ffffff; background-color: #346569;">
+							<i class="fa fa-bar-chart" style="margin-right: 4px;"></i>Chart
+						</button>
+						<button type="button" class="btn btn-xs agent-toggle-btn btn-default" data-mode="table" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #475569; background-color: transparent;">
+							<i class="fa fa-table" style="margin-right: 4px;"></i>Table
+						</button>
+					</div>
+				</div>
+				<div id="agent-charts-row" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+					<div id="agent-donuts-col" style="display: flex; flex-direction: column; gap: 10px; align-items: center; flex: 0 0 260px; max-width: 260px;">
+						<div style="text-align: center;">
+							<div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 2px;">SS — Active vs Inactive</div>
+							<div id="agent-ss-donut" style="width: 250px; height: 220px;"></div>
+						</div>
+						<div style="text-align: center;">
+							<div style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 2px;">VS — Active vs Inactive</div>
+							<div id="agent-vs-donut" style="width: 250px; height: 220px;"></div>
+						</div>
+					</div>
+					<div id="agent-performance-chart" style="flex: 1 1 60%; min-width: 0; height: 480px;"></div>
+				</div>
+			</div>
+		`;
+	}
+
+	attachAgentViewToggleHandlers() {
+		const self = this;
+		this.page.main.find(".agent-toggle-btn").off("click").on("click", function (e) {
+			e.stopPropagation();
+			const mode = $(this).data("mode");
+			if (self.state.agentViewMode !== mode) {
+				self.state.agentViewMode = mode;
+				self.render();
+			}
+		});
+	}
+
+	renderAgentChart(agentData) {
+		const chartDom = this.page.main.find("#agent-performance-chart")[0];
+		if (!chartDom) return;
+
+		const initChart = () => {
+			if (typeof echarts === "undefined") return;
+			const existingChart = echarts.getInstanceByDom(chartDom);
+			if (existingChart) existingChart.dispose();
+			const chart = echarts.init(chartDom);
+
+			const grouped = {};
+			(agentData || []).forEach(row => {
+				if (!grouped[row.zone]) grouped[row.zone] = [];
+				grouped[row.zone].push(row);
+			});
+
+			const sortedZones = Object.keys(grouped).sort((a, b) => {
+				const aNum = a.match(/ZONE-(\d+)/)?.[1];
+				const bNum = b.match(/ZONE-(\d+)/)?.[1];
+				return aNum && bNum ? parseInt(aNum) - parseInt(bNum) : a.localeCompare(b);
+			});
+
+			const zoneNames = [];
+			const ssAch = [];
+			const vsAch = [];
+			const ssPercent = [];
+			const vsPercent = [];
+			const ssShort = [];
+			const vsShort = [];
+			let ssActiveTotal = 0, ssInactiveTotal = 0, vsActiveTotal = 0, vsInactiveTotal = 0;
+
+			sortedZones.forEach(zone => {
+				const rows = grouped[zone];
+				let sTarget = 0, sAch = 0, vTarget = 0, vAch = 0, sAct = 0, sInact = 0, vAct = 0, vInact = 0;
+				rows.forEach(r => {
+					sTarget += parseFloat(r.ss_target || 0);
+					sAch += parseFloat(r.ss_achievement || 0);
+					vTarget += parseFloat(r.target || 0);
+					vAch += parseFloat(r.achievement || 0);
+					sAct += parseFloat(r.ss_active || 0);
+					sInact += parseFloat(r.ss_inactive || 0);
+					vAct += parseFloat(r.active || 0);
+					vInact += parseFloat(r.inactive || 0);
+				});
+
+				ssActiveTotal += sAct;
+				ssInactiveTotal += sInact;
+				vsActiveTotal += vAct;
+				vsInactiveTotal += vInact;
+
+				const sPct = sTarget > 0 ? Math.round((sAch / sTarget) * 100) : 0;
+				const vPct = vTarget > 0 ? Math.round((vAch / vTarget) * 100) : 0;
+
+				zoneNames.push(zone);
+				ssAch.push(sAch);
+				vsAch.push(vAch);
+				ssPercent.push(sPct);
+				vsPercent.push(vPct);
+				ssShort.push(Math.max(sTarget - sAch, 0));
+				vsShort.push(Math.max(vTarget - vAch, 0));
+			});
+
+			const fmt = (v) => {
+				if (v >= 1e7) return "₹" + (v / 1e7).toFixed(2) + " Cr";
+				if (v >= 1e5) return "₹" + (v / 1e5).toFixed(2) + " L";
+				return "₹" + (v || 0).toLocaleString("en-IN");
+			};
+
+			const option = {
+				tooltip: {
+					trigger: "axis",
+					axisPointer: { type: "shadow" },
+					formatter: function (params) {
+						let tip = `<strong>${params[0].axisValue}</strong><br/>`;
+						params.forEach(p => {
+							if (p.seriesName.includes("%")) {
+								tip += `${p.marker} ${p.seriesName}: <b>${p.value}%</b><br/>`;
+							} else {
+								tip += `${p.marker} ${p.seriesName}: <b>${fmt(p.value)}</b><br/>`;
+							}
+						});
+						return tip;
+					}
+				},
+				legend: {
+					data: ["SS Achievement", "SS Shortfall", "VS Achievement", "VS Shortfall", "SS Ach %", "VS Ach %"],
+					top: 0
+				},
+				grid: {
+					left: "3%",
+					right: "4%",
+					bottom: "10%",
+					containLabel: true
+				},
+				xAxis: {
+					type: "category",
+					data: zoneNames,
+					axisLabel: { interval: 0, rotate: 25, fontSize: 11 }
+				},
+				yAxis: [
+					{
+						type: "value",
+						name: "Amount (₹)",
+						axisLabel: {
+							formatter: function (val) {
+								if (val >= 1e7) return (val / 1e7).toFixed(1) + " Cr";
+								if (val >= 1e5) return (val / 1e5).toFixed(0) + " L";
+								return val;
+							}
+						}
+					},
+					{
+						type: "value",
+						name: "Ach %",
+						axisLabel: { formatter: "{value}%" },
+						splitLine: { show: false }
+					}
+				],
+				series: [
+					{
+						name: "SS Achievement",
+						type: "bar",
+						stack: "ss",
+						data: ssAch,
+						itemStyle: { color: "#0f766e" }
+					},
+					{
+						name: "SS Shortfall",
+						type: "bar",
+						stack: "ss",
+						data: ssShort,
+						itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] }
+					},
+					{
+						name: "VS Achievement",
+						type: "bar",
+						stack: "vs",
+						data: vsAch,
+						itemStyle: {
+							color: this.diagonalPattern("#14b8a6", "#ffffff"),
+							borderColor: "#14b8a6",
+							borderWidth: 1
+						}
+					},
+					{
+						name: "VS Shortfall",
+						type: "bar",
+						stack: "vs",
+						data: vsShort,
+						itemStyle: {
+							color: this.diagonalPattern("#f87171", "#ffffff"),
+							borderColor: "#f87171",
+							borderWidth: 1,
+							borderRadius: [4, 4, 0, 0]
+						}
+					},
+					{
+						name: "SS Ach %",
+						type: "line",
+						yAxisIndex: 1,
+						data: ssPercent,
+						itemStyle: { color: "#059669" },
+						lineStyle: { width: 2 }
+					},
+					{
+						name: "VS Ach %",
+						type: "line",
+						yAxisIndex: 1,
+						data: vsPercent,
+						itemStyle: { color: "#d97706" },
+						lineStyle: { width: 2 }
+					}
+				]
+			};
+
+			chart.setOption(option);
+			this.renderAgentDonuts({
+				ss: { active: ssActiveTotal, inactive: ssInactiveTotal, color: "#0f766e", inactiveColor: "#ef4444" },
+				vs: { active: vsActiveTotal, inactive: vsInactiveTotal, color: "#14b8a6", inactiveColor: "#f87171" }
+			});
+			$(window).off("resize.agentChart").on("resize.agentChart", () => {
+				chart.resize();
+				this.resizeAgentDonuts();
+			});
+		};
+
+		if (typeof echarts === "undefined") {
+			frappe.require("/assets/custom_report/js/echarts.min.js", initChart);
+		} else {
+			initChart();
+		}
+	}
+
+	diagonalPattern(lineColor, bgColor) {
+		const svg =
+			`<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8">` +
+			`<rect width="8" height="8" fill="${bgColor}"/>` +
+			`<path d="M-2,2 L2,-2 M0,8 L8,0 M6,10 L10,6" stroke="${lineColor}" stroke-width="3"/>` +
+			`</svg>`;
+		return {
+			image: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
+			repeat: "repeat",
+			imageWidth: 8,
+			imageHeight: 8
+		};
+	}
+
+	renderAgentDonuts(totals) {
+		if (typeof echarts === "undefined") return;
+
+		["agent-ss-donut", "agent-vs-donut"].forEach((domId) => {
+			const dom = this.page.main.find("#" + domId)[0];
+			if (!dom) return;
+
+			const key = domId === "agent-ss-donut" ? "ss" : "vs";
+			const cfg = totals[key] || {};
+			const active = cfg.active || 0;
+			const inactive = cfg.inactive || 0;
+			const total = active + inactive;
+			const pct = total > 0 ? Math.round((active / total) * 100) : 0;
+			const label = key === "ss" ? "SS" : "VS";
+
+			const existing = echarts.getInstanceByDom(dom);
+			if (existing) existing.dispose();
+			const chart = echarts.init(dom);
+
+			chart.setOption({
+				tooltip: {
+					trigger: "item",
+					formatter: function (p) {
+						return `<strong>${p.name}</strong><br/>Agents: <b>${p.value.toLocaleString("en-IN")}</b><br/>Share: <b>${p.percent}%</b>`;
+					}
+				},
+				title: {
+					text: pct + "%",
+					subtext: label + " Active",
+					left: "center",
+					top: "36%",
+					textStyle: { fontSize: 24, fontWeight: 700, color: "#0f172a" },
+					subtextStyle: { fontSize: 11, color: "#64748b" }
+				},
+				legend: {
+					bottom: 0,
+					icon: "circle",
+					itemWidth: 10,
+					itemHeight: 10,
+					textStyle: { fontSize: 11, color: "#334155" },
+					data: [label + " Active", label + " Inactive"]
+				},
+				series: [
+					{
+						name: label,
+						type: "pie",
+						radius: ["58%", "76%"],
+						center: ["50%", "45%"],
+						avoidLabelOverlap: true,
+						label: { show: false },
+						labelLine: { show: false },
+						emphasis: {
+							scale: false,
+							itemStyle: { shadowBlur: 8, shadowColor: "rgba(0,0,0,0.2)" }
+						},
+						data: [
+							{
+								name: label + " Active",
+								value: Math.round(active),
+								itemStyle: {
+									color: key === "vs" ? this.diagonalPattern(cfg.color, "#ffffff") : cfg.color,
+									borderColor: cfg.color,
+									borderWidth: 1
+								}
+							},
+							{
+								name: label + " Inactive",
+								value: Math.round(inactive),
+								itemStyle: {
+									color: key === "vs" ? this.diagonalPattern(cfg.inactiveColor || "#ef4444", "#ffffff") : (cfg.inactiveColor || "#ef4444"),
+									borderColor: cfg.inactiveColor || "#ef4444",
+									borderWidth: 1
+								}
+							}
+						]
+					}
+				]
+			});
+		});
+	}
+
+	resizeAgentDonuts() {
+		if (typeof echarts === "undefined") return;
+		["agent-ss-donut", "agent-vs-donut"].forEach((domId) => {
+			const dom = this.page.main.find("#" + domId)[0];
+			if (!dom) return;
+			const inst = echarts.getInstanceByDom(dom);
+			if (inst) inst.resize();
+		});
+	}
+
+	// ========================================================================
+	// BRANCH WISE CHART
+	// ========================================================================
+	renderBranchChartContainer() {
+		const fy = this.state.financialYear || "Current Financial Year";
+		const dateStr = this.state.selectedDate || frappe.datetime.get_today();
+		return `
+			<div class="branch-chart-wrapper" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9;">
+					<div style="text-align: center; width: 100%;">
+						<h5 style="margin: 0; font-weight: 700; color: #0f172a; font-size: 16px;">Top Performing Branches Overview</h5>
+						<p style="margin: 2px 0 0; font-size: 12px; color: #64748b; font-style: italic;">Branch quartiles by Achievement % for FY ${fy} (As of ${dateStr})</p>
+					</div>
+					<div class="branch-view-toggle btn-group" role="group" style="background: #f1f5f9; padding: 3px; border-radius: 6px; white-space: nowrap; margin-left: auto;">
+						<button type="button" class="btn btn-xs branch-toggle-btn active btn-primary" data-mode="chart" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #ffffff; background-color: #346569;">
+							<i class="fa fa-bar-chart" style="margin-right: 4px;"></i>Chart
+						</button>
+						<button type="button" class="btn btn-xs branch-toggle-btn btn-default" data-mode="table" style="font-size: 12px; padding: 4px 12px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: #475569; background-color: transparent;">
+							<i class="fa fa-table" style="margin-right: 4px;"></i>Table
+						</button>
+					</div>
+				</div>
+				<div id="branch-quartile-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;"></div>
+			</div>
+		`;
+	}
+
+	attachBranchViewToggleHandlers() {
+		const self = this;
+		this.page.main.find(".branch-toggle-btn").off("click").on("click", function (e) {
+			e.stopPropagation();
+			const mode = $(this).data("mode");
+			if (self.state.branchViewMode !== mode) {
+				self.state.branchViewMode = mode;
+				self.render();
+			}
+		});
+	}
+
+	renderBranchChart(branchData) {
+		const chartDom = this.page.main.find("#branch-performance-chart")[0];
+		if (!chartDom) return;
+
+		const initChart = () => {
+			if (typeof echarts === "undefined") return;
+			const existingChart = echarts.getInstanceByDom(chartDom);
+			if (existingChart) existingChart.dispose();
+			const chart = echarts.init(chartDom);
+
+			const activeMonthKey = this.months && this.months.length > 0 ? this.months[this.months.length - 1].key : null;
+
+			const parsedBranches = [];
+			(branchData || []).forEach(b => {
+				const m = activeMonthKey && b.months ? b.months[activeMonthKey] : null;
+				const tgt = m ? (m.target || 0) : 0;
+				const ach = m ? (m.achievement || 0) : 0;
+				const pct = m && m.percentage !== undefined ? m.percentage : (tgt > 0 ? (ach / tgt) * 100 : 0);
+
+				if (tgt > 0 || ach > 0) {
+					parsedBranches.push({
+						name: `${b.branch || b.code || "Branch"}`,
+						sol: b.code || b.sol_id || "",
+						zone: b.zone || "",
+						region: b.region || "",
+						category: m ? m.category : "",
+						target: tgt,
+						achievement: ach,
+						percentage: Math.round(pct)
+					});
+				}
+			});
+
+			parsedBranches.sort((a, b) => b.percentage - a.percentage);
+			const top15 = parsedBranches.slice(0, 15).reverse();
+
+			const names = top15.map(b => b.name);
+			const percentages = top15.map(b => b.percentage);
+
+			const fmt = (v) => {
+				if (v >= 1e7) return "₹" + (v / 1e7).toFixed(2) + " Cr";
+				if (v >= 1e5) return "₹" + (v / 1e5).toFixed(2) + " L";
+				return "₹" + (v || 0).toLocaleString("en-IN");
+			};
+
+			const option = {
+				tooltip: {
+					trigger: "axis",
+					axisPointer: { type: "shadow" },
+					formatter: function (params) {
+						const idx = params[0].dataIndex;
+						const b = top15[idx];
+						return `
+							<strong>${b.name} (${b.sol})</strong><br/>
+							Zone: ${b.zone} | Region: ${b.region}<br/>
+							Category: <b>${b.category || "—"}</b><br/>
+							Ach %: <b>${b.percentage}%</b><br/>
+							Achievement: <b>${fmt(b.achievement)}</b><br/>
+							Target: <b>${fmt(b.target)}</b>
+						`;
+					}
+				},
+				grid: {
+					left: "4%",
+					right: "12%",
+					bottom: "5%",
+					top: "5%",
+					containLabel: true
+				},
+				xAxis: {
+					type: "value",
+					name: "Ach %",
+					axisLabel: { formatter: "{value}%" }
+				},
+				yAxis: {
+					type: "category",
+					data: names,
+					axisLabel: { fontSize: 11, fontWeight: 500 }
+				},
+				series: [
+					{
+						name: "Ach %",
+						type: "bar",
+						data: percentages,
+						itemStyle: {
+							color: function (params) {
+								const val = params.value;
+								if (val >= 100) return "#10b981";
+								if (val >= 80) return "#0d9488";
+								if (val >= 60) return "#3b82f6";
+								if (val >= 40) return "#f59e0b";
+								return "#ef4444";
+							},
+							borderRadius: [0, 4, 4, 0]
+						},
+						label: {
+							show: true,
+							position: "right",
+							formatter: "{c}%",
+							fontSize: 11,
+							fontWeight: "bold",
+							color: "#334155"
+						}
+					}
+				]
+			};
+
+			chart.setOption(option);
+			$(window).off("resize.branchChart").on("resize.branchChart", () => chart.resize());
+		};
+
+		if (typeof echarts === "undefined") {
+			frappe.require("/assets/custom_report/js/echarts.min.js", initChart);
+		} else {
+			initChart();
+		}
+	}
+
+	renderBranchQuartiles(branchData) {
+		const grid = this.page.main.find("#branch-quartile-grid")[0];
+		if (!grid) return;
+
+		const activeMonthKey = this.months && this.months.length > 0 ? this.months[this.months.length - 1].key : null;
+
+		const parsedBranches = [];
+		(branchData || []).forEach(b => {
+			const m = activeMonthKey && b.months ? b.months[activeMonthKey] : null;
+			const tgt = m ? (m.target || 0) : 0;
+			const ach = m ? (m.achievement || 0) : 0;
+			if (tgt > 0 || ach > 0) {
+				parsedBranches.push({
+					target: tgt,
+					achievement: ach,
+					percentage: m && m.percentage !== undefined ? m.percentage : (tgt > 0 ? (ach / tgt) * 100 : 0)
+				});
+			}
+		});
+
+		parsedBranches.sort((a, b) => b.percentage - a.percentage);
+
+		const total = parsedBranches.length;
+		const quartileSize = total > 0 ? Math.ceil(total / 4) : 0;
+		const boxes = [
+			{ title: "Top 25%", color: "#15803d", bg: "#f0fdf4" },
+			{ title: "Mid 25%", color: "#0f766e", bg: "#f0fdfa" },
+			{ title: "Next 25%", color: "#d97706", bg: "#fffbeb" },
+			{ title: "Bottom 25%", color: "#dc2626", bg: "#fef2f2" }
+		]
+			.map((meta, i) => {
+				const from = quartileSize * i;
+				const to = i === 3 ? total : quartileSize * (i + 1);
+				const slice = parsedBranches.slice(from, to);
+				const count = slice.length;
+				const tgtSum = slice.reduce((s, x) => s + x.target, 0);
+				const achSum = slice.reduce((s, x) => s + x.achievement, 0);
+				let pct = 0;
+				if (tgtSum > 0) {
+					pct = Math.round((achSum / tgtSum) * 100);
+				} else if (count > 0) {
+					pct = Math.round(slice.reduce((s, x) => s + x.percentage, 0) / count);
+				}
+
+				return `
+					<div style="background: ${meta.bg}; border: 1px solid #e2e8f0; border-left: 5px solid ${meta.color}; border-radius: 8px; padding: 18px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+						<div style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">${meta.title}</div>
+						<div style="font-size: 30px; font-weight: 800; color: ${meta.color}; line-height: 1.2; margin-top: 4px;">${pct}%</div>
+						<div style="font-size: 11px; font-weight: 600; color: #94a3b8;">Achievement %</div>
+						<div style="font-size: 13px; font-weight: 700; color: #334155; margin-top: 8px;">${count} branches</div>
+					</div>
+				`;
+			})
+			.join("");
+
+		$(grid).html(boxes);
+	}
+
 	getChangesBadge(catData) {
 		const monthKey = this.months[0]?.key;
 
@@ -13203,7 +14666,12 @@ class DrishtiDashboard {
             <thead>
                 <tr class="branch-table-header">
                     <th rowspan="2" class="sr-col">Sr. No.</th>
-                    <th rowspan="2" class="branch-col">Branch</th>
+                    <th rowspan="2" class="branch-col">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <span>Branch</span>
+                            ${this.renderViewToggleHtml("branch", this.state.branchViewMode)}
+                        </div>
+                    </th>
 					<th rowspan="2" class="segment-col">Segments</th>
         `;
 
@@ -13551,20 +15019,37 @@ class DrishtiDashboard {
 		this.page.main.find("#summary-active-zones").text(activeZonesCount + " Zones");
 
 		// 5. DRR - Daily Required Rate
+		this._drrTotals = { ach: totalAch, target: totalTarget };
+		this.renderDrrCards();
+	}
+
+	renderDrrCards() {
+		const totals = this._drrTotals || { ach: 0, target: 0 };
+		const totalAch = totals.ach;
+		const totalTarget = totals.target;
 		const drrDate = this.state.selectedDate ? new Date(this.state.selectedDate) : new Date();
 		const drrYear = drrDate.getFullYear();
 		const drrMonth = drrDate.getMonth();
 		const drrDay = drrDate.getDate();
 		const daysElapsed = drrDay;
+
+		// Holidays not loaded yet - render provisional value, re-render when they arrive
+		if (DRISHTI_HOLIDAYS[drrYear] === undefined) {
+			loadDrishtiHolidays(drrYear).then(() => {
+				if (this._drrTotals) this.renderDrrCards();
+			});
+		}
+
 		const remainingWorkingDays = getRemainingWorkingDaysExcludingSundays(drrYear, drrMonth, drrDay);
 
-		// Actual DRR = Achievement Till Date / Days Elapsed in the month
+		// Actual DRR = Achievement Till Date / Calendar Days Elapsed in the month
 		const actualDrr = daysElapsed > 0 ? totalAch / daysElapsed : null;
 		this.page.main
 			.find("#summary-actual-drr")
 			.text(actualDrr != null ? "₹" + this.formatCurrency(actualDrr) : "-");
 
 		// Required DRR = (Monthly Target - Achievement Till Date) / Remaining Working Days
+		// (excludes Sundays + national/state holidays from the Maharashtra holiday list)
 		const requiredGap = Math.max(0, totalTarget - totalAch);
 		const requiredDrr = remainingWorkingDays > 0 ? requiredGap / remainingWorkingDays : null;
 		this.page.main

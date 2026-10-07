@@ -1659,101 +1659,63 @@ def build_agent_wise(selected_date=None, perms=None):
 
 @frappe.whitelist()
 def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
-    from datetime import datetime
-    import re
+    from custom_report.rd_smbg_pending_report import get_cached_report
 
-    if selected_date:
-        if isinstance(selected_date, str):
-            ref_date = selected_date
-        else:
-            ref_date = selected_date.strftime("%Y-%m-%d")
-    else:
-        ref_date = datetime.now().strftime("%Y-%m-%d")
-
-    target_date = ref_date
-    has_date_records = frappe.db.exists("RD and SMBG Pending", {"date": target_date})
-    if not has_date_records:
-        latest_date = frappe.db.sql("SELECT MAX(date) FROM `tabRD and SMBG Pending`")[0][0]
-        if latest_date:
-            target_date = str(latest_date)
-
-    conditions = ["`date` = %s", "(schm_code IS NULL OR schm_code != '2016')"]
-    values = [target_date]
-
-    if sol_ids:
-        sol_list = [s.strip() for s in sol_ids.split(",") if s.strip()]
-        if sol_list:
-            conditions.append("`sol_id` IN ({})".format(",".join(["%s"] * len(sol_list))))
-            values.extend(sol_list)
-
-    where_clause = " WHERE " + " AND ".join(conditions)
-
-    query = f"""
-        SELECT
-            sol_id,
-            sol_desc,
-            COUNT(*) AS total_accounts,
-            COALESCE(SUM(total_instalment_paid), 0) AS total_collection,
-            COALESCE(SUM(CASE WHEN pending_amount > 0 THEN 1 ELSE 0 END), 0) AS pending_accounts,
-            COALESCE(SUM(pending_amount), 0) AS pending_amount,
-            COALESCE(SUM(pending_instalments), 0) AS pending_instalments
-        FROM `tabRD and SMBG Pending`
-        {where_clause}
-        GROUP BY sol_id, sol_desc
-        ORDER BY sol_id
-    """
-
+    # Cached for 24 hrs per (date, sol_ids): the DB work runs once a day at most.
+    # Report permissions are applied after the cache, per user.
+    # "mis2" = payload now includes the per-authorizer/agent details rows.
+    cache_key = "rd_smbg_pending:mis2:{}:{}".format(selected_date or "", sol_ids or "ALL")
     try:
-        rows = frappe.db.sql(query, tuple(values), as_dict=True)
-
-        excluded_2016_query = f"""
-            SELECT
-                COALESCE(SUM(pending_amount), 0) AS excluded_amount,
-                COUNT(*) AS excluded_accounts
-            FROM `tabRD and SMBG Pending`
-            WHERE `date` = %s AND schm_code = '2016'
-        """
-        excluded_2016 = frappe.db.sql(excluded_2016_query, (target_date,), as_dict=True)
-        if excluded_2016:
-            print(f"[RD Pending] schm_code=2016 EXCLUDED | accounts: {excluded_2016[0].get('excluded_accounts', 0)} | pending_amount: {excluded_2016[0].get('excluded_amount', 0)}", flush=True)
-            frappe.log_error(f"[RD Pending] schm_code=2016 EXCLUDED | accounts: {excluded_2016[0].get('excluded_accounts', 0)} | pending_amount: {excluded_2016[0].get('excluded_amount', 0)}", "RD Pending 2016 Excluded")
-
-        sol_ids_found = [r.sol_id.strip() for r in rows if r.sol_id]
-        branch_map = {}
-        if sol_ids_found:
-            branches_map = get_sahayog_branches_cached()
-            for sid in sol_ids_found:
-                b = branches_map.get(sid) or branches_map.get(sid.lstrip('0')) or {}
-                branch_map[sid] = {
-                    "zone": b.get("zone") or "",
-                    "region": b.get("region") or "",
-                    "district": b.get("district") or "",
-                    "branch_name": b.get("branch_name") or ""
-                }
-
-        result = []
-        for r in rows:
-            sid = str(r.sol_id).strip()
-            sb = branch_map.get(sid) or {}
-            result.append({
-                "sol_id": sid,
-                "sol_desc": r.sol_desc or "",
-                "zone": sb.get("zone") or "",
-                "region": sb.get("region") or "",
-                "district": sb.get("district") or "",
-                "branch_name": sb.get("branch_name") or "",
-                "total_accounts": r.total_accounts or 0,
-                "total_collection": float(r.total_collection or 0),
-                "pending_accounts": r.pending_accounts or 0,
-                "pending_amount": float(r.pending_amount or 0),
-                "pending_instalments": r.pending_instalments or 0
-            })
-
-        # Apply User Report Permissions filtering
-        return _apply_report_prefs_filter(result)
+        rows = get_cached_report(
+            cache_key,
+            lambda: _build_rd_smbg_rows(sol_ids=sol_ids, selected_date=selected_date),
+        )
+        return _apply_report_prefs_filter(rows)
     except Exception as e:
         frappe.log_error(f"Error executing RD/SMBG table query: {str(e)}", "RD SMBG Table API")
         return []
+
+
+def _build_rd_smbg_rows(sol_ids=None, selected_date=None):
+    from custom_report.rd_smbg_pending_report import get_rm_details, get_sol_summary, resolve_target_date
+
+    target_date = resolve_target_date(selected_date)
+    rows = get_sol_summary(target_date, sol_ids=sol_ids)
+    details_map = get_rm_details(target_date)
+
+    sol_ids_found = [r.sol_id.strip() for r in rows if r.sol_id]
+    branch_map = {}
+    if sol_ids_found:
+        branches_map = get_sahayog_branches_cached()
+        for sid in sol_ids_found:
+            b = branches_map.get(sid) or branches_map.get(sid.lstrip('0')) or {}
+            branch_map[sid] = {
+                "zone": b.get("zone") or "",
+                "region": b.get("region") or "",
+                "district": b.get("district") or "",
+                "branch_name": b.get("branch_name") or ""
+            }
+
+    result = []
+    for r in rows:
+        sid = str(r.sol_id).strip()
+        sb = branch_map.get(sid) or {}
+        result.append({
+            "sol_id": sid,
+            "sol_desc": r.sol_desc or "",
+            "zone": sb.get("zone") or "",
+            "region": sb.get("region") or "",
+            "district": sb.get("district") or "",
+            "branch_name": sb.get("branch_name") or "",
+            "total_accounts": r.total_accounts or 0,
+            "total_collection": float(r.total_collection or 0),
+            "pending_accounts": r.pending_accounts or 0,
+            "pending_amount": float(r.pending_amount or 0),
+            "pending_instalments": r.pending_instalments or 0,
+            "details": details_map.get(sid, [])
+        })
+
+    return result
 
 
 @frappe.whitelist()
@@ -6797,6 +6759,28 @@ def get_rm_wise_category_breakdown(rm_id, selected_date=None):
 
 
 @frappe.whitelist()
+def get_working_holiday_dates(year=None):
+	"""Return holiday dates for the given year from the state holiday list.
+
+	Used by the Drishti dashboard to exclude national/state holidays
+	from working-day calculations (Required DRR, working-days-left timers).
+	Holiday List name pattern: "Maharashtra - <year>".
+	"""
+	try:
+		year = int(year)
+	except (TypeError, ValueError):
+		year = datetime.now().year
+
+	rows = frappe.db.sql(
+		"""SELECT DISTINCT holiday_date FROM `tabHoliday`
+		WHERE parent = %s
+		ORDER BY holiday_date""",
+		("Maharashtra - {0}".format(year),),
+	)
+	return [str(row[0]) for row in rows]
+
+
+@frappe.whitelist()
 def record_page_visit(page="sahayog_dashboard"):
     from sahayog.api.custom_api import record_page_visit as _record
     return _record(page=page)
@@ -6818,4 +6802,3 @@ def leave_page(page="sahayog_dashboard"):
 def get_page_visitors(page="sahayog_dashboard"):
     from sahayog.api.custom_api import get_page_visitors as _get
     return _get(page=page)
-
