@@ -1,89 +1,141 @@
-frappe.pages['finacle-report-portal'].on_page_load = function(wrapper) {
+frappe.pages['finacle-report-portal'].on_page_load = function (wrapper) {
+    // // ============================================================================
+    // // ADVANCED MOBILE DETECTION (WORKS EVEN IN DESKTOP MODE)
+    // // ============================================================================
+
+    // function isMobileDevice() {
+    //     // Method 1: Check User Agent
+    //     const ua = navigator.userAgent || navigator.vendor || window.opera;
+    //     const mobileUA = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(ua);
+
+    //     // Method 2: Check Touch Capability
+    //     const hasTouch = (
+    //         'ontouchstart' in window ||
+    //         navigator.maxTouchPoints > 0 ||
+    //         navigator.msMaxTouchPoints > 0
+    //     );
+
+    //     // Method 3: Check Screen Size (actual device screen, not viewport)
+    //     const smallScreen = (
+    //         window.screen.width <= 768 ||
+    //         window.screen.height <= 768
+    //     );
+
+    //     // Method 4: Check Device Pixel Ratio (mobile devices usually have higher DPR)
+    //     const highDPR = window.devicePixelRatio > 1;
+
+    //     // Method 5: Check for mobile-specific orientation API
+    //     const hasOrientation = typeof window.orientation !== 'undefined';
+
+    //     // Combine all checks (if ANY 2+ are true, it's mobile)
+    //     let mobileIndicators = 0;
+    //     if (mobileUA) mobileIndicators++;
+    //     if (hasTouch) mobileIndicators++;
+    //     if (smallScreen) mobileIndicators++;
+    //     if (hasOrientation) mobileIndicators++;
+
+    //     // Final decision: if 2 or more indicators say mobile, treat as mobile
+    //     return mobileIndicators >= 2;
+    // }
+
+    // // Block mobile access (even in desktop mode)
+    // if (isMobileDevice()) {
+    //     const page = frappe.ui.make_app_page({
+    //         parent: wrapper,
+    //         title: 'Not Supported on Mobile',
+    //         single_column: true
+    //     });
+
+    //     $(page.body).html(`
+    //         <div style="display:flex;justify-content:center;align-items:center;min-height:60vh;font-family:sans-serif;">
+    //             <div style="max-width:600px;text-align:center;padding:40px;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+    //                 <div style="font-size:70px;color:#b71c1c;margin-bottom:20px;">\uD83D\uDCF4</div>
+    //                 <h2 style="color:#b71c1c;margin-bottom:15px;font-size:26px;">This App Is Not Supported on Mobile</h2>
+    //                 <p style="color:#555;font-size:15px;line-height:1.6;margin-bottom:20px;">
+    //                     The <strong>Finacle Report Portal</strong> can only be accessed from a Desktop or Laptop browser.
+    //                 </p>
+    //                 <p style="color:#777;font-size:14px;line-height:1.6;margin-bottom:25px;">
+    //                     Please open this URL on your Desktop or Laptop to continue.
+    //                 </p>
+    //                 <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:15px;margin-bottom:20px;">
+    //                     <p style="color:#856404;font-size:13px;margin:0;line-height:1.5;">
+    //                         <strong>⚠️ Note:</strong> This restriction applies even if you enable "Desktop Mode" in your mobile browser.
+    //                     </p>
+    //                 </div>
+    //                 <button onclick="window.location.href='/'" style="margin-top:10px;background:#196767;color:white;border:none;padding:10px 26px;font-weight:600;border-radius:6px;cursor:pointer;font-size:14px;">
+    //                     ⬅ Back to Home
+    //                 </button>
+    //             </div>
+    //         </div>
+    //     `);
+
+    //     return; // Stop further initialization on mobile
+    // }
+
+    // new laptop detection function
     // ============================================================================
-    // ADVANCED MOBILE DETECTION (WORKS EVEN IN DESKTOP MODE)
+    // DEVICE DETECTION - BLOCK ONLY MOBILES AND TABLETS (ALLOW ALL LAPTOPS)
     // ============================================================================
-    
-    function isMobileDevice() {
-        // Method 1: Check User Agent
-        const ua = navigator.userAgent || navigator.vendor || window.opera;
-        const mobileUA = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(ua);
-        
-        // Method 2: Check Touch Capability
-        const hasTouch = (
-            'ontouchstart' in window ||
-            navigator.maxTouchPoints > 0 ||
-            navigator.msMaxTouchPoints > 0
-        );
-        
-        // Method 3: Check Screen Size (actual device screen, not viewport)
-        const smallScreen = (
-            window.screen.width <= 768 ||
-            window.screen.height <= 768
-        );
-        
-        // Method 4: Check Device Pixel Ratio (mobile devices usually have higher DPR)
-        const highDPR = window.devicePixelRatio > 1;
-        
-        // Method 5: Check for mobile-specific orientation API
-        const hasOrientation = typeof window.orientation !== 'undefined';
-        
-        // Combine all checks (if ANY 2+ are true, it's mobile)
-        let mobileIndicators = 0;
-        if (mobileUA) mobileIndicators++;
-        if (hasTouch) mobileIndicators++;
-        if (smallScreen) mobileIndicators++;
-        if (hasOrientation) mobileIndicators++;
-        
-        // Final decision: if 2 or more indicators say mobile, treat as mobile
-        return mobileIndicators >= 2;
+
+    function isLaptopDevice() {
+        // Use screen width to determine if it's a laptop
+        // Laptops typically have screen width > 1023px
+        const screenWidth = window.screen.width || window.screen.availWidth;
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+
+        // Consider the larger of screen width or viewport width
+        const effectiveWidth = Math.max(screenWidth, viewportWidth);
+
+        // If width is greater than 1023px, treat as laptop (allow access)
+        return effectiveWidth > 1023;
     }
-    
-    // Block mobile access (even in desktop mode)
-    if (isMobileDevice()) {
+
+    // Block if NOT a laptop (i.e., block mobiles and tablets with width <= 1023px)
+    if (!isLaptopDevice()) {
         const page = frappe.ui.make_app_page({
             parent: wrapper,
-            title: 'Not Supported on Mobile',
+            title: 'Not Supported on Mobile/Tablet',
             single_column: true
         });
 
         $(page.body).html(`
-            <div style="display:flex;justify-content:center;align-items:center;min-height:60vh;font-family:sans-serif;">
-                <div style="max-width:600px;text-align:center;padding:40px;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
-                    <div style="font-size:70px;color:#b71c1c;margin-bottom:20px;">\uD83D\uDCF4</div>
-                    <h2 style="color:#b71c1c;margin-bottom:15px;font-size:26px;">This App Is Not Supported on Mobile</h2>
-                    <p style="color:#555;font-size:15px;line-height:1.6;margin-bottom:20px;">
-                        The <strong>Finacle Report Portal</strong> can only be accessed from a Desktop or Laptop browser.
-                    </p>
-                    <p style="color:#777;font-size:14px;line-height:1.6;margin-bottom:25px;">
-                        Please open this URL on your Desktop or Laptop to continue.
-                    </p>
-                    <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:15px;margin-bottom:20px;">
-                        <p style="color:#856404;font-size:13px;margin:0;line-height:1.5;">
-                            <strong>⚠️ Note:</strong> This restriction applies even if you enable "Desktop Mode" in your mobile browser.
+                <div style="display:flex;justify-content:center;align-items:center;min-height:60vh;font-family:sans-serif;">
+                    <div style="max-width:600px;text-align:center;padding:40px;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+                        <div style="font-size:70px;color:#b71c1c;margin-bottom:20px;">📱</div>
+                        <h2 style="color:#b71c1c;margin-bottom:15px;font-size:26px;">This App Is Not Supported on Mobile or Tablet</h2>
+                        <p style="color:#555;font-size:15px;line-height:1.6;margin-bottom:20px;">
+                            The <strong>Finacle Report Portal</strong> can only be accessed from a Desktop or Laptop browser.
                         </p>
+                        <p style="color:#777;font-size:14px;line-height:1.6;margin-bottom:25px;">
+                            Please open this URL on your Desktop or Laptop to continue.
+                        </p>
+                        <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:15px;margin-bottom:20px;">
+                            <p style="color:#856404;font-size:13px;margin:0;line-height:1.5;">
+                                <strong>⚠️ Note:</strong> This restriction applies even if you enable "Desktop Mode" in your mobile browser.
+                            </p>
+                        </div>
+                        <button onclick="window.location.href='/'" style="margin-top:10px;background:#196767;color:white;border:none;padding:10px 26px;font-weight:600;border-radius:6px;cursor:pointer;font-size:14px;">
+                            ⬅ Back to Home
+                        </button>
                     </div>
-                    <button onclick="window.location.href='/'" style="margin-top:10px;background:#196767;color:white;border:none;padding:10px 26px;font-weight:600;border-radius:6px;cursor:pointer;font-size:14px;">
-                        ⬅ Back to Home
-                    </button>
                 </div>
-            </div>
-        `);
+            `);
 
-        return; // Stop further initialization on mobile
+        return; // Stop further initialization on mobile/tablet
     }
 
     // ============================================================================
     // ROLE-BASED ACCESS CONTROL (DYNAMIC)
     // ============================================================================
-    
+
     // Check access by calling the server-side API
     frappe.call({
         method: "custom_report.api.get_user_report_permissions",
-        callback: function(r) {
+        callback: function (r) {
             if (r.message) {
                 const is_branch_user = r.message.is_branch_user;
                 const is_dept_user = r.message.is_dept_user;
-                
+
                 // User has access if they are either a branch user or a department user
                 if (is_branch_user || is_dept_user) {
                     // Access granted, initialize the page normally
@@ -111,7 +163,7 @@ function showAccessDeniedPage(wrapper) {
         title: 'Access Denied',
         single_column: true
     });
-    
+
     $(page.body).html(`
         <div style="display:flex;justify-content:center;align-items:center;min-height:60vh;font-family:sans-serif;">
             <div style="max-width:600px;text-align:center;padding:40px;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
@@ -364,7 +416,7 @@ function initializeReportPortal(wrapper) {
     const $reportDropdown = $('#report_dropdown');
     const $selectedReportValue = $('#selected_report_value');
     const $searchClear = $('#search_clear');
-    
+
     // Branch Filter Elements
     const $branchFilterContainer = $('#branch_filter_container');
     const $branchSelectorDisplay = $('#branch_selector_display');
@@ -373,7 +425,7 @@ function initializeReportPortal(wrapper) {
     const $solIdList = $('#sol_id_list');
     const $solIdSearch = $('#sol_id_search');
     const $downloadHint = $('#download_hint');
-    
+
     let currentSolData = [];
     let isDeptUser = false;
     let hasBranchAccessIssue = false;
@@ -382,14 +434,14 @@ function initializeReportPortal(wrapper) {
     function loadUserPermissions() {
         frappe.call({
             method: 'custom_report.api.get_user_report_permissions',
-            callback: function(res) {
+            callback: function (res) {
                 if (res.message && (res.message.is_branch_user || res.message.is_dept_user)) {
                     currentSolData = res.message.sol_data || [];
                     isDeptUser = res.message.is_dept_user;
                     const $info = $('#user_permissions_info');
-                    
+
                     $branchFilterContainer.css('display', 'flex');
-                    
+
                     if (currentSolData.length > 0 || isDeptUser) {
                         hasBranchAccessIssue = false;
                         let statusText = '';
@@ -422,7 +474,7 @@ function initializeReportPortal(wrapper) {
 
     function renderSolIdList() {
         const searchTerm = $solIdSearch.val().toLowerCase();
-        
+
         // Sort: Selected items first, then by sol_id
         const sortedData = [...currentSolData].sort((a, b) => {
             if (!!a.selected !== !!b.selected) {
@@ -444,18 +496,18 @@ function initializeReportPortal(wrapper) {
                 `;
             }
         });
-        
+
         $solIdList.html(html || '<div style="text-align:center; padding:10px; color:#999; font-size:12px;">No branches found</div>');
 
         // Bind events to new checkboxes
-        $solIdList.find('input[type="checkbox"]').on('change', function() {
+        $solIdList.find('input[type="checkbox"]').on('change', function () {
             const sol_id = $(this).val();
             const is_checked = $(this).is(':checked');
-            
+
             // Update data model
             const item = currentSolData.find(d => d.sol_id === sol_id);
             if (item) item.selected = is_checked;
-            
+
             updateActiveBadges(isDeptUser);
             // Re-render to update grouping
             renderSolIdList();
@@ -464,7 +516,7 @@ function initializeReportPortal(wrapper) {
 
     function updateActiveBadges(is_dept) {
         const selectedCount = currentSolData.filter(d => d.selected).length;
-        
+
         if (is_dept) {
             if (selectedCount === 0) {
                 $selectedBranchesText.text('Full Access (All Branches)');
@@ -483,7 +535,7 @@ function initializeReportPortal(wrapper) {
     }
 
     // Toggle Dropdown
-    $branchSelectorDisplay.on('click', function(e) {
+    $branchSelectorDisplay.on('click', function (e) {
         e.stopPropagation();
         $branchPickerDropdown.toggle();
         if ($branchPickerDropdown.is(':visible')) {
@@ -492,14 +544,14 @@ function initializeReportPortal(wrapper) {
         }
     });
 
-    $(document).on('click', function(e) {
+    $(document).on('click', function (e) {
         if (!$(e.target).closest('#branch_filter_container').length) {
             $branchPickerDropdown.hide();
         }
     });
 
     // Branch Search
-    $solIdSearch.on('input', function() {
+    $solIdSearch.on('input', function () {
         renderSolIdList();
     });
 
@@ -561,7 +613,7 @@ function initializeReportPortal(wrapper) {
 
     function setActiveDateChip(preset) {
         activeDatePreset = preset || null;
-        $('.date-chip').each(function() {
+        $('.date-chip').each(function () {
             const isActive = $(this).data('range') === activeDatePreset;
             $(this).toggleClass('date-chip-active', isActive);
         });
@@ -648,27 +700,27 @@ function initializeReportPortal(wrapper) {
     // Initialize datepickers with validation
     function initDatepickers() {
         if (!window.flatpickr) return setTimeout(initDatepickers, 50);
-        
+
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-        const yesterday = new Date(today); 
+        const yesterday = new Date(today);
         yesterday.setDate(today.getDate() - 1);
 
         // Start Date Picker
-        startDatePicker = flatpickr("#start_date", { 
-            dateFormat: "d/m/Y", 
+        startDatePicker = flatpickr("#start_date", {
+            dateFormat: "d/m/Y",
             defaultDate: firstDay,
-            onChange: function(selectedDates, dateStr, instance) {
+            onChange: function (selectedDates, dateStr, instance) {
                 // Clear previous errors
                 $('#start_date_error').hide();
                 $('#end_date_error').hide();
                 setActiveDateChip(null);
-                
+
                 // Update end date minimum to selected start date
                 if (endDatePicker && selectedDates.length > 0) {
                     endDatePicker.set('minDate', selectedDates[0]);
                 }
-                
+
                 // Validate if end date is already selected
                 validateDateRange();
                 updateSummaryBar();
@@ -677,15 +729,15 @@ function initializeReportPortal(wrapper) {
         });
 
         // End Date Picker
-        endDatePicker = flatpickr("#end_date", { 
-            dateFormat: "d/m/Y", 
+        endDatePicker = flatpickr("#end_date", {
+            dateFormat: "d/m/Y",
             defaultDate: yesterday,
             minDate: firstDay, // Initially set to first day
-            onChange: function(selectedDates, dateStr, instance) {
+            onChange: function (selectedDates, dateStr, instance) {
                 // Clear previous errors
                 $('#end_date_error').hide();
                 setActiveDateChip(null);
-                
+
                 // Validate date range
                 validateDateRange();
                 updateSummaryBar();
@@ -726,24 +778,24 @@ function initializeReportPortal(wrapper) {
     function loadReports() {
         frappe.call({
             method: 'custom_report.api.get_user_reports',
-            callback: function(res) {
+            callback: function (res) {
                 const reports = res.message || [];
                 if (!reports.length) {
                     $reportSelect.html(`<option disabled selected>No reports available</option>`);
                     $reportSearch.prop('disabled', true).attr('placeholder', 'No reports available');
                     return;
                 }
-                
+
                 // Store all reports
                 allReports = reports;
-                
+
                 // Populate hidden select
                 $reportSelect.html(`<option value="" disabled selected>Select Report</option>`);
                 reports.forEach(r => {
                     const dur = r.last_duration ? parseFloat(r.last_duration) : '';
                     $reportSelect.append(`<option value="${r.name}" data-duration="${dur}">${r.report_name}</option>`);
                 });
-                
+
                 // Enable search
                 $reportSearch.prop('disabled', false);
                 updateSummaryBar();
@@ -754,21 +806,21 @@ function initializeReportPortal(wrapper) {
     loadReports();
 
     // Search functionality
-    $reportSearch.on('input focus', function() {
+    $reportSearch.on('input focus', function () {
         const searchTerm = $(this).val().toLowerCase();
-        
+
         // Show clear button if there's text
         if (searchTerm.length > 0) {
             $searchClear.show();
         } else {
             $searchClear.hide();
         }
-        
+
         // Filter reports
-        const filteredReports = allReports.filter(r => 
+        const filteredReports = allReports.filter(r =>
             r.report_name.toLowerCase().includes(searchTerm)
         );
-        
+
         // Populate dropdown
         if (filteredReports.length > 0) {
             let html = '';
@@ -778,26 +830,26 @@ function initializeReportPortal(wrapper) {
                 </div>`;
             });
             $reportDropdown.html(html).show();
-            
+
             // Add hover effect
             $('.report-item').hover(
-                function() { $(this).css('background', '#f5f5f5'); },
-                function() { $(this).css('background', 'white'); }
+                function () { $(this).css('background', '#f5f5f5'); },
+                function () { $(this).css('background', 'white'); }
             );
-            
+
             // Handle selection
-            $('.report-item').on('click', function() {
+            $('.report-item').on('click', function () {
                 const value = $(this).data('value');
                 const text = $(this).find('div').first().text();
                 const duration = $(this).data('duration');
-                
+
                 // Set values
                 $selectedReportValue.val(value);
                 $reportSearch.val(text);
                 $reportSelect.val(value);
                 $reportDropdown.hide();
                 $searchClear.show();
-                
+
                 // Update duration
                 expectedDuration = duration && duration >= 2 ? duration : 2;
                 if (duration) {
@@ -816,7 +868,7 @@ function initializeReportPortal(wrapper) {
     });
 
     // Close dropdown when clicking outside
-    $(document).on('click', function(e) {
+    $(document).on('click', function (e) {
         if (!$(e.target).closest('#report_search, #report_dropdown').length) {
             $reportDropdown.hide();
         }
@@ -826,7 +878,7 @@ function initializeReportPortal(wrapper) {
     });
 
     // Clear search
-    $searchClear.on('click', function() {
+    $searchClear.on('click', function () {
         $reportSearch.val('');
         $selectedReportValue.val('');
         $reportSelect.val('');
@@ -838,11 +890,11 @@ function initializeReportPortal(wrapper) {
         refreshDownloadActionState();
     });
 
-    $('.date-chip').on('click', function() {
+    $('.date-chip').on('click', function () {
         applyDatePreset($(this).data('range'));
     });
 
-    $('#reset_filters').on('click', function() {
+    $('#reset_filters').on('click', function () {
         const today = new Date();
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
         const yesterday = new Date(today);
@@ -869,14 +921,14 @@ function initializeReportPortal(wrapper) {
         $('#progress_text,#robot_msg').hide();
     });
 
-    function formatForAPI(val){ 
-        const [d,m,y]=val.split('/'); 
-        return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`; 
+    function formatForAPI(val) {
+        const [d, m, y] = val.split('/');
+        return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
     }
-    
-    function humanReadableTime(sec){ 
-        const m=Math.floor(sec/60), s=Math.floor(sec%60); 
-        return m>0?`${m} Minutes ${s} Seconds`:`${s} Seconds`; 
+
+    function humanReadableTime(sec) {
+        const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+        return m > 0 ? `${m} Minutes ${s} Seconds` : `${s} Seconds`;
     }
 
     function humanReadableBytes(bytes) {
@@ -978,7 +1030,7 @@ function initializeReportPortal(wrapper) {
             frappe.call({
                 method: 'custom_report.api.get_report_download_status',
                 args: { request_id: requestId },
-                callback: function(res) {
+                callback: function (res) {
                     statusPollInFlight = false;
                     const st = res.message || {};
                     const updatedAt = Number(st.updated_at || 0);
@@ -1027,7 +1079,7 @@ function initializeReportPortal(wrapper) {
                         loadReports();
                         setDownloadFocusMode(true);
                         $('#new_download_btn').css('display', 'inline-block').show().addClass('new-btn-attn');
-                        setTimeout(()=>$('#progress_container,#progress_percent,#progress_text,#robot_msg').fadeOut(),3000);
+                        setTimeout(() => $('#progress_container,#progress_percent,#progress_text,#robot_msg').fadeOut(), 3000);
                     } else if (st.status === 'failed') {
                         stopStatusPolling();
                         currentRequestId = null;
@@ -1051,7 +1103,7 @@ function initializeReportPortal(wrapper) {
                         setDownloadStatus('queued', 'Cancelling');
                     }
                 },
-                error: function() {
+                error: function () {
                     statusPollInFlight = false;
                     stopStatusPolling();
                     currentRequestId = null;
@@ -1069,7 +1121,7 @@ function initializeReportPortal(wrapper) {
         statusPollTimer = setInterval(pollStatus, 1000);
     }
 
-    $('#download_csv').on('click', function() {
+    $('#download_csv').on('click', function () {
         if ($(this).prop('disabled')) return;
         setDownloadMenuOpen(!$('#download_mode_options').is(':visible'));
     });
@@ -1082,11 +1134,11 @@ function initializeReportPortal(wrapper) {
         downloadReport('csv.gz');
     });
     $('#download_mode_options button').hover(
-        function() { $(this).css('background', '#eef6f6'); },
-        function() { $(this).css('background', 'transparent'); }
+        function () { $(this).css('background', '#eef6f6'); },
+        function () { $(this).css('background', 'transparent'); }
     );
-    $('#cancel_download').on('click',function(){
-        if(currentXhr){
+    $('#cancel_download').on('click', function () {
+        if (currentXhr) {
             currentXhr.abort();
         }
         if (currentLogId) {
@@ -1107,22 +1159,22 @@ function initializeReportPortal(wrapper) {
         setDownloadFocusMode(false);
     });
 
-    $('#retry_download').on('click', function() {
+    $('#retry_download').on('click', function () {
         $(this).hide();
         downloadReport('csv');
     });
 
-    $('#new_download_btn').on('click', function() {
+    $('#new_download_btn').on('click', function () {
         setDownloadFocusMode(false);
         hideDownloadMetrics();
         $('#download_status_badge,#progress_container,#progress_percent,#progress_text,#robot_msg,#retry_download').hide();
         resetDownloadUI();
     });
 
-    function downloadReport(file_type){
+    function downloadReport(file_type) {
         const reportDocName = $selectedReportValue.val(); // Use hidden input value
-        const start_date_val=$('#start_date').val();
-        const end_date_val=$('#end_date').val();
+        const start_date_val = $('#start_date').val();
+        const end_date_val = $('#end_date').val();
 
         // Clear all previous errors
         $('#report_error').hide();
@@ -1130,7 +1182,7 @@ function initializeReportPortal(wrapper) {
         $('#end_date_error').hide();
 
         // Validate all fields are filled
-        if(!reportDocName||!start_date_val||!end_date_val){
+        if (!reportDocName || !start_date_val || !end_date_val) {
             $('#report_error').text('⚠️ Please complete all fields.').show();
             return;
         }
@@ -1140,8 +1192,8 @@ function initializeReportPortal(wrapper) {
             return; // Stop if validation fails
         }
 
-        const start_date=formatForAPI(start_date_val), end_date=formatForAPI(end_date_val);
-        
+        const start_date = formatForAPI(start_date_val), end_date = formatForAPI(end_date_val);
+
         // Get selected sol_ids from dropdown
         const selectedSols = getSelectedSolIds();
 
@@ -1149,7 +1201,7 @@ function initializeReportPortal(wrapper) {
         setDownloadMenuOpen(false);
         setDownloadFocusMode(true);
         $('#progress_container,#progress_percent,#progress_text,#robot_msg').show();
-        $('#progress_bar').width("0%"); 
+        $('#progress_bar').width("0%");
         updateProgressPercent(0);
         $('#download_csv').prop('disabled', true).hide();
         $('#cancel_download').show().prop('disabled', false).text('Cancel');
@@ -1165,7 +1217,7 @@ function initializeReportPortal(wrapper) {
                 end_date: end_date,
                 sol_id: selectedSols.length ? JSON.stringify(selectedSols) : null
             },
-            callback: function(res) {
+            callback: function (res) {
                 const payload = res.message || {};
                 if (!payload.log_id) {
                     resetDownloadUI();
@@ -1180,7 +1232,7 @@ function initializeReportPortal(wrapper) {
                     $('#robot_msg').text(`🤖 Queued at position ${payload.queue_position}, starting...`);
                 }
 
-                let url=`/api/method/custom_report.api.report_download?report_docname=${encodeURIComponent(reportDocName)}&start_date=${encodeURIComponent(start_date)}&end_date=${encodeURIComponent(end_date)}&file_type=${file_type}&log_id=${encodeURIComponent(currentLogId)}`;
+                let url = `/api/method/custom_report.api.report_download?report_docname=${encodeURIComponent(reportDocName)}&start_date=${encodeURIComponent(start_date)}&end_date=${encodeURIComponent(end_date)}&file_type=${file_type}&log_id=${encodeURIComponent(currentLogId)}`;
                 if (selectedSols.length > 0) {
                     url += `&sol_id=${encodeURIComponent(JSON.stringify(selectedSols))}`;
                 }
@@ -1203,7 +1255,7 @@ function initializeReportPortal(wrapper) {
                     $('#progress_text').text(`⏱ ${humanReadableTime(elapsed)} | Download in progress...`);
                 }, 500);
 
-                xhr.onload = function() {
+                xhr.onload = function () {
                     clearInterval(timer);
                     currentXhr = null;
 
@@ -1217,7 +1269,7 @@ function initializeReportPortal(wrapper) {
                             }
                         }
 
-                        const blob = new Blob([xhr.response], {type: "text/csv"});
+                        const blob = new Blob([xhr.response], { type: "text/csv" });
                         const link = document.createElement("a");
                         link.href = URL.createObjectURL(blob);
                         link.download = filename;
@@ -1241,11 +1293,11 @@ function initializeReportPortal(wrapper) {
                             frappe.call({
                                 method: 'custom_report.api.get_report_log_metrics',
                                 args: { log_id: finalLogId },
-                                callback: function(metricRes) {
+                                callback: function (metricRes) {
                                     const m = metricRes.message || {};
                                     showDownloadMetrics(m.rows_fetched, m.file_size_mb, totalTimeSec);
                                 },
-                                error: function() {
+                                error: function () {
                                     showDownloadMetrics(0, blob.size / (1024 * 1024), totalTimeSec);
                                 }
                             });
@@ -1272,7 +1324,7 @@ function initializeReportPortal(wrapper) {
                     }
                 };
 
-                xhr.onerror = function() {
+                xhr.onerror = function () {
                     clearInterval(timer);
                     currentXhr = null;
                     if (currentLogId) {
@@ -1291,7 +1343,7 @@ function initializeReportPortal(wrapper) {
                     setDownloadFocusMode(false);
                 };
 
-                xhr.onabort = function() {
+                xhr.onabort = function () {
                     clearInterval(timer);
                     currentXhr = null;
                     if (currentLogId) {
@@ -1312,7 +1364,7 @@ function initializeReportPortal(wrapper) {
 
                 xhr.send();
             },
-            error: function() {
+            error: function () {
                 resetDownloadUI();
                 $('#progress_container,#progress_percent,#progress_text').hide();
                 $('#robot_msg').text('❌ Unable to create report log');

@@ -6778,3 +6778,27 @@ def get_working_holiday_dates(year=None):
 		("Maharashtra - {0}".format(year),),
 	)
 	return [str(row[0]) for row in rows]
+
+
+@frappe.whitelist()
+def record_page_visit(page="sahayog_dashboard"):
+    from sahayog.api.custom_api import record_page_visit as _record
+    return _record(page=page)
+
+
+@frappe.whitelist()
+def ping_page_heartbeat(page="sahayog_dashboard"):
+    from sahayog.api.custom_api import ping_page_heartbeat as _ping
+    return _ping(page=page)
+
+
+@frappe.whitelist()
+def leave_page(page="sahayog_dashboard"):
+    from sahayog.api.custom_api import leave_page as _leave
+    return _leave(page=page)
+
+
+@frappe.whitelist()
+def get_page_visitors(page="sahayog_dashboard"):
+    from sahayog.api.custom_api import get_page_visitors as _get
+    return _get(page=page)
