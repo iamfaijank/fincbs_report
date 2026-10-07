@@ -1663,7 +1663,8 @@ def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
 
     # Cached for 24 hrs per (date, sol_ids): the DB work runs once a day at most.
     # Report permissions are applied after the cache, per user.
-    cache_key = "rd_smbg_pending:mis:{}:{}".format(selected_date or "", sol_ids or "ALL")
+    # "mis2" = payload now includes the per-authorizer/agent details rows.
+    cache_key = "rd_smbg_pending:mis2:{}:{}".format(selected_date or "", sol_ids or "ALL")
     try:
         rows = get_cached_report(
             cache_key,
@@ -1676,10 +1677,11 @@ def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
 
 
 def _build_rd_smbg_rows(sol_ids=None, selected_date=None):
-    from custom_report.rd_smbg_pending_report import get_sol_summary, resolve_target_date
+    from custom_report.rd_smbg_pending_report import get_rm_details, get_sol_summary, resolve_target_date
 
     target_date = resolve_target_date(selected_date)
     rows = get_sol_summary(target_date, sol_ids=sol_ids)
+    details_map = get_rm_details(target_date)
 
     sol_ids_found = [r.sol_id.strip() for r in rows if r.sol_id]
     branch_map = {}
@@ -1709,7 +1711,8 @@ def _build_rd_smbg_rows(sol_ids=None, selected_date=None):
             "total_collection": float(r.total_collection or 0),
             "pending_accounts": r.pending_accounts or 0,
             "pending_amount": float(r.pending_amount or 0),
-            "pending_instalments": r.pending_instalments or 0
+            "pending_instalments": r.pending_instalments or 0,
+            "details": details_map.get(sid, [])
         })
 
     return result
