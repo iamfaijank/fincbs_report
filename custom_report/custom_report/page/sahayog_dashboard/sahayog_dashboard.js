@@ -221,6 +221,16 @@ const filterMisTableDataByUserPermissions = function (data, filterOptions) {
 	});
 };
 
+function _detailHay(d) {
+	return ((d.auth_id || "") + " " + (d.auth_role_id || "") + " " + (d.rm_id || "") + " " + (d.rm_name || "")).toLowerCase();
+}
+
+function _detailsMatch(row, term) {
+	if (!row || !row.details || !row.details.length) return false;
+	const auth = ((row.auth_id || "") + " " + (row.auth_name || "")).toLowerCase();
+	return auth.includes(term) || row.details.some(d => _detailHay(d).includes(term));
+}
+
 function _autoExpandSearchResults(self, data) {
 	const term = (self.searchTerm || "").trim();
 	if (!term || !data || !data.length) return;
@@ -234,7 +244,7 @@ function _autoExpandSearchResults(self, data) {
 			const dt = (row.district || (row.parent_district ? row.parent_district.split("/").pop() : '') || "").toLowerCase();
 			const zone = (row.zone || row.parent_zone || "").toLowerCase();
 			const region = (row.region || (row.parent_region ? row.parent_region.split("/").pop() : '') || "").toLowerCase();
-			return br.includes(t) || id.includes(t) || dt.includes(t) || zone.includes(t) || region.includes(t);
+			return br.includes(t) || id.includes(t) || dt.includes(t) || zone.includes(t) || region.includes(t) || _detailsMatch(row, t);
 		});
 		if (matches) {
 			const z = (row.zone || row.parent_zone || "").trim();
@@ -258,6 +268,14 @@ function _autoExpandSearchResults(self, data) {
 			}
 			if (z && r && d && s) {
 				if (self.expandedTreeNodes) self.expandedTreeNodes[`s_${z}_${r}_${d}_${s}`] = true;
+				if (self.expandedBranches) self.expandedBranches[s] = true;
+				const detMatched = (row.details || []).some(d2 => terms.some(t => _detailHay(d2).includes(t)));
+				if (detMatched) {
+					(row.details || []).forEach(d2 => {
+						const authId = ((d2.auth_id || "").trim()) || "UNKNOWN";
+						if (self.expandedAuths) self.expandedAuths[s + "::" + authId] = true;
+					});
+				}
 			}
 		}
 	});
@@ -350,6 +368,8 @@ class DrishtiDashboard {
 				expandedZones: {},
 				expandedRegions: {},
 				expandedDistricts: {},
+				expandedBranches: {},
+				expandedAuths: {},
 				checkedRows: {},
 				searchTerm: "",
 				allExpanded: false,
@@ -358,7 +378,7 @@ class DrishtiDashboard {
 					const self = this;
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
-							<input type="text" id="mis-search" placeholder="Search branch, SOL ID or district..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<input type="text" id="mis-search" placeholder="Search branch, SOL ID, agent or authorizer..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
@@ -502,6 +522,15 @@ class DrishtiDashboard {
 								self.expandedRegions[z.zone + "::" + r.region] = expand;
 								r.districts.forEach(d => {
 									self.expandedDistricts[z.zone + "::" + r.region + "::" + d.district] = expand;
+									d.branches.forEach(b => {
+										const sid = b.sol_id;
+										if (!sid) return;
+										self.expandedBranches[sid] = expand;
+										(b.details || []).forEach(det => {
+											const authId = ((det.auth_id || "").trim()) || "UNKNOWN";
+											self.expandedAuths[sid + "::" + authId] = expand;
+										});
+									});
 								});
 							});
 						});
@@ -562,6 +591,8 @@ class DrishtiDashboard {
 					self.expandedZones = {};
 					self.expandedRegions = {};
 					self.expandedDistricts = {};
+					self.expandedBranches = {};
+					self.expandedAuths = {};
 					self.checkedRows = {};
 					self.searchTerm = "";
 					self.allExpanded = false;
@@ -624,7 +655,7 @@ class DrishtiDashboard {
 							const br = (row.branch_name || row.sol_desc || "").toLowerCase();
 							const id = (row.sol_id || "").toLowerCase();
 							const dt = (row.district || "").toLowerCase();
-							return terms.some(t => br.includes(t) || id.includes(t) || dt.includes(t));
+							return terms.some(t => br.includes(t) || id.includes(t) || dt.includes(t) || _detailsMatch(row, t));
 						});
 					}
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
@@ -709,6 +740,7 @@ class DrishtiDashboard {
 						}
 						return "₹" + new Intl.NumberFormat("en-IN").format(Math.round(val));
 					};
+					const _esc = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 					const zoneData = self.aggregateByZone();
 					const totalFilteredBranches = zoneData.reduce((s, z) => s + z.data.branches.length, 0);
 					const totalAllBranches = (self.tableData || []).length;
@@ -778,13 +810,57 @@ class DrishtiDashboard {
 									const branchBg = bi % 2 === 0 ? "#ffffff" : "#f1f5f9";
 									const solId = branch.sol_id || "branch_" + bi;
 									const branchChecked = self.checkedRows[solId];
-									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${solId}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0;">
-										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${solId}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
-										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 500;">${branch.sol_id} - ${branch.branch_name || branch.sol_desc}</td>
-										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
-										${metricCols.map(mc => `<td style="padding: 6px 14px; color: #475569; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(branch[mc.key])}</td>`).join('')}
-									</tr>`;
+									const details = branch.details || [];
+									const branchExpanded = !!self.expandedBranches[solId];
+									const showAuth = showBranch && branchExpanded;
+									const branchToggle = details.length ? `<span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${branchExpanded ? "▼" : "▶"}</span>` : "";
+									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-sol="${_esc(solId)}" data-check-id="${solId}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0; cursor: ${details.length ? "pointer" : "default"};">
+									<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${solId}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
+									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+									<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 500;">${branchToggle}${branch.sol_id} - ${_esc(branch.branch_name || branch.sol_desc)}</td>
+									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
+									${metricCols.map(mc => `<td style="padding: 6px 14px; color: #475569; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(branch[mc.key])}</td>`).join('')}
+								</tr>`;
+									if (details.length) {
+										const authMap = {};
+										details.forEach(d => {
+											const authId = ((d.auth_id || "").trim()) || "UNKNOWN";
+											if (!authMap[authId]) {
+												authMap[authId] = { authId, authName: ((d.auth_role_id || "").trim()) || "-", agents: [], total_accounts: 0, total_collection: 0, pending_accounts: 0, pending_amount: 0, pending_instalments: 0 };
+											}
+											const a = authMap[authId];
+											a.agents.push(d);
+											a.total_accounts += d.total_accounts || 0;
+											a.total_collection += d.total_collection || 0;
+											a.pending_accounts += d.pending_accounts || 0;
+											a.pending_amount += d.pending_amount || 0;
+											a.pending_instalments += d.pending_instalments || 0;
+										});
+										Object.keys(authMap).sort().forEach(authId => {
+											const a = authMap[authId];
+											const authKey = solId + "::" + authId;
+											const authExpanded = !!self.expandedAuths[authKey];
+											const showAgents = showAuth && authExpanded;
+											const authLabel = authId === "UNKNOWN" ? "Unassigned" : authId + " - " + a.authName;
+											const authArrow = `<span class="mis-auth-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #b45309;">${authExpanded ? "▼" : "▶"}</span>`;
+											rowsHtml += `<tr class="mis-auth-row" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-sol="${_esc(solId)}" data-auth="${_esc(authId)}" style="display: ${showAuth ? "table-row" : "none"}; background: ${branchBg === "#ffffff" ? "#f8fafc" : "#f1f5f9"}; border-bottom: 1px solid #e2e8f0; cursor: pointer;">
+												<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"></td>
+												<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+												<td style="padding: 6px 14px; color: #92400e; white-space: nowrap; font-size: 14px; padding-left: 78px; font-weight: 600;">${authArrow}Auth: ${_esc(authLabel)}</td>
+												<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${a.agents.length}</td>
+												${metricCols.map(mc => `<td style="padding: 6px 14px; color: #92400e; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(a[mc.key])}</td>`).join('')}
+											</tr>`;
+											a.agents.forEach(agent => {
+												rowsHtml += `<tr class="mis-agent-row" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-sol="${_esc(solId)}" data-auth="${_esc(authId)}" data-rm="${_esc(agent.rm_id)}" style="display: ${showAgents ? "table-row" : "none"}; background: ${branchBg === "#ffffff" ? "#fdfdfd" : "#f8fafc"}; border-bottom: 1px solid #f1f5f9;">
+													<td style="padding: 5px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"></td>
+													<td style="padding: 5px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+													<td style="padding: 5px 14px; color: #64748b; white-space: nowrap; font-size: 13px; padding-left: 96px; font-weight: 500;">Agent: ${_esc((agent.rm_id || "") + " - " + (agent.rm_name || ""))}</td>
+													<td style="padding: 5px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 13px; font-weight: 500;">1</td>
+													${metricCols.map(mc => `<td style="padding: 5px 14px; color: #64748b; text-align: ${mc.align}; white-space: nowrap; font-size: 13px; font-weight: 500;">${mc.fmt(agent[mc.key])}</td>`).join('')}
+												</tr>`;
+											});
+										});
+									}
 								});
 							});
 						});
@@ -824,6 +900,20 @@ class DrishtiDashboard {
 							</table>
 						</div>`;
 					tableContainer.html(tableHtml);
+					const revealAuthRows = function ($branchRows) {
+						$branchRows.each(function () {
+							const sol = $(this).attr("data-sol");
+							if (!sol || !self.expandedBranches[sol]) return;
+							const $authRows = tableContainer.find(`.mis-auth-row[data-sol="${sol}"]`);
+							$authRows.stop(true, true).slideDown(200);
+							$authRows.each(function () {
+								const auth = $(this).attr("data-auth");
+								if (self.expandedAuths[sol + "::" + auth]) {
+									tableContainer.find(`.mis-agent-row[data-sol="${sol}"][data-auth="${auth}"]`).stop(true, true).slideDown(200);
+								}
+							});
+						});
+					};
 					tableContainer.off("click", ".mis-zone-row").on("click", ".mis-zone-row", function (e) {
 						if ($(e.target).closest(".mis-region-toggle, .mis-region-row, .mis-district-row, input[type=checkbox]").length) return;
 						const zone = $(this).data("zone");
@@ -841,12 +931,16 @@ class DrishtiDashboard {
 									$districtRows.each(function () {
 										const d = $(this).data("district");
 										if (self.expandedDistricts[zone + "::" + r + "::" + d]) {
-											tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${r}"][data-district="${d}"]`).stop(true, true).slideDown(200);
+											const $b = tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${r}"][data-district="${d}"]`);
+											$b.stop(true, true).slideDown(200);
+											revealAuthRows($b);
 										}
 									});
 								}
 							});
 						} else {
+							tableContainer.find(`.mis-agent-row[data-zone="${zone}"]`).stop(true, true).slideUp(150);
+							tableContainer.find(`.mis-auth-row[data-zone="${zone}"]`).stop(true, true).slideUp(150);
 							$branchRows.stop(true, true).slideUp(150);
 							$districtRows.stop(true, true).slideUp(150);
 							$regionRows.stop(true, true).slideUp(200);
@@ -868,10 +962,14 @@ class DrishtiDashboard {
 							$districtRows.each(function () {
 								const d = $(this).data("district");
 								if (self.expandedDistricts[zone + "::" + region + "::" + d]) {
-									tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"][data-district="${d}"]`).stop(true, true).slideDown(200);
+									const $b = tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"][data-district="${d}"]`);
+									$b.stop(true, true).slideDown(200);
+									revealAuthRows($b);
 								}
 							});
 						} else {
+							tableContainer.find(`.mis-agent-row[data-zone="${zone}"][data-region="${region}"]`).stop(true, true).slideUp(150);
+							tableContainer.find(`.mis-auth-row[data-zone="${zone}"][data-region="${region}"]`).stop(true, true).slideUp(150);
 							$branchRows.stop(true, true).slideUp(150);
 							$districtRows.stop(true, true).slideUp(150);
 						}
@@ -887,8 +985,48 @@ class DrishtiDashboard {
 						self.expandedDistricts[districtKey] = !self.expandedDistricts[districtKey];
 						const show = self.expandedDistricts[districtKey];
 						const $branchRows = tableContainer.find(`.mis-branch-row[data-zone="${zone}"][data-region="${region}"][data-district="${district}"]`);
-						if (show) { $branchRows.stop(true, true).slideDown(200); } else { $branchRows.stop(true, true).slideUp(150); }
+						if (show) {
+							$branchRows.stop(true, true).slideDown(200);
+							revealAuthRows($branchRows);
+						} else {
+							tableContainer.find(`.mis-agent-row[data-zone="${zone}"][data-region="${region}"][data-district="${district}"]`).stop(true, true).slideUp(150);
+							tableContainer.find(`.mis-auth-row[data-zone="${zone}"][data-region="${region}"][data-district="${district}"]`).stop(true, true).slideUp(150);
+							$branchRows.stop(true, true).slideUp(150);
+						}
 						$(this).find(".mis-district-toggle").text(show ? "▼" : "▶");
+					});
+					tableContainer.off("click", ".mis-branch-row").on("click", ".mis-branch-row", function (e) {
+						if ($(e.target).closest("input[type=checkbox]").length) return;
+						const sol = $(this).attr("data-sol");
+						if (!tableContainer.find(`.mis-auth-row[data-sol="${sol}"]`).length) return;
+						e.stopPropagation();
+						self.expandedBranches[sol] = !self.expandedBranches[sol];
+						const show = self.expandedBranches[sol];
+						const $authRows = tableContainer.find(`.mis-auth-row[data-sol="${sol}"]`);
+						if (show) {
+							$authRows.stop(true, true).slideDown(200);
+							$authRows.each(function () {
+								const auth = $(this).attr("data-auth");
+								if (self.expandedAuths[sol + "::" + auth]) {
+									tableContainer.find(`.mis-agent-row[data-sol="${sol}"][data-auth="${auth}"]`).stop(true, true).slideDown(200);
+								}
+							});
+						} else {
+							tableContainer.find(`.mis-agent-row[data-sol="${sol}"]`).stop(true, true).slideUp(150);
+							$authRows.stop(true, true).slideUp(150);
+						}
+						$(this).find(".mis-branch-toggle").text(show ? "▼" : "▶");
+					});
+					tableContainer.off("click", ".mis-auth-row").on("click", ".mis-auth-row", function (e) {
+						e.stopPropagation();
+						const sol = $(this).attr("data-sol");
+						const auth = $(this).attr("data-auth");
+						const authKey = sol + "::" + auth;
+						self.expandedAuths[authKey] = !self.expandedAuths[authKey];
+						const show = self.expandedAuths[authKey];
+						const $agentRows = tableContainer.find(`.mis-agent-row[data-sol="${sol}"][data-auth="${auth}"]`);
+						if (show) { $agentRows.stop(true, true).slideDown(200); } else { $agentRows.stop(true, true).slideUp(150); }
+						$(this).find(".mis-auth-toggle").text(show ? "▼" : "▶");
 					});
 					tableContainer.off("change", ".mis-row-check").on("change", ".mis-row-check", function () {
 						const checkId = $(this).data("check-id");
