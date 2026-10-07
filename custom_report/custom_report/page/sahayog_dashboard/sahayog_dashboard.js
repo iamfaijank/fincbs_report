@@ -812,7 +812,7 @@ class DrishtiDashboard {
 									const branchChecked = self.checkedRows[solId];
 									const details = branch.details || [];
 									self._rdBranchDetails = self._rdBranchDetails || {};
-									self._rdBranchDetails[solId] = details;
+									self._rdBranchDetails[solId] = { sol: solId, name: branch.branch_name || branch.sol_desc || "", details: details };
 									const branchExpanded = !!self.expandedBranches[solId];
 									const showAuth = showBranch && branchExpanded;
 									const branchToggle = details.length ? `<span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${branchExpanded ? "▼" : "▶"}</span>` : "";
@@ -1033,14 +1033,16 @@ class DrishtiDashboard {
 					tableContainer.off("click", ".mis-branch-dl").on("click", ".mis-branch-dl", function (e) {
 						e.stopPropagation();
 						const sol = $(this).attr("data-sol");
-						const details = (self._rdBranchDetails || {})[sol] || [];
+						const info = (self._rdBranchDetails || {})[sol] || {};
+						const details = info.details || [];
 						if (!details.length) return;
 						const csvCell = (v) => {
 							const s = String(v == null ? "" : v);
 							return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 						};
-						const rows = [["Auth ID", "Auth Name", "Agent ID", "Agent Name", "Total Accounts", "Total Collection", "Pending Accounts", "Pending Instalments", "Pending Amount"]];
+						const rows = [["Branch Name", "Sol ID", "Auth ID", "Auth Name", "Agent ID", "Agent Name", "Total Accounts", "Total Collection", "Pending Accounts", "Pending Instalments", "Pending Amount"]];
 						details.forEach(d => rows.push([
+							info.name || "", info.sol || sol,
 							d.auth_id || "", d.auth_role_id || "", d.rm_id || "", d.rm_name || "",
 							d.total_accounts || 0, d.total_collection || 0, d.pending_accounts || 0,
 							d.pending_instalments || 0, d.pending_amount || 0
@@ -1050,7 +1052,7 @@ class DrishtiDashboard {
 						const url = URL.createObjectURL(blob);
 						const a = document.createElement("a");
 						a.href = url;
-						a.download = "RD_SMBG_" + sol + ".csv";
+						a.download = "RD_SMBG_" + (info.sol || sol) + ".csv";
 						document.body.appendChild(a);
 						a.click();
 						document.body.removeChild(a);
