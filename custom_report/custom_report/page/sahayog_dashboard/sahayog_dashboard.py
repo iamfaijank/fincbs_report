@@ -6756,3 +6756,25 @@ def get_rm_wise_category_breakdown(rm_id, selected_date=None):
         "grand_4m_total": round(grand_4m_total, 2),
         "comm_dict": comm_dict
     }
+
+
+@frappe.whitelist()
+def get_working_holiday_dates(year=None):
+	"""Return holiday dates for the given year from the state holiday list.
+
+	Used by the Drishti dashboard to exclude national/state holidays
+	from working-day calculations (Required DRR, working-days-left timers).
+	Holiday List name pattern: "Maharashtra - <year>".
+	"""
+	try:
+		year = int(year)
+	except (TypeError, ValueError):
+		year = datetime.now().year
+
+	rows = frappe.db.sql(
+		"""SELECT DISTINCT holiday_date FROM `tabHoliday`
+		WHERE parent = %s
+		ORDER BY holiday_date""",
+		("Maharashtra - {0}".format(year),),
+	)
+	return [str(row[0]) for row in rows]
