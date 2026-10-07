@@ -1676,6 +1676,17 @@ def get_rd_smbg_pending_table_data(sol_ids=None, selected_date=None):
         return []
 
 
+@frappe.whitelist()
+def get_rd_smbg_pending_effective_date(selected_date=None):
+    """Date whose data the RD & SMBG pending table is currently showing."""
+    from custom_report.rd_smbg_pending_report import resolve_target_date
+
+    try:
+        return resolve_target_date(selected_date)
+    except Exception:
+        return None
+
+
 def _build_rd_smbg_rows(sol_ids=None, selected_date=None):
     from custom_report.rd_smbg_pending_report import get_rm_details, get_sol_summary, resolve_target_date
 

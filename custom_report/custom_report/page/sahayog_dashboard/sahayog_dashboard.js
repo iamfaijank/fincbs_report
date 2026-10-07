@@ -1012,6 +1012,7 @@ class DrishtiDashboard {
 						container.find("#mis-loading").hide();
 						container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
 						self.attachReportEventHandlers(container, dashboardInstance);
+						self.loadReportDate(container, dashboardInstance, seq);
 					};
 
 					if (self.loadedUser && self.loadedUser !== frappe.session.user) {
@@ -1147,6 +1148,16 @@ class DrishtiDashboard {
 						</style>
 						${kpiCards.map(card => `<div class="kpi-card" style="background: ${card.bg}; border-left: 4px solid ${card.color};"><div class="kpi-card-header"><span class="kpi-icon">${card.icon}</span><span class="kpi-label">${card.label}</span></div><div class="kpi-value" style="color: ${card.color};">${card.value}</div></div>`).join('')}
 					`);
+				},
+				loadReportDate: function (container, dashboardInstance, seq) {
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_pending_effective_date",
+						callback: function (r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
+							const dataDate = r && r.message;
+							if (dataDate) container.find("#mis-date-filter").val(dataDate);
+						}
+					});
 				},
 				refetchData: function (container, dashboardInstance) {
 					const self = this;
