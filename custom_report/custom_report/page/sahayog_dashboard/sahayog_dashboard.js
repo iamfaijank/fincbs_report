@@ -944,6 +944,7 @@ class DrishtiDashboard {
 					const self = this;
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="mis-search" placeholder="Search branch, SOL ID, agent or authorizer..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
@@ -1011,6 +1012,7 @@ class DrishtiDashboard {
 						container.find("#mis-loading").hide();
 						container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
 						self.attachReportEventHandlers(container, dashboardInstance);
+						self.loadReportDate(container, dashboardInstance, seq);
 					};
 
 					if (self.loadedUser && self.loadedUser !== frappe.session.user) {
@@ -1039,6 +1041,7 @@ class DrishtiDashboard {
 
 								frappe.call({
 									method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_pending_table_data",
+									args: { selected_date: dashboardInstance.state.selectedDate },
 									callback: function (r3) {
 										if (dashboardInstance._misRenderSeq !== seq) return;
 										self.rawTableData = (r3 && r3.message) ? r3.message : [];
@@ -1146,6 +1149,17 @@ class DrishtiDashboard {
 						</style>
 						${kpiCards.map(card => `<div class="kpi-card" style="background: ${card.bg}; border-left: 4px solid ${card.color};"><div class="kpi-card-header"><span class="kpi-icon">${card.icon}</span><span class="kpi-label">${card.label}</span></div><div class="kpi-value" style="color: ${card.color};">${card.value}</div></div>`).join('')}
 					`);
+				},
+				loadReportDate: function (container, dashboardInstance, seq) {
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_pending_effective_date",
+						args: { selected_date: dashboardInstance.state.selectedDate },
+						callback: function (r) {
+							if (dashboardInstance._misRenderSeq !== seq) return;
+							const dataDate = r && r.message;
+							if (dataDate) container.find("#mis-date-filter").val(dataDate);
+						}
+					});
 				},
 				refetchData: function (container, dashboardInstance) {
 					const self = this;
@@ -1678,6 +1692,7 @@ class DrishtiDashboard {
 					const self = this;
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="mis-search" placeholder="Search branch or SOL ID..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
@@ -1960,6 +1975,7 @@ class DrishtiDashboard {
 							@media (max-width: 480px) { #ntb-kpi-inline .ntb-kpi-card { flex: 1 1 100%; min-width: unset; } }
 						</style>
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;" id="mis-controls">
+							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="ntb-evr-search" placeholder="Search branch, SOL ID, zone..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="ntb-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
@@ -2221,6 +2237,7 @@ class DrishtiDashboard {
 							.cavg-page-btn.cfg-loaded:hover:not(.cavg-active) { background: #dcfce7; }
 						</style>
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="cavg-controls">
+							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="cavg-search" placeholder="Search: digits=SOL ID, alphanumeric=RM ID, letters=branch/emp name..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 220px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="cavg-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
@@ -2817,6 +2834,7 @@ class DrishtiDashboard {
 					const self = this;
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="mis-search" placeholder="Search branch or SOL ID..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
@@ -3281,6 +3299,7 @@ class DrishtiDashboard {
 					const self = this;
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="mis-search" placeholder="Search branch, SOL ID or district..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
@@ -3802,6 +3821,7 @@ class DrishtiDashboard {
 					const self = this;
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="mis-search" placeholder="Search branch, SOL ID, district or authorizer..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
@@ -4352,6 +4372,7 @@ class DrishtiDashboard {
 					const self = this;
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="mis-search" placeholder="Search branch, SOL ID, district or authorizer..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
@@ -4925,6 +4946,7 @@ class DrishtiDashboard {
 					const self = this;
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="mis-search" placeholder="Search branch, SOL ID, agent, authorizer..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
@@ -5543,6 +5565,7 @@ class DrishtiDashboard {
 					const self = this;
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="mis-search" placeholder="Search branch, SOL ID, district or customer..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
@@ -6179,9 +6202,10 @@ class DrishtiDashboard {
 				selectedMisZones: [],
 				render: function (container, dashboardInstance, seq) {
 					const self = this;
-					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+					const t1_date = dashboardInstance.state.selectedDate || frappe.datetime.add_days(frappe.datetime.get_today(), -1);
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
+							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="rm-top-search" placeholder="Search Agent Code or Name..." style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 220px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
@@ -7194,7 +7218,7 @@ class DrishtiDashboard {
 						};
 						renderModalContent(resInstant);
 					} else {
-						const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+						const t1_date = dashboardInstance.state.selectedDate || frappe.datetime.add_days(frappe.datetime.get_today(), -1);
 						frappe.call({
 							method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rm_wise_category_breakdown",
 							args: { rm_id: agentCode, selected_date: t1_date },
@@ -7215,7 +7239,7 @@ class DrishtiDashboard {
 						return;
 					}
 
-					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+					const t1_date = dashboardInstance.state.selectedDate || frappe.datetime.add_days(frappe.datetime.get_today(), -1);
 					$container.html('<div style="padding: 8px; color: #16a34a; font-weight: 600; font-size: 12px;">⏳ Fetching Product Breakdown for Agent ' + rmId + '...</div>');
 
 					frappe.call({
@@ -7333,7 +7357,7 @@ class DrishtiDashboard {
 						return;
 					}
 
-					const t1_date = frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+					const t1_date = dashboardInstance.state.selectedDate || frappe.datetime.add_days(frappe.datetime.get_today(), -1);
 					$custContainer.html('<div style="padding: 8px; color: #2563eb; font-weight: 600; font-size: 11px;">⏳ Loading Customer Accounts...</div>');
 
 					frappe.call({
@@ -9457,6 +9481,24 @@ class DrishtiDashboard {
 			} else {
 				contentArea.html('<p style="color: #64748b; padding: 20px;">No custom renderer provided for this report.</p>');
 			}
+			contentArea
+				.off("change", "#mis-date-filter")
+				.on("change", "#mis-date-filter", () => {
+					const val = contentArea.find("#mis-date-filter").val();
+					if (!val) return;
+					this.state.selectedDate = val;
+					const calculatedFy = this.getFinancialYearFromDate(val);
+					if (calculatedFy) this.state.financialYear = calculatedFy;
+					this.state.selectedQuarter = this.getQuarterFromDate(val);
+					const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+					this.state.selectedMonth = monthNames[parseInt(val.split("-")[1], 10) - 1];
+					const monthSel = this.page.main.find("#month-selector");
+					if (monthSel.length) monthSel.val(parseInt(val.split("-")[1], 10));
+					this.updateDatePickerValue(val);
+					this.updateUrlFromState();
+					this._dataLoaded = false;
+					this.loadData();
+				});
 		}
 	}
 
@@ -10702,6 +10744,8 @@ class DrishtiDashboard {
 				if (report) {
 					if (report.cacheDate !== this.state.selectedDate) {
 						report.tableData = [];
+						report.rawTableData = [];
+						report.searchTerm = "";
 						if (report.cachedPages !== undefined) {
 							report.cachedPages = {};
 							report.cacheDate = null;
