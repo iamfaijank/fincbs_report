@@ -3,15 +3,53 @@
 // Version: 6.0.0 | All Issues Fixed
 // ============================================================================
 
+// Holiday dates (e.g. Gandhi Jayanti, Dashera) from Holiday List "Maharashtra - <year>"
+const DRISHTI_HOLIDAYS = {}; // year -> ["YYYY-MM-DD", ...]
+const DRISHTI_HOLIDAY_PROMISES = {}; // year -> Promise
+
+const loadDrishtiHolidays = (year) => {
+	if (DRISHTI_HOLIDAYS[year]) return DRISHTI_HOLIDAY_PROMISES[year];
+	if (!DRISHTI_HOLIDAY_PROMISES[year]) {
+		DRISHTI_HOLIDAY_PROMISES[year] = new Promise((resolve) => {
+			frappe.call({
+				method:
+					"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_working_holiday_dates",
+				args: { year: year },
+				callback: function (r) {
+					DRISHTI_HOLIDAYS[year] = (r && r.message) || [];
+					resolve(DRISHTI_HOLIDAYS[year]);
+				},
+				error: function () {
+					// do not cache failures - allow retry on next render
+					delete DRISHTI_HOLIDAYS[year];
+					delete DRISHTI_HOLIDAY_PROMISES[year];
+				},
+			});
+		});
+	}
+	return DRISHTI_HOLIDAY_PROMISES[year];
+};
+
 const getRemainingWorkingDaysExcludingSundays = (year, monthIndex, currentDay) => {
 	const lastDayOfMonth = new Date(year, monthIndex + 1, 0).getDate();
+	const holidays = DRISHTI_HOLIDAYS[year];
 	let workingDays = 0;
 	for (let day = currentDay; day <= lastDayOfMonth; day++) {
 		const date = new Date(year, monthIndex, day);
-		if (date.getDay() !== 0) {
+		if (date.getDay() === 0) {
 			// 0 represents Sunday
-			workingDays++;
+			continue;
 		}
+		if (holidays && holidays.length) {
+			const key =
+				year +
+				"-" +
+				String(monthIndex + 1).padStart(2, "0") +
+				"-" +
+				String(day).padStart(2, "0");
+			if (holidays.indexOf(key) !== -1) continue; // national / state holiday
+		}
+		workingDays++;
 	}
 	return workingDays;
 };
@@ -83,6 +121,11 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 			}
 		},
 	});
+
+	// Preload national/state holidays so working-day counts (DRR, timers) are accurate
+	const _bootYear = new Date().getFullYear();
+	loadDrishtiHolidays(_bootYear);
+	loadDrishtiHolidays(_bootYear - 1);
 
 	// Clean up any old unmanaged container style tags from previous development sessions
 	$("head style").each(function () {
@@ -14425,20 +14468,37 @@ class DrishtiDashboard {
 		this.page.main.find("#summary-active-zones").text(activeZonesCount + " Zones");
 
 		// 5. DRR - Daily Required Rate
+		this._drrTotals = { ach: totalAch, target: totalTarget };
+		this.renderDrrCards();
+	}
+
+	renderDrrCards() {
+		const totals = this._drrTotals || { ach: 0, target: 0 };
+		const totalAch = totals.ach;
+		const totalTarget = totals.target;
 		const drrDate = this.state.selectedDate ? new Date(this.state.selectedDate) : new Date();
 		const drrYear = drrDate.getFullYear();
 		const drrMonth = drrDate.getMonth();
 		const drrDay = drrDate.getDate();
 		const daysElapsed = drrDay;
+
+		// Holidays not loaded yet - render provisional value, re-render when they arrive
+		if (DRISHTI_HOLIDAYS[drrYear] === undefined) {
+			loadDrishtiHolidays(drrYear).then(() => {
+				if (this._drrTotals) this.renderDrrCards();
+			});
+		}
+
 		const remainingWorkingDays = getRemainingWorkingDaysExcludingSundays(drrYear, drrMonth, drrDay);
 
-		// Actual DRR = Achievement Till Date / Days Elapsed in the month
+		// Actual DRR = Achievement Till Date / Calendar Days Elapsed in the month
 		const actualDrr = daysElapsed > 0 ? totalAch / daysElapsed : null;
 		this.page.main
 			.find("#summary-actual-drr")
 			.text(actualDrr != null ? "₹" + this.formatCurrency(actualDrr) : "-");
 
 		// Required DRR = (Monthly Target - Achievement Till Date) / Remaining Working Days
+		// (excludes Sundays + national/state holidays from the Maharashtra holiday list)
 		const requiredGap = Math.max(0, totalTarget - totalAch);
 		const requiredDrr = remainingWorkingDays > 0 ? requiredGap / remainingWorkingDays : null;
 		this.page.main
