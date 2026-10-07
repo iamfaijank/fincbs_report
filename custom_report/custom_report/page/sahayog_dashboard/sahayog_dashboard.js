@@ -811,13 +811,15 @@ class DrishtiDashboard {
 									const solId = branch.sol_id || "branch_" + bi;
 									const branchChecked = self.checkedRows[solId];
 									const details = branch.details || [];
+									self._rdBranchDetails = self._rdBranchDetails || {};
+									self._rdBranchDetails[solId] = details;
 									const branchExpanded = !!self.expandedBranches[solId];
 									const showAuth = showBranch && branchExpanded;
 									const branchToggle = details.length ? `<span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${branchExpanded ? "▼" : "▶"}</span>` : "";
 									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-sol="${_esc(solId)}" data-check-id="${solId}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0; cursor: ${details.length ? "pointer" : "default"};">
 									<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${solId}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-									<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 500;">${branchToggle}${branch.sol_id} - ${_esc(branch.branch_name || branch.sol_desc)}</td>
+									<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 500;">${branchToggle}${branch.sol_id} - ${_esc(branch.branch_name || branch.sol_desc)}${details.length ? `<button type="button" class="mis-branch-dl" data-sol="${_esc(solId)}" title="Download this branch's drilldown (CSV)" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; CSV</button>` : ""}</td>
 									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
 									${metricCols.map(mc => `<td style="padding: 6px 14px; color: #475569; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(branch[mc.key])}</td>`).join('')}
 								</tr>`;
@@ -996,7 +998,7 @@ class DrishtiDashboard {
 						$(this).find(".mis-district-toggle").text(show ? "▼" : "▶");
 					});
 					tableContainer.off("click", ".mis-branch-row").on("click", ".mis-branch-row", function (e) {
-						if ($(e.target).closest("input[type=checkbox]").length) return;
+						if ($(e.target).closest("input[type=checkbox], .mis-branch-dl").length) return;
 						const sol = $(this).attr("data-sol");
 						if (!tableContainer.find(`.mis-auth-row[data-sol="${sol}"]`).length) return;
 						e.stopPropagation();
@@ -1027,6 +1029,32 @@ class DrishtiDashboard {
 						const $agentRows = tableContainer.find(`.mis-agent-row[data-sol="${sol}"][data-auth="${auth}"]`);
 						if (show) { $agentRows.stop(true, true).slideDown(200); } else { $agentRows.stop(true, true).slideUp(150); }
 						$(this).find(".mis-auth-toggle").text(show ? "▼" : "▶");
+					});
+					tableContainer.off("click", ".mis-branch-dl").on("click", ".mis-branch-dl", function (e) {
+						e.stopPropagation();
+						const sol = $(this).attr("data-sol");
+						const details = (self._rdBranchDetails || {})[sol] || [];
+						if (!details.length) return;
+						const csvCell = (v) => {
+							const s = String(v == null ? "" : v);
+							return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+						};
+						const rows = [["Auth ID", "Auth Name", "Agent ID", "Agent Name", "Total Accounts", "Total Collection", "Pending Accounts", "Pending Instalments", "Pending Amount"]];
+						details.forEach(d => rows.push([
+							d.auth_id || "", d.auth_role_id || "", d.rm_id || "", d.rm_name || "",
+							d.total_accounts || 0, d.total_collection || 0, d.pending_accounts || 0,
+							d.pending_instalments || 0, d.pending_amount || 0
+						]));
+						const csv = "\uFEFF" + rows.map(r => r.map(csvCell).join(",")).join("\r\n");
+						const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+						const url = URL.createObjectURL(blob);
+						const a = document.createElement("a");
+						a.href = url;
+						a.download = "RD_SMBG_" + sol + ".csv";
+						document.body.appendChild(a);
+						a.click();
+						document.body.removeChild(a);
+						URL.revokeObjectURL(url);
 					});
 					tableContainer.off("change", ".mis-row-check").on("change", ".mis-row-check", function () {
 						const checkId = $(this).data("check-id");
