@@ -7370,8 +7370,17 @@ class DrishtiDashboard {
 			});
 		});
 
-		const sortKey = metricCols[metricCols.length - 1].key;
-		rootNodes.sort((a, b) => (b[sortKey] || 0) - (a[sortKey] || 0));
+		// Zones in natural order (ZONE-1, ZONE-2, ... ZONE-10) instead of by value;
+		// OTHER / Unknown zones always last
+		const zoneRank = (n) => (/^(other|unknown)/i.test(String(n || "").trim()) ? 1 : 0);
+		rootNodes.sort(
+			(a, b) =>
+				zoneRank(a.name) - zoneRank(b.name) ||
+				String(a.name || "").localeCompare(String(b.name || ""), undefined, {
+					numeric: true,
+					sensitivity: "base",
+				}),
+		);
 
 		return { rootNodes, grandTotal };
 	}
