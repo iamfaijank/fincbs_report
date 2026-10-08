@@ -3,6 +3,11 @@
 // Version: 6.0.0 | All Issues Fixed
 // ============================================================================
 
+// Cached Intl formatters — constructing Intl.NumberFormat per cell is very
+// expensive and made Format-toggle/table re-renders noticeably slow.
+const DRISHTI_EN_IN_FMT = new Intl.NumberFormat("en-IN");
+const DRISHTI_EN_IN_FMT_2DP = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
+
 // Holiday dates (e.g. Gandhi Jayanti, Dashera) from Holiday List "Maharashtra - <year>"
 const DRISHTI_HOLIDAYS = {}; // year -> ["YYYY-MM-DD", ...]
 const DRISHTI_HOLIDAY_PROMISES = {}; // year -> Promise
@@ -1117,7 +1122,7 @@ class DrishtiDashboard {
 					const pendingAmount = data.reduce((s, r) => s + (r.pending_amount || 0), 0);
 					const fmtCount = (val) => {
 						if (!val && val !== 0) return "0";
-						return new Intl.NumberFormat("en-IN").format(val);
+						return DRISHTI_EN_IN_FMT.format(val);
 					};
 					const fmtAmt = (val) => {
 						if (!val || val === 0) return "₹0";
@@ -1321,9 +1326,9 @@ class DrishtiDashboard {
 							if (val >= 10000000) return (val / 10000000).toFixed(2) + " Cr";
 							if (val >= 100000) return (val / 100000).toFixed(2) + " L";
 							if (val >= 1000) return (val / 1000).toFixed(2) + " K";
-							return new Intl.NumberFormat("en-IN").format(val);
+							return DRISHTI_EN_IN_FMT.format(val);
 						}
-						return new Intl.NumberFormat("en-IN").format(val);
+						return DRISHTI_EN_IN_FMT.format(val);
 					};
 					const fmtAmt = (val) => {
 						if (!val || val === 0) return "₹0";
@@ -1331,9 +1336,9 @@ class DrishtiDashboard {
 							if (val >= 10000000) return "₹" + (val / 10000000).toFixed(2) + " Cr";
 							if (val >= 100000) return "₹" + (val / 100000).toFixed(2) + " L";
 							if (val >= 1000) return "₹" + (val / 1000).toFixed(2) + " K";
-							return "₹" + new Intl.NumberFormat("en-IN").format(val);
+							return "₹" + DRISHTI_EN_IN_FMT.format(val);
 						}
-						return "₹" + new Intl.NumberFormat("en-IN").format(Math.round(val));
+						return "₹" + DRISHTI_EN_IN_FMT.format(Math.round(val));
 					};
 					const _esc = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 					const zoneData = self.aggregateByZone();
@@ -1772,7 +1777,7 @@ class DrishtiDashboard {
 						totSMBG += r.smbg || 0; totDD += r.dd || 0; totFD += r.fd || 0; totAll += r.total || 0;
 					});
 					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
-					const cardVal = (v) => (wordsMode && Math.abs(parseFloat(v) || 0) < 1000) ? dashboardInstance.spellCardValue(v) : new Intl.NumberFormat("en-IN").format(v);
+					const cardVal = (v) => (wordsMode && Math.abs(parseFloat(v) || 0) < 1000) ? dashboardInstance.spellCardValue(v) : DRISHTI_EN_IN_FMT.format(v);
 					container.html(`
 						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px;">
 							${[
@@ -2027,7 +2032,7 @@ class DrishtiDashboard {
 						const fmt = (v) => {
 							if (dashboardInstance.state.formatMode === 'words' && Math.abs(parseFloat(v) || 0) < 1000) return dashboardInstance.spellCardValue(v);
 							if (dashboardInstance.state.formatMode === 'words') return dashboardInstance.formatCurrency(v);
-							return new Intl.NumberFormat('en-IN').format(v);
+							return DRISHTI_EN_IN_FMT.format(v);
 						};
 						container.find("#ntb-kpi-inline").html(`
 							<div class="ntb-kpi-card" style="border-left-color:#3b82f6; background:#eff6ff;"><span class="ntb-kpi-label">NTB</span><span class="ntb-kpi-value" style="color:#1d4ed8;">${fmt(ntb)}</span></div>
@@ -3425,7 +3430,7 @@ class DrishtiDashboard {
 							if (val >= 100000) return (val / 100000).toFixed(2) + " L";
 							if (val >= 1000) return (val / 1000).toFixed(2) + " K";
 						}
-						return new Intl.NumberFormat("en-IN").format(val);
+						return DRISHTI_EN_IN_FMT.format(val);
 					};
 
 					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
@@ -3596,7 +3601,7 @@ class DrishtiDashboard {
 							if (val >= 100000) return (val / 100000).toFixed(2) + " L";
 							if (val >= 1000) return (val / 1000).toFixed(2) + " K";
 						}
-						return new Intl.NumberFormat("en-IN").format(val);
+						return DRISHTI_EN_IN_FMT.format(val);
 					};
 
 					const zoneData = self.aggregateByZone();
@@ -3951,14 +3956,14 @@ class DrishtiDashboard {
 							if (val >= 100000) return (val / 100000).toFixed(2) + " L";
 							if (val >= 1000) return (val / 1000).toFixed(2) + " K";
 						}
-						return new Intl.NumberFormat("en-IN").format(val);
+						return DRISHTI_EN_IN_FMT.format(val);
 					};
 
 					const fmtAmt = (val) => {
 						if (val === null || val === undefined) return "-";
 						const n = parseFloat(val);
 						if (isNaN(n)) return val;
-						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+						return "₹ " + DRISHTI_EN_IN_FMT_2DP.format(n);
 					};
 
 					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
@@ -4144,14 +4149,14 @@ class DrishtiDashboard {
 							if (val >= 100000) return (val / 100000).toFixed(2) + " L";
 							if (val >= 1000) return (val / 1000).toFixed(2) + " K";
 						}
-						return new Intl.NumberFormat("en-IN").format(val);
+						return DRISHTI_EN_IN_FMT.format(val);
 					};
 
 					const fmtAmt = (val) => {
 						if (val === null || val === undefined) return "-";
 						const n = parseFloat(val);
 						if (isNaN(n)) return val;
-						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+						return "₹ " + DRISHTI_EN_IN_FMT_2DP.format(n);
 					};
 
 					const zoneData = self.aggregateByZone();
@@ -4511,11 +4516,11 @@ class DrishtiDashboard {
 							if (n >= 100000) return "₹ " + (n / 100000).toFixed(2) + " L";
 							if (n >= 1000) return "₹ " + (n / 1000).toFixed(2) + " K";
 						}
-						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+						return "₹ " + DRISHTI_EN_IN_FMT_2DP.format(n);
 					};
 
 					const fmtCount = (val) => {
-						return new Intl.NumberFormat("en-IN").format(val);
+						return DRISHTI_EN_IN_FMT.format(val);
 					};
 
 					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
@@ -4710,7 +4715,7 @@ class DrishtiDashboard {
 							if (n >= 100000) return "₹ " + (n / 100000).toFixed(2) + " L";
 							if (n >= 1000) return "₹ " + (n / 1000).toFixed(2) + " K";
 						}
-						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+						return "₹ " + DRISHTI_EN_IN_FMT_2DP.format(n);
 					};
 
 					const fmtPct = (coll, dem) => {
@@ -5085,11 +5090,11 @@ class DrishtiDashboard {
 							if (n >= 100000) return "₹ " + (n / 100000).toFixed(2) + " L";
 							if (n >= 1000) return "₹ " + (n / 1000).toFixed(2) + " K";
 						}
-						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+						return "₹ " + DRISHTI_EN_IN_FMT_2DP.format(n);
 					};
 
 					const fmtCount = (val) => {
-						return new Intl.NumberFormat("en-IN").format(val);
+						return DRISHTI_EN_IN_FMT.format(val);
 					};
 
 					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
@@ -5286,7 +5291,7 @@ class DrishtiDashboard {
 							if (n >= 100000) return "₹ " + (n / 100000).toFixed(2) + " L";
 							if (n >= 1000) return "₹ " + (n / 1000).toFixed(2) + " K";
 						}
-						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+						return "₹ " + DRISHTI_EN_IN_FMT_2DP.format(n);
 					};
 
 					const fmtPct = (coll, dem) => {
@@ -5701,11 +5706,11 @@ class DrishtiDashboard {
 							if (n >= 100000) return "₹ " + (n / 100000).toFixed(2) + " L";
 							if (n >= 1000) return "₹ " + (n / 1000).toFixed(2) + " K";
 						}
-						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+						return "₹ " + DRISHTI_EN_IN_FMT_2DP.format(n);
 					};
 
 					const fmtCount = (val) => {
-						return new Intl.NumberFormat("en-IN").format(val);
+						return DRISHTI_EN_IN_FMT.format(val);
 					};
 
 					const wordsMode = (dashboardInstance.state.formatMode || "number") === "words";
@@ -5942,12 +5947,12 @@ class DrishtiDashboard {
 							if (n >= 100000) return "₹ " + (n / 100000).toFixed(2) + " L";
 							if (n >= 1000) return "₹ " + (n / 1000).toFixed(2) + " K";
 						}
-						return "₹ " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(n);
+						return "₹ " + DRISHTI_EN_IN_FMT_2DP.format(n);
 					};
 
 					const fmtCount = (val) => {
 						if (val === null || val === undefined) return "0";
-						return new Intl.NumberFormat("en-IN").format(val);
+						return DRISHTI_EN_IN_FMT.format(val);
 					};
 
 					const fmtPerc = (renewal, paid) => {
@@ -6379,7 +6384,7 @@ class DrishtiDashboard {
 						return;
 					}
 
-					const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
+					const fmtNum = (val) => DRISHTI_EN_IN_FMT.format(val || 0);
 					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
 
 					let grandTotalCust = 0;
@@ -6898,7 +6903,7 @@ class DrishtiDashboard {
 					const agentStatus = (agentData.agent_status || "Inactive").trim();
 					const isAgentActive = agentStatus.toLowerCase() === "active" || agentStatus.toLowerCase() === "live";
 
-					const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
+					const fmtNum = (val) => DRISHTI_EN_IN_FMT.format(val || 0);
 					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
 
 					const modalId = "agent-breakdown-modal-backdrop";
@@ -7279,7 +7284,7 @@ class DrishtiDashboard {
 
 				renderRmCategorySubTable: function (rmId, catList, $container, dashboardInstance) {
 					const self = this;
-					const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(val || 0);
+					const fmtNum = (val) => DRISHTI_EN_IN_FMT.format(val || 0);
 					const fmtAmt = (val) => "₹" + dashboardInstance.formatCurrency(val || 0);
 
 					if (!catList || catList.length === 0) {
@@ -7853,13 +7858,13 @@ class DrishtiDashboard {
 
 
 	build4LevelTree(data, metricCols) {
-		const fmtNum = (val) => new Intl.NumberFormat("en-IN").format(Math.round(val || 0));
+		const fmtNum = (val) => DRISHTI_EN_IN_FMT.format(Math.round(val || 0));
 		const fmtAmt = (val) => {
 			if (!val || val === 0) return "₹0";
 			if (val >= 10000000) return "₹" + (val / 10000000).toFixed(2) + " Cr";
 			if (val >= 100000) return "₹" + (val / 100000).toFixed(2) + " L";
 			if (val >= 1000) return "₹" + (val / 1000).toFixed(2) + " K";
-			return "₹" + new Intl.NumberFormat("en-IN").format(val);
+			return "₹" + DRISHTI_EN_IN_FMT.format(val);
 		};
 
 		if (!data || data.length === 0) return { rootNodes: [], grandTotal: {} };
@@ -7967,14 +7972,14 @@ class DrishtiDashboard {
 				if (numValue >= 1000) return (numValue / 1000).toFixed(2) + " K";
 				return numValue.toString();
 			}
-			return new Intl.NumberFormat("en-IN").format(numValue);
+			return DRISHTI_EN_IN_FMT.format(numValue);
 		};
 		const fmtAmt = (val) => {
 			if (!val || val === 0) return "₹0";
 			if (val >= 10000000) return "₹" + (val / 10000000).toFixed(2) + " Cr";
 			if (val >= 100000) return "₹" + (val / 100000).toFixed(2) + " L";
 			if (val >= 1000) return "₹" + (val / 1000).toFixed(2) + " K";
-			return "₹" + new Intl.NumberFormat("en-IN").format(val);
+			return "₹" + DRISHTI_EN_IN_FMT.format(val);
 		};
 
 		if (!data || data.length === 0) {
@@ -15000,7 +15005,7 @@ class DrishtiDashboard {
 				formatted = numValue.toString();
 			}
 		} else {
-			formatted = new Intl.NumberFormat("en-IN").format(numValue);
+			formatted = DRISHTI_EN_IN_FMT.format(numValue);
 		}
 
 		return isNegative ? `-${formatted}` : formatted;
