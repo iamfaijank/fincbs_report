@@ -14548,6 +14548,7 @@ class DrishtiDashboard {
 						<div style="font-size: 30px; font-weight: 800; color: ${meta.color}; line-height: 1.2; margin-top: 4px;">${pct}%</div>
 						<div style="font-size: 11px; font-weight: 600; color: #94a3b8;">Achievement %</div>
 						<div style="font-size: 13px; font-weight: 700; color: #334155; margin-top: 8px;">${count} branches</div>
+						<div style="font-size: 13px; font-weight: 700; color: ${meta.color}; margin-top: 4px;">Collection: ${achSum ? "₹" + this.formatCurrency(achSum) : this.formatCurrency(achSum)}</div>
 					</div>
 				`;
 			})
@@ -14757,6 +14758,7 @@ class DrishtiDashboard {
 
 			header += `<th colspan="6" class="month-col" ${highlightStyle ? `style="${highlightStyle}"` : ""}>${displayYear}${daysLeftIndicator}</th>`;
 		});
+		header += `<th rowspan="2" class="collection-col">Collection</th>`;
 		header += `</tr><tr class="branch-table-subheader">`;
 
 		months.forEach(() => {
@@ -14843,6 +14845,12 @@ class DrishtiDashboard {
 				html += "<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>";
 			}
 		});
+
+		const collectionSum = months.reduce(
+			(sum, month) => sum + ((branch.months[month.key] && branch.months[month.key].achievement) || 0),
+			0,
+		);
+		html += `<td class="metric-cell amount-cell" style="font-weight: 700;">${this.formatNumber(collectionSum)}</td>`;
 
 		return html + "</tr>";
 	}
