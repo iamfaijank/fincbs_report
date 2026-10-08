@@ -15075,19 +15075,23 @@ class DrishtiDashboard {
 		const totalAch = totals.ach;
 		const totalTarget = totals.target;
 		const drrDate = this.state.selectedDate ? new Date(this.state.selectedDate) : new Date();
-		const drrYear = drrDate.getFullYear();
-		const drrMonth = drrDate.getMonth();
-		const drrDay = drrDate.getDate();
-		const daysElapsed = drrDay;
+		const daysElapsed = drrDate.getDate();
+
+		// Remaining working days always counted from TODAY (inclusive) so the
+		// Required DRR divisor matches the real days left in the month
+		const today = new Date();
+		const todayYear = today.getFullYear();
+		const todayMonth = today.getMonth();
+		const todayDay = today.getDate();
 
 		// Holidays not loaded yet - render provisional value, re-render when they arrive
-		if (DRISHTI_HOLIDAYS[drrYear] === undefined) {
-			loadDrishtiHolidays(drrYear).then(() => {
+		if (DRISHTI_HOLIDAYS[todayYear] === undefined) {
+			loadDrishtiHolidays(todayYear).then(() => {
 				if (this._drrTotals) this.renderDrrCards();
 			});
 		}
 
-		const remainingWorkingDays = getRemainingWorkingDaysExcludingSundays(drrYear, drrMonth, drrDay);
+		const remainingWorkingDays = getRemainingWorkingDaysExcludingSundays(todayYear, todayMonth, todayDay);
 
 		// Actual DRR = Achievement Till Date / Calendar Days Elapsed in the month
 		const actualDrr = daysElapsed > 0 ? totalAch / daysElapsed : null;
