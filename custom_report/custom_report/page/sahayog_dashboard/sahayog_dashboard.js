@@ -14522,28 +14522,41 @@ class DrishtiDashboard {
 
 		const total = parsedBranches.length;
 		const quartileSize = total > 0 ? Math.ceil(total / 4) : 0;
-		const boxes = [
+		const quartileMetas = [
 			{ title: "Top 25%", color: "#15803d", bg: "#f0fdf4" },
 			{ title: "Mid 25%", color: "#0f766e", bg: "#f0fdfa" },
 			{ title: "Next 25%", color: "#d97706", bg: "#fffbeb" },
 			{ title: "Bottom 25%", color: "#dc2626", bg: "#fef2f2" }
-		]
-			.map((meta, i) => {
-				const from = quartileSize * i;
-				const to = i === 3 ? total : quartileSize * (i + 1);
-				const slice = parsedBranches.slice(from, to);
-				const count = slice.length;
-				const tgtSum = slice.reduce((s, x) => s + x.target, 0);
-				const achSum = slice.reduce((s, x) => s + x.achievement, 0);
-				let pct = 0;
-				if (tgtSum > 0) {
-					pct = Math.round((achSum / tgtSum) * 100);
-				} else if (count > 0) {
-					pct = Math.round(slice.reduce((s, x) => s + x.percentage, 0) / count);
-				}
+		];
+		const quartileStats = quartileMetas.map((meta, i) => {
+			const from = quartileSize * i;
+			const to = i === 3 ? total : quartileSize * (i + 1);
+			const slice = parsedBranches.slice(from, to);
+			const count = slice.length;
+			const tgtSum = slice.reduce((s, x) => s + x.target, 0);
+			const achSum = slice.reduce((s, x) => s + x.achievement, 0);
+			let pct = 0;
+			if (tgtSum > 0) {
+				pct = Math.round((achSum / tgtSum) * 100);
+			} else if (count > 0) {
+				pct = Math.round(slice.reduce((s, x) => s + x.percentage, 0) / count);
+			}
+			return { meta, count, tgtSum, achSum, pct };
+		});
 
+		// Teal background gets lighter as the quartile's collection grows
+		// (base #346569 -> #5aabaf for the highest collector)
+		const maxColl = quartileStats.reduce((m, q) => Math.max(m, q.achSum), 0);
+		const tealBg = (coll) => {
+			const t = maxColl > 0 ? Math.min(1, Math.max(0, coll / maxColl)) : 0;
+			const mix = (a, b) => Math.round(a + (b - a) * t);
+			return `rgb(${mix(52, 90)}, ${mix(101, 171)}, ${mix(105, 175)})`;
+		};
+
+		const boxes = quartileStats
+			.map(({ meta, count, achSum, pct }) => {
 				return `
-					<div style="background: #346569; border: 1px solid #2d5659; border-left: 5px solid ${meta.color}; border-radius: 8px; padding: 18px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+					<div style="background: ${tealBg(achSum)}; border: 1px solid #2d5659; border-left: 5px solid ${meta.color}; border-radius: 8px; padding: 18px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
 						<div style="font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.75); text-transform: uppercase; letter-spacing: 0.5px;">${meta.title}</div>
 						<div style="font-size: 30px; font-weight: 800; color: #ffffff; line-height: 1.2; margin-top: 4px;">${pct}%</div>
 						<div style="font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.65);">Achievement %</div>
