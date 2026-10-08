@@ -17005,9 +17005,6 @@ class DrishtiDashboard {
                         grid-template-columns: repeat(2, 1fr);
                     }
                 }
-                    max-width: 380px;
-                    line-height: 1.4;
-                }
 
                 .mis-report-tab-btn {
                     padding: 6px 16px !important;
