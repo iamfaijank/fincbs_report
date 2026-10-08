@@ -1027,28 +1027,25 @@ class DrishtiDashboard {
 						return;
 					}
 
-					frappe.call({
-						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_mis_filter_options",
-						callback: function (r) {
-							if (dashboardInstance._misRenderSeq !== seq) return;
-							if (r.message) {
-								self.filterOptions = r.message;
+					dashboardInstance.getMisFilterOptions(function (opts) {
+						if (dashboardInstance._misRenderSeq !== seq) return;
+						if (opts) {
+							self.filterOptions = opts;
 
-								if (self.rawTableData && self.rawTableData.length > 0) {
-									applyUserPermissionsAndRender();
-									return;
-								}
-
-								frappe.call({
-									method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_pending_table_data",
-									args: { selected_date: dashboardInstance.state.selectedDate },
-									callback: function (r3) {
-										if (dashboardInstance._misRenderSeq !== seq) return;
-										self.rawTableData = (r3 && r3.message) ? r3.message : [];
-										applyUserPermissionsAndRender();
-									}
-								});
+							if (self.rawTableData && self.rawTableData.length > 0) {
+								applyUserPermissionsAndRender();
+								return;
 							}
+
+							frappe.call({
+								method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_pending_table_data",
+								args: { selected_date: dashboardInstance.state.selectedDate },
+								callback: function (r3) {
+									if (dashboardInstance._misRenderSeq !== seq) return;
+									self.rawTableData = (r3 && r3.message) ? r3.message : [];
+									applyUserPermissionsAndRender();
+								}
+							});
 						}
 					});
 					self.attachReportEventHandlers(container, dashboardInstance);
@@ -1151,18 +1148,36 @@ class DrishtiDashboard {
 					`);
 				},
 				loadReportDate: function (container, dashboardInstance, seq) {
+					const self = this;
+					const selDate = dashboardInstance.state.selectedDate;
+					self._effDateCache = self._effDateCache || {};
+					const cachedEff = selDate && self._effDateCache[selDate];
+					if (cachedEff) {
+						container.find("#mis-date-filter").val(cachedEff);
+						return;
+					}
 					frappe.call({
 						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_pending_effective_date",
-						args: { selected_date: dashboardInstance.state.selectedDate },
+						args: { selected_date: selDate },
 						callback: function (r) {
 							if (dashboardInstance._misRenderSeq !== seq) return;
 							const dataDate = r && r.message;
-							if (dataDate) container.find("#mis-date-filter").val(dataDate);
+							if (dataDate) {
+								container.find("#mis-date-filter").val(dataDate);
+								if (selDate) {
+									self._effDateCache[selDate] = dataDate;
+									const effKeys = Object.keys(self._effDateCache);
+									while (effKeys.length > 5) delete self._effDateCache[effKeys.shift()];
+								}
+							}
 						}
 					});
 				},
 				refetchData: function (container, dashboardInstance) {
 					const self = this;
+					// Explicit refresh: drop cached payload for the selected date
+					if (self._dateCache) delete self._dateCache[dashboardInstance.state.selectedDate];
+					if (self._effDateCache) delete self._effDateCache[dashboardInstance.state.selectedDate];
 					self.rawTableData = [];
 					self.tableData = [];
 					self.filterOptions = null;
@@ -1724,29 +1739,26 @@ class DrishtiDashboard {
 						return;
 					}
 
-					frappe.call({
-						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_mis_filter_options",
-						callback: function (r) {
-							if (dashboardInstance._misRenderSeq !== seq) return;
-							if (r.message) {
-								self.filterOptions = r.message;
-								frappe.call({
-									method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_daily_account_opening_data",
-									args: { selected_date: dashboardInstance.state.selectedDate },
-									callback: function (r3) {
-										if (dashboardInstance._misRenderSeq !== seq) return;
-										if (r3.message) {
-											self.tableData = filterMisTableDataByUserPermissions(r3.message, self.filterOptions);
-											self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
-											container.find("#mis-records-count").text(`${self.tableData.length} records`);
-											self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
-											self.renderZoneFilterTags(container, dashboardInstance);
-										}
-										container.find("#mis-loading").hide();
-										container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+					dashboardInstance.getMisFilterOptions(function (opts) {
+						if (dashboardInstance._misRenderSeq !== seq) return;
+						if (opts) {
+							self.filterOptions = opts;
+							frappe.call({
+								method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_daily_account_opening_data",
+								args: { selected_date: dashboardInstance.state.selectedDate },
+								callback: function (r3) {
+									if (dashboardInstance._misRenderSeq !== seq) return;
+									if (r3.message) {
+										self.tableData = filterMisTableDataByUserPermissions(r3.message, self.filterOptions);
+										self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+										container.find("#mis-records-count").text(`${self.tableData.length} records`);
+										self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+										self.renderZoneFilterTags(container, dashboardInstance);
 									}
-								});
-							}
+									container.find("#mis-loading").hide();
+									container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+								}
+							});
 						}
 					});
 					self.attachReportEventHandlers(container, dashboardInstance);
@@ -2739,13 +2751,10 @@ class DrishtiDashboard {
 						if (self.filterOptions && self.filterOptions.zones && self.filterOptions.zones.length > 0) {
 							self.renderZoneFilterTags(container, dashboardInstance);
 						} else {
-							frappe.call({
-								method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_mis_filter_options",
-								callback: function (r) {
-									if (r.message) {
-										self.filterOptions = r.message;
-										self.renderZoneFilterTags(container, dashboardInstance);
-									}
+							dashboardInstance.getMisFilterOptions(function (opts) {
+								if (opts) {
+									self.filterOptions = opts;
+									self.renderZoneFilterTags(container, dashboardInstance);
 								}
 							});
 						}
@@ -3447,6 +3456,9 @@ class DrishtiDashboard {
 				},
 				refetchData: function (container, dashboardInstance) {
 					const self = this;
+					// Explicit refresh: drop cached payload for the selected date
+					if (self._dateCache) delete self._dateCache[dashboardInstance.state.selectedDate];
+					if (self._effDateCache) delete self._effDateCache[dashboardInstance.state.selectedDate];
 					self.tableData = [];
 					self.expandedZones = {};
 					self.expandedRegions = {};
@@ -3978,6 +3990,9 @@ class DrishtiDashboard {
 				},
 				refetchData: function (container, dashboardInstance) {
 					const self = this;
+					// Explicit refresh: drop cached payload for the selected date
+					if (self._dateCache) delete self._dateCache[dashboardInstance.state.selectedDate];
+					if (self._effDateCache) delete self._effDateCache[dashboardInstance.state.selectedDate];
 					self.tableData = [];
 					self.expandedZones = {};
 					self.expandedRegions = {};
@@ -4404,28 +4419,25 @@ class DrishtiDashboard {
 						return;
 					}
 
-					frappe.call({
-						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_mis_filter_options",
-						callback: function (fo) {
-							if (dashboardInstance._misRenderSeq !== seq) return;
-							const fOpts = fo.message || {};
-							frappe.call({
-								method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_staff_wise_demand_collection_data",
-								args: { selected_date: dashboardInstance.state.selectedDate },
-								callback: function (r) {
-									if (dashboardInstance._misRenderSeq !== seq) return;
-									container.find("#mis-loading").hide();
-									if (r.message && r.message.length) {
-										self.tableData = filterMisTableDataByUserPermissions(r.message, fOpts);
-										self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
-										container.find("#mis-records-count").text(`${self.tableData.length} records`);
-										self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
-										self.renderZoneFilterTags(container, dashboardInstance);
-									}
-									container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+					dashboardInstance.getMisFilterOptions(function (opts) {
+						if (dashboardInstance._misRenderSeq !== seq) return;
+						const fOpts = opts || {};
+						frappe.call({
+							method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_staff_wise_demand_collection_data",
+							args: { selected_date: dashboardInstance.state.selectedDate },
+							callback: function (r) {
+								if (dashboardInstance._misRenderSeq !== seq) return;
+								container.find("#mis-loading").hide();
+								if (r.message && r.message.length) {
+									self.tableData = filterMisTableDataByUserPermissions(r.message, fOpts);
+									self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+									container.find("#mis-records-count").text(`${self.tableData.length} records`);
+									self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+									self.renderZoneFilterTags(container, dashboardInstance);
 								}
-							});
-						}
+								container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+							}
+						});
 					});
 					self.attachReportEventHandlers(container, dashboardInstance);
 				},
@@ -4535,6 +4547,9 @@ class DrishtiDashboard {
 				},
 				refetchData: function (container, dashboardInstance) {
 					const self = this;
+					// Explicit refresh: drop cached payload for the selected date
+					if (self._dateCache) delete self._dateCache[dashboardInstance.state.selectedDate];
+					if (self._effDateCache) delete self._effDateCache[dashboardInstance.state.selectedDate];
 					self.tableData = [];
 					self.expandedZones = {};
 					self.expandedRegions = {};
@@ -4978,28 +4993,25 @@ class DrishtiDashboard {
 						return;
 					}
 
-					frappe.call({
-						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_mis_filter_options",
-						callback: function (fo) {
-							if (dashboardInstance._misRenderSeq !== seq) return;
-							const fOpts = fo.message || {};
-							frappe.call({
-								method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_agent_wise_demand_collection_data",
-								args: { selected_date: dashboardInstance.state.selectedDate },
-								callback: function (r) {
-									if (dashboardInstance._misRenderSeq !== seq) return;
-									container.find("#mis-loading").hide();
-									if (r.message && r.message.length) {
-										self.tableData = filterMisTableDataByUserPermissions(r.message, fOpts);
-										self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
-										container.find("#mis-records-count").text(`${self.tableData.length} records`);
-										self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
-										self.renderZoneFilterTags(container, dashboardInstance);
-									}
-									container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+					dashboardInstance.getMisFilterOptions(function (opts) {
+						if (dashboardInstance._misRenderSeq !== seq) return;
+						const fOpts = opts || {};
+						frappe.call({
+							method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_agent_wise_demand_collection_data",
+							args: { selected_date: dashboardInstance.state.selectedDate },
+							callback: function (r) {
+								if (dashboardInstance._misRenderSeq !== seq) return;
+								container.find("#mis-loading").hide();
+								if (r.message && r.message.length) {
+									self.tableData = filterMisTableDataByUserPermissions(r.message, fOpts);
+									self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+									container.find("#mis-records-count").text(`${self.tableData.length} records`);
+									self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+									self.renderZoneFilterTags(container, dashboardInstance);
 								}
-							});
-						}
+								container.find("#mis-controls, #mis-table-container, #mis-kpi-container, #mis-zone-filter-row").show();
+							}
+						});
 					});
 					self.attachReportEventHandlers(container, dashboardInstance);
 				},
@@ -5109,6 +5121,9 @@ class DrishtiDashboard {
 				},
 				refetchData: function (container, dashboardInstance) {
 					const self = this;
+					// Explicit refresh: drop cached payload for the selected date
+					if (self._dateCache) delete self._dateCache[dashboardInstance.state.selectedDate];
+					if (self._effDateCache) delete self._effDateCache[dashboardInstance.state.selectedDate];
 					self.tableData = [];
 					self.expandedZones = {};
 					self.expandedRegions = {};
@@ -5723,6 +5738,9 @@ class DrishtiDashboard {
 				},
 				refetchData: function (container, dashboardInstance) {
 					const self = this;
+					// Explicit refresh: drop cached payload for the selected date
+					if (self._dateCache) delete self._dateCache[dashboardInstance.state.selectedDate];
+					if (self._effDateCache) delete self._effDateCache[dashboardInstance.state.selectedDate];
 					self.tableData = [];
 					self.expandedZones = {};
 					self.expandedRegions = {};
@@ -7563,6 +7581,10 @@ class DrishtiDashboard {
 		// Reset data loading flag so loadData() always fetches fresh
 		this._dataLoaded = false;
 
+		// Clear shared MIS filter-options cache
+		this._misFilterOptions = null;
+		this._misFilterOptionsPending = null;
+
 		// Clear all cached API data
 		this.data = null;
 		this.branchData = null;
@@ -7587,6 +7609,9 @@ class DrishtiDashboard {
 			report.tableData = [];
 			report.filterOptions = null;
 			report.loadedUser = null;
+			report._dateCache = {};
+			report._effDateCache = {};
+			report._liveDate = null;
 			report.expandedZones = {};
 			report.expandedRegions = {};
 			report.checkedRows = {};
@@ -9463,6 +9488,97 @@ class DrishtiDashboard {
 		contentArea.html('<div style="padding: 40px; text-align: center; color: #64748b; font-weight: 600; font-family: \'Inter\', sans-serif;">Click a report tab above to load data.</div>');
 	}
 
+	// Date-independent filter options (zone/region/district lists) — fetched at
+	// most once per session/user, shared across all MIS reports.
+	getMisFilterOptions(cb) {
+		const cached = this._misFilterOptions;
+		if (cached && cached.user === frappe.session.user && cached.data) {
+			cb(cached.data);
+			return;
+		}
+		if (this._misFilterOptionsPending) {
+			this._misFilterOptionsPending.push(cb);
+			return;
+		}
+		this._misFilterOptionsPending = [cb];
+		const self = this;
+		frappe.call({
+			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_mis_filter_options",
+			callback: function (r) {
+				const pending = self._misFilterOptionsPending || [];
+				self._misFilterOptionsPending = null;
+				const data = r && r.message ? r.message : null;
+				if (data) self._misFilterOptions = { user: frappe.session.user, data: data };
+				pending.forEach((fn) => fn(data));
+			},
+		});
+	}
+
+	// Keeps each MIS report's payload in memory per date, so switching dates
+	// (or coming back to a date) renders instantly without an API call.
+	swapMisReportDateCache(report, date) {
+		if (!report || report._liveDate === date) return;
+
+		// Stash what's currently in memory under the date it belongs to
+		if (report._liveDate) {
+			const hasData =
+				(report.rawTableData && report.rawTableData.length) ||
+				(report.tableData && report.tableData.length) ||
+				(report.cachedPages && Object.keys(report.cachedPages).length);
+			if (hasData) {
+				report._dateCache = report._dateCache || {};
+				report._dateCache[report._liveDate] = {
+					rawTableData: report.rawTableData || [],
+					tableData: report.tableData || [],
+					cachedPages: report.cachedPages !== undefined ? { ...report.cachedPages } : undefined,
+					cacheDate: report.cacheDate,
+					currentPage: report.currentPage,
+					totalRows: report.totalRows,
+					totalPages: report.totalPages,
+				};
+				const keys = Object.keys(report._dateCache);
+				while (keys.length > 5) delete report._dateCache[keys.shift()];
+			}
+		}
+
+		const entry = date && report._dateCache ? report._dateCache[date] : null;
+		const hit =
+			entry &&
+			((entry.rawTableData && entry.rawTableData.length) ||
+				(entry.tableData && entry.tableData.length) ||
+				(entry.cachedPages && Object.keys(entry.cachedPages).length));
+
+		if (hit) {
+			delete report._dateCache[date]; // re-insert so LRU keeps the newest
+			report._dateCache[date] = entry;
+			report.rawTableData = entry.rawTableData || [];
+			report.tableData = entry.tableData || [];
+			report.searchTerm = "";
+			if (report.cachedPages !== undefined && entry.cachedPages) {
+				report.cachedPages = entry.cachedPages;
+				report.cacheDate = entry.cacheDate || date;
+				report.currentPage = entry.currentPage || 1;
+				report.totalRows = entry.totalRows || 0;
+				report.totalPages = entry.totalPages || 0;
+				report._bgRunning = false;
+			}
+		} else {
+			// Nothing cached for this date — clear so only this report's date API runs
+			report.tableData = [];
+			report.rawTableData = [];
+			report.searchTerm = "";
+			if (report.cachedPages !== undefined) {
+				report.cachedPages = {};
+				report.cacheDate = null;
+				report.currentPage = 1;
+				report.totalRows = 0;
+				report.totalPages = 0;
+				report._bgRunning = false;
+			}
+		}
+		report._liveDate = date || null;
+	}
+
 	renderMisReport(reportId) {
 		this._misRenderSeq = (this._misRenderSeq || 0) + 1;
 		const seq = this._misRenderSeq;
@@ -9474,6 +9590,9 @@ class DrishtiDashboard {
 				report.tableData = [];
 				report.filterOptions = null;
 				report.loadedUser = null;
+				report._dateCache = {};
+				report._effDateCache = {};
+				report._liveDate = null;
 			}
 			titleEl.text(report.name);
 			if (typeof report.render === "function") {
@@ -10741,21 +10860,7 @@ class DrishtiDashboard {
 			const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
 			if (activeReportId) {
 				const report = this.misReportsList.find(r => r.id === activeReportId);
-				if (report) {
-					if (report.cacheDate !== this.state.selectedDate) {
-						report.tableData = [];
-						report.rawTableData = [];
-						report.searchTerm = "";
-						if (report.cachedPages !== undefined) {
-							report.cachedPages = {};
-							report.cacheDate = null;
-							report.currentPage = 1;
-							report.totalRows = 0;
-							report.totalPages = 0;
-							report._bgRunning = false;
-						}
-					}
-				}
+				this.swapMisReportDateCache(report, this.state.selectedDate);
 				this.renderMisReport(activeReportId);
 			}
 			return;
