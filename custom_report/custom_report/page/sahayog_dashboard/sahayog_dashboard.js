@@ -14543,12 +14543,12 @@ class DrishtiDashboard {
 				}
 
 				return `
-					<div style="background: ${meta.bg}; border: 1px solid #e2e8f0; border-left: 5px solid ${meta.color}; border-radius: 8px; padding: 18px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-						<div style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">${meta.title}</div>
-						<div style="font-size: 30px; font-weight: 800; color: ${meta.color}; line-height: 1.2; margin-top: 4px;">${pct}%</div>
-						<div style="font-size: 11px; font-weight: 600; color: #94a3b8;">Achievement %</div>
-						<div style="font-size: 13px; font-weight: 700; color: #334155; margin-top: 8px;">${count} branches</div>
-						<div style="font-size: 13px; font-weight: 700; color: ${meta.color}; margin-top: 4px;">Collection: ${achSum ? "₹" + this.formatCurrency(achSum) : this.formatCurrency(achSum)}</div>
+					<div style="background: #346569; border: 1px solid #2d5659; border-left: 5px solid ${meta.color}; border-radius: 8px; padding: 18px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+						<div style="font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.75); text-transform: uppercase; letter-spacing: 0.5px;">${meta.title}</div>
+						<div style="font-size: 30px; font-weight: 800; color: #ffffff; line-height: 1.2; margin-top: 4px;">${pct}%</div>
+						<div style="font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, 0.65);">Achievement %</div>
+						<div style="font-size: 13px; font-weight: 700; color: #ffffff; margin-top: 8px;">${count} branches</div>
+						<div style="font-size: 13px; font-weight: 700; color: #a7f3d0; margin-top: 4px;">Collection: ${achSum ? "₹" + this.formatCurrency(achSum) : this.formatCurrency(achSum)}</div>
 					</div>
 				`;
 			})
