@@ -5,7 +5,8 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "auto_sync"
+  "auto_sync",
+  "designations"
  ],
  "fields": [
   {
@@ -14,13 +15,20 @@
    "fieldname": "auto_sync",
    "fieldtype": "Check",
    "label": "Auto Sync"
+  },
+  {
+   "description": "Select designations for daily morning report automations",
+   "fieldname": "designations",
+   "fieldtype": "Table MultiSelect",
+   "label": "Designations",
+   "options": "Drishti Settings Designation"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-08-01 00:27:00.000000",
+ "modified": "2026-10-09 11:18:53.953942",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Drishti Settings",
