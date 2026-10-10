@@ -971,6 +971,9 @@ class DrishtiDashboard {
 				expandedDistricts: {},
 				expandedBranches: {},
 				expandedAuths: {},
+				expandedRdAgents: {},
+				rdAgentCustomers: {},
+				_rdCustFetching: {},
 				checkedRows: {},
 				searchTerm: "",
 				allExpanded: false,
@@ -1223,6 +1226,9 @@ class DrishtiDashboard {
 					self.expandedDistricts = {};
 					self.expandedBranches = {};
 					self.expandedAuths = {};
+					self.expandedRdAgents = {};
+					self.rdAgentCustomers = {};
+					self._rdCustFetching = {};
 					self.checkedRows = {};
 					self.searchTerm = "";
 					self.allExpanded = false;
@@ -1240,6 +1246,82 @@ class DrishtiDashboard {
 				renderMisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
 					self.renderAnalysisTable(tableContainer, dashboardInstance);
+				},
+				buildRdCustomerRows: function (agentKey, custList, show, ctx) {
+					const metricCols = this._misMetricCols || [];
+					const zone = ctx.zone || "", region = ctx.region || "", district = ctx.district || "";
+					const sol = ctx.sol || "", auth = ctx.auth || "", rm = ctx.rm || "";
+					let html = "";
+					const baseBg = ctx.bg === "#ffffff" ? "#ffffff" : "#f8fafc";
+					custList.forEach((c, i) => {
+						const custMetric = {
+							total_accounts: 1,
+							total_collection: c.total_instalment_paid || 0,
+							pending_accounts: (c.pending_amount || 0) > 0 ? 1 : 0,
+							pending_instalments: c.pending_instalments || 0,
+							pending_amount: c.pending_amount || 0
+						};
+						html += `<tr class="mis-agent-row mis-customer-row" data-zone="${zone}" data-region="${region}" data-district="${district}" data-sol="${_esc(sol)}" data-auth="${_esc(auth)}" data-rm="${_esc(rm)}" data-agent-key="${_esc(agentKey)}" style="display: ${show ? "table-row" : "none"}; background: ${i % 2 === 0 ? baseBg : "#ffffff"}; border-bottom: 1px solid #f1f5f9;">
+							<td style="padding: 4px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"></td>
+							<td style="padding: 4px 14px; color: #cbd5e1; text-align: center; white-space: nowrap; font-size: 13px;"></td>
+							<td style="padding: 4px 14px; color: #64748b; white-space: nowrap; font-size: 12px; padding-left: 114px; font-weight: 400;" title="${_esc(c.acct_name || "")} / ${_esc(c.foracid || c.cif_id || "")}">
+								<span style="color: #94a3b8;">👤</span> ${_esc(c.acct_name || "-")}
+								<span style="color: #94a3b8; font-size: 11px;">(${_esc(c.foracid || c.cif_id || "")})</span>
+								${c.maturity_date ? `<span style="color: #94a3b8; font-size: 11px;"> • Mat: ${_esc(c.maturity_date)}</span>` : ""}
+							</td>
+							<td style="padding: 4px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 11px; font-weight: 500;">${_esc(c.schm_desc || "")}</td>
+							${metricCols.map(mc => `<td style="padding: 4px 14px; color: #64748b; text-align: ${mc.align}; white-space: nowrap; font-size: 12px; font-weight: 500;">${mc.fmt(custMetric[mc.key])}</td>`).join('')}
+						</tr>`;
+					});
+					return html;
+				},
+				fetchRdAgentCustomers: function (agentKey, tableContainer, selDate) {
+					const self = this;
+					self.rdAgentCustomers = self.rdAgentCustomers || {};
+					self._rdCustFetching = self._rdCustFetching || {};
+					const custKey = (selDate || "latest") + "|" + agentKey;
+					if (self.rdAgentCustomers[custKey] || self._rdCustFetching[custKey]) return;
+					const parts = String(agentKey).split("::");
+					const sol = parts[0] || "";
+					const auth = parts[1] || "";
+					const rm = parts.slice(2).join("::");
+					if (!sol || !rm) return;
+					self._rdCustFetching[custKey] = true;
+					frappe.call({
+						method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_agent_customers",
+						args: { sol_id: sol, rm_id: rm, auth_id: auth === "UNKNOWN" ? "" : auth, selected_date: selDate || "" },
+						callback: function (r) {
+							self._rdCustFetching[custKey] = false;
+							const list = (r && r.message) || [];
+							self.rdAgentCustomers[custKey] = list;
+							const $loading = tableContainer.find(`.mis-customer-loading[data-agent-key="${agentKey}"]`);
+							if ($loading.length) {
+								if (list.length) {
+									const $agentRow = $loading.prevAll(`.mis-agent-row[data-agent-key="${agentKey}"]`).first();
+									const ctx = {
+										zone: $agentRow.attr("data-zone") || "",
+										region: $agentRow.attr("data-region") || "",
+										district: $agentRow.attr("data-district") || "",
+										sol: $agentRow.attr("data-sol") || "",
+										auth: $agentRow.attr("data-auth") || "",
+										rm: $agentRow.attr("data-rm") || "",
+										bg: "#ffffff"
+									};
+									$loading.replaceWith(self.buildRdCustomerRows(agentKey, list, true, ctx));
+								} else {
+									$loading.replaceWith(`<tr class="mis-agent-row mis-customer-row" data-agent-key="${_esc(agentKey)}" style="display: table-row; background: #ffffff; border-bottom: 1px solid #f1f5f9;">
+										<td></td>
+										<td></td>
+										<td colspan="7" style="padding: 6px 14px; padding-left: 114px; font-size: 12px; color: #94a3b8;">No customers found</td>
+									</tr>`);
+								}
+							}
+						},
+						error: function () {
+							self._rdCustFetching[custKey] = false;
+							tableContainer.find(`.mis-customer-loading[data-agent-key="${agentKey}"] td[colspan="7"]`).text("Failed to load customers");
+						}
+					});
 				},
 				renderZoneFilterTags: function (container, dashboardInstance) {
 					const self = this;
@@ -1396,6 +1478,8 @@ class DrishtiDashboard {
 						{ key: "pending_instalments", label: "Pending Instalments", align: "right", fmt: fmtCount },
 						{ key: "pending_amount", label: "Pending Amount", align: "right", fmt: fmtAmt }
 					];
+					self._misMetricCols = metricCols;
+					let pendingCustFetch = [];
 					let sr = 0;
 					let rowsHtml = "";
 					zoneData.forEach(z => {
@@ -1482,15 +1566,36 @@ class DrishtiDashboard {
 												<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${a.agents.length}</td>
 												${metricCols.map(mc => `<td style="padding: 6px 14px; color: #92400e; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(a[mc.key])}</td>`).join('')}
 											</tr>`;
-											a.agents.forEach(agent => {
-												rowsHtml += `<tr class="mis-agent-row" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-sol="${_esc(solId)}" data-auth="${_esc(authId)}" data-rm="${_esc(agent.rm_id)}" style="display: ${showAgents ? "table-row" : "none"}; background: ${branchBg === "#ffffff" ? "#fdfdfd" : "#f8fafc"}; border-bottom: 1px solid #f1f5f9;">
-													<td style="padding: 5px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"></td>
-													<td style="padding: 5px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-													<td style="padding: 5px 14px; color: #64748b; white-space: nowrap; font-size: 13px; padding-left: 96px; font-weight: 500;">Agent: ${_esc((agent.rm_id || "") + " - " + (agent.rm_name || ""))}</td>
-													<td style="padding: 5px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 13px; font-weight: 500;">1</td>
-													${metricCols.map(mc => `<td style="padding: 5px 14px; color: #64748b; text-align: ${mc.align}; white-space: nowrap; font-size: 13px; font-weight: 500;">${mc.fmt(agent[mc.key])}</td>`).join('')}
-												</tr>`;
-											});
+										a.agents.forEach(agent => {
+											const agentRmId = agent.rm_id || "";
+											const agentKey = solId + "::" + authId + "::" + agentRmId;
+											const agentExpanded = !!(self.expandedRdAgents && self.expandedRdAgents[agentKey]);
+											const custKey = (dashboardInstance.state.selectedDate || "latest") + "|" + agentKey;
+											const custList = self.rdAgentCustomers ? self.rdAgentCustomers[custKey] : undefined;
+											const agentArrow = `<span class="mis-agent-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${agentExpanded ? "▼" : "▶"}</span>`;
+											rowsHtml += `<tr class="mis-agent-row" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-sol="${_esc(solId)}" data-auth="${_esc(authId)}" data-rm="${_esc(agentRmId)}" data-agent-key="${_esc(agentKey)}" style="display: ${showAgents ? "table-row" : "none"}; background: ${branchBg === "#ffffff" ? "#fdfdfd" : "#f8fafc"}; border-bottom: 1px solid #f1f5f9; cursor: pointer;">
+												<td style="padding: 5px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"></td>
+												<td style="padding: 5px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
+												<td style="padding: 5px 14px; color: #64748b; white-space: nowrap; font-size: 13px; padding-left: 96px; font-weight: 500;">${agentArrow}Agent: ${_esc(agentRmId + " - " + (agent.rm_name || ""))}</td>
+												<td style="padding: 5px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 13px; font-weight: 500;">1</td>
+												${metricCols.map(mc => `<td style="padding: 5px 14px; color: #64748b; text-align: ${mc.align}; white-space: nowrap; font-size: 13px; font-weight: 500;">${mc.fmt(agent[mc.key])}</td>`).join('')}
+											</tr>`;
+											if (agentExpanded) {
+												if (custList && custList.length) {
+													rowsHtml += self.buildRdCustomerRows(agentKey, custList, showAgents, {
+														zone: z.zone, region: region, district: district,
+														sol: solId, auth: authId, rm: agentRmId, bg: branchBg
+													});
+												} else if (!custList) {
+													rowsHtml += `<tr class="mis-agent-row mis-customer-row mis-customer-loading" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-sol="${_esc(solId)}" data-auth="${_esc(authId)}" data-rm="${_esc(agentRmId)}" data-agent-key="${_esc(agentKey)}" style="display: ${showAgents ? "table-row" : "none"}; background: #ffffff; border-bottom: 1px solid #f1f5f9;">
+														<td></td>
+														<td></td>
+														<td colspan="7" style="padding: 6px 14px; padding-left: 114px; font-size: 12px; color: #94a3b8;">Loading customers…</td>
+													</tr>`;
+													pendingCustFetch.push(agentKey);
+												}
+											}
+										});
 										});
 									}
 								});
@@ -1532,6 +1637,9 @@ class DrishtiDashboard {
 							</table>
 						</div>`;
 					tableContainer.html(tableHtml);
+					if (pendingCustFetch.length) {
+						pendingCustFetch.forEach(k => self.fetchRdAgentCustomers(k, tableContainer, dashboardInstance.state.selectedDate));
+					}
 					const revealAuthRows = function ($branchRows) {
 						$branchRows.each(function () {
 							const sol = $(this).attr("data-sol");
@@ -1659,6 +1767,44 @@ class DrishtiDashboard {
 						const $agentRows = tableContainer.find(`.mis-agent-row[data-sol="${sol}"][data-auth="${auth}"]`);
 						if (show) { $agentRows.stop(true, true).slideDown(200); } else { $agentRows.stop(true, true).slideUp(150); }
 						$(this).find(".mis-auth-toggle").text(show ? "▼" : "▶");
+					});
+					tableContainer.off("click", ".mis-agent-row").on("click", ".mis-agent-row", function (e) {
+						if ($(e.target).closest(".mis-customer-row").length) return;
+						if ($(e.target).is("input[type=checkbox]")) return;
+						const key = $(this).attr("data-agent-key");
+						if (!key) return;
+						e.stopPropagation();
+						const selDate = dashboardInstance.state.selectedDate;
+						const custKey = (selDate || "latest") + "|" + key;
+						self.expandedRdAgents[key] = !self.expandedRdAgents[key];
+						const show = self.expandedRdAgents[key];
+						const $custRows = tableContainer.find(`.mis-customer-row[data-agent-key="${key}"]`);
+						if (show) {
+							if ($custRows.length) {
+								$custRows.show();
+							} else if (self.rdAgentCustomers && self.rdAgentCustomers[custKey]) {
+								const ctx = {
+									zone: $(this).attr("data-zone") || "",
+									region: $(this).attr("data-region") || "",
+									district: $(this).attr("data-district") || "",
+									sol: $(this).attr("data-sol") || "",
+									auth: $(this).attr("data-auth") || "",
+									rm: $(this).attr("data-rm") || "",
+									bg: "#ffffff"
+								};
+								$(this).after(self.buildRdCustomerRows(key, self.rdAgentCustomers[custKey], true, ctx));
+							} else {
+								$(this).after(`<tr class="mis-agent-row mis-customer-row mis-customer-loading" data-zone="${$(this).attr("data-zone") || ""}" data-region="${$(this).attr("data-region") || ""}" data-district="${$(this).attr("data-district") || ""}" data-sol="${$(this).attr("data-sol") || ""}" data-auth="${$(this).attr("data-auth") || ""}" data-rm="${$(this).attr("data-rm") || ""}" data-agent-key="${_esc(key)}" style="display: table-row; background: #ffffff; border-bottom: 1px solid #f1f5f9;">
+									<td></td>
+									<td></td>
+									<td colspan="7" style="padding: 6px 14px; padding-left: 114px; font-size: 12px; color: #94a3b8;">Loading customers…</td>
+								</tr>`);
+								self.fetchRdAgentCustomers(key, tableContainer, selDate);
+							}
+						} else {
+							$custRows.remove();
+						}
+						$(this).find(".mis-agent-toggle").text(show ? "▼" : "▶");
 					});
 					tableContainer.off("click", ".mis-branch-dl, .mis-branch-xls").on("click", ".mis-branch-dl, .mis-branch-xls", function (e) {
 						e.stopPropagation();
