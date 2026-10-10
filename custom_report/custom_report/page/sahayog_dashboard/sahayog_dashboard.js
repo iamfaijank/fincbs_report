@@ -1248,6 +1248,7 @@ class DrishtiDashboard {
 					self.renderAnalysisTable(tableContainer, dashboardInstance);
 				},
 				buildRdCustomerRows: function (agentKey, custList, show, ctx) {
+					const _esc = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 					const metricCols = this._misMetricCols || [];
 					const zone = ctx.zone || "", region = ctx.region || "", district = ctx.district || "";
 					const sol = ctx.sol || "", auth = ctx.auth || "", rm = ctx.rm || "";
@@ -1276,6 +1277,7 @@ class DrishtiDashboard {
 					return html;
 				},
 				fetchRdAgentCustomers: function (agentKey, tableContainer, selDate) {
+					const _esc = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 					const self = this;
 					self.rdAgentCustomers = self.rdAgentCustomers || {};
 					self._rdCustFetching = self._rdCustFetching || {};
