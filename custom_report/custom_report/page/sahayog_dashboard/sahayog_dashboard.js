@@ -1037,6 +1037,7 @@ class DrishtiDashboard {
 									<th style="width: 40px; text-align: center;">Sr</th>
 									<th>Z / R / D / SOL Name</th>
 									<th style="text-align: center; width: 80px;">Branches</th>
+									<th style="text-align: center; width: 80px;">Level</th>
 									<th style="text-align: right; width: 100px;">Total Accounts</th>
 									<th style="text-align: right; width: 120px;">Total Collection</th>
 									<th style="text-align: right; width: 110px;">Pending Accounts</th>
@@ -1049,6 +1050,7 @@ class DrishtiDashboard {
 										<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
 										<td><div class="mis-skeleton-pulse" style="width: ${120 + Math.random() * 60}px;"></div></td>
 										<td><div class="mis-skeleton-pulse" style="width: 30px; margin: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 40px; margin: auto;"></div></td>
 										<td><div class="mis-skeleton-pulse" style="width: ${50 + Math.random() * 30}px; margin-left: auto;"></div></td>
 										<td><div class="mis-skeleton-pulse" style="width: ${60 + Math.random() * 30}px; margin-left: auto;"></div></td>
 										<td><div class="mis-skeleton-pulse" style="width: ${50 + Math.random() * 20}px; margin-left: auto;"></div></td>
@@ -1295,6 +1297,7 @@ class DrishtiDashboard {
 								${c.maturity_date ? `<span style="color: #94a3b8; font-size: 11px;"> • Mat: ${_esc(c.maturity_date)}</span>` : ""}
 							</td>
 							<td style="padding: 4px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 11px; font-weight: 500;">${_esc(c.schm_desc || "")}</td>
+							<td style="padding: 4px 14px; text-align: center; white-space: nowrap;"><span style="background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">Customer</span></td>
 							${metricCols.map(mc => `<td style="padding: 4px 14px; color: #64748b; text-align: ${mc.align}; white-space: nowrap; font-size: 12px; font-weight: 500;">${mc.fmt(custMetric[mc.key])}</td>`).join('')}
 						</tr>`;
 					});
@@ -1335,17 +1338,17 @@ class DrishtiDashboard {
 									};
 									$loading.replaceWith(self.buildRdCustomerRows(agentKey, list, true, ctx));
 								} else {
-									$loading.replaceWith(`<tr class="mis-agent-row mis-customer-row" data-agent-key="${_esc(agentKey)}" style="display: table-row; background: #ffffff; border-bottom: 1px solid #f1f5f9;">
-										<td></td>
-										<td></td>
-										<td colspan="7" style="padding: 6px 14px; padding-left: 14px; font-size: 12px; color: #94a3b8;">No customers found</td>
-									</tr>`);
+								$loading.replaceWith(`<tr class="mis-agent-row mis-customer-row" data-agent-key="${_esc(agentKey)}" style="display: table-row; background: #ffffff; border-bottom: 1px solid #f1f5f9;">
+									<td></td>
+									<td></td>
+									<td colspan="8" style="padding: 6px 14px; padding-left: 14px; font-size: 12px; color: #94a3b8;">No customers found</td>
+								</tr>`);
 								}
 							}
 						},
 						error: function () {
 							self._rdCustFetching[custKey] = false;
-							tableContainer.find(`.mis-customer-loading[data-agent-key="${agentKey}"] td[colspan="7"]`).text("Failed to load customers");
+							tableContainer.find(`.mis-customer-loading[data-agent-key="${agentKey}"] td[colspan="8"]`).text("Failed to load customers");
 						}
 					});
 				},
@@ -1505,6 +1508,7 @@ class DrishtiDashboard {
 						{ key: "pending_amount", label: "Pending Amount", align: "right", fmt: fmtAmt }
 					];
 					self._misMetricCols = metricCols;
+					const levelBadge = (label, bg, fg, bd) => `<span style="background: ${bg}; color: ${fg}; border: 1px solid ${bd}; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">${label}</span>`;
 					let pendingCustFetch = [];
 					let sr = 0;
 					let rowsHtml = "";
@@ -1518,6 +1522,7 @@ class DrishtiDashboard {
 							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; width: 40px; font-size: 14px;">${sr}</td>
 							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;"><span class="mis-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>${z.zone}</td>
 							<td style="padding: 10px 14px; font-weight: 700; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px;">${zoneRow.branches.length}</td>
+							<td style="padding: 10px 14px; text-align: center; white-space: nowrap;">${levelBadge("Zone", "#f1f5f9", "#334155", "#cbd5e1")}</td>
 							${metricCols.map(mc => `<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: ${mc.align}; white-space: nowrap; font-size: 14px;">${mc.fmt(zoneRow[mc.key])}</td>`).join('')}
 						</tr>`;
 						z.regions.forEach(regionObj => {
@@ -1530,6 +1535,7 @@ class DrishtiDashboard {
 								<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 14px; font-weight: 600;"><span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${region}</td>
 								<td style="padding: 8px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${regionObj.data.branches.length}</td>
+								<td style="padding: 8px 14px; text-align: center; white-space: nowrap;">${levelBadge("Region", "#e0f2fe", "#075985", "#bae6fd")}</td>
 								${metricCols.map(mc => `<td style="padding: 8px 14px; color: #334155; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(regionObj.data[mc.key])}</td>`).join('')}
 							</tr>`;
 							regionObj.districts.forEach(districtObj => {
@@ -1543,6 +1549,7 @@ class DrishtiDashboard {
 									<td style="padding: 7px 14px; color: #78716c; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 <td style="padding: 7px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 14px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}</td>
 								<td style="padding: 7px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${districtObj.branches.length}</td>
+									<td style="padding: 7px 14px; text-align: center; white-space: nowrap;">${levelBadge("District", "#ccfbf1", "#115e59", "#5eead4")}</td>
 									${metricCols.map(mc => `<td style="padding: 7px 14px; color: #44403c; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(districtObj[mc.key])}</td>`).join('')}
 								</tr>`;
 								districtObj.branches.forEach((branch, bi) => {
@@ -1561,6 +1568,7 @@ class DrishtiDashboard {
 									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 									<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 14px; font-weight: 500;">${branchToggle}${branch.sol_id} - ${_esc(branch.branch_name || branch.sol_desc)}${details.length ? `<button type="button" class="mis-branch-dl" data-sol="${_esc(solId)}" title="Download this branch's drilldown (CSV)" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; CSV</button><button type="button" class="mis-branch-xls" data-sol="${_esc(solId)}" title="Download this branch's drilldown (Excel)" style="margin-left: 4px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; XLS</button>` : ""}</td>
 									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
+									<td style="padding: 6px 14px; text-align: center; white-space: nowrap;">${levelBadge("Branch", "#fef9c3", "#854d0e", "#fde047")}</td>
 									${metricCols.map(mc => `<td style="padding: 6px 14px; color: #475569; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(branch[mc.key])}</td>`).join('')}
 								</tr>`;
 									if (details.length) {
@@ -1590,6 +1598,7 @@ class DrishtiDashboard {
 												<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 												<td style="padding: 6px 14px; color: #92400e; white-space: nowrap; font-size: 14px; padding-left: 14px; font-weight: 600;">${authArrow}Auth: ${_esc(authLabel)}</td>
 												<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${a.agents.length}</td>
+												<td style="padding: 6px 14px; text-align: center; white-space: nowrap;">${levelBadge("Auth", "#fef3c7", "#92400e", "#fcd34d")}</td>
 												${metricCols.map(mc => `<td style="padding: 6px 14px; color: #92400e; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(a[mc.key])}</td>`).join('')}
 											</tr>`;
 										a.agents.forEach(agent => {
@@ -1604,6 +1613,7 @@ class DrishtiDashboard {
 												<td style="padding: 5px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 												<td style="padding: 5px 14px; color: #64748b; white-space: nowrap; font-size: 13px; padding-left: 14px; font-weight: 500;">${agentArrow}Agent: ${_esc(agentRmId + " - " + (agent.rm_name || ""))}</td>
 												<td style="padding: 5px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 13px; font-weight: 500;">1</td>
+												<td style="padding: 5px 14px; text-align: center; white-space: nowrap;">${levelBadge("Agent", "#ede9fe", "#5b21b6", "#ddd6fe")}</td>
 												${metricCols.map(mc => `<td style="padding: 5px 14px; color: #64748b; text-align: ${mc.align}; white-space: nowrap; font-size: 13px; font-weight: 500;">${mc.fmt(agent[mc.key])}</td>`).join('')}
 											</tr>`;
 											if (agentExpanded) {
@@ -1613,10 +1623,10 @@ class DrishtiDashboard {
 														sol: solId, auth: authId, rm: agentRmId, bg: branchBg
 													});
 												} else if (!custList) {
-													rowsHtml += `<tr class="mis-agent-row mis-customer-row mis-customer-loading" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-sol="${_esc(solId)}" data-auth="${_esc(authId)}" data-rm="${_esc(agentRmId)}" data-agent-key="${_esc(agentKey)}" style="display: ${showAgents ? "table-row" : "none"}; background: #ffffff; border-bottom: 1px solid #f1f5f9;">
+													rowsHtml += `													<tr class="mis-agent-row mis-customer-row mis-customer-loading" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-sol="${_esc(solId)}" data-auth="${_esc(authId)}" data-rm="${_esc(agentRmId)}" data-agent-key="${_esc(agentKey)}" style="display: ${showAgents ? "table-row" : "none"}; background: #ffffff; border-bottom: 1px solid #f1f5f9;">
 														<td></td>
 														<td></td>
-														<td colspan="7" style="padding: 6px 14px; padding-left: 14px; font-size: 12px; color: #94a3b8;">Loading customers…</td>
+														<td colspan="8" style="padding: 6px 14px; padding-left: 14px; font-size: 12px; color: #94a3b8;">Loading customers…</td>
 													</tr>`;
 													pendingCustFetch.push(agentKey);
 												}
@@ -1650,6 +1660,7 @@ class DrishtiDashboard {
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Z / R / D / SOL Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">Branches</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">Level</th>
 									${metricCols.map(mc => `<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: ${mc.align}; white-space: nowrap;">${mc.label}</th>`).join('')}
 								</tr></thead>
 								<tbody>${rowsHtml}</tbody>
@@ -1658,6 +1669,7 @@ class DrishtiDashboard {
 									<td style="padding: 10px 12px; text-align: center;"></td>
 									<td style="padding: 10px 12px; text-align: left; white-space: nowrap; font-size: 14px;">TOTAL</td>
 									<td style="padding: 10px 12px; text-align: center; white-space: nowrap; font-size: 14px;">${zoneData.reduce((s, z) => s + z.data.branches.length, 0)}</td>
+									<td style="padding: 10px 12px;"></td>
 									${metricCols.map(mc => `<td style="padding: 10px 12px; text-align: ${mc.align}; white-space: nowrap; font-size: 14px;">${mc.fmt(grandTotal[mc.key])}</td>`).join('')}
 								</tr></tfoot>
 							</table>
@@ -1823,7 +1835,7 @@ class DrishtiDashboard {
 								$(this).after(`<tr class="mis-agent-row mis-customer-row mis-customer-loading" data-zone="${$(this).attr("data-zone") || ""}" data-region="${$(this).attr("data-region") || ""}" data-district="${$(this).attr("data-district") || ""}" data-sol="${$(this).attr("data-sol") || ""}" data-auth="${$(this).attr("data-auth") || ""}" data-rm="${$(this).attr("data-rm") || ""}" data-agent-key="${_esc(key)}" style="display: table-row; background: #ffffff; border-bottom: 1px solid #f1f5f9;">
 									<td></td>
 									<td></td>
-									<td colspan="7" style="padding: 6px 14px; padding-left: 14px; font-size: 12px; color: #94a3b8;">Loading customers…</td>
+									<td colspan="8" style="padding: 6px 14px; padding-left: 14px; font-size: 12px; color: #94a3b8;">Loading customers…</td>
 								</tr>`);
 								self.fetchRdAgentCustomers(key, tableContainer, selDate);
 							}
@@ -3885,8 +3897,8 @@ class DrishtiDashboard {
 									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${solId}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0;">
 										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${solId}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 500;">${branch.sol_id} - ${branch.sol_desc || branch.branch_name}</td>
-										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
+									<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 500;">${branch.sol_id} - ${branch.sol_desc || branch.branch_name}</td>
+									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
 										${buckets.map(b => `<td style="padding: 6px 14px; color: #475569; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(branch[b])}</td>`).join('')}
 										<td style="padding: 6px 14px; color: #475569; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 700; background: #f8fafc;">${fmtCount(branch.grand_total)}</td>
 									</tr>`;
