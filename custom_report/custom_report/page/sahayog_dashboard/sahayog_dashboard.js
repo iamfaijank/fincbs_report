@@ -602,6 +602,32 @@ frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
 	fetchVisitors();
 };
 
+function drishtiEscape(v) {
+	return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function drishtiAccessDeniedBody(info, reason) {
+	if (reason === "designation") {
+		const desigs = (info && info.restricted_designations) || [];
+		return `
+			<p style="font-size: 16px; color: #666; margin-top: 8px;">
+				Drishti access is restricted for these <b>${desigs.length}</b> designation${desigs.length === 1 ? "" : "s"}:
+			</p>
+			<ul style="display: inline-block; text-align: left; margin-top: 8px; font-size: 15px; color: #444; list-style: none; padding: 0;">
+				${desigs.map((d) => `<li style="padding: 4px 0;">• <b>${drishtiEscape(d)}</b></li>`).join("")}
+			</ul>
+			${info && info.user_designation ? `<p style="font-size: 14px; color: #888; margin-top: 12px;">Your designation: <b>${drishtiEscape(info.user_designation)}</b></p>` : ""}
+			<p style="font-size: 14px; color: #888; margin-top: 12px;">Please contact your administrator for access.</p>
+		`;
+	}
+	return `
+		<p style="font-size: 16px; color: #666;">
+			You do not have a <b>Report Preference</b> set up. <br>
+			Please contact your administrator to grant access.
+		</p>
+	`;
+}
+
 frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 	// Inject Drishti title
 	document.title = "Drishti";
@@ -617,7 +643,8 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 		method:
 			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.check_drishti_designation_access",
 		callback: function (r) {
-			const allowed = !r || !r.message || r.message.allowed !== false;
+			const msg = (r && r.message) || {};
+			const allowed = msg.allowed !== false;
 			if (!allowed) {
 				if (frappe.pages["sahayog_dashboard"].cleanupVisitorTracking) {
 					frappe.pages["sahayog_dashboard"].cleanupVisitorTracking();
@@ -630,10 +657,7 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 					<div style="text-align: center; padding: 100px 20px;">
 						<div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
 						<h2 style="color: #d32f2f;">Access Denied</h2>
-						<p style="font-size: 16px; color: #666;">
-							You do not have a <b>Report Preference</b> set up. <br>
-							Please contact your administrator to grant access.
-						</p>
+						${drishtiAccessDeniedBody(msg, "designation")}
 					</div>
 				`);
 				return;
@@ -10931,10 +10955,7 @@ class DrishtiDashboard {
 							<div style="text-align: center; padding: 100px 20px;">
 								<div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
 								<h2 style="color: #d32f2f;">Access Denied</h2>
-								<p style="font-size: 16px; color: #666;">
-									You do not have a <b>Report Preference</b> set up. <br>
-									Please contact your administrator to grant access.
-								</p>
+								${drishtiAccessDeniedBody(self.permissions, self.permissions.denied_reason || "preference")}
 							</div>
 						`);
 						return;
@@ -11091,10 +11112,7 @@ class DrishtiDashboard {
 							<div style="text-align: center; padding: 100px 20px;">
 								<div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
 								<h2 style="color: #d32f2f;">Access Denied</h2>
-								<p style="font-size: 16px; color: #666;">
-									You do not have a <b>Report Preference</b> set up. <br>
-									Please contact your administrator to grant access.
-								</p>
+								${drishtiAccessDeniedBody(self.permissions, self.permissions.denied_reason || "preference")}
 							</div>
 						`);
 						return;
