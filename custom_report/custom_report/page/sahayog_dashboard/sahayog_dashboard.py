@@ -6431,6 +6431,24 @@ def get_maturity_tracker_data(selected_date=None):
         ]
     )
 
+    # No data for the requested date (e.g. today) → fall back to the latest
+    # available date on/before it, like the other MIS reports do.
+    if not records:
+        latest = frappe.db.get_value("Maturity Tracker", {"date": ["<=", selected_date]}, "MAX(date)")
+        if not latest:
+            latest = frappe.db.get_value("Maturity Tracker", {}, "MAX(date)")
+        if latest and str(latest) != str(selected_date):
+            selected_date = str(latest)
+            records = frappe.db.get_all(
+                "Maturity Tracker",
+                filters={"date": selected_date},
+                fields=[
+                    "date", "cif_id", "acct_name", "sol_ids", "account_numbers",
+                    "account_count", "maturity_paid", "last_debit_transaction_date",
+                    "total_deposit_amount", "deposit_done_flag", "renewal_amount"
+                ]
+            )
+
     if not records:
         return []
 
