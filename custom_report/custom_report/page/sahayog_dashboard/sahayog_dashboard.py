@@ -245,20 +245,27 @@ def get_user_sol_ids():
     return {"user": user, "sol_ids": sol_ids, "employee_sol_id": employee_sol, "employee_zone": employee_zone, "employee_region": employee_region}
 
 
+def _get_drishti_designation_names():
+    """Ordered display names from Drishti Settings (Table MultiSelect)."""
+    try:
+        rows = frappe.get_single("Drishti Settings").get("designations") or []
+    except Exception:
+        return []
+    seen, names = set(), []
+    for r in rows:
+        n = str(r.get("designation") or "").strip()
+        if n and n.lower() not in seen:
+            seen.add(n.lower())
+            names.append(n)
+    return names
+
+
 def _get_allowed_drishti_designations():
     """
     Allowed designations from Drishti Settings (Table MultiSelect).
     Returns a lowercase set. Empty set = feature not configured (allow all).
     """
-    try:
-        rows = frappe.get_single("Drishti Settings").get("designations") or []
-    except Exception:
-        return set()
-    return {
-        str(r.get("designation") or "").strip().lower()
-        for r in rows
-        if r.get("designation")
-    }
+    return {n.lower() for n in _get_drishti_designation_names()}
 
 
 @frappe.whitelist()
@@ -267,6 +274,8 @@ def check_drishti_designation_access():
     Returns {"allowed": True/False} based on whether the current user's
     Employee designation is present in Drishti Settings designations.
     Empty settings list or Administrator = always allowed.
+    When blocked, also returns restricted_designations (all configured names)
+    and the user's designation.
     """
     user = frappe.session.user
     if user == "Administrator":
@@ -286,7 +295,13 @@ def check_drishti_designation_access():
     if not designation:
         return {"allowed": True}
     # Match = blocked (Access Denied + no activity log)
-    return {"allowed": str(designation).strip().lower() not in allowed}
+    if str(designation).strip().lower() in allowed:
+        return {
+            "allowed": False,
+            "restricted_designations": _get_drishti_designation_names(),
+            "user_designation": str(designation).strip(),
+        }
+    return {"allowed": True}
 
 
 def get_user_report_permissions(user):
@@ -337,6 +352,9 @@ def get_user_report_permissions(user):
     allowed_desigs = _get_allowed_drishti_designations()
     if allowed_desigs and designation in allowed_desigs:
         permissions["has_access"] = False
+        permissions["denied_reason"] = "designation"
+        permissions["restricted_designations"] = _get_drishti_designation_names()
+        permissions["user_designation"] = str(employee.get("designation") or "").strip() if employee else ""
         return permissions
 
     pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
@@ -6922,3 +6940,124 @@ def leave_page(page="sahayog_dashboard"):
 def get_page_visitors(page="sahayog_dashboard"):
     from sahayog.api.custom_api import get_page_visitors as _get
     return _get(page=page)
+
+
+# Report methods that still need @sahayog_cache (checked live against source)
+PENDING_CACHE_REPORTS = [
+    ("get_ntb_evr_data", "NTB / EVR MIS"),
+    ("get_cust_wise_avg_balance", "Cust Wise"),
+    ("get_raw_demand_collection_data", "Raw demand/collection"),
+    ("get_agent_wise_demand_collection_data", "Agent Wise"),
+    ("get_bucket_wise_account_mis_data", "Bucket Wise"),
+    ("get_new_account_report_data", "New Account Report"),
+    ("get_maturity_tracker_data", "Maturity Tracker"),
+    ("get_rm_wise_ss_vs_data", "RM Wise SS vs"),
+    ("get_rm_wise_category_breakdown", "RM Wise Category breakdown"),
+]
+
+
+@frappe.whitelist()
+def get_pending_action_items():
+    """Live work-status checks for the pending action items page."""
+    import os
+    import re
+    import subprocess
+
+    if "System Manager" not in frappe.get_roles():
+        frappe.throw("Not permitted", frappe.PermissionError)
+
+    page_py = frappe.get_app_path(
+        "custom_report", "custom_report", "page", "sahayog_dashboard", "sahayog_dashboard.py"
+    )
+    page_js = frappe.get_app_path(
+        "custom_report", "custom_report", "page", "sahayog_dashboard", "sahayog_dashboard.js"
+    )
+    with open(page_py) as f:
+        py_src = f.read()
+    with open(page_js) as f:
+        js_src = f.read()
+
+    items = []
+    seq = [0]
+
+    def add(title, category, priority, status):
+        seq[0] += 1
+        items.append({
+            "id": seq[0], "title": title, "category": category,
+            "priority": priority, "status": status,
+        })
+
+    # 1. Drishti Settings designations field
+    settings_json = frappe.get_app_path(
+        "custom_report", "custom_report", "doctype", "drishti_settings", "drishti_settings.json"
+    )
+    desig_ok = os.path.exists(settings_json) and "Table MultiSelect" in open(settings_json).read()
+    add("Drishti Settings designations field (Table MultiSelect)", "Drishti Settings", "High",
+        "done" if desig_ok else "pending")
+
+    # 2. Designation access gate
+    gate_ok = "check_drishti_designation_access" in py_src and "check_drishti_designation_access" in js_src
+    add("Designation access gate (match = Access Denied, skip activity log)", "Access Control", "High",
+        "done" if gate_ok else "pending")
+
+    # 3. RD & SMBG effective-date 24h cache
+    eff_cached = bool(re.search(r"@sahayog_cache\(ttl=86400\)\s*\ndef get_rd_smbg_pending_effective_date", py_src))
+    add("RD & SMBG effective-date 24h cache", "Performance", "Medium",
+        "done" if eff_cached else "pending")
+
+    # 4. Agent -> customer drilldown
+    drill_ok = "get_rd_smbg_agent_customers" in py_src and "buildRdCustomerRows" in js_src
+    add("RD & SMBG agent → customer drilldown", "RD & SMBG MIS", "High",
+        "done" if drill_ok else "pending")
+
+    # 5. Flat indentation
+    flat_ok = "mis-district-toggle\" style=\"cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;\">${districtExpanded" in js_src and "padding-left: 14px; font-weight: 600;\"><span class=\"mis-district-toggle\"" in js_src
+    add("Flatten RD & SMBG drilldown indentation", "UI", "Low",
+        "done" if flat_ok else "pending")
+
+    # 6-14. Remaining uncached reports (live source scan)
+    for func, label in PENDING_CACHE_REPORTS:
+        m = re.search(r"@sahayog_cache\([^\)]*\)\s*\ndef " + re.escape(func) + r"\(", py_src)
+        add("Add 24h @sahayog_cache to " + label + " (" + func + ")", "Performance", "Medium",
+            "done" if m else "pending")
+
+    # 15. Accidental doctype
+    bad_doctype = os.path.isdir(
+        frappe.get_app_path("custom_report", "custom_report", "doctype", "drishti_designation_restricted")
+    )
+    add("Delete accidental doctype drishti_designation_restricted", "Cleanup", "Low",
+        "blocked" if bad_doctype else "done")
+
+    # 16. Git: branches not pushed + uncommitted needed files
+    repo_dir = os.path.dirname(frappe.get_app_path("custom_report"))
+    try:
+        out = subprocess.run(
+            ["git", "for-each-ref", "--format=%(refname:short)|%(upstream:short)|%(upstream:track)",
+             "refs/heads"],
+            cwd=repo_dir, capture_output=True, text=True, timeout=10,
+        ).stdout
+        unpushed = []
+        for line in out.strip().splitlines():
+            parts = line.split("|")
+            if len(parts) >= 3 and parts[1] and "[ahead" in parts[2]:
+                unpushed.append(parts[0])
+            elif len(parts) >= 3 and not parts[1]:
+                unpushed.append(parts[0] + " (no upstream)")
+        add("Push branches to remote: " + (", ".join(unpushed) if unpushed else "all pushed"),
+            "Git", "Medium", "pending" if unpushed else "done")
+
+        st = subprocess.run(
+            ["git", "status", "--porcelain"], cwd=repo_dir, capture_output=True, text=True, timeout=10,
+        ).stdout.strip().splitlines()
+        never = ("README.md", "www/drishti.html", "public/frontend/", "frontend/src/", "Work_Log")
+        dirty = [l for l in st if not any(n in l for n in never)]
+        add("Uncommitted needed files: " + (str(len(dirty)) + " (" + "; ".join(l[2:].strip() for l in dirty[:4]) + ("…" if len(dirty) > 4 else "") + ")" if dirty else "none"),
+            "Git", "Low", "pending" if dirty else "done")
+    except Exception:
+        add("Git status check failed", "Git", "Low", "blocked")
+
+    counts = {"done": 0, "pending": 0, "blocked": 0}
+    for it in items:
+        counts[it["status"]] = counts.get(it["status"], 0) + 1
+
+    return {"items": items, "counts": counts, "generated_at": frappe.utils.now()}
