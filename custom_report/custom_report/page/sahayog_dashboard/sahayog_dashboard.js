@@ -6431,7 +6431,7 @@ class DrishtiDashboard {
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
 							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
-							<input type="text" id="rm-top-search" placeholder="Search Agent Code or Name..." style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 220px; outline: none;">
+							<input type="text" id="rm-top-search" placeholder="Search: 1001=SOL, RDDSA10014=Code, text=Name" style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 260px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
@@ -6568,10 +6568,23 @@ class DrishtiDashboard {
 					if (!self.pageSize) self.pageSize = 50;
 
 					if (self.filterQuery) {
-						data = data.filter(r =>
-							(r.agent_code || r.rm_id || "").toLowerCase().includes(self.filterQuery) ||
-							(r.agent_name || r.rm_name || "").toLowerCase().includes(self.filterQuery)
-						);
+						const q = self.filterQuery;
+						// "1001" (digits only) = SOL → search SOL code only
+						const isNumeric = /^\d+$/.test(q);
+						// "RDDSA10014" / "RDDSA" = agent code → search Code / ID only
+						const isAgentCodeLike = /^(rdds|ddds)/i.test(q) || (/[a-z]/i.test(q) && /\d/.test(q));
+						data = data.filter(r => {
+							if (isNumeric) {
+								return ((r.branch_code || "") + "").toLowerCase().includes(q);
+							}
+							if (isAgentCodeLike) {
+								return ((r.agent_code || r.rm_id || "") + "").toLowerCase().includes(q);
+							}
+							// Pure text → Z / R / D / SOL / Agent Name column only
+							const treeText = [r.zone, r.region, r.district, r.branch_code, r.branch_name, r.agent_name, r.rm_name]
+								.map((v) => (v == null ? "" : String(v)).toLowerCase()).join(" ");
+							return treeText.includes(q);
+						});
 					}
 
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
