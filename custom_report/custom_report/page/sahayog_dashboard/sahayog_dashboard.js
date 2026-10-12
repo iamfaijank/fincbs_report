@@ -4743,7 +4743,7 @@ class DrishtiDashboard {
 					const kpiCards = [
 						{ label: "Total Demand", value: cardAmt(totalDemand), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
 						{ label: "Total Collection", value: cardAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
-						{ label: "Collection %", value: wordsMode ? dashboardInstance.spellPercent(overallPct) : overallPct, color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
+						{ label: "Collection %", value: overallPct, color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
 						{ label: "Active Branches", value: cardCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
 						{ label: "Active Authorizers", value: cardCount(activeAuthorizers), color: "#f97316", bg: "#fff7ed", icon: "👥" }
 					];
@@ -5317,7 +5317,7 @@ class DrishtiDashboard {
 					const kpiCards = [
 						{ label: "Total Demand", value: cardAmt(totalDemand), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
 						{ label: "Total Collection", value: cardAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
-						{ label: "Collection %", value: wordsMode ? dashboardInstance.spellPercent(overallPct) : overallPct, color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
+						{ label: "Collection %", value: overallPct, color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
 						{ label: "Active Branches", value: cardCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
 						{ label: "Active Agents", value: cardCount(activeAgents), color: "#f97316", bg: "#fff7ed", icon: "👥" }
 					];
@@ -5934,7 +5934,7 @@ class DrishtiDashboard {
 						{ label: "Maturity Paid", value: cardAmt(totalPaid), color: "#ef4444", bg: "#fef2f2", icon: "💰" },
 						{ label: "Total Deposit Amount", value: cardAmt(totalDeposit), color: "#10b981", bg: "#ecfdf5", icon: "📊" },
 						{ label: "Renewal Amount", value: cardAmt(totalRenewal), color: "#3b82f6", bg: "#eff6ff", icon: "📈" },
-						{ label: "Renewal %", value: wordsMode ? dashboardInstance.spellPercent(totalRenewalPerc) : totalRenewalPerc, color: "#8b5cf6", bg: "#f5f3ff", icon: "📊" },
+						{ label: "Renewal %", value: totalRenewalPerc, color: "#8b5cf6", bg: "#f5f3ff", icon: "📊" },
 						{ label: "Total Accounts", value: cardCount(totalAccounts), color: "#8b5cf6", bg: "#f5f3ff", icon: "🔢" },
 						{ label: "Deposit Done Count", value: cardCount(depositDoneCount), color: "#06b6d4", bg: "#ecfeff", icon: "✅" }
 					];
