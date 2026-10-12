@@ -35,25 +35,42 @@ const loadDrishtiHolidays = (year) => {
 	return DRISHTI_HOLIDAY_PROMISES[year];
 };
 
+const isDrishtiNonWorkingDay = (year, monthIndex, day) => {
+	const date = new Date(year, monthIndex, day);
+	const dow = date.getDay();
+	if (dow === 0) return true; // Sunday
+	if (dow === 6 && (Math.ceil(day / 7) === 2 || Math.ceil(day / 7) === 4)) {
+		return true; // 2nd / 4th Saturday (bank holiday)
+	}
+	const holidays = DRISHTI_HOLIDAYS[year];
+	if (holidays && holidays.length) {
+		const key =
+			year +
+			"-" +
+			String(monthIndex + 1).padStart(2, "0") +
+			"-" +
+			String(day).padStart(2, "0");
+		if (holidays.indexOf(key) !== -1) return true; // national / state holiday
+	}
+	return false;
+};
+
 const getRemainingWorkingDaysExcludingSundays = (year, monthIndex, currentDay) => {
 	const lastDayOfMonth = new Date(year, monthIndex + 1, 0).getDate();
-	const holidays = DRISHTI_HOLIDAYS[year];
 	let workingDays = 0;
 	for (let day = currentDay; day <= lastDayOfMonth; day++) {
-		const date = new Date(year, monthIndex, day);
-		if (date.getDay() === 0) {
-			// 0 represents Sunday
-			continue;
-		}
-		if (holidays && holidays.length) {
-			const key =
-				year +
-				"-" +
-				String(monthIndex + 1).padStart(2, "0") +
-				"-" +
-				String(day).padStart(2, "0");
-			if (holidays.indexOf(key) !== -1) continue; // national / state holiday
-		}
+		if (isDrishtiNonWorkingDay(year, monthIndex, day)) continue;
+		workingDays++;
+	}
+	return workingDays;
+};
+
+// Working days elapsed in the month: day 1 through throughDay (inclusive),
+// excluding Sundays, 2nd/4th Saturdays and state holidays.
+const getElapsedWorkingDays = (year, monthIndex, throughDay) => {
+	let workingDays = 0;
+	for (let day = 1; day <= throughDay; day++) {
+		if (isDrishtiNonWorkingDay(year, monthIndex, day)) continue;
 		workingDays++;
 	}
 	return workingDays;
@@ -602,6 +619,32 @@ frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
 	fetchVisitors();
 };
 
+function drishtiEscape(v) {
+	return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function drishtiAccessDeniedBody(info, reason) {
+	if (reason === "designation") {
+		const desigs = (info && info.restricted_designations) || [];
+		return `
+			<p style="font-size: 16px; color: #666; margin-top: 8px;">
+				Drishti access is restricted for these <b>${desigs.length}</b> designation${desigs.length === 1 ? "" : "s"}:
+			</p>
+			<ul style="display: inline-block; text-align: left; margin-top: 8px; font-size: 15px; color: #444; list-style: none; padding: 0;">
+				${desigs.map((d) => `<li style="padding: 4px 0;">• <b>${drishtiEscape(d)}</b></li>`).join("")}
+			</ul>
+			${info && info.user_designation ? `<p style="font-size: 14px; color: #888; margin-top: 12px;">Your designation: <b>${drishtiEscape(info.user_designation)}</b></p>` : ""}
+			<p style="font-size: 14px; color: #888; margin-top: 12px;">Please contact your administrator for access.</p>
+		`;
+	}
+	return `
+		<p style="font-size: 16px; color: #666;">
+			You do not have a <b>Report Preference</b> set up. <br>
+			Please contact your administrator to grant access.
+		</p>
+	`;
+}
+
 frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 	// Inject Drishti title
 	document.title = "Drishti";
@@ -617,7 +660,8 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 		method:
 			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.check_drishti_designation_access",
 		callback: function (r) {
-			const allowed = !r || !r.message || r.message.allowed !== false;
+			const msg = (r && r.message) || {};
+			const allowed = msg.allowed !== false;
 			if (!allowed) {
 				if (frappe.pages["sahayog_dashboard"].cleanupVisitorTracking) {
 					frappe.pages["sahayog_dashboard"].cleanupVisitorTracking();
@@ -630,10 +674,7 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 					<div style="text-align: center; padding: 100px 20px;">
 						<div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
 						<h2 style="color: #d32f2f;">Access Denied</h2>
-						<p style="font-size: 16px; color: #666;">
-							You do not have a <b>Report Preference</b> set up. <br>
-							Please contact your administrator to grant access.
-						</p>
+						${drishtiAccessDeniedBody(msg, "designation")}
 					</div>
 				`);
 				return;
@@ -1013,6 +1054,7 @@ class DrishtiDashboard {
 									<th style="width: 40px; text-align: center;">Sr</th>
 									<th>Z / R / D / SOL Name</th>
 									<th style="text-align: center; width: 80px;">Branches</th>
+									<th style="text-align: center; width: 80px;">Level</th>
 									<th style="text-align: right; width: 100px;">Total Accounts</th>
 									<th style="text-align: right; width: 120px;">Total Collection</th>
 									<th style="text-align: right; width: 110px;">Pending Accounts</th>
@@ -1025,6 +1067,7 @@ class DrishtiDashboard {
 										<td><div class="mis-skeleton-pulse" style="width: 20px; margin: auto;"></div></td>
 										<td><div class="mis-skeleton-pulse" style="width: ${120 + Math.random() * 60}px;"></div></td>
 										<td><div class="mis-skeleton-pulse" style="width: 30px; margin: auto;"></div></td>
+										<td><div class="mis-skeleton-pulse" style="width: 40px; margin: auto;"></div></td>
 										<td><div class="mis-skeleton-pulse" style="width: ${50 + Math.random() * 30}px; margin-left: auto;"></div></td>
 										<td><div class="mis-skeleton-pulse" style="width: ${60 + Math.random() * 30}px; margin-left: auto;"></div></td>
 										<td><div class="mis-skeleton-pulse" style="width: ${50 + Math.random() * 20}px; margin-left: auto;"></div></td>
@@ -1271,6 +1314,7 @@ class DrishtiDashboard {
 								${c.maturity_date ? `<span style="color: #94a3b8; font-size: 11px;"> • Mat: ${_esc(c.maturity_date)}</span>` : ""}
 							</td>
 							<td style="padding: 4px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 11px; font-weight: 500;">${_esc(c.schm_desc || "")}</td>
+							<td style="padding: 4px 14px; text-align: center; white-space: nowrap;"><span style="background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">Customer</span></td>
 							${metricCols.map(mc => `<td style="padding: 4px 14px; color: #64748b; text-align: ${mc.align}; white-space: nowrap; font-size: 12px; font-weight: 500;">${mc.fmt(custMetric[mc.key])}</td>`).join('')}
 						</tr>`;
 					});
@@ -1311,17 +1355,17 @@ class DrishtiDashboard {
 									};
 									$loading.replaceWith(self.buildRdCustomerRows(agentKey, list, true, ctx));
 								} else {
-									$loading.replaceWith(`<tr class="mis-agent-row mis-customer-row" data-agent-key="${_esc(agentKey)}" style="display: table-row; background: #ffffff; border-bottom: 1px solid #f1f5f9;">
-										<td></td>
-										<td></td>
-										<td colspan="7" style="padding: 6px 14px; padding-left: 14px; font-size: 12px; color: #94a3b8;">No customers found</td>
-									</tr>`);
+								$loading.replaceWith(`<tr class="mis-agent-row mis-customer-row" data-agent-key="${_esc(agentKey)}" style="display: table-row; background: #ffffff; border-bottom: 1px solid #f1f5f9;">
+									<td></td>
+									<td></td>
+									<td colspan="8" style="padding: 6px 14px; padding-left: 14px; font-size: 12px; color: #94a3b8;">No customers found</td>
+								</tr>`);
 								}
 							}
 						},
 						error: function () {
 							self._rdCustFetching[custKey] = false;
-							tableContainer.find(`.mis-customer-loading[data-agent-key="${agentKey}"] td[colspan="7"]`).text("Failed to load customers");
+							tableContainer.find(`.mis-customer-loading[data-agent-key="${agentKey}"] td[colspan="8"]`).text("Failed to load customers");
 						}
 					});
 				},
@@ -1481,6 +1525,7 @@ class DrishtiDashboard {
 						{ key: "pending_amount", label: "Pending Amount", align: "right", fmt: fmtAmt }
 					];
 					self._misMetricCols = metricCols;
+					const levelBadge = (label, bg, fg, bd) => `<span style="background: ${bg}; color: ${fg}; border: 1px solid ${bd}; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">${label}</span>`;
 					let pendingCustFetch = [];
 					let sr = 0;
 					let rowsHtml = "";
@@ -1494,6 +1539,7 @@ class DrishtiDashboard {
 							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: center; white-space: nowrap; width: 40px; font-size: 14px;">${sr}</td>
 							<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; white-space: nowrap; font-size: 14px;"><span class="mis-zone-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #64748b;">${zoneExpanded ? "▼" : "▶"}</span>${z.zone}</td>
 							<td style="padding: 10px 14px; font-weight: 700; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px;">${zoneRow.branches.length}</td>
+							<td style="padding: 10px 14px; text-align: center; white-space: nowrap;">${levelBadge("Zone", "#f1f5f9", "#334155", "#cbd5e1")}</td>
 							${metricCols.map(mc => `<td style="padding: 10px 14px; font-weight: 700; color: #0f172a; text-align: ${mc.align}; white-space: nowrap; font-size: 14px;">${mc.fmt(zoneRow[mc.key])}</td>`).join('')}
 						</tr>`;
 						z.regions.forEach(regionObj => {
@@ -1506,6 +1552,7 @@ class DrishtiDashboard {
 								<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 								<td style="padding: 8px 14px; color: #334155; white-space: nowrap; font-size: 14px; padding-left: 14px; font-weight: 600;"><span class="mis-region-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #94a3b8;">${regionExpanded ? "▼" : "▶"}</span>${region}</td>
 								<td style="padding: 8px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${regionObj.data.branches.length}</td>
+								<td style="padding: 8px 14px; text-align: center; white-space: nowrap;">${levelBadge("Region", "#e0f2fe", "#075985", "#bae6fd")}</td>
 								${metricCols.map(mc => `<td style="padding: 8px 14px; color: #334155; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(regionObj.data[mc.key])}</td>`).join('')}
 							</tr>`;
 							regionObj.districts.forEach(districtObj => {
@@ -1519,6 +1566,7 @@ class DrishtiDashboard {
 									<td style="padding: 7px 14px; color: #78716c; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 <td style="padding: 7px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 14px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}</td>
 								<td style="padding: 7px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${districtObj.branches.length}</td>
+									<td style="padding: 7px 14px; text-align: center; white-space: nowrap;">${levelBadge("District", "#ccfbf1", "#115e59", "#5eead4")}</td>
 									${metricCols.map(mc => `<td style="padding: 7px 14px; color: #44403c; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(districtObj[mc.key])}</td>`).join('')}
 								</tr>`;
 								districtObj.branches.forEach((branch, bi) => {
@@ -1537,6 +1585,7 @@ class DrishtiDashboard {
 									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 									<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 14px; font-weight: 500;">${branchToggle}${branch.sol_id} - ${_esc(branch.branch_name || branch.sol_desc)}${details.length ? `<button type="button" class="mis-branch-dl" data-sol="${_esc(solId)}" title="Download this branch's drilldown (CSV)" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; CSV</button><button type="button" class="mis-branch-xls" data-sol="${_esc(solId)}" title="Download this branch's drilldown (Excel)" style="margin-left: 4px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; XLS</button>` : ""}</td>
 									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
+									<td style="padding: 6px 14px; text-align: center; white-space: nowrap;">${levelBadge("Branch", "#fef9c3", "#854d0e", "#fde047")}</td>
 									${metricCols.map(mc => `<td style="padding: 6px 14px; color: #475569; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(branch[mc.key])}</td>`).join('')}
 								</tr>`;
 									if (details.length) {
@@ -1566,6 +1615,7 @@ class DrishtiDashboard {
 												<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 												<td style="padding: 6px 14px; color: #92400e; white-space: nowrap; font-size: 14px; padding-left: 14px; font-weight: 600;">${authArrow}Auth: ${_esc(authLabel)}</td>
 												<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${a.agents.length}</td>
+												<td style="padding: 6px 14px; text-align: center; white-space: nowrap;">${levelBadge("Auth", "#fef3c7", "#92400e", "#fcd34d")}</td>
 												${metricCols.map(mc => `<td style="padding: 6px 14px; color: #92400e; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(a[mc.key])}</td>`).join('')}
 											</tr>`;
 										a.agents.forEach(agent => {
@@ -1580,6 +1630,7 @@ class DrishtiDashboard {
 												<td style="padding: 5px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
 												<td style="padding: 5px 14px; color: #64748b; white-space: nowrap; font-size: 13px; padding-left: 14px; font-weight: 500;">${agentArrow}Agent: ${_esc(agentRmId + " - " + (agent.rm_name || ""))}</td>
 												<td style="padding: 5px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 13px; font-weight: 500;">1</td>
+												<td style="padding: 5px 14px; text-align: center; white-space: nowrap;">${levelBadge("Agent", "#ede9fe", "#5b21b6", "#ddd6fe")}</td>
 												${metricCols.map(mc => `<td style="padding: 5px 14px; color: #64748b; text-align: ${mc.align}; white-space: nowrap; font-size: 13px; font-weight: 500;">${mc.fmt(agent[mc.key])}</td>`).join('')}
 											</tr>`;
 											if (agentExpanded) {
@@ -1589,10 +1640,10 @@ class DrishtiDashboard {
 														sol: solId, auth: authId, rm: agentRmId, bg: branchBg
 													});
 												} else if (!custList) {
-													rowsHtml += `<tr class="mis-agent-row mis-customer-row mis-customer-loading" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-sol="${_esc(solId)}" data-auth="${_esc(authId)}" data-rm="${_esc(agentRmId)}" data-agent-key="${_esc(agentKey)}" style="display: ${showAgents ? "table-row" : "none"}; background: #ffffff; border-bottom: 1px solid #f1f5f9;">
+													rowsHtml += `													<tr class="mis-agent-row mis-customer-row mis-customer-loading" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-sol="${_esc(solId)}" data-auth="${_esc(authId)}" data-rm="${_esc(agentRmId)}" data-agent-key="${_esc(agentKey)}" style="display: ${showAgents ? "table-row" : "none"}; background: #ffffff; border-bottom: 1px solid #f1f5f9;">
 														<td></td>
 														<td></td>
-														<td colspan="7" style="padding: 6px 14px; padding-left: 14px; font-size: 12px; color: #94a3b8;">Loading customers…</td>
+														<td colspan="8" style="padding: 6px 14px; padding-left: 14px; font-size: 12px; color: #94a3b8;">Loading customers…</td>
 													</tr>`;
 													pendingCustFetch.push(agentKey);
 												}
@@ -1626,6 +1677,7 @@ class DrishtiDashboard {
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap; width: 40px;">Sr</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; white-space: nowrap;">Z / R / D / SOL Name</th>
 									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">Branches</th>
+									<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; white-space: nowrap;">Level</th>
 									${metricCols.map(mc => `<th style="padding: 10px 12px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; text-align: ${mc.align}; white-space: nowrap;">${mc.label}</th>`).join('')}
 								</tr></thead>
 								<tbody>${rowsHtml}</tbody>
@@ -1634,6 +1686,7 @@ class DrishtiDashboard {
 									<td style="padding: 10px 12px; text-align: center;"></td>
 									<td style="padding: 10px 12px; text-align: left; white-space: nowrap; font-size: 14px;">TOTAL</td>
 									<td style="padding: 10px 12px; text-align: center; white-space: nowrap; font-size: 14px;">${zoneData.reduce((s, z) => s + z.data.branches.length, 0)}</td>
+									<td style="padding: 10px 12px;"></td>
 									${metricCols.map(mc => `<td style="padding: 10px 12px; text-align: ${mc.align}; white-space: nowrap; font-size: 14px;">${mc.fmt(grandTotal[mc.key])}</td>`).join('')}
 								</tr></tfoot>
 							</table>
@@ -1799,7 +1852,7 @@ class DrishtiDashboard {
 								$(this).after(`<tr class="mis-agent-row mis-customer-row mis-customer-loading" data-zone="${$(this).attr("data-zone") || ""}" data-region="${$(this).attr("data-region") || ""}" data-district="${$(this).attr("data-district") || ""}" data-sol="${$(this).attr("data-sol") || ""}" data-auth="${$(this).attr("data-auth") || ""}" data-rm="${$(this).attr("data-rm") || ""}" data-agent-key="${_esc(key)}" style="display: table-row; background: #ffffff; border-bottom: 1px solid #f1f5f9;">
 									<td></td>
 									<td></td>
-									<td colspan="7" style="padding: 6px 14px; padding-left: 14px; font-size: 12px; color: #94a3b8;">Loading customers…</td>
+									<td colspan="8" style="padding: 6px 14px; padding-left: 14px; font-size: 12px; color: #94a3b8;">Loading customers…</td>
 								</tr>`);
 								self.fetchRdAgentCustomers(key, tableContainer, selDate);
 							}
@@ -3861,8 +3914,8 @@ class DrishtiDashboard {
 									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${solId}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0;">
 										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${solId}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 500;">${branch.sol_id} - ${branch.sol_desc || branch.branch_name}</td>
-										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
+									<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 500;">${branch.sol_id} - ${branch.sol_desc || branch.branch_name}</td>
+									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
 										${buckets.map(b => `<td style="padding: 6px 14px; color: #475569; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">${fmtCount(branch[b])}</td>`).join('')}
 										<td style="padding: 6px 14px; color: #475569; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 700; background: #f8fafc;">${fmtCount(branch.grand_total)}</td>
 									</tr>`;
@@ -4707,7 +4760,7 @@ class DrishtiDashboard {
 					const kpiCards = [
 						{ label: "Total Demand", value: cardAmt(totalDemand), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
 						{ label: "Total Collection", value: cardAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
-						{ label: "Collection %", value: wordsMode ? dashboardInstance.spellPercent(overallPct) : overallPct, color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
+						{ label: "Collection %", value: overallPct, color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
 						{ label: "Active Branches", value: cardCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
 						{ label: "Active Authorizers", value: cardCount(activeAuthorizers), color: "#f97316", bg: "#fff7ed", icon: "👥" }
 					];
@@ -5281,7 +5334,7 @@ class DrishtiDashboard {
 					const kpiCards = [
 						{ label: "Total Demand", value: cardAmt(totalDemand), color: "#3b82f6", bg: "#eff6ff", icon: "📊" },
 						{ label: "Total Collection", value: cardAmt(totalCollection), color: "#10b981", bg: "#ecfdf5", icon: "💰" },
-						{ label: "Collection %", value: wordsMode ? dashboardInstance.spellPercent(overallPct) : overallPct, color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
+						{ label: "Collection %", value: overallPct, color: "#8b5cf6", bg: "#f5f3ff", icon: "📈" },
 						{ label: "Active Branches", value: cardCount(activeBranches), color: "#06b6d4", bg: "#ecfeff", icon: "🏢" },
 						{ label: "Active Agents", value: cardCount(activeAgents), color: "#f97316", bg: "#fff7ed", icon: "👥" }
 					];
@@ -5898,7 +5951,7 @@ class DrishtiDashboard {
 						{ label: "Maturity Paid", value: cardAmt(totalPaid), color: "#ef4444", bg: "#fef2f2", icon: "💰" },
 						{ label: "Total Deposit Amount", value: cardAmt(totalDeposit), color: "#10b981", bg: "#ecfdf5", icon: "📊" },
 						{ label: "Renewal Amount", value: cardAmt(totalRenewal), color: "#3b82f6", bg: "#eff6ff", icon: "📈" },
-						{ label: "Renewal %", value: wordsMode ? dashboardInstance.spellPercent(totalRenewalPerc) : totalRenewalPerc, color: "#8b5cf6", bg: "#f5f3ff", icon: "📊" },
+						{ label: "Renewal %", value: totalRenewalPerc, color: "#8b5cf6", bg: "#f5f3ff", icon: "📊" },
 						{ label: "Total Accounts", value: cardCount(totalAccounts), color: "#8b5cf6", bg: "#f5f3ff", icon: "🔢" },
 						{ label: "Deposit Done Count", value: cardCount(depositDoneCount), color: "#06b6d4", bg: "#ecfeff", icon: "✅" }
 					];
@@ -6407,7 +6460,7 @@ class DrishtiDashboard {
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
 							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
-							<input type="text" id="rm-top-search" placeholder="Search Agent Code or Name..." style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 220px; outline: none;">
+							<input type="text" id="rm-top-search" placeholder="Search: 1001=SOL, RDDSA10014=Code, text=Name" style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 260px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
@@ -6544,10 +6597,23 @@ class DrishtiDashboard {
 					if (!self.pageSize) self.pageSize = 50;
 
 					if (self.filterQuery) {
-						data = data.filter(r =>
-							(r.agent_code || r.rm_id || "").toLowerCase().includes(self.filterQuery) ||
-							(r.agent_name || r.rm_name || "").toLowerCase().includes(self.filterQuery)
-						);
+						const q = self.filterQuery;
+						// "1001" (digits only) = SOL → search SOL code only
+						const isNumeric = /^\d+$/.test(q);
+						// "RDDSA10014" / "RDDSA" = agent code → search Code / ID only
+						const isAgentCodeLike = /^(rdds|ddds)/i.test(q) || (/[a-z]/i.test(q) && /\d/.test(q));
+						data = data.filter(r => {
+							if (isNumeric) {
+								return ((r.branch_code || "") + "").toLowerCase().includes(q);
+							}
+							if (isAgentCodeLike) {
+								return ((r.agent_code || r.rm_id || "") + "").toLowerCase().includes(q);
+							}
+							// Pure text → Z / R / D / SOL / Agent Name column only
+							const treeText = [r.zone, r.region, r.district, r.branch_code, r.branch_name, r.agent_name, r.rm_name]
+								.map((v) => (v == null ? "" : String(v)).toLowerCase()).join(" ");
+							return treeText.includes(q);
+						});
 					}
 
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
@@ -10931,10 +10997,7 @@ class DrishtiDashboard {
 							<div style="text-align: center; padding: 100px 20px;">
 								<div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
 								<h2 style="color: #d32f2f;">Access Denied</h2>
-								<p style="font-size: 16px; color: #666;">
-									You do not have a <b>Report Preference</b> set up. <br>
-									Please contact your administrator to grant access.
-								</p>
+								${drishtiAccessDeniedBody(self.permissions, self.permissions.denied_reason || "preference")}
 							</div>
 						`);
 						return;
@@ -11091,10 +11154,7 @@ class DrishtiDashboard {
 							<div style="text-align: center; padding: 100px 20px;">
 								<div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
 								<h2 style="color: #d32f2f;">Access Denied</h2>
-								<p style="font-size: 16px; color: #666;">
-									You do not have a <b>Report Preference</b> set up. <br>
-									Please contact your administrator to grant access.
-								</p>
+								${drishtiAccessDeniedBody(self.permissions, self.permissions.denied_reason || "preference")}
 							</div>
 						`);
 						return;
@@ -11750,6 +11810,7 @@ class DrishtiDashboard {
 				months: {
 					[latestMonthKey]: {
 						count: 0,
+						revenue: 0,
 						changes: { increased: [], decreased: [] }, // No previous day data for reaggregation
 						zone_breakdown: {},
 					},
@@ -11762,6 +11823,7 @@ class DrishtiDashboard {
 			if (monthData && aggregatedCategories[monthData.category]) {
 				const catAgg = aggregatedCategories[monthData.category].months[latestMonthKey];
 				catAgg.count += 1;
+				catAgg.revenue += parseFloat(monthData.achievement || 0);
 				catAgg.zone_breakdown[branch.zone] = (catAgg.zone_breakdown[branch.zone] || 0) + 1;
 			}
 		});
@@ -13020,10 +13082,12 @@ class DrishtiDashboard {
 
 		// Calculate Totals based on reaggregatedCategoryData
 		let totalBranches = 0;
+		let totalRevenue = 0;
 		reaggregatedCategoryData.forEach((catData) => {
 			const monthData = catData.months[latestMonthKey];
 			if (monthData) {
 				totalBranches += monthData.count || 0;
+				totalRevenue += parseFloat(monthData.revenue || 0);
 			}
 		});
 
@@ -13046,11 +13110,12 @@ class DrishtiDashboard {
     <table class="table table-bordered category-table-redesigned">
         <thead>
             <tr>
-                <th style="width: 25%;">Category</th>
-                <th style="width: 15%;">Performance Band</th>
-                <th style="width: 15%;">Branch Count</th>
-                <th style="width: 20%;">Movement (vs Prev. Day)</th>
-                <th style="width: 25%; position: relative;">
+                <th style="width: 22%;">Category</th>
+                <th style="width: 12%;">Performance Band</th>
+                <th style="width: 12%;">Branch Count</th>
+                <th style="width: 14%; text-align: right;">Revenue</th>
+                <th style="width: 16%;">Movement (vs Prev. Day)</th>
+                <th style="width: 24%; position: relative;">
                     Health Status
                     <div class="category-view-toggle btn-group" role="group" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: #ffffff; padding: 2px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">
                         <button type="button" class="btn btn-xs cat-toggle-btn ${this.state.categoryViewMode === "chart" ? "active btn-primary" : "btn-default"}" data-mode="chart" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: ${this.state.categoryViewMode === "chart" ? "#ffffff" : "#475569"}; background-color: ${this.state.categoryViewMode === "chart" ? "#346569" : "transparent"};">
@@ -13110,6 +13175,7 @@ class DrishtiDashboard {
                 <td class="count-cell drill-cell" data-category="${catName}" data-month="${latestMonthKey}">
                     <span class="drill-link" style="color: ${config.color}; font-weight: 800;">${count}</span>
                 </td>
+                <td class="revenue-cell" style="text-align: right; color: ${config.color}; font-weight: 700; white-space: nowrap;">₹${this.formatCurrency(monthData?.revenue || 0)}</td>
                 <td class="movement-cell" data-changes='${JSON.stringify(filteredChanges)}'>
                     <div class="movement-summary">
                         ${upCount > 0 ? `<span class="mov-up">↑ ${upCount}</span>` : ""}
@@ -13132,7 +13198,7 @@ class DrishtiDashboard {
 			if (isExpanded) {
 				html += `
                 <tr class="zone-breakdown-row-redesigned" data-category-parent="${catName}">
-                    <td colspan="5">
+                    <td colspan="6">
                         <div class="zone-breakdown-container">
                             <div class="zone-breakdown-cards-container">
                                 ${this.availableFilters.zones
@@ -13169,6 +13235,7 @@ class DrishtiDashboard {
                     <td>Total</td>
                     <td></td>
                     <td class="count-cell">${totalBranches}</td>
+                    <td style="text-align: right; white-space: nowrap;">₹${this.formatCurrency(totalRevenue)}</td>
                     <td class="total-movement-cell" data-totals='${JSON.stringify({ increased: totalIncreasedBranches, decreased: totalDecreasedBranches })}'>
                         <div class="movement-summary">
                             <span class="mov-up">↑ ${totalUp}</span>
@@ -15402,14 +15469,16 @@ class DrishtiDashboard {
 
 		const remainingWorkingDays = getRemainingWorkingDaysExcludingSundays(todayYear, todayMonth, todayDay);
 
-		// Actual DRR = Achievement Till Date / Calendar Days Elapsed in the month
-		const actualDrr = daysElapsed > 0 ? totalAch / daysElapsed : null;
+		// Actual DRR = Achievement Till Date / Working Days Elapsed in the month
+		// (excludes Sundays, 2nd/4th Saturdays + state holidays; Oct 12 -> 8 days)
+		const elapsedWorkingDays = getElapsedWorkingDays(drrDate.getFullYear(), drrDate.getMonth(), daysElapsed);
+		const actualDrr = elapsedWorkingDays > 0 ? totalAch / elapsedWorkingDays : null;
 		this.page.main
 			.find("#summary-actual-drr")
 			.text(actualDrr != null ? "₹" + this.formatCurrency(actualDrr) : "-");
 
 		// Required DRR = (Monthly Target - Achievement Till Date) / Remaining Working Days
-		// (excludes Sundays + national/state holidays from the Maharashtra holiday list)
+		// (excludes Sundays + 2nd/4th Saturdays + national/state holidays)
 		const requiredGap = Math.max(0, totalTarget - totalAch);
 		const requiredDrr = remainingWorkingDays > 0 ? requiredGap / remainingWorkingDays : null;
 		this.page.main
