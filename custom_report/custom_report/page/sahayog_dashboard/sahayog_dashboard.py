@@ -1443,8 +1443,11 @@ def build_category_wise(branch_data, targets_map, months, target_type):
                 zone_breakdown[cat][zone] += 1
                 
                 category_counts.setdefault(cat, {})
-                category_counts[cat].setdefault(month_key, {"count": 0, "zone_breakdown": {}, "changes": None})
+                category_counts[cat].setdefault(month_key, {"count": 0, "revenue": 0.0, "zone_breakdown": {}, "changes": None})
                 category_counts[cat][month_key]["count"] += 1
+                category_counts[cat][month_key]["revenue"] = round(
+                    category_counts[cat][month_key]["revenue"] + ach, 2
+                )
         
         # 🚀 Add zone breakdown to category data
         for cat in CATEGORY_ORDER:
