@@ -11793,6 +11793,7 @@ class DrishtiDashboard {
 				months: {
 					[latestMonthKey]: {
 						count: 0,
+						revenue: 0,
 						changes: { increased: [], decreased: [] }, // No previous day data for reaggregation
 						zone_breakdown: {},
 					},
@@ -11805,6 +11806,7 @@ class DrishtiDashboard {
 			if (monthData && aggregatedCategories[monthData.category]) {
 				const catAgg = aggregatedCategories[monthData.category].months[latestMonthKey];
 				catAgg.count += 1;
+				catAgg.revenue += parseFloat(monthData.achievement || 0);
 				catAgg.zone_breakdown[branch.zone] = (catAgg.zone_breakdown[branch.zone] || 0) + 1;
 			}
 		});
@@ -13063,10 +13065,12 @@ class DrishtiDashboard {
 
 		// Calculate Totals based on reaggregatedCategoryData
 		let totalBranches = 0;
+		let totalRevenue = 0;
 		reaggregatedCategoryData.forEach((catData) => {
 			const monthData = catData.months[latestMonthKey];
 			if (monthData) {
 				totalBranches += monthData.count || 0;
+				totalRevenue += parseFloat(monthData.revenue || 0);
 			}
 		});
 
@@ -13089,11 +13093,12 @@ class DrishtiDashboard {
     <table class="table table-bordered category-table-redesigned">
         <thead>
             <tr>
-                <th style="width: 25%;">Category</th>
-                <th style="width: 15%;">Performance Band</th>
-                <th style="width: 15%;">Branch Count</th>
-                <th style="width: 20%;">Movement (vs Prev. Day)</th>
-                <th style="width: 25%; position: relative;">
+                <th style="width: 22%;">Category</th>
+                <th style="width: 12%;">Performance Band</th>
+                <th style="width: 12%;">Branch Count</th>
+                <th style="width: 14%; text-align: right;">Revenue</th>
+                <th style="width: 16%;">Movement (vs Prev. Day)</th>
+                <th style="width: 24%; position: relative;">
                     Health Status
                     <div class="category-view-toggle btn-group" role="group" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: #ffffff; padding: 2px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">
                         <button type="button" class="btn btn-xs cat-toggle-btn ${this.state.categoryViewMode === "chart" ? "active btn-primary" : "btn-default"}" data-mode="chart" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; color: ${this.state.categoryViewMode === "chart" ? "#ffffff" : "#475569"}; background-color: ${this.state.categoryViewMode === "chart" ? "#346569" : "transparent"};">
@@ -13153,6 +13158,7 @@ class DrishtiDashboard {
                 <td class="count-cell drill-cell" data-category="${catName}" data-month="${latestMonthKey}">
                     <span class="drill-link" style="color: ${config.color}; font-weight: 800;">${count}</span>
                 </td>
+                <td class="revenue-cell" style="text-align: right; color: ${config.color}; font-weight: 700; white-space: nowrap;">₹${this.formatCurrency(monthData?.revenue || 0)}</td>
                 <td class="movement-cell" data-changes='${JSON.stringify(filteredChanges)}'>
                     <div class="movement-summary">
                         ${upCount > 0 ? `<span class="mov-up">↑ ${upCount}</span>` : ""}
@@ -13175,7 +13181,7 @@ class DrishtiDashboard {
 			if (isExpanded) {
 				html += `
                 <tr class="zone-breakdown-row-redesigned" data-category-parent="${catName}">
-                    <td colspan="5">
+                    <td colspan="6">
                         <div class="zone-breakdown-container">
                             <div class="zone-breakdown-cards-container">
                                 ${this.availableFilters.zones
@@ -13212,6 +13218,7 @@ class DrishtiDashboard {
                     <td>Total</td>
                     <td></td>
                     <td class="count-cell">${totalBranches}</td>
+                    <td style="text-align: right; white-space: nowrap;">₹${this.formatCurrency(totalRevenue)}</td>
                     <td class="total-movement-cell" data-totals='${JSON.stringify({ increased: totalIncreasedBranches, decreased: totalDecreasedBranches })}'>
                         <div class="movement-summary">
                             <span class="mov-up">↑ ${totalUp}</span>
