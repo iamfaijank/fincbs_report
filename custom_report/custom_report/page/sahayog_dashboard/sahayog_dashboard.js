@@ -35,25 +35,42 @@ const loadDrishtiHolidays = (year) => {
 	return DRISHTI_HOLIDAY_PROMISES[year];
 };
 
+const isDrishtiNonWorkingDay = (year, monthIndex, day) => {
+	const date = new Date(year, monthIndex, day);
+	const dow = date.getDay();
+	if (dow === 0) return true; // Sunday
+	if (dow === 6 && (Math.ceil(day / 7) === 2 || Math.ceil(day / 7) === 4)) {
+		return true; // 2nd / 4th Saturday (bank holiday)
+	}
+	const holidays = DRISHTI_HOLIDAYS[year];
+	if (holidays && holidays.length) {
+		const key =
+			year +
+			"-" +
+			String(monthIndex + 1).padStart(2, "0") +
+			"-" +
+			String(day).padStart(2, "0");
+		if (holidays.indexOf(key) !== -1) return true; // national / state holiday
+	}
+	return false;
+};
+
 const getRemainingWorkingDaysExcludingSundays = (year, monthIndex, currentDay) => {
 	const lastDayOfMonth = new Date(year, monthIndex + 1, 0).getDate();
-	const holidays = DRISHTI_HOLIDAYS[year];
 	let workingDays = 0;
 	for (let day = currentDay; day <= lastDayOfMonth; day++) {
-		const date = new Date(year, monthIndex, day);
-		if (date.getDay() === 0) {
-			// 0 represents Sunday
-			continue;
-		}
-		if (holidays && holidays.length) {
-			const key =
-				year +
-				"-" +
-				String(monthIndex + 1).padStart(2, "0") +
-				"-" +
-				String(day).padStart(2, "0");
-			if (holidays.indexOf(key) !== -1) continue; // national / state holiday
-		}
+		if (isDrishtiNonWorkingDay(year, monthIndex, day)) continue;
+		workingDays++;
+	}
+	return workingDays;
+};
+
+// Working days elapsed in the month: day 1 through throughDay (inclusive),
+// excluding Sundays, 2nd/4th Saturdays and state holidays.
+const getElapsedWorkingDays = (year, monthIndex, throughDay) => {
+	let workingDays = 0;
+	for (let day = 1; day <= throughDay; day++) {
+		if (isDrishtiNonWorkingDay(year, monthIndex, day)) continue;
 		workingDays++;
 	}
 	return workingDays;
@@ -15452,14 +15469,16 @@ class DrishtiDashboard {
 
 		const remainingWorkingDays = getRemainingWorkingDaysExcludingSundays(todayYear, todayMonth, todayDay);
 
-		// Actual DRR = Achievement Till Date / Calendar Days Elapsed in the month
-		const actualDrr = daysElapsed > 0 ? totalAch / daysElapsed : null;
+		// Actual DRR = Achievement Till Date / Working Days Elapsed in the month
+		// (excludes Sundays, 2nd/4th Saturdays + state holidays; Oct 12 -> 8 days)
+		const elapsedWorkingDays = getElapsedWorkingDays(drrDate.getFullYear(), drrDate.getMonth(), daysElapsed);
+		const actualDrr = elapsedWorkingDays > 0 ? totalAch / elapsedWorkingDays : null;
 		this.page.main
 			.find("#summary-actual-drr")
 			.text(actualDrr != null ? "₹" + this.formatCurrency(actualDrr) : "-");
 
 		// Required DRR = (Monthly Target - Achievement Till Date) / Remaining Working Days
-		// (excludes Sundays + national/state holidays from the Maharashtra holiday list)
+		// (excludes Sundays + 2nd/4th Saturdays + national/state holidays)
 		const requiredGap = Math.max(0, totalTarget - totalAch);
 		const requiredDrr = remainingWorkingDays > 0 ? requiredGap / remainingWorkingDays : null;
 		this.page.main
