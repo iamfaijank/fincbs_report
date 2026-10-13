@@ -7690,9 +7690,19 @@ class DrishtiDashboard {
 				tableData: [],
 				render: function (container, dashboardInstance) {
 					container.html(`
-						<div style="display: flex; align-items: center; justify-content: center; min-height: 200px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; color: #64748b;">
-							not yet
-						</div>
+						<table style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
+							<thead>
+								<tr>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">Particulars</th>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right;">Amount</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td colspan="2" style="padding: 40px 12px; text-align: center; font-size: 14px; font-weight: 600; color: #64748b;">not yet</td>
+								</tr>
+							</tbody>
+						</table>
 					`);
 				}
 			}
