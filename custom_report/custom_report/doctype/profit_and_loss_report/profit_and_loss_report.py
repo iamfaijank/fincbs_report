@@ -354,15 +354,19 @@ def sync_profit_and_loss_data(sync_date):
 
 
 @frappe.whitelist()
-def get_pl_summary():
+def get_pl_summary(report_date=None):
 	"""Sum balance grouped by schedule/sub_schedule for schedules >= 13."""
 	rows = frappe.db.sql(
 		"""
 		SELECT schedule, sub_schedule, SUM(balance) AS total_balance
 		FROM `tabProfit and Loss Report`
 		WHERE COALESCE(schedule, '') != ''
+		{date_filter}
 		GROUP BY schedule, sub_schedule
-		""",
+		""".format(
+			date_filter="AND report_date = %s" if report_date else ""
+		),
+		tuple([report_date]) if report_date else (),
 		as_dict=True,
 	)
 
@@ -391,3 +395,11 @@ def get_pl_summary():
 		entry["total_balance"] = sum(s["total_balance"] for s in entry["sub_schedules"])
 		result.append(entry)
 	return result
+
+
+@frappe.whitelist()
+def get_latest_pl_date():
+	"""Return the latest report_date present in Profit and Loss Report."""
+	return frappe.db.get_value(
+		"Profit and Loss Report", {}, "report_date", order_by="report_date desc"
+	)

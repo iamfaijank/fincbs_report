@@ -7689,6 +7689,7 @@ class DrishtiDashboard {
 				name: "Profit and Loss Report",
 				tableData: [],
 				render: function (container, dashboardInstance) {
+					const self = this;
 					const fmt = (n) => {
 						const v = Number(n) || 0;
 						return Math.abs(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -7699,6 +7700,11 @@ class DrishtiDashboard {
 							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 40%; background: #e2e8f0; border-radius: 4px; margin-left: auto;"></div></td>
 						</tr>`).join("");
 					container.html(`
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
+							<input type="date" id="pl-date-filter" value="${self.plDate || ""}" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
+							<input type="text" id="pl-search" placeholder="Search" value="${self.plSearch || ""}" style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 260px; outline: none;">
+							<button type="button" id="pl-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+						</div>
 						<table style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
 							<thead>
 								<tr>
@@ -7710,35 +7716,72 @@ class DrishtiDashboard {
 						</table>
 					`);
 					const tbody = container.find("#pl-summary-body");
-					frappe.call({
-						method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_pl_summary",
-						callback: function (r) {
-							const data = (r && r.message) || [];
-							if (!data.length) {
-								tbody.html(`<tr><td colspan="2" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #64748b;">No data found</td></tr>`);
-								return;
-							}
-							let html = "";
-							data.forEach((sch) => {
+					const fetchData = function () {
+						tbody.html(skeletonRows);
+						frappe.call({
+							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_pl_summary",
+							args: { report_date: container.find("#pl-date-filter").val() || "" },
+							callback: function (r) {
+								self.plData = (r && r.message) || [];
+								renderRows();
+							},
+							error: function () {
+								tbody.html(`<tr><td colspan="2" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #dc2626;">Failed to load data</td></tr>`);
+							},
+						});
+					};
+					const renderRows = function () {
+						const search = (container.find("#pl-search").val() || "").toLowerCase();
+						self.plSearch = search;
+						let html = "";
+						let hasRow = false;
+						(self.plData || []).forEach((sch) => {
+							const subs = sch.sub_schedules.filter((s) => !search || s.sub_schedule.toLowerCase().includes(search) || sch.schedule.toLowerCase().includes(search));
+							if (search && !subs.length) return;
+							const shownTotal = search ? subs.reduce((sum, s) => sum + s.total_balance, 0) : sch.total_balance;
+							html += `
+								<tr>
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;">${sch.schedule}</td>
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(shownTotal)}</td>
+								</tr>`;
+							hasRow = true;
+							subs.forEach((sub) => {
 								html += `
 									<tr>
-										<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;">${sch.schedule}</td>
-										<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(sch.total_balance)}</td>
+										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155;">${sub.sub_schedule}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.total_balance)}</td>
 									</tr>`;
-								sch.sub_schedules.forEach((sub) => {
-									html += `
-										<tr>
-											<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155;">${sub.sub_schedule}</td>
-											<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.total_balance)}</td>
-										</tr>`;
-								});
 							});
-							tbody.html(html);
-						},
-						error: function () {
-							tbody.html(`<tr><td colspan="2" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #dc2626;">Failed to load data</td></tr>`);
-						},
+						});
+						if (!hasRow) {
+							tbody.html(`<tr><td colspan="2" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #64748b;">No data found</td></tr>`);
+							return;
+						}
+						tbody.html(html);
+					};
+					container.off("change", "#pl-date-filter").on("change", "#pl-date-filter", function () {
+						self.plDate = $(this).val();
+						fetchData();
 					});
+					container.off("input", "#pl-search").on("input", "#pl-search", function () {
+						renderRows();
+					});
+					container.off("click", "#pl-refetch").on("click", "#pl-refetch", function () {
+						self.plDate = container.find("#pl-date-filter").val();
+						fetchData();
+					});
+					if (!self.plDate) {
+						frappe.call({
+							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_latest_pl_date",
+							callback: function (r) {
+								self.plDate = r.message || frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+								container.find("#pl-date-filter").val(self.plDate);
+								fetchData();
+							},
+						});
+					} else {
+						fetchData();
+					}
 				}
 			}
 		];
