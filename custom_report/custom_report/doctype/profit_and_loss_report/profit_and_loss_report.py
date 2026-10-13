@@ -383,14 +383,19 @@ def get_pl_summary(report_date=None, sol_id=None, zones=None):
 				matching_sols.add(str(b.sol_id))
 				matching_sols.add(str(b.sol_id).lstrip("0"))
 
+		search_conditions = []
 		if matching_sols:
 			placeholders = ", ".join(["%s"] * len(matching_sols))
-			filters.append(f"(sol_id LIKE %s OR sol_id IN ({placeholders}))")
-			params.append(f"%{search_val}%")
+			search_conditions.append(f"sol_id IN ({placeholders})")
 			params.extend(list(matching_sols))
-		else:
-			filters.append("sol_id LIKE %s")
-			params.append(f"%{search_val}%")
+		search_conditions.append("sol_id LIKE %s")
+		params.append(f"%{search_val}%")
+		search_conditions.append("sub_schedule LIKE %s")
+		params.append(f"%{search_val}%")
+		search_conditions.append("schedule LIKE %s")
+		params.append(f"%{search_val}%")
+
+		filters.append(f"({' OR '.join(search_conditions)})")
 
 	# Parse zones if provided
 	zone_list = []
