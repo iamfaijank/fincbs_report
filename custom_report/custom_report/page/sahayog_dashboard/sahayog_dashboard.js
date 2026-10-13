@@ -7688,8 +7688,30 @@ class DrishtiDashboard {
 				id: "profit_loss",
 				name: "Profit and Loss Report",
 				tableData: [],
+				selectedMisZones: [],
+				renderZoneFilterTags: function (container, dashboardInstance) {
+					const self = this;
+					dashboardInstance.getMisFilterOptions(function (opts) {
+						const permittedZones = (opts && opts.zones) || [];
+						let zones = permittedZones.length > 0 ? permittedZones : [];
+						if (zones.length === 0) {
+							container.find("#mis-zone-filter-row").hide();
+							return;
+						}
+						const allSelected = !self.selectedMisZones || self.selectedMisZones.length === 0;
+						let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
+						html += `<button class="mis-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
+						zones.forEach(zone => {
+							const active = self.selectedMisZones && self.selectedMisZones.includes(zone);
+							html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
+						});
+						const $row = container.find("#mis-zone-filter-row");
+						$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
+					});
+				},
 				render: function (container, dashboardInstance) {
 					const self = this;
+					if (!self.selectedMisZones) self.selectedMisZones = [];
 					const fmt = (n) => {
 						const v = Number(n) || 0;
 						return Math.abs(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -7705,6 +7727,7 @@ class DrishtiDashboard {
 							<input type="text" id="pl-search" placeholder="Search by SOL ID" value="${self.plSearch || ""}" style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 260px; outline: none;">
 							<button type="button" id="pl-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 						</div>
+						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<table style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
 							<thead>
 								<tr>
@@ -7721,9 +7744,10 @@ class DrishtiDashboard {
 						frappe.call({
 							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_pl_summary",
 							args: {
-							report_date: container.find("#pl-date-filter").val() || "",
-							sol_id: container.find("#pl-search").val() || "",
-						},
+								report_date: container.find("#pl-date-filter").val() || "",
+								sol_id: container.find("#pl-search").val() || "",
+								zones: JSON.stringify(self.selectedMisZones || []),
+							},
 							callback: function (r) {
 								self.plData = (r && r.message) || [];
 								renderRows();
@@ -7755,6 +7779,23 @@ class DrishtiDashboard {
 						}
 						tbody.html(html);
 					};
+					self.renderZoneFilterTags(container, dashboardInstance);
+					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
+						const zone = $(this).data("zone");
+						if (zone === "all") {
+							self.selectedMisZones = [];
+						} else {
+							if (!self.selectedMisZones) self.selectedMisZones = [];
+							const idx = self.selectedMisZones.indexOf(zone);
+							if (idx > -1) {
+								self.selectedMisZones.splice(idx, 1);
+							} else {
+								self.selectedMisZones.push(zone);
+							}
+						}
+						self.renderZoneFilterTags(container, dashboardInstance);
+						fetchData();
+					});
 					container.off("change", "#pl-date-filter").on("change", "#pl-date-filter", function () {
 						self.plDate = $(this).val();
 						fetchData();
@@ -7767,6 +7808,8 @@ class DrishtiDashboard {
 					});
 					container.off("click", "#pl-refetch").on("click", "#pl-refetch", function () {
 						self.plDate = container.find("#pl-date-filter").val();
+						self.selectedMisZones = [];
+						self.renderZoneFilterTags(container, dashboardInstance);
 						fetchData();
 					});
 					if (!self.plDate) {
