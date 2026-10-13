@@ -179,6 +179,34 @@ def get_user_report_permissions():
             order_by="name asc"
         )
 
+    has_reports = bool(get_user_reports())
+    if not (is_branch_user or is_dept_user) and has_reports:
+        is_branch_user = True
+        # Check Report Preference first
+        pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
+        sol_ids = []
+        if pref_name:
+            doc = frappe.get_doc("Report Preference", pref_name)
+            if hasattr(doc, "sol_id") and not isinstance(doc.sol_id, str):
+                sol_ids = [d.sol_id for d in doc.sol_id if getattr(d, "sol_id", None)]
+                sol_ids = list(set(sol_ids))
+            else:
+                sol_id_val = getattr(doc, "sol_id", None)
+                if isinstance(sol_id_val, str):
+                    sol_ids = [s.strip() for s in sol_id_val.split(",") if s.strip()]
+
+        if not sol_ids and employee and employee.get("sahayog_branch"):
+            sol_ids = [str(employee["sahayog_branch"]).strip()]
+
+        if sol_ids:
+            sol_data = frappe.get_all(
+                "Sahayog Branch",
+                filters={"name": ["in", sol_ids]},
+                fields=["name as sol_id", "branch as branch_name"]
+            )
+            if not sol_data:
+                sol_data = [{"sol_id": s, "branch_name": f"Branch {s}"} for s in sol_ids]
+
     return {
         "is_branch_user": is_branch_user,
         "is_dept_user": is_dept_user,
@@ -1022,24 +1050,33 @@ def _store_export_file(temp_path, request_id):
 # ============================================================================
 
 
-def _user_has_report_access(report_name, user_roles):
+def _user_has_report_access(report_name, user_roles, user=None):
     """
-    Check if user has access to a specific report based on assigned roles.
-    
-    Args:
-        report_name (str): Name of the report document
-        user_roles (set): Set of roles assigned to current user
-    
-    Returns:
-        bool: True if user has access, False otherwise
+    Check if user has access to a specific report based on assigned roles or designation.
     """
+    if user_roles.intersection(ADMIN_ROLES):
+        return True
+
     roles = frappe.get_all(
         "Finacle Report User",
         filters={"parent": report_name},
         fields=["role"]
     )
     allowed_roles = [r.role for r in roles]
-    return bool(user_roles.intersection(allowed_roles))
+    if user_roles.intersection(allowed_roles):
+        return True
+
+    # Designation check
+    allowed_desigs = frappe.db.get_value("Finacle Report", report_name, "allowed_designations")
+    if allowed_desigs:
+        current_user = user or frappe.session.user
+        emp_desig = frappe.db.get_value("Employee", {"user_id": current_user}, "designation")
+        if emp_desig:
+            desig_list = [d.strip().lower() for d in allowed_desigs.split(",") if d.strip()]
+            if emp_desig.strip().lower() in desig_list:
+                return True
+
+    return False
 
 
 def _get_report_metadata(report):
@@ -1069,8 +1106,8 @@ def _get_user_sol_id_with_branch_check(user, user_roles, manual_sol_id=None):
     - Department roles: Returns manual selection (or None if all branches wanted).
     """
     sol_id = None
-    is_branch_user = "Branch Report" in user_roles
     is_dept_user = bool(user_roles.intersection(get_department_roles()))
+    is_branch_user = ("Branch Report" in user_roles) or (not is_dept_user and not user_roles.intersection(ADMIN_ROLES))
 
     try:
         _print_section_header("CHECKING USER ROLE & SOL_ID")
