@@ -18,7 +18,9 @@
   "balance",
   "schm_desc",
   "acct_cls_flg",
-  "del_flg"
+  "del_flg",
+  "schedule",
+  "sub_schedule"
  ],
  "fields": [
   {
@@ -102,6 +104,18 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Delete Flag"
+  },
+  {
+   "fieldname": "schedule",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Schedule"
+  },
+  {
+   "fieldname": "sub_schedule",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Sub Schedule"
   }
  ],
  "grid_page_length": 50,
