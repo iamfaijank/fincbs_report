@@ -354,8 +354,10 @@ def sync_profit_and_loss_data(sync_date):
 
 
 @frappe.whitelist()
-def get_pl_summary(report_date=None, sol_id=None):
+def get_pl_summary(report_date=None, sol_id=None, zones=None):
 	"""Sum balance grouped by schedule/sub_schedule for schedules >= 13."""
+	import json
+
 	filters = ["COALESCE(schedule, '') != ''"]
 	params = []
 	if report_date:
@@ -364,6 +366,67 @@ def get_pl_summary(report_date=None, sol_id=None):
 	if sol_id:
 		filters.append("sol_id LIKE %s")
 		params.append(f"%{sol_id}%")
+
+	# Parse zones if provided
+	zone_list = []
+	if zones:
+		if isinstance(zones, str):
+			try:
+				parsed = json.loads(zones)
+				if isinstance(parsed, list):
+					zone_list = [z for z in parsed if z and str(z).lower() != "all"]
+				elif parsed and str(parsed).lower() != "all":
+					zone_list = [str(parsed)]
+			except Exception:
+				zone_list = [z.strip() for z in zones.split(",") if z.strip() and z.strip().lower() != "all"]
+		elif isinstance(zones, (list, tuple)):
+			zone_list = [z for z in zones if z and str(z).lower() != "all"]
+
+	if zone_list:
+		branches = frappe.db.sql(
+			"""
+			SELECT DISTINCT name, sol_id
+			FROM `tabSahayog Branch`
+			WHERE zone IN ({placeholders})
+			""".format(placeholders=", ".join(["%s"] * len(zone_list))),
+			tuple(zone_list),
+			as_dict=True,
+		)
+		matching_sols = set()
+		for b in branches:
+			if b.name:
+				matching_sols.add(str(b.name))
+				matching_sols.add(str(b.name).lstrip("0"))
+			if b.sol_id:
+				matching_sols.add(str(b.sol_id))
+				matching_sols.add(str(b.sol_id).lstrip("0"))
+		if matching_sols:
+			placeholders = ", ".join(["%s"] * len(matching_sols))
+			filters.append(f"sol_id IN ({placeholders})")
+			params.extend(list(matching_sols))
+		else:
+			filters.append("1 = 0")
+
+	# Apply user report permissions if restricted
+	try:
+		from custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard import (
+			get_user_report_permissions,
+			get_permitted_sol_ids_for_user,
+		)
+		user = frappe.session.user
+		perms = get_user_report_permissions(user)
+		if perms.get("is_restricted"):
+			permitted_sols = get_permitted_sol_ids_for_user(perms)
+			if permitted_sols is not None:
+				if not permitted_sols:
+					filters.append("1 = 0")
+				else:
+					placeholders = ", ".join(["%s"] * len(permitted_sols))
+					filters.append(f"sol_id IN ({placeholders})")
+					params.extend(permitted_sols)
+	except Exception:
+		pass
+
 	rows = frappe.db.sql(
 		"""
 		SELECT schedule, sub_schedule, SUM(balance) AS total_balance
