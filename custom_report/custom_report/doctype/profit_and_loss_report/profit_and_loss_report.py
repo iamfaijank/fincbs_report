@@ -505,17 +505,31 @@ def get_latest_pl_date():
 
 @frappe.whitelist()
 def get_balance_sheet_summary(report_date=None, sol_id=None, zones=None):
-	"""Sum balance grouped by schedule/sub_schedule for schedules 3 and 9."""
+	"""Sum balance grouped by schedule/sub_schedule for schedules 3 and 9, with MTD daily average."""
 	import json
+	import datetime
+
+	if not report_date:
+		report_date = get_latest_pl_date() or frappe.datetime.add_days(frappe.datetime.get_today(), -1)
+
+	if isinstance(report_date, str):
+		try:
+			dt = datetime.datetime.strptime(report_date, "%Y-%m-%d").date()
+		except Exception:
+			dt = frappe.utils.getdate(report_date)
+	else:
+		dt = frappe.utils.getdate(report_date)
+
+	report_date_str = dt.strftime("%Y-%m-%d")
+	month_start_str = dt.replace(day=1).strftime("%Y-%m-%d")
+	days_count = max(dt.day, 1)
 
 	filters = [
 		"COALESCE(schedule, '') != ''",
 		"(schedule LIKE %s OR schedule LIKE %s)",
+		"report_date BETWEEN %s AND %s",
 	]
-	params = ["%Schedule 3%", "%Schedule 9%"]
-	if report_date:
-		filters.append("report_date = %s")
-		params.append(report_date)
+	params = ["%Schedule 3%", "%Schedule 9%", month_start_str, report_date_str]
 	if sol_id:
 		search_val = sol_id.strip()
 		matched_branches = frappe.db.sql(
@@ -612,12 +626,14 @@ def get_balance_sheet_summary(report_date=None, sol_id=None, zones=None):
 
 	rows = frappe.db.sql(
 		"""
-		SELECT schedule, sub_schedule, SUM(balance) AS total_balance
+		SELECT schedule, sub_schedule,
+		       SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END) AS eop_balance,
+		       SUM(balance) AS total_mtd_balance
 		FROM `tabProfit and Loss Report`
 		WHERE {conditions}
 		GROUP BY schedule, sub_schedule
 		""".format(conditions=" AND ".join(filters)),
-		tuple(params),
+		tuple([report_date_str] + params),
 		as_dict=True,
 	)
 
@@ -632,11 +648,19 @@ def get_balance_sheet_summary(report_date=None, sol_id=None, zones=None):
 		num = sched_num(r.schedule)
 		if num not in (3, 9):
 			continue
+		eop = flt(r.eop_balance)
+		mtd = flt(r.total_mtd_balance)
+		avg = mtd / days_count if days_count else 0.0
+
 		schedules.setdefault(
 			num,
 			{"schedule": r.schedule.strip(), "schedule_number": num, "sub_schedules": []},
 		)["sub_schedules"].append(
-			{"sub_schedule": (r.sub_schedule or "").strip() or "-", "total_balance": flt(r.total_balance)}
+			{
+				"sub_schedule": (r.sub_schedule or "").strip() or "-",
+				"total_balance": eop,
+				"avg_balance": avg,
+			}
 		)
 
 	result = []
@@ -645,5 +669,6 @@ def get_balance_sheet_summary(report_date=None, sol_id=None, zones=None):
 			entry = schedules[num]
 			entry["sub_schedules"].sort(key=lambda x: x["sub_schedule"])
 			entry["total_balance"] = sum(s["total_balance"] for s in entry["sub_schedules"])
+			entry["avg_balance"] = sum(s["avg_balance"] for s in entry["sub_schedules"])
 			result.append(entry)
 	return result
