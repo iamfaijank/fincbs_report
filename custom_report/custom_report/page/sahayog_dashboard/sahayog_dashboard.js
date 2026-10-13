@@ -7697,11 +7697,7 @@ class DrishtiDashboard {
 									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right;">Amount</th>
 								</tr>
 							</thead>
-							<tbody>
-								<tr>
-									<td colspan="2" style="padding: 40px 12px; text-align: center; font-size: 14px; font-weight: 600; color: #64748b;">not yet</td>
-								</tr>
-							</tbody>
+							<tbody></tbody>
 						</table>
 					`);
 				}
