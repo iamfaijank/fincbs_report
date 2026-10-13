@@ -227,6 +227,9 @@ scheduler_events = {
 		],
 		"40 8 * * *": [
 			"custom_report.custom_report.doctype.dd_tracker_report.dd_tracker_report.daily_sync_dd_tracker"
+		],
+		"50 8 * * *": [
+			"custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.daily_sync_profit_and_loss_report"
 		]
 	}
 }
