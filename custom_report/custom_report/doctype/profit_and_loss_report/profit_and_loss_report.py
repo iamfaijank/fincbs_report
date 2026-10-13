@@ -3,6 +3,7 @@
 
 import frappe
 import psycopg2.extras
+from frappe.utils import flt
 from frappe.model.document import Document
 
 from custom_report.db_connection import get_dr_connection
@@ -350,3 +351,43 @@ def sync_profit_and_loss_data(sync_date):
 	finally:
 		if conn:
 			conn.close()
+
+
+@frappe.whitelist()
+def get_pl_summary():
+	"""Sum balance grouped by schedule/sub_schedule for schedules >= 13."""
+	rows = frappe.db.sql(
+		"""
+		SELECT schedule, sub_schedule, SUM(balance) AS total_balance
+		FROM `tabProfit and Loss Report`
+		WHERE COALESCE(schedule, '') != ''
+		GROUP BY schedule, sub_schedule
+		""",
+		as_dict=True,
+	)
+
+	import re
+
+	def sched_num(s):
+		m = re.search(r"Schedule\s*(\d+)", s or "")
+		return int(m.group(1)) if m else None
+
+	schedules = {}
+	for r in rows:
+		num = sched_num(r.schedule)
+		if num is None or num < 13:
+			continue
+		schedules.setdefault(
+			num,
+			{"schedule": r.schedule.strip(), "schedule_number": num, "sub_schedules": []},
+		)["sub_schedules"].append(
+			{"sub_schedule": (r.sub_schedule or "").strip() or "-", "total_balance": flt(r.total_balance)}
+		)
+
+	result = []
+	for num in sorted(schedules):
+		entry = schedules[num]
+		entry["sub_schedules"].sort(key=lambda x: x["sub_schedule"])
+		entry["total_balance"] = sum(s["total_balance"] for s in entry["sub_schedules"])
+		result.append(entry)
+	return result
