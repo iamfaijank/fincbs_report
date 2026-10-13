@@ -7677,9 +7677,21 @@ class DrishtiDashboard {
 											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: right;">Commission</th>
 										</tr>
 									</thead>
-									<tbody>${rowsHtml}</tbody>
-								</table>
-							</div>
+								<tbody>${rowsHtml}</tbody>
+							</table>
+						</div>
+					</div>
+				`);
+				}
+			},
+			{
+				id: "profit_loss",
+				name: "Profit and Loss Report",
+				tableData: [],
+				render: function (container, dashboardInstance) {
+					container.html(`
+						<div style="display: flex; align-items: center; justify-content: center; min-height: 200px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; color: #64748b;">
+							not yet
 						</div>
 					`);
 				}
