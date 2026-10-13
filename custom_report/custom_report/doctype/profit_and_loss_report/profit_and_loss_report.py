@@ -501,3 +501,149 @@ def get_latest_pl_date():
 	return frappe.db.get_value(
 		"Profit and Loss Report", {}, "report_date", order_by="report_date desc"
 	)
+
+
+@frappe.whitelist()
+def get_balance_sheet_summary(report_date=None, sol_id=None, zones=None):
+	"""Sum balance grouped by schedule/sub_schedule for schedules 3 and 9."""
+	import json
+
+	filters = [
+		"COALESCE(schedule, '') != ''",
+		"(schedule LIKE %s OR schedule LIKE %s)",
+	]
+	params = ["%Schedule 3%", "%Schedule 9%"]
+	if report_date:
+		filters.append("report_date = %s")
+		params.append(report_date)
+	if sol_id:
+		search_val = sol_id.strip()
+		matched_branches = frappe.db.sql(
+			"""
+			SELECT DISTINCT name, sol_id
+			FROM `tabSahayog Branch`
+			WHERE name LIKE %s OR sol_id LIKE %s OR branch LIKE %s
+			""",
+			(f"%{search_val}%", f"%{search_val}%", f"%{search_val}%"),
+			as_dict=True,
+		)
+		matching_sols = set()
+		for b in matched_branches:
+			if b.name:
+				matching_sols.add(str(b.name))
+				matching_sols.add(str(b.name).lstrip("0"))
+			if b.sol_id:
+				matching_sols.add(str(b.sol_id))
+				matching_sols.add(str(b.sol_id).lstrip("0"))
+
+		search_conditions = []
+		if matching_sols:
+			placeholders = ", ".join(["%s"] * len(matching_sols))
+			search_conditions.append(f"sol_id IN ({placeholders})")
+			params.extend(list(matching_sols))
+		search_conditions.append("sol_id LIKE %s")
+		params.append(f"%{search_val}%")
+		search_conditions.append("sub_schedule LIKE %s")
+		params.append(f"%{search_val}%")
+		search_conditions.append("schedule LIKE %s")
+		params.append(f"%{search_val}%")
+
+		filters.append(f"({' OR '.join(search_conditions)})")
+
+	# Parse zones if provided
+	zone_list = []
+	if zones:
+		if isinstance(zones, str):
+			try:
+				parsed = json.loads(zones)
+				if isinstance(parsed, list):
+					zone_list = [z for z in parsed if z and str(z).lower() != "all"]
+				elif parsed and str(parsed).lower() != "all":
+					zone_list = [str(parsed)]
+			except Exception:
+				zone_list = [z.strip() for z in zones.split(",") if z.strip() and z.strip().lower() != "all"]
+		elif isinstance(zones, (list, tuple)):
+			zone_list = [z for z in zones if z and str(z).lower() != "all"]
+
+	if zone_list:
+		branches = frappe.db.sql(
+			"""
+			SELECT DISTINCT name, sol_id
+			FROM `tabSahayog Branch`
+			WHERE zone IN ({placeholders})
+			""".format(placeholders=", ".join(["%s"] * len(zone_list))),
+			tuple(zone_list),
+			as_dict=True,
+		)
+		matching_sols = set()
+		for b in branches:
+			if b.name:
+				matching_sols.add(str(b.name))
+				matching_sols.add(str(b.name).lstrip("0"))
+			if b.sol_id:
+				matching_sols.add(str(b.sol_id))
+				matching_sols.add(str(b.sol_id).lstrip("0"))
+		if matching_sols:
+			placeholders = ", ".join(["%s"] * len(matching_sols))
+			filters.append(f"sol_id IN ({placeholders})")
+			params.extend(list(matching_sols))
+		else:
+			filters.append("1 = 0")
+
+	# Apply user report permissions if restricted
+	try:
+		from custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard import (
+			get_user_report_permissions,
+			get_permitted_sol_ids_for_user,
+		)
+		user = frappe.session.user
+		perms = get_user_report_permissions(user)
+		if perms.get("is_restricted"):
+			permitted_sols = get_permitted_sol_ids_for_user(perms)
+			if permitted_sols is not None:
+				if not permitted_sols:
+					filters.append("1 = 0")
+				else:
+					placeholders = ", ".join(["%s"] * len(permitted_sols))
+					filters.append(f"sol_id IN ({placeholders})")
+					params.extend(permitted_sols)
+	except Exception:
+		pass
+
+	rows = frappe.db.sql(
+		"""
+		SELECT schedule, sub_schedule, SUM(balance) AS total_balance
+		FROM `tabProfit and Loss Report`
+		WHERE {conditions}
+		GROUP BY schedule, sub_schedule
+		""".format(conditions=" AND ".join(filters)),
+		tuple(params),
+		as_dict=True,
+	)
+
+	import re
+
+	def sched_num(s):
+		m = re.search(r"Schedule\s*(\d+)", s or "")
+		return int(m.group(1)) if m else None
+
+	schedules = {}
+	for r in rows:
+		num = sched_num(r.schedule)
+		if num not in (3, 9):
+			continue
+		schedules.setdefault(
+			num,
+			{"schedule": r.schedule.strip(), "schedule_number": num, "sub_schedules": []},
+		)["sub_schedules"].append(
+			{"sub_schedule": (r.sub_schedule or "").strip() or "-", "total_balance": flt(r.total_balance)}
+		)
+
+	result = []
+	for num in [3, 9]:
+		if num in schedules:
+			entry = schedules[num]
+			entry["sub_schedules"].sort(key=lambda x: x["sub_schedule"])
+			entry["total_balance"] = sum(s["total_balance"] for s in entry["sub_schedules"])
+			result.append(entry)
+	return result
