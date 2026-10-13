@@ -7825,6 +7825,152 @@ class DrishtiDashboard {
 						fetchData();
 					}
 				}
+			},
+			{
+				id: "balance_sheet",
+				name: "Balance Sheet Report",
+				tableData: [],
+				selectedMisZones: [],
+				renderZoneFilterTags: function (container, dashboardInstance) {
+					const self = this;
+					dashboardInstance.getMisFilterOptions(function (opts) {
+						const permittedZones = (opts && opts.zones) || [];
+						let zones = permittedZones.length > 0 ? permittedZones : [];
+						if (zones.length === 0) {
+							container.find("#bs-zone-filter-row").hide();
+							return;
+						}
+						const allSelected = !self.selectedMisZones || self.selectedMisZones.length === 0;
+						let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
+						html += `<button class="bs-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
+						zones.forEach(zone => {
+							const active = self.selectedMisZones && self.selectedMisZones.includes(zone);
+							html += `<button class="bs-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
+						});
+						const $row = container.find("#bs-zone-filter-row");
+						$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
+					});
+				},
+				render: function (container, dashboardInstance) {
+					const self = this;
+					if (!self.selectedMisZones) self.selectedMisZones = [];
+					const fmt = (n) => {
+						const v = Number(n) || 0;
+						return Math.abs(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+					};
+					const skeletonRows = Array.from({ length: 8 }, () => `
+						<tr>
+							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 60%; background: #e2e8f0; border-radius: 4px;"></div></td>
+							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 40%; background: #e2e8f0; border-radius: 4px; margin-left: auto;"></div></td>
+							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 20%; background: #e2e8f0; border-radius: 4px; margin-left: auto;"></div></td>
+						</tr>`).join("");
+					container.html(`
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
+							<input type="date" id="bs-date-filter" value="${self.bsDate || ""}" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
+							<input type="text" id="bs-search" placeholder="Search branch, SOL ID, or sub-schedule" value="${self.bsSearch || ""}" style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 260px; outline: none;">
+							<button type="button" id="bs-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+						</div>
+						<div id="bs-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
+						<table style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
+							<thead>
+								<tr>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">Deposits</th>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; width: 220px;">EOP</th>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; width: 140px;">Average</th>
+								</tr>
+							</thead>
+							<tbody id="bs-summary-body">${skeletonRows}</tbody>
+						</table>
+					`);
+					const tbody = container.find("#bs-summary-body");
+					const fetchData = function () {
+						tbody.html(skeletonRows);
+						frappe.call({
+							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_balance_sheet_summary",
+							args: {
+								report_date: container.find("#bs-date-filter").val() || "",
+								sol_id: container.find("#bs-search").val() || "",
+								zones: JSON.stringify(self.selectedMisZones || []),
+							},
+							callback: function (r) {
+								self.bsData = (r && r.message) || [];
+								renderRows();
+							},
+							error: function () {
+								tbody.html(`<tr><td colspan="3" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #dc2626;">Failed to load data</td></tr>`);
+							},
+						});
+					};
+					const renderRows = function () {
+						let html = "";
+						(self.bsData || []).forEach((sch) => {
+							html += `
+								<tr>
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;">${sch.schedule}</td>
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(sch.total_balance)}</td>
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">-</td>
+								</tr>`;
+							sch.sub_schedules.forEach((sub) => {
+								html += `
+									<tr>
+										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155;">${sub.sub_schedule}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.total_balance)}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">-</td>
+									</tr>`;
+							});
+						});
+						if (!(self.bsData || []).length) {
+							tbody.html(`<tr><td colspan="3" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #64748b;">No data found</td></tr>`);
+							return;
+						}
+						tbody.html(html);
+					};
+					self.renderZoneFilterTags(container, dashboardInstance);
+					container.off("click", ".bs-zone-filter-tag").on("click", ".bs-zone-filter-tag", function () {
+						const zone = $(this).data("zone");
+						if (zone === "all") {
+							self.selectedMisZones = [];
+						} else {
+							if (!self.selectedMisZones) self.selectedMisZones = [];
+							const idx = self.selectedMisZones.indexOf(zone);
+							if (idx > -1) {
+								self.selectedMisZones.splice(idx, 1);
+							} else {
+								self.selectedMisZones.push(zone);
+							}
+						}
+						self.renderZoneFilterTags(container, dashboardInstance);
+						fetchData();
+					});
+					container.off("change", "#bs-date-filter").on("change", "#bs-date-filter", function () {
+						self.bsDate = $(this).val();
+						fetchData();
+					});
+					let bsSearchTimeout = null;
+					container.off("input", "#bs-search").on("input", "#bs-search", function () {
+						self.bsSearch = $(this).val();
+						clearTimeout(bsSearchTimeout);
+						bsSearchTimeout = setTimeout(fetchData, 400);
+					});
+					container.off("click", "#bs-refetch").on("click", "#bs-refetch", function () {
+						self.bsDate = container.find("#bs-date-filter").val();
+						self.selectedMisZones = [];
+						self.renderZoneFilterTags(container, dashboardInstance);
+						fetchData();
+					});
+					if (!self.bsDate) {
+						frappe.call({
+							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_latest_pl_date",
+							callback: function (r) {
+								self.bsDate = r.message || frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+								container.find("#bs-date-filter").val(self.bsDate);
+								fetchData();
+							},
+						});
+					} else {
+						fetchData();
+					}
+				}
 			}
 		];
 
