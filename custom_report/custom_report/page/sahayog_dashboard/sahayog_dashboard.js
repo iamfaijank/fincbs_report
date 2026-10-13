@@ -7691,9 +7691,7 @@ class DrishtiDashboard {
 				render: function (container, dashboardInstance) {
 					const fmt = (n) => {
 						const v = Number(n) || 0;
-						const abs = Math.abs(v);
-						const s = abs.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-						return (v < 0 ? "(" + s + ")" : s);
+						return Math.abs(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 					};
 					const skeletonRows = Array.from({ length: 8 }, () => `
 						<tr>
