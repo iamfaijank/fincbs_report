@@ -7847,7 +7847,7 @@ class DrishtiDashboard {
 							const active = self.selectedMisZones && self.selectedMisZones.includes(zone);
 							html += `<button class="bs-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
 						});
-						html += `<div style="margin-left: auto; display: flex; align-items: center; gap: 8px; background: #417d81; color: #fff; padding: 5px 14px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; white-space: nowrap;"><span>INTEREST ON BRANCH DEPOSITS :</span><span id="bs-interest-val">${self.interestDisplay || "0.00"}</span></div>`;
+						html += `<div style="margin-left: auto; display: flex; align-items: center; gap: 8px; background: #417d81; color: #fff; padding: 5px 14px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; white-space: nowrap;"><span>Transfer Pricing Interest :</span><span id="bs-interest-val">${self.interestDisplay || "0.00"}</span></div>`;
 						const $row = container.find("#bs-zone-filter-row");
 						$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
 					});
