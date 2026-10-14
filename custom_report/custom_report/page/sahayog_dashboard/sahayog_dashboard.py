@@ -281,6 +281,11 @@ def check_drishti_designation_access():
     if user == "Administrator":
         return {"allowed": True}
 
+    # If user has override_designation_permission in Report Preference, skip gate
+    pref_override = frappe.db.get_value("Report Preference", {"user": user}, "override_designation_permission")
+    if pref_override:
+        return {"allowed": True}
+
     allowed = _get_allowed_drishti_designations()
     if not allowed:
         return {"allowed": True}
@@ -347,17 +352,17 @@ def get_user_report_permissions(user):
     )
     permissions["is_branch_manager"] = is_branch_manager
 
-    # Drishti Settings designation gate: if user's designation is IN the
-    # configured list → no access (Access Denied, no activity log).
+    pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
+
+    # Drishti Settings designation gate: skip if user has override_designation_permission
+    pref_override = frappe.db.get_value("Report Preference", {"user": user}, "override_designation_permission") if pref_name else False
     allowed_desigs = _get_allowed_drishti_designations()
-    if allowed_desigs and designation in allowed_desigs:
+    if allowed_desigs and designation in allowed_desigs and not pref_override:
         permissions["has_access"] = False
         permissions["denied_reason"] = "designation"
         permissions["restricted_designations"] = _get_drishti_designation_names()
         permissions["user_designation"] = str(employee.get("designation") or "").strip() if employee else ""
         return permissions
-
-    pref_name = frappe.db.get_value("Report Preference", {"user": user}, "name")
     if pref_name:
         doc = frappe.get_doc("Report Preference", pref_name)
         permissions["pref_name"] = pref_name
