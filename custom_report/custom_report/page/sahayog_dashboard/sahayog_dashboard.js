@@ -7788,10 +7788,12 @@ class DrishtiDashboard {
 					const renderRows = function () {
 						let html = "";
 						(self.plData || []).forEach((sch) => {
+							const tpInterest = (sch.schedule_number === 13 && self.plTransferInterest != null) ? self.plTransferInterest : 0;
+							const schTotal = (Number(sch.total_balance) || 0) + tpInterest;
 							html += `
 								<tr>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;">${sch.schedule}</td>
-									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(sch.total_balance)}</td>
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(schTotal)}</td>
 								</tr>`;
 							if (sch.schedule_number === 13 && self.plTransferInterest != null) {
 								html += `
