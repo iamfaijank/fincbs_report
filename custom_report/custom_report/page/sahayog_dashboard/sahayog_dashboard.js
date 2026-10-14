@@ -7750,7 +7750,35 @@ class DrishtiDashboard {
 							},
 							callback: function (r) {
 								self.plData = (r && r.message) || [];
-								renderRows();
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_balance_sheet_summary",
+									args: {
+										report_date: container.find("#pl-date-filter").val() || "",
+										sol_id: container.find("#pl-search").val() || "",
+										zones: JSON.stringify(self.selectedMisZones || []),
+									},
+									callback: function (r2) {
+										const bs = (r2 && r2.message) || [];
+										const s3 = bs.find((x) => x.schedule_number === 3);
+										const s9 = bs.find((x) => x.schedule_number === 9);
+										const avgDiff = Math.abs(s3 ? Number(s3.avg_balance) || 0 : 0) - Math.abs(s9 ? Number(s9.avg_balance) || 0 : 0);
+										const dateStr = container.find("#pl-date-filter").val() || "";
+										let day = 1;
+										if (dateStr) {
+											const parts = dateStr.split("-").map(Number);
+											const dt = new Date(parts[0], parts[1] - 1, parts[2]);
+											const fyYear = parts[1] >= 4 ? parts[0] : parts[0] - 1;
+											const fyStart = new Date(fyYear, 3, 1);
+											day = Math.round((dt - fyStart) / 86400000) + 1;
+										}
+										self.plTransferInterest = avgDiff * 0.18 * day / 365;
+										renderRows();
+									},
+									error: function () {
+										self.plTransferInterest = null;
+										renderRows();
+									},
+								});
 							},
 							error: function () {
 								tbody.html(`<tr><td colspan="2" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #dc2626;">Failed to load data</td></tr>`);
@@ -7765,6 +7793,13 @@ class DrishtiDashboard {
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;">${sch.schedule}</td>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(sch.total_balance)}</td>
 								</tr>`;
+							if (sch.schedule_number === 13 && self.plTransferInterest != null) {
+								html += `
+									<tr>
+										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Transfer Pricing Interest</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(self.plTransferInterest)}</td>
+									</tr>`;
+							}
 							sch.sub_schedules.forEach((sub) => {
 								html += `
 									<tr>
