@@ -365,37 +365,41 @@ def get_pl_summary(report_date=None, sol_id=None, zones=None):
 		params.append(report_date)
 	if sol_id:
 		search_val = sol_id.strip()
-		matched_branches = frappe.db.sql(
-			"""
-			SELECT DISTINCT name, sol_id
-			FROM `tabSahayog Branch`
-			WHERE name LIKE %s OR sol_id LIKE %s OR branch LIKE %s
-			""",
-			(f"%{search_val}%", f"%{search_val}%", f"%{search_val}%"),
-			as_dict=True,
-		)
-		matching_sols = set()
-		for b in matched_branches:
-			if b.name:
-				matching_sols.add(str(b.name))
-				matching_sols.add(str(b.name).lstrip("0"))
-			if b.sol_id:
-				matching_sols.add(str(b.sol_id))
-				matching_sols.add(str(b.sol_id).lstrip("0"))
+		if search_val.isdigit():
+			exact_sols = {search_val, search_val.lstrip("0"), search_val.zfill(4), search_val.zfill(5), search_val.zfill(6)}
+			placeholders = ", ".join(["%s"] * len(exact_sols))
+			filters.append(f"sol_id IN ({placeholders})")
+			params.extend(list(exact_sols))
+		else:
+			matched_branches = frappe.db.sql(
+				"""
+				SELECT DISTINCT name, sol_id
+				FROM `tabSahayog Branch`
+				WHERE name LIKE %s OR sol_id LIKE %s OR branch LIKE %s
+				""",
+				(f"%{search_val}%", f"%{search_val}%", f"%{search_val}%"),
+				as_dict=True,
+			)
+			matching_sols = set()
+			for b in matched_branches:
+				if b.name:
+					matching_sols.add(str(b.name))
+					matching_sols.add(str(b.name).lstrip("0"))
+				if b.sol_id:
+					matching_sols.add(str(b.sol_id))
+					matching_sols.add(str(b.sol_id).lstrip("0"))
 
-		search_conditions = []
-		if matching_sols:
-			placeholders = ", ".join(["%s"] * len(matching_sols))
-			search_conditions.append(f"sol_id IN ({placeholders})")
-			params.extend(list(matching_sols))
-		search_conditions.append("sol_id LIKE %s")
-		params.append(f"%{search_val}%")
-		search_conditions.append("sub_schedule LIKE %s")
-		params.append(f"%{search_val}%")
-		search_conditions.append("schedule LIKE %s")
-		params.append(f"%{search_val}%")
+			search_conditions = []
+			if matching_sols:
+				placeholders = ", ".join(["%s"] * len(matching_sols))
+				search_conditions.append(f"sol_id IN ({placeholders})")
+				params.extend(list(matching_sols))
+			search_conditions.append("sub_schedule LIKE %s")
+			params.append(f"%{search_val}%")
+			search_conditions.append("schedule LIKE %s")
+			params.append(f"%{search_val}%")
 
-		filters.append(f"({' OR '.join(search_conditions)})")
+			filters.append(f"({' OR '.join(search_conditions)})")
 
 	# Parse zones if provided
 	zone_list = []
@@ -532,37 +536,41 @@ def get_balance_sheet_summary(report_date=None, sol_id=None, zones=None):
 	params = ["%Schedule 3%", "%Schedule 9%", month_start_str, report_date_str]
 	if sol_id:
 		search_val = sol_id.strip()
-		matched_branches = frappe.db.sql(
-			"""
-			SELECT DISTINCT name, sol_id
-			FROM `tabSahayog Branch`
-			WHERE name LIKE %s OR sol_id LIKE %s OR branch LIKE %s
-			""",
-			(f"%{search_val}%", f"%{search_val}%", f"%{search_val}%"),
-			as_dict=True,
-		)
-		matching_sols = set()
-		for b in matched_branches:
-			if b.name:
-				matching_sols.add(str(b.name))
-				matching_sols.add(str(b.name).lstrip("0"))
-			if b.sol_id:
-				matching_sols.add(str(b.sol_id))
-				matching_sols.add(str(b.sol_id).lstrip("0"))
+		if search_val.isdigit():
+			exact_sols = {search_val, search_val.lstrip("0"), search_val.zfill(4), search_val.zfill(5), search_val.zfill(6)}
+			placeholders = ", ".join(["%s"] * len(exact_sols))
+			filters.append(f"sol_id IN ({placeholders})")
+			params.extend(list(exact_sols))
+		else:
+			matched_branches = frappe.db.sql(
+				"""
+				SELECT DISTINCT name, sol_id
+				FROM `tabSahayog Branch`
+				WHERE name LIKE %s OR sol_id LIKE %s OR branch LIKE %s
+				""",
+				(f"%{search_val}%", f"%{search_val}%", f"%{search_val}%"),
+				as_dict=True,
+			)
+			matching_sols = set()
+			for b in matched_branches:
+				if b.name:
+					matching_sols.add(str(b.name))
+					matching_sols.add(str(b.name).lstrip("0"))
+				if b.sol_id:
+					matching_sols.add(str(b.sol_id))
+					matching_sols.add(str(b.sol_id).lstrip("0"))
 
-		search_conditions = []
-		if matching_sols:
-			placeholders = ", ".join(["%s"] * len(matching_sols))
-			search_conditions.append(f"sol_id IN ({placeholders})")
-			params.extend(list(matching_sols))
-		search_conditions.append("sol_id LIKE %s")
-		params.append(f"%{search_val}%")
-		search_conditions.append("sub_schedule LIKE %s")
-		params.append(f"%{search_val}%")
-		search_conditions.append("schedule LIKE %s")
-		params.append(f"%{search_val}%")
+			search_conditions = []
+			if matching_sols:
+				placeholders = ", ".join(["%s"] * len(matching_sols))
+				search_conditions.append(f"sol_id IN ({placeholders})")
+				params.extend(list(matching_sols))
+			search_conditions.append("sub_schedule LIKE %s")
+			params.append(f"%{search_val}%")
+			search_conditions.append("schedule LIKE %s")
+			params.append(f"%{search_val}%")
 
-		filters.append(f"({' OR '.join(search_conditions)})")
+			filters.append(f"({' OR '.join(search_conditions)})")
 
 	# Parse zones if provided
 	zone_list = []
