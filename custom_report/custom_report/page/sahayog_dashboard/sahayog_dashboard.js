@@ -7897,9 +7897,16 @@ class DrishtiDashboard {
 								self.bsData = (r && r.message) || [];
 								const s3 = (self.bsData || []).find((x) => x.schedule_number === 3);
 								const s9 = (self.bsData || []).find((x) => x.schedule_number === 9);
-								const avgDiff = (s3 ? Number(s3.avg_balance) || 0 : 0) - (s9 ? Number(s9.avg_balance) || 0 : 0);
+								const avgDiff = Math.abs(s3 ? Number(s3.avg_balance) || 0 : 0) - Math.abs(s9 ? Number(s9.avg_balance) || 0 : 0);
 								const dateStr = container.find("#bs-date-filter").val() || "";
-								const day = dateStr ? Number(dateStr.split("-")[2]) || 1 : 1;
+								let day = 1;
+								if (dateStr) {
+									const parts = dateStr.split("-").map(Number);
+									const dt = new Date(parts[0], parts[1] - 1, parts[2]);
+									const fyYear = parts[1] >= 4 ? parts[0] : parts[0] - 1;
+									const fyStart = new Date(fyYear, 3, 1);
+									day = Math.round((dt - fyStart) / 86400000) + 1;
+								}
 								self.interestDisplay = fmt(avgDiff * 0.18 * day / 365);
 								const $ival = container.find("#bs-interest-val");
 								if ($ival.length) $ival.text(self.interestDisplay);
