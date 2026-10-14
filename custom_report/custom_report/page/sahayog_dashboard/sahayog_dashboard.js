@@ -7787,9 +7787,11 @@ class DrishtiDashboard {
 					};
 					const renderRows = function () {
 						let html = "";
+						let incomeOverExp = 0;
 						(self.plData || []).forEach((sch) => {
 							const tpInterest = (sch.schedule_number === 13 && self.plTransferInterest != null) ? self.plTransferInterest : 0;
 							const schTotal = (Number(sch.total_balance) || 0) + tpInterest;
+							incomeOverExp += schTotal;
 							html += `
 								<tr>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;">${sch.schedule}</td>
@@ -7814,6 +7816,11 @@ class DrishtiDashboard {
 							tbody.html(`<tr><td colspan="2" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #64748b;">No data found</td></tr>`);
 							return;
 						}
+						html += `
+							<tr>
+								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff;">Income Over Expenditure</td>
+								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff; text-align: right;">${fmt(incomeOverExp)}</td>
+							</tr>`;
 						tbody.html(html);
 					};
 					self.renderZoneFilterTags(container, dashboardInstance);
