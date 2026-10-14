@@ -7720,6 +7720,7 @@ class DrishtiDashboard {
 						<tr>
 							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 60%; background: #e2e8f0; border-radius: 4px;"></div></td>
 							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 40%; background: #e2e8f0; border-radius: 4px; margin-left: auto;"></div></td>
+							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 40%; background: #e2e8f0; border-radius: 4px; margin-left: auto;"></div></td>
 						</tr>`).join("");
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
@@ -7732,7 +7733,8 @@ class DrishtiDashboard {
 							<thead>
 								<tr>
 									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">Particulars</th>
-									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right;">Amount</th>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right;">Yearly Amount</th>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right;">Monthly Amount</th>
 								</tr>
 							</thead>
 							<tbody id="pl-summary-body">${skeletonRows}</tbody>
@@ -7766,10 +7768,7 @@ class DrishtiDashboard {
 										let day = 1;
 										if (dateStr) {
 											const parts = dateStr.split("-").map(Number);
-											const dt = new Date(parts[0], parts[1] - 1, parts[2]);
-											const fyYear = parts[1] >= 4 ? parts[0] : parts[0] - 1;
-											const fyStart = new Date(fyYear, 3, 1);
-											day = Math.round((dt - fyStart) / 86400000) + 1;
+											day = parts[2] || 1;
 										}
 										self.plTransferInterest = avgDiff * 0.18 * day / 365;
 										renderRows();
@@ -7781,27 +7780,32 @@ class DrishtiDashboard {
 								});
 							},
 							error: function () {
-								tbody.html(`<tr><td colspan="2" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #dc2626;">Failed to load data</td></tr>`);
+								tbody.html(`<tr><td colspan="3" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #dc2626;">Failed to load data</td></tr>`);
 							},
 						});
 					};
 					const renderRows = function () {
 						let html = "";
 						let incomeOverExp = 0;
+						let monthlyIncomeOverExp = 0;
 						(self.plData || []).forEach((sch) => {
 							const tpInterest = (sch.schedule_number === 13 && self.plTransferInterest != null) ? self.plTransferInterest : 0;
 							const schTotal = (Number(sch.total_balance) || 0) + tpInterest;
+							const schMonthly = Number(sch.monthly_balance) || 0;
 							incomeOverExp += schTotal;
+							monthlyIncomeOverExp += schMonthly;
 							html += `
 								<tr>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;">${sch.schedule}</td>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(schTotal)}</td>
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(schMonthly)}</td>
 								</tr>`;
 							if (sch.schedule_number === 13 && self.plTransferInterest != null) {
 								html += `
 									<tr>
-										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Transfer Pricing Interest</td>
+										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Transfer Pricing Interest Monthly</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(self.plTransferInterest)}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #64748b; text-align: right;">-</td>
 									</tr>`;
 							}
 							sch.sub_schedules.forEach((sub) => {
@@ -7809,17 +7813,19 @@ class DrishtiDashboard {
 									<tr>
 										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155;">${sub.sub_schedule}</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.total_balance)}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.monthly_balance)}</td>
 									</tr>`;
 							});
 						});
 						if (!(self.plData || []).length) {
-							tbody.html(`<tr><td colspan="2" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #64748b;">No data found</td></tr>`);
+							tbody.html(`<tr><td colspan="3" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #64748b;">No data found</td></tr>`);
 							return;
 						}
 						html += `
 							<tr>
 								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff;">Income Over Expenditure</td>
 								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff; text-align: right;">${fmt(incomeOverExp)}</td>
+								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff; text-align: right;">${fmt(monthlyIncomeOverExp)}</td>
 							</tr>`;
 						const searchActive = (container.find("#pl-search").val() || "").trim() !== "";
 						if (searchActive) {
@@ -7835,10 +7841,12 @@ class DrishtiDashboard {
 								<tr>
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Central Allocation</td>
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(centralAlloc)}</td>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #64748b; text-align: right;">-</td>
 								</tr>
 								<tr>
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Income After Allocation</td>
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(incomeAfterAlloc)}</td>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #64748b; text-align: right;">-</td>
 								</tr>`;
 						}
 						tbody.html(html);
@@ -7911,7 +7919,7 @@ class DrishtiDashboard {
 							const active = self.selectedMisZones && self.selectedMisZones.includes(zone);
 							html += `<button class="bs-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
 						});
-						html += `<div style="margin-left: auto; display: flex; align-items: center; gap: 8px; background: #417d81; color: #fff; padding: 5px 14px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; white-space: nowrap;"><span>Transfer Pricing Interest :</span><span id="bs-interest-val">${self.interestDisplay || "0.00"}</span></div>`;
+						html += `<div style="margin-left: auto; display: flex; align-items: center; gap: 8px; background: #417d81; color: #fff; padding: 5px 14px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; white-space: nowrap;"><span>Transfer Pricing Interest Monthly :</span><span id="bs-interest-val">${self.interestDisplay || "0.00"}</span></div>`;
 						const $row = container.find("#bs-zone-filter-row");
 						$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
 					});
@@ -7928,6 +7936,7 @@ class DrishtiDashboard {
 							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 60%; background: #e2e8f0; border-radius: 4px;"></div></td>
 							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 40%; background: #e2e8f0; border-radius: 4px; margin-left: auto;"></div></td>
 							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 20%; background: #e2e8f0; border-radius: 4px; margin-left: auto;"></div></td>
+							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 20%; background: #e2e8f0; border-radius: 4px; margin-left: auto;"></div></td>
 						</tr>`).join("");
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
@@ -7941,7 +7950,8 @@ class DrishtiDashboard {
 								<tr>
 									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">Deposits</th>
 									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; width: 220px;">EOP</th>
-									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; width: 140px;">Average</th>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; width: 140px;">Monthly Average</th>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; width: 140px;">Yearly Average</th>
 								</tr>
 							</thead>
 							<tbody id="bs-summary-body">${skeletonRows}</tbody>
@@ -7966,10 +7976,7 @@ class DrishtiDashboard {
 								let day = 1;
 								if (dateStr) {
 									const parts = dateStr.split("-").map(Number);
-									const dt = new Date(parts[0], parts[1] - 1, parts[2]);
-									const fyYear = parts[1] >= 4 ? parts[0] : parts[0] - 1;
-									const fyStart = new Date(fyYear, 3, 1);
-									day = Math.round((dt - fyStart) / 86400000) + 1;
+									day = parts[2] || 1;
 								}
 								self.interestDisplay = fmt(avgDiff * 0.18 * day / 365);
 								const $ival = container.find("#bs-interest-val");
@@ -7977,7 +7984,7 @@ class DrishtiDashboard {
 								renderRows();
 							},
 							error: function () {
-								tbody.html(`<tr><td colspan="3" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #dc2626;">Failed to load data</td></tr>`);
+								tbody.html(`<tr><td colspan="4" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #dc2626;">Failed to load data</td></tr>`);
 							},
 						});
 					};
@@ -7989,6 +7996,7 @@ class DrishtiDashboard {
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;">${sch.schedule}</td>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(sch.total_balance)}</td>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(sch.avg_balance)}</td>
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(sch.yearly_avg_balance)}</td>
 								</tr>`;
 							sch.sub_schedules.forEach((sub) => {
 								html += `
@@ -7996,11 +8004,12 @@ class DrishtiDashboard {
 										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155;">${sub.sub_schedule}</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.total_balance)}</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.avg_balance)}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.yearly_avg_balance)}</td>
 									</tr>`;
 							});
 						});
 						if (!(self.bsData || []).length) {
-							tbody.html(`<tr><td colspan="3" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #64748b;">No data found</td></tr>`);
+							tbody.html(`<tr><td colspan="4" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #64748b;">No data found</td></tr>`);
 							return;
 						}
 						tbody.html(html);
