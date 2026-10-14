@@ -7821,6 +7821,26 @@ class DrishtiDashboard {
 								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff;">Income Over Expenditure</td>
 								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff; text-align: right;">${fmt(incomeOverExp)}</td>
 							</tr>`;
+						const searchActive = (container.find("#pl-search").val() || "").trim() !== "";
+						if (searchActive) {
+							const dateStr = container.find("#pl-date-filter").val() || "";
+							let months = 1;
+							if (dateStr) {
+								const m = Number(dateStr.split("-")[1]) || 1;
+								months = m >= 4 ? m - 3 : m + 9;
+							}
+							const centralAlloc = months * 400000;
+							const incomeAfterAlloc = incomeOverExp - centralAlloc;
+							html += `
+								<tr>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Central Allocation</td>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(centralAlloc)}</td>
+								</tr>
+								<tr>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Income After Allocation</td>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(incomeAfterAlloc)}</td>
+								</tr>`;
+						}
 						tbody.html(html);
 					};
 					self.renderZoneFilterTags(container, dashboardInstance);
