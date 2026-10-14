@@ -360,9 +360,17 @@ def get_pl_summary(report_date=None, sol_id=None, zones=None):
 
 	filters = ["COALESCE(schedule, '') != ''"]
 	params = []
+	yearly_select = "SUM(balance) AS yearly_balance"
+	sql_params = params
 	if report_date:
-		filters.append("report_date = %s")
-		params.append(report_date)
+		import datetime as _dt
+
+		dt = frappe.utils.getdate(report_date)
+		month_start = dt.replace(day=1)
+		filters.append("report_date BETWEEN %s AND %s")
+		params.extend([month_start, report_date])
+		yearly_select = "SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END) AS yearly_balance"
+		sql_params = [report_date] + params
 	if sol_id:
 		search_val = sol_id.strip()
 		if search_val.isdigit():
@@ -463,12 +471,12 @@ def get_pl_summary(report_date=None, sol_id=None, zones=None):
 
 	rows = frappe.db.sql(
 		"""
-		SELECT schedule, sub_schedule, SUM(balance) AS total_balance
+		SELECT schedule, sub_schedule, SUM(balance) AS monthly_balance, {yearly_select}
 		FROM `tabProfit and Loss Report`
 		WHERE {conditions}
 		GROUP BY schedule, sub_schedule
-		""".format(conditions=" AND ".join(filters)),
-		tuple(params),
+		""".format(conditions=" AND ".join(filters), yearly_select=yearly_select),
+		tuple(sql_params),
 		as_dict=True,
 	)
 
@@ -487,7 +495,11 @@ def get_pl_summary(report_date=None, sol_id=None, zones=None):
 			num,
 			{"schedule": r.schedule.strip(), "schedule_number": num, "sub_schedules": []},
 		)["sub_schedules"].append(
-			{"sub_schedule": (r.sub_schedule or "").strip() or "-", "total_balance": flt(r.total_balance)}
+			{
+				"sub_schedule": (r.sub_schedule or "").strip() or "-",
+				"total_balance": flt(r.yearly_balance),
+				"monthly_balance": flt(r.monthly_balance),
+			}
 		)
 
 	result = []
@@ -495,6 +507,7 @@ def get_pl_summary(report_date=None, sol_id=None, zones=None):
 		entry = schedules[num]
 		entry["sub_schedules"].sort(key=lambda x: x["sub_schedule"])
 		entry["total_balance"] = sum(s["total_balance"] for s in entry["sub_schedules"])
+		entry["monthly_balance"] = sum(s["monthly_balance"] for s in entry["sub_schedules"])
 		result.append(entry)
 	return result
 
@@ -527,13 +540,19 @@ def get_balance_sheet_summary(report_date=None, sol_id=None, zones=None):
 	report_date_str = dt.strftime("%Y-%m-%d")
 	month_start_str = dt.replace(day=1).strftime("%Y-%m-%d")
 	days_count = max(dt.day, 1)
+	if dt.month >= 4:
+		fy_start = dt.replace(month=4, day=1)
+	else:
+		fy_start = dt.replace(year=dt.year - 1, month=4, day=1)
+	fy_start_str = fy_start.strftime("%Y-%m-%d")
+	fy_days = max((dt - fy_start).days + 1, 1)
 
 	filters = [
 		"COALESCE(schedule, '') != ''",
 		"(schedule LIKE %s OR schedule LIKE %s)",
 		"report_date BETWEEN %s AND %s",
 	]
-	params = ["%Schedule 3%", "%Schedule 9%", month_start_str, report_date_str]
+	params = ["%Schedule 3%", "%Schedule 9%", fy_start_str, report_date_str]
 	if sol_id:
 		search_val = sol_id.strip()
 		if search_val.isdigit():
@@ -636,12 +655,13 @@ def get_balance_sheet_summary(report_date=None, sol_id=None, zones=None):
 		"""
 		SELECT schedule, sub_schedule,
 		       SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END) AS eop_balance,
-		       SUM(balance) AS total_mtd_balance
+		       SUM(CASE WHEN report_date >= %s THEN balance ELSE 0 END) AS monthly_mtd_balance,
+		       SUM(balance) AS yearly_balance
 		FROM `tabProfit and Loss Report`
 		WHERE {conditions}
 		GROUP BY schedule, sub_schedule
 		""".format(conditions=" AND ".join(filters)),
-		tuple([report_date_str] + params),
+		tuple([report_date_str, month_start_str] + params),
 		as_dict=True,
 	)
 
@@ -657,8 +677,9 @@ def get_balance_sheet_summary(report_date=None, sol_id=None, zones=None):
 		if num not in (3, 9):
 			continue
 		eop = flt(r.eop_balance)
-		mtd = flt(r.total_mtd_balance)
+		mtd = flt(r.monthly_mtd_balance)
 		avg = mtd / days_count if days_count else 0.0
+		yearly_avg = flt(r.yearly_balance) / fy_days
 
 		schedules.setdefault(
 			num,
@@ -668,6 +689,7 @@ def get_balance_sheet_summary(report_date=None, sol_id=None, zones=None):
 				"sub_schedule": (r.sub_schedule or "").strip() or "-",
 				"total_balance": eop,
 				"avg_balance": avg,
+				"yearly_avg_balance": yearly_avg,
 			}
 		)
 
@@ -678,5 +700,6 @@ def get_balance_sheet_summary(report_date=None, sol_id=None, zones=None):
 			entry["sub_schedules"].sort(key=lambda x: x["sub_schedule"])
 			entry["total_balance"] = sum(s["total_balance"] for s in entry["sub_schedules"])
 			entry["avg_balance"] = sum(s["avg_balance"] for s in entry["sub_schedules"])
+			entry["yearly_avg_balance"] = sum(s["yearly_avg_balance"] for s in entry["sub_schedules"])
 			result.append(entry)
 	return result
