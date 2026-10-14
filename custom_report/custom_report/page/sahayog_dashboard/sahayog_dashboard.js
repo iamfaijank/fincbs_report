@@ -7919,7 +7919,10 @@ class DrishtiDashboard {
 							const active = self.selectedMisZones && self.selectedMisZones.includes(zone);
 							html += `<button class="bs-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
 						});
-						html += `<div style="margin-left: auto; display: flex; align-items: center; gap: 8px; background: #417d81; color: #fff; padding: 5px 14px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; white-space: nowrap;"><span>Transfer Pricing Interest Monthly :</span><span id="bs-interest-val">${self.interestDisplay || "0.00"}</span></div>`;
+						html += `<div style="margin-left: auto; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+							<div style="display: flex; align-items: center; gap: 8px; background: #417d81; color: #fff; padding: 5px 14px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; white-space: nowrap;"><span>Transfer Pricing Interest Monthly :</span><span id="bs-interest-val">${self.interestDisplay || "0.00"}</span></div>
+							<div style="display: flex; align-items: center; gap: 8px; background: #417d81; color: #fff; padding: 5px 14px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; white-space: nowrap;"><span>Transfer Pricing Interest Yearly :</span><span id="bs-interest-yearly-val">${self.yearlyInterestDisplay || "0.00"}</span></div>
+						</div>`;
 						const $row = container.find("#bs-zone-filter-row");
 						$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
 					});
@@ -7981,6 +7984,18 @@ class DrishtiDashboard {
 								self.interestDisplay = fmt(avgDiff * 0.18 * day / 365);
 								const $ival = container.find("#bs-interest-val");
 								if ($ival.length) $ival.text(self.interestDisplay);
+								let fyDays = day;
+								if (dateStr) {
+									const parts = dateStr.split("-").map(Number);
+									const dt = new Date(parts[0], parts[1] - 1, parts[2]);
+									const fyYear = parts[1] >= 4 ? parts[0] : parts[0] - 1;
+									const fyStart = new Date(fyYear, 3, 1);
+									fyDays = Math.round((dt - fyStart) / 86400000) + 1;
+								}
+								const yearlyDiff = Math.abs(s3 ? Number(s3.yearly_avg_balance) || 0 : 0) - Math.abs(s9 ? Number(s9.yearly_avg_balance) || 0 : 0);
+								self.yearlyInterestDisplay = fmt(yearlyDiff * 0.18 * fyDays / 365);
+								const $yval = container.find("#bs-interest-yearly-val");
+								if ($yval.length) $yval.text(self.yearlyInterestDisplay);
 								renderRows();
 							},
 							error: function () {
