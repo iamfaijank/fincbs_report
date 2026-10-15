@@ -3234,6 +3234,7 @@
 					1540: "2010",
 					"0010": "2005",
 					SMBG: "2005",
+					"0040": "2015",
 				},
 				schemeRules: {
 					2010: {
@@ -3431,7 +3432,7 @@
 					return digits.length >= 8 ? digits.slice(4, 8) : "";
 				},
 				isCsvRequired() {
-					return ["0010", "1540"].includes(this.getAccountSchemeCode());
+					return ["0010", "1540", "0040"].includes(this.getAccountSchemeCode());
 				},
 				syncStatementErrorState() {
 					const mismatchMessage = this.getCsvAccountMismatchMessage(
@@ -3838,6 +3839,9 @@
 					} else if (schemeCode === "1540") {
 						this.glCode = "RD";
 						this.glCodeHint = "Scheme 1540 -> GL Code RD";
+					} else if (schemeCode === "0040") {
+						this.glCode = "B104";
+						this.glCodeHint = "Scheme 0040 -> GL Code B104";
 					} else {
 						this.glCode = "";
 						this.glCodeHint = schemeCode.length === 4 ? "Unsupported scheme code" : "";
@@ -3967,6 +3971,7 @@
 						"0010",
 						"2010",
 						"1540",
+						"0040",
 						"2011",
 						"2012",
 						"2013",
