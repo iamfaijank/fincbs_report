@@ -528,6 +528,42 @@ def get_latest_pl_date():
 
 
 @frappe.whitelist()
+def resolve_branch_label(query=None):
+	"""Resolve a search query to 'branch name (sol id)' label, or match count."""
+	q = (query or "").strip()
+	if not q:
+		return None
+	if q.isdigit():
+		variants = sorted({q, q.lstrip("0") or q, q.zfill(4), q.zfill(5), q.zfill(6)})
+		ph = ", ".join(["%s"] * len(variants))
+		row = frappe.db.sql(
+			"""
+			SELECT branch, sol_id FROM `tabSahayog Branch`
+			WHERE sol_id IN ({ph}) OR name IN ({ph})
+			LIMIT 1
+			""".format(ph=ph),
+			tuple(list(variants) + list(variants)),
+			as_dict=True,
+		)
+		if row and row[0].branch:
+			return f"{row[0].branch} ({row[0].sol_id or q})"
+		return None
+	rows = frappe.db.sql(
+		"""
+		SELECT DISTINCT branch, sol_id FROM `tabSahayog Branch`
+		WHERE name LIKE %s OR sol_id LIKE %s OR branch LIKE %s
+		""",
+		(f"%{q}%", f"%{q}%", f"%{q}%"),
+		as_dict=True,
+	)
+	if len(rows) == 1:
+		return f"{rows[0].branch} ({rows[0].sol_id})" if rows[0].sol_id else (rows[0].branch or None)
+	if len(rows) > 1:
+		return f"{len(rows)} branches matched"
+	return None
+
+
+@frappe.whitelist()
 def get_balance_sheet_summary(report_date=None, sol_id=None, zones=None):
 	"""Sum balance grouped by schedule/sub_schedule for schedules 3 and 9, with MTD daily average."""
 	import json
