@@ -7741,13 +7741,30 @@ class DrishtiDashboard {
 						</table>
 					`);
 					const tbody = container.find("#pl-summary-body");
+					const rawPlSearch = function () {
+						return (self.plSearchRaw != null ? self.plSearchRaw : (self.plSearch || "")) || "";
+					};
+					const applyPlSearchLabel = function () {
+						const raw = rawPlSearch().trim();
+						const $input = container.find("#pl-search");
+						if (!$input.length) return;
+						if (!raw) { $input.val(""); return; }
+						frappe.call({
+							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.resolve_branch_label",
+							args: { query: raw },
+							callback: function (r) {
+								const label = r.message;
+								if (label && !$input.is(":focus")) $input.val(label);
+							},
+						});
+					};
 					const fetchData = function () {
 						tbody.html(skeletonRows);
 						frappe.call({
 							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_pl_summary",
 							args: {
 								report_date: container.find("#pl-date-filter").val() || "",
-								sol_id: container.find("#pl-search").val() || "",
+								sol_id: rawPlSearch(),
 								zones: JSON.stringify(self.selectedMisZones || []),
 							},
 							callback: function (r) {
@@ -7756,7 +7773,7 @@ class DrishtiDashboard {
 									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_balance_sheet_summary",
 									args: {
 										report_date: container.find("#pl-date-filter").val() || "",
-										sol_id: container.find("#pl-search").val() || "",
+										sol_id: rawPlSearch(),
 										zones: JSON.stringify(self.selectedMisZones || []),
 									},
 									callback: function (r2) {
@@ -7779,11 +7796,13 @@ class DrishtiDashboard {
 										self.plTransferInterest = avgDiff * 0.18 * day / 365;
 										self.plTransferInterestYearly = yearlyDiff * 0.18 * fyDays / 365;
 										renderRows();
+										applyPlSearchLabel();
 									},
 									error: function () {
 										self.plTransferInterest = null;
 										self.plTransferInterestYearly = null;
 										renderRows();
+										applyPlSearchLabel();
 									},
 								});
 							},
@@ -7838,7 +7857,7 @@ class DrishtiDashboard {
 								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff; text-align: right;">${fmt(incomeOverExp)}</td>
 								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff; text-align: right;">${fmt(monthlyIncomeOverExp)}</td>
 							</tr>`;
-						const searchActive = (container.find("#pl-search").val() || "").trim() !== "";
+						const searchActive = rawPlSearch().trim() !== "";
 						if (searchActive) {
 							const dateStr = container.find("#pl-date-filter").val() || "";
 							let months = 1;
@@ -7898,9 +7917,23 @@ class DrishtiDashboard {
 					});
 					let plSearchTimeout = null;
 					container.off("input", "#pl-search").on("input", "#pl-search", function () {
-						self.plSearch = $(this).val();
+						self.plSearchRaw = $(this).val();
+						self.plSearch = self.plSearchRaw;
 						clearTimeout(plSearchTimeout);
 						plSearchTimeout = setTimeout(fetchData, 400);
+					});
+					container.off("focus", "#pl-search").on("focus", "#pl-search", function () {
+						$(this).val(rawPlSearch());
+					});
+					container.off("blur", "#pl-search").on("blur", "#pl-search", function () {
+						const current = $(this).val();
+						if (current !== rawPlSearch()) {
+							self.plSearchRaw = current;
+							self.plSearch = current;
+							fetchData();
+						} else {
+							applyPlSearchLabel();
+						}
 					});
 					container.off("click", "#pl-refetch").on("click", "#pl-refetch", function () {
 						self.plDate = container.find("#pl-date-filter").val();
@@ -7985,13 +8018,30 @@ class DrishtiDashboard {
 						</table>
 					`);
 					const tbody = container.find("#bs-summary-body");
+					const rawBsSearch = function () {
+						return (self.bsSearchRaw != null ? self.bsSearchRaw : (self.bsSearch || "")) || "";
+					};
+					const applyBsSearchLabel = function () {
+						const raw = rawBsSearch().trim();
+						const $input = container.find("#bs-search");
+						if (!$input.length) return;
+						if (!raw) { $input.val(""); return; }
+						frappe.call({
+							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.resolve_branch_label",
+							args: { query: raw },
+							callback: function (r) {
+								const label = r.message;
+								if (label && !$input.is(":focus")) $input.val(label);
+							},
+						});
+					};
 					const fetchData = function () {
 						tbody.html(skeletonRows);
 						frappe.call({
 							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_balance_sheet_summary",
 							args: {
 								report_date: container.find("#bs-date-filter").val() || "",
-								sol_id: container.find("#bs-search").val() || "",
+								sol_id: rawBsSearch(),
 								zones: JSON.stringify(self.selectedMisZones || []),
 							},
 							callback: function (r) {
@@ -8021,9 +8071,11 @@ class DrishtiDashboard {
 								const $yval = container.find("#bs-interest-yearly-val");
 								if ($yval.length) $yval.text(self.yearlyInterestDisplay);
 								renderRows();
+								applyBsSearchLabel();
 							},
 							error: function () {
 								tbody.html(`<tr><td colspan="4" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #dc2626;">Failed to load data</td></tr>`);
+								applyBsSearchLabel();
 							},
 						});
 					};
@@ -8086,9 +8138,23 @@ class DrishtiDashboard {
 					});
 					let bsSearchTimeout = null;
 					container.off("input", "#bs-search").on("input", "#bs-search", function () {
-						self.bsSearch = $(this).val();
+						self.bsSearchRaw = $(this).val();
+						self.bsSearch = self.bsSearchRaw;
 						clearTimeout(bsSearchTimeout);
 						bsSearchTimeout = setTimeout(fetchData, 400);
+					});
+					container.off("focus", "#bs-search").on("focus", "#bs-search", function () {
+						$(this).val(rawBsSearch());
+					});
+					container.off("blur", "#bs-search").on("blur", "#bs-search", function () {
+						const current = $(this).val();
+						if (current !== rawBsSearch()) {
+							self.bsSearchRaw = current;
+							self.bsSearch = current;
+							fetchData();
+						} else {
+							applyBsSearchLabel();
+						}
 					});
 					container.off("click", "#bs-refetch").on("click", "#bs-refetch", function () {
 						self.bsDate = container.find("#bs-date-filter").val();
