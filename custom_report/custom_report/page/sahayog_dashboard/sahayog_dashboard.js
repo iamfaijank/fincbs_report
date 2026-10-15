@@ -7802,17 +7802,18 @@ class DrishtiDashboard {
 							const tpMonthly = showTp ? self.plTransferInterest : 0;
 							const schTotal = (Number(sch.total_balance) || 0) + tpYearly;
 							const schMonthly = (Number(sch.monthly_balance) || 0) + tpMonthly;
+							const collapsed = !!(self.plCollapsed && self.plCollapsed[sch.schedule_number]);
 							incomeOverExp += schTotal;
 							monthlyIncomeOverExp += schMonthly;
 							html += `
-								<tr>
-									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;">${sch.schedule}</td>
+								<tr class="pl-sch-row" data-sch="${sch.schedule_number}" style="cursor: pointer;">
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;"><span class="sch-caret" style="display: inline-block; width: 14px;">${collapsed ? "▸" : "▾"}</span>${sch.schedule}</td>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(schTotal)}</td>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(schMonthly)}</td>
 								</tr>`;
 							if (showTp) {
 								html += `
-									<tr>
+									<tr class="pl-sub-row" data-sch="${sch.schedule_number}" style="${collapsed ? "display: none; " : ""}">
 										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Transfer Pricing Interest</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${self.plTransferInterestYearly != null ? fmt(self.plTransferInterestYearly) : "-"}</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(self.plTransferInterest)}</td>
@@ -7820,7 +7821,7 @@ class DrishtiDashboard {
 							}
 							sch.sub_schedules.forEach((sub) => {
 								html += `
-									<tr>
+									<tr class="pl-sub-row" data-sch="${sch.schedule_number}" style="${collapsed ? "display: none; " : ""}">
 										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155;">${sub.sub_schedule}</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.total_balance)}</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.monthly_balance)}</td>
@@ -7847,6 +7848,7 @@ class DrishtiDashboard {
 							}
 							const centralAlloc = months * 400000;
 							const incomeAfterAlloc = incomeOverExp - centralAlloc;
+							const iaaColor = incomeAfterAlloc < 0 ? "#dc2626" : "#0f766e";
 							html += `
 								<tr>
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Central Allocation</td>
@@ -7854,13 +7856,21 @@ class DrishtiDashboard {
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #64748b; text-align: right;">-</td>
 								</tr>
 								<tr>
-									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Income After Allocation</td>
-									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(incomeAfterAlloc)}</td>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: ${iaaColor};">Income After Allocation</td>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: ${iaaColor}; text-align: right;">${incomeAfterAlloc < 0 ? "-" : ""}${fmt(incomeAfterAlloc)}</td>
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #64748b; text-align: right;">-</td>
 								</tr>`;
 						}
 						tbody.html(html);
 					};
+					tbody.off("click", ".pl-sch-row").on("click", ".pl-sch-row", function () {
+						const num = String($(this).attr("data-sch"));
+						if (!self.plCollapsed) self.plCollapsed = {};
+						const nowCollapsed = !self.plCollapsed[num];
+						self.plCollapsed[num] = nowCollapsed;
+						tbody.find(`tr.pl-sub-row[data-sch="${num}"]`).css("display", nowCollapsed ? "none" : "");
+						$(this).find(".sch-caret").text(nowCollapsed ? "▸" : "▾");
+					});
 					self.renderZoneFilterTags(container, dashboardInstance);
 					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
 						const zone = $(this).data("zone");
@@ -8015,30 +8025,39 @@ class DrishtiDashboard {
 					};
 					const renderRows = function () {
 						let html = "";
-						(self.bsData || []).forEach((sch) => {
+					(self.bsData || []).forEach((sch) => {
+						const collapsed = !!(self.bsCollapsed && self.bsCollapsed[sch.schedule_number]);
+						html += `
+							<tr class="bs-sch-row" data-sch="${sch.schedule_number}" style="cursor: pointer;">
+								<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;"><span class="sch-caret" style="display: inline-block; width: 14px;">${collapsed ? "▸" : "▾"}</span>${sch.schedule}</td>
+								<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(sch.total_balance)}</td>
+								<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(sch.avg_balance)}</td>
+								<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(sch.yearly_avg_balance)}</td>
+							</tr>`;
+						sch.sub_schedules.forEach((sub) => {
 							html += `
-								<tr>
-									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;">${sch.schedule}</td>
-									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(sch.total_balance)}</td>
-									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(sch.avg_balance)}</td>
-									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(sch.yearly_avg_balance)}</td>
+								<tr class="bs-sub-row" data-sch="${sch.schedule_number}" style="${collapsed ? "display: none; " : ""}">
+									<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155;">${sub.sub_schedule}</td>
+									<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.total_balance)}</td>
+									<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.avg_balance)}</td>
+									<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.yearly_avg_balance)}</td>
 								</tr>`;
-							sch.sub_schedules.forEach((sub) => {
-								html += `
-									<tr>
-										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155;">${sub.sub_schedule}</td>
-										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.total_balance)}</td>
-										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.avg_balance)}</td>
-										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.yearly_avg_balance)}</td>
-									</tr>`;
-							});
 						});
+					});
 						if (!(self.bsData || []).length) {
 							tbody.html(`<tr><td colspan="4" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #64748b;">No data found</td></tr>`);
 							return;
 						}
 						tbody.html(html);
 					};
+					tbody.off("click", ".bs-sch-row").on("click", ".bs-sch-row", function () {
+						const num = String($(this).attr("data-sch"));
+						if (!self.bsCollapsed) self.bsCollapsed = {};
+						const nowCollapsed = !self.bsCollapsed[num];
+						self.bsCollapsed[num] = nowCollapsed;
+						tbody.find(`tr.bs-sub-row[data-sch="${num}"]`).css("display", nowCollapsed ? "none" : "");
+						$(this).find(".sch-caret").text(nowCollapsed ? "▸" : "▾");
+					});
 					self.renderZoneFilterTags(container, dashboardInstance);
 					container.off("click", ".bs-zone-filter-tag").on("click", ".bs-zone-filter-tag", function () {
 						const zone = $(this).data("zone");
