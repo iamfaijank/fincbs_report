@@ -7848,17 +7848,20 @@ class DrishtiDashboard {
 							}
 							const centralAlloc = months * 400000;
 							const incomeAfterAlloc = incomeOverExp - centralAlloc;
+							const monthlyCentralAlloc = 400000;
+							const monthlyIncomeAfterAlloc = monthlyIncomeOverExp - monthlyCentralAlloc;
 							const iaaColor = incomeAfterAlloc < 0 ? "#dc2626" : "#0f766e";
+							const iaaMonthlyColor = monthlyIncomeAfterAlloc < 0 ? "#dc2626" : "#0f766e";
 							html += `
 								<tr>
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Central Allocation</td>
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(centralAlloc)}</td>
-									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #64748b; text-align: right;">-</td>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(monthlyCentralAlloc)}</td>
 								</tr>
 								<tr>
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: ${iaaColor};">Income After Allocation</td>
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: ${iaaColor}; text-align: right;">${incomeAfterAlloc < 0 ? "-" : ""}${fmt(incomeAfterAlloc)}</td>
-									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #64748b; text-align: right;">-</td>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: ${iaaMonthlyColor}; text-align: right;">${monthlyIncomeAfterAlloc < 0 ? "-" : ""}${fmt(monthlyIncomeAfterAlloc)}</td>
 								</tr>`;
 						}
 						tbody.html(html);
