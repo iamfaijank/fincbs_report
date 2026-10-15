@@ -7802,7 +7802,7 @@ class DrishtiDashboard {
 							const tpMonthly = showTp ? self.plTransferInterest : 0;
 							const schTotal = (Number(sch.total_balance) || 0) + tpYearly;
 							const schMonthly = (Number(sch.monthly_balance) || 0) + tpMonthly;
-							const collapsed = !!(self.plCollapsed && self.plCollapsed[sch.schedule_number]);
+							const collapsed = !self.plCollapsed || self.plCollapsed[sch.schedule_number] !== false;
 							incomeOverExp += schTotal;
 							monthlyIncomeOverExp += schMonthly;
 							html += `
@@ -7869,7 +7869,8 @@ class DrishtiDashboard {
 					tbody.off("click", ".pl-sch-row").on("click", ".pl-sch-row", function () {
 						const num = String($(this).attr("data-sch"));
 						if (!self.plCollapsed) self.plCollapsed = {};
-						const nowCollapsed = !self.plCollapsed[num];
+						const isCollapsed = self.plCollapsed[num] !== false;
+						const nowCollapsed = !isCollapsed;
 						self.plCollapsed[num] = nowCollapsed;
 						tbody.find(`tr.pl-sub-row[data-sch="${num}"]`).css("display", nowCollapsed ? "none" : "");
 						$(this).find(".sch-caret").text(nowCollapsed ? "▸" : "▾");
@@ -8029,7 +8030,7 @@ class DrishtiDashboard {
 					const renderRows = function () {
 						let html = "";
 					(self.bsData || []).forEach((sch) => {
-						const collapsed = !!(self.bsCollapsed && self.bsCollapsed[sch.schedule_number]);
+						const collapsed = !self.bsCollapsed || self.bsCollapsed[sch.schedule_number] !== false;
 						html += `
 							<tr class="bs-sch-row" data-sch="${sch.schedule_number}" style="cursor: pointer;">
 								<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;"><span class="sch-caret" style="display: inline-block; width: 14px;">${collapsed ? "▸" : "▾"}</span>${sch.schedule}</td>
@@ -8056,7 +8057,8 @@ class DrishtiDashboard {
 					tbody.off("click", ".bs-sch-row").on("click", ".bs-sch-row", function () {
 						const num = String($(this).attr("data-sch"));
 						if (!self.bsCollapsed) self.bsCollapsed = {};
-						const nowCollapsed = !self.bsCollapsed[num];
+						const isCollapsed = self.bsCollapsed[num] !== false;
+						const nowCollapsed = !isCollapsed;
 						self.bsCollapsed[num] = nowCollapsed;
 						tbody.find(`tr.bs-sub-row[data-sch="${num}"]`).css("display", nowCollapsed ? "none" : "");
 						$(this).find(".sch-caret").text(nowCollapsed ? "▸" : "▾");
