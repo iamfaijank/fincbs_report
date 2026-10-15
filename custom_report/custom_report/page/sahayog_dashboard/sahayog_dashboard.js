@@ -7729,7 +7729,7 @@ class DrishtiDashboard {
 							<button type="button" id="pl-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 						</div>
 						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
-						<table style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
+						<table class="mis-hover-table" style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
 							<thead>
 								<tr>
 									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">Particulars</th>
@@ -7740,6 +7740,12 @@ class DrishtiDashboard {
 							<tbody id="pl-summary-body">${skeletonRows}</tbody>
 						</table>
 					`);
+					if (!document.getElementById("mis-hover-style")) {
+						const st = document.createElement("style");
+						st.id = "mis-hover-style";
+						st.textContent = ".mis-hover-table tbody tr { cursor: pointer; } .mis-hover-table tbody tr:hover td { background-color: #e6f4f1 !important; } .mis-hover-table tbody tr.pl-sch-row:hover td, .mis-hover-table tbody tr.bs-sch-row:hover td { background-color: #d5ebe8 !important; }";
+						document.head.appendChild(st);
+					}
 					const tbody = container.find("#pl-summary-body");
 					const rawPlSearch = function () {
 						return (self.plSearchRaw != null ? self.plSearchRaw : (self.plSearch || "")) || "";
@@ -8005,7 +8011,7 @@ class DrishtiDashboard {
 							<button type="button" id="bs-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 						</div>
 						<div id="bs-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
-						<table style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
+						<table class="mis-hover-table" style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
 							<thead>
 								<tr>
 									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">Deposits</th>
@@ -8017,6 +8023,12 @@ class DrishtiDashboard {
 							<tbody id="bs-summary-body">${skeletonRows}</tbody>
 						</table>
 					`);
+					if (!document.getElementById("mis-hover-style")) {
+						const st = document.createElement("style");
+						st.id = "mis-hover-style";
+						st.textContent = ".mis-hover-table tbody tr { cursor: pointer; } .mis-hover-table tbody tr:hover td { background-color: #e6f4f1 !important; } .mis-hover-table tbody tr.pl-sch-row:hover td, .mis-hover-table tbody tr.bs-sch-row:hover td { background-color: #d5ebe8 !important; }";
+						document.head.appendChild(st);
+					}
 					const tbody = container.find("#bs-summary-body");
 					const rawBsSearch = function () {
 						return (self.bsSearchRaw != null ? self.bsSearchRaw : (self.bsSearch || "")) || "";
