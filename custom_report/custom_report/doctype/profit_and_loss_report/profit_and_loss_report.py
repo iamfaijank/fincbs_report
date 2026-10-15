@@ -362,7 +362,7 @@ def get_pl_summary(report_date=None, sol_id=None, zones=None):
 	params = []
 	yearly_select = "SUM(balance) AS yearly_balance"
 	monthly_select = "SUM(balance) AS monthly_balance"
-	sql_params = params
+	select_prefix = []
 	if report_date:
 		import datetime as _dt
 
@@ -377,7 +377,7 @@ def get_pl_summary(report_date=None, sol_id=None, zones=None):
 			" - SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END)"
 			" AS monthly_balance"
 		)
-		sql_params = [report_date, prev_month_end, report_date] + params
+		select_prefix = [report_date, prev_month_end, report_date]
 	if sol_id:
 		search_val = sol_id.strip()
 		if search_val.isdigit():
@@ -483,7 +483,7 @@ def get_pl_summary(report_date=None, sol_id=None, zones=None):
 		WHERE {conditions}
 		GROUP BY schedule, sub_schedule
 		""".format(conditions=" AND ".join(filters), yearly_select=yearly_select, monthly_select=monthly_select),
-		tuple(sql_params),
+		tuple(select_prefix + params),
 		as_dict=True,
 	)
 
