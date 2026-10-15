@@ -1561,10 +1561,11 @@ class DrishtiDashboard {
 								const districtExpanded = self.expandedDistricts[districtKey];
 								const districtChecked = self.checkedRows[districtKey];
 								const showDistrict = zoneExpanded && regionExpanded;
+								const districtSolIds = districtObj.branches.map(b => b.sol_id).filter(Boolean);
 								rowsHtml += `<tr class="mis-district-row${districtChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${districtKey}" style="display: ${showDistrict ? "table-row" : "none"}; cursor: pointer; background: #fafaf9; border-bottom: 1px solid #e7e5e4;">
 									<td style="padding: 7px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${districtKey}" ${districtChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 									<td style="padding: 7px 14px; color: #78716c; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-<td style="padding: 7px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 14px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}</td>
+<td style="padding: 7px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 14px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}${districtSolIds.length ? `<button type="button" class="mis-district-dl" data-sols="${_esc(JSON.stringify(districtSolIds))}" data-district="${_esc(district)}" title="Download District CSV" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; Download</button>` : ""}</td>
 								<td style="padding: 7px 14px; color: #0d9488; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 600;">${districtObj.branches.length}</td>
 									<td style="padding: 7px 14px; text-align: center; white-space: nowrap;">${levelBadge("District", "#ccfbf1", "#115e59", "#5eead4")}</td>
 									${metricCols.map(mc => `<td style="padding: 7px 14px; color: #44403c; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(districtObj[mc.key])}</td>`).join('')}
@@ -1583,7 +1584,7 @@ class DrishtiDashboard {
 									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-sol="${_esc(solId)}" data-check-id="${solId}" style="display: ${showBranch ? "table-row" : "none"}; background: ${branchBg}; border-bottom: 1px solid #e2e8f0; cursor: ${details.length ? "pointer" : "default"};">
 									<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${solId}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-									<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 14px; font-weight: 500;">${branchToggle}${branch.sol_id} - ${_esc(branch.branch_name || branch.sol_desc)}${details.length ? `<button type="button" class="mis-branch-dl" data-sol="${_esc(solId)}" title="Download this branch's drilldown (CSV)" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; CSV</button><button type="button" class="mis-branch-xls" data-sol="${_esc(solId)}" title="Download this branch's drilldown (Excel)" style="margin-left: 4px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; XLS</button>` : ""}</td>
+									<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 14px; font-weight: 500;">${branchToggle}${branch.sol_id} - ${_esc(branch.branch_name || branch.sol_desc)}${details.length ? `<button type="button" class="mis-branch-dl" data-sol="${_esc(solId)}" title="Download CSV" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; Download</button>` : ""}</td>
 									<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px; font-weight: 500;">1</td>
 									<td style="padding: 6px 14px; text-align: center; white-space: nowrap;">${levelBadge("Branch", "#fef9c3", "#854d0e", "#fde047")}</td>
 									${metricCols.map(mc => `<td style="padding: 6px 14px; color: #475569; text-align: ${mc.align}; white-space: nowrap; font-size: 14px; font-weight: 500;">${mc.fmt(branch[mc.key])}</td>`).join('')}
@@ -1861,52 +1862,75 @@ class DrishtiDashboard {
 						}
 						$(this).find(".mis-agent-toggle").text(show ? "▼" : "▶");
 					});
-					tableContainer.off("click", ".mis-branch-dl, .mis-branch-xls").on("click", ".mis-branch-dl, .mis-branch-xls", function (e) {
+					tableContainer.off("click", ".mis-branch-dl").on("click", ".mis-branch-dl", function (e) {
 						e.stopPropagation();
-						const sol = $(this).attr("data-sol");
+						const $btn = $(this);
+						if ($btn.data("loading")) return;
+						const sol = $btn.attr("data-sol");
 						const info = (self._rdBranchDetails || {})[sol] || {};
-						const details = info.details || [];
-						if (!details.length) return;
-						const csvCell = (v) => {
-							const s = String(v == null ? "" : v);
-							return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-						};
-						const rows = [["Branch Name", "Sol ID", "Auth ID", "Auth Name", "Agent ID", "Agent Name", "Total Accounts", "Total Collection", "Pending Accounts", "Pending Instalments", "Pending Amount"]];
-						details.forEach(d => rows.push([
-							info.name || "", info.sol || sol,
-							d.auth_id || "", d.auth_role_id || "", d.rm_id || "", d.rm_name || "",
-							d.total_accounts || 0, d.total_collection || 0, d.pending_accounts || 0,
-							d.pending_instalments || 0, d.pending_amount || 0
-						]));
-						let blob, filename;
-						if ($(this).hasClass("mis-branch-xls")) {
-							const xEsc = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-							const xmlCell = (v, i) => {
-								if (i >= 6 && v !== "" && v != null && isFinite(Number(v))) {
-									return `<Cell><Data ss:Type="Number">${Number(v)}</Data></Cell>`;
-								}
-								return `<Cell><Data ss:Type="String">${xEsc(v)}</Data></Cell>`;
-							};
-							const xml = '<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n' +
-								'<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' +
-								'<Worksheet ss:Name="Drilldown"><Table>' +
-								rows.map(r => "<Row>" + r.map((v, i) => xmlCell(v, i)).join("") + "</Row>").join("") +
-								'</Table></Worksheet></Workbook>';
-							blob = new Blob([xml], { type: "application/vnd.ms-excel;charset=utf-8;" });
-							filename = "RD_SMBG_" + (info.sol || sol) + ".xls";
-						} else {
-							const csv = "\uFEFF" + rows.map(r => r.map(csvCell).join(",")).join("\r\n");
-							blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-							filename = "RD_SMBG_" + (info.sol || sol) + ".csv";
-						}
-						const url = URL.createObjectURL(blob);
-						const a = document.createElement("a");
-						a.href = url;
-						a.download = filename;
-						document.body.appendChild(a);
-						a.click();
-						document.body.removeChild(a);
-						URL.revokeObjectURL(url);
+						const selDate = dashboardInstance.state.selectedDate;
+						const origHtml = $btn.html();
+						$btn.data("loading", true).html("\u23F3 Please wait...").css({ opacity: "0.65", pointerEvents: "none" });
+						const resetBtn = () => $btn.data("loading", false).html(origHtml).css({ opacity: "", pointerEvents: "" });
+						frappe.call({
+							method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_branch_accounts",
+							args: { sol_id: sol, selected_date: selDate || null },
+							callback: function (r) {
+								resetBtn();
+								const accounts = (r && r.message) || [];
+								if (!accounts.length) { frappe.msgprint("No account data available for this branch."); return; }
+								const csvCell = (v) => { const s = String(v == null ? "" : v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+								const rows = [["Sol ID", "Agent Code", "Agent Name", "Auth ID", "Auth Name", "Customer Ac No", "Customer Name", "Scheme Code", "Scheme Name", "Deposit Amount", "Acct Open Date", "Maturity Date", "Pending Instalments", "Pending Amount"]];
+								accounts.forEach(a => rows.push([
+									a.sol_id || "", a.rm_id || "", a.rm_name || "", a.auth_id || "", a.auth_role_id || "",
+									a.foracid || "", a.acct_name || "", a.schm_code || "", a.schm_desc || "",
+									a.deposit_amount || 0, a.acct_opn_date || "", a.maturity_date || "",
+									a.pending_instalments || 0, a.pending_amount || 0
+								]));
+								const csv = "\uFEFF" + rows.map(r => r.map(csvCell).join(",")).join("\r\n");
+								const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+								const a = document.createElement("a");
+								a.href = url; a.download = "RD_SMBG_" + (info.sol || sol) + ".csv";
+								document.body.appendChild(a); a.click();
+								document.body.removeChild(a); URL.revokeObjectURL(url);
+							},
+							error: resetBtn
+						});
+					});
+					tableContainer.off("click", ".mis-district-dl").on("click", ".mis-district-dl", function (e) {
+						e.stopPropagation();
+						const $btn = $(this);
+						if ($btn.data("loading")) return;
+						const sols = JSON.parse($btn.attr("data-sols") || "[]");
+						const districtName = $btn.attr("data-district") || "District";
+						const selDate = dashboardInstance.state.selectedDate;
+						const origHtml = $btn.html();
+						$btn.data("loading", true).html("⏳ Please wait...").css({ opacity: "0.65", pointerEvents: "none" });
+						const resetBtn = () => $btn.data("loading", false).html(origHtml).css({ opacity: "", pointerEvents: "" });
+						frappe.call({
+							method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_rd_smbg_district_accounts",
+							args: { sol_ids: JSON.stringify(sols), selected_date: selDate || null },
+							callback: function (r) {
+								resetBtn();
+								const accounts = (r && r.message) || [];
+								if (!accounts.length) { frappe.msgprint("No account data available for this district."); return; }
+								const csvCell = (v) => { const s = String(v == null ? "" : v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+								const rows = [["Sol ID", "Agent Code", "Agent Name", "Auth ID", "Auth Name", "Customer Ac No", "Customer Name", "Scheme Code", "Scheme Name", "Deposit Amount", "Acct Open Date", "Maturity Date", "Pending Instalments", "Pending Amount"]];
+								accounts.forEach(a => rows.push([
+									a.sol_id || "", a.rm_id || "", a.rm_name || "", a.auth_id || "", a.auth_role_id || "",
+									a.foracid || "", a.acct_name || "", a.schm_code || "", a.schm_desc || "",
+									a.deposit_amount || 0, a.acct_opn_date || "", a.maturity_date || "",
+									a.pending_instalments || 0, a.pending_amount || 0
+								]));
+								const csv = "﻿" + rows.map(r => r.map(csvCell).join(",")).join("\r\n");
+								const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+								const a = document.createElement("a");
+								a.href = url; a.download = "RD_SMBG_" + districtName.replace(/\s+/g, "_") + ".csv";
+								document.body.appendChild(a); a.click();
+								document.body.removeChild(a); URL.revokeObjectURL(url);
+							},
+							error: resetBtn
+						});
 					});
 					tableContainer.off("change", ".mis-row-check").on("change", ".mis-row-check", function () {
 						const checkId = $(this).data("check-id");

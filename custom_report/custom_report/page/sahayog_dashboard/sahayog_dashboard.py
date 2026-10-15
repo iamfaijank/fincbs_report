@@ -1822,6 +1822,128 @@ def get_rd_smbg_agent_customers(sol_id, rm_id, auth_id=None, selected_date=None)
     return result
 
 
+def _fetch_rd_smbg_branch_rows(sol_id, selected_date=None):
+    from custom_report.rd_smbg_pending_report import SCHM_EXCLUDE_FILTER, resolve_target_date
+
+    sol_id = str(sol_id or "").strip()
+    if not sol_id:
+        return None, []
+
+    perms = get_user_report_permissions(frappe.session.user)
+    allowed = get_permitted_sol_ids_for_user(perms)
+    if allowed is not None:
+        allowed_set = {str(s).strip() for s in allowed}
+        if sol_id not in allowed_set and sol_id.lstrip("0") not in allowed_set:
+            return sol_id, []
+
+    target_date = resolve_target_date(selected_date)
+    rows = frappe.db.sql(
+        """
+        SELECT sol_id, rm_id, rm_name, auth_id, auth_role_id,
+               foracid, acct_name, schm_code, schm_desc, deposit_amount,
+               acct_opn_date, maturity_date, pending_instalments, pending_amount
+        FROM `tabRD and SMBG Pending`
+        WHERE `date` = %s AND `sol_id` = %s AND {}
+        ORDER BY rm_id, pending_amount DESC, acct_name
+        """.format(SCHM_EXCLUDE_FILTER),
+        (str(target_date), sol_id),
+        as_dict=True,
+    )
+    return sol_id, [
+        {
+            "sol_id": r.sol_id or "",
+            "rm_id": r.rm_id or "",
+            "rm_name": r.rm_name or "",
+            "auth_id": r.auth_id or "",
+            "auth_role_id": r.auth_role_id or "",
+            "foracid": r.foracid or "",
+            "acct_name": r.acct_name or "",
+            "schm_code": r.schm_code or "",
+            "schm_desc": r.schm_desc or "",
+            "deposit_amount": float(r.deposit_amount or 0),
+            "acct_opn_date": str(r.acct_opn_date or ""),
+            "maturity_date": str(r.maturity_date or ""),
+            "pending_instalments": int(r.pending_instalments or 0),
+            "pending_amount": float(r.pending_amount or 0),
+        }
+        for r in rows
+    ]
+
+
+@frappe.whitelist()
+def get_rd_smbg_branch_accounts(sol_id, selected_date=None):
+    """All individual RD & SMBG Pending accounts for a branch (sol_id), for CSV export."""
+    _, rows = _fetch_rd_smbg_branch_rows(sol_id, selected_date)
+    return rows
+
+
+@frappe.whitelist()
+def get_rd_smbg_district_accounts(sol_ids, selected_date=None):
+    """All individual RD & SMBG Pending accounts for multiple branches (district-level export)."""
+    import json
+    if isinstance(sol_ids, str):
+        try:
+            sol_ids = json.loads(sol_ids)
+        except Exception:
+            sol_ids = [s.strip() for s in sol_ids.split(",") if s.strip()]
+    result = []
+    for sol_id in sol_ids:
+        _, rows = _fetch_rd_smbg_branch_rows(sol_id, selected_date)
+        result.extend(rows)
+    return result
+
+
+@frappe.whitelist()
+def get_rd_smbg_branch_excel(sol_id, selected_date=None):
+    """Generate a formatted xlsx for all RD & SMBG Pending accounts of a branch."""
+    import base64
+    import io
+    import openpyxl
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    _, rows = _fetch_rd_smbg_branch_rows(sol_id, selected_date)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "RD SMBG Detail"
+
+    headers = [
+        "Sol ID", "Agent Code", "Agent Name", "Auth ID", "Auth Name",
+        "Customer Ac No", "Customer Name", "Scheme Code", "Scheme Name",
+        "Deposit Amount", "Acct Open Date", "Maturity Date",
+        "Pending Instalments", "Pending Amount",
+    ]
+    ws.append(headers)
+
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill("solid", fgColor="1F4E79")
+    header_align = Alignment(horizontal="center", vertical="center")
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+
+    num_cols = {10, 13, 14}  # 1-indexed: Deposit Amount, Pending Instalments, Pending Amount
+    for r in rows:
+        ws.append([
+            r["sol_id"], r["rm_id"], r["rm_name"], r["auth_id"], r["auth_role_id"],
+            r["foracid"], r["acct_name"], r["schm_code"], r["schm_desc"],
+            r["deposit_amount"], r["acct_opn_date"], r["maturity_date"],
+            r["pending_instalments"], r["pending_amount"],
+        ])
+
+    for col_idx, col in enumerate(ws.columns, start=1):
+        max_len = max((len(str(cell.value or "")) for cell in col), default=10)
+        ws.column_dimensions[col[0].column_letter].width = min(max_len + 3, 40)
+        if col_idx in num_cols:
+            for cell in col[1:]:
+                cell.alignment = Alignment(horizontal="right")
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return base64.b64encode(buf.getvalue()).decode()
+
+
 def _build_rd_smbg_rows(sol_ids=None, selected_date=None):
     from custom_report.rd_smbg_pending_report import get_rm_details, get_sol_summary, resolve_target_date
 
