@@ -357,6 +357,18 @@ def sync_profit_and_loss_data(sync_date):
 def get_pl_summary(report_date=None, sol_id=None, zones=None):
 	"""Sum balance grouped by schedule/sub_schedule for schedules >= 13."""
 	import json
+	import hashlib
+
+	_cache_key = None
+	try:
+		_cache_key = "plsum:" + hashlib.sha256(
+			json.dumps([str(report_date or ""), sol_id or "", str(zones or ""), frappe.session.user], sort_keys=True).encode()
+		).hexdigest()
+		_cached = frappe.cache().get_value(_cache_key, expires=True)
+		if _cached is not None:
+			return _cached
+	except Exception:
+		_cache_key = None
 
 	filters = ["COALESCE(schedule, '') != ''"]
 	params = []
@@ -516,6 +528,11 @@ def get_pl_summary(report_date=None, sol_id=None, zones=None):
 		entry["total_balance"] = sum(s["total_balance"] for s in entry["sub_schedules"])
 		entry["monthly_balance"] = sum(s["monthly_balance"] for s in entry["sub_schedules"])
 		result.append(entry)
+	if _cache_key:
+		try:
+			frappe.cache().set_value(_cache_key, result, expires_in_sec=300)
+		except Exception:
+			pass
 	return result
 
 
@@ -568,6 +585,18 @@ def get_balance_sheet_summary(report_date=None, sol_id=None, zones=None):
 	"""Sum balance grouped by schedule/sub_schedule for schedules 3 and 9, with MTD daily average."""
 	import json
 	import datetime
+	import hashlib
+
+	_cache_key = None
+	try:
+		_cache_key = "bssum:" + hashlib.sha256(
+			json.dumps([str(report_date or ""), sol_id or "", str(zones or ""), frappe.session.user], sort_keys=True).encode()
+		).hexdigest()
+		_cached = frappe.cache().get_value(_cache_key, expires=True)
+		if _cached is not None:
+			return _cached
+	except Exception:
+		_cache_key = None
 
 	if not report_date:
 		report_date = get_latest_pl_date() or frappe.datetime.add_days(frappe.datetime.get_today(), -1)
@@ -745,4 +774,9 @@ def get_balance_sheet_summary(report_date=None, sol_id=None, zones=None):
 			entry["avg_balance"] = sum(s["avg_balance"] for s in entry["sub_schedules"])
 			entry["yearly_avg_balance"] = sum(s["yearly_avg_balance"] for s in entry["sub_schedules"])
 			result.append(entry)
+	if _cache_key:
+		try:
+			frappe.cache().set_value(_cache_key, result, expires_in_sec=300)
+		except Exception:
+			pass
 	return result
