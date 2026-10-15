@@ -7764,17 +7764,25 @@ class DrishtiDashboard {
 										const s3 = bs.find((x) => x.schedule_number === 3);
 										const s9 = bs.find((x) => x.schedule_number === 9);
 										const avgDiff = Math.abs(s3 ? Number(s3.avg_balance) || 0 : 0) - Math.abs(s9 ? Number(s9.avg_balance) || 0 : 0);
+										const yearlyDiff = Math.abs(s3 ? Number(s3.yearly_avg_balance) || 0 : 0) - Math.abs(s9 ? Number(s9.yearly_avg_balance) || 0 : 0);
 										const dateStr = container.find("#pl-date-filter").val() || "";
 										let day = 1;
+										let fyDays = 1;
 										if (dateStr) {
 											const parts = dateStr.split("-").map(Number);
 											day = parts[2] || 1;
+											const dt = new Date(parts[0], parts[1] - 1, parts[2]);
+											const fyYear = parts[1] >= 4 ? parts[0] : parts[0] - 1;
+											const fyStart = new Date(fyYear, 3, 1);
+											fyDays = Math.round((dt - fyStart) / 86400000) + 1;
 										}
 										self.plTransferInterest = avgDiff * 0.18 * day / 365;
+										self.plTransferInterestYearly = yearlyDiff * 0.18 * fyDays / 365;
 										renderRows();
 									},
 									error: function () {
 										self.plTransferInterest = null;
+										self.plTransferInterestYearly = null;
 										renderRows();
 									},
 								});
@@ -7789,9 +7797,11 @@ class DrishtiDashboard {
 						let incomeOverExp = 0;
 						let monthlyIncomeOverExp = 0;
 						(self.plData || []).forEach((sch) => {
-							const tpInterest = (sch.schedule_number === 13 && self.plTransferInterest != null) ? self.plTransferInterest : 0;
-							const schTotal = (Number(sch.total_balance) || 0) + tpInterest;
-							const schMonthly = Number(sch.monthly_balance) || 0;
+							const showTp = sch.schedule_number === 13 && self.plTransferInterest != null;
+							const tpYearly = showTp && self.plTransferInterestYearly != null ? self.plTransferInterestYearly : 0;
+							const tpMonthly = showTp ? self.plTransferInterest : 0;
+							const schTotal = (Number(sch.total_balance) || 0) + tpYearly;
+							const schMonthly = (Number(sch.monthly_balance) || 0) + tpMonthly;
 							incomeOverExp += schTotal;
 							monthlyIncomeOverExp += schMonthly;
 							html += `
@@ -7800,12 +7810,12 @@ class DrishtiDashboard {
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(schTotal)}</td>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(schMonthly)}</td>
 								</tr>`;
-							if (sch.schedule_number === 13 && self.plTransferInterest != null) {
+							if (showTp) {
 								html += `
 									<tr>
-										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Transfer Pricing Interest Monthly</td>
+										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Transfer Pricing Interest</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${self.plTransferInterestYearly != null ? fmt(self.plTransferInterestYearly) : "-"}</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(self.plTransferInterest)}</td>
-										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #64748b; text-align: right;">-</td>
 									</tr>`;
 							}
 							sch.sub_schedules.forEach((sub) => {
