@@ -1889,7 +1889,7 @@ class DrishtiDashboard {
 								]));
 								const csv = "\uFEFF" + rows.map(r => r.map(csvCell).join(",")).join("\r\n");
 								const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
-								const activeDate = selDate || $("#mis-date-filter").val() || (accounts[0] && accounts[0].acct_opn_date) || "";
+								const activeDate = (accounts[0] && accounts[0]._report_date) || selDate || $("#mis-date-filter").val() || "";
 								const datePart = (activeDate && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(activeDate))
 									? activeDate.split("-").reverse().join("_")
 									: (activeDate ? activeDate.replace(/[^0-9a-zA-Z]/g, "_") : "");
@@ -1929,7 +1929,7 @@ class DrishtiDashboard {
 								]));
 								const csv = "\uFEFF" + rows.map(r => r.map(csvCell).join(",")).join("\r\n");
 								const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
-								const activeDate = selDate || $("#mis-date-filter").val() || (accounts[0] && accounts[0].acct_opn_date) || "";
+								const activeDate = (accounts[0] && accounts[0]._report_date) || selDate || $("#mis-date-filter").val() || "";
 								const datePart = (activeDate && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(activeDate))
 									? activeDate.split("-").reverse().join("_")
 									: (activeDate ? activeDate.replace(/[^0-9a-zA-Z]/g, "_") : "");

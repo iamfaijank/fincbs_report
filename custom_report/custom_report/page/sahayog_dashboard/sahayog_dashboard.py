@@ -1865,6 +1865,7 @@ def _fetch_rd_smbg_branch_rows(sol_id, selected_date=None):
             "maturity_date": str(r.maturity_date or ""),
             "pending_instalments": int(r.pending_instalments or 0),
             "pending_amount": float(r.pending_amount or 0),
+            "_report_date": str(target_date),
         }
         for r in rows
     ]
