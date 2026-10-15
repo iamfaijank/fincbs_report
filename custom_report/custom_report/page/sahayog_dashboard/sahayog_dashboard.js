@@ -7755,32 +7755,52 @@ class DrishtiDashboard {
 						const $input = container.find("#pl-search");
 						if (!$input.length) return;
 						if (!raw) { $input.val(""); return; }
+						self.labelCache = self.labelCache || {};
+						if (self.labelCache[raw] !== undefined) {
+							if (self.labelCache[raw] && !$input.is(":focus")) $input.val(self.labelCache[raw]);
+							return;
+						}
 						frappe.call({
 							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.resolve_branch_label",
 							args: { query: raw },
 							callback: function (r) {
+								self.labelCache[raw] = r.message || null;
 								const label = r.message;
 								if (label && !$input.is(":focus")) $input.val(label);
 							},
 						});
 					};
 					const fetchData = function () {
+						const dateVal = container.find("#pl-date-filter").val() || "";
+						const solVal = rawPlSearch();
+						const zonesVal = JSON.stringify(self.selectedMisZones || []);
+						const cacheKey = dateVal + "|" + solVal + "|" + zonesVal;
+						self.plCache = self.plCache || {};
+						const cached = self.plCache[cacheKey];
+						if (cached && (Date.now() - cached.ts) < 300000) {
+							self.plData = cached.data;
+							self.plTransferInterest = cached.tp;
+							self.plTransferInterestYearly = cached.tpYearly;
+							renderRows();
+							applyPlSearchLabel();
+							return;
+						}
 						tbody.html(skeletonRows);
 						frappe.call({
 							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_pl_summary",
 							args: {
-								report_date: container.find("#pl-date-filter").val() || "",
-								sol_id: rawPlSearch(),
-								zones: JSON.stringify(self.selectedMisZones || []),
+								report_date: dateVal,
+								sol_id: solVal,
+								zones: zonesVal,
 							},
 							callback: function (r) {
 								self.plData = (r && r.message) || [];
 								frappe.call({
 									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_balance_sheet_summary",
 									args: {
-										report_date: container.find("#pl-date-filter").val() || "",
-										sol_id: rawPlSearch(),
-										zones: JSON.stringify(self.selectedMisZones || []),
+										report_date: dateVal,
+										sol_id: solVal,
+										zones: zonesVal,
 									},
 									callback: function (r2) {
 										const bs = (r2 && r2.message) || [];
@@ -7801,6 +7821,12 @@ class DrishtiDashboard {
 										}
 										self.plTransferInterest = avgDiff * 0.18 * day / 365;
 										self.plTransferInterestYearly = yearlyDiff * 0.18 * fyDays / 365;
+										self.plCache[cacheKey] = {
+											data: self.plData,
+											tp: self.plTransferInterest,
+											tpYearly: self.plTransferInterestYearly,
+											ts: Date.now(),
+										};
 										renderRows();
 										applyPlSearchLabel();
 									},
@@ -7944,6 +7970,8 @@ class DrishtiDashboard {
 					container.off("click", "#pl-refetch").on("click", "#pl-refetch", function () {
 						self.plDate = container.find("#pl-date-filter").val();
 						self.selectedMisZones = [];
+						self.plCache = {};
+						self.labelCache = {};
 						self.renderZoneFilterTags(container, dashboardInstance);
 						fetchData();
 					});
@@ -8038,23 +8066,47 @@ class DrishtiDashboard {
 						const $input = container.find("#bs-search");
 						if (!$input.length) return;
 						if (!raw) { $input.val(""); return; }
+						self.labelCache = self.labelCache || {};
+						if (self.labelCache[raw] !== undefined) {
+							if (self.labelCache[raw] && !$input.is(":focus")) $input.val(self.labelCache[raw]);
+							return;
+						}
 						frappe.call({
 							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.resolve_branch_label",
 							args: { query: raw },
 							callback: function (r) {
+								self.labelCache[raw] = r.message || null;
 								const label = r.message;
 								if (label && !$input.is(":focus")) $input.val(label);
 							},
 						});
 					};
 					const fetchData = function () {
+						const dateVal = container.find("#bs-date-filter").val() || "";
+						const solVal = rawBsSearch();
+						const zonesVal = JSON.stringify(self.selectedMisZones || []);
+						const cacheKey = dateVal + "|" + solVal + "|" + zonesVal;
+						self.bsCache = self.bsCache || {};
+						const cached = self.bsCache[cacheKey];
+						if (cached && (Date.now() - cached.ts) < 300000) {
+							self.bsData = cached.data;
+							self.interestDisplay = cached.monthly;
+							self.yearlyInterestDisplay = cached.yearly;
+							const $ival = container.find("#bs-interest-val");
+							if ($ival.length) $ival.text(self.interestDisplay);
+							const $yval = container.find("#bs-interest-yearly-val");
+							if ($yval.length) $yval.text(self.yearlyInterestDisplay);
+							renderRows();
+							applyBsSearchLabel();
+							return;
+						}
 						tbody.html(skeletonRows);
 						frappe.call({
 							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_balance_sheet_summary",
 							args: {
-								report_date: container.find("#bs-date-filter").val() || "",
-								sol_id: rawBsSearch(),
-								zones: JSON.stringify(self.selectedMisZones || []),
+								report_date: dateVal,
+								sol_id: solVal,
+								zones: zonesVal,
 							},
 							callback: function (r) {
 								self.bsData = (r && r.message) || [];
@@ -8082,6 +8134,12 @@ class DrishtiDashboard {
 								self.yearlyInterestDisplay = fmt(yearlyDiff * 0.18 * fyDays / 365);
 								const $yval = container.find("#bs-interest-yearly-val");
 								if ($yval.length) $yval.text(self.yearlyInterestDisplay);
+								self.bsCache[cacheKey] = {
+									data: self.bsData,
+									monthly: self.interestDisplay,
+									yearly: self.yearlyInterestDisplay,
+									ts: Date.now(),
+								};
 								renderRows();
 								applyBsSearchLabel();
 							},
@@ -8171,6 +8229,8 @@ class DrishtiDashboard {
 					container.off("click", "#bs-refetch").on("click", "#bs-refetch", function () {
 						self.bsDate = container.find("#bs-date-filter").val();
 						self.selectedMisZones = [];
+						self.bsCache = {};
+						self.labelCache = {};
 						self.renderZoneFilterTags(container, dashboardInstance);
 						fetchData();
 					});
