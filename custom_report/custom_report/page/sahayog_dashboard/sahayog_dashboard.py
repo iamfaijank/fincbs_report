@@ -3846,7 +3846,9 @@ def get_gl_wise_ch_report_data(selected_date=None, user=None):
             group_subname = pr.group_subname
             group_subname_category = pr.group_subname_category
             
-            if row.product == 'RD' and group_subname == 'JLL RD' and not group_subname_category:
+            if group_name == 'MIS':
+                product = 'MIS'
+            elif row.product == 'RD' and group_subname == 'JLL RD' and not group_subname_category:
                 product = 'JLL RD'
             elif row.product == 'RD' and not group_subname and not group_subname_category:
                 product = 'RD'
@@ -3865,7 +3867,7 @@ def get_gl_wise_ch_report_data(selected_date=None, user=None):
             elif group_name == 'CASA' and group_subname == 'CA' and group_subname_category == 'CUWEALTH':
                 product = 'CUWEALTH'
 
-        if product == 'SHARE' or str(row.scheme_code).strip() == '9001':
+        if product == 'SHARE' or product == 'OTHER' or str(row.scheme_code).strip() in ('9001', '9002'):
             continue
 
         key = (zone, region, district, sid, branch_name, product)

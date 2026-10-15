@@ -3293,7 +3293,15 @@ class DrishtiDashboard {
 						return;
 					}
 
-					const allProducts = self.allProducts.filter(p => p !== "TDA" && p !== "SHARE" && p !== "JLL RD" && p !== "SKBG" && p !== "TASKSILVER" && p !== "TASKWEALTH" && p !== "SAVSIL" && p !== "CUGOLD" && p !== "CUWEALTH");
+					const allProducts = self.allProducts.filter(p => p !== "TDA" && p !== "SHARE" && p !== "JLL RD" && p !== "SKBG" && p !== "TASKSILVER" && p !== "TASKWEALTH" && p !== "SAVSIL" && p !== "CUGOLD" && p !== "CUWEALTH" && p !== "MIS" && p !== "OTHER");
+					if (self.allProducts.includes("MIS")) {
+						const fdIdx = allProducts.indexOf("FD");
+						if (fdIdx !== -1) {
+							allProducts.splice(fdIdx + 1, 0, "MIS");
+						} else {
+							allProducts.push("MIS");
+						}
+					}
 					if (self.allProducts.includes("SHARE")) {
 						allProducts.push("SHARE");
 					}
@@ -3326,6 +3334,8 @@ class DrishtiDashboard {
 					// Build dynamic header with product columns
 					let headerHtml = `
 						<style>
+							.gl-wise-table { white-space: nowrap !important; }
+							.gl-wise-table th, .gl-wise-table td { white-space: nowrap !important; text-overflow: clip; }
 							.gl-wise-table tbody tr:not(.grand-total-row):hover { background-color: #e8f4f8 !important; cursor: pointer; }
 							.gl-wise-table tbody tr.checked-row { background-color: #c8e6c9 !important; }
 							.gl-wise-table tbody tr.checked-row:hover { background-color: #a5d6a7 !important; }
