@@ -182,6 +182,126 @@ def delete_gl_mapping():
 
 
 @frappe.whitelist()
+def import_pl_data(file_content, filename=""):
+	"""Update Profit and Loss Report doctype rows from an uploaded template file.
+
+	Matched on Date (report_date) + SOL ID (sol_id) + GL Sub Head Code.
+	Other file columns update the corresponding doctype fields (only fields
+	that exist on the doctype). Does NOT touch the DR database.
+	"""
+	import base64
+	import csv
+	import datetime
+	import io
+
+	content = base64.b64decode(file_content)
+	name = (filename or "").lower()
+
+	if name.endswith((".xlsx", ".xls")):
+		import openpyxl
+
+		wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+		ws = wb.active
+		all_rows = [
+			[("" if c is None else str(c)).strip() for c in row]
+			for row in ws.iter_rows(values_only=True)
+		]
+	else:
+		text = content.decode("utf-8-sig", errors="replace")
+		all_rows = [[cell.strip() for cell in row] for row in csv.reader(io.StringIO(text))]
+
+	all_rows = [row for row in all_rows if any(row)]
+	if not all_rows:
+		return {"status": "empty", "updated": 0, "not_found": 0, "skipped": 0}
+
+	meta = frappe.get_meta("Profit and Loss Report")
+	valid_fields = {f.fieldname for f in meta.fields}
+	label_map = {
+		(f.label or "").strip().lower(): f.fieldname
+		for f in meta.fields
+		if f.label
+	}
+
+	def resolve(header):
+		header = header.strip()
+		if header in valid_fields:
+			return header
+		return label_map.get(header.lower())
+
+	header_row = [resolve(h) for h in all_rows[0]]
+	if "report_date" not in header_row or "gl_sub_head_code" not in header_row:
+		return {"status": "error", "message": "Template must include Date and GL Sub Head Code columns"}
+
+	def norm_sol(value):
+		s = str(value or "").strip()
+		if s.endswith(".0"):
+			s = s[:-2]
+		return s.lstrip("0")
+
+	def norm_date(value):
+		s = str(value or "").strip()
+		if not s:
+			return ""
+		s = s.split(" ")[0]
+		for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%d-%m-%y", "%d/%m/%y"):
+			try:
+				return datetime.datetime.strptime(s, fmt).strftime("%Y-%m-%d")
+			except ValueError:
+				continue
+		return s
+
+	# Group file rows by report_date so each date is scanned only once
+	by_date = {}
+	skipped = 0
+	for row in all_rows[1:]:
+		data = {
+			field: (row[i] if i < len(row) else "")
+			for i, field in enumerate(header_row)
+			if field
+		}
+		rdate = norm_date(data.get("report_date"))
+		code = str(data.get("gl_sub_head_code") or "").strip()
+		if not rdate or not code:
+			skipped += 1
+			continue
+		by_date.setdefault(rdate, []).append((norm_sol(data.get("sol_id")), code, data))
+
+	updated = not_found = 0
+	for rdate, entries in by_date.items():
+		existing = frappe.get_all(
+			"Profit and Loss Report",
+			filters={"report_date": rdate},
+			fields=["name", "sol_id", "gl_sub_head_code"],
+		)
+		lookup = {}
+		for e in existing:
+			lookup[(norm_sol(e.sol_id), str(e.gl_sub_head_code or "").strip())] = e.name
+
+		for sol, code, data in entries:
+			row_name = lookup.get((sol, code))
+			if not row_name and not sol:
+				# SOL missing in file: match on date + GL code only
+				matches = [e.name for e in existing if str(e.gl_sub_head_code or "").strip() == code]
+				if len(matches) == 1:
+					row_name = matches[0]
+			if not row_name:
+				not_found += 1
+				continue
+			updates = {
+				f: data[f]
+				for f in data
+				if f not in ("report_date", "sol_id", "gl_sub_head_code") and f in valid_fields
+			}
+			if not updates:
+				continue
+			frappe.db.set_value("Profit and Loss Report", row_name, updates, update_modified=False)
+			updated += 1
+
+	frappe.db.commit()
+	return {"status": "success", "updated": updated, "not_found": not_found, "skipped": skipped}
+
+
+@frappe.whitelist()
 def import_gl_mapping(file_content, filename=""):
 	"""Create/Update GL Mapping records from an uploaded CSV/XLSX file (base64 content)."""
 	import base64
