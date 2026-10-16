@@ -7747,6 +7747,9 @@ class DrishtiDashboard {
 							<input type="text" id="pl-search" placeholder="Search branch, SOL ID, or sub-schedule" value="${self.plSearch || ""}" style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 260px; outline: none;">
 							<button type="button" id="pl-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<button type="button" id="pl-expand-all" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
+							<div style="flex: 1;"></div>
+							<button type="button" id="pl-update-pl" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Update PL</button>
+							<button type="button" id="pl-update-mapping" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Update Mapping</button>
 						</div>
 						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<table class="mis-hover-table" style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
@@ -8007,6 +8010,41 @@ class DrishtiDashboard {
 						self.renderZoneFilterTags(container, dashboardInstance);
 						fetchData();
 					});
+					container.off("click", "#pl-update-pl").on("click", "#pl-update-pl", function () {
+						const d = container.find("#pl-date-filter").val();
+						if (!d) { frappe.msgprint("Select a date first"); return; }
+						const $b = $(this);
+						$b.prop("disabled", true).css("opacity", 0.6).text("Syncing…");
+						frappe.call({
+							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.sync_profit_and_loss_data",
+							args: { sync_date: d },
+							freeze: true,
+							freeze_msg: "Updating P&L data for " + d + "…",
+							callback: function () {
+								$b.prop("disabled", false).css("opacity", 1).text("Update PL");
+								self.plCache = {}; self.bsCache = {}; self.labelCache = {};
+								frappe.show_alert({ message: "P&L data updated for " + d, indicator: "green" });
+								fetchData();
+							},
+							error: function () {
+								$b.prop("disabled", false).css("opacity", 1).text("Update PL");
+							},
+						});
+					});
+					container.off("click", "#pl-update-mapping").on("click", "#pl-update-mapping", function () {
+						const $b = $(this);
+						$b.prop("disabled", true).css("opacity", 0.6).text("Queuing…");
+						frappe.call({
+							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.update_gl_mapping",
+							callback: function () {
+								$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
+								frappe.show_alert({ message: "Mapping update started in background (~15 min) — use ⟳ Refetch after it finishes", indicator: "blue", duration: 7000 });
+							},
+							error: function () {
+								$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
+							},
+						});
+					});
 					if (!self.plDate) {
 						frappe.call({
 							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_latest_pl_date",
@@ -8070,6 +8108,9 @@ class DrishtiDashboard {
 							<input type="text" id="bs-search" placeholder="Search branch, SOL ID, or sub-schedule" value="${self.bsSearch || ""}" style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 260px; outline: none;">
 							<button type="button" id="bs-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<button type="button" id="bs-expand-all" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
+							<div style="flex: 1;"></div>
+							<button type="button" id="bs-update-pl" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Update PL</button>
+							<button type="button" id="bs-update-mapping" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Update Mapping</button>
 						</div>
 						<div id="bs-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<table class="mis-hover-table" style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
@@ -8278,6 +8319,41 @@ class DrishtiDashboard {
 						self.labelCache = {};
 						self.renderZoneFilterTags(container, dashboardInstance);
 						fetchData();
+					});
+					container.off("click", "#bs-update-pl").on("click", "#bs-update-pl", function () {
+						const d = container.find("#bs-date-filter").val();
+						if (!d) { frappe.msgprint("Select a date first"); return; }
+						const $b = $(this);
+						$b.prop("disabled", true).css("opacity", 0.6).text("Syncing…");
+						frappe.call({
+							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.sync_profit_and_loss_data",
+							args: { sync_date: d },
+							freeze: true,
+							freeze_msg: "Updating P&L data for " + d + "…",
+							callback: function () {
+								$b.prop("disabled", false).css("opacity", 1).text("Update PL");
+								self.bsCache = {}; self.plCache = {}; self.labelCache = {};
+								frappe.show_alert({ message: "P&L data updated for " + d, indicator: "green" });
+								fetchData();
+							},
+							error: function () {
+								$b.prop("disabled", false).css("opacity", 1).text("Update PL");
+							},
+						});
+					});
+					container.off("click", "#bs-update-mapping").on("click", "#bs-update-mapping", function () {
+						const $b = $(this);
+						$b.prop("disabled", true).css("opacity", 0.6).text("Queuing…");
+						frappe.call({
+							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.update_gl_mapping",
+							callback: function () {
+								$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
+								frappe.show_alert({ message: "Mapping update started in background (~15 min) — use ⟳ Refetch after it finishes", indicator: "blue", duration: 7000 });
+							},
+							error: function () {
+								$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
+							},
+						});
 					});
 					if (!self.bsDate) {
 						frappe.call({
