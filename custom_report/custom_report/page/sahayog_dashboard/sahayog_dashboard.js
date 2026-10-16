@@ -8097,7 +8097,7 @@ class DrishtiDashboard {
 								<span id="map-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
 							</div>
 							<input type="file" id="map-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
-							<div style="font-size: 12px; color: #64748b;">Re-apply the current GL Mapping to <b>all</b> Profit and Loss Report rows. Runs in background (~15 min).</div>
+							<div style="font-size: 12px; color: #64748b;">Re-apply the current GL Mapping to <b>all</b> Profit and Loss Report rows. Runs in background. Use &#10227; Refetch after it finishes.</div>
 						`;
 						dlg.$wrapper.on("click", `#map-pick-${uid}`, function () {
 							dlg.$wrapper.find(`#map-file-${uid}`).trigger("click");
@@ -8516,7 +8516,7 @@ class DrishtiDashboard {
 								<span id="map-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
 							</div>
 							<input type="file" id="map-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
-							<div style="font-size: 12px; color: #64748b;">Re-apply the current GL Mapping to <b>all</b> Profit and Loss Report rows. Runs in background (~15 min).</div>
+							<div style="font-size: 12px; color: #64748b;">Re-apply the current GL Mapping to <b>all</b> Profit and Loss Report rows. Runs in background. Use &#10227; Refetch after it finishes.</div>
 						`;
 						dlg.$wrapper.on("click", `#map-pick-${uid}`, function () {
 							dlg.$wrapper.find(`#map-file-${uid}`).trigger("click");
