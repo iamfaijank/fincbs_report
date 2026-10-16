@@ -8091,7 +8091,8 @@ class DrishtiDashboard {
 						dlg.body.innerHTML = `
 							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
 								<button type="button" id="map-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
-								<button type="button" id="map-del-${uid}" style="background: #dc2626; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Delete</button>
+								<button type="button" id="map-del-${uid}" style="background: #dc2626; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Delete Mapping</button>
+								<button type="button" id="map-cancel-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Cancel</button>
 								<span id="map-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
 							</div>
 							<input type="file" id="map-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
@@ -8108,6 +8109,9 @@ class DrishtiDashboard {
 							const inp = dlg.$wrapper.find(`#map-file-${uid}`)[0];
 							if (inp) inp.value = "";
 							dlg.$wrapper.find(`#map-name-${uid}`).text("No file selected").css("color", "#64748b");
+						});
+						dlg.$wrapper.on("click", `#map-cancel-${uid}`, function () {
+							dlg.hide();
 						});
 						dlg.show();
 					});
@@ -8467,7 +8471,8 @@ class DrishtiDashboard {
 						dlg.body.innerHTML = `
 							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
 								<button type="button" id="map-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
-								<button type="button" id="map-del-${uid}" style="background: #dc2626; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Delete</button>
+								<button type="button" id="map-del-${uid}" style="background: #dc2626; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Delete Mapping</button>
+								<button type="button" id="map-cancel-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Cancel</button>
 								<span id="map-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
 							</div>
 							<input type="file" id="map-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
@@ -8484,6 +8489,9 @@ class DrishtiDashboard {
 							const inp = dlg.$wrapper.find(`#map-file-${uid}`)[0];
 							if (inp) inp.value = "";
 							dlg.$wrapper.find(`#map-name-${uid}`).text("No file selected").css("color", "#64748b");
+						});
+						dlg.$wrapper.on("click", `#map-cancel-${uid}`, function () {
+							dlg.hide();
 						});
 						dlg.show();
 					});
