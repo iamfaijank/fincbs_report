@@ -7746,6 +7746,7 @@ class DrishtiDashboard {
 							<input type="date" id="pl-date-filter" value="${self.plDate || ""}" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="pl-search" placeholder="Search branch, SOL ID, or sub-schedule" value="${self.plSearch || ""}" style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 260px; outline: none;">
 							<button type="button" id="pl-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<button type="button" id="pl-expand-all" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Expand All</button>
 						</div>
 						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<table class="mis-hover-table" style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
@@ -7935,6 +7936,8 @@ class DrishtiDashboard {
 								</tr>`;
 						}
 						tbody.html(html);
+						const plAllOpen = (self.plData || []).length > 0 && (self.plData || []).every((s) => self.plCollapsed && self.plCollapsed[s.schedule_number] === false);
+						container.find("#pl-expand-all").text(plAllOpen ? "Collapse All" : "Expand All");
 					};
 					tbody.off("click", ".pl-sch-row").on("click", ".pl-sch-row", function () {
 						const num = String($(this).attr("data-sch"));
@@ -7944,6 +7947,16 @@ class DrishtiDashboard {
 						self.plCollapsed[num] = nowCollapsed;
 						tbody.find(`tr.pl-sub-row[data-sch="${num}"]`).css("display", nowCollapsed ? "none" : "");
 						$(this).find(".sch-caret").text(nowCollapsed ? "▸" : "▾");
+						const plAllOpen2 = (self.plData || []).length > 0 && (self.plData || []).every((s) => self.plCollapsed && self.plCollapsed[s.schedule_number] === false);
+						container.find("#pl-expand-all").text(plAllOpen2 ? "Collapse All" : "Expand All");
+					});
+					container.off("click", "#pl-expand-all").on("click", "#pl-expand-all", function () {
+						const data = self.plData || [];
+						if (!data.length) return;
+						self.plCollapsed = self.plCollapsed || {};
+						const allOpen = data.every((s) => self.plCollapsed[s.schedule_number] === false);
+						data.forEach((s) => { self.plCollapsed[s.schedule_number] = !allOpen; });
+						renderRows();
 					});
 					self.renderZoneFilterTags(container, dashboardInstance);
 					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
@@ -8056,6 +8069,7 @@ class DrishtiDashboard {
 							<input type="date" id="bs-date-filter" value="${self.bsDate || ""}" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="bs-search" placeholder="Search branch, SOL ID, or sub-schedule" value="${self.bsSearch || ""}" style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 260px; outline: none;">
 							<button type="button" id="bs-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<button type="button" id="bs-expand-all" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Expand All</button>
 						</div>
 						<div id="bs-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<table class="mis-hover-table" style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
@@ -8194,6 +8208,8 @@ class DrishtiDashboard {
 							return;
 						}
 						tbody.html(html);
+						const bsAllOpen = (self.bsData || []).length > 0 && (self.bsData || []).every((s) => self.bsCollapsed && self.bsCollapsed[s.schedule_number] === false);
+						container.find("#bs-expand-all").text(bsAllOpen ? "Collapse All" : "Expand All");
 					};
 					tbody.off("click", ".bs-sch-row").on("click", ".bs-sch-row", function () {
 						const num = String($(this).attr("data-sch"));
@@ -8203,6 +8219,16 @@ class DrishtiDashboard {
 						self.bsCollapsed[num] = nowCollapsed;
 						tbody.find(`tr.bs-sub-row[data-sch="${num}"]`).css("display", nowCollapsed ? "none" : "");
 						$(this).find(".sch-caret").text(nowCollapsed ? "▸" : "▾");
+						const bsAllOpen2 = (self.bsData || []).length > 0 && (self.bsData || []).every((s) => self.bsCollapsed && self.bsCollapsed[s.schedule_number] === false);
+						container.find("#bs-expand-all").text(bsAllOpen2 ? "Collapse All" : "Expand All");
+					});
+					container.off("click", "#bs-expand-all").on("click", "#bs-expand-all", function () {
+						const data = self.bsData || [];
+						if (!data.length) return;
+						self.bsCollapsed = self.bsCollapsed || {};
+						const allOpen = data.every((s) => self.bsCollapsed[s.schedule_number] === false);
+						data.forEach((s) => { self.bsCollapsed[s.schedule_number] = !allOpen; });
+						renderRows();
 					});
 					self.renderZoneFilterTags(container, dashboardInstance);
 					container.off("click", ".bs-zone-filter-tag").on("click", ".bs-zone-filter-tag", function () {
