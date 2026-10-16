@@ -8049,11 +8049,17 @@ class DrishtiDashboard {
 							<div style="font-size: 12px; color: #64748b;">Re-sync P&amp;L data for <b>${d}</b> from Finacle.</div>
 						`;
 						dlg.$wrapper.on("click", `#upd-tpl-${uid}`, function () {
-							const csv = "Date,Account Category,Scheme Type,Scheme Code,SOL ID,GL Sub Head Code,BACID,Account Name,Clearing Balance Amount,Balance,Scheme Description,Account Class Flag,Delete Flag,Schedule,Sub Schedule\n";
-							const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+							const headers = ["Date", "Account Category", "Scheme Type", "Scheme Code", "SOL ID", "GL Sub Head Code", "BACID", "Account Name", "Clearing Balance Amount", "Balance", "Scheme Description", "Account Class Flag", "Delete Flag", "Schedule", "Sub Schedule"];
+							const xEsc = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+							const xml = '<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n' +
+								'<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' +
+								'<Worksheet ss:Name="Template"><Table>' +
+								'<Row>' + headers.map((h) => `<Cell><Data ss:Type="String">${xEsc(h)}</Data></Cell>`).join("") + '</Row>' +
+								'</Table></Worksheet></Workbook>';
+							const blob = new Blob([xml], { type: "application/vnd.ms-excel;charset=utf-8;" });
 							const url = URL.createObjectURL(blob);
 							const a = document.createElement("a");
-							a.href = url; a.download = "profit_and_loss_template.csv";
+							a.href = url; a.download = "profit_and_loss_template.xls";
 							document.body.appendChild(a); a.click(); a.remove();
 							URL.revokeObjectURL(url);
 						});
@@ -8468,11 +8474,17 @@ class DrishtiDashboard {
 							<div style="font-size: 12px; color: #64748b;">Re-sync P&amp;L data for <b>${d}</b> from Finacle.</div>
 						`;
 						dlg.$wrapper.on("click", `#upd-tpl-${uid}`, function () {
-							const csv = "Date,Account Category,Scheme Type,Scheme Code,SOL ID,GL Sub Head Code,BACID,Account Name,Clearing Balance Amount,Balance,Scheme Description,Account Class Flag,Delete Flag,Schedule,Sub Schedule\n";
-							const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+							const headers = ["Date", "Account Category", "Scheme Type", "Scheme Code", "SOL ID", "GL Sub Head Code", "BACID", "Account Name", "Clearing Balance Amount", "Balance", "Scheme Description", "Account Class Flag", "Delete Flag", "Schedule", "Sub Schedule"];
+							const xEsc = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+							const xml = '<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n' +
+								'<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' +
+								'<Worksheet ss:Name="Template"><Table>' +
+								'<Row>' + headers.map((h) => `<Cell><Data ss:Type="String">${xEsc(h)}</Data></Cell>`).join("") + '</Row>' +
+								'</Table></Worksheet></Workbook>';
+							const blob = new Blob([xml], { type: "application/vnd.ms-excel;charset=utf-8;" });
 							const url = URL.createObjectURL(blob);
 							const a = document.createElement("a");
-							a.href = url; a.download = "profit_and_loss_template.csv";
+							a.href = url; a.download = "profit_and_loss_template.xls";
 							document.body.appendChild(a); a.click(); a.remove();
 							URL.revokeObjectURL(url);
 						});
