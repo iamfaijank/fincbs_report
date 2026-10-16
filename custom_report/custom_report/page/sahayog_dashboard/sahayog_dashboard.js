@@ -8080,7 +8080,7 @@ class DrishtiDashboard {
 									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.update_gl_mapping",
 									callback: function () {
 										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
-										frappe.show_alert({ message: "Mapping update started in background (~15 min) \u2014 use \u27f3 Refetch after it finishes", indicator: "blue", duration: 7000 });
+										frappe.show_alert({ message: "Mapping update started in background \u2014 use \u27f3 Refetch after it finishes", indicator: "blue", duration: 7000 });
 									},
 									error: function () {
 										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
@@ -8090,6 +8090,7 @@ class DrishtiDashboard {
 						});
 						dlg.body.innerHTML = `
 							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+								<button type="button" id="map-tpl-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">\u2b07\ufe0f Download Template</button>
 								<button type="button" id="map-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
 								<button type="button" id="map-del-${uid}" style="background: #dc2626; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Delete Mapping</button>
 								<button type="button" id="map-cancel-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Cancel</button>
@@ -8104,11 +8105,49 @@ class DrishtiDashboard {
 						dlg.$wrapper.on("change", `#map-file-${uid}`, function () {
 							const f = this.files && this.files[0];
 							dlg.$wrapper.find(`#map-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+							if (!f) return;
+							const reader = new FileReader();
+							reader.onload = function (ev) {
+								const b64 = String(ev.target.result || "").split(",")[1] || "";
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.import_gl_mapping",
+									args: { file_content: b64, filename: f.name },
+									freeze: true,
+									freeze_msg: "Importing GL Mapping from " + f.name + "\u2026",
+									callback: function (r) {
+										const m = (r && r.message) || {};
+										frappe.show_alert({ message: "GL Mapping imported \u2014 created " + (m.created || 0) + ", updated " + (m.updated || 0) + ", skipped " + (m.skipped || 0), indicator: "green", duration: 7000 });
+									},
+									error: function () {
+										frappe.msgprint("GL Mapping import failed for " + f.name);
+									},
+								});
+							};
+							reader.readAsDataURL(f);
+						});
+						dlg.$wrapper.on("click", `#map-tpl-${uid}`, function () {
+							const csv = "GL Sub Head Code,GL Name,Schedule,Sub Schedule\n";
+							const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+							const url = URL.createObjectURL(blob);
+							const a = document.createElement("a");
+							a.href = url; a.download = "gl_mapping_template.csv";
+							document.body.appendChild(a); a.click(); a.remove();
+							URL.revokeObjectURL(url);
 						});
 						dlg.$wrapper.on("click", `#map-del-${uid}`, function () {
-							const inp = dlg.$wrapper.find(`#map-file-${uid}`)[0];
-							if (inp) inp.value = "";
-							dlg.$wrapper.find(`#map-name-${uid}`).text("No file selected").css("color", "#64748b");
+							frappe.confirm(
+								"Delete <b>all</b> GL Mapping records?",
+								function () {
+									frappe.call({
+										method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.delete_gl_mapping",
+										freeze: true,
+										freeze_msg: "Deleting GL Mapping records\u2026",
+										callback: function () {
+											frappe.show_alert({ message: "All GL Mapping records deleted", indicator: "red" });
+										},
+									});
+								}
+							);
 						});
 						dlg.$wrapper.on("click", `#map-cancel-${uid}`, function () {
 							dlg.hide();
@@ -8460,7 +8499,7 @@ class DrishtiDashboard {
 									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.update_gl_mapping",
 									callback: function () {
 										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
-										frappe.show_alert({ message: "Mapping update started in background (~15 min) \u2014 use \u27f3 Refetch after it finishes", indicator: "blue", duration: 7000 });
+										frappe.show_alert({ message: "Mapping update started in background \u2014 use \u27f3 Refetch after it finishes", indicator: "blue", duration: 7000 });
 									},
 									error: function () {
 										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
@@ -8470,6 +8509,7 @@ class DrishtiDashboard {
 						});
 						dlg.body.innerHTML = `
 							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+								<button type="button" id="map-tpl-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">\u2b07\ufe0f Download Template</button>
 								<button type="button" id="map-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
 								<button type="button" id="map-del-${uid}" style="background: #dc2626; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Delete Mapping</button>
 								<button type="button" id="map-cancel-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Cancel</button>
@@ -8484,11 +8524,49 @@ class DrishtiDashboard {
 						dlg.$wrapper.on("change", `#map-file-${uid}`, function () {
 							const f = this.files && this.files[0];
 							dlg.$wrapper.find(`#map-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+							if (!f) return;
+							const reader = new FileReader();
+							reader.onload = function (ev) {
+								const b64 = String(ev.target.result || "").split(",")[1] || "";
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.import_gl_mapping",
+									args: { file_content: b64, filename: f.name },
+									freeze: true,
+									freeze_msg: "Importing GL Mapping from " + f.name + "\u2026",
+									callback: function (r) {
+										const m = (r && r.message) || {};
+										frappe.show_alert({ message: "GL Mapping imported \u2014 created " + (m.created || 0) + ", updated " + (m.updated || 0) + ", skipped " + (m.skipped || 0), indicator: "green", duration: 7000 });
+									},
+									error: function () {
+										frappe.msgprint("GL Mapping import failed for " + f.name);
+									},
+								});
+							};
+							reader.readAsDataURL(f);
+						});
+						dlg.$wrapper.on("click", `#map-tpl-${uid}`, function () {
+							const csv = "GL Sub Head Code,GL Name,Schedule,Sub Schedule\n";
+							const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+							const url = URL.createObjectURL(blob);
+							const a = document.createElement("a");
+							a.href = url; a.download = "gl_mapping_template.csv";
+							document.body.appendChild(a); a.click(); a.remove();
+							URL.revokeObjectURL(url);
 						});
 						dlg.$wrapper.on("click", `#map-del-${uid}`, function () {
-							const inp = dlg.$wrapper.find(`#map-file-${uid}`)[0];
-							if (inp) inp.value = "";
-							dlg.$wrapper.find(`#map-name-${uid}`).text("No file selected").css("color", "#64748b");
+							frappe.confirm(
+								"Delete <b>all</b> GL Mapping records?",
+								function () {
+									frappe.call({
+										method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.delete_gl_mapping",
+										freeze: true,
+										freeze_msg: "Deleting GL Mapping records\u2026",
+										callback: function () {
+											frappe.show_alert({ message: "All GL Mapping records deleted", indicator: "red" });
+										},
+									});
+								}
+							);
 						});
 						dlg.$wrapper.on("click", `#map-cancel-${uid}`, function () {
 							dlg.hide();

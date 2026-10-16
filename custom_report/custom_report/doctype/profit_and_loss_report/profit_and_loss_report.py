@@ -173,6 +173,90 @@ def _apply_gl_mapping():
 	return {"status": "completed"}
 
 
+@frappe.whitelist()
+def delete_gl_mapping():
+	"""Delete all GL Mapping records."""
+	frappe.db.delete("GL Mapping")
+	frappe.db.commit()
+	return {"status": "deleted"}
+
+
+@frappe.whitelist()
+def import_gl_mapping(file_content, filename=""):
+	"""Create/Update GL Mapping records from an uploaded CSV/XLSX file (base64 content)."""
+	import base64
+	import csv
+	import io
+
+	content = base64.b64decode(file_content)
+	name = (filename or "").lower()
+
+	if name.endswith((".xlsx", ".xls")):
+		import openpyxl
+
+		wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+		ws = wb.active
+		all_rows = [
+			[("" if c is None else str(c)).strip() for c in row]
+			for row in ws.iter_rows(values_only=True)
+		]
+	else:
+		text = content.decode("utf-8-sig", errors="replace")
+		all_rows = [[cell.strip() for cell in row] for row in csv.reader(io.StringIO(text))]
+
+	all_rows = [row for row in all_rows if any(row)]
+	if not all_rows:
+		return {"status": "empty", "created": 0, "updated": 0, "skipped": 0}
+
+	meta = frappe.get_meta("GL Mapping")
+	valid_fields = {f.fieldname for f in meta.fields}
+	label_map = {
+		(f.label or "").strip().lower(): f.fieldname
+		for f in meta.fields
+		if f.label
+	}
+
+	def resolve(header):
+		header = header.strip()
+		if header in valid_fields:
+			return header
+		return label_map.get(header.lower())
+
+	header_row = [resolve(h) for h in all_rows[0]]
+
+	created = updated = skipped = 0
+	for row in all_rows[1:]:
+		data = {
+			field: (row[i] if i < len(row) else "")
+			for i, field in enumerate(header_row)
+			if field
+		}
+		code = (data.get("gl_sub_head_code") or "").strip()
+		if not code:
+			skipped += 1
+			continue
+		data["gl_sub_head_code"] = code
+
+		existing = frappe.db.exists("GL Mapping", {"gl_sub_head_code": code})
+		if existing:
+			doc = frappe.get_doc("GL Mapping", existing)
+			for field in ("gl_name", "schedule", "sub_schedule"):
+				if field in data:
+					setattr(doc, field, data[field])
+			doc.save(ignore_permissions=True)
+			updated += 1
+		else:
+			doc = frappe.new_doc("GL Mapping")
+			for field, value in data.items():
+				if field in valid_fields:
+					setattr(doc, field, value)
+			doc.insert(ignore_permissions=True)
+			created += 1
+
+	frappe.db.commit()
+	return {"status": "success", "created": created, "updated": updated, "skipped": skipped}
+
+
 def send_email_notification(status, sync_date, details_or_error=""):
 	recipients = ["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"]
 	subject = f"Profit and Loss Report Sync Status - {sync_date}"
