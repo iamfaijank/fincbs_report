@@ -8046,7 +8046,7 @@ class DrishtiDashboard {
 								<span id="upd-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
 							</div>
 							<input type="file" id="upd-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
-							<div style="font-size: 12px; color: #64748b;">Re-sync P&amp;L data for <b>${d}</b> from Finacle.</div>
+							<div style="font-size: 12px; color: #64748b;">Primary <b>Update</b> re-syncs this date from Finacle. Selecting a file updates doctype rows matched on <b>Date + SOL ID + GL Sub Head Code</b>.</div>
 						`;
 						dlg.$wrapper.on("click", `#upd-tpl-${uid}`, function () {
 							const headers = ["Date", "Account Category", "Scheme Type", "Scheme Code", "SOL ID", "GL Sub Head Code", "BACID", "Account Name", "Clearing Balance Amount", "Balance", "Scheme Description", "Account Class Flag", "Delete Flag", "Schedule", "Sub Schedule"];
@@ -8069,6 +8069,28 @@ class DrishtiDashboard {
 						dlg.$wrapper.on("change", `#upd-file-${uid}`, function () {
 							const f = this.files && this.files[0];
 							dlg.$wrapper.find(`#upd-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+							if (!f) return;
+							const reader = new FileReader();
+							reader.onload = function (ev) {
+								const b64 = String(ev.target.result || "").split(",")[1] || "";
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.import_pl_data",
+									args: { file_content: b64, filename: f.name },
+									freeze: true,
+									freeze_msg: "Updating Profit and Loss Report records from " + f.name + "\u2026",
+									callback: function (r) {
+										const m = (r && r.message) || {};
+										if (m.status === "error") { frappe.msgprint(m.message || "Invalid template"); return; }
+										frappe.show_alert({ message: "P&L records updated: " + (m.updated || 0) + ", not found: " + (m.not_found || 0) + ", skipped: " + (m.skipped || 0), indicator: "green", duration: 7000 });
+										self.plCache = {}; self.bsCache = {};
+										fetchData();
+									},
+									error: function () {
+										frappe.msgprint("P&L import failed for " + f.name);
+									},
+								});
+							};
+							reader.readAsDataURL(f);
 						});
 						dlg.show();
 					});
@@ -8471,7 +8493,7 @@ class DrishtiDashboard {
 								<span id="upd-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
 							</div>
 							<input type="file" id="upd-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
-							<div style="font-size: 12px; color: #64748b;">Re-sync P&amp;L data for <b>${d}</b> from Finacle.</div>
+							<div style="font-size: 12px; color: #64748b;">Primary <b>Update</b> re-syncs this date from Finacle. Selecting a file updates doctype rows matched on <b>Date + SOL ID + GL Sub Head Code</b>.</div>
 						`;
 						dlg.$wrapper.on("click", `#upd-tpl-${uid}`, function () {
 							const headers = ["Date", "Account Category", "Scheme Type", "Scheme Code", "SOL ID", "GL Sub Head Code", "BACID", "Account Name", "Clearing Balance Amount", "Balance", "Scheme Description", "Account Class Flag", "Delete Flag", "Schedule", "Sub Schedule"];
@@ -8494,6 +8516,28 @@ class DrishtiDashboard {
 						dlg.$wrapper.on("change", `#upd-file-${uid}`, function () {
 							const f = this.files && this.files[0];
 							dlg.$wrapper.find(`#upd-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+							if (!f) return;
+							const reader = new FileReader();
+							reader.onload = function (ev) {
+								const b64 = String(ev.target.result || "").split(",")[1] || "";
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.import_pl_data",
+									args: { file_content: b64, filename: f.name },
+									freeze: true,
+									freeze_msg: "Updating Profit and Loss Report records from " + f.name + "\u2026",
+									callback: function (r) {
+										const m = (r && r.message) || {};
+										if (m.status === "error") { frappe.msgprint(m.message || "Invalid template"); return; }
+										frappe.show_alert({ message: "P&L records updated: " + (m.updated || 0) + ", not found: " + (m.not_found || 0) + ", skipped: " + (m.skipped || 0), indicator: "green", duration: 7000 });
+										self.plCache = {}; self.bsCache = {};
+										fetchData();
+									},
+									error: function () {
+										frappe.msgprint("P&L import failed for " + f.name);
+									},
+								});
+							};
+							reader.readAsDataURL(f);
 						});
 						dlg.show();
 					});
