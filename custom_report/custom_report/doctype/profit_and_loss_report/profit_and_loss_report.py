@@ -140,6 +140,39 @@ def get_gl_schedule_map() -> dict:
 	return {m.gl_sub_head_code: (m.schedule, m.sub_schedule) for m in mappings}
 
 
+@frappe.whitelist()
+def update_gl_mapping():
+	"""Re-apply current GL Mapping to all existing Profit and Loss Report rows (background)."""
+	frappe.enqueue(
+		"custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report._apply_gl_mapping",
+		queue="long",
+		timeout=7200,
+	)
+	return {"status": "queued"}
+
+
+def _apply_gl_mapping():
+	frappe.db.sql(
+		"""
+		UPDATE `tabProfit and Loss Report` pl
+		JOIN `tabGL Mapping` gm
+			ON gm.gl_sub_head_code = IF(pl.acct_category = 'OFFICE', pl.bacid, pl.gl_sub_head_code)
+		SET pl.schedule = gm.schedule, pl.sub_schedule = gm.sub_schedule
+		"""
+	)
+	frappe.db.sql(
+		"""
+		UPDATE `tabProfit and Loss Report` pl
+		LEFT JOIN `tabGL Mapping` gm
+			ON gm.gl_sub_head_code = IF(pl.acct_category = 'OFFICE', pl.bacid, pl.gl_sub_head_code)
+		SET pl.schedule = NULL, pl.sub_schedule = NULL
+		WHERE gm.gl_sub_head_code IS NULL
+		"""
+	)
+	frappe.db.commit()
+	return {"status": "completed"}
+
+
 def send_email_notification(status, sync_date, details_or_error=""):
 	recipients = ["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"]
 	subject = f"Profit and Loss Report Sync Status - {sync_date}"
