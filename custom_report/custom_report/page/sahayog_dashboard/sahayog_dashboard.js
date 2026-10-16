@@ -8014,15 +8014,19 @@ class DrishtiDashboard {
 						const d = container.find("#pl-date-filter").val();
 						if (!d) { frappe.msgprint("Select a date first"); return; }
 						const $b = $(this);
-						frappe.confirm(
-							"Update P&L data for <b>" + d + "</b> from Finacle?",
-							function () {
-								$b.prop("disabled", true).css("opacity", 0.6).text("Syncing…");
+						const uid = Math.random().toString(36).slice(2, 7);
+						const dlg = new frappe.ui.Dialog({
+							title: __("Update PL"),
+							fields: [{ fieldtype: "HTML", fieldname: "updbody" }],
+							primary_action_label: __("Update"),
+							primary_action: function () {
+								dlg.hide();
+								$b.prop("disabled", true).css("opacity", 0.6).text("Syncing\u2026");
 								frappe.call({
 									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.sync_profit_and_loss_data",
 									args: { sync_date: d },
 									freeze: true,
-									freeze_msg: "Updating P&L data for " + d + "…",
+									freeze_msg: "Updating P&L data for " + d + "\u2026",
 									callback: function () {
 										$b.prop("disabled", false).css("opacity", 1).text("Update PL");
 										self.plCache = {}; self.bsCache = {}; self.labelCache = {};
@@ -8033,27 +8037,79 @@ class DrishtiDashboard {
 										$b.prop("disabled", false).css("opacity", 1).text("Update PL");
 									},
 								});
-							}
-						);
+							},
+						});
+						dlg.body.innerHTML = `
+							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+								<button type="button" id="upd-tpl-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">\u2b07\ufe0f Download Template</button>
+								<button type="button" id="upd-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
+								<span id="upd-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
+							</div>
+							<input type="file" id="upd-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
+							<div style="font-size: 12px; color: #64748b;">Re-sync P&amp;L data for <b>${d}</b> from Finacle.</div>
+						`;
+						dlg.$wrapper.on("click", `#upd-tpl-${uid}`, function () {
+							const csv = "report_date,acct_category,gl_sub_head_code,bacid,acct_name,clr_bal_amt,balance,schedule,sub_schedule\n";
+							const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+							const url = URL.createObjectURL(blob);
+							const a = document.createElement("a");
+							a.href = url; a.download = "profit_and_loss_template.csv";
+							document.body.appendChild(a); a.click(); a.remove();
+							URL.revokeObjectURL(url);
+						});
+						dlg.$wrapper.on("click", `#upd-pick-${uid}`, function () {
+							dlg.$wrapper.find(`#upd-file-${uid}`).trigger("click");
+						});
+						dlg.$wrapper.on("change", `#upd-file-${uid}`, function () {
+							const f = this.files && this.files[0];
+							dlg.$wrapper.find(`#upd-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+						});
+						dlg.show();
 					});
 					container.off("click", "#pl-update-mapping").on("click", "#pl-update-mapping", function () {
 						const $b = $(this);
-						$b.prop("disabled", true).css("opacity", 0.6).text("Queuing…");
-						frappe.confirm(
-							"Re-apply the current GL Mapping to <b>all</b> Profit and Loss Report rows?<br>Runs in background (~15 min). Use ⟳ Refetch after it finishes.",
-							function () {
+						const uid = Math.random().toString(36).slice(2, 7);
+						const dlg = new frappe.ui.Dialog({
+							title: __("Update Mapping"),
+							fields: [{ fieldtype: "HTML", fieldname: "mapbody" }],
+							primary_action_label: __("Update"),
+							primary_action: function () {
+								dlg.hide();
+								$b.prop("disabled", true).css("opacity", 0.6).text("Queuing\u2026");
 								frappe.call({
 									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.update_gl_mapping",
 									callback: function () {
 										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
-										frappe.show_alert({ message: "Mapping update started in background (~15 min) — use ⟳ Refetch after it finishes", indicator: "blue", duration: 7000 });
+										frappe.show_alert({ message: "Mapping update started in background (~15 min) \u2014 use \u27f3 Refetch after it finishes", indicator: "blue", duration: 7000 });
 									},
 									error: function () {
 										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
 									},
 								});
-							}
-						);
+							},
+						});
+						dlg.body.innerHTML = `
+							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+								<button type="button" id="map-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
+								<button type="button" id="map-del-${uid}" style="background: #dc2626; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Delete</button>
+								<span id="map-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
+							</div>
+							<input type="file" id="map-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
+							<div style="font-size: 12px; color: #64748b;">Re-apply the current GL Mapping to <b>all</b> Profit and Loss Report rows. Runs in background (~15 min).</div>
+						`;
+						dlg.$wrapper.on("click", `#map-pick-${uid}`, function () {
+							dlg.$wrapper.find(`#map-file-${uid}`).trigger("click");
+						});
+						dlg.$wrapper.on("change", `#map-file-${uid}`, function () {
+							const f = this.files && this.files[0];
+							dlg.$wrapper.find(`#map-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+						});
+						dlg.$wrapper.on("click", `#map-del-${uid}`, function () {
+							const inp = dlg.$wrapper.find(`#map-file-${uid}`)[0];
+							if (inp) inp.value = "";
+							dlg.$wrapper.find(`#map-name-${uid}`).text("No file selected").css("color", "#64748b");
+						});
+						dlg.show();
 					});
 					if (!self.plDate) {
 						frappe.call({
@@ -8334,15 +8390,19 @@ class DrishtiDashboard {
 						const d = container.find("#bs-date-filter").val();
 						if (!d) { frappe.msgprint("Select a date first"); return; }
 						const $b = $(this);
-						frappe.confirm(
-							"Update P&L data for <b>" + d + "</b> from Finacle?",
-							function () {
-								$b.prop("disabled", true).css("opacity", 0.6).text("Syncing…");
+						const uid = Math.random().toString(36).slice(2, 7);
+						const dlg = new frappe.ui.Dialog({
+							title: __("Update PL"),
+							fields: [{ fieldtype: "HTML", fieldname: "updbody" }],
+							primary_action_label: __("Update"),
+							primary_action: function () {
+								dlg.hide();
+								$b.prop("disabled", true).css("opacity", 0.6).text("Syncing\u2026");
 								frappe.call({
 									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.sync_profit_and_loss_data",
 									args: { sync_date: d },
 									freeze: true,
-									freeze_msg: "Updating P&L data for " + d + "…",
+									freeze_msg: "Updating P&L data for " + d + "\u2026",
 									callback: function () {
 										$b.prop("disabled", false).css("opacity", 1).text("Update PL");
 										self.bsCache = {}; self.plCache = {}; self.labelCache = {};
@@ -8353,27 +8413,79 @@ class DrishtiDashboard {
 										$b.prop("disabled", false).css("opacity", 1).text("Update PL");
 									},
 								});
-							}
-						);
+							},
+						});
+						dlg.body.innerHTML = `
+							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+								<button type="button" id="upd-tpl-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">\u2b07\ufe0f Download Template</button>
+								<button type="button" id="upd-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
+								<span id="upd-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
+							</div>
+							<input type="file" id="upd-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
+							<div style="font-size: 12px; color: #64748b;">Re-sync P&amp;L data for <b>${d}</b> from Finacle.</div>
+						`;
+						dlg.$wrapper.on("click", `#upd-tpl-${uid}`, function () {
+							const csv = "report_date,acct_category,gl_sub_head_code,bacid,acct_name,clr_bal_amt,balance,schedule,sub_schedule\n";
+							const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+							const url = URL.createObjectURL(blob);
+							const a = document.createElement("a");
+							a.href = url; a.download = "profit_and_loss_template.csv";
+							document.body.appendChild(a); a.click(); a.remove();
+							URL.revokeObjectURL(url);
+						});
+						dlg.$wrapper.on("click", `#upd-pick-${uid}`, function () {
+							dlg.$wrapper.find(`#upd-file-${uid}`).trigger("click");
+						});
+						dlg.$wrapper.on("change", `#upd-file-${uid}`, function () {
+							const f = this.files && this.files[0];
+							dlg.$wrapper.find(`#upd-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+						});
+						dlg.show();
 					});
 					container.off("click", "#bs-update-mapping").on("click", "#bs-update-mapping", function () {
 						const $b = $(this);
-						$b.prop("disabled", true).css("opacity", 0.6).text("Queuing…");
-						frappe.confirm(
-							"Re-apply the current GL Mapping to <b>all</b> Profit and Loss Report rows?<br>Runs in background (~15 min). Use ⟳ Refetch after it finishes.",
-							function () {
+						const uid = Math.random().toString(36).slice(2, 7);
+						const dlg = new frappe.ui.Dialog({
+							title: __("Update Mapping"),
+							fields: [{ fieldtype: "HTML", fieldname: "mapbody" }],
+							primary_action_label: __("Update"),
+							primary_action: function () {
+								dlg.hide();
+								$b.prop("disabled", true).css("opacity", 0.6).text("Queuing\u2026");
 								frappe.call({
 									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.update_gl_mapping",
 									callback: function () {
 										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
-										frappe.show_alert({ message: "Mapping update started in background (~15 min) — use ⟳ Refetch after it finishes", indicator: "blue", duration: 7000 });
+										frappe.show_alert({ message: "Mapping update started in background (~15 min) \u2014 use \u27f3 Refetch after it finishes", indicator: "blue", duration: 7000 });
 									},
 									error: function () {
 										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
 									},
 								});
-							}
-						);
+							},
+						});
+						dlg.body.innerHTML = `
+							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+								<button type="button" id="map-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
+								<button type="button" id="map-del-${uid}" style="background: #dc2626; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Delete</button>
+								<span id="map-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
+							</div>
+							<input type="file" id="map-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
+							<div style="font-size: 12px; color: #64748b;">Re-apply the current GL Mapping to <b>all</b> Profit and Loss Report rows. Runs in background (~15 min).</div>
+						`;
+						dlg.$wrapper.on("click", `#map-pick-${uid}`, function () {
+							dlg.$wrapper.find(`#map-file-${uid}`).trigger("click");
+						});
+						dlg.$wrapper.on("change", `#map-file-${uid}`, function () {
+							const f = this.files && this.files[0];
+							dlg.$wrapper.find(`#map-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+						});
+						dlg.$wrapper.on("click", `#map-del-${uid}`, function () {
+							const inp = dlg.$wrapper.find(`#map-file-${uid}`)[0];
+							if (inp) inp.value = "";
+							dlg.$wrapper.find(`#map-name-${uid}`).text("No file selected").css("color", "#64748b");
+						});
+						dlg.show();
 					});
 					if (!self.bsDate) {
 						frappe.call({
