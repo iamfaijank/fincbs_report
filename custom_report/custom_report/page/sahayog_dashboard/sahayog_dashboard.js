@@ -8049,7 +8049,7 @@ class DrishtiDashboard {
 							<div style="font-size: 12px; color: #64748b;">Re-sync P&amp;L data for <b>${d}</b> from Finacle.</div>
 						`;
 						dlg.$wrapper.on("click", `#upd-tpl-${uid}`, function () {
-							const csv = "report_date,acct_category,gl_sub_head_code,bacid,acct_name,clr_bal_amt,balance,schedule,sub_schedule\n";
+							const csv = "Date,Account Category,Scheme Type,Scheme Code,SOL ID,GL Sub Head Code,BACID,Account Name,Clearing Balance Amount,Balance,Scheme Description,Account Class Flag,Delete Flag,Schedule,Sub Schedule\n";
 							const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
 							const url = URL.createObjectURL(blob);
 							const a = document.createElement("a");
@@ -8425,7 +8425,7 @@ class DrishtiDashboard {
 							<div style="font-size: 12px; color: #64748b;">Re-sync P&amp;L data for <b>${d}</b> from Finacle.</div>
 						`;
 						dlg.$wrapper.on("click", `#upd-tpl-${uid}`, function () {
-							const csv = "report_date,acct_category,gl_sub_head_code,bacid,acct_name,clr_bal_amt,balance,schedule,sub_schedule\n";
+							const csv = "Date,Account Category,Scheme Type,Scheme Code,SOL ID,GL Sub Head Code,BACID,Account Name,Clearing Balance Amount,Balance,Scheme Description,Account Class Flag,Delete Flag,Schedule,Sub Schedule\n";
 							const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
 							const url = URL.createObjectURL(blob);
 							const a = document.createElement("a");
