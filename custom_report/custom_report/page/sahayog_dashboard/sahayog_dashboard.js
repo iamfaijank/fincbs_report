@@ -8014,36 +8014,46 @@ class DrishtiDashboard {
 						const d = container.find("#pl-date-filter").val();
 						if (!d) { frappe.msgprint("Select a date first"); return; }
 						const $b = $(this);
-						$b.prop("disabled", true).css("opacity", 0.6).text("Syncing…");
-						frappe.call({
-							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.sync_profit_and_loss_data",
-							args: { sync_date: d },
-							freeze: true,
-							freeze_msg: "Updating P&L data for " + d + "…",
-							callback: function () {
-								$b.prop("disabled", false).css("opacity", 1).text("Update PL");
-								self.plCache = {}; self.bsCache = {}; self.labelCache = {};
-								frappe.show_alert({ message: "P&L data updated for " + d, indicator: "green" });
-								fetchData();
-							},
-							error: function () {
-								$b.prop("disabled", false).css("opacity", 1).text("Update PL");
-							},
-						});
+						frappe.confirm(
+							"Update P&L data for <b>" + d + "</b> from Finacle?",
+							function () {
+								$b.prop("disabled", true).css("opacity", 0.6).text("Syncing…");
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.sync_profit_and_loss_data",
+									args: { sync_date: d },
+									freeze: true,
+									freeze_msg: "Updating P&L data for " + d + "…",
+									callback: function () {
+										$b.prop("disabled", false).css("opacity", 1).text("Update PL");
+										self.plCache = {}; self.bsCache = {}; self.labelCache = {};
+										frappe.show_alert({ message: "P&L data updated for " + d, indicator: "green" });
+										fetchData();
+									},
+									error: function () {
+										$b.prop("disabled", false).css("opacity", 1).text("Update PL");
+									},
+								});
+							}
+						);
 					});
 					container.off("click", "#pl-update-mapping").on("click", "#pl-update-mapping", function () {
 						const $b = $(this);
 						$b.prop("disabled", true).css("opacity", 0.6).text("Queuing…");
-						frappe.call({
-							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.update_gl_mapping",
-							callback: function () {
-								$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
-								frappe.show_alert({ message: "Mapping update started in background (~15 min) — use ⟳ Refetch after it finishes", indicator: "blue", duration: 7000 });
-							},
-							error: function () {
-								$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
-							},
-						});
+						frappe.confirm(
+							"Re-apply the current GL Mapping to <b>all</b> Profit and Loss Report rows?<br>Runs in background (~15 min). Use ⟳ Refetch after it finishes.",
+							function () {
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.update_gl_mapping",
+									callback: function () {
+										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
+										frappe.show_alert({ message: "Mapping update started in background (~15 min) — use ⟳ Refetch after it finishes", indicator: "blue", duration: 7000 });
+									},
+									error: function () {
+										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
+									},
+								});
+							}
+						);
 					});
 					if (!self.plDate) {
 						frappe.call({
@@ -8324,36 +8334,46 @@ class DrishtiDashboard {
 						const d = container.find("#bs-date-filter").val();
 						if (!d) { frappe.msgprint("Select a date first"); return; }
 						const $b = $(this);
-						$b.prop("disabled", true).css("opacity", 0.6).text("Syncing…");
-						frappe.call({
-							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.sync_profit_and_loss_data",
-							args: { sync_date: d },
-							freeze: true,
-							freeze_msg: "Updating P&L data for " + d + "…",
-							callback: function () {
-								$b.prop("disabled", false).css("opacity", 1).text("Update PL");
-								self.bsCache = {}; self.plCache = {}; self.labelCache = {};
-								frappe.show_alert({ message: "P&L data updated for " + d, indicator: "green" });
-								fetchData();
-							},
-							error: function () {
-								$b.prop("disabled", false).css("opacity", 1).text("Update PL");
-							},
-						});
+						frappe.confirm(
+							"Update P&L data for <b>" + d + "</b> from Finacle?",
+							function () {
+								$b.prop("disabled", true).css("opacity", 0.6).text("Syncing…");
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.sync_profit_and_loss_data",
+									args: { sync_date: d },
+									freeze: true,
+									freeze_msg: "Updating P&L data for " + d + "…",
+									callback: function () {
+										$b.prop("disabled", false).css("opacity", 1).text("Update PL");
+										self.bsCache = {}; self.plCache = {}; self.labelCache = {};
+										frappe.show_alert({ message: "P&L data updated for " + d, indicator: "green" });
+										fetchData();
+									},
+									error: function () {
+										$b.prop("disabled", false).css("opacity", 1).text("Update PL");
+									},
+								});
+							}
+						);
 					});
 					container.off("click", "#bs-update-mapping").on("click", "#bs-update-mapping", function () {
 						const $b = $(this);
 						$b.prop("disabled", true).css("opacity", 0.6).text("Queuing…");
-						frappe.call({
-							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.update_gl_mapping",
-							callback: function () {
-								$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
-								frappe.show_alert({ message: "Mapping update started in background (~15 min) — use ⟳ Refetch after it finishes", indicator: "blue", duration: 7000 });
-							},
-							error: function () {
-								$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
-							},
-						});
+						frappe.confirm(
+							"Re-apply the current GL Mapping to <b>all</b> Profit and Loss Report rows?<br>Runs in background (~15 min). Use ⟳ Refetch after it finishes.",
+							function () {
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.update_gl_mapping",
+									callback: function () {
+										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
+										frappe.show_alert({ message: "Mapping update started in background (~15 min) — use ⟳ Refetch after it finishes", indicator: "blue", duration: 7000 });
+									},
+									error: function () {
+										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
+									},
+								});
+							}
+						);
 					});
 					if (!self.bsDate) {
 						frappe.call({
