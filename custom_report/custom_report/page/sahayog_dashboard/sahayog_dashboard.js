@@ -23,6 +23,9 @@ const loadDrishtiHolidays = (year) => {
 				callback: function (r) {
 					DRISHTI_HOLIDAYS[year] = (r && r.message) || [];
 					resolve(DRISHTI_HOLIDAYS[year]);
+					// Notify all working-days displays (header timer, table day-left
+					// indicators) so they recompute once holiday data is available
+					$(document).trigger("drishti:holidays-loaded", [year]);
 				},
 				error: function () {
 					// do not cache failures - allow retry on next render
@@ -794,6 +797,13 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 			};
 
 			updateDrishtiTimer();
+
+			// Recompute once holidays arrive so the header matches table indicators
+			$(document)
+				.off("drishti:holidays-loaded.headerTimer")
+				.on("drishti:holidays-loaded.headerTimer", function () {
+					updateDrishtiTimer();
+				});
 		}
 	}, 100);
 		},
@@ -986,6 +996,15 @@ class DrishtiDashboard {
 			branch: null,
 		};
 		this.data = null;
+
+		// Re-render table month headers once holiday data arrives so their
+		// "N Working Days Left" indicator matches the header timer exactly
+		$(document)
+			.off("drishti:holidays-loaded.dashIndicator")
+			.on("drishti:holidays-loaded.dashIndicator", () => {
+				if (this._dataLoaded && typeof this.render === "function") this.render();
+			});
+
 		this.availableFilters = {
 			categories: ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Zero Level"],
 			zones: [],
@@ -14185,9 +14204,10 @@ class DrishtiDashboard {
 
 				const categories = ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Zero Level"];
 				const counts = Object.fromEntries(categories.map((cat) => [cat, monthKeys.map(() => 0)]));
+				const revenues = Object.fromEntries(categories.map((cat) => [cat, monthKeys.map(() => 0)]));
 				const mIndexMap = Object.fromEntries(monthKeys.map((k, i) => [k, i]));
 
-				// Fast single-pass branch counting
+				// Fast single-pass branch counting + revenue (achievement) accumulation
 				const filteredBranches = this.getFilteredBranches(branchData, true);
 				for (let i = 0, len = filteredBranches.length; i < len; i++) {
 					const bMonths = filteredBranches[i].months;
@@ -14195,8 +14215,12 @@ class DrishtiDashboard {
 					for (const mKey in bMonths) {
 						const idx = mIndexMap[mKey];
 						if (idx !== undefined) {
-							const cat = bMonths[mKey]?.category;
-							if (counts[cat]) counts[cat][idx]++;
+							const monthObj = bMonths[mKey];
+							const cat = monthObj?.category;
+							if (counts[cat]) {
+								counts[cat][idx]++;
+								revenues[cat][idx] += parseFloat(monthObj.achievement || 0);
+							}
 						}
 					}
 				}
@@ -14256,21 +14280,26 @@ class DrishtiDashboard {
 						textStyle: { color: "#ffffff", fontSize: 12 },
 						formatter: (params) => {
 							let total = 0;
+							let totalRev = 0;
 							let html = `<div style="font-weight:700;font-size:13px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:4px;">${params[0]?.axisValue || ""}</div>`;
+							html += `<div style="display:flex;justify-content:space-between;gap:16px;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:2px;"><span style="flex:1;">Category</span><span style="width:80px;text-align:right;">Branches</span><span style="width:110px;text-align:right;">Revenue</span></div>`;
 							const sorted = [...params].sort((a, b) => categories.indexOf(a.seriesName) - categories.indexOf(b.seriesName));
 							sorted.forEach((item) => {
 								const val = item.value || 0;
+								const rev = (revenues[item.seriesName] && revenues[item.seriesName][item.dataIndex]) || 0;
 								total += val;
+								totalRev += rev;
 								const dotColor = categoryConfig[item.seriesName]?.legendColor || "#64748B";
 								html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin:3px 0;">
-									<span style="display:flex;align-items:center;gap:8px;">
+									<span style="display:flex;align-items:center;gap:8px;flex:1;">
 										<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${dotColor};box-shadow:0 0 4px ${dotColor};"></span>
 										<span style="font-weight:500;">${item.seriesName}</span>
 									</span>
-									<strong style="color:#ffffff;font-size:13px;">${val}</strong>
+									<strong style="color:#ffffff;font-size:13px;width:80px;text-align:right;">${val}</strong>
+									<strong style="color:#ffffff;font-size:13px;width:110px;text-align:right;white-space:nowrap;">₹${this.formatCurrency(rev)}</strong>
 								</div>`;
 							});
-							html += `<div style="margin-top:6px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.2);display:flex;justify-content:space-between;font-weight:700;"><span>Total Branches</span><span>${total}</span></div>`;
+							html += `<div style="margin-top:6px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.2);display:flex;justify-content:space-between;font-weight:700;"><span>Total</span><span style="width:80px;text-align:right;">${total} Branches</span><span style="width:110px;text-align:right;white-space:nowrap;">₹${this.formatCurrency(totalRev)}</span></div>`;
 							return html;
 						}
 					},
