@@ -1,6 +1,7 @@
 import frappe
 import csv
 import io
+import re
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -59,6 +60,40 @@ def check_db_connectivity():
 		}
 
 
+# Columns whose values must be written as plain dates (YYYY-MM-DD) in the CSV.
+# Any column ending with "_date" is picked up automatically as well.
+DATE_ONLY_COLUMNS = {
+	"acct_opn_date",
+	"acct_cls_date",
+	"tran_date",
+	"value_date",
+	"entry_date",
+	"pstd_date",
+	"vfd_date",
+	"gl_date",
+	"lchg_time",
+	"lchg_timer",
+	"rcre_time",
+	"cre_time",
+	"rc_re_time",
+}
+
+# "2025-10-28T00:00:00" / "2025-10-28 00:00:00" style values coming back as text
+_DATE_TEXT_RE = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]")
+
+
+def _date_only_indexes(columns):
+	"""Indexes of the columns that must be printed as YYYY-MM-DD only."""
+	if not columns:
+		return set()
+	indexes = set()
+	for i, column in enumerate(columns):
+		name = str(column).strip().lower()
+		if name.endswith("_date") or name in DATE_ONLY_COLUMNS:
+			indexes.add(i)
+	return indexes
+
+
 def _build_csv(rows, columns=None, include_header=True):
 	buf = io.StringIO()
 	writer = csv.writer(buf, lineterminator="\r\n")
@@ -66,15 +101,21 @@ def _build_csv(rows, columns=None, include_header=True):
 	if include_header and columns:
 		writer.writerow([str(c).upper() for c in columns])
 
+	date_indexes = _date_only_indexes(columns)
+
 	for row in rows:
 		cleaned = []
-		for val in row:
+		for i, val in enumerate(row):
 			if val is None:
 				cleaned.append("")
 			elif isinstance(val, Decimal):
 				cleaned.append(format(val, "f"))
-			elif isinstance(val, (date, datetime)):
+			elif isinstance(val, datetime):
+				cleaned.append(val.date().isoformat() if i in date_indexes else val.isoformat())
+			elif isinstance(val, date):
 				cleaned.append(val.isoformat())
+			elif i in date_indexes and isinstance(val, str) and _DATE_TEXT_RE.match(val):
+				cleaned.append(val[:10])
 			else:
 				cleaned.append(str(val))
 		writer.writerow(cleaned)
