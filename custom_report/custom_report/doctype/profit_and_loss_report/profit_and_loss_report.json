@@ -1,0 +1,148 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-10-13 11:40:54.929729",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_hqhm",
+  "report_date",
+  "acct_category",
+  "schm_type",
+  "schm_code",
+  "sol_id",
+  "gl_sub_head_code",
+  "bacid",
+  "acct_name",
+  "clr_bal_amt",
+  "balance",
+  "schm_desc",
+  "acct_cls_flg",
+  "del_flg",
+  "schedule",
+  "sub_schedule"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_hqhm",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "report_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date"
+  },
+  {
+   "fieldname": "acct_category",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Account Category"
+  },
+  {
+   "fieldname": "schm_type",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Scheme Type"
+  },
+  {
+   "fieldname": "schm_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Scheme Code"
+  },
+  {
+   "fieldname": "sol_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "SOL ID"
+  },
+  {
+   "fieldname": "gl_sub_head_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "GL Sub Head Code"
+  },
+  {
+   "fieldname": "bacid",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "BACID"
+  },
+  {
+   "fieldname": "acct_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Account Name"
+  },
+  {
+   "fieldname": "clr_bal_amt",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Clearing Balance Amount"
+  },
+  {
+   "fieldname": "balance",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Balance"
+  },
+  {
+   "fieldname": "schm_desc",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Scheme Description"
+  },
+  {
+   "fieldname": "acct_cls_flg",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Account Class Flag"
+  },
+  {
+   "fieldname": "del_flg",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Delete Flag"
+  },
+  {
+   "fieldname": "schedule",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Schedule"
+  },
+  {
+   "fieldname": "sub_schedule",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Sub Schedule"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-13 11:40:54.929729",
+ "modified_by": "Administrator",
+ "module": "custom_report",
+ "name": "Profit and Loss Report",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

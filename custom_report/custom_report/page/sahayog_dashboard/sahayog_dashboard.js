@@ -23,6 +23,9 @@ const loadDrishtiHolidays = (year) => {
 				callback: function (r) {
 					DRISHTI_HOLIDAYS[year] = (r && r.message) || [];
 					resolve(DRISHTI_HOLIDAYS[year]);
+					// Notify all working-days displays (header timer, table day-left
+					// indicators) so they recompute once holiday data is available
+					$(document).trigger("drishti:holidays-loaded", [year]);
 				},
 				error: function () {
 					// do not cache failures - allow retry on next render
@@ -794,6 +797,13 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 			};
 
 			updateDrishtiTimer();
+
+			// Recompute once holidays arrive so the header matches table indicators
+			$(document)
+				.off("drishti:holidays-loaded.headerTimer")
+				.on("drishti:holidays-loaded.headerTimer", function () {
+					updateDrishtiTimer();
+				});
 		}
 	}, 100);
 		},
@@ -986,6 +996,15 @@ class DrishtiDashboard {
 			branch: null,
 		};
 		this.data = null;
+
+		// Re-render table month headers once holiday data arrives so their
+		// "N Working Days Left" indicator matches the header timer exactly
+		$(document)
+			.off("drishti:holidays-loaded.dashIndicator")
+			.on("drishti:holidays-loaded.dashIndicator", () => {
+				if (this._dataLoaded && typeof this.render === "function") this.render();
+			});
+
 		this.availableFilters = {
 			categories: ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Zero Level"],
 			zones: [],
@@ -7721,11 +7740,953 @@ class DrishtiDashboard {
 											<th style="padding: 4px 8px; font-weight: 600; font-size: 10px; text-transform: uppercase; text-align: right;">Commission</th>
 										</tr>
 									</thead>
-									<tbody>${rowsHtml}</tbody>
-								</table>
-							</div>
+								<tbody>${rowsHtml}</tbody>
+							</table>
 						</div>
+					</div>
+				`);
+				}
+			},
+			{
+				id: "profit_loss",
+				name: "Profit and Loss Report",
+				adminOnly: true,
+				tableData: [],
+				selectedMisZones: [],
+				renderZoneFilterTags: function (container, dashboardInstance) {
+					const self = this;
+					dashboardInstance.getMisFilterOptions(function (opts) {
+						const permittedZones = (opts && opts.zones) || [];
+						let zones = permittedZones.length > 0 ? permittedZones : [];
+						if (zones.length === 0) {
+							container.find("#mis-zone-filter-row").hide();
+							return;
+						}
+						const allSelected = !self.selectedMisZones || self.selectedMisZones.length === 0;
+						let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
+						html += `<button class="mis-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
+						zones.forEach(zone => {
+							const active = self.selectedMisZones && self.selectedMisZones.includes(zone);
+							html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
+						});
+						const $row = container.find("#mis-zone-filter-row");
+						$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
+					});
+				},
+				render: function (container, dashboardInstance) {
+					const self = this;
+					if (!self.selectedMisZones) self.selectedMisZones = [];
+					const fmt = (n) => {
+						const v = Number(n) || 0;
+						return Math.abs(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+					};
+					const skeletonRows = Array.from({ length: 8 }, () => `
+						<tr>
+							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 60%; background: #e2e8f0; border-radius: 4px;"></div></td>
+							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 40%; background: #e2e8f0; border-radius: 4px; margin-left: auto;"></div></td>
+							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 40%; background: #e2e8f0; border-radius: 4px; margin-left: auto;"></div></td>
+						</tr>`).join("");
+					container.html(`
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
+							<input type="date" id="pl-date-filter" value="${self.plDate || ""}" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
+							<input type="text" id="pl-search" placeholder="Search branch, SOL ID, or sub-schedule" value="${self.plSearch || ""}" style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 260px; outline: none;">
+							<button type="button" id="pl-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<button type="button" id="pl-expand-all" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
+							<div style="flex: 1;"></div>
+							<button type="button" id="pl-update-pl" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Update PL</button>
+							<button type="button" id="pl-update-mapping" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Update Mapping</button>
+						</div>
+						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
+						<table class="mis-hover-table" style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
+							<thead>
+								<tr>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">Particulars</th>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right;">Yearly Amount</th>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right;">Monthly Amount</th>
+								</tr>
+							</thead>
+							<tbody id="pl-summary-body">${skeletonRows}</tbody>
+						</table>
 					`);
+					if (!document.getElementById("mis-hover-style")) {
+						const st = document.createElement("style");
+						st.id = "mis-hover-style";
+						st.textContent = ".mis-hover-table tbody tr { cursor: pointer; } .mis-hover-table tbody tr:hover td { background-color: #e6f4f1 !important; } .mis-hover-table tbody tr.pl-sch-row:hover td, .mis-hover-table tbody tr.bs-sch-row:hover td { background-color: #d5ebe8 !important; }";
+						document.head.appendChild(st);
+					}
+					const tbody = container.find("#pl-summary-body");
+					const rawPlSearch = function () {
+						return (self.plSearchRaw != null ? self.plSearchRaw : (self.plSearch || "")) || "";
+					};
+					const applyPlSearchLabel = function () {
+						const raw = rawPlSearch().trim();
+						const $input = container.find("#pl-search");
+						if (!$input.length) return;
+						if (!raw) { $input.val(""); return; }
+						self.labelCache = self.labelCache || {};
+						if (self.labelCache[raw] !== undefined) {
+							if (self.labelCache[raw] && !$input.is(":focus")) $input.val(self.labelCache[raw]);
+							return;
+						}
+						frappe.call({
+							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.resolve_branch_label",
+							args: { query: raw },
+							callback: function (r) {
+								self.labelCache[raw] = r.message || null;
+								const label = r.message;
+								if (label && !$input.is(":focus")) $input.val(label);
+							},
+						});
+					};
+					const fetchData = function () {
+						const dateVal = container.find("#pl-date-filter").val() || "";
+						const solVal = rawPlSearch();
+						const zonesVal = JSON.stringify(self.selectedMisZones || []);
+						const cacheKey = dateVal + "|" + solVal + "|" + zonesVal;
+						self.plCache = self.plCache || {};
+						const cached = self.plCache[cacheKey];
+						if (cached && (Date.now() - cached.ts) < 300000) {
+							self.plData = cached.data;
+							self.plTransferInterest = cached.tp;
+							self.plTransferInterestYearly = cached.tpYearly;
+							renderRows();
+							applyPlSearchLabel();
+							return;
+						}
+						tbody.html(skeletonRows);
+						frappe.call({
+							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_pl_summary",
+							args: {
+								report_date: dateVal,
+								sol_id: solVal,
+								zones: zonesVal,
+							},
+							callback: function (r) {
+								self.plData = (r && r.message) || [];
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_balance_sheet_summary",
+									args: {
+										report_date: dateVal,
+										sol_id: solVal,
+										zones: zonesVal,
+									},
+									callback: function (r2) {
+										const bs = (r2 && r2.message) || [];
+										const s3 = bs.find((x) => x.schedule_number === 3);
+										const s9 = bs.find((x) => x.schedule_number === 9);
+										const avgDiff = Math.abs(s3 ? Number(s3.avg_balance) || 0 : 0) - Math.abs(s9 ? Number(s9.avg_balance) || 0 : 0);
+										const yearlyDiff = Math.abs(s3 ? Number(s3.yearly_avg_balance) || 0 : 0) - Math.abs(s9 ? Number(s9.yearly_avg_balance) || 0 : 0);
+										const dateStr = container.find("#pl-date-filter").val() || "";
+										let day = 1;
+										let fyDays = 1;
+										if (dateStr) {
+											const parts = dateStr.split("-").map(Number);
+											day = parts[2] || 1;
+											const dt = new Date(parts[0], parts[1] - 1, parts[2]);
+											const fyYear = parts[1] >= 4 ? parts[0] : parts[0] - 1;
+											const fyStart = new Date(fyYear, 3, 1);
+											fyDays = Math.round((dt - fyStart) / 86400000) + 1;
+										}
+										self.plTransferInterest = avgDiff * 0.18 * day / 365;
+										self.plTransferInterestYearly = yearlyDiff * 0.18 * fyDays / 365;
+										self.plCache[cacheKey] = {
+											data: self.plData,
+											tp: self.plTransferInterest,
+											tpYearly: self.plTransferInterestYearly,
+											ts: Date.now(),
+										};
+										renderRows();
+										applyPlSearchLabel();
+									},
+									error: function () {
+										self.plTransferInterest = null;
+										self.plTransferInterestYearly = null;
+										renderRows();
+										applyPlSearchLabel();
+									},
+								});
+							},
+							error: function () {
+								tbody.html(`<tr><td colspan="3" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #dc2626;">Failed to load data</td></tr>`);
+							},
+						});
+					};
+					const renderRows = function () {
+						let html = "";
+						let incomeOverExp = 0;
+						let monthlyIncomeOverExp = 0;
+						(self.plData || []).forEach((sch) => {
+							const showTp = sch.schedule_number === 13 && self.plTransferInterest != null;
+							const tpYearly = showTp && self.plTransferInterestYearly != null ? self.plTransferInterestYearly : 0;
+							const tpMonthly = showTp ? self.plTransferInterest : 0;
+							const schTotal = (Number(sch.total_balance) || 0) + tpYearly;
+							const schMonthly = (Number(sch.monthly_balance) || 0) + tpMonthly;
+							const collapsed = !self.plCollapsed || self.plCollapsed[sch.schedule_number] !== false;
+							incomeOverExp += schTotal;
+							monthlyIncomeOverExp += schMonthly;
+							html += `
+								<tr class="pl-sch-row" data-sch="${sch.schedule_number}" style="cursor: pointer;">
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;"><span class="sch-caret" style="display: inline-block; width: 14px;">${collapsed ? "▸" : "▾"}</span>${sch.schedule}</td>
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(schTotal)}</td>
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(schMonthly)}</td>
+								</tr>`;
+							if (showTp) {
+								html += `
+									<tr class="pl-sub-row" data-sch="${sch.schedule_number}" style="${collapsed ? "display: none; " : ""}">
+										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Transfer Pricing Interest</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${self.plTransferInterestYearly != null ? fmt(self.plTransferInterestYearly) : "-"}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(self.plTransferInterest)}</td>
+									</tr>`;
+							}
+							sch.sub_schedules.forEach((sub) => {
+								html += `
+									<tr class="pl-sub-row" data-sch="${sch.schedule_number}" style="${collapsed ? "display: none; " : ""}">
+										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155;">${sub.sub_schedule}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.total_balance)}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.monthly_balance)}</td>
+									</tr>`;
+							});
+						});
+						if (!(self.plData || []).length) {
+							tbody.html(`<tr><td colspan="3" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #64748b;">No data found</td></tr>`);
+							return;
+						}
+						html += `
+							<tr>
+								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff;">Income Over Expenditure</td>
+								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff; text-align: right;">${fmt(incomeOverExp)}</td>
+								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff; text-align: right;">${fmt(monthlyIncomeOverExp)}</td>
+							</tr>`;
+						const searchActive = rawPlSearch().trim() !== "";
+						if (searchActive) {
+							const dateStr = container.find("#pl-date-filter").val() || "";
+							let months = 1;
+							if (dateStr) {
+								const m = Number(dateStr.split("-")[1]) || 1;
+								months = m >= 4 ? m - 3 : m + 9;
+							}
+							const centralAlloc = months * 400000;
+							const incomeAfterAlloc = incomeOverExp - centralAlloc;
+							const monthlyCentralAlloc = 400000;
+							const monthlyIncomeAfterAlloc = monthlyIncomeOverExp - monthlyCentralAlloc;
+							const iaaColor = incomeAfterAlloc < 0 ? "#dc2626" : "#0f766e";
+							const iaaMonthlyColor = monthlyIncomeAfterAlloc < 0 ? "#dc2626" : "#0f766e";
+							html += `
+								<tr>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Central Allocation</td>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(centralAlloc)}</td>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(monthlyCentralAlloc)}</td>
+								</tr>
+								<tr>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: ${iaaColor};">Income After Allocation</td>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: ${iaaColor}; text-align: right;">${incomeAfterAlloc < 0 ? "-" : ""}${fmt(incomeAfterAlloc)}</td>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: ${iaaMonthlyColor}; text-align: right;">${monthlyIncomeAfterAlloc < 0 ? "-" : ""}${fmt(monthlyIncomeAfterAlloc)}</td>
+								</tr>`;
+						}
+						tbody.html(html);
+						const plAllOpen = (self.plData || []).length > 0 && (self.plData || []).every((s) => self.plCollapsed && self.plCollapsed[s.schedule_number] === false);
+						container.find("#pl-expand-all").text(plAllOpen ? "▲ Collapse All" : "▼ Expand All");
+					};
+					tbody.off("click", ".pl-sch-row").on("click", ".pl-sch-row", function () {
+						const num = String($(this).attr("data-sch"));
+						if (!self.plCollapsed) self.plCollapsed = {};
+						const isCollapsed = self.plCollapsed[num] !== false;
+						const nowCollapsed = !isCollapsed;
+						self.plCollapsed[num] = nowCollapsed;
+						tbody.find(`tr.pl-sub-row[data-sch="${num}"]`).css("display", nowCollapsed ? "none" : "");
+						$(this).find(".sch-caret").text(nowCollapsed ? "▸" : "▾");
+						const plAllOpen2 = (self.plData || []).length > 0 && (self.plData || []).every((s) => self.plCollapsed && self.plCollapsed[s.schedule_number] === false);
+						container.find("#pl-expand-all").text(plAllOpen2 ? "▲ Collapse All" : "▼ Expand All");
+					});
+					container.off("click", "#pl-expand-all").on("click", "#pl-expand-all", function () {
+						const data = self.plData || [];
+						if (!data.length) return;
+						self.plCollapsed = self.plCollapsed || {};
+						const allOpen = data.every((s) => self.plCollapsed[s.schedule_number] === false);
+						data.forEach((s) => { self.plCollapsed[s.schedule_number] = !allOpen; });
+						renderRows();
+					});
+					self.renderZoneFilterTags(container, dashboardInstance);
+					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
+						const zone = $(this).data("zone");
+						if (zone === "all") {
+							self.selectedMisZones = [];
+						} else {
+							if (!self.selectedMisZones) self.selectedMisZones = [];
+							const idx = self.selectedMisZones.indexOf(zone);
+							if (idx > -1) {
+								self.selectedMisZones.splice(idx, 1);
+							} else {
+								self.selectedMisZones.push(zone);
+							}
+						}
+						self.renderZoneFilterTags(container, dashboardInstance);
+						fetchData();
+					});
+					container.off("change", "#pl-date-filter").on("change", "#pl-date-filter", function () {
+						self.plDate = $(this).val();
+						fetchData();
+					});
+					let plSearchTimeout = null;
+					container.off("input", "#pl-search").on("input", "#pl-search", function () {
+						self.plSearchRaw = $(this).val();
+						self.plSearch = self.plSearchRaw;
+						clearTimeout(plSearchTimeout);
+						plSearchTimeout = setTimeout(fetchData, 400);
+					});
+					container.off("focus", "#pl-search").on("focus", "#pl-search", function () {
+						$(this).val(rawPlSearch());
+					});
+					container.off("blur", "#pl-search").on("blur", "#pl-search", function () {
+						const current = $(this).val();
+						if (current !== rawPlSearch()) {
+							self.plSearchRaw = current;
+							self.plSearch = current;
+							fetchData();
+						} else {
+							applyPlSearchLabel();
+						}
+					});
+					container.off("click", "#pl-refetch").on("click", "#pl-refetch", function () {
+						self.plDate = container.find("#pl-date-filter").val();
+						self.selectedMisZones = [];
+						self.plCache = {};
+						self.labelCache = {};
+						self.renderZoneFilterTags(container, dashboardInstance);
+						fetchData();
+					});
+					container.off("click", "#pl-update-pl").on("click", "#pl-update-pl", function () {
+						const d = container.find("#pl-date-filter").val();
+						if (!d) { frappe.msgprint("Select a date first"); return; }
+						const $b = $(this);
+						const uid = Math.random().toString(36).slice(2, 7);
+						const dlg = new frappe.ui.Dialog({
+							title: __("Update PL"),
+							fields: [{ fieldtype: "HTML", fieldname: "updbody" }],
+							primary_action_label: __("Update"),
+							primary_action: function () {
+								dlg.hide();
+								$b.prop("disabled", true).css("opacity", 0.6).text("Syncing\u2026");
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.sync_profit_and_loss_data",
+									args: { sync_date: d },
+									freeze: true,
+									freeze_msg: "Updating P&L data for " + d + "\u2026",
+									callback: function () {
+										$b.prop("disabled", false).css("opacity", 1).text("Update PL");
+										self.plCache = {}; self.bsCache = {}; self.labelCache = {};
+										frappe.show_alert({ message: "P&L data updated for " + d, indicator: "green" });
+										fetchData();
+									},
+									error: function () {
+										$b.prop("disabled", false).css("opacity", 1).text("Update PL");
+									},
+								});
+							},
+						});
+						dlg.body.innerHTML = `
+							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+								<button type="button" id="upd-tpl-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">\u2b07\ufe0f Download Template</button>
+								<button type="button" id="upd-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
+								<span id="upd-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
+							</div>
+							<input type="file" id="upd-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
+							<div style="font-size: 12px; color: #64748b;">Primary <b>Update</b> re-syncs this date from Finacle. Selecting a file updates doctype rows matched on <b>Date + SOL ID + GL Sub Head Code</b>.</div>
+						`;
+						dlg.$wrapper.on("click", `#upd-tpl-${uid}`, function () {
+							const headers = ["Date", "Account Category", "Scheme Type", "Scheme Code", "SOL ID", "GL Sub Head Code", "BACID", "Account Name", "Clearing Balance Amount", "Balance", "Scheme Description", "Account Class Flag", "Delete Flag", "Schedule", "Sub Schedule"];
+							const xEsc = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+							const xml = '<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n' +
+								'<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' +
+								'<Worksheet ss:Name="Template"><Table>' +
+								'<Row>' + headers.map((h) => `<Cell><Data ss:Type="String">${xEsc(h)}</Data></Cell>`).join("") + '</Row>' +
+								'</Table></Worksheet></Workbook>';
+							const blob = new Blob([xml], { type: "application/vnd.ms-excel;charset=utf-8;" });
+							const url = URL.createObjectURL(blob);
+							const a = document.createElement("a");
+							a.href = url; a.download = "profit_and_loss_template.xls";
+							document.body.appendChild(a); a.click(); a.remove();
+							URL.revokeObjectURL(url);
+						});
+						dlg.$wrapper.on("click", `#upd-pick-${uid}`, function () {
+							dlg.$wrapper.find(`#upd-file-${uid}`).trigger("click");
+						});
+						dlg.$wrapper.on("change", `#upd-file-${uid}`, function () {
+							const f = this.files && this.files[0];
+							dlg.$wrapper.find(`#upd-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+							if (!f) return;
+							const reader = new FileReader();
+							reader.onload = function (ev) {
+								const b64 = String(ev.target.result || "").split(",")[1] || "";
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.import_pl_data",
+									args: { file_content: b64, filename: f.name },
+									freeze: true,
+									freeze_msg: "Updating Profit and Loss Report records from " + f.name + "\u2026",
+									callback: function (r) {
+										const m = (r && r.message) || {};
+										if (m.status === "error") { frappe.msgprint(m.message || "Invalid template"); return; }
+										frappe.show_alert({ message: "P&L records updated: " + (m.updated || 0) + ", not found: " + (m.not_found || 0) + ", skipped: " + (m.skipped || 0), indicator: "green", duration: 7000 });
+										self.plCache = {}; self.bsCache = {};
+										fetchData();
+									},
+									error: function () {
+										frappe.msgprint("P&L import failed for " + f.name);
+									},
+								});
+							};
+							reader.readAsDataURL(f);
+						});
+						dlg.show();
+					});
+					container.off("click", "#pl-update-mapping").on("click", "#pl-update-mapping", function () {
+						const $b = $(this);
+						const uid = Math.random().toString(36).slice(2, 7);
+						const dlg = new frappe.ui.Dialog({
+							title: __("Update Mapping"),
+							fields: [{ fieldtype: "HTML", fieldname: "mapbody" }],
+							primary_action_label: __("Update"),
+							primary_action: function () {
+								dlg.hide();
+								$b.prop("disabled", true).css("opacity", 0.6).text("Queuing\u2026");
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.update_gl_mapping",
+									callback: function () {
+										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
+										frappe.show_alert({ message: "Mapping update started in background \u2014 use \u27f3 Refetch after it finishes", indicator: "blue", duration: 7000 });
+									},
+									error: function () {
+										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
+									},
+								});
+							},
+						});
+						dlg.body.innerHTML = `
+							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+								<button type="button" id="map-tpl-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">\u2b07\ufe0f Download Template</button>
+								<button type="button" id="map-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
+								<button type="button" id="map-del-${uid}" style="background: #dc2626; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Delete Mapping</button>
+								<button type="button" id="map-cancel-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Cancel</button>
+								<span id="map-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
+							</div>
+							<input type="file" id="map-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
+							<div style="font-size: 12px; color: #64748b;">Re-apply the current GL Mapping to <b>all</b> Profit and Loss Report rows. Runs in background. Use &#10227; Refetch after it finishes.</div>
+						`;
+						dlg.$wrapper.on("click", `#map-pick-${uid}`, function () {
+							dlg.$wrapper.find(`#map-file-${uid}`).trigger("click");
+						});
+						dlg.$wrapper.on("change", `#map-file-${uid}`, function () {
+							const f = this.files && this.files[0];
+							dlg.$wrapper.find(`#map-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+							if (!f) return;
+							const reader = new FileReader();
+							reader.onload = function (ev) {
+								const b64 = String(ev.target.result || "").split(",")[1] || "";
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.import_gl_mapping",
+									args: { file_content: b64, filename: f.name },
+									freeze: true,
+									freeze_msg: "Importing GL Mapping from " + f.name + "\u2026",
+									callback: function (r) {
+										const m = (r && r.message) || {};
+										frappe.show_alert({ message: "GL Mapping imported \u2014 created " + (m.created || 0) + ", updated " + (m.updated || 0) + ", skipped " + (m.skipped || 0), indicator: "green", duration: 7000 });
+									},
+									error: function () {
+										frappe.msgprint("GL Mapping import failed for " + f.name);
+									},
+								});
+							};
+							reader.readAsDataURL(f);
+						});
+						dlg.$wrapper.on("click", `#map-tpl-${uid}`, function () {
+							const csv = "GL Sub Head Code,GL Name,Schedule,Sub Schedule\n";
+							const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+							const url = URL.createObjectURL(blob);
+							const a = document.createElement("a");
+							a.href = url; a.download = "gl_mapping_template.csv";
+							document.body.appendChild(a); a.click(); a.remove();
+							URL.revokeObjectURL(url);
+						});
+						dlg.$wrapper.on("click", `#map-del-${uid}`, function () {
+							frappe.confirm(
+								"Delete <b>all</b> GL Mapping records?",
+								function () {
+									frappe.call({
+										method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.delete_gl_mapping",
+										freeze: true,
+										freeze_msg: "Deleting GL Mapping records\u2026",
+										callback: function () {
+											frappe.show_alert({ message: "All GL Mapping records deleted", indicator: "red" });
+										},
+									});
+								}
+							);
+						});
+						dlg.$wrapper.on("click", `#map-cancel-${uid}`, function () {
+							dlg.hide();
+						});
+						dlg.show();
+					});
+					if (!self.plDate) {
+						frappe.call({
+							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_latest_pl_date",
+							callback: function (r) {
+								self.plDate = r.message || frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+								container.find("#pl-date-filter").val(self.plDate);
+								fetchData();
+							},
+						});
+					} else {
+						fetchData();
+					}
+				}
+			},
+			{
+				id: "balance_sheet",
+				name: "Balance Sheet Report",
+				adminOnly: true,
+				tableData: [],
+				selectedMisZones: [],
+				renderZoneFilterTags: function (container, dashboardInstance) {
+					const self = this;
+					dashboardInstance.getMisFilterOptions(function (opts) {
+						const permittedZones = (opts && opts.zones) || [];
+						let zones = permittedZones.length > 0 ? permittedZones : [];
+						if (zones.length === 0) {
+							container.find("#bs-zone-filter-row").hide();
+							return;
+						}
+						const allSelected = !self.selectedMisZones || self.selectedMisZones.length === 0;
+						let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
+						html += `<button class="bs-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
+						zones.forEach(zone => {
+							const active = self.selectedMisZones && self.selectedMisZones.includes(zone);
+							html += `<button class="bs-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
+						});
+						html += `<div style="margin-left: auto; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+							<div style="display: flex; align-items: center; gap: 8px; background: #417d81; color: #fff; padding: 5px 14px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; white-space: nowrap;"><span>Transfer Pricing Interest Monthly :</span><span id="bs-interest-val">${self.interestDisplay || "0.00"}</span></div>
+							<div style="display: flex; align-items: center; gap: 8px; background: #417d81; color: #fff; padding: 5px 14px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; white-space: nowrap;"><span>Transfer Pricing Interest Yearly :</span><span id="bs-interest-yearly-val">${self.yearlyInterestDisplay || "0.00"}</span></div>
+						</div>`;
+						const $row = container.find("#bs-zone-filter-row");
+						$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
+					});
+				},
+				render: function (container, dashboardInstance) {
+					const self = this;
+					if (!self.selectedMisZones) self.selectedMisZones = [];
+					const fmt = (n) => {
+						const v = Number(n) || 0;
+						return Math.abs(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+					};
+					const skeletonRows = Array.from({ length: 8 }, () => `
+						<tr>
+							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 60%; background: #e2e8f0; border-radius: 4px;"></div></td>
+							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 40%; background: #e2e8f0; border-radius: 4px; margin-left: auto;"></div></td>
+							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 20%; background: #e2e8f0; border-radius: 4px; margin-left: auto;"></div></td>
+							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 20%; background: #e2e8f0; border-radius: 4px; margin-left: auto;"></div></td>
+						</tr>`).join("");
+					container.html(`
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
+							<input type="date" id="bs-date-filter" value="${self.bsDate || ""}" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
+							<input type="text" id="bs-search" placeholder="Search branch, SOL ID, or sub-schedule" value="${self.bsSearch || ""}" style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 260px; outline: none;">
+							<button type="button" id="bs-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<button type="button" id="bs-expand-all" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
+							<div style="flex: 1;"></div>
+							<button type="button" id="bs-update-pl" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Update PL</button>
+							<button type="button" id="bs-update-mapping" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Update Mapping</button>
+						</div>
+						<div id="bs-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
+						<table class="mis-hover-table" style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
+							<thead>
+								<tr>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">Deposits</th>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; width: 220px;">EOP</th>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; width: 140px;">Monthly Average</th>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right; width: 140px;">Yearly Average</th>
+								</tr>
+							</thead>
+							<tbody id="bs-summary-body">${skeletonRows}</tbody>
+						</table>
+					`);
+					if (!document.getElementById("mis-hover-style")) {
+						const st = document.createElement("style");
+						st.id = "mis-hover-style";
+						st.textContent = ".mis-hover-table tbody tr { cursor: pointer; } .mis-hover-table tbody tr:hover td { background-color: #e6f4f1 !important; } .mis-hover-table tbody tr.pl-sch-row:hover td, .mis-hover-table tbody tr.bs-sch-row:hover td { background-color: #d5ebe8 !important; }";
+						document.head.appendChild(st);
+					}
+					const tbody = container.find("#bs-summary-body");
+					const rawBsSearch = function () {
+						return (self.bsSearchRaw != null ? self.bsSearchRaw : (self.bsSearch || "")) || "";
+					};
+					const applyBsSearchLabel = function () {
+						const raw = rawBsSearch().trim();
+						const $input = container.find("#bs-search");
+						if (!$input.length) return;
+						if (!raw) { $input.val(""); return; }
+						self.labelCache = self.labelCache || {};
+						if (self.labelCache[raw] !== undefined) {
+							if (self.labelCache[raw] && !$input.is(":focus")) $input.val(self.labelCache[raw]);
+							return;
+						}
+						frappe.call({
+							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.resolve_branch_label",
+							args: { query: raw },
+							callback: function (r) {
+								self.labelCache[raw] = r.message || null;
+								const label = r.message;
+								if (label && !$input.is(":focus")) $input.val(label);
+							},
+						});
+					};
+					const fetchData = function () {
+						const dateVal = container.find("#bs-date-filter").val() || "";
+						const solVal = rawBsSearch();
+						const zonesVal = JSON.stringify(self.selectedMisZones || []);
+						const cacheKey = dateVal + "|" + solVal + "|" + zonesVal;
+						self.bsCache = self.bsCache || {};
+						const cached = self.bsCache[cacheKey];
+						if (cached && (Date.now() - cached.ts) < 300000) {
+							self.bsData = cached.data;
+							self.interestDisplay = cached.monthly;
+							self.yearlyInterestDisplay = cached.yearly;
+							const $ival = container.find("#bs-interest-val");
+							if ($ival.length) $ival.text(self.interestDisplay);
+							const $yval = container.find("#bs-interest-yearly-val");
+							if ($yval.length) $yval.text(self.yearlyInterestDisplay);
+							renderRows();
+							applyBsSearchLabel();
+							return;
+						}
+						tbody.html(skeletonRows);
+						frappe.call({
+							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_balance_sheet_summary",
+							args: {
+								report_date: dateVal,
+								sol_id: solVal,
+								zones: zonesVal,
+							},
+							callback: function (r) {
+								self.bsData = (r && r.message) || [];
+								const s3 = (self.bsData || []).find((x) => x.schedule_number === 3);
+								const s9 = (self.bsData || []).find((x) => x.schedule_number === 9);
+								const avgDiff = Math.abs(s3 ? Number(s3.avg_balance) || 0 : 0) - Math.abs(s9 ? Number(s9.avg_balance) || 0 : 0);
+								const dateStr = container.find("#bs-date-filter").val() || "";
+								let day = 1;
+								if (dateStr) {
+									const parts = dateStr.split("-").map(Number);
+									day = parts[2] || 1;
+								}
+								self.interestDisplay = fmt(avgDiff * 0.18 * day / 365);
+								const $ival = container.find("#bs-interest-val");
+								if ($ival.length) $ival.text(self.interestDisplay);
+								let fyDays = day;
+								if (dateStr) {
+									const parts = dateStr.split("-").map(Number);
+									const dt = new Date(parts[0], parts[1] - 1, parts[2]);
+									const fyYear = parts[1] >= 4 ? parts[0] : parts[0] - 1;
+									const fyStart = new Date(fyYear, 3, 1);
+									fyDays = Math.round((dt - fyStart) / 86400000) + 1;
+								}
+								const yearlyDiff = Math.abs(s3 ? Number(s3.yearly_avg_balance) || 0 : 0) - Math.abs(s9 ? Number(s9.yearly_avg_balance) || 0 : 0);
+								self.yearlyInterestDisplay = fmt(yearlyDiff * 0.18 * fyDays / 365);
+								const $yval = container.find("#bs-interest-yearly-val");
+								if ($yval.length) $yval.text(self.yearlyInterestDisplay);
+								self.bsCache[cacheKey] = {
+									data: self.bsData,
+									monthly: self.interestDisplay,
+									yearly: self.yearlyInterestDisplay,
+									ts: Date.now(),
+								};
+								renderRows();
+								applyBsSearchLabel();
+							},
+							error: function () {
+								tbody.html(`<tr><td colspan="4" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #dc2626;">Failed to load data</td></tr>`);
+								applyBsSearchLabel();
+							},
+						});
+					};
+					const renderRows = function () {
+						let html = "";
+					(self.bsData || []).forEach((sch) => {
+						const collapsed = !self.bsCollapsed || self.bsCollapsed[sch.schedule_number] !== false;
+						html += `
+							<tr class="bs-sch-row" data-sch="${sch.schedule_number}" style="cursor: pointer;">
+								<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;"><span class="sch-caret" style="display: inline-block; width: 14px;">${collapsed ? "▸" : "▾"}</span>${sch.schedule}</td>
+								<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(sch.total_balance)}</td>
+								<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(sch.avg_balance)}</td>
+								<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(sch.yearly_avg_balance)}</td>
+							</tr>`;
+						sch.sub_schedules.forEach((sub) => {
+							html += `
+								<tr class="bs-sub-row" data-sch="${sch.schedule_number}" style="${collapsed ? "display: none; " : ""}">
+									<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155;">${sub.sub_schedule}</td>
+									<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.total_balance)}</td>
+									<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.avg_balance)}</td>
+									<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.yearly_avg_balance)}</td>
+								</tr>`;
+						});
+					});
+						if (!(self.bsData || []).length) {
+							tbody.html(`<tr><td colspan="4" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #64748b;">No data found</td></tr>`);
+							return;
+						}
+						tbody.html(html);
+						const bsAllOpen = (self.bsData || []).length > 0 && (self.bsData || []).every((s) => self.bsCollapsed && self.bsCollapsed[s.schedule_number] === false);
+						container.find("#bs-expand-all").text(bsAllOpen ? "▲ Collapse All" : "▼ Expand All");
+					};
+					tbody.off("click", ".bs-sch-row").on("click", ".bs-sch-row", function () {
+						const num = String($(this).attr("data-sch"));
+						if (!self.bsCollapsed) self.bsCollapsed = {};
+						const isCollapsed = self.bsCollapsed[num] !== false;
+						const nowCollapsed = !isCollapsed;
+						self.bsCollapsed[num] = nowCollapsed;
+						tbody.find(`tr.bs-sub-row[data-sch="${num}"]`).css("display", nowCollapsed ? "none" : "");
+						$(this).find(".sch-caret").text(nowCollapsed ? "▸" : "▾");
+						const bsAllOpen2 = (self.bsData || []).length > 0 && (self.bsData || []).every((s) => self.bsCollapsed && self.bsCollapsed[s.schedule_number] === false);
+						container.find("#bs-expand-all").text(bsAllOpen2 ? "▲ Collapse All" : "▼ Expand All");
+					});
+					container.off("click", "#bs-expand-all").on("click", "#bs-expand-all", function () {
+						const data = self.bsData || [];
+						if (!data.length) return;
+						self.bsCollapsed = self.bsCollapsed || {};
+						const allOpen = data.every((s) => self.bsCollapsed[s.schedule_number] === false);
+						data.forEach((s) => { self.bsCollapsed[s.schedule_number] = !allOpen; });
+						renderRows();
+					});
+					self.renderZoneFilterTags(container, dashboardInstance);
+					container.off("click", ".bs-zone-filter-tag").on("click", ".bs-zone-filter-tag", function () {
+						const zone = $(this).data("zone");
+						if (zone === "all") {
+							self.selectedMisZones = [];
+						} else {
+							if (!self.selectedMisZones) self.selectedMisZones = [];
+							const idx = self.selectedMisZones.indexOf(zone);
+							if (idx > -1) {
+								self.selectedMisZones.splice(idx, 1);
+							} else {
+								self.selectedMisZones.push(zone);
+							}
+						}
+						self.renderZoneFilterTags(container, dashboardInstance);
+						fetchData();
+					});
+					container.off("change", "#bs-date-filter").on("change", "#bs-date-filter", function () {
+						self.bsDate = $(this).val();
+						fetchData();
+					});
+					let bsSearchTimeout = null;
+					container.off("input", "#bs-search").on("input", "#bs-search", function () {
+						self.bsSearchRaw = $(this).val();
+						self.bsSearch = self.bsSearchRaw;
+						clearTimeout(bsSearchTimeout);
+						bsSearchTimeout = setTimeout(fetchData, 400);
+					});
+					container.off("focus", "#bs-search").on("focus", "#bs-search", function () {
+						$(this).val(rawBsSearch());
+					});
+					container.off("blur", "#bs-search").on("blur", "#bs-search", function () {
+						const current = $(this).val();
+						if (current !== rawBsSearch()) {
+							self.bsSearchRaw = current;
+							self.bsSearch = current;
+							fetchData();
+						} else {
+							applyBsSearchLabel();
+						}
+					});
+					container.off("click", "#bs-refetch").on("click", "#bs-refetch", function () {
+						self.bsDate = container.find("#bs-date-filter").val();
+						self.selectedMisZones = [];
+						self.bsCache = {};
+						self.labelCache = {};
+						self.renderZoneFilterTags(container, dashboardInstance);
+						fetchData();
+					});
+					container.off("click", "#bs-update-pl").on("click", "#bs-update-pl", function () {
+						const d = container.find("#bs-date-filter").val();
+						if (!d) { frappe.msgprint("Select a date first"); return; }
+						const $b = $(this);
+						const uid = Math.random().toString(36).slice(2, 7);
+						const dlg = new frappe.ui.Dialog({
+							title: __("Update PL"),
+							fields: [{ fieldtype: "HTML", fieldname: "updbody" }],
+							primary_action_label: __("Update"),
+							primary_action: function () {
+								dlg.hide();
+								$b.prop("disabled", true).css("opacity", 0.6).text("Syncing\u2026");
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.sync_profit_and_loss_data",
+									args: { sync_date: d },
+									freeze: true,
+									freeze_msg: "Updating P&L data for " + d + "\u2026",
+									callback: function () {
+										$b.prop("disabled", false).css("opacity", 1).text("Update PL");
+										self.bsCache = {}; self.plCache = {}; self.labelCache = {};
+										frappe.show_alert({ message: "P&L data updated for " + d, indicator: "green" });
+										fetchData();
+									},
+									error: function () {
+										$b.prop("disabled", false).css("opacity", 1).text("Update PL");
+									},
+								});
+							},
+						});
+						dlg.body.innerHTML = `
+							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+								<button type="button" id="upd-tpl-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">\u2b07\ufe0f Download Template</button>
+								<button type="button" id="upd-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
+								<span id="upd-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
+							</div>
+							<input type="file" id="upd-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
+							<div style="font-size: 12px; color: #64748b;">Primary <b>Update</b> re-syncs this date from Finacle. Selecting a file updates doctype rows matched on <b>Date + SOL ID + GL Sub Head Code</b>.</div>
+						`;
+						dlg.$wrapper.on("click", `#upd-tpl-${uid}`, function () {
+							const headers = ["Date", "Account Category", "Scheme Type", "Scheme Code", "SOL ID", "GL Sub Head Code", "BACID", "Account Name", "Clearing Balance Amount", "Balance", "Scheme Description", "Account Class Flag", "Delete Flag", "Schedule", "Sub Schedule"];
+							const xEsc = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+							const xml = '<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n' +
+								'<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' +
+								'<Worksheet ss:Name="Template"><Table>' +
+								'<Row>' + headers.map((h) => `<Cell><Data ss:Type="String">${xEsc(h)}</Data></Cell>`).join("") + '</Row>' +
+								'</Table></Worksheet></Workbook>';
+							const blob = new Blob([xml], { type: "application/vnd.ms-excel;charset=utf-8;" });
+							const url = URL.createObjectURL(blob);
+							const a = document.createElement("a");
+							a.href = url; a.download = "profit_and_loss_template.xls";
+							document.body.appendChild(a); a.click(); a.remove();
+							URL.revokeObjectURL(url);
+						});
+						dlg.$wrapper.on("click", `#upd-pick-${uid}`, function () {
+							dlg.$wrapper.find(`#upd-file-${uid}`).trigger("click");
+						});
+						dlg.$wrapper.on("change", `#upd-file-${uid}`, function () {
+							const f = this.files && this.files[0];
+							dlg.$wrapper.find(`#upd-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+							if (!f) return;
+							const reader = new FileReader();
+							reader.onload = function (ev) {
+								const b64 = String(ev.target.result || "").split(",")[1] || "";
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.import_pl_data",
+									args: { file_content: b64, filename: f.name },
+									freeze: true,
+									freeze_msg: "Updating Profit and Loss Report records from " + f.name + "\u2026",
+									callback: function (r) {
+										const m = (r && r.message) || {};
+										if (m.status === "error") { frappe.msgprint(m.message || "Invalid template"); return; }
+										frappe.show_alert({ message: "P&L records updated: " + (m.updated || 0) + ", not found: " + (m.not_found || 0) + ", skipped: " + (m.skipped || 0), indicator: "green", duration: 7000 });
+										self.plCache = {}; self.bsCache = {};
+										fetchData();
+									},
+									error: function () {
+										frappe.msgprint("P&L import failed for " + f.name);
+									},
+								});
+							};
+							reader.readAsDataURL(f);
+						});
+						dlg.show();
+					});
+					container.off("click", "#bs-update-mapping").on("click", "#bs-update-mapping", function () {
+						const $b = $(this);
+						const uid = Math.random().toString(36).slice(2, 7);
+						const dlg = new frappe.ui.Dialog({
+							title: __("Update Mapping"),
+							fields: [{ fieldtype: "HTML", fieldname: "mapbody" }],
+							primary_action_label: __("Update"),
+							primary_action: function () {
+								dlg.hide();
+								$b.prop("disabled", true).css("opacity", 0.6).text("Queuing\u2026");
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.update_gl_mapping",
+									callback: function () {
+										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
+										frappe.show_alert({ message: "Mapping update started in background \u2014 use \u27f3 Refetch after it finishes", indicator: "blue", duration: 7000 });
+									},
+									error: function () {
+										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
+									},
+								});
+							},
+						});
+						dlg.body.innerHTML = `
+							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+								<button type="button" id="map-tpl-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">\u2b07\ufe0f Download Template</button>
+								<button type="button" id="map-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
+								<button type="button" id="map-del-${uid}" style="background: #dc2626; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Delete Mapping</button>
+								<button type="button" id="map-cancel-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Cancel</button>
+								<span id="map-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
+							</div>
+							<input type="file" id="map-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
+							<div style="font-size: 12px; color: #64748b;">Re-apply the current GL Mapping to <b>all</b> Profit and Loss Report rows. Runs in background. Use &#10227; Refetch after it finishes.</div>
+						`;
+						dlg.$wrapper.on("click", `#map-pick-${uid}`, function () {
+							dlg.$wrapper.find(`#map-file-${uid}`).trigger("click");
+						});
+						dlg.$wrapper.on("change", `#map-file-${uid}`, function () {
+							const f = this.files && this.files[0];
+							dlg.$wrapper.find(`#map-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+							if (!f) return;
+							const reader = new FileReader();
+							reader.onload = function (ev) {
+								const b64 = String(ev.target.result || "").split(",")[1] || "";
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.import_gl_mapping",
+									args: { file_content: b64, filename: f.name },
+									freeze: true,
+									freeze_msg: "Importing GL Mapping from " + f.name + "\u2026",
+									callback: function (r) {
+										const m = (r && r.message) || {};
+										frappe.show_alert({ message: "GL Mapping imported \u2014 created " + (m.created || 0) + ", updated " + (m.updated || 0) + ", skipped " + (m.skipped || 0), indicator: "green", duration: 7000 });
+									},
+									error: function () {
+										frappe.msgprint("GL Mapping import failed for " + f.name);
+									},
+								});
+							};
+							reader.readAsDataURL(f);
+						});
+						dlg.$wrapper.on("click", `#map-tpl-${uid}`, function () {
+							const csv = "GL Sub Head Code,GL Name,Schedule,Sub Schedule\n";
+							const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+							const url = URL.createObjectURL(blob);
+							const a = document.createElement("a");
+							a.href = url; a.download = "gl_mapping_template.csv";
+							document.body.appendChild(a); a.click(); a.remove();
+							URL.revokeObjectURL(url);
+						});
+						dlg.$wrapper.on("click", `#map-del-${uid}`, function () {
+							frappe.confirm(
+								"Delete <b>all</b> GL Mapping records?",
+								function () {
+									frappe.call({
+										method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.delete_gl_mapping",
+										freeze: true,
+										freeze_msg: "Deleting GL Mapping records\u2026",
+										callback: function () {
+											frappe.show_alert({ message: "All GL Mapping records deleted", indicator: "red" });
+										},
+									});
+								}
+							);
+						});
+						dlg.$wrapper.on("click", `#map-cancel-${uid}`, function () {
+							dlg.hide();
+						});
+						dlg.show();
+					});
+					if (!self.bsDate) {
+						frappe.call({
+							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_latest_pl_date",
+							callback: function (r) {
+								self.bsDate = r.message || frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+								container.find("#bs-date-filter").val(self.bsDate);
+								fetchData();
+							},
+						});
+					} else {
+						fetchData();
+					}
 				}
 			}
 		];
@@ -7771,6 +8732,11 @@ class DrishtiDashboard {
 				this.switchTab("branch");
 			}
 		}
+	}
+
+	_isAdmin() {
+		return frappe.session.user === "Administrator" ||
+			(frappe.user_roles || []).includes("System Manager");
 	}
 
 	renderActiveTab() {
@@ -9711,6 +10677,7 @@ class DrishtiDashboard {
 		const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
 
 		this.misReportsList.forEach((report) => {
+			if (report.adminOnly && !self._isAdmin()) return;
 			if (report.type === "group") {
 				const firstChildId = report.children[0];
 				const selectedChildId = report.children.includes(activeReportId) ? activeReportId : firstChildId;
@@ -9875,7 +10842,12 @@ class DrishtiDashboard {
 	renderMisReport(reportId) {
 		this._misRenderSeq = (this._misRenderSeq || 0) + 1;
 		const seq = this._misRenderSeq;
-		const report = this.misReportsList.find(r => r.id === reportId);
+		let report = this.misReportsList.find(r => r.id === reportId);
+		if (report && report.adminOnly && !this._isAdmin()) {
+			report = this.misReportsList.find(r => r.id === "rd_smbg_pending");
+			reportId = "rd_smbg_pending";
+			this.state.selectedMisReport = reportId;
+		}
 		const contentArea = this.mis_container.find("#mis-report-content-area");
 		const titleEl = this.mis_container.find("#mis-report-title");
 		if (report && contentArea.length) {
@@ -13665,9 +14637,10 @@ class DrishtiDashboard {
 
 				const categories = ["Pinnacle", "Master", "Accelerator", "Starter", "Learner", "Zero Level"];
 				const counts = Object.fromEntries(categories.map((cat) => [cat, monthKeys.map(() => 0)]));
+				const revenues = Object.fromEntries(categories.map((cat) => [cat, monthKeys.map(() => 0)]));
 				const mIndexMap = Object.fromEntries(monthKeys.map((k, i) => [k, i]));
 
-				// Fast single-pass branch counting
+				// Fast single-pass branch counting + revenue (achievement) accumulation
 				const filteredBranches = this.getFilteredBranches(branchData, true);
 				for (let i = 0, len = filteredBranches.length; i < len; i++) {
 					const bMonths = filteredBranches[i].months;
@@ -13675,8 +14648,12 @@ class DrishtiDashboard {
 					for (const mKey in bMonths) {
 						const idx = mIndexMap[mKey];
 						if (idx !== undefined) {
-							const cat = bMonths[mKey]?.category;
-							if (counts[cat]) counts[cat][idx]++;
+							const monthObj = bMonths[mKey];
+							const cat = monthObj?.category;
+							if (counts[cat]) {
+								counts[cat][idx]++;
+								revenues[cat][idx] += parseFloat(monthObj.achievement || 0);
+							}
 						}
 					}
 				}
@@ -13736,21 +14713,26 @@ class DrishtiDashboard {
 						textStyle: { color: "#ffffff", fontSize: 12 },
 						formatter: (params) => {
 							let total = 0;
+							let totalRev = 0;
 							let html = `<div style="font-weight:700;font-size:13px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:4px;">${params[0]?.axisValue || ""}</div>`;
+							html += `<div style="display:flex;justify-content:space-between;gap:16px;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:2px;"><span style="flex:1;">Category</span><span style="width:80px;text-align:right;">Branches</span><span style="width:110px;text-align:right;">Revenue</span></div>`;
 							const sorted = [...params].sort((a, b) => categories.indexOf(a.seriesName) - categories.indexOf(b.seriesName));
 							sorted.forEach((item) => {
 								const val = item.value || 0;
+								const rev = (revenues[item.seriesName] && revenues[item.seriesName][item.dataIndex]) || 0;
 								total += val;
+								totalRev += rev;
 								const dotColor = categoryConfig[item.seriesName]?.legendColor || "#64748B";
 								html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin:3px 0;">
-									<span style="display:flex;align-items:center;gap:8px;">
+									<span style="display:flex;align-items:center;gap:8px;flex:1;">
 										<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${dotColor};box-shadow:0 0 4px ${dotColor};"></span>
 										<span style="font-weight:500;">${item.seriesName}</span>
 									</span>
-									<strong style="color:#ffffff;font-size:13px;">${val}</strong>
+									<strong style="color:#ffffff;font-size:13px;width:80px;text-align:right;">${val}</strong>
+									<strong style="color:#ffffff;font-size:13px;width:110px;text-align:right;white-space:nowrap;">₹${this.formatCurrency(rev)}</strong>
 								</div>`;
 							});
-							html += `<div style="margin-top:6px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.2);display:flex;justify-content:space-between;font-weight:700;"><span>Total Branches</span><span>${total}</span></div>`;
+							html += `<div style="margin-top:6px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.2);display:flex;justify-content:space-between;font-weight:700;"><span>Total</span><span style="width:80px;text-align:right;">${total} Branches</span><span style="width:110px;text-align:right;white-space:nowrap;">₹${this.formatCurrency(totalRev)}</span></div>`;
 							return html;
 						}
 					},
