@@ -7706,6 +7706,7 @@ class DrishtiDashboard {
 			{
 				id: "profit_loss",
 				name: "Profit and Loss Report",
+				adminOnly: true,
 				tableData: [],
 				selectedMisZones: [],
 				renderZoneFilterTags: function (container, dashboardInstance) {
@@ -8199,6 +8200,7 @@ class DrishtiDashboard {
 			{
 				id: "balance_sheet",
 				name: "Balance Sheet Report",
+				adminOnly: true,
 				tableData: [],
 				selectedMisZones: [],
 				renderZoneFilterTags: function (container, dashboardInstance) {
@@ -8686,6 +8688,11 @@ class DrishtiDashboard {
 				this.switchTab("branch");
 			}
 		}
+	}
+
+	_isAdmin() {
+		return frappe.session.user === "Administrator" ||
+			(frappe.user_roles || []).includes("System Manager");
 	}
 
 	renderActiveTab() {
@@ -10626,6 +10633,7 @@ class DrishtiDashboard {
 		const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
 
 		this.misReportsList.forEach((report) => {
+			if (report.adminOnly && !self._isAdmin()) return;
 			if (report.type === "group") {
 				const firstChildId = report.children[0];
 				const selectedChildId = report.children.includes(activeReportId) ? activeReportId : firstChildId;
@@ -10790,7 +10798,12 @@ class DrishtiDashboard {
 	renderMisReport(reportId) {
 		this._misRenderSeq = (this._misRenderSeq || 0) + 1;
 		const seq = this._misRenderSeq;
-		const report = this.misReportsList.find(r => r.id === reportId);
+		let report = this.misReportsList.find(r => r.id === reportId);
+		if (report && report.adminOnly && !this._isAdmin()) {
+			report = this.misReportsList.find(r => r.id === "rd_smbg_pending");
+			reportId = "rd_smbg_pending";
+			this.state.selectedMisReport = reportId;
+		}
 		const contentArea = this.mis_container.find("#mis-report-content-area");
 		const titleEl = this.mis_container.find("#mis-report-title");
 		if (report && contentArea.length) {
