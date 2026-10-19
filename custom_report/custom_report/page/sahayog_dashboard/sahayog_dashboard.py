@@ -6419,6 +6419,53 @@ def get_bucket_wise_account_mis_data(selected_date=None):
     result = _apply_report_prefs_filter(result)
     return {"summary": result, "total_records": total_recs}
 
+
+@frappe.whitelist()
+def get_dd_tracker_report_csv_data(sol_ids=None, selected_date=None):
+    """Fetch DD Tracker Report records for district (multiple sol_ids) or branch (single sol_id) on selected_date."""
+    import datetime
+    import json
+
+    if not selected_date:
+        selected_date = str(datetime.date.today())
+
+    sol_list = []
+    if sol_ids:
+        if isinstance(sol_ids, str):
+            try:
+                parsed = json.loads(sol_ids)
+                if isinstance(parsed, list):
+                    sol_list = [str(s).strip() for s in parsed if str(s).strip()]
+                else:
+                    sol_list = [str(parsed).strip()]
+            except Exception:
+                sol_list = [str(s).strip() for s in sol_ids.split(",") if str(s).strip()]
+        elif isinstance(sol_ids, list):
+            sol_list = [str(s).strip() for s in sol_ids if str(s).strip()]
+        else:
+            sol_list = [str(sol_ids).strip()]
+
+    filters = {"date": selected_date}
+    if sol_list:
+        filters["sol_id"] = ["in", sol_list]
+
+    fields = [
+        "date", "account_number", "customer_name", "opening_date", "product",
+        "amount", "sol_id", "auth_id", "auth_name",
+        "monthly_demand", "monthly_collection", "agent_code", "agent_name",
+        "colle_category"
+    ]
+
+    records = frappe.db.get_all("DD Tracker Report", filters=filters, fields=fields, order_by="sol_id asc, account_number asc")
+
+    if not records and not sol_list:
+        latest_date = frappe.db.get_value("DD Tracker Report", {}, "date", order_by="date desc")
+        if latest_date:
+            records = frappe.db.get_all("DD Tracker Report", filters={"date": latest_date}, fields=fields, order_by="sol_id asc, account_number asc")
+
+    return records
+
+
 @frappe.whitelist()
 def get_new_account_report_data(selected_date=None):
     from frappe.utils import getdate

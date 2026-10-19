@@ -956,6 +956,103 @@ function _getFilteredMISData(self) {
 	return data;
 }
 
+function _attachDdTrackerDownloadHandlers(tableContainer, dashboardInstance, reportName) {
+	const reportPrefix = (reportName || "DD_Tracker_Report").replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+	const downloadCsv = (records, levelPrefix) => {
+		if (!records || !records.length) {
+			frappe.msgprint("No DD Tracker Report data available for download.");
+			return;
+		}
+		const csvCell = (v) => {
+			const s = String(v == null ? "" : v);
+			return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+		};
+		const headers = [
+			"Date", "Account Number", "Customer Name", "Opening Date", "Product",
+			"Amount", "Sol ID", "Auth ID", "Auth Name",
+			"Monthly Demand", "Monthly Collection", "Agent Code", "Agent Name",
+			"Collection Category"
+		];
+		const fields = [
+			"date", "account_number", "customer_name", "opening_date", "product",
+			"amount", "sol_id", "auth_id", "auth_name",
+			"monthly_demand", "monthly_collection", "agent_code", "agent_name",
+			"colle_category"
+		];
+		const rows = [headers];
+		records.forEach(r => {
+			rows.push(fields.map(f => r[f] != null ? r[f] : ""));
+		});
+		const csv = "\uFEFF" + rows.map(r => r.map(csvCell).join(",")).join("\r\n");
+		const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+		const activeDate = (records[0] && records[0].date) || dashboardInstance.state.selectedDate || $("#mis-date-filter").val() || "";
+		const datePart = (activeDate && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(activeDate))
+			? activeDate.split("-").reverse().join("_")
+			: (activeDate ? activeDate.replace(/[^0-9a-zA-Z]/g, "_") : "");
+		const fileName = reportPrefix + "_" + levelPrefix.replace(/\s+/g, "_") + (datePart ? "_" + datePart : "") + ".csv";
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = fileName;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	};
+
+	tableContainer.off("click", ".mis-dd-district-dl").on("click", ".mis-dd-district-dl", function (e) {
+		e.stopPropagation();
+		const $btn = $(this);
+		if ($btn.data("loading")) return;
+		const sols = JSON.parse($btn.attr("data-sols") || "[]");
+		const districtName = $btn.attr("data-district") || "District";
+		const selDate = dashboardInstance.state.selectedDate || $("#mis-date-filter").val() || null;
+		const origHtml = $btn.html();
+		$btn.data("loading", true).html("⏳ Please wait...").css({ opacity: "0.65", pointerEvents: "none" });
+		const resetBtn = () => $btn.data("loading", false).html(origHtml).css({ opacity: "", pointerEvents: "" });
+
+		frappe.call({
+			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_dd_tracker_report_csv_data",
+			args: { sol_ids: JSON.stringify(sols), selected_date: selDate },
+			callback: function (r) {
+				resetBtn();
+				const records = (r && r.message) || [];
+				if (!records.length) {
+					frappe.msgprint("No DD Tracker records found for district " + districtName + " on " + (selDate || "selected date") + ".");
+					return;
+				}
+				downloadCsv(records, "District_" + districtName);
+			},
+			error: resetBtn
+		});
+	});
+
+	tableContainer.off("click", ".mis-dd-branch-dl").on("click", ".mis-dd-branch-dl", function (e) {
+		e.stopPropagation();
+		const $btn = $(this);
+		if ($btn.data("loading")) return;
+		const sol = $btn.attr("data-sol");
+		const selDate = dashboardInstance.state.selectedDate || $("#mis-date-filter").val() || null;
+		const origHtml = $btn.html();
+		$btn.data("loading", true).html("⏳ Please wait...").css({ opacity: "0.65", pointerEvents: "none" });
+		const resetBtn = () => $btn.data("loading", false).html(origHtml).css({ opacity: "", pointerEvents: "" });
+
+		frappe.call({
+			method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_dd_tracker_report_csv_data",
+			args: { sol_ids: JSON.stringify([sol]), selected_date: selDate },
+			callback: function (r) {
+				resetBtn();
+				const records = (r && r.message) || [];
+				if (!records.length) {
+					frappe.msgprint("No DD Tracker records found for branch " + sol + " on " + (selDate || "selected date") + ".");
+					return;
+				}
+				downloadCsv(records, "Branch_" + sol);
+			},
+			error: resetBtn
+		});
+	});
+}
+
 class DrishtiDashboard {
 	constructor(page) {
 		this.page = page;
@@ -4518,11 +4615,12 @@ class DrishtiDashboard {
 								const districtExpanded = self.expandedDistricts[districtKey];
 								const districtChecked = self.checkedRows[districtKey];
 								const showDistrict = zoneExpanded && regionExpanded;
+								const districtSolIds = districtObj.branches.map(b => b.sol_id).filter(Boolean);
 
 								rowsHtml += `<tr class="mis-district-row${districtChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${districtKey}" style="display: ${showDistrict ? "table-row" : "none"}; cursor: pointer; background: #fafaf9; border-bottom: 1px solid #e7e5e4;">
 									<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${districtKey}" ${districtChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 									<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}</td>
+									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}${districtSolIds.length ? `<button type="button" class="mis-dd-district-dl" data-sols="${(JSON.stringify(districtSolIds)).replace(/"/g, '&quot;')}" data-district="${String(district).replace(/"/g, '&quot;')}" title="Download District CSV" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; Download</button>` : ""}</td>
 									<td></td>
 									<td></td>
 									<td></td>
@@ -4540,7 +4638,7 @@ class DrishtiDashboard {
 									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-branch="${branch.sol_id}" data-check-id="${branchKey}" style="display: ${showBranch ? "table-row" : "none"}; cursor: pointer; background: #ffffff; border-bottom: 1px solid #e2e8f0;">
 										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${branchKey}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 600;"><span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${branchExpanded ? "▼" : "▶"}</span>${branch.sol_id} - ${branch.sol_desc}</td>
+										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 600;"><span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${branchExpanded ? "▼" : "▶"}</span>${branch.sol_id} - ${branch.sol_desc}<button type="button" class="mis-dd-branch-dl" data-sol="${String(branch.sol_id).replace(/"/g, '&quot;')}" title="Download Branch CSV" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; Download</button></td>
 										<td></td>
 										<td></td>
 										<td></td>
@@ -4670,6 +4768,8 @@ class DrishtiDashboard {
 							$(this).prop("checked", checked).trigger("change");
 						});
 					});
+
+					_attachDdTrackerDownloadHandlers(tableContainer, dashboardInstance, "New Account Report");
 				}
 			},
 			{
@@ -5086,11 +5186,12 @@ class DrishtiDashboard {
 								const districtExpanded = self.expandedDistricts[districtKey];
 								const districtChecked = self.checkedRows[districtKey];
 								const showDistrict = zoneExpanded && regionExpanded;
+								const districtSolIds = districtObj.branches.map(b => b.sol_id).filter(Boolean);
 
 								rowsHtml += `<tr class="mis-district-row${districtChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${districtKey}" style="display: ${showDistrict ? "table-row" : "none"}; cursor: pointer; background: #fafaf9; border-bottom: 1px solid #e7e5e4;">
 									<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${districtKey}" ${districtChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 									<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}</td>
+									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}${districtSolIds.length ? `<button type="button" class="mis-dd-district-dl" data-sols="${(JSON.stringify(districtSolIds)).replace(/"/g, '&quot;')}" data-district="${String(district).replace(/"/g, '&quot;')}" title="Download District CSV" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; Download</button>` : ""}</td>
 									<td></td>
 									<td></td>
 									<td></td>
@@ -5109,7 +5210,7 @@ class DrishtiDashboard {
 									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-branch="${branch.sol_id}" data-check-id="${branchKey}" style="display: ${showBranch ? "table-row" : "none"}; cursor: pointer; background: #ffffff; border-bottom: 1px solid #e2e8f0;">
 										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${branchKey}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 600;"><span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${branchExpanded ? "▼" : "▶"}</span>${branch.sol_id} - ${branch.sol_desc}</td>
+										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 600;"><span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${branchExpanded ? "▼" : "▶"}</span>${branch.sol_id} - ${branch.sol_desc}<button type="button" class="mis-dd-branch-dl" data-sol="${String(branch.sol_id).replace(/"/g, '&quot;')}" title="Download Branch CSV" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; Download</button></td>
 										<td></td>
 										<td></td>
 										<td></td>
@@ -5243,6 +5344,8 @@ class DrishtiDashboard {
 							$(this).prop("checked", checked).trigger("change");
 						});
 					});
+
+					_attachDdTrackerDownloadHandlers(tableContainer, dashboardInstance, "Staff Wise Demand vs Collection");
 				}
 			},
 			{
@@ -5666,11 +5769,12 @@ class DrishtiDashboard {
 								const districtExpanded = self.expandedDistricts[districtKey];
 								const districtChecked = self.checkedRows[districtKey];
 								const showDistrict = zoneExpanded && regionExpanded;
+								const districtSolIds = districtObj.branches.map(b => b.sol_id).filter(Boolean);
 
 								rowsHtml += `<tr class="mis-district-row${districtChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${districtKey}" style="display: ${showDistrict ? "table-row" : "none"}; cursor: pointer; background: #fafaf9; border-bottom: 1px solid #e7e5e4;">
 									<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${districtKey}" ${districtChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 									<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}</td>
+									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}${districtSolIds.length ? `<button type="button" class="mis-dd-district-dl" data-sols="${(JSON.stringify(districtSolIds)).replace(/"/g, '&quot;')}" data-district="${String(district).replace(/"/g, '&quot;')}" title="Download District CSV" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; Download</button>` : ""}</td>
 									<td></td>
 									<td></td>
 									<td></td>
@@ -5691,7 +5795,7 @@ class DrishtiDashboard {
 									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-branch="${branch.sol_id}" data-check-id="${branchKey}" style="display: ${showBranch ? "table-row" : "none"}; cursor: pointer; background: #ffffff; border-bottom: 1px solid #e2e8f0;">
 										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${branchKey}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 600;"><span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${branchExpanded ? "▼" : "▶"}</span>${branch.sol_id} - ${branch.sol_desc}</td>
+										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 600;"><span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${branchExpanded ? "▼" : "▶"}</span>${branch.sol_id} - ${branch.sol_desc}<button type="button" class="mis-dd-branch-dl" data-sol="${String(branch.sol_id).replace(/"/g, '&quot;')}" title="Download Branch CSV" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; Download</button></td>
 										<td></td>
 										<td></td>
 										<td></td>
@@ -5863,6 +5967,8 @@ class DrishtiDashboard {
 							$(this).prop("checked", checked).trigger("change");
 						});
 					});
+
+					_attachDdTrackerDownloadHandlers(tableContainer, dashboardInstance, "Agent Wise Demand vs Collection");
 				}
 			},
 			{
