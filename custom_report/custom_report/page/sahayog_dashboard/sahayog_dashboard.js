@@ -13881,8 +13881,8 @@ class DrishtiDashboard {
 				<tr class="agent-zone-row branch-table-row" data-zone="${_esc(zone)}" data-date="${zoneDate}" style="background:#edf2f7;cursor:pointer;">
 					<td class="sr-col">${sr++}</td>
 					<td>
-						<div class="branch-info" style="white-space:nowrap;">
-							<span class="agent-toggle" style="display:inline-block;width:20px;margin-right:8px;">${zoneExpanded ? "▼" : "▶"}</span>
+						<div style="display:flex;align-items:center;gap:8px;white-space:nowrap;">
+							<span class="agent-toggle" style="flex-shrink:0;">${zoneExpanded ? "▼" : "▶"}</span>
 							<strong>${zone}</strong>
 						</div>
 					</td>
