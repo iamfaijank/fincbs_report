@@ -1648,32 +1648,40 @@ def build_agent_wise(selected_date=None, perms=None):
     where_sql = " AND ".join(where_clauses)
     
     agent_data = frappe.db.sql(f"""
-        SELECT zone, region, target, achievement, ss_target, ss_achievement,
+        SELECT zone, region, sol_id, target, achievement, ss_target, ss_achievement,
                ss_active, ss_inactive, active, inactive
         FROM `tabAgent  Wise Report`
         WHERE {where_sql}
-        LIMIT 1000
+        LIMIT 5000
     """, params, as_dict=True)
-    
-    # Group by zone and region
+
+    branches_map = get_sahayog_branches_cached()
+
+    # Group by zone + region + sol_id
     agent_map = defaultdict(lambda: {
-        "zone": "", 
-        "region": "", 
-        "target": 0.0, 
-        "achievement": 0.0, 
-        "ss_target": 0.0, 
+        "zone": "",
+        "region": "",
+        "district": "",
+        "sol_id": "",
+        "branch_name": "",
+        "target": 0.0,
+        "achievement": 0.0,
+        "ss_target": 0.0,
         "ss_achievement": 0.0,
         "ss_active": 0.0,
         "ss_inactive": 0.0,
         "active": 0.0,
         "inactive": 0.0
     })
-    
+
     for row in agent_data:
         zone = row.get("zone") or "Unknown"
         region = row.get("region") or "Unknown"
-        
-        # Convert to float (handle string values)
+        sol_id = str(row.get("sol_id") or "").strip()
+        branch_info = branches_map.get(sol_id, {})
+        district = branch_info.get("district") or ""
+        branch_name = branch_info.get("branch_name") or sol_id
+
         try:
             tgt = float(row.get("target") or 0)
             ach = float(row.get("achievement") or 0)
@@ -1684,18 +1692,14 @@ def build_agent_wise(selected_date=None, perms=None):
             act = float(row.get("active") or 0)
             inact = float(row.get("inactive") or 0)
         except (ValueError, TypeError):
-            tgt = 0
-            ach = 0
-            ss_tgt = 0
-            ss_ach = 0
-            ss_act = 0
-            ss_inact = 0
-            act = 0
-            inact = 0
-        
-        key = f"{zone}||{region}"
+            tgt = ach = ss_tgt = ss_ach = ss_act = ss_inact = act = inact = 0
+
+        key = f"{zone}||{region}||{sol_id}"
         agent_map[key]["zone"] = zone
         agent_map[key]["region"] = region
+        agent_map[key]["district"] = district
+        agent_map[key]["sol_id"] = sol_id
+        agent_map[key]["branch_name"] = branch_name
         agent_map[key]["target"] += tgt
         agent_map[key]["achievement"] += ach
         agent_map[key]["ss_target"] += ss_tgt
@@ -1704,20 +1708,20 @@ def build_agent_wise(selected_date=None, perms=None):
         agent_map[key]["ss_inactive"] += ss_inact
         agent_map[key]["active"] += act
         agent_map[key]["inactive"] += inact
-    
+
     # Convert to list format
     result = []
     for key, data in agent_map.items():
-        # Calculate shortfalls (target - achievement)
         ss_shortfall = abs(data["ss_target"] - data["ss_achievement"])
         agent_shortfall = abs(data["target"] - data["achievement"])
-
-        # Format date as yyyy-mm-dd (strip time portion)
         date_str = str(data["date"])[:10] if data.get("date") else selected_date
 
         result.append({
             "zone": data["zone"],
             "region": data["region"],
+            "district": data["district"],
+            "sol_id": data["sol_id"],
+            "branch_name": data["branch_name"],
             "date": date_str,
             "ss_target": round(data["ss_target"], 2),
             "ss_achievement": round(data["ss_achievement"], 2),

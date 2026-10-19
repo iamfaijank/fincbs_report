@@ -974,6 +974,8 @@ class DrishtiDashboard {
 			selectedMonth: null,
 			drillDownActive: false,
 			expandedZones: {}, // Track expanded/collapsed zones
+			expandedAgentRegions: {},
+			expandedAgentDistricts: {},
 			expandedZoneRegions: {}, // Track expanded/collapsed regions in zone table
 			checkedZoneRows: {}, // Track checked rows in zone table
 			expandedProductRows: {},
@@ -13775,14 +13777,63 @@ class DrishtiDashboard {
 			`;
 		}
 
-		// Group by zone
-		const grouped = {};
+		const _esc = (v) => String(v || "").replace(/"/g, "&quot;");
+
+		// Build 4-level structure: zone → region → district → branch(sol_id)
+		const zoneMap = {};
 		agentData.forEach((row) => {
-			if (!grouped[row.zone]) {
-				grouped[row.zone] = [];
-			}
-			grouped[row.zone].push(row);
+			const z = row.zone || "Unknown";
+			const r = row.region || "Unknown";
+			const d = row.district || "Unknown";
+			const sol = row.sol_id || "";
+			if (!zoneMap[z]) zoneMap[z] = {};
+			if (!zoneMap[z][r]) zoneMap[z][r] = {};
+			if (!zoneMap[z][r][d]) zoneMap[z][r][d] = [];
+			zoneMap[z][r][d].push(row);
 		});
+
+		const sortByNum = (key, pattern) => (a, b) => {
+			const aNum = a.match(pattern)?.[1];
+			const bNum = b.match(pattern)?.[1];
+			return aNum && bNum ? parseInt(aNum) - parseInt(bNum) : a.localeCompare(b);
+		};
+
+		const sumRows = (rows) => {
+			let ss_target = 0, ss_ach = 0, ss_active = 0, ss_inactive = 0;
+			let target = 0, ach = 0, active = 0, inactive = 0;
+			rows.forEach((r) => {
+				ss_target += parseFloat(r.ss_target || 0);
+				ss_ach += parseFloat(r.ss_achievement || 0);
+				ss_active += parseFloat(r.ss_active || 0);
+				ss_inactive += parseFloat(r.ss_inactive || 0);
+				target += parseFloat(r.target || 0);
+				ach += parseFloat(r.achievement || 0);
+				active += parseFloat(r.active || 0);
+				inactive += parseFloat(r.inactive || 0);
+			});
+			return { ss_target, ss_ach, ss_active, ss_inactive, target, ach, active, inactive };
+		};
+
+		const metricCells = (t, isExpanded) => {
+			const ssShortfallRaw = t.ss_target - t.ss_ach;
+			const vsShortfallRaw = t.target - t.ach;
+			const ssPct = t.ss_target > 0 ? ((t.ss_ach / t.ss_target) * 100).toFixed(2) : 0;
+			const vsPct = t.target > 0 ? ((t.ach / t.target) * 100).toFixed(2) : 0;
+			return `
+				<td class="metric-cell amount-cell">${this.formatCurrency(t.ss_target)}</td>
+				<td class="metric-cell amount-cell">${this.formatCurrency(t.ss_ach)}</td>
+				<td class="metric-cell amount-cell" style="color:${ssShortfallRaw > 0 ? "#ef4444" : "#10b981"};font-weight:600;">${this.formatCurrency(Math.abs(ssShortfallRaw))}</td>
+				<td class="metric-cell amount-cell">${this.formatNumber(t.ss_active)}</td>
+				<td class="metric-cell amount-cell">${this.formatNumber(t.ss_inactive)}</td>
+				<td><div style="display:flex;align-items:center;gap:8px;justify-content:center;"><span class="pct-value" style="color:${this.getPctColor(ssPct)};min-width:45px;text-align:right;">${Math.round(ssPct)}%</span>${this.renderProgressBar(ssPct)}</div></td>
+				<td class="metric-cell amount-cell">${this.formatCurrency(t.target)}</td>
+				<td class="metric-cell amount-cell">${this.formatCurrency(t.ach)}</td>
+				<td class="metric-cell amount-cell" style="color:${vsShortfallRaw > 0 ? "#ef4444" : "#10b981"};font-weight:600;">${this.formatCurrency(Math.abs(vsShortfallRaw))}</td>
+				<td class="metric-cell amount-cell">${this.formatNumber(t.active)}</td>
+				<td class="metric-cell amount-cell">${this.formatNumber(t.inactive)}</td>
+				<td><div style="display:flex;align-items:center;gap:8px;justify-content:center;"><span class="pct-value" style="color:${this.getPctColor(vsPct)};min-width:45px;text-align:right;">${Math.round(vsPct)}%</span>${this.renderProgressBar(vsPct)}</div></td>
+			`;
+		};
 
 		let sr = 1;
 		let html = `
@@ -13791,11 +13842,12 @@ class DrishtiDashboard {
 					<tr class="branch-table-header">
 						<th rowspan="2" class="sr-col">SR</th>
 						<th rowspan="2">
-							<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-								<span>ZONE / REGION</span>
+							<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+								<span>Z/R/D/B</span>
 								${this.renderViewToggleHtml("agent", this.state.agentViewMode)}
 							</div>
 						</th>
+						<th rowspan="2" style="text-align:center;min-width:64px;font-size:11px;letter-spacing:0.5px;">LEVEL</th>
 						<th rowspan="2">SS TARGET</th>
 						<th rowspan="2">SS ACHIEVEMENT</th>
 						<th rowspan="2">SS SHORTFALL</th>
@@ -13809,153 +13861,113 @@ class DrishtiDashboard {
 						<th rowspan="2">VS INACTIVE</th>
 						<th rowspan="2">VS Ach %</th>
 					</tr>
-					<tr class="branch-table-subheader">
-					</tr>
+					<tr class="branch-table-subheader"></tr>
 				</thead>
 				<tbody>
 		`;
 
-		// Sort zones
-		const sortedZones = Object.keys(grouped).sort((a, b) => {
-			const aNum = a.match(/ZONE-(\d+)/)?.[1];
-			const bNum = b.match(/ZONE-(\d+)/)?.[1];
-			return aNum && bNum ? parseInt(aNum) - parseInt(bNum) : a.localeCompare(b);
-		});
+		const sortedZones = Object.keys(zoneMap).sort(sortByNum("zone", /ZONE-(\d+)/));
 
 		sortedZones.forEach((zone) => {
-			const zoneRows = grouped[zone];
+			// Flatten all rows under zone for totals
+			const allZoneRows = Object.values(zoneMap[zone]).flatMap((regions) =>
+				Object.values(regions).flat()
+			);
+			const zT = sumRows(allZoneRows);
+			const zoneExpanded = this.state.expandedZones[`agent_${zone}`] || false;
+			const zoneDate = allZoneRows[0]?.date || this.state.selectedDate || frappe.datetime.get_today();
 
-			// Calculate zone totals
-			let zoneTarget = 0;
-			let zoneAch = 0;
-			let zoneSsTarget = 0;
-			let zoneSsAch = 0;
-			let zoneSsActive = 0;
-			let zoneSsInactive = 0;
-			let zoneActive = 0;
-			let zoneInactive = 0;
-
-			zoneRows.forEach((r) => {
-				zoneTarget += parseFloat(r.target || 0);
-				zoneAch += parseFloat(r.achievement || 0);
-				zoneSsTarget += parseFloat(r.ss_target || 0);
-				zoneSsAch += parseFloat(r.ss_achievement || 0);
-				zoneSsActive += parseFloat(r.ss_active || 0);
-				zoneSsInactive += parseFloat(r.ss_inactive || 0);
-				zoneActive += parseFloat(r.active || 0);
-				zoneInactive += parseFloat(r.inactive || 0);
-			});
-
-			const zoneSsShortfallRaw = zoneSsTarget - zoneSsAch;
-			const zoneAgentShortfallRaw = zoneTarget - zoneAch;
-			const zoneSsShortfall = Math.abs(zoneSsShortfallRaw);
-			const zoneAgentShortfall = Math.abs(zoneAgentShortfallRaw);
-			const zoneSsPercent = zoneSsTarget > 0 ? ((zoneSsAch / zoneSsTarget) * 100).toFixed(2) : 0;
-			const zonePercent = zoneTarget > 0 ? ((zoneAch / zoneTarget) * 100).toFixed(2) : 0;
-			const isExpanded = this.state.expandedZones[`agent_${zone}`] || false;
-			const zoneDate =
-				zoneRows[0]?.date || this.state.selectedDate || frappe.datetime.get_today();
-
-			// Zone row
 			html += `
-				<tr class="agent-zone-row branch-table-row" data-zone="${zone}" data-date="${zoneDate}" style="background: #f8fafc; cursor: pointer;">
+				<tr class="agent-zone-row branch-table-row" data-zone="${_esc(zone)}" data-date="${zoneDate}" style="background:#edf2f7;cursor:pointer;">
 					<td class="sr-col">${sr++}</td>
 					<td>
-						<div class="branch-info" style="white-space: nowrap;">
-							<div class="branch-code-name">
-								<span class="agent-toggle" style="display: inline-block; width: 20px; margin-right: 8px; cursor: pointer;">${isExpanded ? "▼" : "▶"}</span>
-								<strong style="vertical-align: middle;">${zone}</strong>
-							</div>
+						<div class="branch-info" style="white-space:nowrap;">
+							<span class="agent-toggle" style="display:inline-block;width:20px;margin-right:8px;">${zoneExpanded ? "▼" : "▶"}</span>
+							<strong>${zone}</strong>
 						</div>
 					</td>
-					<td class="metric-cell amount-cell">${this.formatCurrency(zoneSsTarget)}</td>
-					<td class="metric-cell amount-cell">${this.formatCurrency(zoneSsAch)}</td>
-					<td class="metric-cell amount-cell" style="color: ${zoneSsShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneSsShortfall)}</td>
-					<td class="metric-cell amount-cell">${this.formatNumber(zoneSsActive)}</td>
-					<td class="metric-cell amount-cell">${this.formatNumber(zoneSsInactive)}</td>
-					<td>
-						<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-							<span class="pct-value" style="color: ${this.getPctColor(zoneSsPercent)}; min-width: 45px; text-align: right;">${Math.round(zoneSsPercent)}%</span>
-							${this.renderProgressBar(zoneSsPercent)}
-						</div>
-					</td>
-					<td class="metric-cell amount-cell">${this.formatCurrency(zoneTarget)}</td>
-					<td class="metric-cell amount-cell">${this.formatCurrency(zoneAch)}</td>
-					<td class="metric-cell amount-cell" style="color: ${zoneAgentShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(zoneAgentShortfall)}</td>
-					<td class="metric-cell amount-cell">${this.formatNumber(zoneActive)}</td>
-					<td class="metric-cell amount-cell">${this.formatNumber(zoneInactive)}</td>
-					<td>
-						<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-							<span class="pct-value" style="color: ${this.getPctColor(zonePercent)}; min-width: 45px; text-align: right;">${Math.round(zonePercent)}%</span>
-							${this.renderProgressBar(zonePercent)}
-						</div>
-					</td>
+					<td style="text-align:center;"><span style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:0.3px;white-space:nowrap;">Zone</span></td>
+					${metricCells(zT)}
 				</tr>
 			`;
 
-			// Sort regions within the zone
-			const sortedRegionRows = zoneRows.sort((a, b) => {
-				const aNum = a.region.match(/REGION-(\d+)/)?.[1];
-				const bNum = b.region.match(/REGION-(\d+)/)?.[1];
-				return aNum && bNum
-					? parseInt(aNum) - parseInt(bNum)
-					: a.region.localeCompare(b.region);
-			});
-
-			// Region rows (hidden by default)
-			sortedRegionRows.forEach((r) => {
-				const rSsTarget = parseFloat(r.ss_target || 0);
-				const rSsAch = parseFloat(r.ss_achievement || 0);
-				const rTarget = parseFloat(r.target || 0);
-				const rAch = parseFloat(r.achievement || 0);
-				const rSsActive = parseFloat(r.ss_active || 0);
-				const rSsInactive = parseFloat(r.ss_inactive || 0);
-				const rActive = parseFloat(r.active || 0);
-				const rInactive = parseFloat(r.inactive || 0);
-				const rDate = r.date || zoneDate;
-
-				const rSsShortfallRaw = rSsTarget - rSsAch;
-				const rAgentShortfallRaw = rTarget - rAch;
-				const rSsShortfall = Math.abs(rSsShortfallRaw);
-				const rAgentShortfall = Math.abs(rAgentShortfallRaw);
-				const rSsPercent = rSsTarget > 0 ? ((rSsAch / rSsTarget) * 100).toFixed(2) : 0;
-				const rPercent = rTarget > 0 ? ((rAch / rTarget) * 100).toFixed(2) : 0;
+			const sortedRegions = Object.keys(zoneMap[zone]).sort(sortByNum("region", /REGION-(\d+)/));
+			sortedRegions.forEach((region) => {
+				const regionKey = `agent_${zone}::${region}`;
+				const regionExpanded = this.state.expandedAgentRegions[regionKey] || false;
+				const allRegionRows = Object.values(zoneMap[zone][region]).flat();
+				const rT = sumRows(allRegionRows);
+				const regionDate = allRegionRows[0]?.date || zoneDate;
 
 				html += `
-					<tr class="agent-region-row region-of-${zone} branch-table-row" data-region="${r.region}" data-date="${rDate}" style="display: ${isExpanded ? "table-row" : "none"}; background: #ffffff; cursor: pointer;">
+					<tr class="agent-region-row region-of-${_esc(zone)} branch-table-row"
+						data-zone="${_esc(zone)}" data-region="${_esc(region)}" data-date="${regionDate}"
+						style="display:${zoneExpanded ? "table-row" : "none"};background:#f7fafc;cursor:pointer;">
 						<td class="sr-col"></td>
 						<td>
-							<div class="branch-info" style="white-space: nowrap;">
-								<div class="branch-code-name">
-									<span style="display: inline-block; width: 20px; margin-right: 8px;"></span>
-									<span style="padding-left: 40px; color: #097c80; font-weight: 500;">${r.region}</span>
-								</div>
+							<div style="white-space:nowrap;padding-left:4px;">
+								<span class="agent-region-toggle" style="display:inline-block;width:16px;margin-right:6px;color:#097c80;">${regionExpanded ? "▼" : "▶"}</span>
+								<span style="color:#097c80;font-weight:600;">${region}</span>
 							</div>
 						</td>
-						<td class="metric-cell amount-cell">${this.formatCurrency(rSsTarget)}</td>
-						<td class="metric-cell amount-cell">${this.formatCurrency(rSsAch)}</td>
-						<td class="metric-cell amount-cell" style="color: ${rSsShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rSsShortfall)}</td>
-						<td class="metric-cell amount-cell">${this.formatNumber(rSsActive)}</td>
-						<td class="metric-cell amount-cell">${this.formatNumber(rSsInactive)}</td>
-						<td>
-							<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-								<span class="pct-value" style="color: ${this.getPctColor(rSsPercent)}; min-width: 45px; text-align: right;">${Math.round(rSsPercent)}%</span>
-								${this.renderProgressBar(rSsPercent)}
-							</div>
-						</td>
-						<td class="metric-cell amount-cell">${this.formatCurrency(rTarget)}</td>
-						<td class="metric-cell amount-cell">${this.formatCurrency(rAch)}</td>
-						<td class="metric-cell amount-cell" style="color: ${rAgentShortfallRaw > 0 ? "#ef4444" : "#10b981"}; font-weight: 600;">${this.formatCurrency(rAgentShortfall)}</td>
-						<td class="metric-cell amount-cell">${this.formatNumber(rActive)}</td>
-						<td class="metric-cell amount-cell">${this.formatNumber(rInactive)}</td>
-						<td>
-							<div style="display: flex; align-items: center; gap: 8px; justify-content: center;">
-								<span class="pct-value" style="color: ${this.getPctColor(rPercent)}; min-width: 45px; text-align: right;">${Math.round(rPercent)}%</span>
-								${this.renderProgressBar(rPercent)}
-							</div>
-						</td>
+						<td style="text-align:center;"><span style="background:#097c80;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:0.3px;white-space:nowrap;">Region</span></td>
+						${metricCells(rT)}
 					</tr>
 				`;
+
+				const sortedDistricts = Object.keys(zoneMap[zone][region]).sort((a, b) => a.localeCompare(b));
+				sortedDistricts.forEach((district) => {
+					const districtKey = `agent_${zone}::${region}::${district}`;
+					const districtExpanded = this.state.expandedAgentDistricts[districtKey] || false;
+					const districtRows = zoneMap[zone][region][district];
+					const dT = sumRows(districtRows);
+					const districtDate = districtRows[0]?.date || regionDate;
+
+					html += `
+						<tr class="agent-district-row district-of-${_esc(zone)}-${_esc(region)} branch-table-row"
+							data-zone="${_esc(zone)}" data-region="${_esc(region)}" data-district="${_esc(district)}" data-date="${districtDate}"
+							style="display:${zoneExpanded && regionExpanded ? "table-row" : "none"};background:#f0faf9;cursor:pointer;">
+							<td class="sr-col"></td>
+							<td>
+								<div style="white-space:nowrap;padding-left:4px;">
+									<span class="agent-district-toggle" style="display:inline-block;width:14px;margin-right:6px;color:#2d8a8e;">${districtExpanded ? "▼" : "▶"}</span>
+									<span style="color:#2d8a8e;font-weight:500;">${district}</span>
+								</div>
+							</td>
+							<td style="text-align:center;"><span style="background:#2d8a8e;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:0.3px;white-space:nowrap;">District</span></td>
+							${metricCells(dT)}
+						</tr>
+					`;
+
+					districtRows.forEach((br) => {
+						const brT = {
+							ss_target: parseFloat(br.ss_target || 0),
+							ss_ach: parseFloat(br.ss_achievement || 0),
+							ss_active: parseFloat(br.ss_active || 0),
+							ss_inactive: parseFloat(br.ss_inactive || 0),
+							target: parseFloat(br.target || 0),
+							ach: parseFloat(br.achievement || 0),
+							active: parseFloat(br.active || 0),
+							inactive: parseFloat(br.inactive || 0),
+						};
+						const showBranch = zoneExpanded && regionExpanded && districtExpanded;
+						html += `
+							<tr class="agent-branch-row branch-of-${_esc(zone)}-${_esc(region)}-${_esc(district)} branch-table-row"
+								data-zone="${_esc(zone)}" data-region="${_esc(region)}" data-district="${_esc(district)}" data-sol="${_esc(br.sol_id)}"
+								style="display:${showBranch ? "table-row" : "none"};background:#ffffff;border-bottom:1px solid #e2e8f0;">
+								<td class="sr-col"></td>
+								<td>
+									<div style="white-space:nowrap;padding-left:4px;">
+										<span style="color:#334155;font-weight:500;">${br.branch_name || br.sol_id}</span>
+										<span style="color:#94a3b8;font-size:11px;margin-left:6px;">(${br.sol_id})</span>
+									</div>
+								</td>
+								<td style="text-align:center;"><span style="background:#64748b;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:0.3px;white-space:nowrap;">Branch</span></td>
+								${metricCells(brT)}
+							</tr>
+						`;
+					});
+				});
 			});
 		});
 
@@ -13993,6 +14005,7 @@ class DrishtiDashboard {
 					<tr style="height: 40px;">
 						<td></td>
 						<td style="text-align: left; padding-left: 12px; text-transform: uppercase; letter-spacing: 1px;">TOTAL</td>
+						<td></td>
 						<td class="metric-cell amount-cell" style="color: #ffffff;">${this.formatCurrency(totalSsTarget)}</td>
 						<td class="metric-cell amount-cell" style="color: #ffffff;">${this.formatCurrency(totalSsAch)}</td>
 						<td class="metric-cell amount-cell" style="color: ${totalSsShortfallRaw > 0 ? "#fca5a5" : "#6ee7b7"}; font-weight: 600;">${this.formatCurrency(totalSsShortfall)}</td>
@@ -14019,7 +14032,15 @@ class DrishtiDashboard {
 				</tfoot>
 			</table>
 		`;
-		return html;
+		const searchBox = `
+			<div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+				<input id="agent-branch-search" type="text" placeholder="Search branch or sol_id..."
+					style="width:280px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:'Inter',sans-serif;outline:none;color:#334155;"
+					autocomplete="off" />
+				<button id="agent-branch-search-clear" style="display:none;padding:5px 10px;border:1px solid #e2e8f0;border-radius:6px;background:#f1f5f9;color:#64748b;font-size:12px;cursor:pointer;">✕ Clear</button>
+			</div>
+		`;
+		return searchBox + html;
 	}
 
 	/**
@@ -14056,39 +14077,116 @@ class DrishtiDashboard {
 	attachAgentExpandHandlers() {
 		const self = this;
 
-		// Handle Zone Expand/Collapse and Date Sync
 		this.page.main
 			.find(".agent-zone-row")
 			.off("click")
 			.on("click", function () {
 				const zone = $(this).data("zone");
 				const rowDate = $(this).data("date");
-
-				// Sync date to date selector (Agent Wise tab only)
-				if (rowDate && self.state.activeTab === "agent") {
-					self.setAgentWiseDate(rowDate);
-				}
-
-				// Toggle expanded state
-				self.state.expandedZones[`agent_${zone}`] =
-					!self.state.expandedZones[`agent_${zone}`];
-
-				// Re-render to reflect changes
+				if (rowDate && self.state.activeTab === "agent") self.setAgentWiseDate(rowDate);
+				self.state.expandedZones[`agent_${zone}`] = !self.state.expandedZones[`agent_${zone}`];
 				self.render();
 			});
 
-		// Handle Region Row Click - Date Sync Only
 		this.page.main
 			.find(".agent-region-row")
 			.off("click")
-			.on("click", function () {
+			.on("click", function (e) {
+				e.stopPropagation();
+				const zone = $(this).data("zone");
+				const region = $(this).data("region");
 				const rowDate = $(this).data("date");
-
-				// Sync date to date selector (Agent Wise tab only)
-				if (rowDate && self.state.activeTab === "agent") {
-					self.setAgentWiseDate(rowDate);
-				}
+				if (rowDate && self.state.activeTab === "agent") self.setAgentWiseDate(rowDate);
+				const rKey = `agent_${zone}::${region}`;
+				self.state.expandedAgentRegions[rKey] = !self.state.expandedAgentRegions[rKey];
+				self.render();
 			});
+
+		this.page.main
+			.find(".agent-district-row")
+			.off("click")
+			.on("click", function (e) {
+				e.stopPropagation();
+				const zone = $(this).data("zone");
+				const region = $(this).data("region");
+				const district = $(this).data("district");
+				const rowDate = $(this).data("date");
+				if (rowDate && self.state.activeTab === "agent") self.setAgentWiseDate(rowDate);
+				const dKey = `agent_${zone}::${region}::${district}`;
+				self.state.expandedAgentDistricts[dKey] = !self.state.expandedAgentDistricts[dKey];
+				self.render();
+			});
+
+		// Search handler
+		const $search = this.page.main.find("#agent-branch-search");
+		const $clearBtn = this.page.main.find("#agent-branch-search-clear");
+
+		$search.off("input").on("input", function () {
+			const q = $(this).val().trim().toLowerCase();
+			$clearBtn.toggle(q.length > 0);
+
+			if (!q) {
+				// Reset: re-apply current expanded state
+				self.page.main.find(".agent-zone-row,.agent-region-row,.agent-district-row,.agent-branch-row").each(function () {
+					const $row = $(this);
+					if ($row.hasClass("agent-zone-row")) {
+						$row.show();
+					} else if ($row.hasClass("agent-region-row")) {
+						const zone = $row.data("zone");
+						$row.toggle(!!self.state.expandedZones[`agent_${zone}`]);
+					} else if ($row.hasClass("agent-district-row")) {
+						const zone = $row.data("zone"), region = $row.data("region");
+						const zExp = !!self.state.expandedZones[`agent_${zone}`];
+						const rExp = !!self.state.expandedAgentRegions[`agent_${zone}::${region}`];
+						$row.toggle(zExp && rExp);
+					} else if ($row.hasClass("agent-branch-row")) {
+						const zone = $row.data("zone"), region = $row.data("region"), district = $row.data("district");
+						const zExp = !!self.state.expandedZones[`agent_${zone}`];
+						const rExp = !!self.state.expandedAgentRegions[`agent_${zone}::${region}`];
+						const dExp = !!self.state.expandedAgentDistricts[`agent_${zone}::${region}::${district}`];
+						$row.toggle(zExp && rExp && dExp);
+					}
+				});
+				return;
+			}
+
+			// Find matching branch rows
+			const matchedZones = new Set(), matchedRegions = new Set(), matchedDistricts = new Set();
+			self.page.main.find(".agent-branch-row").each(function () {
+				const $row = $(this);
+				const sol = String($row.data("sol") || "").toLowerCase();
+				const name = $row.find("span:first").text().toLowerCase();
+				const matches = sol.includes(q) || name.includes(q);
+				if (matches) {
+					const zone = $row.data("zone"), region = $row.data("region"), district = $row.data("district");
+					matchedZones.add(zone);
+					matchedRegions.add(`${zone}::${region}`);
+					matchedDistricts.add(`${zone}::${region}::${district}`);
+				}
+				$row.toggle(matches);
+			});
+
+			self.page.main.find(".agent-district-row").each(function () {
+				const $row = $(this);
+				const zone = $row.data("zone"), region = $row.data("region"), district = $row.data("district");
+				$row.toggle(matchedDistricts.has(`${zone}::${region}::${district}`));
+			});
+
+			self.page.main.find(".agent-region-row").each(function () {
+				const $row = $(this);
+				const zone = $row.data("zone"), region = $row.data("region");
+				$row.toggle(matchedRegions.has(`${zone}::${region}`));
+			});
+
+			self.page.main.find(".agent-zone-row").each(function () {
+				const $row = $(this);
+				$row.toggle(matchedZones.has($row.data("zone")));
+			});
+		});
+
+		$clearBtn.off("click").on("click", function () {
+			$search.val("").trigger("input");
+		});
 	}
 
 	// ========================================================================

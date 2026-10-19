@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "zone",
+  "sol_id",
   "region",
   "target",
   "achievement",
@@ -73,14 +74,19 @@
   },
   {
    "fieldname": "date",
-   "fieldtype": "Datetime",
+   "fieldtype": "Date",
    "label": "Date"
+  },
+  {
+   "fieldname": "sol_id",
+   "fieldtype": "Data",
+   "label": "Sol ID"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-18 13:43:48.795473",
+ "modified": "2026-10-19 14:00:03.962657",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Agent  Wise Report",
