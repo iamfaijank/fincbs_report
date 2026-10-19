@@ -7750,6 +7750,7 @@ class DrishtiDashboard {
 			{
 				id: "profit_loss",
 				name: "Profit and Loss Report",
+				hidden: true,
 				adminOnly: true,
 				tableData: [],
 				selectedMisZones: [],
@@ -8244,6 +8245,7 @@ class DrishtiDashboard {
 			{
 				id: "balance_sheet",
 				name: "Balance Sheet Report",
+				hidden: true,
 				adminOnly: true,
 				tableData: [],
 				selectedMisZones: [],
@@ -8737,6 +8739,19 @@ class DrishtiDashboard {
 	_isAdmin() {
 		return frappe.session.user === "Administrator" ||
 			(frappe.user_roles || []).includes("System Manager");
+	}
+
+	// Resolve a MIS tab id to one the current user is actually allowed to see.
+	// `hidden` tabs are off for everyone (admin included); `adminOnly` tabs are
+	// off for non-admins. Falls back to RD & SMBG Pending, then first visible.
+	_visibleMisReportId(id) {
+		const list = this.misReportsList || [];
+		const usable = (r) => r && !r.hidden && (!r.adminOnly || this._isAdmin());
+		const target = list.find((r) => r.id === id && usable(r));
+		if (target) return target.id;
+		const fallback = list.find((r) => r.id === "rd_smbg_pending" && usable(r))
+			|| list.find(usable);
+		return fallback ? fallback.id : "";
 	}
 
 	renderActiveTab() {
@@ -10632,7 +10647,7 @@ class DrishtiDashboard {
 			if (this.drishti_container) this.drishti_container.hide();
 			if (this.mis_container) {
 				this.mis_container.show();
-				const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
+				const activeReportId = this._visibleMisReportId(this.state.selectedMisReport);
 				this.mis_container.find(".mis-report-tab-btn").removeClass("active");
 				this.mis_container.find(".mis-dropdown-toggle").removeClass("active");
 				const $matchedTab = this.mis_container.find(`.mis-report-tab-btn[data-report-id="${activeReportId}"]`);
@@ -10652,7 +10667,7 @@ class DrishtiDashboard {
 				this.renderMisReport(activeReportId);
 			} else {
 				this.initMisReportsContainer();
-				const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
+				const activeReportId = this._visibleMisReportId(this.state.selectedMisReport);
 				this.renderMisReport(activeReportId);
 			}
 			$(this.page.wrapper).find("#drishti-subtitle").show();
@@ -10674,9 +10689,10 @@ class DrishtiDashboard {
 
 		const self = this;
 		const tabSelectorContainer = this.mis_container.find("#mis-report-selector-tabs");
-		const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
+		const activeReportId = this._visibleMisReportId(this.state.selectedMisReport);
 
 		this.misReportsList.forEach((report) => {
+			if (report.hidden) return;
 			if (report.adminOnly && !self._isAdmin()) return;
 			if (report.type === "group") {
 				const firstChildId = report.children[0];
@@ -10842,12 +10858,12 @@ class DrishtiDashboard {
 	renderMisReport(reportId) {
 		this._misRenderSeq = (this._misRenderSeq || 0) + 1;
 		const seq = this._misRenderSeq;
-		let report = this.misReportsList.find(r => r.id === reportId);
-		if (report && report.adminOnly && !this._isAdmin()) {
-			report = this.misReportsList.find(r => r.id === "rd_smbg_pending");
-			reportId = "rd_smbg_pending";
+		const resolvedId = reportId ? this._visibleMisReportId(reportId) : reportId;
+		if (resolvedId !== reportId) {
+			reportId = resolvedId;
 			this.state.selectedMisReport = reportId;
 		}
+		let report = this.misReportsList.find(r => r.id === reportId);
 		const contentArea = this.mis_container.find("#mis-report-content-area");
 		const titleEl = this.mis_container.find("#mis-report-title");
 		if (report && contentArea.length) {
@@ -12119,7 +12135,7 @@ class DrishtiDashboard {
 	// ========================================================================
 	loadData() {
 		if (this.state.dashboardMode === "mis") {
-			const activeReportId = this.state.selectedMisReport || (this.misReportsList.length > 0 ? this.misReportsList[0].id : "");
+			const activeReportId = this._visibleMisReportId(this.state.selectedMisReport);
 			if (activeReportId) {
 				const report = this.misReportsList.find(r => r.id === activeReportId);
 				this.swapMisReportDateCache(report, this.state.selectedDate);
