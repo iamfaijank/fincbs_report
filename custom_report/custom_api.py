@@ -36,7 +36,7 @@ def get_sol_product_wise_collection(sol_id, zone=None, financial_year="2026-2027
                 pass
 
     clean_zone = (zone or "").strip()
-    cache_key = f"sol_pw_coll_v4_{sol_str}_{clean_zone}_{financial_year or 'default'}_{mode}_{clean_m}_{report_date or ''}"
+    cache_key = f"sol_pw_coll_v5_{sol_str}_{clean_zone}_{financial_year or 'default'}_{mode}_{clean_m}_{report_date or ''}"
     cached = frappe.cache().get_value(cache_key)
     if cached is not None and any(cached.get("targets", {}).values()):
         return cached
@@ -191,8 +191,12 @@ def _aggregate_collections(data):
     collections = {p: 0.0 for p in ("CASA", "DAM", "DD", "FD", "RD", "SMBG")}
     for row in data:
         product_name = row.get("product")
+        amt = flt(row.get("total_amount") or 0.0)
         if product_name in collections:
-            collections[product_name] = flt(row.get("total_amount") or 0.0)
+            collections[product_name] += amt
+        elif product_name == "MIS":
+            # MIS (Monthly Income Scheme) falls under Term Deposit / FD category
+            collections["FD"] += amt
     return collections
 
 
@@ -243,8 +247,11 @@ def _get_ytd_collections(sol_id, target_date):
         """, (sol_id, last_date), as_dict=True)
         for row in rows:
             p = row.get("product")
+            amt = flt(row.get("total_amount") or 0.0)
             if p in collections:
-                collections[p] += flt(row.get("total_amount") or 0.0)
+                collections[p] += amt
+            elif p == "MIS":
+                collections["FD"] += amt
     return collections
 
 
