@@ -110,16 +110,25 @@ frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 };
 
 frappe.pages["sahayog_dashboard"].initVisitorTracking = function (wrapper) {
-	const updateBadgeUI = (todayCount, liveCount) => {
+	const updateBadgeUI = (todayCount, liveCount, hasCxoAccess) => {
+		if (hasCxoAccess !== undefined) {
+			frappe.pages["sahayog_dashboard"].hasCxoAccess = !!hasCxoAccess;
+		}
+		const canShowBadge = frappe.pages["sahayog_dashboard"].hasCxoAccess;
+		const $badge = $("#drishti-header-visitors-badge");
+		if ($badge.length) {
+			if (!canShowBadge) {
+				$badge.hide();
+				return;
+			}
+			$badge.show();
+			$badge.find(".drishti-v-today-val").text(todayCount != null ? todayCount : 0);
+			$badge.find(".drishti-v-live-val").text(liveCount != null ? liveCount : 0);
+		}
 		frappe.pages["sahayog_dashboard"].lastVisitorStats = {
 			today_visitors_count: todayCount,
 			live_viewers_count: liveCount,
 		};
-		const $badge = $("#drishti-header-visitors-badge");
-		if ($badge.length) {
-			$badge.find(".drishti-v-today-val").text(todayCount != null ? todayCount : 0);
-			$badge.find(".drishti-v-live-val").text(liveCount != null ? liveCount : 0);
-		}
 	};
 
 	// 1. Record Page Visit immediately on open
@@ -128,7 +137,7 @@ frappe.pages["sahayog_dashboard"].initVisitorTracking = function (wrapper) {
 		args: { page: "sahayog_dashboard" },
 		callback: function (r) {
 			if (r && r.message && r.message.status === "success") {
-				updateBadgeUI(r.message.today_visitors_count, r.message.live_viewers_count);
+				updateBadgeUI(r.message.today_visitors_count, r.message.live_viewers_count, r.message.has_cxo_access);
 				frappe.pages["sahayog_dashboard"].lastVisitorResponse = r.message;
 			}
 		},
@@ -147,7 +156,7 @@ frappe.pages["sahayog_dashboard"].initVisitorTracking = function (wrapper) {
 				args: { page: "sahayog_dashboard" },
 				callback: function (r) {
 					if (r && r.message && r.message.status === "success") {
-						updateBadgeUI(r.message.today_visitors_count, r.message.live_viewers_count);
+						updateBadgeUI(r.message.today_visitors_count, r.message.live_viewers_count, r.message.has_cxo_access);
 					}
 				},
 			});
@@ -163,7 +172,7 @@ frappe.pages["sahayog_dashboard"].initVisitorTracking = function (wrapper) {
 					args: { page: "sahayog_dashboard" },
 					callback: function (r) {
 						if (r && r.message && r.message.status === "success") {
-							updateBadgeUI(r.message.today_visitors_count, r.message.live_viewers_count);
+							updateBadgeUI(r.message.today_visitors_count, r.message.live_viewers_count, r.message.has_cxo_access);
 						}
 					},
 				});
@@ -11147,13 +11156,14 @@ class DrishtiDashboard {
 		header.css("position", "relative");
 		header.find(".dashboard-header-toggle-wrapper").remove();
 
+		const showBadge = !!(frappe.pages["sahayog_dashboard"] && frappe.pages["sahayog_dashboard"].hasCxoAccess);
 		const toggleHtml = `
 			<div class="dashboard-header-toggle-wrapper">
 				<div class="dashboard-toggle-switch-container">
 					<button type="button" class="dashboard-toggle-btn ${self.state.dashboardMode === 'drishti' ? 'active' : ''}" data-value="drishti">Drishti</button>
 					<button type="button" class="dashboard-toggle-btn ${self.state.dashboardMode === 'mis' ? 'active' : ''}" data-value="mis">MIS Reports</button>
 				</div>
-				<button type="button" class="drishti-header-visitors-badge" id="drishti-header-visitors-badge" title="Drishti Visitors Today • Click to view live visitor details">
+				<button type="button" class="drishti-header-visitors-badge" id="drishti-header-visitors-badge" title="Drishti Visitors Today • Click to view live visitor details" style="${showBadge ? '' : 'display:none;'}">
 					<span class="drishti-v-pulse"></span>
 					<span class="drishti-v-today">Today: <b class="drishti-v-today-val">...</b></span>
 					<span class="drishti-v-divider">|</span>
