@@ -12730,6 +12730,20 @@ class DrishtiDashboard {
 			);
 		}
 
+		// Sort branches by Achievement % descending (highest to lowest) for the selected/latest month
+		const sortMonthKey =
+			this.state.selectedMonth || (this.months && this.months.length > 0 ? this.months[this.months.length - 1].key : null);
+		if (sortMonthKey) {
+			filtered.sort((a, b) => {
+				const aPct = a.months?.[sortMonthKey]?.percentage || 0;
+				const bPct = b.months?.[sortMonthKey]?.percentage || 0;
+				if (bPct !== aPct) return bPct - aPct;
+				const aAch = a.months?.[sortMonthKey]?.achievement || 0;
+				const bAch = b.months?.[sortMonthKey]?.achievement || 0;
+				return bAch - aAch;
+			});
+		}
+
 		return filtered;
 	}
 
