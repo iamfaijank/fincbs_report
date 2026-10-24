@@ -36,7 +36,7 @@ def get_sol_product_wise_collection(sol_id, zone=None, financial_year="2026-2027
                 pass
 
     clean_zone = (zone or "").strip()
-    cache_key = f"sol_pw_coll_v5_{sol_str}_{clean_zone}_{financial_year or 'default'}_{mode}_{clean_m}_{report_date or ''}"
+    cache_key = f"sol_pw_coll_v8_{sol_str}_{clean_zone}_{financial_year or 'default'}_{mode}_{clean_m}_{report_date or ''}"
     cached = frappe.cache().get_value(cache_key)
     if cached is not None and any(cached.get("targets", {}).values()):
         return cached
@@ -54,23 +54,43 @@ def get_sol_product_wise_collection(sol_id, zone=None, financial_year="2026-2027
     fy = financial_year or current_fy
 
     if mode == "ytd":
-        # FY Start: 01-04-YYYY till yesterday
         fy_start_year = int(fy.split("-")[0])
-        start_date = f"{fy_start_year}-04-01"
-        end_date = str(yesterday_dt)
         period_label = f"01 Apr {fy_start_year} – {yesterday_dt.strftime('%d %b %Y')}"
         actual_date = yesterday_dt
         sel_month = None
 
-        # YTD Collection Query (Sum from 01-04-YYYY till yesterday)
-        data = frappe.db.sql("""
-            SELECT product, SUM(amount) as total_amount
-            FROM `tabProduct Wise Report`
-            WHERE sol_id = %s AND date >= %s AND date <= %s
-            GROUP BY product
-        """, (sol_id, start_date, end_date), as_dict=True)
+        # YTD Collection: Sum of snapshots of past completed FY months + yesterday snapshot of current month
+        months_up_to = []
+        if yesterday_dt.month >= 4:
+            for m in range(4, yesterday_dt.month + 1):
+                months_up_to.append((m, fy_start_year))
+        else:
+            for m in range(4, 13):
+                months_up_to.append((m, fy_start_year))
+            for m in range(1, yesterday_dt.month + 1):
+                months_up_to.append((m, fy_start_year + 1))
 
-        collections = _aggregate_collections(data)
+        snapshot_dates = []
+        for (m, y) in months_up_to:
+            if m == yesterday_dt.month and y == yesterday_dt.year:
+                curr_last_d = _get_latest_pwr_date(sol_id, str(yesterday_dt))
+                if curr_last_d:
+                    snapshot_dates.append(str(curr_last_d))
+            else:
+                last_d = _get_last_available_date_for_month(m, y, sol_id=sol_id)
+                if last_d:
+                    snapshot_dates.append(str(last_d))
+
+        if snapshot_dates:
+            data = frappe.db.sql("""
+                SELECT product, SUM(amount) as total_amount
+                FROM `tabProduct Wise Report`
+                WHERE sol_id = %s AND date IN %s
+                GROUP BY product
+            """, (sol_id, tuple(snapshot_dates)), as_dict=True)
+            collections = _aggregate_collections(data)
+        else:
+            collections = {p: 0.0 for p in ("CASA", "DAM", "DD", "FD", "RD", "SMBG")}
 
         # Overall target (YTD cumulative target matching current month)
         target_month = clean_m if (clean_m and clean_m in MONTH_MAP) else current_month
@@ -209,16 +229,27 @@ def _get_latest_pwr_date(sol_id, before_date):
     return res[0].get("d") if res and res[0].get("d") else None
 
 
-def _get_last_available_date_for_month(month_num, year):
-    cache_key = f"pwr_last_date_{month_num}_{year}"
+def _get_last_available_date_for_month(month_num, year, sol_id=None):
+    cache_key = f"pwr_last_date_{month_num}_{year}_{sol_id or 'all'}"
     cached = frappe.cache().get_value(cache_key)
     if cached is not None:
         return cached
 
-    dates = frappe.db.sql("""
-        SELECT MAX(date) as d FROM `tabProduct Wise Report`
-        WHERE MONTH(date) = %s AND YEAR(date) = %s
-    """, (month_num, year), as_dict=True)
+    # Fast check: end of month date
+    last_day = calendar.monthrange(year, month_num)[1]
+    start_d = f"{year}-{month_num:02d}-01"
+    end_d = f"{year}-{month_num:02d}-{last_day:02d}"
+
+    if sol_id:
+        dates = frappe.db.sql("""
+            SELECT MAX(date) as d FROM `tabProduct Wise Report`
+            WHERE sol_id = %s AND date >= %s AND date <= %s
+        """, (sol_id, start_d, end_d), as_dict=True)
+    else:
+        dates = frappe.db.sql("""
+            SELECT MAX(date) as d FROM `tabProduct Wise Report`
+            WHERE date >= %s AND date <= %s
+        """, (start_d, end_d), as_dict=True)
     
     val = str(getdate(dates[0].d)) if dates and dates[0].get("d") else None
     frappe.cache().set_value(cache_key, val, expires_in_sec=1800)
