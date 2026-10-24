@@ -226,6 +226,11 @@ def sync_rd_and_smbg_pending(sync_date=None, date=None):
 					ignore_duplicates=True
 				)
 			frappe.db.commit()
+			try:
+				frappe.cache.delete_keys("rd_smbg_pending:*")
+				frappe.cache.delete_keys("sahayog_cache|*")
+			except Exception:
+				pass
 		finally:
 			frappe.db.sql("SET UNIQUE_CHECKS=1;")
 			frappe.db.sql("SET FOREIGN_KEY_CHECKS=1;")

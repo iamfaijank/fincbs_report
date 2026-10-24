@@ -30,7 +30,8 @@
   {
    "fieldname": "date",
    "fieldtype": "Date",
-   "label": "Date"
+   "label": "Date",
+   "search_index": 1
   },
   {
    "fieldname": "account_number",
@@ -45,7 +46,8 @@
   {
    "fieldname": "opening_date",
    "fieldtype": "Date",
-   "label": "Opening Date"
+   "label": "Opening Date",
+   "search_index": 1
   },
   {
    "fieldname": "product",
@@ -90,7 +92,8 @@
   {
    "fieldname": "sol_id",
    "fieldtype": "Data",
-   "label": "Sol ID"
+   "label": "Sol ID",
+   "search_index": 1
   },
   {
    "fieldname": "auth_id",

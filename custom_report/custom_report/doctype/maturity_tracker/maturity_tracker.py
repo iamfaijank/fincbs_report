@@ -162,6 +162,11 @@ def sync_maturity_tracker(sync_date=None, date=None):
 				ignore_duplicates=True
 			)
 		frappe.db.commit()
+		try:
+			frappe.cache.delete_keys("maturity_tracker_*")
+			frappe.cache.delete_keys("sahayog_cache|*")
+		except Exception:
+			pass
 
 	return f"Successfully synced {total_records} Maturity Tracker records for date {ref_date} (range {dt_from} to {dt_to})."
 

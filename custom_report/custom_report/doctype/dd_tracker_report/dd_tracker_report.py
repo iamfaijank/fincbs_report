@@ -128,5 +128,10 @@ def sync_dd_tracker_data(sync_date):
             frappe.publish_realtime("progress", {"progress": progress, "title": "Syncing DD Tracker", "description": f"Inserted {i + len(chunk)} of {total_records} records"}, user=frappe.session.user)
             
         frappe.db.commit()
+        try:
+            frappe.cache.delete_keys("dd_tracker_*")
+            frappe.cache.delete_keys("sahayog_cache|*")
+        except Exception:
+            pass
         
     return {"status": "Success", "total": total_records}
