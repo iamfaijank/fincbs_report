@@ -7858,8 +7858,8 @@ class DrishtiDashboard {
 			{
 				id: "profit_loss",
 				name: "Profit and Loss Report",
-				hidden: true,
 				adminOnly: true,
+				requiredRole: "PL Report",
 				tableData: [],
 				selectedMisZones: [],
 				renderZoneFilterTags: function (container, dashboardInstance) {
@@ -8353,8 +8353,8 @@ class DrishtiDashboard {
 			{
 				id: "balance_sheet",
 				name: "Balance Sheet Report",
-				hidden: true,
 				adminOnly: true,
+				requiredRole: "PL Report",
 				tableData: [],
 				selectedMisZones: [],
 				renderZoneFilterTags: function (container, dashboardInstance) {
@@ -8849,12 +8849,24 @@ class DrishtiDashboard {
 			(frappe.user_roles || []).includes("System Manager");
 	}
 
+	// Can the current user see this MIS tab? `hidden` tabs are off for everyone
+	// (admin included); `adminOnly` tabs are off for non-admins unless the user
+	// has the tab's `requiredRole`.
+	_canSeeReport(report) {
+		if (!report || report.hidden) return false;
+		if (!report.adminOnly) return true;
+		if (this._isAdmin()) return true;
+		if (!report.requiredRole) return false;
+		return (frappe.user_roles || []).includes(report.requiredRole);
+	}
+
 	// Resolve a MIS tab id to one the current user is actually allowed to see.
 	// `hidden` tabs are off for everyone (admin included); `adminOnly` tabs are
-	// off for non-admins. Falls back to RD & SMBG Pending, then first visible.
+	// off for non-admins unless the user has the tab's `requiredRole`.
+	// Falls back to RD & SMBG Pending, then first visible.
 	_visibleMisReportId(id) {
 		const list = this.misReportsList || [];
-		const usable = (r) => r && !r.hidden && (!r.adminOnly || this._isAdmin());
+		const usable = (r) => this._canSeeReport(r);
 		const target = list.find((r) => r.id === id && usable(r));
 		if (target) return target.id;
 		const fallback = list.find((r) => r.id === "rd_smbg_pending" && usable(r))
@@ -10800,8 +10812,7 @@ class DrishtiDashboard {
 		const activeReportId = this._visibleMisReportId(this.state.selectedMisReport);
 
 		this.misReportsList.forEach((report) => {
-			if (report.hidden) return;
-			if (report.adminOnly && !self._isAdmin()) return;
+			if (!self._canSeeReport(report)) return;
 			if (report.type === "group") {
 				const firstChildId = report.children[0];
 				const selectedChildId = report.children.includes(activeReportId) ? activeReportId : firstChildId;
