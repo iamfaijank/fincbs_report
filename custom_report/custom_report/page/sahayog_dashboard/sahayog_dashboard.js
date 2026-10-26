@@ -9242,6 +9242,562 @@ class DrishtiDashboard {
 					}
 				}
 			}
+			,
+			{
+				id: "staff_productivity",
+				name: "Staff Productivity",
+				tableData: [],
+				expandedZones: {},
+				expandedRegions: {},
+				expandedDistricts: {},
+				expandedBranches: {},
+				searchTerm: "",
+				allExpanded: false,
+				selectedMisZones: [],
+				currentPage: 1,
+				pageSize: 50,
+				render: function (container, dashboardInstance, seq) {
+					const self = this;
+					container.html(`
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;" id="mis-controls">
+							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
+							<input type="text" id="mis-sp-search" placeholder="Search staff, auth ID, branch, sol ID, designation..." style="padding: 5px 12px; border: 1px solid #cbd5e1; border-radius: 6px; min-width: 280px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<button type="button" id="mis-sp-expand-toggle" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
+							<button type="button" id="mis-sp-refetch" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+								<span style="font-weight: 700; color: #0d1b2a; font-size: 12px; white-space: nowrap;">Format:</span>
+								<div class="btn-group mis-format-toggle" role="group">
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'number' ? 'active' : ''}" data-format="number" style="background: ${dashboardInstance.state.formatMode === 'number' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'number' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px; cursor: pointer;">Numbers</button>
+									<button type="button" class="btn btn-sm mis-format-btn ${dashboardInstance.state.formatMode === 'words' ? 'active' : ''}" data-format="words" style="background: ${dashboardInstance.state.formatMode === 'words' ? '#417d81' : '#e2e8f0'}; color: ${dashboardInstance.state.formatMode === 'words' ? 'white' : '#475569'}; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0 4px 4px 0; cursor: pointer;">Words</button>
+								</div>
+							</div>
+							<div style="font-size: 12px; font-weight: 700; color: #417d81; background: rgba(65,125,129,0.08); padding: 5px 12px; border-radius: 6px;" id="mis-sp-records-count"></div>
+						</div>
+						<div id="mis-sp-loading" style="width: 100%; margin-top: 10px; font-family: 'Inter', sans-serif; ${self.tableData && self.tableData.length > 0 ? 'display: none;' : ''}">
+							${dashboardInstance.buildMisSkeletonTable("Loading Combined Staff Productivity Report...")}
+						</div>
+						<div id="mis-sp-zone-filter-row" style="display: none; margin-bottom: 12px;"></div>
+						<div id="mis-sp-kpi-container" ${self.tableData && self.tableData.length ? "" : 'style="display: none;"'}></div>
+						<div id="mis-sp-table-container" ${self.tableData ? "" : 'style="display: none;"'}></div>
+					`);
+
+					if (self.tableData && self.tableData.length > 0) {
+						self.renderKPI(container.find("#mis-sp-kpi-container"), dashboardInstance);
+						container.find("#mis-sp-records-count").text(`${self.tableData.length} Staff`);
+						self.renderMisTable(container.find("#mis-sp-table-container"), dashboardInstance);
+						self.renderZoneFilterTags(container, dashboardInstance);
+						container.find("#mis-controls, #mis-sp-table-container, #mis-sp-kpi-container").show();
+						container.find("#mis-sp-loading").hide();
+						self.attachReportEventHandlers(container, dashboardInstance);
+						return;
+					}
+
+					dashboardInstance.getMisFilterOptions(function (opts) {
+						if (dashboardInstance._misRenderSeq !== seq) return;
+						const fOpts = opts || {};
+						frappe.call({
+							method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_staff_productivity_combined_data",
+							args: { selected_date: dashboardInstance.state.selectedDate },
+							callback: function (r) {
+								if (dashboardInstance._misRenderSeq !== seq) return;
+								container.find("#mis-sp-loading").hide();
+								if (r.message && r.message.length) {
+									self.tableData = filterMisTableDataByUserPermissions(r.message, fOpts);
+									self.renderKPI(container.find("#mis-sp-kpi-container"), dashboardInstance);
+									container.find("#mis-sp-records-count").text(`${self.tableData.length} Staff`);
+									self.renderMisTable(container.find("#mis-sp-table-container"), dashboardInstance);
+									self.renderZoneFilterTags(container, dashboardInstance);
+								} else {
+									container.find("#mis-sp-table-container").html('<div style="text-align: center; padding: 40px; color: #64748b; font-weight: 600;">No staff productivity data found for this date.</div>');
+								}
+								container.find("#mis-controls, #mis-sp-table-container, #mis-sp-kpi-container, #mis-sp-zone-filter-row").show();
+							}
+						});
+					});
+					self.attachReportEventHandlers(container, dashboardInstance);
+				},
+				renderKPI: function (kpiContainer, dashboardInstance) {
+					const self = this;
+					const data = self.getFilteredData();
+					const format = dashboardInstance.state.formatMode || "number";
+					const fmtAmt = (val) => {
+						const n = parseFloat(val) || 0;
+						if (format === "words") {
+							if (n >= 10000000) return "₹ " + (n / 10000000).toFixed(2) + " Cr";
+							if (n >= 100000) return "₹ " + (n / 100000).toFixed(2) + " L";
+							if (n >= 1000) return "₹ " + (n / 1000).toFixed(2) + " K";
+						}
+						return "₹ " + DRISHTI_EN_IN_FMT_2DP.format(n);
+					};
+					const fmtCount = (n) => DRISHTI_EN_IN_FMT.format(n || 0);
+
+					const totalStaff = data.length;
+					const totalNewAc = data.reduce((s, r) => s + (r.total_new_ac || 0), 0);
+					const totalNewAmt = data.reduce((s, r) => s + (r.total_new_amt || 0), 0);
+					const totalDemand = data.reduce((s, r) => s + (r.total_demand || 0), 0);
+					const totalCollection = data.reduce((s, r) => s + (r.total_collection || 0), 0);
+					const overallCollPct = totalDemand > 0 ? ((totalCollection / totalDemand) * 100).toFixed(2) : "0.00";
+					const totalCasaIncMab = data.reduce((s, r) => s + (r.casa_inc_mab || 0), 0);
+
+					kpiContainer.html(`
+						<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
+							<div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; border-left: 4px solid #417d81; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Active Staff</div>
+								<div style="font-size: 20px; font-weight: 800; color: #1e293b; margin-top: 4px;">${fmtCount(totalStaff)}</div>
+								<div style="font-size: 11px; color: #417d81; font-weight: 600; margin-top: 2px;">Across All Zones</div>
+							</div>
+							<div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; border-left: 4px solid #0284c7; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">New Accounts Sourced</div>
+								<div style="font-size: 20px; font-weight: 800; color: #0284c7; margin-top: 4px;">${fmtCount(totalNewAc)} <span style="font-size: 13px; font-weight: 600; color: #64748b;">(${fmtAmt(totalNewAmt)})</span></div>
+								<div style="font-size: 11px; color: #0284c7; font-weight: 600; margin-top: 2px;">BDE & BDO Total</div>
+							</div>
+							<div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; border-left: 4px solid #10b981; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Collection</div>
+								<div style="font-size: 20px; font-weight: 800; color: #10b981; margin-top: 4px;">${fmtAmt(totalCollection)}</div>
+								<div style="font-size: 11px; color: #059669; font-weight: 600; margin-top: 2px;">Demand: ${fmtAmt(totalDemand)} (${overallCollPct}%)</div>
+							</div>
+							<div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; border-left: 4px solid #f59e0b; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+								<div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">CASA Incremental MAB</div>
+								<div style="font-size: 20px; font-weight: 800; color: #d97706; margin-top: 4px;">${fmtAmt(totalCasaIncMab)}</div>
+								<div style="font-size: 11px; color: #b45309; font-weight: 600; margin-top: 2px;">Total Net Growth</div>
+							</div>
+						</div>
+					`);
+				},
+				getFilteredData: function () {
+					const self = this;
+					let list = self.tableData || [];
+					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
+						list = list.filter(r => self.selectedMisZones.includes(r.zone));
+					}
+					if (self.searchTerm) {
+						const q = self.searchTerm.toLowerCase();
+						list = list.filter(r => 
+							(r.employee_name && r.employee_name.toLowerCase().includes(q)) ||
+							(r.auth_id && r.auth_id.toLowerCase().includes(q)) ||
+							(r.branch && r.branch.toLowerCase().includes(q)) ||
+							(r.sol_id && r.sol_id.toLowerCase().includes(q)) ||
+							(r.designation && r.designation.toLowerCase().includes(q)) ||
+							(r.district && r.district.toLowerCase().includes(q))
+						);
+					}
+					return list;
+				},
+				renderMisTable: function (tableContainer, dashboardInstance) {
+					const self = this;
+					const data = self.getFilteredData();
+					const format = dashboardInstance.state.formatMode || "number";
+					const fmtAmt = (val) => {
+						const n = parseFloat(val) || 0;
+						if (n === 0) return "-";
+						if (format === "words") {
+							if (n >= 10000000) return "₹ " + (n / 10000000).toFixed(2) + " Cr";
+							if (n >= 100000) return "₹ " + (n / 100000).toFixed(2) + " L";
+							if (n >= 1000) return "₹ " + (n / 1000).toFixed(2) + " K";
+						}
+						return "₹ " + DRISHTI_EN_IN_FMT_2DP.format(n);
+					};
+					const fmtCount = (val) => {
+						const n = parseInt(val) || 0;
+						return n === 0 ? "-" : DRISHTI_EN_IN_FMT.format(n);
+					};
+					const fmtPct = (c, d) => {
+						const dm = parseFloat(d) || 0;
+						const cl = parseFloat(c) || 0;
+						if (dm <= 0) return "0.00%";
+						const pct = ((cl / dm) * 100).toFixed(2);
+						const color = pct >= 90 ? '#16a34a' : (pct >= 70 ? '#d97706' : '#dc2626');
+						return `<span style="color: ${color}; font-weight: 700;">${pct}%</span>`;
+					};
+
+					// Build Hierarchical grouping: Zone -> Region -> Branch -> Designation -> Staff
+					const zones = {};
+					data.forEach(r => {
+						const z = r.zone || "Zone-1";
+						const reg = r.region || "Region-1";
+						const dist = r.district || "HO";
+						const br = r.branch || "HO";
+						const desig = r.designation || "Other";
+
+						if (!zones[z]) zones[z] = { name: z, regions: {}, totals: { staff_cnt: 0, new_ac: 0, new_amt: 0, dd_dmd: 0, dd_col: 0, rd_dmd: 0, rd_col: 0, smbg_dmd: 0, smbg_col: 0, tot_dmd: 0, tot_col: 0, casa_mab: 0 } };
+						if (!zones[z].regions[reg]) zones[z].regions[reg] = { name: reg, districts: {}, totals: { staff_cnt: 0, new_ac: 0, new_amt: 0, dd_dmd: 0, dd_col: 0, rd_dmd: 0, rd_col: 0, smbg_dmd: 0, smbg_col: 0, tot_dmd: 0, tot_col: 0, casa_mab: 0 } };
+						if (!zones[z].regions[reg].districts[dist]) zones[z].regions[reg].districts[dist] = { name: dist, branches: {}, totals: { staff_cnt: 0, new_ac: 0, new_amt: 0, dd_dmd: 0, dd_col: 0, rd_dmd: 0, rd_col: 0, smbg_dmd: 0, smbg_col: 0, tot_dmd: 0, tot_col: 0, casa_mab: 0 } };
+						if (!zones[z].regions[reg].districts[dist].branches[br]) zones[z].regions[reg].districts[dist].branches[br] = { name: br, sol_id: r.sol_id, district: dist, designations: {}, totals: { staff_cnt: 0, new_ac: 0, new_amt: 0, dd_dmd: 0, dd_col: 0, rd_dmd: 0, rd_col: 0, smbg_dmd: 0, smbg_col: 0, tot_dmd: 0, tot_col: 0, casa_mab: 0 } };
+
+						const brObj = zones[z].regions[reg].districts[dist].branches[br];
+						if (!brObj.designations[desig]) {
+							brObj.designations[desig] = { name: desig, staff: [], totals: { staff_cnt: 0, new_ac: 0, new_amt: 0, dd_dmd: 0, dd_col: 0, rd_dmd: 0, rd_col: 0, smbg_dmd: 0, smbg_col: 0, tot_dmd: 0, tot_col: 0, casa_mab: 0 } };
+						}
+						const dObj = brObj.designations[desig];
+						dObj.staff.push(r);
+
+						// Accumulate totals across all 4 parent levels
+						[zones[z].totals, zones[z].regions[reg].totals, zones[z].regions[reg].districts[dist].totals, brObj.totals, dObj.totals].forEach(t => {
+							t.staff_cnt += 1;
+							t.new_ac += r.total_new_ac || 0;
+							t.new_amt += r.total_new_amt || 0;
+							t.dd_dmd += r.dd_demand || 0;
+							t.dd_col += r.dd_collection || 0;
+							t.rd_dmd += r.rd_demand || 0;
+							t.rd_col += r.rd_collection || 0;
+							t.smbg_dmd += r.smbg_demand || 0;
+							t.smbg_col += r.smbg_collection || 0;
+							t.tot_dmd += r.total_demand || 0;
+							t.tot_col += r.total_collection || 0;
+							t.casa_mab += r.casa_inc_mab || 0;
+						});
+					});
+
+					let html = `
+						<div style="overflow-x: auto; max-width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+							<table class="table table-bordered mis-table" style="margin-bottom: 0; font-size: 12px; width: 100%; white-space: nowrap;">
+								<thead>
+									<tr style="background: #1e293b; color: white; text-align: center;">
+										<th rowspan="2" style="vertical-align: middle; min-width: 250px; text-align: left; padding: 10px 14px;">Hierarchy / Staff Details</th>
+										<th rowspan="2" style="vertical-align: middle; min-width: 90px;">Auth ID</th>
+										<th rowspan="2" style="vertical-align: middle; min-width: 130px;">Designation</th>
+										<th colspan="5" style="background: #0369a1;">New Account Productivity (BDE & BDO)</th>
+										<th colspan="2" style="background: #047857;">Daily Deposit (DD)</th>
+										<th colspan="2" style="background: #b45309;">Recurring Deposit (RD)</th>
+										<th colspan="2" style="background: #6d28d9;">SMBG</th>
+										<th colspan="3" style="background: #0f172a;">Total Demand vs Collection</th>
+										<th colspan="2" style="background: #be185d;">CASA</th>
+									</tr>
+									<tr style="background: #334155; color: #f8fafc; font-size: 11px; text-align: right;">
+										<th style="text-align: right;">FD (Ac / Amt)</th>
+										<th style="text-align: right;">RD (Ac / Amt)</th>
+										<th style="text-align: right;">SMBG (Ac / Amt)</th>
+										<th style="text-align: right;">DD (Ac / Amt)</th>
+										<th style="text-align: right; background: #0284c7; color: white;">Total New (Ac / Amt)</th>
+										
+										<th style="text-align: right;">Demand</th>
+										<th style="text-align: right;">Collection</th>
+										
+										<th style="text-align: right;">Demand</th>
+										<th style="text-align: right;">Collection</th>
+										
+										<th style="text-align: right;">Demand</th>
+										<th style="text-align: right;">Collection</th>
+										
+										<th style="text-align: right;">Demand</th>
+										<th style="text-align: right;">Collection</th>
+										<th style="text-align: right; background: #1e293b; color: #38bdf8;">Coll %</th>
+										
+										<th style="text-align: right;">Total AC</th>
+										<th style="text-align: right;">Incr MAB</th>
+									</tr>
+								</thead>
+								<tbody>
+					`;
+
+					Object.keys(zones).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })).forEach(zName => {
+						const zObj = zones[zName];
+						const zExpanded = self.allExpanded || self.expandedZones[zName];
+						html += `
+							<tr class="mis-sp-zone-row" data-zone="${zName}" style="background: #e2e8f0; font-weight: 800; cursor: pointer; color: #0f172a;">
+								<td style="text-align: left; padding-left: 14px;"><span style="display: inline-block; width: 16px;">${zExpanded ? "▼" : "▶"}</span> ${zName} (${zObj.totals.staff_cnt} Staff)</td>
+								<td>-</td>
+								<td>Zone Total</td>
+								<td style="text-align: right;">-</td>
+								<td style="text-align: right;">-</td>
+								<td style="text-align: right;">-</td>
+								<td style="text-align: right;">-</td>
+								<td style="text-align: right; background: rgba(2, 132, 199, 0.1); font-weight: 800;">${fmtCount(zObj.totals.new_ac)} / ${fmtAmt(zObj.totals.new_amt)}</td>
+								
+								<td style="text-align: right;">${fmtAmt(zObj.totals.dd_dmd)}</td>
+								<td style="text-align: right;">${fmtAmt(zObj.totals.dd_col)}</td>
+								
+								<td style="text-align: right;">${fmtAmt(zObj.totals.rd_dmd)}</td>
+								<td style="text-align: right;">${fmtAmt(zObj.totals.rd_col)}</td>
+								
+								<td style="text-align: right;">${fmtAmt(zObj.totals.smbg_dmd)}</td>
+								<td style="text-align: right;">${fmtAmt(zObj.totals.smbg_col)}</td>
+								
+								<td style="text-align: right;">${fmtAmt(zObj.totals.tot_dmd)}</td>
+								<td style="text-align: right;">${fmtAmt(zObj.totals.tot_col)}</td>
+								<td style="text-align: right;">${fmtPct(zObj.totals.tot_col, zObj.totals.tot_dmd)}</td>
+								
+								<td style="text-align: right;">-</td>
+								<td style="text-align: right;">${fmtAmt(zObj.totals.casa_mab)}</td>
+							</tr>
+						`;
+
+						if (zExpanded) {
+							Object.keys(zObj.regions).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })).forEach(regName => {
+								const regObj = zObj.regions[regName];
+								const regKey = `${zName}_${regName}`;
+								const regExpanded = self.allExpanded || self.expandedRegions[regKey];
+								html += `
+									<tr class="mis-sp-reg-row" data-reg-key="${regKey}" style="background: #f1f5f9; font-weight: 700; cursor: pointer; color: #1e293b;">
+										<td style="text-align: left; padding-left: 28px;"><span style="display: inline-block; width: 16px;">${regExpanded ? "▼" : "▶"}</span> ${regName} (${regObj.totals.staff_cnt} Staff)</td>
+										<td>-</td>
+										<td>Region Total</td>
+										<td style="text-align: right;">-</td>
+										<td style="text-align: right;">-</td>
+										<td style="text-align: right;">-</td>
+										<td style="text-align: right;">-</td>
+										<td style="text-align: right; font-weight: 700;">${fmtCount(regObj.totals.new_ac)} / ${fmtAmt(regObj.totals.new_amt)}</td>
+										
+										<td style="text-align: right;">${fmtAmt(regObj.totals.dd_dmd)}</td>
+										<td style="text-align: right;">${fmtAmt(regObj.totals.dd_col)}</td>
+										
+										<td style="text-align: right;">${fmtAmt(regObj.totals.rd_dmd)}</td>
+										<td style="text-align: right;">${fmtAmt(regObj.totals.rd_col)}</td>
+										
+										<td style="text-align: right;">${fmtAmt(regObj.totals.smbg_dmd)}</td>
+										<td style="text-align: right;">${fmtAmt(regObj.totals.smbg_col)}</td>
+										
+										<td style="text-align: right;">${fmtAmt(regObj.totals.tot_dmd)}</td>
+										<td style="text-align: right;">${fmtAmt(regObj.totals.tot_col)}</td>
+										<td style="text-align: right;">${fmtPct(regObj.totals.tot_col, regObj.totals.tot_dmd)}</td>
+										
+										<td style="text-align: right;">-</td>
+										<td style="text-align: right;">${fmtAmt(regObj.totals.casa_mab)}</td>
+									</tr>
+								`;
+
+								if (regExpanded) {
+									Object.keys(regObj.districts).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })).forEach(distName => {
+										const distObj = regObj.districts[distName];
+										const distKey = `${regKey}_${distName}`;
+										const distExpanded = self.allExpanded || self.expandedDistricts[distKey];
+										html += `
+											<tr class="mis-sp-dist-row" data-dist-key="${distKey}" style="background: #f8fafc; font-weight: 600; cursor: pointer; color: #334155; border-left: 3px solid #64748b;">
+												<td style="text-align: left; padding-left: 42px;"><span style="display: inline-block; width: 16px;">${distExpanded ? "▼" : "▶"}</span> 🏛️ ${distName} District (${distObj.totals.staff_cnt} Staff)</td>
+												<td>-</td>
+												<td>District Total</td>
+												<td style="text-align: right;">-</td>
+												<td style="text-align: right;">-</td>
+												<td style="text-align: right;">-</td>
+												<td style="text-align: right;">-</td>
+												<td style="text-align: right; font-weight: 600;">${fmtCount(distObj.totals.new_ac)} / ${fmtAmt(distObj.totals.new_amt)}</td>
+												
+												<td style="text-align: right;">${fmtAmt(distObj.totals.dd_dmd)}</td>
+												<td style="text-align: right;">${fmtAmt(distObj.totals.dd_col)}</td>
+												
+												<td style="text-align: right;">${fmtAmt(distObj.totals.rd_dmd)}</td>
+												<td style="text-align: right;">${fmtAmt(distObj.totals.rd_col)}</td>
+												
+												<td style="text-align: right;">${fmtAmt(distObj.totals.smbg_dmd)}</td>
+												<td style="text-align: right;">${fmtAmt(distObj.totals.smbg_col)}</td>
+												
+												<td style="text-align: right;">${fmtAmt(distObj.totals.tot_dmd)}</td>
+												<td style="text-align: right;">${fmtAmt(distObj.totals.tot_col)}</td>
+												<td style="text-align: right;">${fmtPct(distObj.totals.tot_col, distObj.totals.tot_dmd)}</td>
+												
+												<td style="text-align: right;">-</td>
+												<td style="text-align: right;">${fmtAmt(distObj.totals.casa_mab)}</td>
+											</tr>
+										`;
+
+										if (distExpanded) {
+											Object.keys(distObj.branches).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })).forEach(brName => {
+												const brObj = distObj.branches[brName];
+												const brKey = `${distKey}_${brName}`;
+												const brExpanded = self.allExpanded || self.expandedBranches[brKey];
+												html += `
+													<tr class="mis-sp-branch-row" data-br-key="${brKey}" style="background: #ffffff; font-weight: 600; cursor: pointer; color: #1e293b; border-left: 4px solid #417d81;">
+														<td style="text-align: left; padding-left: 56px;"><span style="display: inline-block; width: 16px;">${brExpanded ? "▼" : "▶"}</span> 📍 ${brName} <span style="font-size: 11px; color: #64748b; font-weight: 500;">(SOL: ${brObj.sol_id || 'N/A'})</span></td>
+														<td>-</td>
+														<td>Branch Total</td>
+														<td style="text-align: right;">-</td>
+														<td style="text-align: right;">-</td>
+														<td style="text-align: right;">-</td>
+														<td style="text-align: right;">-</td>
+														<td style="text-align: right; font-weight: 600;">${fmtCount(brObj.totals.new_ac)} / ${fmtAmt(brObj.totals.new_amt)}</td>
+														
+														<td style="text-align: right;">${fmtAmt(brObj.totals.dd_dmd)}</td>
+														<td style="text-align: right;">${fmtAmt(brObj.totals.dd_col)}</td>
+														
+														<td style="text-align: right;">${fmtAmt(brObj.totals.rd_dmd)}</td>
+														<td style="text-align: right;">${fmtAmt(brObj.totals.rd_col)}</td>
+														
+														<td style="text-align: right;">${fmtAmt(brObj.totals.smbg_dmd)}</td>
+														<td style="text-align: right;">${fmtAmt(brObj.totals.smbg_col)}</td>
+														
+														<td style="text-align: right;">${fmtAmt(brObj.totals.tot_dmd)}</td>
+														<td style="text-align: right;">${fmtAmt(brObj.totals.tot_col)}</td>
+														<td style="text-align: right;">${fmtPct(brObj.totals.tot_col, brObj.totals.tot_dmd)}</td>
+														
+														<td style="text-align: right;">-</td>
+														<td style="text-align: right;">${fmtAmt(brObj.totals.casa_mab)}</td>
+													</tr>
+												`;
+
+												if (brExpanded) {
+													const sortedDesigs = Object.keys(brObj.designations).sort((a, b) => a.localeCompare(b));
+													sortedDesigs.forEach(desigName => {
+														const dObj = brObj.designations[desigName];
+														dObj.staff.sort((a, b) => (a.employee_name || "").localeCompare(b.employee_name || ""));
+														
+														dObj.staff.forEach(st => {
+															const statusColor = (st.status || "Active").toLowerCase() === "active" ? "#16a34a" : "#dc2626";
+															const statusBg = (st.status || "Active").toLowerCase() === "active" ? "#dcfce7" : "#fee2e2";
+															html += `
+																<tr style="background: white;">
+																	<td style="text-align: left; padding-left: 70px; font-weight: 500;">
+																		<span style="color: #0f172a; font-weight: 600;">${st.employee_name}</span>
+																		<span style="display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; color: ${statusColor}; background: ${statusBg};">${st.status || "Active"}</span>
+																	</td>
+																	<td style="font-family: monospace; color: #475569;">${st.auth_id}</td>
+																	<td style="color: #475569; font-weight: 500;">${st.designation}</td>
+																	
+																	<td style="text-align: right;">${st.fd_ac ? `${st.fd_ac} / ${fmtAmt(st.fd_amt)}` : "-"}</td>
+																	<td style="text-align: right;">${st.rd_ac ? `${st.rd_ac} / ${fmtAmt(st.rd_amt)}` : "-"}</td>
+																	<td style="text-align: right;">${st.smbg_ac ? `${st.smbg_ac} / ${fmtAmt(st.smbg_amt)}` : "-"}</td>
+																	<td style="text-align: right;">${st.dd_ac ? `${st.dd_ac} / ${fmtAmt(st.dd_amt)}` : "-"}</td>
+																	<td style="text-align: right; font-weight: 700; color: #0284c7;">${st.total_new_ac ? `${st.total_new_ac} / ${fmtAmt(st.total_new_amt)}` : "-"}</td>
+																	
+																	<td style="text-align: right;">${fmtAmt(st.dd_demand)}</td>
+																	<td style="text-align: right;">${fmtAmt(st.dd_collection)}</td>
+																	
+																	<td style="text-align: right;">${fmtAmt(st.rd_demand)}</td>
+																	<td style="text-align: right;">${fmtAmt(st.rd_collection)}</td>
+																	
+																	<td style="text-align: right;">${fmtAmt(st.smbg_demand)}</td>
+																	<td style="text-align: right;">${fmtAmt(st.smbg_collection)}</td>
+																	
+																	<td style="text-align: right;">${fmtAmt(st.total_demand)}</td>
+																	<td style="text-align: right;">${fmtAmt(st.total_collection)}</td>
+																	<td style="text-align: right;">${fmtPct(st.total_collection, st.total_demand)}</td>
+																	
+																	<td style="text-align: right;">${fmtCount(st.casa_ac)}</td>
+																	<td style="text-align: right;">${fmtAmt(st.casa_inc_mab)}</td>
+																</tr>
+															`;
+														});
+
+														html += `
+															<tr style="background: #ffedd5; font-weight: 800; color: #9a3412; border-top: 1px solid #fdba74; border-bottom: 1px solid #fdba74;">
+																<td style="text-align: left; padding-left: 70px; font-style: italic;">${desigName} Total (${dObj.totals.staff_cnt})</td>
+																<td>-</td>
+																<td>${desigName} Total</td>
+																
+																<td style="text-align: right;">-</td>
+																<td style="text-align: right;">-</td>
+																<td style="text-align: right;">-</td>
+																<td style="text-align: right;">-</td>
+																<td style="text-align: right; font-weight: 700; color: #0284c7;">${fmtCount(dObj.totals.new_ac)} / ${fmtAmt(dObj.totals.new_amt)}</td>
+																
+																<td style="text-align: right;">${fmtAmt(dObj.totals.dd_dmd)}</td>
+																<td style="text-align: right;">${fmtAmt(dObj.totals.dd_col)}</td>
+																
+																<td style="text-align: right;">${fmtAmt(dObj.totals.rd_dmd)}</td>
+																<td style="text-align: right;">${fmtAmt(dObj.totals.rd_col)}</td>
+																
+																<td style="text-align: right;">${fmtAmt(dObj.totals.smbg_dmd)}</td>
+																<td style="text-align: right;">${fmtAmt(dObj.totals.smbg_col)}</td>
+																
+																<td style="text-align: right;">${fmtAmt(dObj.totals.tot_dmd)}</td>
+																<td style="text-align: right;">${fmtAmt(dObj.totals.tot_col)}</td>
+																<td style="text-align: right;">${fmtPct(dObj.totals.tot_col, dObj.totals.tot_dmd)}</td>
+																
+																<td style="text-align: right;">-</td>
+																<td style="text-align: right;">${fmtAmt(dObj.totals.casa_mab)}</td>
+															</tr>
+														`;
+													});
+												}
+											});
+										}
+									});
+								}
+							});
+						}
+					});
+
+					html += `
+								</tbody>
+							</table>
+						</div>
+					`;
+
+					tableContainer.html(html);
+				},
+				renderZoneFilterTags: function (container, dashboardInstance) {
+					const self = this;
+					dashboardInstance.getMisFilterOptions(function (opts) {
+						const permittedZones = (opts && opts.zones) || [];
+						let zones = permittedZones.length > 0 ? permittedZones : [...new Set((self.tableData || []).map(r => r.zone).filter(Boolean))];
+						if (!zones || zones.length <= 1) return;
+
+						let tagsHtml = `<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;"><span style="font-weight: 700; font-size: 12px; color: #334155;">Zones:</span>`;
+						zones.forEach(z => {
+							const isSel = self.selectedMisZones.includes(z);
+							tagsHtml += `<button type="button" class="mis-sp-zone-tag-btn" data-zone="${z}" style="padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid ${isSel ? '#417d81' : '#cbd5e1'}; background: ${isSel ? '#417d81' : '#f8fafc'}; color: ${isSel ? '#fff' : '#475569'};">${z}</button>`;
+						});
+						tagsHtml += `</div>`;
+						container.find("#mis-sp-zone-filter-row").html(tagsHtml).show();
+					});
+				},
+				attachReportEventHandlers: function (container, dashboardInstance) {
+					const self = this;
+					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
+						const format = $(this).data("format");
+						dashboardInstance.state.formatMode = format;
+						container.find(".mis-format-btn").each(function () {
+							const active = $(this).data("format") === format;
+							$(this).toggleClass("active", active).css({
+								background: active ? "#417d81" : "#e2e8f0",
+								color: active ? "white" : "#475569"
+							});
+						});
+						self.renderKPI(container.find("#mis-sp-kpi-container"), dashboardInstance);
+						self.renderMisTable(container.find("#mis-sp-table-container"), dashboardInstance);
+					});
+
+					container.off("input", "#mis-sp-search").on("input", "#mis-sp-search", function () {
+						self.searchTerm = $(this).val().trim();
+						self.renderMisTable(container.find("#mis-sp-table-container"), dashboardInstance);
+					});
+
+					container.off("click", "#mis-sp-expand-toggle").on("click", "#mis-sp-expand-toggle", function () {
+						self.allExpanded = !self.allExpanded;
+						$(this).text(self.allExpanded ? "▲ Collapse All" : "▼ Expand All");
+						self.renderMisTable(container.find("#mis-sp-table-container"), dashboardInstance);
+					});
+
+					container.off("click", "#mis-sp-refetch").on("click", "#mis-sp-refetch", function () {
+						self.tableData = null;
+						self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
+					});
+
+					container.off("click", ".mis-sp-zone-tag-btn").on("click", ".mis-sp-zone-tag-btn", function () {
+						const z = $(this).data("zone");
+						const idx = self.selectedMisZones.indexOf(z);
+						if (idx > -1) self.selectedMisZones.splice(idx, 1);
+						else self.selectedMisZones.push(z);
+						self.renderZoneFilterTags(container, dashboardInstance);
+						self.renderKPI(container.find("#mis-sp-kpi-container"), dashboardInstance);
+						self.renderMisTable(container.find("#mis-sp-table-container"), dashboardInstance);
+					});
+
+					container.off("click", ".mis-sp-zone-row").on("click", ".mis-sp-zone-row", function () {
+						const z = $(this).data("zone");
+						self.expandedZones[z] = !self.expandedZones[z];
+						self.renderMisTable(container.find("#mis-sp-table-container"), dashboardInstance);
+					});
+
+					container.off("click", ".mis-sp-reg-row").on("click", ".mis-sp-reg-row", function () {
+						const key = $(this).data("reg-key");
+						self.expandedRegions[key] = !self.expandedRegions[key];
+						self.renderMisTable(container.find("#mis-sp-table-container"), dashboardInstance);
+					});
+
+										container.off("click", ".mis-sp-dist-row").on("click", ".mis-sp-dist-row", function () {
+						const key = $(this).data("dist-key");
+						self.expandedDistricts[key] = !self.expandedDistricts[key];
+						self.renderMisTable(container.find("#mis-sp-table-container"), dashboardInstance);
+					});
+
+container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", function () {
+						const key = $(this).data("br-key");
+						self.expandedBranches[key] = !self.expandedBranches[key];
+						self.renderMisTable(container.find("#mis-sp-table-container"), dashboardInstance);
+					});
+				}
+			}
+
 		];
 
 		this.init();

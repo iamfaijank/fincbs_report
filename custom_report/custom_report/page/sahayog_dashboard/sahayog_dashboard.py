@@ -7445,3 +7445,219 @@ def get_pl_schedule16_combined(report_date=None, sol_id=None, zones=None):
         }
         for r in rows
     }
+
+def get_staff_productivity_combined_data(selected_date=None):
+    """
+    Combined Staff Productivity Report aggregated by Employee (auth_id)
+    across all 5 report types: BDE & BDO, RD, SMBG, DD, and CASA.
+    Results are cached in Redis for fast access.
+    """
+    from custom_report.rd_smbg_pending_report import get_cached_report
+
+    cache_key = f"staff_productivity_combined:{selected_date or 'latest'}"
+
+    def _build():
+        import datetime
+        import re
+
+        sel_date = selected_date or str(datetime.date.today())
+        
+        # Check if records exist for selected date, else fetch latest date
+        has_records = frappe.db.get_value("Staff Productivity", {"date": sel_date}, "name")
+        if not has_records:
+            latest_date = frappe.db.get_value("Staff Productivity", {}, "date", order_by="date desc")
+            if latest_date:
+                sel_date = str(latest_date)
+            else:
+                return []
+
+        # Single-pass fast aggregation query
+        query = """
+            SELECT 
+                auth_id,
+                MAX(sol_id) as sol_id,
+                MAX(auth_name) as auth_name,
+                MAX(rm_id) as rm_id,
+                MAX(rm_name) as rm_name,
+                
+                -- BDE & BDO (New Accounts)
+                SUM(CASE WHEN report_type = 'BDE & BDO' THEN 1 ELSE 0 END) as total_new_ac,
+                SUM(CASE WHEN report_type = 'BDE & BDO' THEN deposit_amount ELSE 0 END) as total_new_amt,
+                
+                SUM(CASE WHEN report_type = 'BDE & BDO' AND scheme_code = '2004' THEN 1 ELSE 0 END) as dd_new_ac,
+                SUM(CASE WHEN report_type = 'BDE & BDO' AND scheme_code = '2004' THEN deposit_amount ELSE 0 END) as dd_new_amt,
+                
+                SUM(CASE WHEN report_type = 'BDE & BDO' AND scheme_code = '2005' THEN 1 ELSE 0 END) as smbg_new_ac,
+                SUM(CASE WHEN report_type = 'BDE & BDO' AND scheme_code = '2005' THEN deposit_amount ELSE 0 END) as smbg_new_amt,
+                
+                SUM(CASE WHEN report_type = 'BDE & BDO' AND scheme_code BETWEEN '2010' AND '2015' THEN 1 ELSE 0 END) as rd_new_ac,
+                SUM(CASE WHEN report_type = 'BDE & BDO' AND scheme_code BETWEEN '2010' AND '2015' THEN deposit_amount ELSE 0 END) as rd_new_amt,
+                
+                SUM(CASE WHEN report_type = 'BDE & BDO' AND scheme_code NOT IN ('2004', '2005') AND (scheme_code < '2010' OR scheme_code > '2015') THEN 1 ELSE 0 END) as fd_new_ac,
+                SUM(CASE WHEN report_type = 'BDE & BDO' AND scheme_code NOT IN ('2004', '2005') AND (scheme_code < '2010' OR scheme_code > '2015') THEN deposit_amount ELSE 0 END) as fd_new_amt,
+                
+                -- DD Demand & Collection
+                SUM(CASE WHEN report_type = 'DD' THEN demand ELSE 0 END) as dd_demand,
+                SUM(CASE WHEN report_type = 'DD' THEN total_tran_amt ELSE 0 END) as dd_collection,
+                
+                -- RD Demand & Collection
+                SUM(CASE WHEN report_type = 'RD' THEN demand ELSE 0 END) as rd_demand,
+                SUM(CASE WHEN report_type = 'RD' THEN total_tran_amt ELSE 0 END) as rd_collection,
+                
+                -- SMBG Demand & Collection
+                SUM(CASE WHEN report_type = 'SMBG' THEN demand ELSE 0 END) as smbg_demand,
+                SUM(CASE WHEN report_type = 'SMBG' THEN total_tran_amt ELSE 0 END) as smbg_collection,
+                
+                -- CASA Details
+                SUM(CASE WHEN report_type = 'CASA' THEN sa ELSE 0 END) as casa_sa,
+                SUM(CASE WHEN report_type = 'CASA' THEN ca ELSE 0 END) as casa_ca,
+                SUM(CASE WHEN report_type = 'CASA' THEN tasc ELSE 0 END) as casa_tasc,
+                SUM(CASE WHEN report_type = 'CASA' THEN account_count ELSE 0 END) as casa_ac,
+                SUM(CASE WHEN report_type = 'CASA' THEN total_inc_mab ELSE 0 END) as casa_inc_mab
+                
+            FROM `tabStaff Productivity`
+            WHERE date = %s AND auth_id IS NOT NULL AND auth_id != ''
+            GROUP BY auth_id
+        """
+        raw_rows = frappe.db.sql(query, (sel_date,), as_dict=True)
+        if not raw_rows:
+            return []
+
+        # Load Branch Map and Branch Name aliases
+        branches_map = get_sahayog_branches_cached()
+        branch_name_map = {}
+        for bid, binfo in branches_map.items():
+            b_name = (binfo.get("branch_name") or "").upper().strip()
+            if b_name:
+                branch_name_map[b_name] = binfo
+                for sfx in [" BRANCH", " HO", " RO", " WEALTH", " ASSET BRANCH"]:
+                    c_name = b_name.replace(sfx, "").strip()
+                    if c_name:
+                        branch_name_map[c_name] = binfo
+
+        # Load Employee Map for designations and active status
+        emp_ids = set()
+        for r in raw_rows:
+            auth_id = r.get("auth_id") or ""
+            digits = re.findall(r'\d+', auth_id)
+            if digits:
+                try:
+                    emp_ids.add(str(int(''.join(digits))))
+                except ValueError:
+                    pass
+
+        emp_map = {}
+        if emp_ids:
+            employees = frappe.get_all(
+                "Employee",
+                filters={"name": ["in", list(emp_ids)]},
+                fields=["name", "employee_name", "designation", "status", "branch"]
+            )
+            for emp in employees:
+                emp_map[emp.name] = {
+                    "name": emp.employee_name or "",
+                    "designation": emp.designation or "",
+                    "status": emp.status or "Active",
+                    "branch": emp.branch or ""
+                }
+
+        results = []
+        for r in raw_rows:
+            auth_id = r.get("auth_id") or ""
+            sol_id = str(r.get("sol_id") or "")
+
+            emp_data = {}
+            digits = re.findall(r'\d+', auth_id)
+            if digits:
+                try:
+                    emp_data = emp_map.get(str(int(''.join(digits))), {})
+                except ValueError:
+                    pass
+
+            employee_name = emp_data.get("name") or r.get("auth_name") or r.get("rm_name") or auth_id
+            designation = emp_data.get("designation") or "Staff"
+            status = emp_data.get("status") or "Active"
+            emp_branch_raw = (emp_data.get("branch") or "").upper().strip()
+
+            # Smart hierarchical branch lookup from sol_id, BRN code, or Employee branch
+            branch_info = branches_map.get(sol_id)
+            if not branch_info and auth_id.startswith("BRN") and digits:
+                sol_cand = str(int(''.join(digits)))
+                branch_info = branches_map.get(sol_cand)
+
+            if not branch_info and emp_branch_raw:
+                branch_info = branch_name_map.get(emp_branch_raw)
+                if not branch_info:
+                    for sfx in [" BRANCH", " HO", " RO", " WEALTH", " ASSET BRANCH"]:
+                        c_cand = emp_branch_raw.replace(sfx, "").strip()
+                        if c_cand in branch_name_map:
+                            branch_info = branch_name_map[c_cand]
+                            break
+
+            # Fallback to HO branch (1000) if completely unmapped
+            if not branch_info:
+                branch_info = branches_map.get("1000") or {"zone": "ZONE-1", "region": "HO", "district": "GONDIA", "branch_name": "HEAD OFFICE", "sol_id": "1000"}
+
+            zone = (branch_info.get("zone") or "ZONE-1").upper()
+            region = (branch_info.get("region") or "REGION-1").upper()
+            district = (branch_info.get("district") or "GONDIA").upper()
+            branch_name = branch_info.get("branch_name") or emp_data.get("branch") or f"Branch {sol_id}"
+
+            dd_demand = float(r.get("dd_demand") or 0)
+            dd_coll = float(r.get("dd_collection") or 0)
+            rd_demand = float(r.get("rd_demand") or 0)
+            rd_coll = float(r.get("rd_collection") or 0)
+            smbg_demand = float(r.get("smbg_demand") or 0)
+            smbg_coll = float(r.get("smbg_collection") or 0)
+
+            total_demand = dd_demand + rd_demand + smbg_demand
+            total_collection = dd_coll + rd_coll + smbg_coll
+            coll_pct = round((total_collection / total_demand * 100), 2) if total_demand > 0 else 0
+
+            results.append({
+                "date": sel_date,
+                "auth_id": auth_id,
+                "employee_name": employee_name,
+                "designation": designation,
+                "status": status,
+                "zone": zone,
+                "region": region,
+                "district": district,
+                "sol_id": sol_id,
+                "branch": branch_name,
+
+                # New AC Productivity (BDE & BDO)
+                "fd_ac": int(r.get("fd_new_ac") or 0),
+                "fd_amt": float(r.get("fd_new_amt") or 0),
+                "rd_ac": int(r.get("rd_new_ac") or 0),
+                "rd_amt": float(r.get("rd_new_amt") or 0),
+                "smbg_ac": int(r.get("smbg_new_ac") or 0),
+                "smbg_amt": float(r.get("smbg_new_amt") or 0),
+                "dd_ac": int(r.get("dd_new_ac") or 0),
+                "dd_amt": float(r.get("dd_new_amt") or 0),
+                "total_new_ac": int(r.get("total_new_ac") or 0),
+                "total_new_amt": float(r.get("total_new_amt") or 0),
+
+                # Demand vs Collection
+                "dd_demand": dd_demand,
+                "dd_collection": dd_coll,
+                "rd_demand": rd_demand,
+                "rd_collection": rd_coll,
+                "smbg_demand": smbg_demand,
+                "smbg_collection": smbg_coll,
+                "total_demand": total_demand,
+                "total_collection": total_collection,
+                "coll_pct": coll_pct,
+
+                # CASA
+                "casa_sa": int(r.get("casa_sa") or 0),
+                "casa_ca": int(r.get("casa_ca") or 0),
+                "casa_tasc": int(r.get("casa_tasc") or 0),
+                "casa_ac": int(r.get("casa_ac") or 0),
+                "casa_inc_mab": float(r.get("casa_inc_mab") or 0),
+            })
+
+        return results
+
+    return get_cached_report(cache_key, _build) or []
+
