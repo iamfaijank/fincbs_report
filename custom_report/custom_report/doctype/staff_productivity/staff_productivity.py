@@ -63,10 +63,7 @@ REPORT_CONFIG = {
 			LEFT JOIN tbaadm.tam t
 				ON g.acid = t.acid
 			WHERE
-				(
-					g.schm_type = 'TDA'
-					OR g.schm_code IN ('1002', '1011', '1102', '1103', '1104')
-				)
+				g.schm_type = 'TDA'
 				AND g.entity_cre_flg = 'Y'
 				AND g.del_flg = 'N'
 				AND g.acct_opn_date::DATE BETWEEN %(start_date)s::DATE AND %(sync_date)s::DATE
@@ -120,7 +117,7 @@ REPORT_CONFIG = {
 				FROM custom.dsamap AS d
 				INNER JOIN tbaadm.gam AS g
 					ON g.foracid = d.account_number
-					AND g.schm_code BETWEEN '2010' AND '2016'
+					AND g.schm_code BETWEEN '2010' AND '2015'
 				LEFT JOIN crmuser.accounts AS a2
 					ON g.cif_id = a2.orgkey
 				LEFT JOIN tbaadm.sol AS sol
@@ -141,7 +138,7 @@ REPORT_CONFIG = {
 				FROM custom.dsamap AS d
 				INNER JOIN tbaadm.gam AS g
 					ON g.foracid = d.account_number
-					AND g.schm_code BETWEEN '2010' AND '2016'
+					AND g.schm_code BETWEEN '2010' AND '2015'
 				INNER JOIN tbaadm.tdt AS tdt
 					ON tdt.acid = g.acid
 					AND tdt.flow_code = 'NI'
@@ -161,7 +158,7 @@ REPORT_CONFIG = {
 				FROM custom.dsamap AS d
 				INNER JOIN tbaadm.gam AS g
 					ON g.foracid = d.account_number
-					AND g.schm_code BETWEEN '2010' AND '2016'
+					AND g.schm_code BETWEEN '2010' AND '2015'
 				INNER JOIN tbaadm.dtt AS dtt
 					ON dtt.acid = g.acid
 					AND dtt.flow_code = 'NI'
@@ -300,7 +297,7 @@ REPORT_CONFIG = {
 				FROM custom.dsamap AS d
 				LEFT JOIN tbaadm.gam AS g
 					ON g.foracid = d.account_number
-					AND g.schm_code BETWEEN '2005' AND '2006'
+					AND g.schm_code = '2005'
 				LEFT JOIN crmuser.accounts AS a2
 					ON g.cif_id = a2.orgkey
 				LEFT JOIN custom.dsaauth AS d2
@@ -320,7 +317,7 @@ REPORT_CONFIG = {
 					ON tdt.acid = g.acid
 					AND tdt.flow_code = 'NI'
 					AND tdt.flow_date BETWEEN %(start_date)s AND %(sync_date)s
-				WHERE g.schm_code BETWEEN '2005' AND '2006'
+				WHERE g.schm_code = '2005'
 				GROUP BY g.foracid
 			),
 			tran_data AS (
@@ -332,7 +329,7 @@ REPORT_CONFIG = {
 					ON dtt.acid = g.acid
 					AND dtt.flow_code = 'NI'
 					AND dtt.value_date BETWEEN %(start_date)s AND %(sync_date)s
-				WHERE g.schm_code BETWEEN '2005' AND '2006'
+				WHERE g.schm_code = '2005'
 				GROUP BY g.foracid
 			),
 			reference_data AS (
