@@ -7956,7 +7956,7 @@ class DrishtiDashboard {
 						self.plCombinedCache = self.plCombinedCache || {};
 						// Schedule 16 - Commission & Salary Expenses:
 						// Yearly Amount  = full previous month total + this month total
-						// Monthly Amount = this month total
+						// Monthly Amount = the month's own value from the imported data
 						const combCached = self.plCombinedCache[cacheKey];
 						if (combCached && (Date.now() - combCached.ts) < 300000) {
 							self.plCombined = combCached.data;
@@ -8075,7 +8075,8 @@ class DrishtiDashboard {
 									sch.sub_schedules.forEach((sub) => {
 										const key = (sub.sub_schedule || "").trim().toLowerCase();
 										const cv = combVals[key];
-										if (cv) { t += cv.combined; m += cv.month; }
+										// Yearly = prev full month + this month; Monthly = this month's own value
+										if (cv) { t += cv.combined; m += Number(sub.monthly_balance) || 0; }
 										else { t += Number(sub.total_balance) || 0; m += Number(sub.monthly_balance) || 0; }
 									});
 									schTotal = t;
@@ -8102,8 +8103,9 @@ class DrishtiDashboard {
 							sch.sub_schedules.forEach((sub) => {
 								const subKey = (sub.sub_schedule || "").trim().toLowerCase();
 								const subCv = combVals[subKey];
+								// Yearly = combined (prev full month + this month), Monthly = this month's own value
 								const subTotal = subCv ? subCv.combined : sub.total_balance;
-								const subMonthly = subCv ? subCv.month : sub.monthly_balance;
+								const subMonthly = sub.monthly_balance;
 								html += `
 									<tr class="pl-sub-row" data-sch="${sch.schedule_number}" style="${collapsed ? "display: none; " : ""}">
 										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155;">${sub.sub_schedule}</td>

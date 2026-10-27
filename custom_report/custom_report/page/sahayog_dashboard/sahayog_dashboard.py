@@ -7303,13 +7303,13 @@ def get_pl_schedule16_combined(report_date=None, sol_id=None, zones=None):
     """Schedule 16 (Operating Expenses) - Commission & Salary Expenses.
 
     Returns, keyed by lower-case sub-schedule name:
-        "combined" : FULL previous month total + this month total -> Yearly Amount
-        "month"    : this month only                              -> Monthly Amount
+        "combined" : previous month total + this month total (SUM of both months)
+                     -> Yearly Amount
+        "month"    : this month total (balance(report_date) - balance(prev_month_end))
+                     (reference only; Monthly Amount uses the imported month value)
 
-    prev-month-total + this-month-total
-        = [balance(prev_month_end) - balance(prev_prev_month_end)]
-        + [balance(report_date)    - balance(prev_month_end)]
-        = balance(report_date) - balance(prev_prev_month_end)
+    previous month total + this month total
+        = balance(prev_month_end) + balance(report_date)
 
     this-month-total
         = balance(report_date) - balance(prev_month_end)
@@ -7322,15 +7322,14 @@ def get_pl_schedule16_combined(report_date=None, sol_id=None, zones=None):
     dt = getdate(report_date)
     month_start = dt.replace(day=1)
     prev_month_end = month_start - _dt.timedelta(days=1)
-    prev_prev_month_end = prev_month_end.replace(day=1) - _dt.timedelta(days=1)
 
     filters = [
         "COALESCE(schedule, '') LIKE %s",
-        "sub_schedule IN ('Commission Expenses', 'Salary Expenses')",
-        "report_date IN (%s, %s, %s)",
+        "sub_schedule IN ('Commission Expenses', 'Commission Expense', 'Salary Expenses')",
+        "report_date IN (%s, %s)",
     ]
-    params = ["%Schedule 16%", report_date, prev_month_end, prev_prev_month_end]
-    select_prefix = [report_date, prev_prev_month_end, report_date, prev_month_end]
+    params = ["%Schedule 16%", report_date, prev_month_end]
+    select_prefix = [prev_month_end, report_date, report_date, prev_month_end]
 
     # ---- zone filter -------------------------------------------------
     zone_list = []
@@ -7421,7 +7420,7 @@ def get_pl_schedule16_combined(report_date=None, sol_id=None, zones=None):
         """
         SELECT sub_schedule,
                SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END)
-             - SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END) AS combined_balance,
+             + SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END) AS combined_balance,
                SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END)
              - SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END) AS month_balance
         FROM `tabProfit and Loss Report`
