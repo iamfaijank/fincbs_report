@@ -830,14 +830,15 @@ def get_pl_summary(report_date=None, sol_id=None, zones=None):
 		num = sched_num(r.schedule)
 		if num is None or num < 13:
 			continue
+		is_salary = (num == 16)
 		schedules.setdefault(
 			num,
 			{"schedule": r.schedule.strip(), "schedule_number": num, "sub_schedules": []},
 		)["sub_schedules"].append(
 			{
 				"sub_schedule": (r.sub_schedule or "").strip() or "-",
-				"total_balance": flt(r.yearly_balance),
-				"monthly_balance": flt(r.monthly_balance),
+				"total_balance": flt(r.monthly_balance) if is_salary else flt(r.yearly_balance),
+				"monthly_balance": flt(r.yearly_balance) if is_salary else flt(r.monthly_balance),
 			}
 		)
 
