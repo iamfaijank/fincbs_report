@@ -7953,6 +7953,19 @@ class DrishtiDashboard {
 						const zonesVal = JSON.stringify(self.selectedMisZones || []);
 						const cacheKey = dateVal + "|" + solVal + "|" + zonesVal;
 						self.plCache = self.plCache || {};
+						self.plCombinedCache = self.plCombinedCache || {};
+						// Schedule 16 - Commission & Salary Expenses:
+						// full previous month total + this month total
+						frappe.call({
+							method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_pl_schedule16_combined",
+							args: { report_date: dateVal, sol_id: solVal, zones: zonesVal },
+							callback: function (rc) {
+								const combined = (rc && rc.message) || {};
+								self.plCombinedCache[cacheKey] = combined;
+								self.plCombined = combined;
+								if (self.plData && self.plData.length) renderRows();
+							},
+						});
 						const cached = self.plCache[cacheKey];
 						if (cached && (Date.now() - cached.ts) < 300000) {
 							self.plData = cached.data;
@@ -8028,8 +8041,26 @@ class DrishtiDashboard {
 							const showTp = sch.schedule_number === 13 && self.plTransferInterest != null;
 							const tpYearly = showTp && self.plTransferInterestYearly != null ? self.plTransferInterestYearly : 0;
 							const tpMonthly = showTp ? self.plTransferInterest : 0;
-							const schTotal = (Number(sch.total_balance) || 0) + tpYearly;
-							const schMonthly = (Number(sch.monthly_balance) || 0) + tpMonthly;
+							let schTotal = (Number(sch.total_balance) || 0) + tpYearly;
+							let schMonthly = (Number(sch.monthly_balance) || 0) + tpMonthly;
+							const combVals = {};
+							if (sch.schedule_number === 16 && self.plCombined) {
+								(sch.sub_schedules || []).forEach((sub) => {
+									const key = (sub.sub_schedule || "").trim().toLowerCase();
+									if (self.plCombined[key] !== undefined) combVals[key] = Number(self.plCombined[key]) || 0;
+								});
+								if (Object.keys(combVals).length) {
+									let t = 0;
+									let m = 0;
+									sch.sub_schedules.forEach((sub) => {
+										const key = (sub.sub_schedule || "").trim().toLowerCase();
+										if (combVals[key] !== undefined) { t += combVals[key]; m += combVals[key]; }
+										else { t += Number(sub.total_balance) || 0; m += Number(sub.monthly_balance) || 0; }
+									});
+									schTotal = t;
+									schMonthly = m;
+								}
+							}
 							const collapsed = !self.plCollapsed || self.plCollapsed[sch.schedule_number] !== false;
 							incomeOverExp += schTotal;
 							monthlyIncomeOverExp += schMonthly;
@@ -8048,11 +8079,14 @@ class DrishtiDashboard {
 									</tr>`;
 							}
 							sch.sub_schedules.forEach((sub) => {
+								const subKey = (sub.sub_schedule || "").trim().toLowerCase();
+								const subTotal = combVals[subKey] !== undefined ? combVals[subKey] : sub.total_balance;
+								const subMonthly = combVals[subKey] !== undefined ? combVals[subKey] : sub.monthly_balance;
 								html += `
 									<tr class="pl-sub-row" data-sch="${sch.schedule_number}" style="${collapsed ? "display: none; " : ""}">
 										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155;">${sub.sub_schedule}</td>
-										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.total_balance)}</td>
-										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.monthly_balance)}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(subTotal)}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(subMonthly)}</td>
 									</tr>`;
 							});
 						});
