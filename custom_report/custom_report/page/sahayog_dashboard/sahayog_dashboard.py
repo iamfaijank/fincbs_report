@@ -7302,13 +7302,17 @@ def get_pending_action_items():
 def get_pl_schedule16_combined(report_date=None, sol_id=None, zones=None):
     """Schedule 16 (Operating Expenses) - Commission & Salary Expenses.
 
-    Returns the FULL previous month total + this month total for the two
-    sub-schedules, keyed by lower-case sub-schedule name.
+    Returns, keyed by lower-case sub-schedule name:
+        "combined" : FULL previous month total + this month total -> Yearly Amount
+        "month"    : this month only                              -> Monthly Amount
 
     prev-month-total + this-month-total
         = [balance(prev_month_end) - balance(prev_prev_month_end)]
         + [balance(report_date)    - balance(prev_month_end)]
         = balance(report_date) - balance(prev_prev_month_end)
+
+    this-month-total
+        = balance(report_date) - balance(prev_month_end)
     """
     import datetime as _dt
 
@@ -7323,10 +7327,10 @@ def get_pl_schedule16_combined(report_date=None, sol_id=None, zones=None):
     filters = [
         "COALESCE(schedule, '') LIKE %s",
         "sub_schedule IN ('Commission Expenses', 'Salary Expenses')",
-        "report_date IN (%s, %s)",
+        "report_date IN (%s, %s, %s)",
     ]
-    params = ["%Schedule 16%", prev_prev_month_end, report_date]
-    select_prefix = [report_date, prev_prev_month_end]
+    params = ["%Schedule 16%", report_date, prev_month_end, prev_prev_month_end]
+    select_prefix = [report_date, prev_prev_month_end, report_date, prev_month_end]
 
     # ---- zone filter -------------------------------------------------
     zone_list = []
@@ -7417,7 +7421,9 @@ def get_pl_schedule16_combined(report_date=None, sol_id=None, zones=None):
         """
         SELECT sub_schedule,
                SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END)
-             - SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END) AS combined_balance
+             - SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END) AS combined_balance,
+               SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END)
+             - SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END) AS month_balance
         FROM `tabProfit and Loss Report`
         WHERE {conditions}
         GROUP BY sub_schedule
@@ -7427,6 +7433,9 @@ def get_pl_schedule16_combined(report_date=None, sol_id=None, zones=None):
     )
 
     return {
-        (r.sub_schedule or "").strip().lower(): frappe.utils.flt(r.combined_balance)
+        (r.sub_schedule or "").strip().lower(): {
+            "combined": frappe.utils.flt(r.combined_balance),
+            "month": frappe.utils.flt(r.month_balance),
+        }
         for r in rows
     }
