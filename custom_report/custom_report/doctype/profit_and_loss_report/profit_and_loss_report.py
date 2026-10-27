@@ -201,7 +201,7 @@ def _build_pl_update_plan(file_content, filename=""):
 	Matched on Date (report_date) + SOL ID (sol_id) + BACID / GL Sub Head Code.
 	Empty cells are skipped, so only fields with values are updated per record.
 
-	Returns (plan, not_found, skipped) where plan is a list of (row_name, updates).
+	Returns (plan, matched, not_found, skipped, total_rows) where plan is a list of (row_name, updates).
 	Raises ValueError with a user-facing message when the template is invalid.
 	"""
 	import base64
@@ -227,7 +227,7 @@ def _build_pl_update_plan(file_content, filename=""):
 
 	all_rows = [row for row in all_rows if any(row)]
 	if not all_rows:
-		return [], 0, 0
+		return [], 0, 0, 0, 0
 
 	meta = frappe.get_meta("Profit and Loss Report")
 	valid_fields = {f.fieldname for f in meta.fields}
@@ -284,6 +284,7 @@ def _build_pl_update_plan(file_content, filename=""):
 
 	plan = []
 	matched = 0
+	not_found = 0
 	total_rows = max(len(all_rows) - 1, 0)
 	for rdate, entries in by_date.items():
 		existing = frappe.get_all(
