@@ -7305,14 +7305,14 @@ def get_pl_schedule16_combined(report_date=None, sol_id=None, zones=None):
     Returns, keyed by lower-case sub-schedule name:
         "combined" : previous month total + this month total (SUM of both months)
                      -> Yearly Amount
-        "month"    : this month total (balance(report_date) - balance(prev_month_end))
-                     (reference only; Monthly Amount uses the imported month value)
+        "month"    : this month's own value = balance(report_date)
+                     -> Monthly Amount
 
     previous month total + this month total
         = balance(prev_month_end) + balance(report_date)
 
-    this-month-total
-        = balance(report_date) - balance(prev_month_end)
+    this month's own value
+        = balance(report_date)
     """
     import datetime as _dt
 
@@ -7329,7 +7329,7 @@ def get_pl_schedule16_combined(report_date=None, sol_id=None, zones=None):
         "report_date IN (%s, %s)",
     ]
     params = ["%Schedule 16%", report_date, prev_month_end]
-    select_prefix = [prev_month_end, report_date, report_date, prev_month_end]
+    select_prefix = [prev_month_end, report_date, report_date]
 
     # ---- zone filter -------------------------------------------------
     zone_list = []
@@ -7421,8 +7421,7 @@ def get_pl_schedule16_combined(report_date=None, sol_id=None, zones=None):
         SELECT sub_schedule,
                SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END)
              + SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END) AS combined_balance,
-               SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END)
-             - SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END) AS month_balance
+               SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END) AS month_balance
         FROM `tabProfit and Loss Report`
         WHERE {conditions}
         GROUP BY sub_schedule
