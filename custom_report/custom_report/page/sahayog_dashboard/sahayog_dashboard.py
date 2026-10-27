@@ -7296,3 +7296,145 @@ def get_pending_action_items():
         counts[it["status"]] = counts.get(it["status"], 0) + 1
 
     return {"items": items, "counts": counts, "generated_at": frappe.utils.now()}
+
+
+@frappe.whitelist()
+def get_pl_schedule16_combined(report_date=None, sol_id=None, zones=None):
+    """Schedule 16 (Operating Expenses) - Commission & Salary Expenses.
+
+    Returns, keyed by lower-case sub-schedule name:
+        "combined" : previous month total + this month total (SUM of both months)
+                     -> Yearly Amount
+        "month"    : this month total (balance(report_date) - balance(prev_month_end))
+                     (reference only; Monthly Amount uses the imported month value)
+
+    previous month total + this month total
+        = balance(prev_month_end) + balance(report_date)
+
+    this-month-total
+        = balance(report_date) - balance(prev_month_end)
+    """
+    import datetime as _dt
+
+    if not report_date:
+        return {}
+
+    dt = getdate(report_date)
+    month_start = dt.replace(day=1)
+    prev_month_end = month_start - _dt.timedelta(days=1)
+
+    filters = [
+        "COALESCE(schedule, '') LIKE %s",
+        "sub_schedule IN ('Commission Expenses', 'Commission Expense', 'Salary Expenses')",
+        "report_date IN (%s, %s)",
+    ]
+    params = ["%Schedule 16%", report_date, prev_month_end]
+    select_prefix = [prev_month_end, report_date, report_date, prev_month_end]
+
+    # ---- zone filter -------------------------------------------------
+    zone_list = []
+    if zones:
+        if isinstance(zones, str):
+            try:
+                parsed = json.loads(zones)
+                if isinstance(parsed, list):
+                    zone_list = [z for z in parsed if z and str(z).lower() != "all"]
+                elif parsed and str(parsed).lower() != "all":
+                    zone_list = [str(parsed)]
+            except Exception:
+                zone_list = [z.strip() for z in zones.split(",")
+                             if z.strip() and z.strip().lower() != "all"]
+        elif isinstance(zones, (list, tuple)):
+            zone_list = [z for z in zones if z and str(z).lower() != "all"]
+
+    if zone_list:
+        ph = ", ".join(["%s"] * len(zone_list))
+        branch_rows = frappe.db.sql(
+            "SELECT DISTINCT name, sol_id FROM `tabSahayog Branch` WHERE zone IN ({ph})".format(ph=ph),
+            tuple(zone_list), as_dict=True,
+        )
+        matching = set()
+        for b in branch_rows:
+            if b.name:
+                matching.add(str(b.name))
+                matching.add(str(b.name).lstrip("0"))
+            if b.sol_id:
+                matching.add(str(b.sol_id))
+                matching.add(str(b.sol_id).lstrip("0"))
+        if matching:
+            ph = ", ".join(["%s"] * len(matching))
+            filters.append("sol_id IN ({ph})".format(ph=ph))
+            params.extend(list(matching))
+        else:
+            filters.append("1 = 0")
+
+    # ---- branch / SOL filter ----------------------------------------
+    if sol_id:
+        val = str(sol_id).strip()
+        if val.isdigit():
+            variants = sorted({val, val.lstrip("0") or val, val.zfill(4), val.zfill(5), val.zfill(6)})
+            ph = ", ".join(["%s"] * len(variants))
+            filters.append("sol_id IN ({ph})".format(ph=ph))
+            params.extend(variants)
+        else:
+            matched = frappe.db.sql(
+                """SELECT DISTINCT name, sol_id FROM `tabSahayog Branch`
+                   WHERE name LIKE %s OR sol_id LIKE %s OR branch LIKE %s""",
+                ("%" + val + "%", "%" + val + "%", "%" + val + "%"), as_dict=True,
+            )
+            matching = set()
+            for b in matched:
+                if b.name:
+                    matching.add(str(b.name))
+                    matching.add(str(b.name).lstrip("0"))
+                if b.sol_id:
+                    matching.add(str(b.sol_id))
+                    matching.add(str(b.sol_id).lstrip("0"))
+            cond = []
+            if matching:
+                ph = ", ".join(["%s"] * len(matching))
+                cond.append("sol_id IN ({ph})".format(ph=ph))
+                params.extend(list(matching))
+            cond.append("sub_schedule LIKE %s")
+            params.append("%" + val + "%")
+            cond.append("schedule LIKE %s")
+            params.append("%" + val + "%")
+            filters.append("({c})".format(c=" OR ".join(cond)))
+
+    # ---- user report permissions ------------------------------------
+    try:
+        perms = get_user_report_permissions(frappe.session.user)
+        if perms.get("is_restricted"):
+            permitted = get_permitted_sol_ids_for_user(perms)
+            if permitted is not None:
+                if not permitted:
+                    filters.append("1 = 0")
+                else:
+                    ph = ", ".join(["%s"] * len(permitted))
+                    filters.append("sol_id IN ({ph})".format(ph=ph))
+                    params.extend(permitted)
+    except Exception:
+        pass
+
+    rows = frappe.db.sql(
+        """
+        SELECT sub_schedule,
+               SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END)
+             + SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END) AS combined_balance,
+               SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END)
+             - SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END) AS month_balance
+        FROM `tabProfit and Loss Report`
+        WHERE {conditions}
+        GROUP BY sub_schedule
+        """.format(conditions=" AND ".join(filters)),
+        tuple(select_prefix + params),
+        as_dict=True,
+    )
+
+    return {
+        (r.sub_schedule or "").strip().lower(): {
+            "combined": frappe.utils.flt(r.combined_balance),
+            "month": frappe.utils.flt(r.month_balance),
+        }
+        for r in rows
+    }
