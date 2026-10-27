@@ -8200,7 +8200,7 @@ class DrishtiDashboard {
 								<span id="upd-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
 							</div>
 							<input type="file" id="upd-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
-							<div style="font-size: 12px; color: #64748b;">Primary <b>Update</b> re-syncs this date from Finacle. Selecting a file updates doctype rows matched on <b>Date + SOL ID + GL Sub Head Code</b>.</div>
+							<div style="font-size: 12px; color: #64748b;">Primary <b>Update</b> re-syncs this date from Finacle. Selecting a file updates doctype rows matched on <b>Date + SOL ID + BACID</b> (or GL Sub Head Code). Empty cells are skipped.</div>
 						`;
 						dlg.$wrapper.on("click", `#upd-tpl-${uid}`, function () {
 							const headers = ["Date", "Account Category", "Scheme Type", "Scheme Code", "SOL ID", "GL Sub Head Code", "BACID", "Account Name", "Clearing Balance Amount", "Balance", "Scheme Description", "Account Class Flag", "Delete Flag", "Schedule", "Sub Schedule"];
@@ -8235,6 +8235,9 @@ class DrishtiDashboard {
 									callback: function (r) {
 										const m = (r && r.message) || {};
 										if (m.status === "error") { frappe.msgprint(m.message || "Invalid template"); return; }
+										if (m.updated_records && m.updated_records.length) {
+											console.log("Updated P&L records (" + m.updated_records.length + "):", m.updated_records.join(", "));
+										}
 										frappe.show_alert({ message: "P&L records updated: " + (m.updated || 0) + ", not found: " + (m.not_found || 0) + ", skipped: " + (m.skipped || 0), indicator: "green", duration: 7000 });
 										self.plCache = {}; self.bsCache = {};
 										fetchData();
@@ -8253,16 +8256,21 @@ class DrishtiDashboard {
 						const uid = Math.random().toString(36).slice(2, 7);
 						const dlg = new frappe.ui.Dialog({
 							title: __("Update Mapping"),
-							fields: [{ fieldtype: "HTML", fieldname: "mapbody" }],
+							fields: [
+								{ fieldtype: "HTML", fieldname: "mapbody" },
+								{ fieldname: "mapping_date", label: __("Date"), fieldtype: "Date", default: "2026-04-30", description: __("Update GL Mapping only for this date. Leave empty to update all dates.") },
+							],
 							primary_action_label: __("Update"),
 							primary_action: function () {
+								const mapping_date = dlg.get_value("mapping_date");
 								dlg.hide();
 								$b.prop("disabled", true).css("opacity", 0.6).text("Queuing\u2026");
 								frappe.call({
 									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.update_gl_mapping",
+									args: { report_date: mapping_date || null },
 									callback: function () {
 										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
-										frappe.show_alert({ message: "Mapping update started in background \u2014 use \u27f3 Refetch after it finishes", indicator: "blue", duration: 7000 });
+										frappe.show_alert({ message: "Mapping update started in background for " + (mapping_date || "all dates") + " \u2014 use \u27f3 Refetch after it finishes", indicator: "blue", duration: 7000 });
 									},
 									error: function () {
 										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
@@ -8279,7 +8287,7 @@ class DrishtiDashboard {
 								<span id="map-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
 							</div>
 							<input type="file" id="map-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
-							<div style="font-size: 12px; color: #64748b;">Re-apply the current GL Mapping to <b>all</b> Profit and Loss Report rows. Runs in background. Use &#10227; Refetch after it finishes.</div>
+							<div style="font-size: 12px; color: #64748b;">Re-apply the current GL Mapping to Profit and Loss Report rows for the selected Date only (default: 2026-04-30). Runs in background. Use &#10227; Refetch after it finishes.</div>
 						`;
 						dlg.$wrapper.on("click", `#map-pick-${uid}`, function () {
 							dlg.$wrapper.find(`#map-file-${uid}`).trigger("click");
@@ -8649,7 +8657,7 @@ class DrishtiDashboard {
 								<span id="upd-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
 							</div>
 							<input type="file" id="upd-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
-							<div style="font-size: 12px; color: #64748b;">Primary <b>Update</b> re-syncs this date from Finacle. Selecting a file updates doctype rows matched on <b>Date + SOL ID + GL Sub Head Code</b>.</div>
+							<div style="font-size: 12px; color: #64748b;">Primary <b>Update</b> re-syncs this date from Finacle. Selecting a file updates doctype rows matched on <b>Date + SOL ID + BACID</b> (or GL Sub Head Code). Empty cells are skipped.</div>
 						`;
 						dlg.$wrapper.on("click", `#upd-tpl-${uid}`, function () {
 							const headers = ["Date", "Account Category", "Scheme Type", "Scheme Code", "SOL ID", "GL Sub Head Code", "BACID", "Account Name", "Clearing Balance Amount", "Balance", "Scheme Description", "Account Class Flag", "Delete Flag", "Schedule", "Sub Schedule"];
@@ -8684,6 +8692,9 @@ class DrishtiDashboard {
 									callback: function (r) {
 										const m = (r && r.message) || {};
 										if (m.status === "error") { frappe.msgprint(m.message || "Invalid template"); return; }
+										if (m.updated_records && m.updated_records.length) {
+											console.log("Updated P&L records (" + m.updated_records.length + "):", m.updated_records.join(", "));
+										}
 										frappe.show_alert({ message: "P&L records updated: " + (m.updated || 0) + ", not found: " + (m.not_found || 0) + ", skipped: " + (m.skipped || 0), indicator: "green", duration: 7000 });
 										self.plCache = {}; self.bsCache = {};
 										fetchData();
@@ -8702,16 +8713,21 @@ class DrishtiDashboard {
 						const uid = Math.random().toString(36).slice(2, 7);
 						const dlg = new frappe.ui.Dialog({
 							title: __("Update Mapping"),
-							fields: [{ fieldtype: "HTML", fieldname: "mapbody" }],
+							fields: [
+								{ fieldtype: "HTML", fieldname: "mapbody" },
+								{ fieldname: "mapping_date", label: __("Date"), fieldtype: "Date", default: "2026-04-30", description: __("Update GL Mapping only for this date. Leave empty to update all dates.") },
+							],
 							primary_action_label: __("Update"),
 							primary_action: function () {
+								const mapping_date = dlg.get_value("mapping_date");
 								dlg.hide();
 								$b.prop("disabled", true).css("opacity", 0.6).text("Queuing\u2026");
 								frappe.call({
 									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.update_gl_mapping",
+									args: { report_date: mapping_date || null },
 									callback: function () {
 										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
-										frappe.show_alert({ message: "Mapping update started in background \u2014 use \u27f3 Refetch after it finishes", indicator: "blue", duration: 7000 });
+										frappe.show_alert({ message: "Mapping update started in background for " + (mapping_date || "all dates") + " \u2014 use \u27f3 Refetch after it finishes", indicator: "blue", duration: 7000 });
 									},
 									error: function () {
 										$b.prop("disabled", false).css("opacity", 1).text("Update Mapping");
@@ -8728,7 +8744,7 @@ class DrishtiDashboard {
 								<span id="map-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
 							</div>
 							<input type="file" id="map-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
-							<div style="font-size: 12px; color: #64748b;">Re-apply the current GL Mapping to <b>all</b> Profit and Loss Report rows. Runs in background. Use &#10227; Refetch after it finishes.</div>
+							<div style="font-size: 12px; color: #64748b;">Re-apply the current GL Mapping to Profit and Loss Report rows for the selected Date only (default: 2026-04-30). Runs in background. Use &#10227; Refetch after it finishes.</div>
 						`;
 						dlg.$wrapper.on("click", `#map-pick-${uid}`, function () {
 							dlg.$wrapper.find(`#map-file-${uid}`).trigger("click");
