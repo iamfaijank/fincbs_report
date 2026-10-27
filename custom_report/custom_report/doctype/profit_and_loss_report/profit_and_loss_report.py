@@ -673,6 +673,11 @@ def sync_profit_and_loss_data(sync_date):
 			conn.close()
 
 
+# Schedule 16 sub-schedules whose Yearly/Monthly columns show
+# "full previous month total + this month total" instead of the usual values.
+COMBINED_SUB_SCHEDULES = ("Commission Expenses", "Salary Expenses")
+
+
 @frappe.whitelist()
 def get_pl_summary(report_date=None, sol_id=None, zones=None):
 	"""Sum balance grouped by schedule/sub_schedule for schedules >= 13."""
@@ -694,22 +699,45 @@ def get_pl_summary(report_date=None, sol_id=None, zones=None):
 	params = []
 	yearly_select = "SUM(balance) AS yearly_balance"
 	monthly_select = "SUM(balance) AS monthly_balance"
+	combined_select = "0 AS combined_balance"
 	select_prefix = []
+	combined_enabled = False
 	if report_date:
 		import datetime as _dt
 
 		dt = frappe.utils.getdate(report_date)
 		month_start = dt.replace(day=1)
 		prev_month_end = month_start - _dt.timedelta(days=1)
+		prev_month_start = prev_month_end.replace(day=1)
+		prev_prev_month_end = prev_month_start - _dt.timedelta(days=1)
 		filters.append("report_date BETWEEN %s AND %s")
-		params.extend([prev_month_end, report_date])
+		params.extend([prev_prev_month_end, report_date])
 		yearly_select = "SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END) AS yearly_balance"
 		monthly_select = (
 			"SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END)"
 			" - SUM(CASE WHEN report_date = %s THEN balance ELSE 0 END)"
 			" AS monthly_balance"
 		)
-		select_prefix = [report_date, prev_month_end, report_date]
+		# Commission & Salary Expenses (Schedule 16): full previous month + this month,
+		# i.e. balance(report_date) - balance(day before previous month).
+		combined_select = (
+			"SUM(CASE WHEN schedule LIKE %s AND sub_schedule IN (%s, %s) THEN"
+			" (CASE WHEN report_date = %s THEN balance"
+			"  WHEN report_date = %s THEN 0 - balance"
+			"  ELSE 0 END)"
+			" ELSE 0 END) AS combined_balance"
+		)
+		combined_enabled = True
+		select_prefix = [
+			report_date,
+			prev_month_end,
+			report_date,
+			"%Schedule 16%",
+			COMBINED_SUB_SCHEDULES[0],
+			COMBINED_SUB_SCHEDULES[1],
+			report_date,
+			prev_prev_month_end,
+		]
 	if sol_id:
 		search_val = sol_id.strip()
 		if search_val.isdigit():
@@ -810,11 +838,16 @@ def get_pl_summary(report_date=None, sol_id=None, zones=None):
 
 	rows = frappe.db.sql(
 		"""
-		SELECT schedule, sub_schedule, {monthly_select}, {yearly_select}
+		SELECT schedule, sub_schedule, {monthly_select}, {yearly_select}, {combined_select}
 		FROM `tabProfit and Loss Report`
 		WHERE {conditions}
 		GROUP BY schedule, sub_schedule
-		""".format(conditions=" AND ".join(filters), yearly_select=yearly_select, monthly_select=monthly_select),
+		""".format(
+			conditions=" AND ".join(filters),
+			yearly_select=yearly_select,
+			monthly_select=monthly_select,
+			combined_select=combined_select,
+		),
 		tuple(select_prefix + params),
 		as_dict=True,
 	)
@@ -826,19 +859,36 @@ def get_pl_summary(report_date=None, sol_id=None, zones=None):
 		return int(m.group(1)) if m else None
 
 	schedules = {}
+	combined_names = {name.lower() for name in COMBINED_SUB_SCHEDULES}
 	for r in rows:
 		num = sched_num(r.schedule)
 		if num is None or num < 13:
 			continue
 		is_salary = (num == 16)
+		sub_name = (r.sub_schedule or "").strip()
+		# Commission / Salary Expenses in Schedule 16 -> prev month total + this month total
+		is_combined = (
+			combined_enabled
+			and is_salary
+			and sub_name.lower() in combined_names
+		)
+		if is_combined:
+			total_balance = flt(r.combined_balance)
+			monthly_balance = flt(r.combined_balance)
+		elif is_salary:
+			total_balance = flt(r.monthly_balance)
+			monthly_balance = flt(r.yearly_balance)
+		else:
+			total_balance = flt(r.yearly_balance)
+			monthly_balance = flt(r.monthly_balance)
 		schedules.setdefault(
 			num,
 			{"schedule": r.schedule.strip(), "schedule_number": num, "sub_schedules": []},
 		)["sub_schedules"].append(
 			{
-				"sub_schedule": (r.sub_schedule or "").strip() or "-",
-				"total_balance": flt(r.monthly_balance) if is_salary else flt(r.yearly_balance),
-				"monthly_balance": flt(r.yearly_balance) if is_salary else flt(r.monthly_balance),
+				"sub_schedule": sub_name or "-",
+				"total_balance": total_balance,
+				"monthly_balance": monthly_balance,
 			}
 		)
 
