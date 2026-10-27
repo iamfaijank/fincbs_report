@@ -7953,6 +7953,33 @@ class DrishtiDashboard {
 						const zonesVal = JSON.stringify(self.selectedMisZones || []);
 						const cacheKey = dateVal + "|" + solVal + "|" + zonesVal;
 						self.plCache = self.plCache || {};
+						self.plCombinedCache = self.plCombinedCache || {};
+						// Schedule 16 - Commission & Salary Expenses:
+						// Yearly Amount  = full previous month total + this month total
+						// Monthly Amount = this month total
+						const combCached = self.plCombinedCache[cacheKey];
+						if (combCached && (Date.now() - combCached.ts) < 300000) {
+							self.plCombined = combCached.data;
+						} else {
+							self.plCombined = null;
+							self.plCombinedReqKey = cacheKey;
+							frappe.call({
+								method: "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_pl_schedule16_combined",
+								args: { report_date: dateVal, sol_id: solVal, zones: zonesVal },
+								callback: function (rc) {
+									const combined = (rc && rc.message) || {};
+									self.plCombinedCache[cacheKey] = { data: combined, ts: Date.now() };
+									if (self.plCombinedReqKey !== cacheKey) return; // stale response
+									self.plCombined = combined;
+									if (self.plData && self.plData.length) renderRows();
+								},
+								error: function () {
+									if (self.plCombinedReqKey !== cacheKey) return;
+									self.plCombined = null;
+									if (self.plData && self.plData.length) renderRows();
+								},
+							});
+						}
 						const cached = self.plCache[cacheKey];
 						if (cached && (Date.now() - cached.ts) < 300000) {
 							self.plData = cached.data;
@@ -8028,8 +8055,33 @@ class DrishtiDashboard {
 							const showTp = sch.schedule_number === 13 && self.plTransferInterest != null;
 							const tpYearly = showTp && self.plTransferInterestYearly != null ? self.plTransferInterestYearly : 0;
 							const tpMonthly = showTp ? self.plTransferInterest : 0;
-							const schTotal = (Number(sch.total_balance) || 0) + tpYearly;
-							const schMonthly = (Number(sch.monthly_balance) || 0) + tpMonthly;
+							let schTotal = (Number(sch.total_balance) || 0) + tpYearly;
+							let schMonthly = (Number(sch.monthly_balance) || 0) + tpMonthly;
+							const combVals = {};
+							if (sch.schedule_number === 16 && self.plCombined) {
+								(sch.sub_schedules || []).forEach((sub) => {
+									const key = (sub.sub_schedule || "").trim().toLowerCase();
+									const cv = self.plCombined[key];
+									if (cv && typeof cv === "object") {
+										combVals[key] = {
+											combined: Number(cv.combined) || 0,
+											month: Number(cv.month) || 0,
+										};
+									}
+								});
+								if (Object.keys(combVals).length) {
+									let t = 0;
+									let m = 0;
+									sch.sub_schedules.forEach((sub) => {
+										const key = (sub.sub_schedule || "").trim().toLowerCase();
+										const cv = combVals[key];
+										if (cv) { t += cv.combined; m += cv.month; }
+										else { t += Number(sub.total_balance) || 0; m += Number(sub.monthly_balance) || 0; }
+									});
+									schTotal = t;
+									schMonthly = m;
+								}
+							}
 							const collapsed = !self.plCollapsed || self.plCollapsed[sch.schedule_number] !== false;
 							incomeOverExp += schTotal;
 							monthlyIncomeOverExp += schMonthly;
@@ -8048,11 +8100,15 @@ class DrishtiDashboard {
 									</tr>`;
 							}
 							sch.sub_schedules.forEach((sub) => {
+								const subKey = (sub.sub_schedule || "").trim().toLowerCase();
+								const subCv = combVals[subKey];
+								const subTotal = subCv ? subCv.combined : sub.total_balance;
+								const subMonthly = subCv ? subCv.month : sub.monthly_balance;
 								html += `
 									<tr class="pl-sub-row" data-sch="${sch.schedule_number}" style="${collapsed ? "display: none; " : ""}">
 										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155;">${sub.sub_schedule}</td>
-										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.total_balance)}</td>
-										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(sub.monthly_balance)}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(subTotal)}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(subMonthly)}</td>
 									</tr>`;
 							});
 						});
@@ -8159,7 +8215,7 @@ class DrishtiDashboard {
 					container.off("click", "#pl-refetch").on("click", "#pl-refetch", function () {
 						self.plDate = container.find("#pl-date-filter").val();
 						self.selectedMisZones = [];
-						self.plCache = {};
+						self.plCache = {}; self.plCombinedCache = {};
 						self.labelCache = {};
 						self.renderZoneFilterTags(container, dashboardInstance);
 						fetchData();
@@ -8183,7 +8239,7 @@ class DrishtiDashboard {
 									freeze_msg: "Updating P&L data for " + d + "\u2026",
 									callback: function () {
 										$b.prop("disabled", false).css("opacity", 1).text("Update PL");
-										self.plCache = {}; self.bsCache = {}; self.labelCache = {};
+										self.plCache = {}; self.plCombinedCache = {}; self.bsCache = {}; self.labelCache = {};
 										frappe.show_alert({ message: "P&L data updated for " + d, indicator: "green" });
 										fetchData();
 									},
@@ -8277,7 +8333,7 @@ class DrishtiDashboard {
 										}
 										frappe.show_alert({ message: "P&L records updated: " + (m.updated || 0) + ", not found: " + (m.not_found || 0) + ", skipped: " + (m.skipped || 0), indicator: "green", duration: 7000 });
 									}
-									self.plCache = {}; self.bsCache = {};
+									self.plCache = {}; self.plCombinedCache = {}; self.bsCache = {};
 									fetchData();
 									$b.prop("disabled", false).css("opacity", 1).text("Apply Updates");
 								},
@@ -8678,7 +8734,7 @@ class DrishtiDashboard {
 									freeze_msg: "Updating P&L data for " + d + "\u2026",
 									callback: function () {
 										$b.prop("disabled", false).css("opacity", 1).text("Update PL");
-										self.bsCache = {}; self.plCache = {}; self.labelCache = {};
+										self.bsCache = {}; self.plCache = {}; self.plCombinedCache = {}; self.labelCache = {};
 										frappe.show_alert({ message: "P&L data updated for " + d, indicator: "green" });
 										fetchData();
 									},
@@ -8772,7 +8828,7 @@ class DrishtiDashboard {
 										}
 										frappe.show_alert({ message: "P&L records updated: " + (m.updated || 0) + ", not found: " + (m.not_found || 0) + ", skipped: " + (m.skipped || 0), indicator: "green", duration: 7000 });
 									}
-									self.plCache = {}; self.bsCache = {};
+									self.plCache = {}; self.plCombinedCache = {}; self.bsCache = {};
 									fetchData();
 									$b.prop("disabled", false).css("opacity", 1).text("Apply Updates");
 								},
