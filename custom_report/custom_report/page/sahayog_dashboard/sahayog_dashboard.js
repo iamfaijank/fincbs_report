@@ -8197,10 +8197,12 @@ class DrishtiDashboard {
 							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
 								<button type="button" id="upd-tpl-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">\u2b07\ufe0f Download Template</button>
 								<button type="button" id="upd-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
+								<button type="button" id="upd-apply-${uid}" style="display: none; background: #0f766e; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Apply Updates</button>
 								<span id="upd-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
 							</div>
 							<input type="file" id="upd-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
-							<div style="font-size: 12px; color: #64748b;">Primary <b>Update</b> re-syncs this date from Finacle. Selecting a file updates doctype rows matched on <b>Date + SOL ID + BACID</b> (or GL Sub Head Code). Empty cells are skipped.</div>
+							<div id="upd-status-${uid}" style="font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px;"></div>
+							<div style="font-size: 12px; color: #64748b;">Primary <b>Update</b> re-syncs this date from Finacle. Selecting a file first <b>previews</b> how many records will update (matched on <b>Date + SOL ID + BACID</b> / GL Sub Head Code, empty cells skipped) \u2014 click <b>Apply Updates</b> to write them.</div>
 						`;
 						dlg.$wrapper.on("click", `#upd-tpl-${uid}`, function () {
 							const headers = ["Date", "Account Category", "Scheme Type", "Scheme Code", "SOL ID", "GL Sub Head Code", "BACID", "Account Name", "Clearing Balance Amount", "Balance", "Scheme Description", "Account Class Flag", "Delete Flag", "Schedule", "Sub Schedule"];
@@ -8220,34 +8222,70 @@ class DrishtiDashboard {
 						dlg.$wrapper.on("click", `#upd-pick-${uid}`, function () {
 							dlg.$wrapper.find(`#upd-file-${uid}`).trigger("click");
 						});
+						let pendingFile = null;
 						dlg.$wrapper.on("change", `#upd-file-${uid}`, function () {
 							const f = this.files && this.files[0];
 							dlg.$wrapper.find(`#upd-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+							const $apply = dlg.$wrapper.find(`#upd-apply-${uid}`);
+							const $status = dlg.$wrapper.find(`#upd-status-${uid}`);
+							$status.text("").css("color", "#64748b");
+							$apply.hide().prop("disabled", true).text("Apply Updates");
+							pendingFile = null;
 							if (!f) return;
 							const reader = new FileReader();
 							reader.onload = function (ev) {
 								const b64 = String(ev.target.result || "").split(",")[1] || "";
 								frappe.call({
-									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.import_pl_data",
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.preview_pl_update",
 									args: { file_content: b64, filename: f.name },
 									freeze: true,
-									freeze_msg: "Updating Profit and Loss Report records from " + f.name + "\u2026",
+									freeze_msg: "Checking " + f.name + "\u2026",
 									callback: function (r) {
 										const m = (r && r.message) || {};
-										if (m.status === "error") { frappe.msgprint(m.message || "Invalid template"); return; }
-										if (m.updated_records && m.updated_records.length) {
-											console.log("Updated P&L records (" + m.updated_records.length + "):", m.updated_records.join(", "));
+										if (m.status === "error") {
+											$status.text(m.message || "Invalid template").css("color", "#dc2626");
+											return;
 										}
-										frappe.show_alert({ message: "P&L records updated: " + (m.updated || 0) + ", not found: " + (m.not_found || 0) + ", skipped: " + (m.skipped || 0), indicator: "green", duration: 7000 });
-										self.plCache = {}; self.bsCache = {};
-										fetchData();
+										pendingFile = { b64: b64, name: f.name };
+										$status.text("XL rows: " + (m.total_rows || 0) + " \u2014 matched: " + (m.matched || 0) + ", not matched: " + (m.not_matched || 0) + ", skipped: " + (m.skipped || 0) + " \u2022 will update " + (m.will_update || 0) + " record(s)").css("color", (m.will_update || 0) > 0 ? "#0f766e" : "#dc2626");
+										if ((m.will_update || 0) > 0) {
+											$apply.show().prop("disabled", false).text("Apply Updates (" + m.will_update + ")");
+										}
 									},
 									error: function () {
-										frappe.msgprint("P&L import failed for " + f.name);
+										$status.text("Preview failed for " + f.name).css("color", "#dc2626");
 									},
 								});
 							};
 							reader.readAsDataURL(f);
+						});
+						dlg.$wrapper.on("click", `#upd-apply-${uid}`, function () {
+							if (!pendingFile) return;
+							const $b = $(this);
+							$b.prop("disabled", true).css("opacity", 0.6).text("Updating\u2026");
+							frappe.call({
+								method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.import_pl_data",
+								args: { file_content: pendingFile.b64, filename: pendingFile.name },
+								freeze: true,
+								freeze_msg: "Updating Profit and Loss Report records from " + pendingFile.name + "\u2026",
+								callback: function (r) {
+									const m = (r && r.message) || {};
+									if (m.status === "error") { frappe.msgprint(m.message || "Invalid template"); }
+									else {
+										if (m.updated_records && m.updated_records.length) {
+											console.log("Updated P&L records (" + m.updated_records.length + "):", m.updated_records.join(", "));
+										}
+										frappe.show_alert({ message: "P&L records updated: " + (m.updated || 0) + ", not found: " + (m.not_found || 0) + ", skipped: " + (m.skipped || 0), indicator: "green", duration: 7000 });
+									}
+									self.plCache = {}; self.bsCache = {};
+									fetchData();
+									$b.prop("disabled", false).css("opacity", 1).text("Apply Updates");
+								},
+								error: function () {
+									frappe.msgprint("P&L import failed for " + (pendingFile ? pendingFile.name : "file"));
+									$b.prop("disabled", false).css("opacity", 1).text("Apply Updates");
+								},
+							});
 						});
 						dlg.show();
 					});
@@ -8654,10 +8692,12 @@ class DrishtiDashboard {
 							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
 								<button type="button" id="upd-tpl-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">\u2b07\ufe0f Download Template</button>
 								<button type="button" id="upd-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
+								<button type="button" id="upd-apply-${uid}" style="display: none; background: #0f766e; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Apply Updates</button>
 								<span id="upd-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
 							</div>
 							<input type="file" id="upd-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
-							<div style="font-size: 12px; color: #64748b;">Primary <b>Update</b> re-syncs this date from Finacle. Selecting a file updates doctype rows matched on <b>Date + SOL ID + BACID</b> (or GL Sub Head Code). Empty cells are skipped.</div>
+							<div id="upd-status-${uid}" style="font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px;"></div>
+							<div style="font-size: 12px; color: #64748b;">Primary <b>Update</b> re-syncs this date from Finacle. Selecting a file first <b>previews</b> how many records will update (matched on <b>Date + SOL ID + BACID</b> / GL Sub Head Code, empty cells skipped) \u2014 click <b>Apply Updates</b> to write them.</div>
 						`;
 						dlg.$wrapper.on("click", `#upd-tpl-${uid}`, function () {
 							const headers = ["Date", "Account Category", "Scheme Type", "Scheme Code", "SOL ID", "GL Sub Head Code", "BACID", "Account Name", "Clearing Balance Amount", "Balance", "Scheme Description", "Account Class Flag", "Delete Flag", "Schedule", "Sub Schedule"];
@@ -8677,34 +8717,70 @@ class DrishtiDashboard {
 						dlg.$wrapper.on("click", `#upd-pick-${uid}`, function () {
 							dlg.$wrapper.find(`#upd-file-${uid}`).trigger("click");
 						});
+						let pendingFile = null;
 						dlg.$wrapper.on("change", `#upd-file-${uid}`, function () {
 							const f = this.files && this.files[0];
 							dlg.$wrapper.find(`#upd-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+							const $apply = dlg.$wrapper.find(`#upd-apply-${uid}`);
+							const $status = dlg.$wrapper.find(`#upd-status-${uid}`);
+							$status.text("").css("color", "#64748b");
+							$apply.hide().prop("disabled", true).text("Apply Updates");
+							pendingFile = null;
 							if (!f) return;
 							const reader = new FileReader();
 							reader.onload = function (ev) {
 								const b64 = String(ev.target.result || "").split(",")[1] || "";
 								frappe.call({
-									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.import_pl_data",
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.preview_pl_update",
 									args: { file_content: b64, filename: f.name },
 									freeze: true,
-									freeze_msg: "Updating Profit and Loss Report records from " + f.name + "\u2026",
+									freeze_msg: "Checking " + f.name + "\u2026",
 									callback: function (r) {
 										const m = (r && r.message) || {};
-										if (m.status === "error") { frappe.msgprint(m.message || "Invalid template"); return; }
-										if (m.updated_records && m.updated_records.length) {
-											console.log("Updated P&L records (" + m.updated_records.length + "):", m.updated_records.join(", "));
+										if (m.status === "error") {
+											$status.text(m.message || "Invalid template").css("color", "#dc2626");
+											return;
 										}
-										frappe.show_alert({ message: "P&L records updated: " + (m.updated || 0) + ", not found: " + (m.not_found || 0) + ", skipped: " + (m.skipped || 0), indicator: "green", duration: 7000 });
-										self.plCache = {}; self.bsCache = {};
-										fetchData();
+										pendingFile = { b64: b64, name: f.name };
+										$status.text("XL rows: " + (m.total_rows || 0) + " \u2014 matched: " + (m.matched || 0) + ", not matched: " + (m.not_matched || 0) + ", skipped: " + (m.skipped || 0) + " \u2022 will update " + (m.will_update || 0) + " record(s)").css("color", (m.will_update || 0) > 0 ? "#0f766e" : "#dc2626");
+										if ((m.will_update || 0) > 0) {
+											$apply.show().prop("disabled", false).text("Apply Updates (" + m.will_update + ")");
+										}
 									},
 									error: function () {
-										frappe.msgprint("P&L import failed for " + f.name);
+										$status.text("Preview failed for " + f.name).css("color", "#dc2626");
 									},
 								});
 							};
 							reader.readAsDataURL(f);
+						});
+						dlg.$wrapper.on("click", `#upd-apply-${uid}`, function () {
+							if (!pendingFile) return;
+							const $b = $(this);
+							$b.prop("disabled", true).css("opacity", 0.6).text("Updating\u2026");
+							frappe.call({
+								method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.import_pl_data",
+								args: { file_content: pendingFile.b64, filename: pendingFile.name },
+								freeze: true,
+								freeze_msg: "Updating Profit and Loss Report records from " + pendingFile.name + "\u2026",
+								callback: function (r) {
+									const m = (r && r.message) || {};
+									if (m.status === "error") { frappe.msgprint(m.message || "Invalid template"); }
+									else {
+										if (m.updated_records && m.updated_records.length) {
+											console.log("Updated P&L records (" + m.updated_records.length + "):", m.updated_records.join(", "));
+										}
+										frappe.show_alert({ message: "P&L records updated: " + (m.updated || 0) + ", not found: " + (m.not_found || 0) + ", skipped: " + (m.skipped || 0), indicator: "green", duration: 7000 });
+									}
+									self.plCache = {}; self.bsCache = {};
+									fetchData();
+									$b.prop("disabled", false).css("opacity", 1).text("Apply Updates");
+								},
+								error: function () {
+									frappe.msgprint("P&L import failed for " + (pendingFile ? pendingFile.name : "file"));
+									$b.prop("disabled", false).css("opacity", 1).text("Apply Updates");
+								},
+							});
 						});
 						dlg.show();
 					});

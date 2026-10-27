@@ -195,14 +195,14 @@ def delete_gl_mapping():
 	return {"status": "deleted"}
 
 
-@frappe.whitelist()
-def import_pl_data(file_content, filename=""):
-	"""Update Profit and Loss Report doctype rows from an uploaded template file.
+def _build_pl_update_plan(file_content, filename=""):
+	"""Parse an uploaded template file and match rows against existing records (NO writes).
 
 	Matched on Date (report_date) + SOL ID (sol_id) + BACID / GL Sub Head Code.
 	Empty cells are skipped, so only fields with values are updated per record.
-	Other file columns update the corresponding doctype fields (only fields
-	that exist on the doctype). Does NOT touch the DR database.
+
+	Returns (plan, matched, not_found, skipped, total_rows) where plan is a list of (row_name, updates).
+	Raises ValueError with a user-facing message when the template is invalid.
 	"""
 	import base64
 	import csv
@@ -227,7 +227,7 @@ def import_pl_data(file_content, filename=""):
 
 	all_rows = [row for row in all_rows if any(row)]
 	if not all_rows:
-		return {"status": "empty", "updated": 0, "not_found": 0, "skipped": 0}
+		return [], 0, 0, 0, 0
 
 	meta = frappe.get_meta("Profit and Loss Report")
 	valid_fields = {f.fieldname for f in meta.fields}
@@ -245,7 +245,7 @@ def import_pl_data(file_content, filename=""):
 
 	header_row = [resolve(h) for h in all_rows[0]]
 	if "report_date" not in header_row or ("gl_sub_head_code" not in header_row and "bacid" not in header_row):
-		return {"status": "error", "message": "Template must include Date and GL Sub Head Code (or BACID) columns"}
+		raise ValueError("Template must include Date and GL Sub Head Code (or BACID) columns")
 
 	def norm_sol(value):
 		s = str(value or "").strip()
@@ -282,8 +282,10 @@ def import_pl_data(file_content, filename=""):
 			continue
 		by_date.setdefault(rdate, []).append((norm_sol(data.get("sol_id")), code, bacid, data))
 
-	updated = not_found = 0
-	updated_records = []
+	plan = []
+	matched = 0
+	not_found = 0
+	total_rows = max(len(all_rows) - 1, 0)
 	for rdate, entries in by_date.items():
 		existing = frappe.get_all(
 			"Profit and Loss Report",
@@ -321,6 +323,7 @@ def import_pl_data(file_content, filename=""):
 			if not row_name:
 				not_found += 1
 				continue
+			matched += 1
 			updates = {
 				f: data[f]
 				for f in data
@@ -330,14 +333,51 @@ def import_pl_data(file_content, filename=""):
 			}
 			if not updates:
 				continue
-			frappe.db.set_value("Profit and Loss Report", row_name, updates, update_modified=False)
-			updated += 1
-			updated_records.append(row_name)
+			plan.append((row_name, updates))
+
+	return plan, matched, not_found, skipped, total_rows
+
+
+@frappe.whitelist()
+def preview_pl_update(file_content, filename=""):
+	"""Dry-run: report how many file rows match doctype records, without changing any data."""
+	try:
+		plan, matched, not_found, skipped, total_rows = _build_pl_update_plan(file_content, filename)
+	except ValueError as e:
+		return {"status": "error", "message": str(e)}
+	return {
+		"status": "success",
+		"total_rows": total_rows,
+		"matched": matched,
+		"not_matched": not_found,
+		"skipped": skipped,
+		"will_update": len(plan),
+	}
+
+
+@frappe.whitelist()
+def import_pl_data(file_content, filename=""):
+	"""Update Profit and Loss Report doctype rows from an uploaded template file.
+
+	Matched on Date (report_date) + SOL ID (sol_id) + BACID / GL Sub Head Code.
+	Empty cells are skipped, so only fields with values are updated per record.
+	Other file columns update the corresponding doctype fields (only fields
+	that exist on the doctype). Does NOT touch the DR database.
+	"""
+	try:
+		plan, _matched, not_found, skipped, _total = _build_pl_update_plan(file_content, filename)
+	except ValueError as e:
+		return {"status": "error", "message": str(e)}
+
+	updated_records = []
+	for row_name, updates in plan:
+		frappe.db.set_value("Profit and Loss Report", row_name, updates, update_modified=False)
+		updated_records.append(row_name)
 
 	frappe.db.commit()
 	return {
 		"status": "success",
-		"updated": updated,
+		"updated": len(updated_records),
 		"not_found": not_found,
 		"skipped": skipped,
 		"updated_records": updated_records,
