@@ -10965,7 +10965,7 @@ class DrishtiDashboard {
 			$table.find("tr").each(function () {
 				const row = [];
 				$(this).find("th,td").each(function () {
-					let t = ($(this).text() || "").replace(/▶|⇩\s*Download/g, "").trim();
+					let t = ($(this).text() || "").replace(/▶|⇩\s*Download|₹|�/g, "").trim();
 					row.push('"' + t.replace(/"/g, '""') + '"');
 				});
 				csv += row.join(",") + "\n";
