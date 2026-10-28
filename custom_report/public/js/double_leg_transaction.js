@@ -92,11 +92,7 @@ function currentType() {
 	return el.value || "bacid";
 }
 
-function currentFormat() {
-  const el = document.querySelector('input[name="file_format_modal"]:checked');
-  if (!el) return "csv";
-  return el.value === "zip" ? "zip" : "csv";
-}
+function currentFormat() { return window.__selectedFormat || "csv"; }
 
 function applySearchType() {
 	const t = SEARCH_TYPES[currentType()] || SEARCH_TYPES.bacid;
@@ -455,10 +451,13 @@ async function runDownload(params) {
 	}
 }
 
-document.getElementById("confirmFormatBtn").addEventListener("click", async () => {
-	document.getElementById("formatModal").hidden = true;
-	const params = window.__pendingParams;
-	if (params) await runDownload(params);
+["fmtCsvBtn", "fmtZipBtn"].forEach((id) => {
+  document.getElementById(id).addEventListener("click", async () => {
+    window.__selectedFormat = id === "fmtZipBtn" ? "zip" : "csv";
+    document.getElementById("formatModal").hidden = true;
+    const params = window.__pendingParams;
+    if (params) await runDownload(params);
+  });
 });
 fields.account.input.addEventListener("input", () => setError("account", ""));
 fields.start.input.addEventListener("input", () => setError("start", ""));

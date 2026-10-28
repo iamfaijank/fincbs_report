@@ -250,10 +250,9 @@
     <div id="formatModal" hidden style="margin-top:16px; padding:16px; background:var(--surface); border:1px solid var(--line); border-radius:10px;">
       <legend style="font-weight:500; margin-bottom:8px;">Choose download format</legend>
       <div class="seg">
-        <label><input type="radio" name="file_format_modal" value="csv" checked><span>CSV</span></label>
-        <label><input type="radio" name="file_format_modal" value="zip"><span>ZIP (CSV inside)</span></label>
+        <button type="button" id="fmtCsvBtn" class="download" style="width:auto; flex:1;">CSV</button>
+        <button type="button" id="fmtZipBtn" class="download" style="width:auto; flex:1;">ZIP</button>
       </div>
-      <button type="button" id="confirmFormatBtn" class="download" style="margin-top:12px;">Confirm & Download</button>
     </div>
 
     <div class="progress" id="progress" hidden>
