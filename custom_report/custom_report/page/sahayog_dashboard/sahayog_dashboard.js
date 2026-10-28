@@ -10951,6 +10951,7 @@ class DrishtiDashboard {
 		const selectorHtml = `
 			<div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 16px; width: 100%;">
 				<div style="display: flex; gap: 12px;" id="mis-report-selector-tabs"></div>
+				<button type="button" id="mis-download-btn" style="padding:6px 12px; background:#0e5a68; color:#fff; border:0; border-radius:6px; cursor:pointer;">Download</button>
 			</div>
 			<div id="mis-report-title" style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px; padding: 0 4px;"></div>
 			<div id="mis-report-content-area" style="min-height: 200px;"></div>
@@ -11791,6 +11792,10 @@ class DrishtiDashboard {
                     </button>
                     <button class="tab-btn" data-tab="product_tgt_ach" style="display: none;">
                         Product Wise TGT VS ACH
+                    </button>
+
+                    <button type="button" id="dashboard-download-btn" style="margin-left:auto; padding:6px 12px; background:#0e5a68; color:#fff; border:0; border-radius:6px; cursor:pointer;">
+                        Download
                     </button>
 
                     <!-- Search and Clear Actions -->
