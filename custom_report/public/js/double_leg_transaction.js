@@ -92,6 +92,8 @@ function currentType() {
 	return el.value || "bacid";
 }
 
+function currentFormat() { return window.__selectedFormat || "csv"; }
+
 function applySearchType() {
 	const t = SEARCH_TYPES[currentType()] || SEARCH_TYPES.bacid;
 	if (!t) return;
@@ -370,8 +372,6 @@ async function runReal(params) {
 // ---- Submit --------------------------------------------------------------
 form.addEventListener("submit", async (e) => {
 	e.preventDefault();
-
-	// While downloading, the same button is Cancel
 	if (downloading) {
 		downloadCancelled = true;
 		if (abortController) abortController.abort();
@@ -379,15 +379,20 @@ form.addEventListener("submit", async (e) => {
 		btn.textContent = "Cancelling…";
 		return;
 	}
-
 	statusBox.hidden = true;
-
 	const params = validate();
 	if (!params) return;
+	window.__pendingParams = params;
+	document.getElementById("formatModal").hidden = false;
+	btn.hidden = true;
+});
 
+async function runDownload(params) {
 	const safeValue = params.account_value.replace(/[^\w.-]+/g, "_");
-	const reportName =
-		`${params.account_type}_${safeValue}_${params.start_date}_to_${params.end_date}.csv`.toUpperCase();
+	const fileBase =
+		`${params.account_type}_${safeValue}_${params.start_date}_to_${params.end_date}`.toUpperCase();
+	const useZip = currentFormat() === "zip" && typeof JSZip !== "undefined";
+	const reportName = fileBase + (useZip ? ".zip" : ".csv");
 
 	downloadCancelled = false;
 	abortController = new AbortController();
@@ -400,9 +405,23 @@ form.addEventListener("submit", async (e) => {
 	try {
 		const { parts, total } = CONFIG.demo ? await runDemo() : await runReal(params);
 
-		// All batches are in: join them into one file and hand it to the browser.
-		progressLabel.textContent = "Preparing file…";
-		const blob = new Blob(parts, { type: CSV_TYPE });
+		// All batches are in: join them into one CSV, optionally packed into a ZIP.
+		let blob;
+		if (useZip) {
+			progressLabel.textContent = "Compressing file…";
+			const zip = new JSZip();
+			zip.file(fileBase + ".csv", new Blob(parts, { type: CSV_TYPE }));
+			blob = await zip.generateAsync(
+				{ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } },
+				(meta) => {
+					setProgress(Math.min(99, meta.percent));
+					progressLabel.textContent = "Compressing file… " + Math.round(meta.percent) + "%";
+				},
+			);
+		} else {
+			progressLabel.textContent = "Preparing file…";
+			blob = new Blob(parts, { type: CSV_TYPE });
+		}
 		const elapsed = stopTimer();
 
 		setProgress(100);
@@ -430,10 +449,18 @@ form.addEventListener("submit", async (e) => {
 		abortController = null;
 		downloadCancelled = false;
 		setDownloadingUI(false);
+		btn.hidden = false;
 	}
-});
+}
 
-// Clear a field's error as soon as the user edits it
+["fmtCsvBtn", "fmtZipBtn"].forEach((id) => {
+  document.getElementById(id).addEventListener("click", async () => {
+    window.__selectedFormat = id === "fmtZipBtn" ? "zip" : "csv";
+    document.getElementById("formatModal").hidden = true;
+    const params = window.__pendingParams;
+    if (params) await runDownload(params);
+  });
+});
 fields.account.input.addEventListener("input", () => setError("account", ""));
 fields.start.input.addEventListener("input", () => setError("start", ""));
 fields.end.input.addEventListener("input", () => setError("end", ""));
