@@ -234,9 +234,27 @@
 </div>
 </div>
 
+    <fieldset style="margin-bottom: 0; display:none;">
+    <legend>File format</legend>
+    <div class="seg">
+    <label><input type="radio" name="file_format" value="csv" checked><span>CSV</span></label>
+    <label><input type="radio" name="file_format" value="zip"><span>ZIP (CSV inside)</span></label>
+    </div>
+    <p class="hint">ZIP packs the same CSV report into a single compressed file before download.</p>
+    </fieldset>
+
     <hr class="divider">
 
     <button type="submit" class="download" id="downloadBtn">Download</button>
+
+    <div id="formatModal" hidden style="margin-top:16px; padding:16px; background:var(--surface); border:1px solid var(--line); border-radius:10px;">
+      <legend style="font-weight:500; margin-bottom:8px;">Choose download format</legend>
+      <div class="seg">
+        <label><input type="radio" name="file_format_modal" value="csv" checked><span>CSV</span></label>
+        <label><input type="radio" name="file_format_modal" value="zip"><span>ZIP (CSV inside)</span></label>
+      </div>
+      <button type="button" id="confirmFormatBtn" class="download" style="margin-top:12px;">Confirm & Download</button>
+    </div>
 
     <div class="progress" id="progress" hidden>
 <div class="progress-head">
@@ -272,6 +290,7 @@
 
 </main>
 
+<script src="/assets/custom_report/js/jszip.min.js"></script>
 <script src="/assets/custom_report/js/double_leg_transaction.js"></script>
 </body>
 </html>
