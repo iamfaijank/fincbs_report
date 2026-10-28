@@ -10965,11 +10965,12 @@ class DrishtiDashboard {
 			$table.find("tr").each(function () {
 				const row = [];
 				$(this).find("th,td").each(function () {
-					row.push('"' + ($(this).text() || "").replace(/"/g, '""') + '"');
+					let t = ($(this).text() || "").replace(/▶|⇩\s*Download/g, "").trim();
+					row.push('"' + t.replace(/"/g, '""') + '"');
 				});
 				csv += row.join(",") + "\n";
 			});
-			const blob = new Blob([csv], { type: "text/csv" });
+			const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
 			const a = document.createElement("a");
 			a.href = URL.createObjectURL(blob);
 			a.download = "mis_report.csv";
