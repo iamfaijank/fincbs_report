@@ -11014,6 +11014,9 @@ class DrishtiDashboard {
 			}
 		});
 
+		const initialHide = activeReportId === "profit_loss" || activeReportId === "balance_sheet";
+		this.mis_container.find("#mis-download-btn").toggle(!initialHide);
+
 		this.mis_container.on("click", ".mis-report-tab-btn:not(.mis-dropdown-toggle)", function () {
 			self.mis_container.find(".mis-report-tab-btn.active, .mis-dropdown-toggle.active, .mis-dropdown-item.active").removeClass("active");
 			$(this).addClass("active");
@@ -11021,6 +11024,8 @@ class DrishtiDashboard {
 			self.state.selectedMisReport = reportId;
 			self.updateUrlFromState();
 			self.renderMisReport(reportId);
+			const hide = reportId === "profit_loss" || reportId === "balance_sheet";
+			self.mis_container.find("#mis-download-btn").toggle(!hide);
 		});
 
 		this.mis_container.on("click", ".mis-dropdown-toggle", function (e) {
