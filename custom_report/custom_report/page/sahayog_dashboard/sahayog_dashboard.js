@@ -16547,7 +16547,6 @@ class DrishtiDashboard {
 
 			header += `<th colspan="6" class="month-col" ${highlightStyle ? `style="${highlightStyle}"` : ""}>${displayYear}${daysLeftIndicator}</th>`;
 		});
-		header += `<th rowspan="2" class="collection-col">Collection</th>`;
 		header += `</tr><tr class="branch-table-subheader">`;
 
 		months.forEach(() => {
@@ -16634,12 +16633,6 @@ class DrishtiDashboard {
 				html += "<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>";
 			}
 		});
-
-		const collectionSum = months.reduce(
-			(sum, month) => sum + ((branch.months[month.key] && branch.months[month.key].achievement) || 0),
-			0,
-		);
-		html += `<td class="metric-cell amount-cell" style="font-weight: 700;">${this.formatNumber(collectionSum)}</td>`;
 
 		return html + "</tr>";
 	}
