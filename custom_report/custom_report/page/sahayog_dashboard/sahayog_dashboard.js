@@ -10958,6 +10958,24 @@ class DrishtiDashboard {
 		`;
 		this.mis_container.html(selectorHtml);
 
+		this.mis_container.on("click", "#mis-download-btn", function () {
+			const $table = self.mis_container.find("#mis-report-content-area table:visible").first();
+			if (!$table.length) return;
+			let csv = "";
+			$table.find("tr").each(function () {
+				const row = [];
+				$(this).find("th,td").each(function () {
+					row.push('"' + ($(this).text() || "").replace(/"/g, '""') + '"');
+				});
+				csv += row.join(",") + "\n";
+			});
+			const blob = new Blob([csv], { type: "text/csv" });
+			const a = document.createElement("a");
+			a.href = URL.createObjectURL(blob);
+			a.download = "mis_report.csv";
+			a.click();
+		});
+
 		const self = this;
 		const tabSelectorContainer = this.mis_container.find("#mis-report-selector-tabs");
 		const activeReportId = this._visibleMisReportId(this.state.selectedMisReport);
