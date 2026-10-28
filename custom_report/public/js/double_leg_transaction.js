@@ -384,6 +384,7 @@ form.addEventListener("submit", async (e) => {
 	if (!params) return;
 	window.__pendingParams = params;
 	document.getElementById("formatModal").hidden = false;
+	btn.hidden = true;
 });
 
 async function runDownload(params) {
@@ -448,6 +449,7 @@ async function runDownload(params) {
 		abortController = null;
 		downloadCancelled = false;
 		setDownloadingUI(false);
+		btn.hidden = false;
 	}
 }
 
