@@ -10959,7 +10959,7 @@ class DrishtiDashboard {
 		this.mis_container.html(selectorHtml);
 
 		this.mis_container.on("click", "#mis-download-btn", function () {
-			const $table = self.mis_container.find("#mis-report-content-area table:visible").first();
+			const $table = self.mis_container.find("#mis-report-content-area table").first();
 			if (!$table.length) return;
 			let csv = "";
 			$table.find("tr").each(function () {
