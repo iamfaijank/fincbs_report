@@ -383,6 +383,13 @@ form.addEventListener("submit", async (e) => {
 	const params = validate();
 	if (!params) return;
 	window.__pendingParams = params;
+	const isBranchManager = (frappe.user_roles || []).includes("Branch Manager");
+	if (isBranchManager) {
+		// Branch Manager: skip the format chooser popup and download CSV directly.
+		window.__selectedFormat = "csv";
+		await runDownload(window.__pendingParams);
+		return;
+	}
 	document.getElementById("formatModal").hidden = false;
 	btn.hidden = true;
 });
