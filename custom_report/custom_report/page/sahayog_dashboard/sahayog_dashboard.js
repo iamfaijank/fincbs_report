@@ -10951,11 +10951,32 @@ class DrishtiDashboard {
 		const selectorHtml = `
 			<div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 16px; width: 100%;">
 				<div style="display: flex; gap: 12px;" id="mis-report-selector-tabs"></div>
+				<button type="button" id="mis-download-btn" style="padding:6px 12px; background:#0e5a68; color:#fff; border:0; border-radius:6px; cursor:pointer;">Download</button>
 			</div>
 			<div id="mis-report-title" style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px; padding: 0 4px;"></div>
 			<div id="mis-report-content-area" style="min-height: 200px;"></div>
 		`;
 		this.mis_container.html(selectorHtml);
+
+		this.mis_container.on("click", "#mis-download-btn", function () {
+			const $table = self.mis_container.find("#mis-report-content-area table:visible").first();
+			if (!$table.length) return;
+			let csv = "";
+			$table.find("tr").each(function () {
+				const row = [];
+				$(this).find("th,td").each(function (idx) {
+					if (idx === 0) return; // remove first column
+					let t = ($(this).text() || "").replace(/▶|⇩\s*Download|₹|�|[\u{1F000}-\u{1FAFF}]/gu, "").trim();
+					row.push('"' + t.replace(/"/g, '""') + '"');
+				});
+				csv += row.join(",") + "\n";
+			});
+			const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+			const a = document.createElement("a");
+			a.href = URL.createObjectURL(blob);
+			a.download = "mis_report.csv";
+			a.click();
+		});
 
 		const self = this;
 		const tabSelectorContainer = this.mis_container.find("#mis-report-selector-tabs");
@@ -10995,6 +11016,9 @@ class DrishtiDashboard {
 			}
 		});
 
+		const initialHide = activeReportId === "profit_loss" || activeReportId === "balance_sheet";
+		this.mis_container.find("#mis-download-btn").toggle(!initialHide);
+
 		this.mis_container.on("click", ".mis-report-tab-btn:not(.mis-dropdown-toggle)", function () {
 			self.mis_container.find(".mis-report-tab-btn.active, .mis-dropdown-toggle.active, .mis-dropdown-item.active").removeClass("active");
 			$(this).addClass("active");
@@ -11002,6 +11026,8 @@ class DrishtiDashboard {
 			self.state.selectedMisReport = reportId;
 			self.updateUrlFromState();
 			self.renderMisReport(reportId);
+			const hide = reportId === "profit_loss" || reportId === "balance_sheet";
+			self.mis_container.find("#mis-download-btn").toggle(!hide);
 		});
 
 		this.mis_container.on("click", ".mis-dropdown-toggle", function (e) {
@@ -11791,6 +11817,10 @@ class DrishtiDashboard {
                     </button>
                     <button class="tab-btn" data-tab="product_tgt_ach" style="display: none;">
                         Product Wise TGT VS ACH
+                    </button>
+
+                    <button type="button" id="dashboard-download-btn" style="margin-left:auto; padding:6px 12px; background:#0e5a68; color:#fff; border:0; border-radius:6px; cursor:pointer;">
+                        Download
                     </button>
 
                     <!-- Search and Clear Actions -->
