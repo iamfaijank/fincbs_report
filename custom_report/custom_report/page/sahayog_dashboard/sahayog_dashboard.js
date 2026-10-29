@@ -10895,6 +10895,23 @@ class DrishtiDashboard {
 
 		header.append(toggleHtml);
 
+		// Restrict badge visibility to Administrator or cxo_level users
+		(async () => {
+			let allowed = frappe.session.user === "Administrator";
+			if (!allowed) {
+				try {
+					const r = await frappe.db.get_value("Employee", { user_id: frappe.session.user }, "cxo_level");
+					const cxo = r && r.message ? (r.message.cxo_level !== undefined ? r.message.cxo_level : r.message) : 0;
+					if (cxo && Number(cxo) === 1) allowed = true;
+				} catch (e) {
+					allowed = false;
+				}
+			}
+			if (!allowed) {
+				header.find("#drishti-header-visitors-badge").remove();
+			}
+		})();
+
 		// Populate cached visitor counts if already available
 		if (frappe.pages["sahayog_dashboard"] && frappe.pages["sahayog_dashboard"].lastVisitorStats) {
 			const s = frappe.pages["sahayog_dashboard"].lastVisitorStats;
