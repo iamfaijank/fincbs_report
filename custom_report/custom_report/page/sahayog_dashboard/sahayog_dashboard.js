@@ -198,7 +198,21 @@ frappe.pages["sahayog_dashboard"].cleanupVisitorTracking = function () {
 	});
 };
 
-frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
+frappe.pages["sahayog_dashboard"].showVisitorModal = async function () {
+	// Branch Manager: visitor popup should not be shown to them.
+	let bmRes = null;
+	try {
+		bmRes = await frappe.call({
+			method: "custom_report.www.drishti.get_current_user_is_branch_manager",
+		});
+	} catch (e) {
+		bmRes = null;
+	}
+	const bmPayload = bmRes && (bmRes.message || bmRes);
+	if (bmPayload && bmPayload.is_branch_manager) {
+		return;
+	}
+
 	$(".drishti-visitor-modal-backdrop").remove();
 
 	const todayFormatted = frappe.datetime ? frappe.datetime.str_to_user(frappe.datetime.get_today()) : new Date().toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' });

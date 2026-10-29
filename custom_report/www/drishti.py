@@ -145,6 +145,39 @@ def get_current_user_employee_status(employee_id=None):
 	return {"status": "Active", "resignation_letter_date": None, "relieving_date": None, "relieving_in_days": None}
 
 
+@frappe.whitelist(methods=["GET", "POST"], allow_guest=True)
+def get_current_user_is_branch_manager():
+	"""Return whether the current user holds a Branch Manager designation."""
+	user = frappe.session.user
+	if not user or user == "Guest":
+		return {"is_branch_manager": False}
+
+	employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
+	designation = ""
+	if employee:
+		designation = frappe.db.get_value("Employee", employee, "designation") or ""
+
+	if not str(designation).strip():
+		designation = (
+			frappe.db.get_value("Employee", {"prefered_email": user}, "designation")
+			or frappe.db.get_value("Employee", {"company_email": user}, "designation")
+			or frappe.db.get_value("Employee", {"name": user}, "designation")
+			or ""
+		)
+
+	is_branch_manager = (
+		"branch manager" in str(designation).strip().lower()
+		or "bm" == str(designation).strip().lower()
+		or "branch head" in str(designation).strip().lower()
+	)
+
+	user_roles = frappe.get_roles(user)
+	if "Branch Manager" in (user_roles or []):
+		is_branch_manager = True
+
+	return {"is_branch_manager": bool(is_branch_manager)}
+
+
 @frappe.whitelist(methods=["POST"], allow_guest=True)
 def get_filter_options():
 	cache_key = "drishti_filter_options"
