@@ -1162,11 +1162,7 @@ class DrishtiDashboard {
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
 							<datalist id="mis-district-options">
-								<option value="All Districts"></option>
-								<option value="A"></option>
-								<option value="B"></option>
-								<option value="C"></option>
-								<option value="D"></option>
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
 							</datalist>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
@@ -2124,11 +2120,7 @@ class DrishtiDashboard {
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
 							<datalist id="mis-district-options">
-								<option value="All Districts"></option>
-								<option value="A"></option>
-								<option value="B"></option>
-								<option value="C"></option>
-								<option value="D"></option>
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
 							</datalist>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
@@ -3268,11 +3260,7 @@ class DrishtiDashboard {
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
 							<datalist id="mis-district-options">
-								<option value="All Districts"></option>
-								<option value="A"></option>
-								<option value="B"></option>
-								<option value="C"></option>
-								<option value="D"></option>
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
 							</datalist>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
@@ -3751,11 +3739,7 @@ class DrishtiDashboard {
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
 							<datalist id="mis-district-options">
-								<option value="All Districts"></option>
-								<option value="A"></option>
-								<option value="B"></option>
-								<option value="C"></option>
-								<option value="D"></option>
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
 							</datalist>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
@@ -4284,11 +4268,7 @@ class DrishtiDashboard {
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
 							<datalist id="mis-district-options">
-								<option value="All Districts"></option>
-								<option value="A"></option>
-								<option value="B"></option>
-								<option value="C"></option>
-								<option value="D"></option>
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
 							</datalist>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
@@ -4849,11 +4829,7 @@ class DrishtiDashboard {
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
 							<datalist id="mis-district-options">
-								<option value="All Districts"></option>
-								<option value="A"></option>
-								<option value="B"></option>
-								<option value="C"></option>
-								<option value="D"></option>
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
 							</datalist>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
@@ -5434,11 +5410,7 @@ class DrishtiDashboard {
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
 							<datalist id="mis-district-options">
-								<option value="All Districts"></option>
-								<option value="A"></option>
-								<option value="B"></option>
-								<option value="C"></option>
-								<option value="D"></option>
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
 							</datalist>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
@@ -6064,11 +6036,7 @@ class DrishtiDashboard {
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
 							<datalist id="mis-district-options">
-								<option value="All Districts"></option>
-								<option value="A"></option>
-								<option value="B"></option>
-								<option value="C"></option>
-								<option value="D"></option>
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
 							</datalist>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
@@ -6715,11 +6683,7 @@ class DrishtiDashboard {
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
 							<datalist id="mis-district-options">
-								<option value="All Districts"></option>
-								<option value="A"></option>
-								<option value="B"></option>
-								<option value="C"></option>
-								<option value="D"></option>
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
 							</datalist>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
