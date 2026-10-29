@@ -199,19 +199,20 @@ frappe.pages["sahayog_dashboard"].cleanupVisitorTracking = function () {
 };
 
 frappe.pages["sahayog_dashboard"].showVisitorModal = async function () {
-	// Branch Manager: visitor popup should not be shown to them.
-	let bmRes = null;
-	try {
-		bmRes = await frappe.call({
-			method: "custom_report.www.drishti.get_current_user_is_branch_manager",
-		});
-	} catch (e) {
-		bmRes = null;
+	// Only Administrator or users with cxo_level checked in Employee may view.
+	let allowed = false;
+	if (frappe.session.user === "Administrator") {
+		allowed = true;
+	} else {
+		try {
+			const r = await frappe.db.get_value("Employee", { user_id: frappe.session.user }, "cxo_level");
+			const cxo = r && r.message ? (r.message.cxo_level !== undefined ? r.message.cxo_level : r.message) : 0;
+			if (cxo && Number(cxo) === 1) allowed = true;
+		} catch (e) {
+			allowed = false;
+		}
 	}
-	const bmPayload = bmRes && (bmRes.message || bmRes);
-	if (bmPayload && bmPayload.is_branch_manager) {
-		return;
-	}
+	if (!allowed) return;
 
 	$(".drishti-visitor-modal-backdrop").remove();
 
