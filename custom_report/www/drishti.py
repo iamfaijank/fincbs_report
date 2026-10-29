@@ -149,7 +149,7 @@ def get_current_user_employee_status(employee_id=None):
 def get_current_user_is_branch_manager():
 	"""Return whether the current user holds a Branch Manager designation."""
 	user = frappe.session.user
-	if not user or user == "Guest":
+	if not user or user == "Guest" or user == "Administrator":
 		return {"is_branch_manager": False}
 
 	employee = frappe.db.get_value("Employee", {"user_id": user}, "name")
