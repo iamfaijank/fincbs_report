@@ -198,13 +198,13 @@
 <body>
 
 <div class="container" id="app" v-cloak>
+    <div class="header">
+        <h2>CIF Tracker</h2>
+        <p>Enter the CIF ID to view assigned verification user details.</p>
+    </div>
+
     {% if has_access %}
     <div class="card">
-        <div class="header">
-            <h2>CIF Tracker</h2>
-            <p>Enter the CIF ID to view assigned verification user details.</p>
-        </div>
-
         <div class="search-box">
             <input 
                 type="text" 
