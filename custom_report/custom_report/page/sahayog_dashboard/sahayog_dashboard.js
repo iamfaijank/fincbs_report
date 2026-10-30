@@ -971,14 +971,13 @@ function _getFilteredMISData(self) {
 	if (self.selectedMisRegions && self.selectedMisRegions.length > 0) {
 		data = data.filter(row => self.selectedMisRegions.includes(row.region));
 	}
-	if (self.selectedMisDistricts && self.selectedMisDistricts.length > 0) {
-		data = data.filter(row => self.selectedMisDistricts.includes(row.district));
-	}
 	if (self.selectedDistrict) {
 		const selDist = String(self.selectedDistrict).trim().toLowerCase();
 		if (selDist) {
 			data = data.filter(row => String(row.district || "").trim().toLowerCase() === selDist);
 		}
+	} else if (self.selectedMisDistricts && self.selectedMisDistricts.length > 0) {
+		data = data.filter(row => self.selectedMisDistricts.includes(row.district));
 	}
 	return data;
 }
@@ -1590,6 +1589,15 @@ class DrishtiDashboard {
 					}
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
 						data = data.filter(row => self.selectedMisZones.includes(row.zone));
+					}
+					if (self.selectedMisRegions && self.selectedMisRegions.length > 0) {
+						data = data.filter(row => self.selectedMisRegions.includes(row.region));
+					}
+					if (self.selectedDistrict) {
+						const selDist = String(self.selectedDistrict).trim().toLowerCase();
+						if (selDist) {
+							data = data.filter(row => String(row.district || "").trim().toLowerCase() === selDist);
+						}
 					}
 					const zoneMap = {};
 					data.forEach(row => {
