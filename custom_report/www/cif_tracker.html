@@ -103,7 +103,8 @@
         .search-box {
             display: flex;
             gap: 10px;
-            margin-bottom: 30px;
+            margin: 0 auto 30px auto;
+            max-width: 620px;
         }
 
         input[type="text"] {
@@ -235,7 +236,6 @@
 <div class="container" id="app" v-cloak>
     <div class="header">
         <h2>CIF Tracker</h2>
-        <p>Enter the CIF ID to view assigned verification user details.</p>
     </div>
 
     <!-- Retail & Corporate Tabs -->
@@ -265,7 +265,7 @@
                 type="text" 
                 v-model="cif_id" 
                 maxlength="9"
-                placeholder="Enter CIF ID"
+                placeholder="Enter the CIF ID to view assigned verification user details"
                 @input="cif_id = cif_id.replace(/[^0-9]/g, '')"
                 @keyup.enter="fetchDetails"
             >
