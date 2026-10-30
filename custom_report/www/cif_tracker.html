@@ -47,8 +47,11 @@
         }
 
         .header {
-            text-align: center;
-            margin-bottom: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            margin-bottom: 25px;
         }
 
         .header h2 {
@@ -57,6 +60,32 @@
             font-size: 26px;
             font-weight: 800;
             letter-spacing: -0.5px;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .btn-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: white;
+            color: var(--primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+        }
+
+        .btn-home:hover {
+            background: #f4f8f8;
+            border-color: var(--primary);
+            color: var(--primary-hover);
         }
 
         .header p {
@@ -275,7 +304,11 @@
 
 <div class="container" id="app" v-cloak>
     <div class="header">
+        <a href="/app/sahayog-home" class="btn-home">
+            <span>🏠</span> Home
+        </a>
         <h2>CIF Tracker</h2>
+        <div style="width: 85px;"></div> <!-- Spacer to keep header centered -->
     </div>
 
     <!-- Retail & Corporate Tabs -->
