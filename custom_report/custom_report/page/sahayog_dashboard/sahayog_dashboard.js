@@ -1646,15 +1646,51 @@ class DrishtiDashboard {
 						const active = self.selectedMisZones.includes(zone);
 						html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
 					});
+					if (self.selectedMisZones.length > 0) {
+						let regionList = [];
+						const seenR = new Set();
+						self.tableData.forEach(r => {
+							if (self.selectedMisZones.includes(r.zone) && r.region) {
+								if (!seenR.has(r.region)) {
+									seenR.add(r.region);
+									regionList.push(r.region);
+								}
+							}
+						});
+						regionList.sort();
+						if (regionList.length) {
+							html += '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap; margin-left: 12px;">Region:</span>';
+							html += `<button class="mis-region-filter-tag ${!self.selectedMisRegions || self.selectedMisRegions.length === 0 ? "active" : ""}" data-region="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${!self.selectedMisRegions || self.selectedMisRegions.length === 0 ? "#417d81" : "#fff"}; color: ${!self.selectedMisRegions || self.selectedMisRegions.length === 0 ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
+							regionList.forEach(reg => {
+								const ractive = self.selectedMisRegions && self.selectedMisRegions.includes(reg);
+								html += `<button class="mis-region-filter-tag ${ractive ? "active" : ""}" data-region="${reg}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${ractive ? "#417d81" : "#fff"}; color: ${ractive ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${reg}</button>`;
+							});
+						}
+					}
 					const $row = container.find("#mis-zone-filter-row");
 					$row.html(html).css("display", "flex").css({ "align-items": "center", "gap": "8px", "flex-wrap": "wrap", "margin-bottom": "10px" });
 					container.off("click", ".mis-zone-filter-tag").on("click", ".mis-zone-filter-tag", function () {
 						const zone = $(this).data("zone");
 						if (zone === "all") {
 							self.selectedMisZones = [];
+							self.selectedMisRegions = [];
 						} else {
 							const idx = self.selectedMisZones.indexOf(zone);
 							if (idx > -1) { self.selectedMisZones.splice(idx, 1); } else { self.selectedMisZones.push(zone); }
+							self.selectedMisRegions = [];
+						}
+						self.renderZoneFilterTags(container, dashboardInstance);
+						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+					});
+					container.off("click", ".mis-region-filter-tag").on("click", ".mis-region-filter-tag", function () {
+						const reg = $(this).data("region");
+						if (!self.selectedMisRegions) self.selectedMisRegions = [];
+						if (reg === "all") {
+							self.selectedMisRegions = [];
+						} else {
+							const idx = self.selectedMisRegions.indexOf(reg);
+							if (idx > -1) { self.selectedMisRegions.splice(idx, 1); } else { self.selectedMisRegions.push(reg); }
 						}
 						self.renderZoneFilterTags(container, dashboardInstance);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
