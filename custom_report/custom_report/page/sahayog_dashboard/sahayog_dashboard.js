@@ -982,6 +982,42 @@ function _getFilteredMISData(self) {
 	return data;
 }
 
+// Shared district dropdown populator - shows districts from the report's own table data
+function _populateDistrictDropdown(self, container, dashboardInstance) {
+	const $input = container.find("#mis-district-filter");
+	if (!$input.length) return;
+	if ($input.is('select')) return;
+	const $datalist = container.find("#mis-district-options");
+	const currentVal = self.selectedDistrict || "";
+	let districts = [];
+	if (self.tableData && self.tableData.length) {
+		const regionFilter = (self.selectedMisRegions && self.selectedMisRegions.length) ? self.selectedMisRegions : null;
+		const zoneFilter = (self.selectedMisZones && self.selectedMisZones.length) ? self.selectedMisZones : null;
+		const seen = new Set();
+		self.tableData.forEach(row => {
+			if (zoneFilter && !zoneFilter.includes(row.zone)) return;
+			if (regionFilter && !regionFilter.includes(row.region)) return;
+			const d = row.district;
+			if (d && d !== "-" && d !== "0" && !seen.has(d)) {
+				seen.add(d);
+				districts.push(d);
+			}
+		});
+		districts.sort();
+	}
+	let html = '';
+	districts.forEach(d => {
+		html += `<option value="${frappe.utils.escape_html(d)}"></option>`;
+	});
+	if ($datalist.length) {
+		$datalist.html(html);
+	}
+	if (currentVal && districts.indexOf(currentVal) === -1) {
+		self.selectedDistrict = "";
+		$input.val("");
+	}
+}
+
 function _attachDdTrackerDownloadHandlers(tableContainer, dashboardInstance, reportName) {
 	const reportPrefix = (reportName || "DD_Tracker_Report").replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 	const downloadCsv = (records, levelPrefix) => {
@@ -1236,9 +1272,7 @@ class DrishtiDashboard {
 						self.tableData = filterMisTableDataByUserPermissions(self.rawTableData, self.filterOptions);
 						self.loadedUser = frappe.session.user;
 
-						if (typeof self.populateDistrictDropdown === "function") {
-							try { self.populateDistrictDropdown(container, dashboardInstance); } catch(e) {}
-						}
+						_populateDistrictDropdown(self, container, dashboardInstance);
 						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
 						container.find("#mis-records-count").text(`${_getFilteredMISData(self).length} branches`);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
@@ -1468,11 +1502,9 @@ class DrishtiDashboard {
 				},
 				renderMisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
-					if (typeof self.populateDistrictDropdown === "function") {
-						const $ctrl = tableContainer.closest('#mis-controls');
-						const container = $ctrl.length ? $ctrl.parent() : tableContainer.parent();
-						try { self.populateDistrictDropdown(container, dashboardInstance); } catch(e) {}
-					}
+					const $ctrl = tableContainer.closest('#mis-controls');
+					const container = $ctrl.length ? $ctrl.parent() : tableContainer.parent();
+					_populateDistrictDropdown(self, container, dashboardInstance);
 					self.renderAnalysisTable(tableContainer, dashboardInstance);
 				},
 				buildRdCustomerRows: function (agentKey, custList, show, ctx) {
@@ -2255,11 +2287,9 @@ class DrishtiDashboard {
 				},
 				renderMisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
-					if (typeof self.populateDistrictDropdown === "function") {
-						const $ctrl = tableContainer.closest('#mis-controls');
-						const container = $ctrl.length ? $ctrl.parent() : tableContainer.parent();
-						try { self.populateDistrictDropdown(container, dashboardInstance); } catch(e) {}
-					}
+					const $ctrl = tableContainer.closest('#mis-controls');
+					const container = $ctrl.length ? $ctrl.parent() : tableContainer.parent();
+					_populateDistrictDropdown(self, container, dashboardInstance);
 					self.renderAnalysisTable(tableContainer, dashboardInstance);
 				},
 				renderAnalysisTable: function (tableContainer, dashboardInstance) {
@@ -4677,6 +4707,9 @@ class DrishtiDashboard {
 				},
 				renderMisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
+					const $ctrl = tableContainer.closest('#mis-controls');
+					const container = $ctrl.length ? $ctrl.parent() : tableContainer.parent();
+					_populateDistrictDropdown(self, container, dashboardInstance);
 					const format = dashboardInstance.state.formatMode || "number";
 					const fmtCount = (val) => {
 						if (!val && val !== 0) return "0";
@@ -5258,6 +5291,9 @@ class DrishtiDashboard {
 				},
 				renderMisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
+					const $ctrl = tableContainer.closest('#mis-controls');
+					const container = $ctrl.length ? $ctrl.parent() : tableContainer.parent();
+					_populateDistrictDropdown(self, container, dashboardInstance);
 					const format = dashboardInstance.state.formatMode || "number";
 
 					const fmtAmt = (val) => {
@@ -5852,6 +5888,9 @@ class DrishtiDashboard {
 				},
 				renderMisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
+					const $ctrl = tableContainer.closest('#mis-controls');
+					const container = $ctrl.length ? $ctrl.parent() : tableContainer.parent();
+					_populateDistrictDropdown(self, container, dashboardInstance);
 					const format = dashboardInstance.state.formatMode || "number";
 
 					const fmtAmt = (val) => {
@@ -6527,6 +6566,9 @@ class DrishtiDashboard {
 						return;
 					}
 					const canViewCif = !!dashboardInstance.canViewCommission;
+					const $ctrl = tableContainer.closest('#mis-controls');
+					const container = $ctrl.length ? $ctrl.parent() : tableContainer.parent();
+					_populateDistrictDropdown(self, container, dashboardInstance);
 					const format = dashboardInstance.state.formatMode || "number";
 
 					const fmtAmt = (val) => {
