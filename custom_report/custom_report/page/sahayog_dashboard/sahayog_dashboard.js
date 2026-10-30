@@ -12025,10 +12025,6 @@ class DrishtiDashboard {
                         Product Wise TGT VS ACH
                     </button>
 
-                    <button type="button" id="dashboard-download-btn" style="margin-left:auto; padding:6px 12px; background:#0e5a68; color:#fff; border:0; border-radius:6px; cursor:pointer;">
-                        Download
-                    </button>
-
                     <!-- Search and Clear Actions -->
                     <div style="margin-left: auto; display: flex; align-items: center; gap: 10px; padding-bottom: 6px;">
 						<select id="segment-filter" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #1b263b;">
