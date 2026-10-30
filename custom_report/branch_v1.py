@@ -1652,7 +1652,7 @@ def download_bm_checklist(start_date=None, end_date=None, sol_id=None, employee_
     records = frappe.db.sql(query, values, as_dict=True)
 
     if not records:
-        frappe.throw("No records found for the selected date range.")
+        frappe.throw("No data available.")
 
     parent_names = [r.name for r in records]
     placeholders = ", ".join(["%s"] * len(parent_names))
