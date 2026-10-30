@@ -65,6 +65,41 @@
             font-size: 14px;
         }
 
+        .tab-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .tab-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 35px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .tab-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(25, 103, 103, 0.25);
+        }
+
         .search-box {
             display: flex;
             gap: 10px;
@@ -203,6 +238,26 @@
         <p>Enter the CIF ID to view assigned verification user details.</p>
     </div>
 
+    <!-- Retail & Corporate Tabs -->
+    <div class="tab-container">
+        <button 
+            type="button" 
+            class="tab-btn" 
+            :class="{ active: activeTab === 'RETAIL' }"
+            @click="switchTab('RETAIL')"
+        >
+            <span>🏪</span> Retail CIF
+        </button>
+        <button 
+            type="button" 
+            class="tab-btn" 
+            :class="{ active: activeTab === 'CORPORATE' }"
+            @click="switchTab('CORPORATE')"
+        >
+            <span>🏢</span> Corporate CIF
+        </button>
+    </div>
+
     {% if has_access %}
     <div class="card">
         <div class="search-box">
@@ -333,10 +388,16 @@
 
 <script>
     PetiteVue.createApp({
+        activeTab: 'RETAIL',
         cif_id: '',
         results: [],
         loading: false,
         error: '',
+        switchTab(tab) {
+            this.activeTab = tab;
+            this.error = '';
+            this.results = [];
+        },
         get currentItem() {
             return this.results.length > 0 ? this.results[0] : {};
         },
@@ -370,10 +431,34 @@
             return 'status-pending';
         },
         async fetchDetails() {
-            if (!this.cif_id.trim()) {
+            const trimmedCif = this.cif_id.trim();
+            if (!trimmedCif) {
                 this.error = "Please enter a CIF ID";
                 this.results = [];
                 return;
+            }
+
+            // Validations based on active tab
+            if (this.activeTab === 'RETAIL') {
+                if (trimmedCif.startsWith('5')) {
+                    this.error = "This CIF belongs to Corporate. Please switch to Corporate CIF tab to search.";
+                    this.results = [];
+                    return;
+                } else if (!trimmedCif.startsWith('4')) {
+                    this.error = "Retail CIF ID must start with 4.";
+                    this.results = [];
+                    return;
+                }
+            } else if (this.activeTab === 'CORPORATE') {
+                if (trimmedCif.startsWith('4')) {
+                    this.error = "This CIF belongs to Retail. Please switch to Retail CIF tab to search.";
+                    this.results = [];
+                    return;
+                } else if (!trimmedCif.startsWith('5')) {
+                    this.error = "Corporate CIF ID must start with 5.";
+                    this.results = [];
+                    return;
+                }
             }
 
             this.loading = true;
@@ -381,7 +466,7 @@
             this.results = [];
 
             try {
-                const response = await fetch(`/api/method/custom_report.www.cif_tracker.get_cif_details?cif_id=${encodeURIComponent(this.cif_id)}`);
+                const response = await fetch(`/api/method/custom_report.www.cif_tracker.get_cif_details?cif_id=${encodeURIComponent(trimmedCif)}`);
                 const res = await response.json();
                 
                 if (res.message && res.message.success) {
