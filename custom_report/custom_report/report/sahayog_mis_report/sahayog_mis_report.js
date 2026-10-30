@@ -21,6 +21,12 @@ frappe.query_reports["Sahayog MIS Report"] = {
 			fieldtype: "Link",
 			options: "Zone",
 		},
+		{
+			fieldname: "district",
+			label: __("District"),
+			fieldtype: "Select",
+			options: "A\nB\nC\nD",
+		},
 	],
 
 	formatter(value, row, column, data, default_formatter) {
