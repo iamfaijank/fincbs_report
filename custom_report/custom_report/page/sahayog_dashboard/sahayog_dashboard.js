@@ -1636,6 +1636,12 @@ class DrishtiDashboard {
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
 						data = data.filter(row => self.selectedMisZones.includes(row.zone));
 					}
+					if (self.selectedDistrict) {
+						const selDist = String(self.selectedDistrict).trim().toLowerCase();
+						if (selDist) {
+							data = data.filter(row => String(row.district || "").trim().toLowerCase().includes(selDist));
+						}
+					}
 					if (self.selectedMisRegions && self.selectedMisRegions.length > 0) {
 						data = data.filter(row => self.selectedMisRegions.includes(row.region));
 					}
@@ -2358,6 +2364,12 @@ class DrishtiDashboard {
 					}
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
 						filtered = filtered.filter(r => self.selectedMisZones.includes(r.zone));
+					}
+					if (self.selectedDistrict) {
+						const selDist = String(self.selectedDistrict).trim().toLowerCase();
+						if (selDist) {
+							filtered = filtered.filter(row => String(row.district || "").trim().toLowerCase().includes(selDist));
+						}
 					}
 					const zones = {};
 					filtered.forEach(r => {
@@ -4085,6 +4097,12 @@ class DrishtiDashboard {
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
 						data = data.filter(row => self.selectedMisZones.includes(row.zone));
 					}
+					if (self.selectedDistrict) {
+						const selDist = String(self.selectedDistrict).trim().toLowerCase();
+						if (selDist) {
+							data = data.filter(row => String(row.district || "").trim().toLowerCase().includes(selDist));
+						}
+					}
 					const zoneMap = {};
 					data.forEach(row => {
 						const zone = row.zone || "Unknown";
@@ -4140,6 +4158,13 @@ class DrishtiDashboard {
 						result.push({ zone: zoneName, data: zd, regions: regions });
 					});
 					return result;
+				},
+				renderMisTable: function (tableContainer, dashboardInstance) {
+					const self = this;
+					const $ctrl = tableContainer.closest('#mis-controls');
+					const container = $ctrl.length ? $ctrl.parent() : tableContainer.parent();
+					_populateDistrictDropdown(self, container, dashboardInstance);
+					self.renderAnalysisTable(tableContainer, dashboardInstance);
 				},
 				renderAnalysisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
@@ -4636,6 +4661,12 @@ class DrishtiDashboard {
 					}
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
 						data = data.filter(row => self.selectedMisZones.includes(row.zone));
+					}
+					if (self.selectedDistrict) {
+						const selDist = String(self.selectedDistrict).trim().toLowerCase();
+						if (selDist) {
+							data = data.filter(row => String(row.district || "").trim().toLowerCase().includes(selDist));
+						}
 					}
 					const zoneMap = {};
 					data.forEach(row => {
@@ -5220,6 +5251,12 @@ class DrishtiDashboard {
 					}
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
 						data = data.filter(row => self.selectedMisZones.includes(row.zone));
+					}
+					if (self.selectedDistrict) {
+						const selDist = String(self.selectedDistrict).trim().toLowerCase();
+						if (selDist) {
+							data = data.filter(row => String(row.district || "").trim().toLowerCase().includes(selDist));
+						}
 					}
 					const zoneMap = {};
 					data.forEach(row => {
@@ -5817,6 +5854,12 @@ class DrishtiDashboard {
 					}
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
 						data = data.filter(row => self.selectedMisZones.includes(row.zone));
+					}
+					if (self.selectedDistrict) {
+						const selDist = String(self.selectedDistrict).trim().toLowerCase();
+						if (selDist) {
+							data = data.filter(row => String(row.district || "").trim().toLowerCase().includes(selDist));
+						}
 					}
 					const zoneMap = {};
 					data.forEach(row => {
@@ -6446,6 +6489,12 @@ class DrishtiDashboard {
 					}
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
 						data = data.filter(row => self.selectedMisZones.includes(row.zone));
+					}
+					if (self.selectedDistrict) {
+						const selDist = String(self.selectedDistrict).trim().toLowerCase();
+						if (selDist) {
+							data = data.filter(row => String(row.district || "").trim().toLowerCase().includes(selDist));
+						}
 					}
 					const zoneMap = {};
 					data.forEach(row => {
