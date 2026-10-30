@@ -4159,6 +4159,13 @@ class DrishtiDashboard {
 					});
 					return result;
 				},
+				renderMisTable: function (tableContainer, dashboardInstance) {
+					const self = this;
+					const $ctrl = tableContainer.closest('#mis-controls');
+					const container = $ctrl.length ? $ctrl.parent() : tableContainer.parent();
+					_populateDistrictDropdown(self, container, dashboardInstance);
+					self.renderAnalysisTable(tableContainer, dashboardInstance);
+				},
 				renderAnalysisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
 					const format = dashboardInstance.state.formatMode || "number";
