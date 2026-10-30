@@ -34,8 +34,8 @@
 
         .container {
             width: 100%;
-            max-width: 850px;
-            margin: 40px auto;
+            max-width: 1400px;
+            margin: 30px auto;
         }
 
         .card {
@@ -110,19 +110,33 @@
             margin-top: 20px;
             border-radius: var(--radius);
             border: 1px solid var(--border);
+            max-width: 100%;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
             background: white;
+            white-space: nowrap;
         }
 
         th, td {
             text-align: left;
-            padding: 14px;
+            padding: 10px 14px;
             border-bottom: 1px solid var(--border);
+            font-size: 13px;
         }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-verified { background: #e8f8f5; color: #27ae60; }
+        .badge-pending { background: #fef9e7; color: #d4ac0d; }
+        .badge-reject { background: #fdedec; color: #e74c3c; }
 
         th {
             background: #f8fbfb;
@@ -197,19 +211,51 @@
             <table>
                 <thead>
                     <tr>
-                        <th>User ID</th>
-                        <th>User Name</th>
-                        <th>Branch Code</th>
+                        <th>CIF ID</th>
+                        <th>Customer Name</th>
+                        <th>Type</th>
+                        <th>SOL ID</th>
                         <th>Branch Name</th>
+                        <th>Maker ID</th>
+                        <th>Maker Name</th>
+                        <th>Saved Time</th>
+                        <th>Created Date</th>
+                        <th>Core Flg</th>
+                        <th>Acc Status</th>
+                        <th>Mod Status</th>
+                        <th>Checker ID</th>
+                        <th>Checker Name</th>
+                        <th>Verified Time</th>
+                        <th>Verified Date</th>
+                        <th>Exact Status</th>
+                        <th>Current Tray Summary</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="row in results" :key="row.user_id + row.branch_code">
+                    <tr v-for="row in results" :key="row.cif_id">
                         {% raw %}
-                        <td style="font-weight: 600; color: var(--primary);">{{ row.user_id }}</td>
-                        <td>{{ row.user_name }}</td>
-                        <td>{{ row.branch_code }}</td>
-                        <td>{{ row.branch_name }}</td>
+                        <td style="font-weight: 700; color: var(--primary);">{{ row.cif_id }}</td>
+                        <td>{{ row.cust_name }}</td>
+                        <td>{{ row.cif_type }}</td>
+                        <td>{{ row.sol_id }}</td>
+                        <td>{{ row.sol_desc }}</td>
+                        <td>{{ row.maker_login_id || row.maker_id }}</td>
+                        <td>{{ row.maker_name }}</td>
+                        <td>{{ row.saved_time }}</td>
+                        <td>{{ row.created_date }}</td>
+                        <td>{{ row.core_flg }}</td>
+                        <td>{{ row.acc_status }}</td>
+                        <td>{{ row.mod_status }}</td>
+                        <td>{{ row.checker_login_id }}</td>
+                        <td>{{ row.checker_person_name }}</td>
+                        <td>{{ row.verified_time || '-' }}</td>
+                        <td>{{ row.verified_date || '-' }}</td>
+                        <td>
+                            <span :class="{'badge badge-verified': row.exact_status === 'Verified', 'badge badge-reject': row.exact_status.includes('Reject') || row.exact_status.includes('Deleted'), 'badge badge-pending': row.exact_status.includes('Pending') || row.exact_status.includes('Under') || row.exact_status.includes('Saved')}">
+                                {{ row.exact_status }}
+                            </span>
+                        </td>
+                        <td style="font-weight: 500;">{{ row.current_tray_status }}</td>
                         {% endraw %}
                     </tr>
                 </tbody>
