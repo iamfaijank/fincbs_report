@@ -2827,6 +2827,22 @@
 			/* =========================================================
 	   BRANCH DASHBOARD (HEADER + SEARCH)
 	   ========================================================= */
+			function showNoDataAvailablePopup() {
+				let popup = document.getElementById("no-data-popup");
+				if (!popup) {
+					popup = document.createElement("div");
+					popup.id = "no-data-popup";
+					popup.style.cssText = "position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#fee2e2; color:#991b1b; padding:16px 24px; border-radius:8px; border:1px solid #fca5a5; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:99999; font-size:14px; font-weight:600; text-align:center; min-width:300px;";
+					popup.textContent = "No data available for the selected date range.";
+					document.body.appendChild(popup);
+				} else {
+					popup.style.display = "block";
+				}
+				setTimeout(function() {
+					if (popup) popup.style.display = "none";
+				}, 10000);
+			}
+
 			function showDownloadPeriodModal(url, period, empId, solId) {
 				const modal = document.getElementById("download-period-modal");
 				if (!modal) return;
@@ -3656,8 +3672,29 @@
 							apiUrl += "&end_date=" + encodeURIComponent(endDate);
 							if (empId) apiUrl += "&employee_id=" + encodeURIComponent(empId);
 							if (solId) apiUrl += "&sol_id=" + encodeURIComponent(solId);
-							window.open(apiUrl, "_blank");
-							dlModal.style.display = "none";
+
+							let checkUrl = "/api/method/custom_report.branch_v1.check_bm_checklist_data";
+							checkUrl += "?start_date=" + encodeURIComponent(startDate);
+							checkUrl += "&end_date=" + encodeURIComponent(endDate);
+							if (empId) checkUrl += "&employee_id=" + encodeURIComponent(empId);
+							if (solId) checkUrl += "&sol_id=" + encodeURIComponent(solId);
+
+							fetch(checkUrl, { credentials: "same-origin" })
+								.then(function(r) { return r.json(); })
+								.then(function(data) {
+									const hasData = data && data.message && data.message.has_data;
+									if (hasData) {
+										window.open(apiUrl, "_blank");
+										dlModal.style.display = "none";
+									} else {
+										dlModal.style.display = "none";
+										showNoDataAvailablePopup();
+									}
+								})
+								.catch(function() {
+									dlModal.style.display = "none";
+									showNoDataAvailablePopup();
+								});
 						});
 						dlModal.addEventListener("change", (e) => {
 							if (e.target && e.target.id === "dl-month-select") {

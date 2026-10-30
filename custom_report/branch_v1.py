@@ -1612,6 +1612,42 @@ def get_attrition_rate(sol_id: str, period: str = "3"):
 # BM CHECKLIST DOWNLOAD
 # ============================================================================
 
+@frappe.whitelist()
+def check_bm_checklist_data(start_date=None, end_date=None, sol_id=None, employee_id=None):
+    """Check if BM checklist records exist for the given date range."""
+    if not start_date or not end_date:
+        return {"has_data": False}
+
+    conditions = []
+    values = []
+
+    if employee_id:
+        clean_emp = str(employee_id).strip()
+        emp_names = [clean_emp]
+        emp_doc = frappe.db.get_value("Employee", {"employee_number": clean_emp}, "name")
+        if emp_doc and emp_doc not in emp_names:
+            emp_names.append(emp_doc)
+        emp_num = frappe.db.get_value("Employee", {"name": clean_emp}, "employee_number")
+        if emp_num and emp_num not in emp_names:
+            emp_names.append(emp_num)
+        placeholders = ", ".join(["%s"] * len(emp_names))
+        conditions.append(f"bm_employee_id IN ({placeholders})")
+        values.extend(emp_names)
+
+    if sol_id:
+        conditions.append("sol_id = %s")
+        values.append(str(sol_id).strip())
+
+    conditions.append("date BETWEEN %s AND %s")
+    values.extend([str(start_date), str(end_date)])
+
+    where = " WHERE " + " AND ".join(conditions) if conditions else ""
+
+    count = frappe.db.sql(f"SELECT COUNT(*) FROM `tabBM checklist` {where}", values)[0][0]
+    return {"has_data": count > 0}
+
+
+
 @frappe.whitelist(methods=["GET"])
 def download_bm_checklist(start_date=None, end_date=None, sol_id=None, employee_id=None):
     """Download BM checklist records as CSV for the given date range."""
