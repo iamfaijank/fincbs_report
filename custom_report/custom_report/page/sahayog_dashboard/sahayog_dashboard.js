@@ -1643,6 +1643,7 @@ class DrishtiDashboard {
 					let html = '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">Zone:</span>';
 					html += `<button class="mis-zone-filter-tag ${allSelected ? "active" : ""}" data-zone="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${allSelected ? "#417d81" : "#fff"}; color: ${allSelected ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
 					zones.forEach(zone => {
+						if (!allSelected && !self.selectedMisZones.includes(zone)) return;
 						const active = self.selectedMisZones.includes(zone);
 						html += `<button class="mis-zone-filter-tag ${active ? "active" : ""}" data-zone="${zone}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${active ? "#417d81" : "#fff"}; color: ${active ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${zone}</button>`;
 					});
@@ -1662,6 +1663,7 @@ class DrishtiDashboard {
 							html += '<span style="font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap; margin-left: 12px;">Region:</span>';
 							html += `<button class="mis-region-filter-tag ${!self.selectedMisRegions || self.selectedMisRegions.length === 0 ? "active" : ""}" data-region="all" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${!self.selectedMisRegions || self.selectedMisRegions.length === 0 ? "#417d81" : "#fff"}; color: ${!self.selectedMisRegions || self.selectedMisRegions.length === 0 ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">All</button>`;
 							regionList.forEach(reg => {
+								if (self.selectedMisRegions && self.selectedMisRegions.length > 0 && !self.selectedMisRegions.includes(reg)) return;
 								const ractive = self.selectedMisRegions && self.selectedMisRegions.includes(reg);
 								html += `<button class="mis-region-filter-tag ${ractive ? "active" : ""}" data-region="${reg}" style="padding: 4px 12px; font-size: 12px; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 9999px; background: ${ractive ? "#417d81" : "#fff"}; color: ${ractive ? "#fff" : "#475569"}; cursor: pointer; transition: all 0.2s;">${reg}</button>`;
 							});
