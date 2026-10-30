@@ -273,7 +273,7 @@
             </div>
 
             <!-- 2. Checker Details Table (Down) -->
-            <div class="section-box">
+            <div class="section-box" v-if="showCheckerTable">
                 <div class="section-title">
                     <span>🛡️</span> Checker Details
                 </div>
@@ -308,14 +308,14 @@
             <!-- 3. Status Summary Box (Bottom) -->
             <div class="status-box">
                 <div>
-                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Status Of Searched CIF</div>
-                    <span :class="{'status-badge status-verified': currentItem.exact_status === 'Verified', 'status-badge status-reject': currentItem.exact_status && (currentItem.exact_status.includes('Reject') || currentItem.exact_status.includes('Deleted')), 'status-badge status-pending': !currentItem.exact_status || currentItem.exact_status.includes('Pending') || currentItem.exact_status.includes('Under') || currentItem.exact_status.includes('Saved')}">
-                        {% raw %}{{ currentItem.exact_status || 'Pending' }}{% endraw %}
+                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 6px;">Status Of Searched CIF</div>
+                    <span :class="['status-badge', statusBadgeClass]">
+                        {% raw %}{{ displayStatusMessage }}{% endraw %}
                     </span>
                 </div>
-                <div style="text-align: right;">
+                <div style="text-align: right;" v-if="currentItem.current_tray_status">
                     <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Current Tray</div>
-                    <strong style="color: var(--text-main);">{% raw %}{{ currentItem.current_tray_status || '-' }}{% endraw %}</strong>
+                    <strong style="color: var(--text-main);">{% raw %}{{ currentItem.current_tray_status }}{% endraw %}</strong>
                 </div>
             </div>
         </div>
@@ -339,6 +339,35 @@
         error: '',
         get currentItem() {
             return this.results.length > 0 ? this.results[0] : {};
+        },
+        get showCheckerTable() {
+            const status = this.currentItem.exact_status || '';
+            // Only hide checker table if it is saved in maker tray / incomplete
+            if (status.includes('Saved')) {
+                return false;
+            }
+            return true;
+        },
+        get displayStatusMessage() {
+            const status = this.currentItem.exact_status || '';
+            if (status === 'Verified') {
+                return 'CIF is already Verified.';
+            } else if (status === 'Under Verification') {
+                return 'CIF is under verification from checker.';
+            } else if (status.includes('Saved')) {
+                return 'CIF is saved, Kindly Submit for verification.';
+            } else if (status === 'Rejected by Checker') {
+                return 'CIF is rejected and currently showing in makers tray, please submit for verification.';
+            } else if (status === 'Deleted / Cancelled') {
+                return 'The entered CIF is closed by checker.';
+            }
+            return status || 'CIF status unavailable.';
+        },
+        get statusBadgeClass() {
+            const status = this.currentItem.exact_status || '';
+            if (status === 'Verified') return 'status-verified';
+            if (status === 'Rejected by Checker' || status === 'Deleted / Cancelled') return 'status-reject';
+            return 'status-pending';
         },
         async fetchDetails() {
             if (!this.cif_id.trim()) {
