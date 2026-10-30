@@ -198,7 +198,22 @@ frappe.pages["sahayog_dashboard"].cleanupVisitorTracking = function () {
 	});
 };
 
-frappe.pages["sahayog_dashboard"].showVisitorModal = function () {
+frappe.pages["sahayog_dashboard"].showVisitorModal = async function () {
+	// Only Administrator or users with cxo_level checked in Employee may view.
+	let allowed = false;
+	if (frappe.session.user === "Administrator") {
+		allowed = true;
+	} else {
+		try {
+			const r = await frappe.db.get_value("Employee", { user_id: frappe.session.user }, "cxo_level");
+			const cxo = r && r.message ? (r.message.cxo_level !== undefined ? r.message.cxo_level : r.message) : 0;
+			if (cxo && Number(cxo) === 1) allowed = true;
+		} catch (e) {
+			allowed = false;
+		}
+	}
+	if (!allowed) return;
+
 	$(".drishti-visitor-modal-backdrop").remove();
 
 	const todayFormatted = frappe.datetime ? frappe.datetime.str_to_user(frappe.datetime.get_today()) : new Date().toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' });
@@ -953,7 +968,54 @@ function _getFilteredMISData(self) {
 	if (self.selectedMisZones && self.selectedMisZones.length > 0) {
 		data = data.filter(row => self.selectedMisZones.includes(row.zone));
 	}
+	if (self.selectedMisRegions && self.selectedMisRegions.length > 0) {
+		data = data.filter(row => self.selectedMisRegions.includes(row.region));
+	}
+	if (self.selectedDistrict) {
+		const selDist = String(self.selectedDistrict).trim().toLowerCase();
+		if (selDist) {
+			data = data.filter(row => String(row.district || "").trim().toLowerCase().includes(selDist));
+		}
+	} else if (self.selectedMisDistricts && self.selectedMisDistricts.length > 0) {
+		data = data.filter(row => self.selectedMisDistricts.includes(row.district));
+	}
 	return data;
+}
+
+// Shared district dropdown populator - shows districts from the report's own table data
+function _populateDistrictDropdown(self, container, dashboardInstance) {
+	const $input = container.find("#mis-district-filter");
+	if (!$input.length) return;
+	if ($input.is('select')) return;
+	const $datalist = container.find("#mis-district-options");
+	const currentVal = self.selectedDistrict || "";
+	let districts = [];
+	if (self.tableData && self.tableData.length) {
+		const regionFilter = (self.selectedMisRegions && self.selectedMisRegions.length) ? self.selectedMisRegions : null;
+		const zoneFilter = (self.selectedMisZones && self.selectedMisZones.length) ? self.selectedMisZones : null;
+		const seen = new Set();
+		self.tableData.forEach(row => {
+			if (zoneFilter && !zoneFilter.includes(row.zone)) return;
+			if (regionFilter && !regionFilter.includes(row.region)) return;
+			const d = row.district;
+			if (d && d !== "-" && d !== "0" && !seen.has(d)) {
+				seen.add(d);
+				districts.push(d);
+			}
+		});
+		districts.sort();
+	}
+	let html = '';
+	districts.forEach(d => {
+		html += `<option value="${frappe.utils.escape_html(d)}"></option>`;
+	});
+	if ($datalist.length) {
+		$datalist.html(html);
+	}
+	if (currentVal && districts.indexOf(currentVal) === -1) {
+		self.selectedDistrict = "";
+		$input.val("");
+	}
 }
 
 function _attachDdTrackerDownloadHandlers(tableContainer, dashboardInstance, reportName) {
@@ -1096,6 +1158,10 @@ class DrishtiDashboard {
 		};
 		this.data = null;
 
+		// Download-allowed reports list and cached download permission
+		this.downloadAllowedReports = ["rd_smbg_pending", "gl_wise_ch_report", "daily_account_opening", "bucket_wise_account_mis", "maturity_tracker", "rm_wise"];
+		this._downloadPermission = false;
+
 		// Re-render table month headers once holiday data arrives so their
 		// "N Working Days Left" indicator matches the header timer exactly
 		$(document)
@@ -1143,6 +1209,8 @@ class DrishtiDashboard {
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
 							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="mis-search" placeholder="Search branch, SOL ID, agent or authorizer..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<input type="text" id="mis-district-filter" list="mis-district-options" placeholder="Search/Select district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 160px; outline: none; background: white;">
+							<datalist id="mis-district-options"></datalist>
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
@@ -1204,8 +1272,9 @@ class DrishtiDashboard {
 						self.tableData = filterMisTableDataByUserPermissions(self.rawTableData, self.filterOptions);
 						self.loadedUser = frappe.session.user;
 
+						_populateDistrictDropdown(self, container, dashboardInstance);
 						self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
-						container.find("#mis-records-count").text(`${self.tableData.length} branches`);
+						container.find("#mis-records-count").text(`${_getFilteredMISData(self).length} branches`);
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 						self.renderZoneFilterTags(container, dashboardInstance);
 						container.find("#mis-loading").hide();
@@ -1251,6 +1320,19 @@ class DrishtiDashboard {
 				},
 				attachReportEventHandlers: function (container, dashboardInstance) {
 					const self = this;
+					let districtFilterTimeout;
+					container.off("change input", "#mis-district-filter").on("change input", "#mis-district-filter", function () {
+						const val = $(this).val() || "";
+						self.selectedDistrict = val;
+						clearTimeout(districtFilterTimeout);
+						districtFilterTimeout = setTimeout(() => {
+							if (self.tableData) {
+								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+								container.find("#mis-records-count").text(`${_getFilteredMISData(self).length} branches`);
+							}
+						}, 300);
+					});
 					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
 						const format = $(this).data("format");
 						dashboardInstance.state.formatMode = format;
@@ -1273,6 +1355,7 @@ class DrishtiDashboard {
 							if (self.tableData) {
 								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+								container.find("#mis-records-count").text(`${_getFilteredMISData(self).length} branches`);
 							}
 						}, 300);
 					});
@@ -1305,6 +1388,43 @@ class DrishtiDashboard {
 					container.off("click", "#mis-refetch").on("click", "#mis-refetch", function () {
 						self.refetchData(container, dashboardInstance);
 					});
+				},
+				populateDistrictDropdown: function (container, dashboardInstance) {
+					const self = this;
+					const $input = container.find("#mis-district-filter");
+					if (!$input.length) return;
+					if ($input.is('select')) return;
+					const $datalist = container.find("#mis-district-options");
+					const currentVal = self.selectedDistrict || "";
+					let districts = [];
+					if (self.tableData && self.tableData.length) {
+						const regionFilter = (self.selectedMisRegions && self.selectedMisRegions.length) ? self.selectedMisRegions : null;
+						const zoneFilter = (self.selectedMisZones && self.selectedMisZones.length) ? self.selectedMisZones : null;
+						const seen = new Set();
+						self.tableData.forEach(row => {
+							if (zoneFilter && !zoneFilter.includes(row.zone)) return;
+							if (regionFilter && !regionFilter.includes(row.region)) return;
+							const d = row.district;
+							if (d && d !== "-" && d !== "0" && !seen.has(d)) {
+								seen.add(d);
+								districts.push(d);
+							}
+						});
+						districts.sort();
+					}
+					let html = '';
+					districts.forEach(d => {
+						html += `<option value="${frappe.utils.escape_html(d)}"></option>`;
+					});
+					if ($datalist.length) {
+						$datalist.html(html);
+					}
+					if (currentVal && districts.indexOf(currentVal) === -1) {
+						self.selectedDistrict = "";
+						$input.val("");
+					} else {
+						$input.val(currentVal);
+					}
 				},
 				renderKPI: function (container, dashboardInstance) {
 					const self = this;
@@ -1372,30 +1492,6 @@ class DrishtiDashboard {
 						}
 					});
 				},
-				refetchData: function (container, dashboardInstance) {
-					const self = this;
-					// Explicit refresh: drop cached payload for the selected date
-					if (self._dateCache) delete self._dateCache[dashboardInstance.state.selectedDate];
-					if (self._effDateCache) delete self._effDateCache[dashboardInstance.state.selectedDate];
-					self.rawTableData = [];
-					self.tableData = [];
-					self.filterOptions = null;
-					self.loadedUser = null;
-					self.selectedMisZones = [];
-					self.expandedZones = {};
-					self.expandedRegions = {};
-					self.expandedDistricts = {};
-					self.expandedBranches = {};
-					self.expandedAuths = {};
-					self.expandedRdAgents = {};
-					self.rdAgentCustomers = {};
-					self._rdCustFetching = {};
-					self.checkedRows = {};
-					self.searchTerm = "";
-					self.allExpanded = false;
-					dashboardInstance._misRenderSeq = (dashboardInstance._misRenderSeq || 0) + 1;
-					self.render(container, dashboardInstance, dashboardInstance._misRenderSeq);
-				},
 				switchFormat: function (format, container, dashboardInstance) {
 					const self = this;
 					if (self.tableData && self.tableData.length > 0) {
@@ -1406,6 +1502,9 @@ class DrishtiDashboard {
 				},
 				renderMisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
+					const $ctrl = tableContainer.closest('#mis-controls');
+					const container = $ctrl.length ? $ctrl.parent() : tableContainer.parent();
+					_populateDistrictDropdown(self, container, dashboardInstance);
 					self.renderAnalysisTable(tableContainer, dashboardInstance);
 				},
 				buildRdCustomerRows: function (agentKey, custList, show, ctx) {
@@ -1536,6 +1635,15 @@ class DrishtiDashboard {
 					}
 					if (self.selectedMisZones && self.selectedMisZones.length > 0) {
 						data = data.filter(row => self.selectedMisZones.includes(row.zone));
+					}
+					if (self.selectedMisRegions && self.selectedMisRegions.length > 0) {
+						data = data.filter(row => self.selectedMisRegions.includes(row.region));
+					}
+					if (self.selectedDistrict) {
+						const selDist = String(self.selectedDistrict).trim().toLowerCase();
+						if (selDist) {
+							data = data.filter(row => String(row.district || "").trim().toLowerCase().includes(selDist));
+						}
 					}
 					const zoneMap = {};
 					data.forEach(row => {
@@ -2097,6 +2205,10 @@ class DrishtiDashboard {
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
 							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="mis-search" placeholder="Search branch or SOL ID..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
+							<datalist id="mis-district-options">
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
+							</datalist>
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
@@ -2174,7 +2286,11 @@ class DrishtiDashboard {
 					container.show();
 				},
 				renderMisTable: function (tableContainer, dashboardInstance) {
-					this.renderAnalysisTable(tableContainer, dashboardInstance);
+					const self = this;
+					const $ctrl = tableContainer.closest('#mis-controls');
+					const container = $ctrl.length ? $ctrl.parent() : tableContainer.parent();
+					_populateDistrictDropdown(self, container, dashboardInstance);
+					self.renderAnalysisTable(tableContainer, dashboardInstance);
 				},
 				renderAnalysisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
@@ -2270,6 +2386,19 @@ class DrishtiDashboard {
 				},
 				attachReportEventHandlers: function (container, dashboardInstance) {
 					const self = this;
+					let districtFilterTimeout;
+					container.off("change input", "#mis-district-filter").on("change input", "#mis-district-filter", function () {
+						const val = $(this).val() || "";
+						self.selectedDistrict = val;
+						clearTimeout(districtFilterTimeout);
+						districtFilterTimeout = setTimeout(() => {
+							if (self.tableData) {
+								self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+								container.find("#mis-records-count").text(`${_getFilteredMISData(self).length} branches`);
+							}
+						}, 300);
+					});
 					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
 						const format = $(this).data("format");
 						dashboardInstance.state.formatMode = format;
@@ -3233,6 +3362,10 @@ class DrishtiDashboard {
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
 							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="mis-search" placeholder="Search branch or SOL ID..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
+							<datalist id="mis-district-options">
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
+							</datalist>
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
@@ -3281,6 +3414,18 @@ class DrishtiDashboard {
 				},
 				attachReportEventHandlers: function (container, dashboardInstance) {
 					const self = this;
+					if (container.find("#mis-district-filter").length && container.data('mis-district-handler') !== true) {
+						container.data('mis-district-handler', true);
+						container.off("change input", "#mis-district-filter").on("change input", "#mis-district-filter", function () {
+							const val = $(this).val() || "";
+							self.selectedDistrict = val;
+							if (self.tableData) {
+								self.renderMisTable && self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI && self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+								container.find("#mis-records-count").text(`${_getFilteredMISData(self).length} branches`);
+							}
+						});
+					}
 					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
 						const format = $(this).data("format");
 						dashboardInstance.state.formatMode = format;
@@ -3708,6 +3853,10 @@ class DrishtiDashboard {
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
 							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="mis-search" placeholder="Search branch, SOL ID or district..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
+							<datalist id="mis-district-options">
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
+							</datalist>
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
@@ -3758,6 +3907,18 @@ class DrishtiDashboard {
 				},
 				attachReportEventHandlers: function (container, dashboardInstance) {
 					const self = this;
+					if (container.find("#mis-district-filter").length && container.data('mis-district-handler') !== true) {
+						container.data('mis-district-handler', true);
+						container.off("change input", "#mis-district-filter").on("change input", "#mis-district-filter", function () {
+							const val = $(this).val() || "";
+							self.selectedDistrict = val;
+							if (self.tableData) {
+								self.renderMisTable && self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI && self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+								container.find("#mis-records-count").text(`${_getFilteredMISData(self).length} branches`);
+							}
+						});
+					}
 					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
 						const format = $(this).data("format");
 						dashboardInstance.state.formatMode = format;
@@ -3874,10 +4035,6 @@ class DrishtiDashboard {
 						self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
 					}
 					self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
-				},
-				renderMisTable: function (tableContainer, dashboardInstance) {
-					const self = this;
-					self.renderAnalysisTable(tableContainer, dashboardInstance);
 				},
 				renderZoneFilterTags: function (container, dashboardInstance) {
 					const self = this;
@@ -4233,6 +4390,10 @@ class DrishtiDashboard {
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
 							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="mis-search" placeholder="Search branch, SOL ID, district or authorizer..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
+							<datalist id="mis-district-options">
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
+							</datalist>
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
@@ -4283,6 +4444,18 @@ class DrishtiDashboard {
 				},
 				attachReportEventHandlers: function (container, dashboardInstance) {
 					const self = this;
+					if (container.find("#mis-district-filter").length && container.data('mis-district-handler') !== true) {
+						container.data('mis-district-handler', true);
+						container.off("change input", "#mis-district-filter").on("change input", "#mis-district-filter", function () {
+							const val = $(this).val() || "";
+							self.selectedDistrict = val;
+							if (self.tableData) {
+								self.renderMisTable && self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI && self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+								container.find("#mis-records-count").text(`${_getFilteredMISData(self).length} branches`);
+							}
+						});
+					}
 					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
 						const format = $(this).data("format");
 						dashboardInstance.state.formatMode = format;
@@ -4534,6 +4707,9 @@ class DrishtiDashboard {
 				},
 				renderMisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
+					const $ctrl = tableContainer.closest('#mis-controls');
+					const container = $ctrl.length ? $ctrl.parent() : tableContainer.parent();
+					_populateDistrictDropdown(self, container, dashboardInstance);
 					const format = dashboardInstance.state.formatMode || "number";
 					const fmtCount = (val) => {
 						if (!val && val !== 0) return "0";
@@ -4620,7 +4796,7 @@ class DrishtiDashboard {
 								rowsHtml += `<tr class="mis-district-row${districtChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${districtKey}" style="display: ${showDistrict ? "table-row" : "none"}; cursor: pointer; background: #fafaf9; border-bottom: 1px solid #e7e5e4;">
 									<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${districtKey}" ${districtChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 									<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}${districtSolIds.length ? `<button type="button" class="mis-dd-district-dl" data-sols="${(JSON.stringify(districtSolIds)).replace(/"/g, '&quot;')}" data-district="${String(district).replace(/"/g, '&quot;')}" title="Download District CSV" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; Download</button>` : ""}</td>
+									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}</td>
 									<td></td>
 									<td></td>
 									<td></td>
@@ -4638,7 +4814,7 @@ class DrishtiDashboard {
 									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-branch="${branch.sol_id}" data-check-id="${branchKey}" style="display: ${showBranch ? "table-row" : "none"}; cursor: pointer; background: #ffffff; border-bottom: 1px solid #e2e8f0;">
 										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${branchKey}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 600;"><span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${branchExpanded ? "▼" : "▶"}</span>${branch.sol_id} - ${branch.sol_desc}<button type="button" class="mis-dd-branch-dl" data-sol="${String(branch.sol_id).replace(/"/g, '&quot;')}" title="Download Branch CSV" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; Download</button></td>
+										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 600;"><span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${branchExpanded ? "▼" : "▶"}</span>${branch.sol_id} - ${branch.sol_desc}</td>
 										<td></td>
 										<td></td>
 										<td></td>
@@ -4769,7 +4945,6 @@ class DrishtiDashboard {
 						});
 					});
 
-					_attachDdTrackerDownloadHandlers(tableContainer, dashboardInstance, "New Account Report");
 				}
 			},
 			{
@@ -4790,6 +4965,10 @@ class DrishtiDashboard {
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;" id="mis-controls">
 							<input type="date" id="mis-date-filter" value="${dashboardInstance.state.selectedDate || ''}" placeholder="Select date" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
 							<input type="text" id="mis-search" placeholder="Search branch, SOL ID, district or authorizer..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
+							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
+							<datalist id="mis-district-options">
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
+							</datalist>
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
@@ -4844,6 +5023,18 @@ class DrishtiDashboard {
 				},
 				attachReportEventHandlers: function (container, dashboardInstance) {
 					const self = this;
+					if (container.find("#mis-district-filter").length && container.data('mis-district-handler') !== true) {
+						container.data('mis-district-handler', true);
+						container.off("change input", "#mis-district-filter").on("change input", "#mis-district-filter", function () {
+							const val = $(this).val() || "";
+							self.selectedDistrict = val;
+							if (self.tableData) {
+								self.renderMisTable && self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI && self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+								container.find("#mis-records-count").text(`${_getFilteredMISData(self).length} branches`);
+							}
+						});
+					}
 					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
 						const format = $(this).data("format");
 						dashboardInstance.state.formatMode = format;
@@ -5100,6 +5291,9 @@ class DrishtiDashboard {
 				},
 				renderMisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
+					const $ctrl = tableContainer.closest('#mis-controls');
+					const container = $ctrl.length ? $ctrl.parent() : tableContainer.parent();
+					_populateDistrictDropdown(self, container, dashboardInstance);
 					const format = dashboardInstance.state.formatMode || "number";
 
 					const fmtAmt = (val) => {
@@ -5191,7 +5385,7 @@ class DrishtiDashboard {
 								rowsHtml += `<tr class="mis-district-row${districtChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-check-id="${districtKey}" style="display: ${showDistrict ? "table-row" : "none"}; cursor: pointer; background: #fafaf9; border-bottom: 1px solid #e7e5e4;">
 									<td style="padding: 8px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${districtKey}" ${districtChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 									<td style="padding: 8px 14px; color: #64748b; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}${districtSolIds.length ? `<button type="button" class="mis-dd-district-dl" data-sols="${(JSON.stringify(districtSolIds)).replace(/"/g, '&quot;')}" data-district="${String(district).replace(/"/g, '&quot;')}" title="Download District CSV" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; Download</button>` : ""}</td>
+									<td style="padding: 8px 14px; color: #44403c; white-space: nowrap; font-size: 14px; padding-left: 42px; font-weight: 600;"><span class="mis-district-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #a8a29e;">${districtExpanded ? "▼" : "▶"}</span>${district}</td>
 									<td></td>
 									<td></td>
 									<td></td>
@@ -5210,7 +5404,7 @@ class DrishtiDashboard {
 									rowsHtml += `<tr class="mis-branch-row${branchChecked ? " mis-row-checked" : ""}" data-zone="${z.zone}" data-region="${region}" data-district="${district}" data-branch="${branch.sol_id}" data-check-id="${branchKey}" style="display: ${showBranch ? "table-row" : "none"}; cursor: pointer; background: #ffffff; border-bottom: 1px solid #e2e8f0;">
 										<td style="padding: 6px 14px; text-align: center; white-space: nowrap; vertical-align: middle;"><input type="checkbox" class="mis-row-check" data-check-id="${branchKey}" ${branchChecked ? "checked" : ""} style="cursor: pointer; width: 14px; height: 14px;"></td>
 										<td style="padding: 6px 14px; color: #94a3b8; text-align: center; white-space: nowrap; font-size: 14px;"></td>
-										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 600;"><span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${branchExpanded ? "▼" : "▶"}</span>${branch.sol_id} - ${branch.sol_desc}<button type="button" class="mis-dd-branch-dl" data-sol="${String(branch.sol_id).replace(/"/g, '&quot;')}" title="Download Branch CSV" style="margin-left: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #0d9488; background: #ecfdf5; border: 1px solid #99f6e4; border-radius: 4px; cursor: pointer; vertical-align: middle;">&#8681; Download</button></td>
+										<td style="padding: 6px 14px; color: #475569; white-space: nowrap; font-size: 14px; padding-left: 60px; font-weight: 600;"><span class="mis-branch-toggle" style="cursor: pointer; margin-right: 6px; font-size: 12px; color: #cbd5e1;">${branchExpanded ? "▼" : "▶"}</span>${branch.sol_id} - ${branch.sol_desc}</td>
 										<td></td>
 										<td></td>
 										<td></td>
@@ -5345,7 +5539,6 @@ class DrishtiDashboard {
 						});
 					});
 
-					_attachDdTrackerDownloadHandlers(tableContainer, dashboardInstance, "Staff Wise Demand vs Collection");
 				}
 			},
 			{
@@ -5369,6 +5562,10 @@ class DrishtiDashboard {
 							<input type="text" id="mis-search" placeholder="Search branch, SOL ID, agent, authorizer..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
+							<datalist id="mis-district-options">
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
+							</datalist>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
 								<div class="btn-group mis-format-toggle" role="group">
@@ -5421,6 +5618,18 @@ class DrishtiDashboard {
 				},
 				attachReportEventHandlers: function (container, dashboardInstance) {
 					const self = this;
+					if (container.find("#mis-district-filter").length && container.data('mis-district-handler') !== true) {
+						container.data('mis-district-handler', true);
+						container.off("change input", "#mis-district-filter").on("change input", "#mis-district-filter", function () {
+							const val = $(this).val() || "";
+							self.selectedDistrict = val;
+							if (self.tableData) {
+								self.renderMisTable && self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI && self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+								container.find("#mis-records-count").text(`${_getFilteredMISData(self).length} branches`);
+							}
+						});
+					}
 					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
 						const format = $(this).data("format");
 						dashboardInstance.state.formatMode = format;
@@ -5679,6 +5888,9 @@ class DrishtiDashboard {
 				},
 				renderMisTable: function (tableContainer, dashboardInstance) {
 					const self = this;
+					const $ctrl = tableContainer.closest('#mis-controls');
+					const container = $ctrl.length ? $ctrl.parent() : tableContainer.parent();
+					_populateDistrictDropdown(self, container, dashboardInstance);
 					const format = dashboardInstance.state.formatMode || "number";
 
 					const fmtAmt = (val) => {
@@ -5991,6 +6203,10 @@ class DrishtiDashboard {
 							<input type="text" id="mis-search" placeholder="Search branch, SOL ID, district or customer..." style="padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 200px; background: white; color: #1b263b; font-size: 13px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
+							<datalist id="mis-district-options">
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
+							</datalist>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
 								<div class="btn-group mis-format-toggle" role="group">
@@ -6039,6 +6255,18 @@ class DrishtiDashboard {
 				},
 				attachReportEventHandlers: function (container, dashboardInstance) {
 					const self = this;
+					if (container.find("#mis-district-filter").length && container.data('mis-district-handler') !== true) {
+						container.data('mis-district-handler', true);
+						container.off("change input", "#mis-district-filter").on("change input", "#mis-district-filter", function () {
+							const val = $(this).val() || "";
+							self.selectedDistrict = val;
+							if (self.tableData) {
+								self.renderMisTable && self.renderMisTable(container.find("#mis-table-container"), dashboardInstance);
+								self.renderKPI && self.renderKPI(container.find("#mis-kpi-container"), dashboardInstance);
+								container.find("#mis-records-count").text(`${_getFilteredMISData(self).length} branches`);
+							}
+						});
+					}
 					container.off("click", ".mis-format-btn").on("click", ".mis-format-btn", function () {
 						const format = $(this).data("format");
 						dashboardInstance.state.formatMode = format;
@@ -6338,6 +6566,9 @@ class DrishtiDashboard {
 						return;
 					}
 					const canViewCif = !!dashboardInstance.canViewCommission;
+					const $ctrl = tableContainer.closest('#mis-controls');
+					const container = $ctrl.length ? $ctrl.parent() : tableContainer.parent();
+					_populateDistrictDropdown(self, container, dashboardInstance);
 					const format = dashboardInstance.state.formatMode || "number";
 
 					const fmtAmt = (val) => {
@@ -6634,6 +6865,10 @@ class DrishtiDashboard {
 							<input type="text" id="rm-top-search" placeholder="Search: 1001=SOL, RDDSA10014=Code, text=Name" style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 260px; outline: none;">
 							<button type="button" id="mis-expand-toggle" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
 							<button type="button" id="mis-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
+							<input list="mis-district-options" id="mis-district-filter" placeholder="Search district..." style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; width: 140px; outline: none;">
+							<datalist id="mis-district-options">
+								${(dashboardInstance.availableFilters && dashboardInstance.availableFilters.districts ? dashboardInstance.availableFilters.districts : []).map(d => `<option value="${d}"></option>`).join("")}
+							</datalist>
 							<div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
 								<span style="font-weight: bold; color: #0d1b2a; font-size: 13px; white-space: nowrap;">Format:</span>
 								<div class="btn-group mis-format-toggle" role="group">
@@ -10880,6 +11115,23 @@ class DrishtiDashboard {
 
 		header.append(toggleHtml);
 
+		// Restrict badge visibility to Administrator or cxo_level users
+		(async () => {
+			let allowed = frappe.session.user === "Administrator";
+			if (!allowed) {
+				try {
+					const r = await frappe.db.get_value("Employee", { user_id: frappe.session.user }, "cxo_level");
+					const cxo = r && r.message ? (r.message.cxo_level !== undefined ? r.message.cxo_level : r.message) : 0;
+					if (cxo && Number(cxo) === 1) allowed = true;
+				} catch (e) {
+					allowed = false;
+				}
+			}
+			if (!allowed) {
+				header.find("#drishti-header-visitors-badge").remove();
+			}
+		})();
+
 		// Populate cached visitor counts if already available
 		if (frappe.pages["sahayog_dashboard"] && frappe.pages["sahayog_dashboard"].lastVisitorStats) {
 			const s = frappe.pages["sahayog_dashboard"].lastVisitorStats;
@@ -11016,8 +11268,7 @@ class DrishtiDashboard {
 			}
 		});
 
-		const initialHide = activeReportId === "profit_loss" || activeReportId === "balance_sheet";
-		this.mis_container.find("#mis-download-btn").toggle(!initialHide);
+		this.mis_container.find("#mis-download-btn").toggle(this.downloadAllowedReports.includes(activeReportId) && this._downloadPermission);
 
 		this.mis_container.on("click", ".mis-report-tab-btn:not(.mis-dropdown-toggle)", function () {
 			self.mis_container.find(".mis-report-tab-btn.active, .mis-dropdown-toggle.active, .mis-dropdown-item.active").removeClass("active");
@@ -11026,8 +11277,7 @@ class DrishtiDashboard {
 			self.state.selectedMisReport = reportId;
 			self.updateUrlFromState();
 			self.renderMisReport(reportId);
-			const hide = reportId === "profit_loss" || reportId === "balance_sheet";
-			self.mis_container.find("#mis-download-btn").toggle(!hide);
+			self.mis_container.find("#mis-download-btn").toggle(self.downloadAllowedReports.includes(reportId) && self._downloadPermission);
 		});
 
 		this.mis_container.on("click", ".mis-dropdown-toggle", function (e) {
@@ -11049,6 +11299,7 @@ class DrishtiDashboard {
 			self.state.selectedMisReport = reportId;
 			self.updateUrlFromState();
 			self.renderMisReport(reportId);
+			self.mis_container.find("#mis-download-btn").toggle(self.downloadAllowedReports.includes(reportId) && self._downloadPermission);
 		});
 
 		$(document).on("click", function () {
@@ -11819,10 +12070,6 @@ class DrishtiDashboard {
                         Product Wise TGT VS ACH
                     </button>
 
-                    <button type="button" id="dashboard-download-btn" style="margin-left:auto; padding:6px 12px; background:#0e5a68; color:#fff; border:0; border-radius:6px; cursor:pointer;">
-                        Download
-                    </button>
-
                     <!-- Search and Clear Actions -->
                     <div style="margin-left: auto; display: flex; align-items: center; gap: 10px; padding-bottom: 6px;">
 						<select id="segment-filter" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #1b263b;">
@@ -12310,7 +12557,8 @@ class DrishtiDashboard {
 					self.normalizeDashboardResponse(r.message);
 					self.data = r.message;
 					self.permissions = r.message.permissions;
-
+					self._downloadPermission = !!(self.permissions && self.permissions.allow_download_report);
+ 
 					// Check if data is empty (all zeros) - if so, try to get latest available date
 					if (self.branchData && self.branchData.length > 0) {
 						const firstBranch = self.branchData[0];
@@ -12479,7 +12727,8 @@ class DrishtiDashboard {
 					self.normalizeDashboardResponse(r.message);
 					self.data = r.message;
 					self.permissions = r.message.permissions;
-
+					self._downloadPermission = !!(self.permissions && self.permissions.allow_download_report);
+ 
 					if (self.permissions && self.permissions.has_access === false && !self.isBranchManager) {
 						self.page.main.html(`
 							<div style="text-align: center; padding: 100px 20px;">

@@ -329,11 +329,18 @@ def get_user_report_permissions(user):
         "region_ids": [],
         "district_ids": [],
         "has_access": True,
-        "is_branch_manager": False
+        "is_branch_manager": False,
+        "allow_download_report": False
     }
 
     # Administrator always has full unrestricted access to all zones and branches
     if user == "Administrator":
+        permissions["allow_download_report"] = False
+        # Check if admin has a Report Preference with download enabled
+        admin_pref = frappe.db.get_value("Report Preference", {"user": user}, "name")
+        if admin_pref:
+            admin_doc = frappe.get_doc("Report Preference", admin_pref)
+            permissions["allow_download_report"] = admin_doc.get("allow_download_report") or False
         return permissions
 
     # Check Employee record for designation & sahayog_branch
@@ -371,6 +378,7 @@ def get_user_report_permissions(user):
         permissions["pref_name"] = pref_name
         permissions["is_restricted"] = True
         permissions["all_regions"] = doc.get("all_regions") or False
+        permissions["allow_download_report"] = doc.get("allow_download_report") or False
         
         # Query child tables directly (avoids ORM caching issues)
         permissions["zones"] = frappe.db.get_all("Zone Items", filters={"parent": pref_name, "parentfield": "zone"}, pluck="zone") or []
