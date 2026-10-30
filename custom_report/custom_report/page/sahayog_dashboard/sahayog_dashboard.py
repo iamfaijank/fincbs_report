@@ -335,7 +335,12 @@ def get_user_report_permissions(user):
 
     # Administrator always has full unrestricted access to all zones and branches
     if user == "Administrator":
-        permissions["allow_download_report"] = True
+        permissions["allow_download_report"] = False
+        # Check if admin has a Report Preference with download enabled
+        admin_pref = frappe.db.get_value("Report Preference", {"user": user}, "name")
+        if admin_pref:
+            admin_doc = frappe.get_doc("Report Preference", admin_pref)
+            permissions["allow_download_report"] = admin_doc.get("allow_download_report") or False
         return permissions
 
     # Check Employee record for designation & sahayog_branch
