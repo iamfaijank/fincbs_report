@@ -34,8 +34,8 @@
 
         .container {
             width: 100%;
-            max-width: 850px;
-            margin: 40px auto;
+            max-width: 1400px;
+            margin: 30px auto;
         }
 
         .card {
@@ -65,10 +65,46 @@
             font-size: 14px;
         }
 
+        .tab-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .tab-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 35px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .tab-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(25, 103, 103, 0.25);
+        }
+
         .search-box {
             display: flex;
             gap: 10px;
-            margin-bottom: 30px;
+            margin: 0 auto 30px auto;
+            max-width: 620px;
         }
 
         input[type="text"] {
@@ -105,23 +141,56 @@
             cursor: not-allowed;
         }
 
-        .table-container {
-            overflow-x: auto;
-            margin-top: 20px;
+        .section-box {
+            margin-top: 25px;
+            background: white;
             border-radius: var(--radius);
             border: 1px solid var(--border);
+            padding: 20px;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        th, td {
-            text-align: left;
-            padding: 14px;
-            border-bottom: 1px solid var(--border);
+        .status-box {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: var(--radius);
+            background: #f8fbfb;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .status-verified { background: #d4efdf; color: #196f3d; }
+        .status-pending { background: #fcf3cf; color: #b7950b; }
+        .status-reject { background: #fadbd8; color: #922b21; }
+
+        .cif-type-pill {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #e0f2f1;
+            color: var(--primary);
         }
 
         th {
@@ -165,19 +234,38 @@
 <body>
 
 <div class="container" id="app" v-cloak>
+    <div class="header">
+        <h2>CIF Tracker</h2>
+    </div>
+
+    <!-- Retail & Corporate Tabs -->
+    <div class="tab-container">
+        <button 
+            type="button" 
+            class="tab-btn" 
+            :class="{ active: activeTab === 'RETAIL' }"
+            @click="switchTab('RETAIL')"
+        >
+            <span>🏪</span> Retail CIF
+        </button>
+        <button 
+            type="button" 
+            class="tab-btn" 
+            :class="{ active: activeTab === 'CORPORATE' }"
+            @click="switchTab('CORPORATE')"
+        >
+            <span>🏢</span> Corporate CIF
+        </button>
+    </div>
+
     {% if has_access %}
     <div class="card">
-        <div class="header">
-            <h2>CIF Tracker</h2>
-            <p>Enter the CIF ID to view assigned verification user details.</p>
-        </div>
-
         <div class="search-box">
             <input 
                 type="text" 
                 v-model="cif_id" 
                 maxlength="9"
-                placeholder="Enter CIF ID"
+                placeholder="Enter the CIF ID to view assigned verification user details"
                 @input="cif_id = cif_id.replace(/[^0-9]/g, '')"
                 @keyup.enter="fetchDetails"
             >
@@ -193,27 +281,98 @@
             {% raw %}{{ error }}{% endraw %}
         </div>
 
-        <div v-if="results.length > 0" class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>User ID</th>
-                        <th>User Name</th>
-                        <th>Branch Code</th>
-                        <th>Branch Name</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="row in results" :key="row.user_id + row.branch_code">
-                        {% raw %}
-                        <td style="font-weight: 600; color: var(--primary);">{{ row.user_id }}</td>
-                        <td>{{ row.user_name }}</td>
-                        <td>{{ row.branch_code }}</td>
-                        <td>{{ row.branch_name }}</td>
-                        {% endraw %}
-                    </tr>
-                </tbody>
-            </table>
+        <!-- Result Section: Two Tables (Up and Down) -->
+        <div v-if="results.length > 0">
+            <!-- Header Info Bar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding: 12px 16px; background: #f8fbfb; border-radius: var(--radius); border: 1px solid var(--border);">
+                <div>
+                    <span style="font-size: 13px; color: var(--text-muted);">Customer:</span>
+                    <strong style="margin-left: 6px; color: var(--primary);">{% raw %}{{ currentItem.cust_name || '-' }}{% endraw %}</strong>
+                    <span style="font-size: 13px; color: var(--text-muted); margin-left: 15px;">CIF:</span>
+                    <strong style="margin-left: 6px;">{% raw %}{{ currentItem.cif_id }}{% endraw %}</strong>
+                </div>
+                <span class="cif-type-pill">{% raw %}{{ currentItem.cif_type || 'RETAIL' }}{% endraw %}</span>
+            </div>
+
+            <!-- 1. Maker Details Table (Up) -->
+            <div class="section-box">
+                <div class="section-title">
+                    <span>👤</span> Maker Details
+                </div>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Maker ID</th>
+                                <th>Maker Name</th>
+                                <th>Branch Code</th>
+                                <th>Branch Name</th>
+                                <th>Saved Time</th>
+                                <th>Created Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% raw %}
+                            <tr>
+                                <td style="font-weight: 600; color: var(--primary);">{{ currentItem.maker_login_id || currentItem.maker_id || '-' }}</td>
+                                <td>{{ currentItem.maker_name || '-' }}</td>
+                                <td>{{ currentItem.sol_id || '-' }}</td>
+                                <td>{{ currentItem.sol_desc || '-' }}</td>
+                                <td>{{ currentItem.saved_time || '-' }}</td>
+                                <td>{{ currentItem.created_date || '-' }}</td>
+                            </tr>
+                            {% endraw %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 2. Checker Details Table (Down) -->
+            <div class="section-box" v-if="showCheckerTable">
+                <div class="section-title">
+                    <span>🛡️</span> Checker Details
+                </div>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Checker ID</th>
+                                <th>Checker Name</th>
+                                <th>Branch Code</th>
+                                <th>Branch Name</th>
+                                <th>Verified Time</th>
+                                <th>Verified Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% raw %}
+                            <tr>
+                                <td style="font-weight: 600; color: var(--primary);">{{ currentItem.checker_login_id || '-' }}</td>
+                                <td>{{ currentItem.checker_person_name || '-' }}</td>
+                                <td>{{ currentItem.sol_id || '-' }}</td>
+                                <td>{{ currentItem.sol_desc || '-' }}</td>
+                                <td>{{ currentItem.verified_time || '-' }}</td>
+                                <td>{{ currentItem.verified_date || '-' }}</td>
+                            </tr>
+                            {% endraw %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 3. Status Summary Box (Bottom) -->
+            <div class="status-box">
+                <div>
+                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 6px;">Status Of Searched CIF</div>
+                    <span :class="['status-badge', statusBadgeClass]">
+                        {% raw %}{{ displayStatusMessage }}{% endraw %}
+                    </span>
+                </div>
+                <div style="text-align: right;" v-if="currentItem.current_tray_status">
+                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Current Tray</div>
+                    <strong style="color: var(--text-main);">{% raw %}{{ currentItem.current_tray_status }}{% endraw %}</strong>
+                </div>
+            </div>
         </div>
     </div>
     {% else %}
@@ -229,15 +388,77 @@
 
 <script>
     PetiteVue.createApp({
+        activeTab: 'RETAIL',
         cif_id: '',
         results: [],
         loading: false,
         error: '',
+        switchTab(tab) {
+            this.activeTab = tab;
+            this.error = '';
+            this.results = [];
+        },
+        get currentItem() {
+            return this.results.length > 0 ? this.results[0] : {};
+        },
+        get showCheckerTable() {
+            const status = this.currentItem.exact_status || '';
+            // Only hide checker table if it is saved in maker tray / incomplete
+            if (status.includes('Saved')) {
+                return false;
+            }
+            return true;
+        },
+        get displayStatusMessage() {
+            const status = this.currentItem.exact_status || '';
+            if (status === 'Verified') {
+                return 'CIF is already Verified.';
+            } else if (status === 'Under Verification') {
+                return 'CIF is under verification from checker.';
+            } else if (status.includes('Saved')) {
+                return 'CIF is saved, Kindly Submit for verification.';
+            } else if (status === 'Rejected by Checker') {
+                return 'CIF is rejected and currently showing in makers tray, please submit for verification.';
+            } else if (status === 'Deleted / Cancelled') {
+                return 'The entered CIF is closed by checker.';
+            }
+            return status || 'CIF status unavailable.';
+        },
+        get statusBadgeClass() {
+            const status = this.currentItem.exact_status || '';
+            if (status === 'Verified') return 'status-verified';
+            if (status === 'Rejected by Checker' || status === 'Deleted / Cancelled') return 'status-reject';
+            return 'status-pending';
+        },
         async fetchDetails() {
-            if (!this.cif_id.trim()) {
+            const trimmedCif = this.cif_id.trim();
+            if (!trimmedCif) {
                 this.error = "Please enter a CIF ID";
                 this.results = [];
                 return;
+            }
+
+            // Validations based on active tab
+            if (this.activeTab === 'RETAIL') {
+                if (trimmedCif.startsWith('5')) {
+                    this.error = "This CIF belongs to Corporate. Please switch to Corporate CIF tab to search.";
+                    this.results = [];
+                    return;
+                } else if (!trimmedCif.startsWith('4')) {
+                    this.error = "Retail CIF ID must start with 4.";
+                    this.results = [];
+                    return;
+                }
+            } else if (this.activeTab === 'CORPORATE') {
+                if (trimmedCif.startsWith('4')) {
+                    this.error = "This CIF belongs to Retail. Please switch to Retail CIF tab to search.";
+                    this.results = [];
+                    return;
+                } else if (!trimmedCif.startsWith('5')) {
+                    this.error = "Corporate CIF ID must start with 5.";
+                    this.results = [];
+                    return;
+                }
             }
 
             this.loading = true;
@@ -245,7 +466,7 @@
             this.results = [];
 
             try {
-                const response = await fetch(`/api/method/custom_report.www.cif_tracker.get_cif_details?cif_id=${encodeURIComponent(this.cif_id)}`);
+                const response = await fetch(`/api/method/custom_report.www.cif_tracker.get_cif_details?cif_id=${encodeURIComponent(trimmedCif)}`);
                 const res = await response.json();
                 
                 if (res.message && res.message.success) {
