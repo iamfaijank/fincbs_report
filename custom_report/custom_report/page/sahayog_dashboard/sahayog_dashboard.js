@@ -11223,7 +11223,8 @@ class DrishtiDashboard {
 		});
 
 		const downloadAllowedReports = ["rd_smbg_pending", "gl_wise_ch_report", "daily_account_opening", "bucket_wise_account_mis", "maturity_tracker", "rm_wise"];
-		this.mis_container.find("#mis-download-btn").toggle(downloadAllowedReports.includes(activeReportId));
+		const canDownload = downloadAllowedReports.includes(activeReportId) && (!!this.permissions && this.permissions.allow_download_report);
+		this.mis_container.find("#mis-download-btn").toggle(canDownload);
 
 		this.mis_container.on("click", ".mis-report-tab-btn:not(.mis-dropdown-toggle)", function () {
 			self.mis_container.find(".mis-report-tab-btn.active, .mis-dropdown-toggle.active, .mis-dropdown-item.active").removeClass("active");
@@ -11232,7 +11233,8 @@ class DrishtiDashboard {
 			self.state.selectedMisReport = reportId;
 			self.updateUrlFromState();
 			self.renderMisReport(reportId);
-			self.mis_container.find("#mis-download-btn").toggle(downloadAllowedReports.includes(reportId));
+			const canDownloadTab = downloadAllowedReports.includes(reportId) && (!!self.permissions && self.permissions.allow_download_report);
+			self.mis_container.find("#mis-download-btn").toggle(canDownloadTab);
 		});
 
 		this.mis_container.on("click", ".mis-dropdown-toggle", function (e) {
@@ -11254,7 +11256,8 @@ class DrishtiDashboard {
 			self.state.selectedMisReport = reportId;
 			self.updateUrlFromState();
 			self.renderMisReport(reportId);
-			self.mis_container.find("#mis-download-btn").toggle(downloadAllowedReports.includes(reportId));
+			const canDownloadDropdown = downloadAllowedReports.includes(reportId) && (!!self.permissions && self.permissions.allow_download_report);
+			self.mis_container.find("#mis-download-btn").toggle(canDownloadDropdown);
 		});
 
 		$(document).on("click", function () {
