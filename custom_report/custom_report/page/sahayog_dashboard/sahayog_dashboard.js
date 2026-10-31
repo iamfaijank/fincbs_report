@@ -16118,9 +16118,8 @@ class DrishtiDashboard {
 					return t;
 				});
 				const maxCount = Math.max(...totalCounts, 1);
-				const circleAbove = maxCount * 0.05; // gap between bar top and first circle
-				const circleGap = maxCount * 0.05;   // gap between the two circles
-				const yMax = maxCount * 1.35; // headroom for the two circles above the bars
+				const circleAbove = maxCount * 0.06; // gap between bar top and the circles
+				const yMax = maxCount * 1.28; // headroom for the circles above the bars
 
 				// Bar 2: Branch achievement stacked by category (same height ratio as Bar 1, showing achievement sum)
 				const achSeries = categories.map((cat) => {
@@ -16168,16 +16167,17 @@ class DrishtiDashboard {
 				});
 
 				// Two badge circles, one above each bar, showing that bar's stack sum.
-				//  Circle 1 (branch-count bar) -> white fill, black text
-				//  Circle 2 (achievement bar)   -> teal fill,  black text
-				// Both bars are the same height, so the two circles are stacked
-				// vertically above the bars (count circle lower, achievement circle higher).
+				//  Circle 1 (branch-count bar) -> white fill, black text, on the LEFT
+				//  Circle 2 (achievement bar)   -> teal fill,  black text, on the RIGHT
+				// Both bars share the same category x-position, so the circles are
+				// offset left/right with symbolOffset to sit above their own bar.
 				const countTotalCircle = {
 					name: "Total Branch Count",
 					type: "scatter",
 					xAxisIndex: 0,
 					yAxisIndex: 0,
 					symbol: "circle",
+					symbolOffset: [-12, 0],
 					symbolSize: 32,
 					zIndex: 1000,
 					itemStyle: { color: "#ffffff", borderColor: "#0f172a", borderWidth: 2, shadowBlur: 6, shadowColor: "rgba(0,0,0,0.35)" },
@@ -16190,11 +16190,12 @@ class DrishtiDashboard {
 					xAxisIndex: 0,
 					yAxisIndex: 0,
 					symbol: "circle",
+					symbolOffset: [12, 0],
 					symbolSize: 36,
 					zIndex: 1000,
 					itemStyle: { color: "#14b8a6", borderColor: "#0f766e", borderWidth: 2, shadowBlur: 6, shadowColor: "rgba(0,0,0,0.35)" },
 					label: { show: true, position: "inside", color: "#0f172a", fontWeight: 900, fontSize: 11, formatter: (p) => fmtAchLabel(totalAchievements[p.dataIndex] || 0) },
-					data: monthDisplays.map((m, i) => ({ value: [m, totalCounts[i] + circleAbove + circleGap] })),
+					data: monthDisplays.map((m, i) => ({ value: [m, totalCounts[i] + circleAbove] })),
 				};
 				const series = [...countSeries, ...achSeries, countTotalCircle, achTotalCircle];
 
