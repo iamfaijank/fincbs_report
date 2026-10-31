@@ -1,6 +1,7 @@
 import os
 import time
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import openpyxl
 from tqdm import tqdm
 import frappe
@@ -272,13 +273,162 @@ def run_calculation(details, imported_transactions):
 	}
 
 
+def process_single_account(acc):
+	try:
+		prefix = acc[:4]
+		scheme_code = acc[4:8]
+		netwin_ac = acc[8:]
+
+		details = get_account_details(foracid=acc)
+		if not details or not details.get("success"):
+			err = details.get("error") if details else "Failed to fetch Finacle details"
+			return {
+				"name": f"IL-{acc}",
+				"account_number": acc,
+				"status": "Failed",
+				"opening_date": None,
+				"closing_date": None,
+				"principle_amount": 0.0,
+				"ineterest_calculated": 0.0,
+				"maturity_amount": 0.0,
+				"final_net_settlement": 0.0,
+				"error_message": str(err)[:500]
+			}
+
+		imported_txns = []
+		if scheme_code in ["0010", "1540", "0040"]:
+			b_res = get_branch_code(branch_prefix=prefix)
+			branch_code = b_res.get("branch_code") if b_res.get("success") else ""
+			gl_code = "B101" if scheme_code == "0010" else ("RD" if scheme_code == "1540" else ("B104" if scheme_code == "0040" else ""))
+			if branch_code and gl_code and netwin_ac:
+				try:
+					opn_val = (details.get("acct_opn_date") or "01/01/1990").split("/")
+					start_iso = f"{opn_val[2]}-{opn_val[1]}-{opn_val[0]}" if len(opn_val) == 3 else "1990-01-01"
+					frappe.call("custom_report.api.netwin_statement.download_netwin_statement",
+								branch_code=branch_code, ac_code=gl_code, ac_no=netwin_ac,
+								start_date=start_iso, end_date="2099-12-31", export_format="csv")
+					csv_content = frappe.local.response.get("filecontent", "")
+					if csv_content:
+						lines = [l.strip() for l in csv_content.splitlines() if l.strip()]
+						hdr_idx = -1
+						for li, l in enumerate(lines):
+							if l.lower().startswith("date"):
+								hdr_idx = li
+								break
+						if hdr_idx != -1:
+							h_line = [h.strip().lower() for h in lines[hdr_idx].split(",")]
+							d_idx = next((i for i, h in enumerate(h_line) if "date" in h), -1)
+							cr_idx = next((i for i, h in enumerate(h_line) if "credit" in h or h == "cr"), -1)
+							dr_idx = next((i for i, h in enumerate(h_line) if "debit" in h or h == "dr"), -1)
+							desc_idx = next((i for i, h in enumerate(h_line) if "desc" in h or "particular" in h), -1)
+							for line in lines[hdr_idx + 1:]:
+								cols = [c.strip() for c in line.split(",")]
+								if len(cols) > max(d_idx, cr_idx, dr_idx):
+									cr_val = float(cols[cr_idx].replace(",", "") or 0) if cr_idx != -1 and cols[cr_idx] else 0
+									dr_val = float(cols[dr_idx].replace(",", "") or 0) if dr_idx != -1 and cols[dr_idx] else 0
+									p_desc = cols[desc_idx] if desc_idx != -1 else "Netwin Import"
+									if cr_val > 0:
+										imported_txns.append({"date": cols[d_idx], "amount": cr_val, "type": "C", "particular": p_desc, "imported_from_csv": True, "is_exceptional_reversal": False})
+									elif dr_val > 0:
+										imported_txns.append({"date": cols[d_idx], "amount": dr_val, "type": "D", "particular": p_desc, "imported_from_csv": True, "is_exceptional_reversal": True})
+				except Exception:
+					pass
+
+		calc = run_calculation(details, imported_txns)
+		if calc:
+			return {
+				"name": f"IL-{acc}",
+				"account_number": acc,
+				"status": "Success",
+				"opening_date": calc.get("opening_date"),
+				"closing_date": calc.get("closing_date"),
+				"principle_amount": calc.get("principal", 0.0),
+				"ineterest_calculated": calc.get("interest", 0.0),
+				"maturity_amount": calc.get("finacle_maturity_amount", 0.0),
+				"final_net_settlement": calc.get("final_net_settlement", 0.0),
+				"error_message": None
+			}
+		return {
+			"name": f"IL-{acc}",
+			"account_number": acc,
+			"status": "Failed",
+			"opening_date": None,
+			"closing_date": None,
+			"principle_amount": 0.0,
+			"ineterest_calculated": 0.0,
+			"maturity_amount": 0.0,
+			"final_net_settlement": 0.0,
+			"error_message": "Calculation returned empty result"
+		}
+	except Exception as e:
+		return {
+			"name": f"IL-{acc}",
+			"account_number": acc,
+			"status": "Failed",
+			"opening_date": None,
+			"closing_date": None,
+			"principle_amount": 0.0,
+			"ineterest_calculated": 0.0,
+			"maturity_amount": 0.0,
+			"final_net_settlement": 0.0,
+			"error_message": str(e)[:500]
+		}
+
+
+def bulk_insert_logs(records):
+	if not records:
+		return
+	now = now_datetime()
+	row_placeholders = []
+	flat_values = []
+	for r in records:
+		row_placeholders.append("(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
+		flat_values.extend([
+			r["name"],
+			now,
+			now,
+			"Administrator",
+			"Administrator",
+			0,
+			0,
+			r["account_number"],
+			r["status"],
+			r["opening_date"],
+			r["closing_date"],
+			r["principle_amount"],
+			r["ineterest_calculated"],
+			r["maturity_amount"],
+			r["final_net_settlement"],
+			r["error_message"]
+		])
+
+	sql = f"""
+		INSERT INTO `tabInterest Log`
+		(`name`, `creation`, `modified`, `modified_by`, `owner`, `docstatus`, `idx`,
+		 `account_number`, `status`, `opening_date`, `closing_date`, `principle_amount`,
+		 `ineterest_calculated`, `maturity_amount`, `final_net_settlement`, `error_message`)
+		VALUES {', '.join(row_placeholders)}
+		ON DUPLICATE KEY UPDATE
+		`modified`=VALUES(`modified`),
+		`status`=VALUES(`status`),
+		`opening_date`=VALUES(`opening_date`),
+		`closing_date`=VALUES(`closing_date`),
+		`principle_amount`=VALUES(`principle_amount`),
+		`ineterest_calculated`=VALUES(`ineterest_calculated`),
+		`maturity_amount`=VALUES(`maturity_amount`),
+		`final_net_settlement`=VALUES(`final_net_settlement`),
+		`error_message`=VALUES(`error_message`)
+	"""
+	frappe.db.sql(sql, tuple(flat_values))
+	frappe.db.commit()
+
+
 def resolve_file_path(file_path=None):
 	if file_path and os.path.exists(file_path):
 		return file_path
 
 	attached_file = frappe.db.get_single_value("Interest Settings", "interest_log_file")
 	if not attached_file:
-		# Fallback to local default path if available
 		default_path = "/home/talib/Downloads/TD_Migrated.xlsx"
 		if os.path.exists(default_path):
 			return default_path
@@ -297,21 +447,30 @@ def resolve_file_path(file_path=None):
 	raise FileNotFoundError(f"File not found on system: {attached_file}")
 
 
-def sync_interest_logs(file_path=None, batch_size=50, limit=None):
+def _init_thread_worker(site_name="sahayog.com"):
+	frappe.init(site=site_name)
+	frappe.connect()
+	frappe.set_user("Administrator")
+
+
+def sync_interest_logs(file_path=None, batch_size=50, workers=8, limit=None):
 	"""
 	Execute with:
 	bench --site sahayog.com execute custom_report.services.interest_sync.sync_interest_logs
+	Optional:
+	bench --site sahayog.com execute custom_report.services.interest_sync.sync_interest_logs --kwargs "{'workers': 8, 'batch_size': 50}"
 	"""
+	site_name = frappe.local.site if getattr(frappe, "local", None) and getattr(frappe.local, "site", None) else "sahayog.com"
 	actual_file = resolve_file_path(file_path)
-	print(f"\n[INFO] Starting Interest Sync using file: {actual_file}")
+	print(f"\n[INFO] Starting Fast Multithreaded Interest Sync using file: {actual_file} (Workers: {workers})")
 
 	wb = openpyxl.load_workbook(actual_file, read_only=True)
 	sheet = wb.active
 
-	# Fetch existing accounts to avoid redundant processing
-	existing = set(frappe.get_all("Interest Log", fields=["account_number"], as_list=True))
+	# Pre-fetch existing completed accounts
+	existing = set(frappe.get_all("Interest Log", filters={"status": "Success"}, fields=["account_number"], as_list=True))
 	processed_accounts = {str(r[0]).strip() for r in existing if r and r[0]}
-	print(f"[INFO] Existing records already in Interest Log: {len(processed_accounts)}")
+	print(f"[INFO] Existing successful records already in Interest Log: {len(processed_accounts)}")
 
 	total_processed = 0
 	success_count = 0
@@ -324,133 +483,80 @@ def sync_interest_logs(file_path=None, batch_size=50, limit=None):
 		print("[ERROR] Excel file is empty.")
 		return
 
-	# Header map
 	header_map = {str(h).strip().lower(): idx for idx, h in enumerate(headers) if h is not None}
 	acc_idx = header_map.get("account_number", 0)
 
-	start_time = time.time()
 	total_rows = int(limit) if limit else ((sheet.max_row - 1) if sheet.max_row else None)
 	pbar = tqdm(total=total_rows, desc="Calculating Interest", unit="rec", dynamic_ncols=True)
 
+	pending_batch = []
+	buffer_records = []
+
+	def flush_buffer():
+		nonlocal buffer_records
+		if buffer_records:
+			bulk_insert_logs(buffer_records)
+			buffer_records = []
+
 	try:
-		for row_idx, row in enumerate(rows, start=1):
-			if limit and total_processed >= int(limit):
-				break
+		with ThreadPoolExecutor(max_workers=int(workers), initializer=_init_thread_worker, initargs=(site_name,)) as executor:
+			for row in rows:
+				if limit and total_processed >= int(limit):
+					break
 
-			raw_acc = row[acc_idx] if len(row) > acc_idx else None
-			if not raw_acc:
-				continue
+				raw_acc = row[acc_idx] if len(row) > acc_idx else None
+				if not raw_acc:
+					continue
 
-			acc = str(raw_acc).split(".")[0].strip()
-			if not acc:
-				continue
+				acc = str(raw_acc).split(".")[0].strip()
+				if not acc:
+					continue
 
-			if acc in processed_accounts:
-				skipped_count += 1
-				pbar.update(1)
-				pbar.set_postfix({"ok": success_count, "fail": failed_count, "skip": skipped_count})
-				continue
+				if acc in processed_accounts:
+					skipped_count += 1
+					pbar.update(1)
+					pbar.set_postfix({"ok": success_count, "fail": failed_count, "skip": skipped_count})
+					continue
 
-			try:
-				prefix = acc[:4]
-				scheme_code = acc[4:8]
-				netwin_ac = acc[8:]
+				pending_batch.append(acc)
 
-				details = get_account_details(foracid=acc)
-				if not details or not details.get("success"):
-					err_msg = details.get("error") if details else "Failed to fetch Finacle details"
-					frappe.get_doc({
-						"doctype": "Interest Log",
-						"account_number": acc,
-						"status": "Failed",
-						"error_message": str(err_msg)[:500]
-					}).insert(ignore_permissions=True)
-					failed_count += 1
-				else:
-					imported_txns = []
-					if scheme_code in ["0010", "1540", "0040"]:
-						b_res = get_branch_code(branch_prefix=prefix)
-						branch_code = b_res.get("branch_code") if b_res.get("success") else ""
-						gl_code = "B101" if scheme_code == "0010" else ("RD" if scheme_code == "1540" else ("B104" if scheme_code == "0040" else ""))
-						if branch_code and gl_code and netwin_ac:
-							try:
-								opn_val = (details.get("acct_opn_date") or "01/01/1990").split("/")
-								start_iso = f"{opn_val[2]}-{opn_val[1]}-{opn_val[0]}" if len(opn_val) == 3 else "1990-01-01"
-								frappe.call("custom_report.api.netwin_statement.download_netwin_statement",
-											branch_code=branch_code, ac_code=gl_code, ac_no=netwin_ac,
-											start_date=start_iso, end_date="2099-12-31", export_format="csv")
-								csv_content = frappe.local.response.get("filecontent", "")
-								if csv_content:
-									lines = [l.strip() for l in csv_content.splitlines() if l.strip()]
-									hdr_idx = -1
-									for li, l in enumerate(lines):
-										if l.lower().startswith("date"):
-											hdr_idx = li
-											break
-									if hdr_idx != -1:
-										h_line = [h.strip().lower() for h in lines[hdr_idx].split(",")]
-										d_idx = next((i for i, h in enumerate(h_line) if "date" in h), -1)
-										cr_idx = next((i for i, h in enumerate(h_line) if "credit" in h or h == "cr"), -1)
-										dr_idx = next((i for i, h in enumerate(h_line) if "debit" in h or h == "dr"), -1)
-										desc_idx = next((i for i, h in enumerate(h_line) if "desc" in h or "particular" in h), -1)
-										for line in lines[hdr_idx + 1:]:
-											cols = [c.strip() for c in line.split(",")]
-											if len(cols) > max(d_idx, cr_idx, dr_idx):
-												cr_val = float(cols[cr_idx].replace(",", "") or 0) if cr_idx != -1 and cols[cr_idx] else 0
-												dr_val = float(cols[dr_idx].replace(",", "") or 0) if dr_idx != -1 and cols[dr_idx] else 0
-												p_desc = cols[desc_idx] if desc_idx != -1 else "Netwin Import"
-												if cr_val > 0:
-													imported_txns.append({"date": cols[d_idx], "amount": cr_val, "type": "C", "particular": p_desc, "imported_from_csv": True, "is_exceptional_reversal": False})
-												elif dr_val > 0:
-													imported_txns.append({"date": cols[d_idx], "amount": dr_val, "type": "D", "particular": p_desc, "imported_from_csv": True, "is_exceptional_reversal": True})
-							except Exception:
-								pass
+				if len(pending_batch) >= int(batch_size):
+					futures = {executor.submit(process_single_account, a): a for a in pending_batch}
+					for fut in as_completed(futures):
+						res = fut.result()
+						buffer_records.append(res)
+						if res["status"] == "Success":
+							success_count += 1
+						else:
+							failed_count += 1
+						total_processed += 1
+						pbar.update(1)
+						pbar.set_postfix({"ok": success_count, "fail": failed_count, "skip": skipped_count})
 
-					calc = run_calculation(details, imported_txns)
-					if calc:
-						frappe.get_doc({
-							"doctype": "Interest Log",
-							"account_number": acc,
-							"status": "Success",
-							"opening_date": calc.get("opening_date"),
-							"closing_date": calc.get("closing_date"),
-							"principle_amount": calc.get("principal", 0.0),
-							"ineterest_calculated": calc.get("interest", 0.0),
-							"maturity_amount": calc.get("finacle_maturity_amount", 0.0),
-							"final_net_settlement": calc.get("final_net_settlement", 0.0)
-						}).insert(ignore_permissions=True)
+					flush_buffer()
+					pending_batch = []
+
+			# Process remainder batch
+			if pending_batch:
+				futures = {executor.submit(process_single_account, a): a for a in pending_batch}
+				for fut in as_completed(futures):
+					res = fut.result()
+					buffer_records.append(res)
+					if res["status"] == "Success":
 						success_count += 1
 					else:
-						frappe.get_doc({
-							"doctype": "Interest Log",
-							"account_number": acc,
-							"status": "Failed",
-							"error_message": "Calculation logic returned empty result"
-						}).insert(ignore_permissions=True)
 						failed_count += 1
+					total_processed += 1
+					pbar.update(1)
+					pbar.set_postfix({"ok": success_count, "fail": failed_count, "skip": skipped_count})
 
-			except Exception as e:
-				frappe.get_doc({
-					"doctype": "Interest Log",
-					"account_number": acc,
-					"status": "Failed",
-					"error_message": str(e)[:500]
-				}).insert(ignore_permissions=True)
-				failed_count += 1
-
-			processed_accounts.add(acc)
-			total_processed += 1
-			pbar.update(1)
-			pbar.set_postfix({"ok": success_count, "fail": failed_count, "skip": skipped_count})
-
-			# Commit in batches
-			if total_processed % batch_size == 0:
-				frappe.db.commit()
+				flush_buffer()
 
 	except (KeyboardInterrupt, SystemExit):
-		print("\n[STOP] Process stopped gracefully by user. Saving completed batch...")
+		print("\n[STOP] Gracefully stopping by user. Flushing active buffer...")
+		flush_buffer()
 	finally:
-		frappe.db.commit()
+		flush_buffer()
 		pbar.close()
 		wb.close()
-		print(f"\n[DONE] Summary: Processed: {total_processed} | Success: {success_count} | Failed: {failed_count} | Skipped: {skipped_count}")
+		print(f"\n[DONE] Finished! Total Processed: {total_processed} | Success: {success_count} | Failed: {failed_count} | Skipped: {skipped_count}")
