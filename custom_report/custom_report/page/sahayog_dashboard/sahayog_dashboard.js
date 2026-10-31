@@ -79,6 +79,17 @@ const getElapsedWorkingDays = (year, monthIndex, throughDay) => {
 	return workingDays;
 };
 
+// Returns the last date of the month (YYYY-MM-DD) for a given date or "YYYY-MM" string.
+const getDrishtiLastDateOfMonth = (dateOrMonthStr) => {
+	if (!dateOrMonthStr) return "";
+	const parts = String(dateOrMonthStr).trim().split("-").map(Number);
+	const year = parts[0];
+	const month = parts[1];
+	if (!year || !month || month < 1 || month > 12) return "";
+	const lastDay = new Date(year, month, 0).getDate();
+	return `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+};
+
 frappe.pages["sahayog_dashboard"].on_page_load = function (wrapper) {
 	// Drop per-tab CASA AVG page cache on every load/refresh so Report Preference
 	// permission changes are reflected immediately (sessionStorage survives reloads).
@@ -8248,6 +8259,10 @@ class DrishtiDashboard {
 				render: function (container, dashboardInstance) {
 					const self = this;
 					if (!self.selectedMisZones) self.selectedMisZones = [];
+					if (self.plDate) {
+						self.plDate = getDrishtiLastDateOfMonth(self.plDate);
+					}
+					const monthVal = self.plDate ? self.plDate.slice(0, 7) : "";
 					const fmt = (n) => {
 						const v = Number(n) || 0;
 						return Math.abs(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -8259,8 +8274,13 @@ class DrishtiDashboard {
 							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 40%; background: #e2e8f0; border-radius: 4px; margin-left: auto;"></div></td>
 						</tr>`).join("");
 					container.html(`
-						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px;">
-							<input type="date" id="pl-date-filter" value="${self.plDate || ""}" style="padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; font-weight: 600; color: #1b263b; background: white; cursor: pointer; outline: none;">
+						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">
+							<div style="display: inline-flex; align-items: center; gap: 6px; background: white; border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px 8px;">
+								<span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Month:</span>
+								<input type="month" id="pl-month-filter" value="${monthVal}" style="border: none; font-size: 12px; font-weight: 600; color: #1b263b; background: transparent; cursor: pointer; outline: none;">
+								<span id="pl-date-badge" style="font-size: 11px; font-weight: 600; color: #0f766e; background: #ccfbf1; padding: 1px 6px; border-radius: 3px; white-space: nowrap;" title="Data is shown for the last date of the selected month">${self.plDate ? "Last Date: " + self.plDate : ""}</span>
+							</div>
+							<input type="hidden" id="pl-date-filter" value="${self.plDate || ""}">
 							<input type="text" id="pl-search" placeholder="Search branch, SOL ID, or sub-schedule" value="${self.plSearch || ""}" style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; width: 260px; outline: none;">
 							<button type="button" id="pl-refetch" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">⟳ Refetch</button>
 							<button type="button" id="pl-expand-all" style="background: #e2e8f0; color: #475569; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">▼ Expand All</button>
@@ -8553,8 +8573,18 @@ class DrishtiDashboard {
 						self.renderZoneFilterTags(container, dashboardInstance);
 						fetchData();
 					});
+					container.off("change", "#pl-month-filter").on("change", "#pl-month-filter", function () {
+						const mVal = $(this).val();
+						self.plDate = mVal ? getDrishtiLastDateOfMonth(mVal) : "";
+						container.find("#pl-date-filter").val(self.plDate);
+						container.find("#pl-date-badge").text(self.plDate ? ("Last Date: " + self.plDate) : "");
+						fetchData();
+					});
 					container.off("change", "#pl-date-filter").on("change", "#pl-date-filter", function () {
-						self.plDate = $(this).val();
+						self.plDate = getDrishtiLastDateOfMonth($(this).val());
+						const mVal = self.plDate ? self.plDate.slice(0, 7) : "";
+						container.find("#pl-month-filter").val(mVal);
+						container.find("#pl-date-badge").text(self.plDate ? ("Last Date: " + self.plDate) : "");
 						fetchData();
 					});
 					let plSearchTimeout = null;
@@ -8578,7 +8608,10 @@ class DrishtiDashboard {
 						}
 					});
 					container.off("click", "#pl-refetch").on("click", "#pl-refetch", function () {
-						self.plDate = container.find("#pl-date-filter").val();
+						const mVal = container.find("#pl-month-filter").val();
+						self.plDate = mVal ? getDrishtiLastDateOfMonth(mVal) : getDrishtiLastDateOfMonth(container.find("#pl-date-filter").val());
+						container.find("#pl-date-filter").val(self.plDate);
+						container.find("#pl-date-badge").text(self.plDate ? ("Last Date: " + self.plDate) : "");
 						self.selectedMisZones = [];
 						self.plCache = {}; self.plCombinedCache = {};
 						self.labelCache = {};
@@ -8807,12 +8840,21 @@ class DrishtiDashboard {
 						frappe.call({
 							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_latest_pl_date",
 							callback: function (r) {
-								self.plDate = r.message || frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+								const rawDate = r.message || frappe.datetime.add_days(frappe.datetime.get_today(), -1);
+								self.plDate = getDrishtiLastDateOfMonth(rawDate);
+								const mVal = self.plDate ? self.plDate.slice(0, 7) : "";
+								container.find("#pl-month-filter").val(mVal);
 								container.find("#pl-date-filter").val(self.plDate);
+								container.find("#pl-date-badge").text(self.plDate ? ("Last Date: " + self.plDate) : "");
 								fetchData();
 							},
 						});
 					} else {
+						self.plDate = getDrishtiLastDateOfMonth(self.plDate);
+						const mVal = self.plDate ? self.plDate.slice(0, 7) : "";
+						container.find("#pl-month-filter").val(mVal);
+						container.find("#pl-date-filter").val(self.plDate);
+						container.find("#pl-date-badge").text(self.plDate ? ("Last Date: " + self.plDate) : "");
 						fetchData();
 					}
 				}
