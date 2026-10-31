@@ -16025,8 +16025,8 @@ class DrishtiDashboard {
 				if (monthsList.length > 0) {
 					const fromMonth = monthsList[0].display || monthsList[0].key;
 					const toMonth = monthsList[monthsList.length - 1].display || monthsList[monthsList.length - 1].key;
-					this.page.main.find("#category-chart-period-text").text(
-						`Branch movement across performance categories from ${fromMonth} to ${toMonth}`
+					this.page.main.find("#category-chart-period-text").html(
+						`Branch movement across performance categories from ${fromMonth} to ${toMonth} &bull; <span style="font-weight: 700; color: #334155;">Left Bar:</span> Branch Count &bull; <span style="font-weight: 700; color: #334155;">Right Bar:</span> Achievement`
 					);
 				}
 
@@ -16063,13 +16063,24 @@ class DrishtiDashboard {
 					}
 				}
 
-				const series = categories.map((cat) => {
+				const fmtAchLabel = (val) => {
+					if (!val || val <= 0) return "";
+					if (val >= 1e7) return "₹" + (val / 1e7).toFixed(1) + "Cr";
+					if (val >= 1e5) return "₹" + (val / 1e5).toFixed(0) + "L";
+					if (val >= 1e3) return "₹" + (val / 1e3).toFixed(0) + "k";
+					return "₹" + Math.round(val);
+				};
+
+				// Bar 1: Branch count stacked by category
+				const countSeries = categories.map((cat) => {
 					const cfg = categoryConfig[cat];
 					return {
 						name: cat,
 						type: "bar",
-						stack: "total",
-						barWidth: 46,
+						stack: "branch_count",
+						yAxisIndex: 0,
+						barWidth: 26,
+						barGap: "6%",
 						emphasis: {
 							focus: "series",
 							itemStyle: { color: cfg.color, borderColor: cfg.border, borderWidth: 2, shadowBlur: 8, shadowColor: "rgba(0,0,0,0.3)" },
@@ -16084,7 +16095,7 @@ class DrishtiDashboard {
 							position: "inside",
 							formatter: (params) => (params.value > 0 ? params.value : ""),
 							color: cfg.text,
-							fontSize: 12,
+							fontSize: 11,
 							fontWeight: 800
 						},
 						itemStyle: { color: cfg.color, borderColor: cfg.border, borderWidth: 1.5, borderRadius: 2 },
@@ -16094,6 +16105,53 @@ class DrishtiDashboard {
 						}))
 					};
 				});
+
+				// Bar 2: Branch achievement stacked by category (same height ratio as Bar 1, showing achievement sum)
+				const achSeries = categories.map((cat) => {
+					const cfg = categoryConfig[cat];
+					return {
+						name: cat,
+						type: "bar",
+						stack: "branch_achievement",
+						yAxisIndex: 0,
+						barWidth: 26,
+						barGap: "6%",
+						emphasis: {
+							focus: "series",
+							itemStyle: { color: cfg.color, borderColor: cfg.border, borderWidth: 2, shadowBlur: 8, shadowColor: "rgba(0,0,0,0.3)" },
+							label: { color: cfg.text, fontWeight: 900 }
+						},
+						blur: {
+							itemStyle: { opacity: 0.15, borderColor: "rgba(203,213,225,0.3)" },
+							label: { show: false }
+						},
+						label: {
+							show: true,
+							position: "inside",
+							formatter: (params) => {
+								const ach = params.data?.achievement || 0;
+								return fmtAchLabel(ach);
+							},
+							color: cfg.text,
+							fontSize: 9.5,
+							fontWeight: 800
+						},
+						itemStyle: {
+							color: cfg.color,
+							borderColor: cfg.border,
+							borderWidth: 1.5,
+							borderType: "dashed",
+							borderRadius: 2
+						},
+						data: counts[cat].map((countVal, idx) => ({
+							value: countVal,
+							achievement: revenues[cat][idx],
+							itemStyle: { borderWidth: countVal === 0 ? 0 : 1.5, opacity: countVal === 0 ? 0 : 1 }
+						}))
+					};
+				});
+
+				const series = [...countSeries, ...achSeries];
 
 				const buildLegendData = (activeName = null) => {
 					return categories.map((cat) => {
@@ -16117,21 +16175,22 @@ class DrishtiDashboard {
 						padding: [10, 14],
 						textStyle: { color: "#ffffff", fontSize: 12 },
 						formatter: (params) => {
+							if (!params || !params.length) return "";
+							const dataIdx = params[0].dataIndex;
 							let total = 0;
 							let totalRev = 0;
 							let html = `<div style="font-weight:700;font-size:13px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:4px;">${params[0]?.axisValue || ""}</div>`;
-							html += `<div style="display:flex;justify-content:space-between;gap:16px;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:2px;"><span style="flex:1;">Category</span><span style="width:80px;text-align:right;">Branches</span><span style="width:110px;text-align:right;">Revenue</span></div>`;
-							const sorted = [...params].sort((a, b) => categories.indexOf(a.seriesName) - categories.indexOf(b.seriesName));
-							sorted.forEach((item) => {
-								const val = item.value || 0;
-								const rev = (revenues[item.seriesName] && revenues[item.seriesName][item.dataIndex]) || 0;
+							html += `<div style="display:flex;justify-content:space-between;gap:16px;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:2px;"><span style="flex:1;">Category</span><span style="width:80px;text-align:right;">Branches</span><span style="width:110px;text-align:right;">Achievement</span></div>`;
+							categories.forEach((cat) => {
+								const val = (counts[cat] && counts[cat][dataIdx]) || 0;
+								const rev = (revenues[cat] && revenues[cat][dataIdx]) || 0;
 								total += val;
 								totalRev += rev;
-								const dotColor = categoryConfig[item.seriesName]?.legendColor || "#64748B";
+								const dotColor = categoryConfig[cat]?.legendColor || "#64748B";
 								html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin:3px 0;">
 									<span style="display:flex;align-items:center;gap:8px;flex:1;">
 										<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${dotColor};box-shadow:0 0 4px ${dotColor};"></span>
-										<span style="font-weight:500;">${item.seriesName}</span>
+										<span style="font-weight:500;">${cat}</span>
 									</span>
 									<strong style="color:#ffffff;font-size:13px;width:80px;text-align:right;">${val}</strong>
 									<strong style="color:#ffffff;font-size:13px;width:110px;text-align:right;white-space:nowrap;">₹${this.formatCurrency(rev)}</strong>
@@ -16142,7 +16201,7 @@ class DrishtiDashboard {
 						}
 					},
 					legend: { bottom: 4, data: buildLegendData(), icon: "circle", itemWidth: 10, itemHeight: 10 },
-					grid: { left: "4%", right: "4%", top: "6%", bottom: "12%", containLabel: true },
+					grid: { left: "4%", right: "4%", top: "8%", bottom: "12%", containLabel: true },
 					xAxis: {
 						type: "category",
 						data: monthDisplays,
@@ -16155,7 +16214,7 @@ class DrishtiDashboard {
 					},
 					yAxis: {
 						type: "value",
-						name: "Sum of Branch Count",
+						name: "Branch Count",
 						nameTextStyle: { color: "#64748b", fontSize: 12, fontWeight: 600 },
 						axisLine: { show: false },
 						splitLine: { lineStyle: { color: "#f1f5f9" } },
