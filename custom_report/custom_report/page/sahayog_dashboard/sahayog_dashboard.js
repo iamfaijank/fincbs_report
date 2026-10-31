@@ -16133,11 +16133,11 @@ class DrishtiDashboard {
 						barGap: "6%",
 						emphasis: {
 							focus: "series",
-							itemStyle: { color: cfg.color, borderColor: cfg.border, borderWidth: 2, shadowBlur: 8, shadowColor: "rgba(0,0,0,0.3)" },
+							itemStyle: { color: cfg.color, borderColor: "#14b8a6", borderWidth: 2, shadowBlur: 8, shadowColor: "rgba(0,0,0,0.3)" },
 							label: { color: cfg.text, fontWeight: 900 }
 						},
 						blur: {
-							itemStyle: { opacity: 0.15, borderColor: "rgba(203,213,225,0.3)" },
+							itemStyle: { opacity: 0.15, borderColor: "rgba(20,184,166,0.3)" },
 							label: { show: false }
 						},
 						label: {
@@ -16153,7 +16153,7 @@ class DrishtiDashboard {
 						},
 						itemStyle: {
 							color: cfg.color,
-							borderColor: cfg.border,
+							borderColor: "#14b8a6",
 							borderWidth: 1.5,
 							borderType: "dashed",
 							borderRadius: 2
