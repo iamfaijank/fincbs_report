@@ -16193,7 +16193,7 @@ class DrishtiDashboard {
 					symbolOffset: [12, 0],
 					symbolSize: 36,
 					zIndex: 1000,
-					itemStyle: { color: "#14b8a6", borderColor: "#0f766e", borderWidth: 2, shadowBlur: 6, shadowColor: "rgba(0,0,0,0.35)" },
+					itemStyle: { color: "#14b8a6", borderColor: "#14b8a6", borderWidth: 2, shadowBlur: 6, shadowColor: "rgba(0,0,0,0.35)" },
 					label: { show: true, position: "inside", color: "#0f172a", fontWeight: 900, fontSize: 11, formatter: (p) => fmtAchLabel(totalAchievements[p.dataIndex] || 0) },
 					data: monthDisplays.map((m, i) => ({ value: [m, totalCounts[i] + circleAbove] })),
 				};
