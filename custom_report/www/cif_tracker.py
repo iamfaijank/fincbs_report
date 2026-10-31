@@ -171,7 +171,6 @@ def get_cif_details(cif_id):
                    ON u_appr.personid = p_appr.personid
             WHERE c.del_flg = 'N'
               AND TRIM(c.cif_id) = %s
-              AND c.rcre_time::DATE = CURRENT_DATE
             ORDER BY c.rcre_time DESC;
         """
         cursor.execute(query, (str(cif_id).strip(),))
