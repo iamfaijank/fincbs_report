@@ -16026,7 +16026,7 @@ class DrishtiDashboard {
 					const fromMonth = monthsList[0].display || monthsList[0].key;
 					const toMonth = monthsList[monthsList.length - 1].display || monthsList[monthsList.length - 1].key;
 					this.page.main.find("#category-chart-period-text").html(
-						`Branch movement across performance categories from ${fromMonth} to ${toMonth} &bull; <span style="font-weight: 700; color: #334155;">Left Bar:</span> Branch Count &bull; <span style="font-weight: 700; color: #334155;">Right Bar:</span> Achievement`
+						`Branch movement across performance categories from ${fromMonth} to ${toMonth} &bull; <span style="font-weight: 700; color: #334155;">Left Bar:</span> Branch Count &bull; <span style="font-weight: 700; color: #0d9488;">Right Bar (Teal Border):</span> Achievement`
 					);
 				}
 
@@ -16071,7 +16071,7 @@ class DrishtiDashboard {
 					return "₹" + Math.round(val);
 				};
 
-				// Bar 1: Branch count stacked by category
+				// Bar 1: Branch count stacked by category (wider bar for legible text)
 				const countSeries = categories.map((cat) => {
 					const cfg = categoryConfig[cat];
 					return {
@@ -16079,7 +16079,7 @@ class DrishtiDashboard {
 						type: "bar",
 						stack: "branch_count",
 						yAxisIndex: 0,
-						barWidth: 26,
+						barWidth: 36,
 						barGap: "6%",
 						emphasis: {
 							focus: "series",
@@ -16095,7 +16095,7 @@ class DrishtiDashboard {
 							position: "inside",
 							formatter: (params) => (params.value > 0 ? params.value : ""),
 							color: cfg.text,
-							fontSize: 11,
+							fontSize: 12,
 							fontWeight: 800
 						},
 						itemStyle: { color: cfg.color, borderColor: cfg.border, borderWidth: 1.5, borderRadius: 2 },
@@ -16106,7 +16106,8 @@ class DrishtiDashboard {
 					};
 				});
 
-				// Bar 2: Branch achievement stacked by category (same height ratio as Bar 1, showing achievement sum)
+				// Bar 2: Branch achievement stacked by category (with light teal border, wider bar)
+				const lightTealBorder = "#14b8a6";
 				const achSeries = categories.map((cat) => {
 					const cfg = categoryConfig[cat];
 					return {
@@ -16114,15 +16115,15 @@ class DrishtiDashboard {
 						type: "bar",
 						stack: "branch_achievement",
 						yAxisIndex: 0,
-						barWidth: 26,
+						barWidth: 36,
 						barGap: "6%",
 						emphasis: {
 							focus: "series",
-							itemStyle: { color: cfg.color, borderColor: cfg.border, borderWidth: 2, shadowBlur: 8, shadowColor: "rgba(0,0,0,0.3)" },
+							itemStyle: { color: cfg.color, borderColor: "#0d9488", borderWidth: 2.5, shadowBlur: 8, shadowColor: "rgba(20,184,166,0.4)" },
 							label: { color: cfg.text, fontWeight: 900 }
 						},
 						blur: {
-							itemStyle: { opacity: 0.15, borderColor: "rgba(203,213,225,0.3)" },
+							itemStyle: { opacity: 0.15, borderColor: "rgba(20,184,166,0.3)" },
 							label: { show: false }
 						},
 						label: {
@@ -16133,20 +16134,19 @@ class DrishtiDashboard {
 								return fmtAchLabel(ach);
 							},
 							color: cfg.text,
-							fontSize: 9.5,
+							fontSize: 11,
 							fontWeight: 800
 						},
 						itemStyle: {
 							color: cfg.color,
-							borderColor: cfg.border,
-							borderWidth: 1.5,
-							borderType: "dashed",
+							borderColor: lightTealBorder,
+							borderWidth: 1.8,
 							borderRadius: 2
 						},
 						data: counts[cat].map((countVal, idx) => ({
 							value: countVal,
 							achievement: revenues[cat][idx],
-							itemStyle: { borderWidth: countVal === 0 ? 0 : 1.5, opacity: countVal === 0 ? 0 : 1 }
+							itemStyle: { borderWidth: countVal === 0 ? 0 : 1.8, opacity: countVal === 0 ? 0 : 1 }
 						}))
 					};
 				});
