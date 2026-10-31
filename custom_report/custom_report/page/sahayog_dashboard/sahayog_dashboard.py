@@ -3130,8 +3130,8 @@ GROUP BY
                 "serializationfailure", "55006", "40001"
             ])
             if is_recovery_conflict and attempt < max_retries - 1:
-                retry_delay = (attempt + 1) * 3
-                frappe.log_error(f"DR DB CASA Query Conflict (Attempt {attempt + 1}/{max_retries}). Retrying in {retry_delay}s...", "Product Wise CASA Sync Retry")
+                retry_delay = (attempt + 1) * 15
+                frappe.log_error(f"DR DB CASA Query Conflict (Attempt {attempt + 1}/{max_retries}). Retrying in {retry_delay}s...", "Product Wise CASA Retry")
                 time.sleep(retry_delay)
             else:
                 frappe.log_error(message=frappe.get_traceback(), title="Product Wise CASA Sync Failed")
@@ -3692,8 +3692,8 @@ WHERE sd.sol_id NOT IN ('1000','1031','1059','1081','1104');   ---EXCLUDE THESE 
                 "serializationfailure", "55006", "40001"
             ])
             if is_recovery_conflict and attempt < max_retries - 1:
-                retry_delay = (attempt + 1) * 3
-                frappe.log_error(f"DR DB TDA Query Conflict (Attempt {attempt + 1}/{max_retries}). Retrying in {retry_delay}s...", "Product Wise TDA Sync Retry")
+                retry_delay = (attempt + 1) * 15
+                frappe.log_error(f"DR DB TDA Query Conflict (Attempt {attempt + 1}/{max_retries}). Retrying in {retry_delay}s...", "Product Wise TDA Retry")
                 time.sleep(retry_delay)
             else:
                 frappe.log_error(message=frappe.get_traceback(), title="Product Wise TDA Sync Failed")
