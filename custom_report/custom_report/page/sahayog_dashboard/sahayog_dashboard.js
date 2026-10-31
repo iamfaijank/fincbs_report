@@ -16079,8 +16079,8 @@ class DrishtiDashboard {
 						type: "bar",
 						stack: "branch_count",
 						yAxisIndex: 0,
-						barWidth: 46,
-						barGap: "5%",
+						barWidth: 60,
+						barGap: "4%",
 						emphasis: {
 							focus: "series",
 							itemStyle: { color: cfg.color, borderColor: cfg.border, borderWidth: 2, shadowBlur: 8, shadowColor: "rgba(0,0,0,0.3)" },
@@ -16115,8 +16115,8 @@ class DrishtiDashboard {
 						type: "bar",
 						stack: "branch_achievement",
 						yAxisIndex: 0,
-						barWidth: 46,
-						barGap: "5%",
+						barWidth: 60,
+						barGap: "4%",
 						emphasis: {
 							focus: "series",
 							itemStyle: { color: cfg.color, borderColor: "#0d9488", borderWidth: 2.5, shadowBlur: 8, shadowColor: "rgba(20,184,166,0.4)" },
