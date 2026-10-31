@@ -1229,7 +1229,8 @@ def build_zone_wise(branch_data, targets_map, target_type, district_map=None):
 
 
 def build_product_wise(branch_data, targets_map, target_type, selected_date=None, combined_filters=None):
-    if not selected_date:
+    # If selected_date is not present in Product Wise Report, fallback to the latest date available in the table
+    if not selected_date or not frappe.db.exists("Product Wise Report", {"date": selected_date}):
         selected_date = frappe.db.get_value("Product Wise Report", {}, "date", order_by="date desc")
 
     if not selected_date:
@@ -7446,12 +7447,16 @@ def get_pl_schedule16_combined(report_date=None, sol_id=None, zones=None):
         for r in rows
     }
 
+@frappe.whitelist()
 def get_staff_productivity_combined_data(selected_date=None):
     """
     Combined Staff Productivity Report aggregated by Employee (auth_id)
     across all 5 report types: BDE & BDO, RD, SMBG, DD, and CASA.
     Results are cached in Redis for fast access.
+    Restricted to System Manager only while in testing.
     """
+    if "System Manager" not in frappe.get_roles():
+        frappe.throw(_("Access Denied: Only System Managers are allowed to view this report."), frappe.PermissionError)
     from custom_report.rd_smbg_pending_report import get_cached_report
 
     cache_key = f"staff_productivity_combined:{selected_date or 'latest'}"

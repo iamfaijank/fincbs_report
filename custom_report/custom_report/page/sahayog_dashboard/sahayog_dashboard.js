@@ -765,7 +765,9 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 		const $breadcrumbs = $("#navbar-breadcrumbs");
 		if ($breadcrumbs.length) {
 			$breadcrumbs.html(`
-				<li><a href="/app/sahayog-home" class="btn btn-default btn-xs" style="font-weight: 700; border-radius: 6px; padding: 2px 8px; color: #1e293b; border: 1px solid #cbd5e1; background-color: #f1f5f9; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); margin-right: 4px;">Back</a></li>
+				<li><a href="/app/sahayog-home" class="apple-back-btn" style="height: 28px; padding: 0 12px; font-size: 12px; font-weight: 500; letter-spacing: -0.01em; color: var(--text-color, #1d1d1f); background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 980px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(255, 255, 255, 0.6) inset; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); margin-right: 4px;" onmouseover="this.style.background='rgba(255,255,255,0.92)';this.style.boxShadow='0 2px 6px rgba(0,0,0,0.08), 0 0 0 1px rgba(255,255,255,0.8) inset';this.style.transform='translateY(-0.5px)';" onmouseout="this.style.background='rgba(255,255,255,0.72)';this.style.boxShadow='0 1px 2px rgba(0,0,0,0.04), 0 0 0 1px rgba(255,255,255,0.6) inset';this.style.transform='none';" onmousedown="this.style.transform='scale(0.96)';" onmouseup="this.style.transform='none';">
+					<span>Back</span>
+				</a></li>
 				<li style="display: inline-flex; align-items: center;">
 					<!-- Working Days Left -->
 					<div style="display: inline-flex; align-items: center; margin-left: 10px; vertical-align: middle;">
@@ -773,6 +775,21 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 					</div>
 				</li>
 			`);
+
+			// Inject Apple-style minimal glassmorphic Refresh button right before navbar search
+			const $navbarSearch = $(".navbar .search-bar, #navbar-search").first();
+			$("#top-header-reset-refresh").remove();
+			const refreshBtnHtml = `
+				<button id="top-header-reset-refresh" class="apple-refresh-btn" style="margin-right: 12px; height: 28px; padding: 0 11px; font-size: 12px; font-weight: 500; letter-spacing: -0.01em; color: var(--text-color, #1d1d1f); background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 980px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(255, 255, 255, 0.6) inset; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); z-index: 1020;" onmouseover="this.style.background='rgba(255,255,255,0.92)';this.style.boxShadow='0 2px 6px rgba(0,0,0,0.08), 0 0 0 1px rgba(255,255,255,0.8) inset';this.style.transform='translateY(-0.5px)';" onmouseout="this.style.background='rgba(255,255,255,0.72)';this.style.boxShadow='0 1px 2px rgba(0,0,0,0.04), 0 0 0 1px rgba(255,255,255,0.6) inset';this.style.transform='none';" onmousedown="this.style.transform='scale(0.96)';" onmouseup="this.style.transform='none';" title="Reset filters & fresh reload">
+					<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.75;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+					<span>Refresh</span>
+				</button>
+			`;
+			if ($navbarSearch.length) {
+				$navbarSearch.before(refreshBtnHtml);
+			} else {
+				$(".navbar .form-inline, .navbar .navbar-collapse").first().prepend(refreshBtnHtml);
+			}
 
 			// Set initial format toggle state from URL or state default
 			const urlParams = new URLSearchParams(window.location.search);
@@ -786,6 +803,21 @@ frappe.pages["sahayog_dashboard"].on_page_show = function (wrapper) {
 				wrapper.dashboard.repopulateHeaderFilters();
 				wrapper.dashboard.setupHeaderToggle();
 			}
+
+			// Attach top header reset & refresh event
+			$(document).off("click", "#top-header-reset-refresh").on("click", "#top-header-reset-refresh", function () {
+				history.pushState({}, "", window.location.pathname);
+				frappe.xcall("custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_branch_category_report_cache").catch(() => null);
+				if (frappe.ui && frappe.ui.toolbar && typeof frappe.ui.toolbar.clear_cache === "function") {
+					frappe.ui.toolbar.clear_cache();
+				} else {
+					frappe.assets.clear_local_storage();
+					frappe.xcall("frappe.sessions.clear").then((message) => {
+						frappe.show_alert({ message: message, indicator: "info" });
+						location.reload(true);
+					});
+				}
+			});
 
 			// Clear any existing interval
 			if (frappe.pages["sahayog_dashboard"].timer_interval) {
@@ -3632,7 +3664,7 @@ class DrishtiDashboard {
 							<thead>
 								<tr class="zone-table-header">
 									<th rowspan="2" style="width:32px;" class="row-checkbox"></th>
-									<th rowspan="2" style="width:60px;">SR</th>
+									<th rowspan="2" style="width:65px; text-align: center;">LEVEL</th>
 									<th rowspan="2" style="text-align: left;">Z/R/DIS/SOL</th>
 					`;
 
@@ -3672,7 +3704,7 @@ class DrishtiDashboard {
 							html += `
 								<tr class="zone-total-row gl-total-row${checked ? ' checked-row' : ''}" data-path="${item.path}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">
 									<td class="row-checkbox"><input type="checkbox" class="gl-row-checkbox" data-path="${item.path}"${checked}></td>
-									<td>${sr++}</td>
+									<td style="text-align: center;"><span style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; display: inline-block;">Zone</span></td>
 									<td style="padding-left: 8px; text-align: left;">
 										<span class="gl-toggle" style="margin-right: 6px; display: inline-block; width: 12px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
 										<strong>${item.name}</strong>
@@ -3700,7 +3732,7 @@ class DrishtiDashboard {
 							html += `
 								<tr class="region-total-row gl-total-row${checked ? ' checked-row' : ''}" data-path="${item.path}" style="display: ${isZoneExpanded ? "table-row" : "none"}; background-color: #f8fafc; font-weight: bold; cursor: pointer; border-left: 4px solid #417d81;">
 									<td class="row-checkbox"><input type="checkbox" class="gl-row-checkbox" data-path="${item.path}"${checked}></td>
-									<td></td>
+									<td style="text-align: center;"><span style="background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; display: inline-block;">Region</span></td>
 									<td style="padding-left: 8px; color: #097c80; text-align: left;">
 										<span class="gl-toggle" style="margin-right: 6px; display: inline-block; width: 12px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
 										<strong>${item.name}</strong>
@@ -3727,7 +3759,7 @@ class DrishtiDashboard {
 							html += `
 								<tr class="district-total-row gl-total-row${checked ? ' checked-row' : ''}" data-path="${item.path}" style="display: ${isVisible ? "table-row" : "none"}; background-color: #fafafa; font-weight: bold; cursor: pointer; border-left: 6px solid #64748b;">
 									<td class="row-checkbox"><input type="checkbox" class="gl-row-checkbox" data-path="${item.path}"${checked}></td>
-									<td></td>
+									<td style="text-align: center;"><span style="background: #fafaf9; color: #44403c; border: 1px solid #d6d3d1; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; display: inline-block;">District</span></td>
 									<td style="padding-left: 8px; color: #1e293b; text-align: left;">
 										<span class="gl-toggle" style="margin-right: 6px; display: inline-block; width: 12px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
 										<strong>${item.name}</strong>
@@ -3754,7 +3786,7 @@ class DrishtiDashboard {
 							html += `
 								<tr class="sol-detail-row${checked ? ' checked-row' : ''}" style="display: ${isVisible ? "table-row" : "none"}; background: #ffffff; border-left: 8px solid #cbd5e1;">
 									<td class="row-checkbox"><input type="checkbox" class="gl-row-checkbox" data-path="${item.path}"${checked}></td>
-									<td></td>
+									<td style="text-align: center;"><span style="background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; display: inline-block;">Branch</span></td>
 									<td style="padding-left: 8px; color: #475569; font-weight: normal; text-align: left;">
 										${item.name}
 									</td>
@@ -9790,15 +9822,19 @@ class DrishtiDashboard {
 						self.renderMisTable(container.find("#mis-sp-table-container"), dashboardInstance);
 					});
 
-container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", function () {
+					container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", function () {
 						const key = $(this).data("br-key");
 						self.expandedBranches[key] = !self.expandedBranches[key];
 						self.renderMisTable(container.find("#mis-sp-table-container"), dashboardInstance);
 					});
 				}
 			}
-
 		];
+
+		// Filter out unpublished reports for non-System Managers
+		if (!frappe.user_roles.includes("System Manager")) {
+			this.misReportsList = this.misReportsList.filter(r => r.id !== "staff_productivity");
+		}
 
 		this.init();
 	}
@@ -11157,17 +11193,22 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 			}
 			.zone-wise-table .sr-col {
 				left: 0px;
-				width: 50px;
-				min-width: 50px;
-				max-width: 50px;
+				width: 65px;
+				min-width: 65px;
+				max-width: 65px;
+				text-align: center !important;
 			}
 			.zone-wise-table .zone-col {
-				left: 50px;
+				left: 65px;
 				width: 180px;
 				min-width: 180px;
 				max-width: 180px;
 				text-align: left !important;
 				white-space: normal !important;
+				padding-left: 10px !important;
+			}
+			.zone-wise-table td.zone-col {
+				text-align: left !important;
 			}
 			.zone-wise-table .branches-col {
 				left: 230px;
@@ -11671,14 +11712,16 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 
 		[
 			".fy-header-control",
-			"#date-selector-container",
 			"#days-left-container",
 			"#view-controls-container",
 			"#target-controls-container",
-			"#format-controls-container",
 			"#segment-filter",
 			".category-filter-container",
 		].forEach((sel) => main.find(sel).toggle(!isProduct));
+
+		// Format control (Numbers / Words) & Date Selector visible across all tabs
+		main.find("#format-controls-container").show();
+		main.find("#date-selector-container").show();
 
 		if (isProduct) {
 			main.find("#month-selector-container").hide();
@@ -12687,6 +12730,11 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 
                     <!-- Search and Clear Actions -->
                     <div style="margin-left: auto; display: flex; align-items: center; gap: 10px; padding-bottom: 6px;">
+                        <button id="clear-filters" class="btn btn-secondary btn-sm" 
+                                style="background: #417d81; border-color: #1b263b; color: white; font-weight: 600; white-space: nowrap;"
+                                title="Resets all filters to their default state and refreshes the dashboard.">
+                            🔄 Refresh
+                        </button>
 						<select id="segment-filter" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; color: #1b263b;">
 							<option value="all">All Segments</option>
 							<option value="Top 25%">Top 25%</option>
@@ -12696,18 +12744,13 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 						</select>
                         <input type="text" id="branch-search" placeholder="Search branch or SOL ID (comma separated)..." 
                                style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 250px; background: white; color: #1b263b;" />
-                        <button id="clear-filters" class="btn btn-secondary btn-sm" 
-                                style="background: #417d81; border-color: #1b263b; color: white; font-weight: 600;"
-                                title="Resets all filters to their default state and refreshes the dashboard.">
-                            🔄 Reset & Refresh
-                        </button>
                     </div>
                 </div>
 
                 <div id="error-message" style="color: #0d1b2a; display: none; padding: 10px; background: #ffebee; border-radius: 4px;"></div>
 
                 <div id="tab-content" style="overflow: auto; max-height: 75vh;">
-                    <div id="data-container" style="transition: opacity 0.2s ease-in-out;">${this._buildLoadingSkeleton()}</div>
+                    <div id="data-container">${this._buildLoadingSkeleton()}</div>
                 </div>
             </div>
         `;
@@ -14062,7 +14105,11 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 	render() {
 		if (!this.data) {
 			this.clearViewControlsHighlight();
-			this.showError("No data available");
+			const dataContainer = this.page.main.find("#data-container");
+			if (dataContainer.length && !dataContainer.find(".drishti-zone-skeleton-table").length) {
+				dataContainer.html(this._buildLoadingSkeleton()).css("opacity", 1);
+			}
+			this.page.main.find("#error-message").hide();
 			return;
 		}
 
@@ -14071,8 +14118,6 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 		this.updateBranchSearchVisibility();
 		this.updateClearFilterVisibility();
 		const dataContainer = this.page.main.find("#data-container");
-
-		dataContainer.css("opacity", 0);
 
 		const filteredBranches = this.getFilteredBranches();
 
@@ -14099,8 +14144,7 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 		this.page.main.find("#summary-cards-container").show();
 		this.updateSummaryCards(filteredBranches, reaggregatedZoneData);
 
-		setTimeout(() => {
-			let htmlContent = "";
+		let htmlContent = "";
 
 			if (this.state.activeTab === "zone") {
 				htmlContent = this.state.zoneViewMode === "chart"
@@ -14200,9 +14244,6 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 			}
 
 			this.relocateViewToggle();
-
-			dataContainer.css("opacity", 1);
-		}, 200);
 	}
 
 	relocateViewToggle() {
@@ -14249,7 +14290,7 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 			        <thead style="position: sticky; top: 0; z-index: 20; background: white;">
 			            <tr class="zone-table-header">
 			                <th rowspan="2" style="text-align: center; width: 40px;"><input type="checkbox" class="zone-check-all" style="cursor: pointer;"></th>
-			                <th rowspan="2" class="sr-col" style="width: 40px;">Sr</th>
+			                <th rowspan="2" class="sr-col" style="width: 65px; text-align: center;">Level</th>
 			                <th rowspan="2" class="zone-col" style="text-align: left;">
 			                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
 			                        <span>Z/R/DIS</span>
@@ -14503,7 +14544,7 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 
 		let html = `<tr class="zone-total-row zone-table-row${checked}" data-zone="${zoneName}" style="font-weight: bold; cursor: pointer;">`;
 		html += `<td style="text-align: center;"><input type="checkbox" class="zone-row-check" data-check-id="zone::${zoneName}"${checked} style="cursor: pointer;"></td>`;
-		html += `<td class="sr-col">${sr}</td>`;
+		html += `<td class="sr-col" style="text-align: center;"><span style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; display: inline-block;">Zone</span></td>`;
 		html += `<td class="zone-col"><span class="zone-toggle">${isExpanded ? "▼" : "▶"}</span> ${zoneName}</td>`;
 		html += `<td class="branches-col branch-drilldown" data-zone="${zoneName}" title="Click to view branches in ${zoneName}">${branchCount}</td>`;
 
@@ -14553,7 +14594,7 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 			}; border-left: 4px solid #417d81; cursor: pointer;">`;
 
 		html += `<td style="text-align: center;"><input type="checkbox" class="zone-row-check" data-check-id="${regionKey}"${checked} style="cursor: pointer;"></td>`;
-		html += `<td class="sr-col"></td>`;
+		html += `<td class="sr-col" style="text-align: center;"><span style="background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; display: inline-block;">Region</span></td>`;
 		html += `<td class="zone-col" style="padding-left: 30px;"><span class="region-toggle" style="margin-right: 4px;">${isRegionExpanded ? "▼" : "▶"}</span> ${regionItem.region}</td>`;
 		html += `<td class="branches-col branch-drilldown" data-zone="${zoneName}" data-region="${regionItem.region}" title="Click to view branches in ${regionItem.region}">${branchCount}</td>`;
 
@@ -14604,7 +14645,7 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 			};">`;
 
 		html += `<td style="text-align: center;"><input type="checkbox" class="zone-row-check" data-check-id="${districtKey}"${checked} style="cursor: pointer;"></td>`;
-		html += `<td class="sr-col"></td>`;
+		html += `<td class="sr-col" style="text-align: center;"><span style="background: #fafaf9; color: #44403c; border: 1px solid #d6d3d1; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; display: inline-block;">District</span></td>`;
 		html += `<td class="zone-col" style="padding-left: 60px;">${districtItem.district}</td>`;
 		html += `<td class="branches-col branch-drilldown" data-zone="${zoneName}" data-region="${districtItem.region}" data-district="${districtItem.district}" title="Click to view branches in ${districtItem.district}">${branchCount}</td>`;
 
@@ -14755,7 +14796,7 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 				<thead>
 					<tr class="zone-table-header">
 						<th rowspan="2" style="width:32px;" class="row-checkbox"></th>
-						<th rowspan="2" style="width:60px;">SR</th>
+						<th rowspan="2" style="width:65px; text-align: center;">LEVEL</th>
 						<th rowspan="2" style="text-align: left;">
 							<div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
 								<span>Z/R/DIS/SOL</span>
@@ -14805,7 +14846,7 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 				html += `
 					<tr class="zone-total-row product-total-row${checkedClass}" data-path="${item.path}" style="background-color: #e0e1dd; font-weight: bold; cursor: pointer;">
 						<td class="row-checkbox"><input type="checkbox" class="product-row-checkbox" data-path="${item.path}"${checked}></td>
-						<td>${sr++}</td>
+						<td style="text-align: center;"><span style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; display: inline-block;">Zone</span></td>
 						<td style="text-align: left; padding-left: 8px;">
 							<span class="product-toggle" style="margin-right: 6px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
 							<strong>${item.name}</strong>
@@ -14824,7 +14865,7 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 				html += `
 					<tr class="product-detail-row${checkedClass}" data-path="${item.path}" data-parent="${item.parent_zone}" style="display: ${show ? "table-row" : "none"}; background-color: #f8fafc; font-weight: bold; cursor: pointer; border-left: 4px solid #417d81;">
 						<td class="row-checkbox"><input type="checkbox" class="product-row-checkbox" data-path="${item.path}"${checked}></td>
-						<td></td>
+						<td style="text-align: center;"><span style="background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; display: inline-block;">Region</span></td>
 						<td style="text-align: left; padding-left: 28px; color: #097c80;">
 							<span class="product-toggle" style="margin-right: 6px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
 							<strong>${item.name}</strong>
@@ -14842,7 +14883,7 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 				html += `
 					<tr class="product-detail-row${checkedClass}" data-path="${item.path}" data-parent="${item.parent_region}" style="display: ${show ? "table-row" : "none"}; background-color: #fafafa; font-weight: bold; cursor: pointer; border-left: 6px solid #64748b;">
 						<td class="row-checkbox"><input type="checkbox" class="product-row-checkbox" data-path="${item.path}"${checked}></td>
-						<td></td>
+						<td style="text-align: center;"><span style="background: #fafaf9; color: #44403c; border: 1px solid #d6d3d1; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; display: inline-block;">District</span></td>
 						<td style="text-align: left; padding-left: 48px; color: #1e293b;">
 							<span class="product-toggle" style="margin-right: 6px; font-size: 10px;">${isExpanded ? "▼" : "▶"}</span>
 							<strong>${item.name}</strong>
@@ -14861,7 +14902,7 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 				html += `
 					<tr class="product-detail-row${checkedClass}" style="display: ${show ? "table-row" : "none"}; background: #ffffff; border-left: 8px solid #cbd5e1;">
 						<td class="row-checkbox"><input type="checkbox" class="product-row-checkbox" data-path="${item.path}"${checked}></td>
-						<td></td>
+						<td style="text-align: center;"><span style="background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; padding: 2px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; display: inline-block;">Branch</span></td>
 						<td style="text-align: left; padding-left: 68px; color: #475569; font-weight: normal;">${item.name}</td>
 				`;
 				allProducts.forEach((product) => {
@@ -15015,14 +15056,13 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 			<table class="agent-wise-table">
 				<thead>
 					<tr class="branch-table-header">
-						<th rowspan="2" class="sr-col">SR</th>
+						<th rowspan="2" style="text-align:center;min-width:64px;font-size:11px;letter-spacing:0.5px;">LEVEL</th>
 						<th rowspan="2">
 							<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
 								<span>Z/R/D/B</span>
 								${this.renderViewToggleHtml("agent", this.state.agentViewMode)}
 							</div>
 						</th>
-						<th rowspan="2" style="text-align:center;min-width:64px;font-size:11px;letter-spacing:0.5px;">LEVEL</th>
 						<th rowspan="2">SS TARGET</th>
 						<th rowspan="2">SS ACHIEVEMENT</th>
 						<th rowspan="2">SS SHORTFALL</th>
@@ -15054,14 +15094,13 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 
 			html += `
 				<tr class="agent-zone-row branch-table-row" data-zone="${_esc(zone)}" data-date="${zoneDate}" style="background:#edf2f7;cursor:pointer;">
-					<td class="sr-col">${sr++}</td>
+					<td style="text-align:center;"><span style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:0.3px;white-space:nowrap;">Zone</span></td>
 					<td>
 						<div style="display:flex;align-items:center;gap:8px;white-space:nowrap;">
 							<span class="agent-toggle" style="flex-shrink:0;">${zoneExpanded ? "▼" : "▶"}</span>
 							<strong>${zone}</strong>
 						</div>
 					</td>
-					<td style="text-align:center;"><span style="background:#1e3a5f;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:0.3px;white-space:nowrap;">Zone</span></td>
 					${metricCells(zT)}
 				</tr>
 			`;
@@ -15078,14 +15117,13 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 					<tr class="agent-region-row region-of-${_esc(zone)} branch-table-row"
 						data-zone="${_esc(zone)}" data-region="${_esc(region)}" data-date="${regionDate}"
 						style="display:${zoneExpanded ? "table-row" : "none"};background:#f7fafc;cursor:pointer;">
-						<td class="sr-col"></td>
+						<td style="text-align:center;"><span style="background:#097c80;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:0.3px;white-space:nowrap;">Region</span></td>
 						<td>
 							<div style="white-space:nowrap;padding-left:4px;">
 								<span class="agent-region-toggle" style="display:inline-block;width:16px;margin-right:6px;color:#097c80;">${regionExpanded ? "▼" : "▶"}</span>
 								<span style="color:#097c80;font-weight:600;">${region}</span>
 							</div>
 						</td>
-						<td style="text-align:center;"><span style="background:#097c80;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:0.3px;white-space:nowrap;">Region</span></td>
 						${metricCells(rT)}
 					</tr>
 				`;
@@ -15102,14 +15140,13 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 						<tr class="agent-district-row district-of-${_esc(zone)}-${_esc(region)} branch-table-row"
 							data-zone="${_esc(zone)}" data-region="${_esc(region)}" data-district="${_esc(district)}" data-date="${districtDate}"
 							style="display:${zoneExpanded && regionExpanded ? "table-row" : "none"};background:#f0faf9;cursor:pointer;">
-							<td class="sr-col"></td>
+							<td style="text-align:center;"><span style="background:#2d8a8e;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:0.3px;white-space:nowrap;">District</span></td>
 							<td>
 								<div style="white-space:nowrap;padding-left:4px;">
 									<span class="agent-district-toggle" style="display:inline-block;width:14px;margin-right:6px;color:#2d8a8e;">${districtExpanded ? "▼" : "▶"}</span>
 									<span style="color:#2d8a8e;font-weight:500;">${district}</span>
 								</div>
 							</td>
-							<td style="text-align:center;"><span style="background:#2d8a8e;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:0.3px;white-space:nowrap;">District</span></td>
 							${metricCells(dT)}
 						</tr>
 					`;
@@ -15130,14 +15167,13 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
 							<tr class="agent-branch-row branch-of-${_esc(zone)}-${_esc(region)}-${_esc(district)} branch-table-row"
 								data-zone="${_esc(zone)}" data-region="${_esc(region)}" data-district="${_esc(district)}" data-sol="${_esc(br.sol_id)}"
 								style="display:${showBranch ? "table-row" : "none"};background:#ffffff;border-bottom:1px solid #e2e8f0;">
-								<td class="sr-col"></td>
+								<td style="text-align:center;"><span style="background:#64748b;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:0.3px;white-space:nowrap;">Branch</span></td>
 								<td>
 									<div style="white-space:nowrap;padding-left:4px;">
 										<span style="color:#334155;font-weight:500;">${br.branch_name || br.sol_id}</span>
 										<span style="color:#94a3b8;font-size:11px;margin-left:6px;">(${br.sol_id})</span>
 									</div>
 								</td>
-								<td style="text-align:center;"><span style="background:#64748b;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:0.3px;white-space:nowrap;">Branch</span></td>
 								${metricCells(brT)}
 							</tr>
 						`;
@@ -18324,6 +18360,9 @@ container.off("click", ".mis-sp-branch-row").on("click", ".mis-sp-branch-row", f
                     padding: 10px 8px;
                     border: 1px solid #cbd5e1;
                     text-align: center;
+                }
+                .zone-wise-table td.zone-col {
+                    text-align: left !important;
                 }
 
                 .zone-total-row {

@@ -7,3 +7,4 @@
 
 custom_report.patches.add_role
 custom_report.patches.clean_product_wise_report_zone_region
+custom_report.patches.add_composite_index_branch_category
