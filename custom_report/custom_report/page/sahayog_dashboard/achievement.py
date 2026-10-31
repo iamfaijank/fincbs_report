@@ -796,6 +796,16 @@ def daily_sync_cron(sync_date=None):
         try:
             saved_count = generate_and_save_branch_category_report(sync_date)
             frappe.logger("scheduler").info(f"Daily Sync Cron: Successfully synced {saved_count} records for {sync_date}.")
+            
+            # Auto Pre-warm Sahayog Dashboard Cache in Redis for instant page loading
+            try:
+                from custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard import clear_branch_category_report_cache, get_sahayog_dashboard
+                clear_branch_category_report_cache()
+                get_sahayog_dashboard(selected_date=str(sync_date))
+                frappe.logger("scheduler").info(f"Daily Sync Cron: Sahayog Dashboard Redis cache pre-warmed for {sync_date}.")
+            except Exception as cache_err:
+                frappe.logger("scheduler").warning(f"Cache pre-warm warning: {cache_err}")
+
             send_sync_status_email(sync_date, "Success", "Sync completed successfully.", saved_count)
         except Exception as e:
             error_msg = frappe.get_traceback() or str(e)

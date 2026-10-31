@@ -1816,7 +1816,7 @@ JOBS_REGISTRY = [
 		"key": "daily_tda_sync",
 		"title": "Sahayog TDA Sync",
 		"category": "Sahayog Dashboard",
-		"schedule_time": "08:10 AM",
+		"schedule_time": "06:00 AM",
 		"method": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_tda_sync",
 		"doctype": "Product Wise Report",
 		"filters": {"product": "TDA"},
@@ -1826,7 +1826,7 @@ JOBS_REGISTRY = [
 		"key": "daily_casa_sync",
 		"title": "Sahayog CASA Sync",
 		"category": "Sahayog Dashboard",
-		"schedule_time": "08:15 AM",
+		"schedule_time": "06:15 AM",
 		"method": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_casa_sync",
 		"doctype": "Product Wise Report",
 		"filters": {"product": "CASA"},
@@ -1836,7 +1836,7 @@ JOBS_REGISTRY = [
 		"key": "daily_sync_cron",
 		"title": "Sahayog Achievement Sync",
 		"category": "Sahayog Dashboard",
-		"schedule_time": "08:20 AM",
+		"schedule_time": "06:30 AM",
 		"method": "custom_report.custom_report.page.sahayog_dashboard.achievement.daily_sync_cron",
 		"doctype": "Branch Category Report",
 		"filters": {},
@@ -1878,30 +1878,33 @@ def get_automation_sync_status(sync_date=None):
 	failed_count = 0
 	pending_count = 0
 
-	# Pre-fetch counts for SS and VS Report for target_date in 1 single fast indexed query
+	# Pre-fetch counts for SS and VS Report for target_date using Frappe Query Builder
 	ss_vs_counts = {}
 	try:
-		ss_vs_cur = frappe.db.sql("""
-			SELECT report_type, COUNT(*) as cnt
-			FROM `tabSS and VS Report`
-			WHERE date = %s
-			GROUP BY report_type
-		""", (target_date,), as_dict=True)
-		for r in ss_vs_cur:
+		from frappe.query_builder.functions import Count
+		ss_vs_doc = frappe.qb.DocType("SS and VS Report")
+		ss_vs_query = (
+			frappe.qb.from_(ss_vs_doc)
+			.select(ss_vs_doc.report_type, Count("*").as_("cnt"))
+			.where(ss_vs_doc.date == target_date)
+			.groupby(ss_vs_doc.report_type)
+		)
+		for r in ss_vs_query.run(as_dict=True):
 			ss_vs_counts[r.report_type] = r.cnt
 	except Exception:
 		pass
 
-	# Pre-fetch counts for Product Wise Report for target_date in 1 single fast indexed query
+	# Pre-fetch counts for Product Wise Report for target_date using Frappe Query Builder
 	product_counts = {}
 	try:
-		prod_cur = frappe.db.sql("""
-			SELECT product, COUNT(*) as cnt
-			FROM `tabProduct Wise Report`
-			WHERE date = %s
-			GROUP BY product
-		""", (target_date,), as_dict=True)
-		for r in prod_cur:
+		prod_doc = frappe.qb.DocType("Product Wise Report")
+		prod_query = (
+			frappe.qb.from_(prod_doc)
+			.select(prod_doc.product, Count("*").as_("cnt"))
+			.where(prod_doc.date == target_date)
+			.groupby(prod_doc.product)
+		)
+		for r in prod_query.run(as_dict=True):
 			product_counts[r.product] = r.cnt
 	except Exception:
 		pass
@@ -1925,6 +1928,7 @@ def get_automation_sync_status(sync_date=None):
 			"key": job["key"],
 			"title": job["title"],
 			"category": job["category"],
+			"doctype": job.get("doctype"),
 			"schedule_time": job["schedule_time"],
 			"method": job["method"],
 			"target_date": target_date,
@@ -1955,9 +1959,15 @@ def get_automation_sync_status(sync_date=None):
 				rec_count = sum(product_counts.values())
 		elif job["doctype"]:
 			try:
-				f = dict(job["filters"])
-				f["date"] = target_date
-				rec_count = frappe.db.count(job["doctype"], f)
+				dt_qb = frappe.qb.DocType(job["doctype"])
+				qb_query = frappe.qb.from_(dt_qb).select(Count("*").as_("cnt"))
+				if hasattr(dt_qb, "date"):
+					qb_query = qb_query.where(dt_qb.date == target_date)
+				for f_key, f_val in job.get("filters", {}).items():
+					if hasattr(dt_qb, f_key):
+						qb_query = qb_query.where(dt_qb[f_key] == f_val)
+				res = qb_query.run(as_dict=True)
+				rec_count = res[0].cnt if res else 0
 			except Exception:
 				rec_count = 0
 		job_info["records_synced"] = rec_count

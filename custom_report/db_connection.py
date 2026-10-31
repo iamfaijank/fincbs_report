@@ -22,6 +22,7 @@ def get_dr_connection(retries=3, retry_delay=2, timeout=15):
         "user": config.db_user,
         "password": config.get_password("db_password"),
         "connect_timeout": timeout or 15,
+        "options": "-c statement_timeout=0 -c idle_in_transaction_session_timeout=0 -c work_mem=128MB",
     }
 
     for attempt in range(retries):
@@ -73,7 +74,7 @@ def execute_dr_query(query, params=None, cursor_factory=None, max_retries=5, tit
                 "serializationfailure", "55006", "40001"
             ])
             if is_recovery_conflict and attempt < max_retries - 1:
-                retry_delay = (attempt + 1) * 3
+                retry_delay = (attempt + 1) * 15
                 frappe.log_error(
                     message=f"{title} Conflict (Attempt {attempt + 1}/{max_retries}). Retrying in {retry_delay}s... Error: {e}",
                     title=f"{title} Execution Failed"

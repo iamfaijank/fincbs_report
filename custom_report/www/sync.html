@@ -1034,6 +1034,10 @@
 						<span class="tg-msg-val" id="modal-date">-</span>
 					</div>
 					<div class="tg-msg-grid-item">
+						<span class="tg-msg-lbl">Target Doctype</span>
+						<span class="tg-msg-val" id="modal-doctype" style="color: var(--tg-primary); font-weight: 600;">-</span>
+					</div>
+					<div class="tg-msg-grid-item">
 						<span class="tg-msg-lbl">Records Synced</span>
 						<span class="tg-msg-val" id="modal-recs">-</span>
 					</div>
@@ -1198,6 +1202,7 @@
 				modalTitle: document.getElementById('modal-title'),
 				modalSchedule: document.getElementById('modal-schedule'),
 				modalDate: document.getElementById('modal-date'),
+				modalDoctype: document.getElementById('modal-doctype'),
 				modalRecs: document.getElementById('modal-recs'),
 				modalMethod: document.getElementById('modal-method'),
 				modalErrorWrap: document.getElementById('modal-error-wrap'),
@@ -1327,7 +1332,7 @@
 				els.detailAvatar.innerHTML = `<span class="tg-avatar-icon">${iconSVG}</span>`;
 				els.detailAvatar.style.background = bgGradient;
 				els.detailTitle.innerText = job.title;
-				els.detailSub.innerText = `${job.category || 'General'} • Scheduled ${job.schedule_time || ''}`;
+				els.detailSub.innerText = `${job.doctype ? `📄 ${job.doctype}` : (job.category || 'General')} • Scheduled ${job.schedule_time || ''}`;
 				els.btnDetailRun.style.display = 'inline-flex';
 				els.btnDetailModal.style.display = 'inline-flex';
 
@@ -1341,7 +1346,7 @@
 							<span class="tg-msg-sender">⚙️ ${job.title}</span>
 							<span class="tg-recs-tag" style="color: var(--tg-primary);">${formatNum(job.records_synced)} recs</span>
 						</div>
-						<div style="font-size: 0.82rem; font-weight: 600;">Job Category: ${job.category || 'General Automation'}</div>
+						<div style="font-size: 0.82rem; font-weight: 600;">Job Category: ${job.category || 'General Automation'} ${job.doctype ? `• Target Doctype: <span style="color: var(--tg-primary);">${job.doctype}</span>` : ''}</div>
 						
 						<div class="tg-msg-grid">
 							<div class="tg-msg-grid-item">
@@ -1414,6 +1419,7 @@
 				els.modalTitle.innerText = job.title;
 				els.modalSchedule.innerText = job.schedule_time || '-';
 				els.modalDate.innerText = formatDate(job.target_date);
+				els.modalDoctype.innerText = job.doctype || 'System Task';
 				els.modalRecs.innerText = `${formatNum(job.records_synced)} recs`;
 				els.modalMethod.innerText = job.method || '-';
 
@@ -1520,7 +1526,7 @@
 									<span class="tg-item-time">${job.schedule_time || ''}</span>
 								</div>
 								<div class="tg-item-bottom">
-									<span class="tg-item-sub">${job.category || 'General Automation'}</span>
+									<span class="tg-item-sub">${job.doctype || 'System Maintenance'}</span>
 									<span class="tg-recs-tag">${formatNum(job.records_synced)} recs</span>
 								</div>
 							</div>

@@ -178,6 +178,17 @@ doc_events = {
 
 scheduler_events = {
 	"cron": {
+		# Daily Product Wise Report Synchronizations starting first at 06:00 AM IST
+		"0 6 * * *": [
+			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_tda_sync"
+		],
+		"15 6 * * *": [
+			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_casa_sync"
+		],
+		# Daily Branch Category Report (Achievement) Sync at 06:30 AM IST
+		"30 6 * * *": [
+			"custom_report.custom_report.page.sahayog_dashboard.achievement.daily_sync_cron"
+		],
 		# Daily T-1 (Yesterday) SS & VS Report Synchronizations starting at 07:00 AM IST with 5-minute intervals
 		"0 7 * * *": [
 			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_dd_sav_daily"
@@ -212,16 +223,7 @@ scheduler_events = {
 		"45 6 * * *": [
 			"custom_report.custom_report.doctype.rd_and_smbg_pending.rd_and_smbg_pending.daily_sync_rd_and_smbg_pending"
 		],
-		# Daily Sahayog Dashboard and Financial Tracker Synchronizations starting at 08:10 AM IST
-		"10 8 * * *": [
-			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_tda_sync"
-		],
-		"15 8 * * *": [
-			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_casa_sync"
-		],
-		"20 8 * * *": [
-			"custom_report.custom_report.page.sahayog_dashboard.achievement.daily_sync_cron"
-		],
+		# Daily Financial Tracker Synchronizations starting at 08:30 AM IST
 		"30 8 * * *": [
 			"custom_report.custom_report.doctype.book_position_and_account_details.book_position_and_account_details.daily_sync_book_position"
 		],
