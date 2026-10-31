@@ -16106,6 +16106,22 @@ class DrishtiDashboard {
 					};
 				});
 
+				// ---- Per-month stack totals (for the badge circles above each bar) ----
+				const totalCounts = monthKeys.map((k, i) => {
+					let t = 0;
+					categories.forEach((cat) => { t += (counts[cat] && counts[cat][i]) || 0; });
+					return t;
+				});
+				const totalAchievements = monthKeys.map((k, i) => {
+					let t = 0;
+					categories.forEach((cat) => { t += (revenues[cat] && revenues[cat][i]) || 0; });
+					return t;
+				});
+				const maxCount = Math.max(...totalCounts, 1);
+				const circleAbove = maxCount * 0.05; // gap between bar top and first circle
+				const circleGap = maxCount * 0.05;   // gap between the two circles
+				const yMax = maxCount * 1.35; // headroom for the two circles above the bars
+
 				// Bar 2: Branch achievement stacked by category (same height ratio as Bar 1, showing achievement sum)
 				const achSeries = categories.map((cat) => {
 					const cfg = categoryConfig[cat];
@@ -16151,7 +16167,36 @@ class DrishtiDashboard {
 					};
 				});
 
-				const series = [...countSeries, ...achSeries];
+				// Two badge circles, one above each bar, showing that bar's stack sum.
+				//  Circle 1 (branch-count bar) -> white fill, black text
+				//  Circle 2 (achievement bar)   -> teal fill,  black text
+				// Both bars are the same height, so the two circles are stacked
+				// vertically above the bars (count circle lower, achievement circle higher).
+				const countTotalCircle = {
+					name: "Total Branch Count",
+					type: "scatter",
+					xAxisIndex: 0,
+					yAxisIndex: 0,
+					symbol: "circle",
+					symbolSize: 32,
+					zIndex: 1000,
+					itemStyle: { color: "#ffffff", borderColor: "#0f172a", borderWidth: 2, shadowBlur: 6, shadowColor: "rgba(0,0,0,0.35)" },
+					label: { show: true, position: "inside", color: "#0f172a", fontWeight: 900, fontSize: 11, formatter: (p) => String(totalCounts[p.dataIndex] || 0) },
+					data: monthDisplays.map((m, i) => ({ value: [m, totalCounts[i] + circleAbove] })),
+				};
+				const achTotalCircle = {
+					name: "Total Achievement",
+					type: "scatter",
+					xAxisIndex: 0,
+					yAxisIndex: 0,
+					symbol: "circle",
+					symbolSize: 36,
+					zIndex: 1000,
+					itemStyle: { color: "#14b8a6", borderColor: "#0f766e", borderWidth: 2, shadowBlur: 6, shadowColor: "rgba(0,0,0,0.35)" },
+					label: { show: true, position: "inside", color: "#0f172a", fontWeight: 900, fontSize: 11, formatter: (p) => fmtAchLabel(totalAchievements[p.dataIndex] || 0) },
+					data: monthDisplays.map((m, i) => ({ value: [m, totalCounts[i] + circleAbove + circleGap] })),
+				};
+				const series = [...countSeries, ...achSeries, countTotalCircle, achTotalCircle];
 
 				const buildLegendData = (activeName = null) => {
 					return categories.map((cat) => {
@@ -16176,7 +16221,10 @@ class DrishtiDashboard {
 						textStyle: { color: "#ffffff", fontSize: 12 },
 						formatter: (params) => {
 							if (!params || !params.length) return "";
-							const dataIdx = params[0].dataIndex;
+							// Only show bar series in the tooltip (exclude the two badge circles)
+							const barParams = params.filter((p) => p.seriesType === "bar");
+							if (!barParams.length) return "";
+							const dataIdx = barParams[0].dataIndex;
 							let total = 0;
 							let totalRev = 0;
 							let html = `<div style="font-weight:700;font-size:13px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.2);padding-bottom:4px;">${params[0]?.axisValue || ""}</div>`;
@@ -16201,7 +16249,7 @@ class DrishtiDashboard {
 						}
 					},
 					legend: { bottom: 4, data: buildLegendData(), icon: "circle", itemWidth: 10, itemHeight: 10 },
-					grid: { left: "4%", right: "4%", top: "8%", bottom: "12%", containLabel: true },
+					grid: { left: "4%", right: "4%", top: "18%", bottom: "12%", containLabel: true },
 					xAxis: {
 						type: "category",
 						data: monthDisplays,
