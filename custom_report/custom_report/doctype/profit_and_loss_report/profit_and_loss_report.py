@@ -188,11 +188,65 @@ def _apply_gl_mapping(report_date=None):
 
 
 @frappe.whitelist()
-def delete_gl_mapping():
-	"""Delete all GL Mapping records."""
-	frappe.db.delete("GL Mapping")
+def refresh_pl_gl_mapping(month=None, report_date=None):
+	"""Re-apply GL Mapping to Profit and Loss Report rows for a given month.
+
+	month: 'YYYY-MM' (e.g. '2026-09'). If omitted, derived from report_date or defaults to 2026-09.
+	Prints progress and counts of records found/updated.
+	"""
+	import calendar
+	import datetime
+
+	if not month and report_date:
+		month = str(report_date)[:7]
+	if not month:
+		month = "2026-09"
+
+	year, mon = month.split("-")
+	year_i, mon_i = int(year), int(mon)
+	last_day = calendar.monthrange(year_i, mon_i)[1]
+	start = f"{year}-{mon}-01"
+	end = f"{year}-{mon}-{last_day:02d}"
+
+	total = frappe.db.count("Profit and Loss Report", {"report_date": ["between", [start, end]]})
+	print(f"Month {month}: {total} Profit and Loss Report records found.")
+
+	names = frappe.get_all(
+		"Profit and Loss Report",
+		filters={"report_date": ["between", [start, end]]},
+		pluck="name",
+	)
+	chunk = 500
+	processed = 0
+	for i in range(0, len(names), chunk):
+		batch = names[i:i + chunk]
+		placeholders = ",".join(["%s"] * len(batch))
+		frappe.db.sql(
+			f"""
+			UPDATE `tabProfit and Loss Report` pl
+			JOIN `tabGL Mapping` gm
+				ON gm.gl_sub_head_code = IF(pl.acct_category = 'OFFICE', pl.bacid, pl.gl_sub_head_code)
+			SET pl.schedule = gm.schedule, pl.sub_schedule = gm.sub_schedule
+			WHERE pl.name IN ({placeholders}) AND gm.gl_sub_head_code IS NOT NULL
+			""",
+			batch,
+		)
+		frappe.db.sql(
+			f"""
+			UPDATE `tabProfit and Loss Report` pl
+			LEFT JOIN `tabGL Mapping` gm
+				ON gm.gl_sub_head_code = IF(pl.acct_category = 'OFFICE', pl.bacid, pl.gl_sub_head_code)
+			SET pl.schedule = NULL, pl.sub_schedule = NULL
+			WHERE pl.name IN ({placeholders}) AND gm.gl_sub_head_code IS NULL
+			""",
+			batch,
+		)
+		processed += len(batch)
+		pct = int(processed / total * 100) if total else 100
+		print(f"Progress: {min(processed, total)}/{total} records processed ({pct}%)")
 	frappe.db.commit()
-	return {"status": "deleted"}
+	print(f"Done. {total} records in {month} re-mapped to GL Mapping.")
+	return {"status": "completed", "month": month, "total": total, "updated": total}
 
 
 def _build_pl_update_plan(file_content, filename=""):
