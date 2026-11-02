@@ -385,6 +385,218 @@ def import_pl_data(file_content, filename=""):
 
 
 @frappe.whitelist()
+def get_pl_sheet_names(file_content, filename=""):
+	"""Return sheet names of an uploaded Excel template (base64 content)."""
+	import base64
+	import io
+
+	import openpyxl
+
+	content = base64.b64decode(file_content)
+	name = (filename or "").lower()
+	if not name.endswith((".xlsx", ".xls")):
+		return {"status": "error", "message": "Only Excel files (.xlsx / .xls) are supported"}
+	wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+	return {"status": "success", "sheet_names": list(wb.sheetnames or [])}
+
+
+@frappe.whitelist()
+def validate_pl_record(file_content, filename="", sheet_name=None):
+	"""Validate an uploaded template for header match + field format (no writes)."""
+	import base64
+	import csv
+	import datetime
+	import io
+
+	import openpyxl
+
+	content = base64.b64decode(file_content)
+	name = (filename or "").lower()
+
+	if name.endswith((".xlsx", ".xls")):
+		wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+		ws = wb[sheet_name] if sheet_name and sheet_name in (wb.sheetnames or []) else wb.active
+		all_rows = [
+			[("" if c is None else str(c)).strip() for c in row]
+			for row in ws.iter_rows(values_only=True)
+		]
+	else:
+		text = content.decode("utf-8-sig", errors="replace")
+		all_rows = [[cell.strip() for cell in row] for row in csv.reader(io.StringIO(text))]
+
+	all_rows = [row for row in all_rows if any(row)]
+	if len(all_rows) < 2:
+		return {"status": "error", "valid": False, "errors": ["Template must include a header row and at least one data row"]}
+
+	meta = frappe.get_meta("Profit and Loss Report")
+	valid_fields = {f.fieldname for f in meta.fields}
+	field_type = {f.fieldname: f.fieldtype for f in meta.fields}
+	label_map = {
+		(f.label or "").strip().lower(): f.fieldname
+		for f in meta.fields
+		if f.label
+	}
+
+	def resolve(header):
+		header = header.strip()
+		if header in valid_fields:
+			return header
+		return label_map.get(header.lower())
+
+	header_row = [resolve(h) for h in all_rows[0]]
+	errors = []
+	unknown = [h for h, r in zip(all_rows[0], header_row) if not r]
+	if unknown:
+		errors.append("Unknown column(s): " + ", ".join(unknown))
+
+	numeric_types = {"Currency", "Float", "Int"}
+	date_types = {"Date", "Datetime"}
+
+	def check_value(field, value):
+		if value is None or str(value).strip() == "":
+			return None
+		v = str(value).strip()
+		if field_type.get(field) in numeric_types:
+			try:
+				float(v)
+			except (ValueError, TypeError):
+				return f"{field}: '{v}' is not a valid number"
+		if field_type.get(field) in date_types:
+			s = v.split(" ")[0]
+			ok = False
+			for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%d-%m-%y", "%d/%m/%y"):
+				try:
+					datetime.datetime.strptime(s, fmt)
+					ok = True
+					break
+				except ValueError:
+					continue
+			if not ok:
+				return f"{field}: '{v}' is not a valid date"
+		return None
+
+	for ri, row in enumerate(all_rows[1:], start=2):
+		data = {
+			field: (row[i] if i < len(row) else "")
+			for i, field in enumerate(header_row)
+			if field
+		}
+		for field, value in data.items():
+			err = check_value(field, value)
+			if err:
+				errors.append(f"Row {ri}: {err}")
+
+	return {
+		"status": "success",
+		"valid": len(errors) == 0,
+		"errors": errors,
+		"total_rows": len(all_rows) - 1,
+		"sheet_names": list(getattr(wb, "sheetnames", []) or []) if name.endswith((".xlsx", ".xls")) else [],
+	}
+
+
+@frappe.whitelist()
+def insert_pl_record(file_content, filename="", sheet_name=None, report_date=None):
+	"""Create a new Profit and Loss Report record from an uploaded template row.
+
+	Empty cells are skipped; only fields with values are set on the new record.
+	"""
+	import base64
+	import csv
+	import datetime
+	import io
+
+	import openpyxl
+
+	content = base64.b64decode(file_content)
+	name = (filename or "").lower()
+
+	if name.endswith((".xlsx", ".xls")):
+		wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+		ws = wb[sheet_name] if sheet_name and sheet_name in (wb.sheetnames or []) else wb.active
+		all_rows = [
+			[("" if c is None else str(c)).strip() for c in row]
+			for row in ws.iter_rows(values_only=True)
+		]
+	else:
+		text = content.decode("utf-8-sig", errors="replace")
+		all_rows = [[cell.strip() for cell in row] for row in csv.reader(io.StringIO(text))]
+
+	all_rows = [row for row in all_rows if any(row)]
+	if len(all_rows) < 2:
+		return {"status": "error", "message": "Template must include a header row and at least one data row"}
+
+	meta = frappe.get_meta("Profit and Loss Report")
+	valid_fields = {f.fieldname for f in meta.fields}
+	label_map = {
+		(f.label or "").strip().lower(): f.fieldname
+		for f in meta.fields
+		if f.label
+	}
+
+	def resolve(header):
+		header = header.strip()
+		if header in valid_fields:
+			return header
+		return label_map.get(header.lower())
+
+	header_row = [resolve(h) for h in all_rows[0]]
+
+	created_records = []
+	skipped = 0
+	failed = 0
+	for ri, row in enumerate(all_rows[1:], start=2):
+		data = {
+			field: (row[i] if i < len(row) else "")
+			for i, field in enumerate(header_row)
+			if field
+		}
+
+		rdate = str(data.get("report_date") or "").strip()
+		if rdate:
+			rdate = rdate.split(" ")[0]
+			for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%d-%m-%y", "%d/%m/%y"):
+				try:
+					rdate = datetime.datetime.strptime(rdate, fmt).strftime("%Y-%m-%d")
+					break
+				except ValueError:
+					continue
+		if not rdate:
+			rdate = report_date
+		if not rdate:
+			skipped += 1
+			continue
+
+		try:
+			doc = frappe.new_doc("Profit and Loss Report")
+			for field, value in data.items():
+				if field == "report_date" or field not in valid_fields:
+					continue
+				if value is None or str(value).strip() == "":
+					continue
+				if field in ("clr_bal_amt", "balance"):
+					try:
+						value = float(str(value).strip())
+					except (ValueError, TypeError):
+						value = None
+				setattr(doc, field, value)
+			doc.report_date = rdate
+			doc.insert()
+			created_records.append(doc.name)
+		except Exception:
+			failed += 1
+
+	frappe.db.commit()
+	return {
+		"status": "success",
+		"created": len(created_records),
+		"skipped": skipped,
+		"failed": failed,
+		"new_records": created_records[:50],
+	}
+
+
+@frappe.whitelist()
 def import_gl_mapping(file_content, filename=""):
 	"""Create/Update GL Mapping records from an uploaded CSV/XLSX file (base64 content)."""
 	import base64
