@@ -8652,6 +8652,7 @@ class DrishtiDashboard {
 								<button type="button" id="upd-tpl-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">\u2b07\ufe0f Download Template</button>
 								<button type="button" id="upd-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
 								<button type="button" id="upd-apply-${uid}" style="display: none; background: #0f766e; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Apply Updates</button>
+								<button type="button" id="upd-ins-${uid}" style="display: none; background: #b91c1c; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Insert New Record</button>
 								<span id="upd-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
 							</div>
 							<input type="file" id="upd-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
@@ -8681,9 +8682,11 @@ class DrishtiDashboard {
 							const f = this.files && this.files[0];
 							dlg.$wrapper.find(`#upd-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
 							const $apply = dlg.$wrapper.find(`#upd-apply-${uid}`);
+							const $ins = dlg.$wrapper.find(`#upd-ins-${uid}`);
 							const $status = dlg.$wrapper.find(`#upd-status-${uid}`);
 							$status.text("").css("color", "#64748b");
 							$apply.hide().prop("disabled", true).text("Apply Updates");
+							$ins.hide().prop("disabled", true).text("Insert New Record");
 							pendingFile = null;
 							if (!f) return;
 							const reader = new FileReader();
@@ -8700,11 +8703,12 @@ class DrishtiDashboard {
 											$status.text(m.message || "Invalid template").css("color", "#dc2626");
 											return;
 										}
-										pendingFile = { b64: b64, name: f.name };
+										pendingFile = { b64: b64, name: f.name, sheet_name: (m.sheet_names && m.sheet_names.length) ? m.sheet_names[0] : null };
 										$status.text("XL rows: " + (m.total_rows || 0) + " \u2014 matched: " + (m.matched || 0) + ", not matched: " + (m.not_matched || 0) + ", skipped: " + (m.skipped || 0) + " \u2022 will update " + (m.will_update || 0) + " record(s)").css("color", (m.will_update || 0) > 0 ? "#0f766e" : "#dc2626");
 										if ((m.will_update || 0) > 0) {
 											$apply.show().prop("disabled", false).text("Apply Updates (" + m.will_update + ")");
 										}
+										$ins.show().prop("disabled", false).text("Insert New Record");
 									},
 									error: function () {
 										$status.text("Preview failed for " + f.name).css("color", "#dc2626");
@@ -8738,6 +8742,27 @@ class DrishtiDashboard {
 								error: function () {
 									frappe.msgprint("P&L import failed for " + (pendingFile ? pendingFile.name : "file"));
 									$b.prop("disabled", false).css("opacity", 1).text("Apply Updates");
+								},
+							});
+						});
+						dlg.$wrapper.on("click", `#upd-ins-${uid}`, function () {
+							if (!pendingFile) return;
+							const $ins = $(this);
+							$ins.prop("disabled", true).css("opacity", 0.6).text("Inserting...");
+							frappe.call({
+								method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.insert_pl_record",
+								args: { file_content: pendingFile.b64, filename: pendingFile.name, sheet_name: pendingFile.sheet_name || null, report_date: d },
+								freeze: true,
+								freeze_msg: "Inserting new Profit and Loss Report record from " + pendingFile.name + "...",
+								callback: function (r) {
+									const m = (r && r.message) || {};
+									if (m.status === "error") { frappe.msgprint(m.message || "Insert failed"); }
+									else { frappe.show_alert({ message: "New P&L record created: " + (m.new_record || ""), indicator: "green", duration: 7000 }); }
+									$ins.prop("disabled", false).css("opacity", 1).text("Insert New Record");
+								},
+								error: function () {
+									frappe.msgprint("P&L insert failed for " + (pendingFile ? pendingFile.name : "file"));
+									$ins.prop("disabled", false).css("opacity", 1).text("Insert New Record");
 								},
 							});
 						});
@@ -9156,6 +9181,7 @@ class DrishtiDashboard {
 								<button type="button" id="upd-tpl-${uid}" style="background: #e2e8f0; color: #475569; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">\u2b07\ufe0f Download Template</button>
 								<button type="button" id="upd-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
 								<button type="button" id="upd-apply-${uid}" style="display: none; background: #0f766e; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Apply Updates</button>
+								<button type="button" id="upd-ins-${uid}" style="display: none; background: #b91c1c; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Insert New Record</button>
 								<span id="upd-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
 							</div>
 							<input type="file" id="upd-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
@@ -9185,9 +9211,11 @@ class DrishtiDashboard {
 							const f = this.files && this.files[0];
 							dlg.$wrapper.find(`#upd-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
 							const $apply = dlg.$wrapper.find(`#upd-apply-${uid}`);
+							const $ins = dlg.$wrapper.find(`#upd-ins-${uid}`);
 							const $status = dlg.$wrapper.find(`#upd-status-${uid}`);
 							$status.text("").css("color", "#64748b");
 							$apply.hide().prop("disabled", true).text("Apply Updates");
+							$ins.hide().prop("disabled", true).text("Insert New Record");
 							pendingFile = null;
 							if (!f) return;
 							const reader = new FileReader();
@@ -9204,11 +9232,12 @@ class DrishtiDashboard {
 											$status.text(m.message || "Invalid template").css("color", "#dc2626");
 											return;
 										}
-										pendingFile = { b64: b64, name: f.name };
+										pendingFile = { b64: b64, name: f.name, sheet_name: (m.sheet_names && m.sheet_names.length) ? m.sheet_names[0] : null };
 										$status.text("XL rows: " + (m.total_rows || 0) + " \u2014 matched: " + (m.matched || 0) + ", not matched: " + (m.not_matched || 0) + ", skipped: " + (m.skipped || 0) + " \u2022 will update " + (m.will_update || 0) + " record(s)").css("color", (m.will_update || 0) > 0 ? "#0f766e" : "#dc2626");
 										if ((m.will_update || 0) > 0) {
 											$apply.show().prop("disabled", false).text("Apply Updates (" + m.will_update + ")");
 										}
+										$ins.show().prop("disabled", false).text("Insert New Record");
 									},
 									error: function () {
 										$status.text("Preview failed for " + f.name).css("color", "#dc2626");
@@ -9242,6 +9271,27 @@ class DrishtiDashboard {
 								error: function () {
 									frappe.msgprint("P&L import failed for " + (pendingFile ? pendingFile.name : "file"));
 									$b.prop("disabled", false).css("opacity", 1).text("Apply Updates");
+								},
+							});
+						});
+						dlg.$wrapper.on("click", `#upd-ins-${uid}`, function () {
+							if (!pendingFile) return;
+							const $ins = $(this);
+							$ins.prop("disabled", true).css("opacity", 0.6).text("Inserting...");
+							frappe.call({
+								method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.insert_pl_record",
+								args: { file_content: pendingFile.b64, filename: pendingFile.name, sheet_name: pendingFile.sheet_name || null, report_date: d },
+								freeze: true,
+								freeze_msg: "Inserting new Profit and Loss Report record from " + pendingFile.name + "...",
+								callback: function (r) {
+									const m = (r && r.message) || {};
+									if (m.status === "error") { frappe.msgprint(m.message || "Insert failed"); }
+									else { frappe.show_alert({ message: "New P&L record created: " + (m.new_record || ""), indicator: "green", duration: 7000 }); }
+									$ins.prop("disabled", false).css("opacity", 1).text("Insert New Record");
+								},
+								error: function () {
+									frappe.msgprint("P&L insert failed for " + (pendingFile ? pendingFile.name : "file"));
+									$ins.prop("disabled", false).css("opacity", 1).text("Insert New Record");
 								},
 							});
 						});

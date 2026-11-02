@@ -385,6 +385,106 @@ def import_pl_data(file_content, filename=""):
 
 
 @frappe.whitelist()
+def get_pl_sheet_names(file_content, filename=""):
+	"""Return sheet names of an uploaded Excel template (base64 content)."""
+	import base64
+	import io
+
+	import openpyxl
+
+	content = base64.b64decode(file_content)
+	name = (filename or "").lower()
+	if not name.endswith((".xlsx", ".xls")):
+		return {"status": "error", "message": "Only Excel files (.xlsx / .xls) are supported"}
+	wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+	return {"status": "success", "sheet_names": list(wb.sheetnames or [])}
+
+
+@frappe.whitelist()
+def insert_pl_record(file_content, filename="", sheet_name=None, report_date=None):
+	"""Create a new Profit and Loss Report record from an uploaded template row.
+
+	Empty cells are skipped; only fields with values are set on the new record.
+	"""
+	import base64
+	import csv
+	import datetime
+	import io
+
+	import openpyxl
+
+	content = base64.b64decode(file_content)
+	name = (filename or "").lower()
+
+	if name.endswith((".xlsx", ".xls")):
+		wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+		ws = wb[sheet_name] if sheet_name and sheet_name in (wb.sheetnames or []) else wb.active
+		all_rows = [
+			[("" if c is None else str(c)).strip() for c in row]
+			for row in ws.iter_rows(values_only=True)
+		]
+	else:
+		text = content.decode("utf-8-sig", errors="replace")
+		all_rows = [[cell.strip() for cell in row] for row in csv.reader(io.StringIO(text))]
+
+	all_rows = [row for row in all_rows if any(row)]
+	if len(all_rows) < 2:
+		return {"status": "error", "message": "Template must include a header row and at least one data row"}
+
+	meta = frappe.get_meta("Profit and Loss Report")
+	valid_fields = {f.fieldname for f in meta.fields}
+	label_map = {
+		(f.label or "").strip().lower(): f.fieldname
+		for f in meta.fields
+		if f.label
+	}
+
+	def resolve(header):
+		header = header.strip()
+		if header in valid_fields:
+			return header
+		return label_map.get(header.lower())
+
+	header_row = [resolve(h) for h in all_rows[0]]
+	data = {
+		field: (all_rows[1][i] if i < len(all_rows[1]) else "")
+		for i, field in enumerate(header_row)
+		if field
+	}
+
+	rdate = str(data.get("report_date") or "").strip()
+	if rdate:
+		rdate = rdate.split(" ")[0]
+		for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%d-%m-%y", "%d/%m/%y"):
+			try:
+				rdate = datetime.datetime.strptime(rdate, fmt).strftime("%Y-%m-%d")
+				break
+			except ValueError:
+				continue
+	if not rdate:
+		rdate = report_date
+	if not rdate:
+		return {"status": "error", "message": "Template row is missing a valid Date"}
+
+	doc = frappe.new_doc("Profit and Loss Report")
+	for field, value in data.items():
+		if field == "report_date" or field not in valid_fields:
+			continue
+		if value is None or str(value).strip() == "":
+			continue
+		if field in ("clr_bal_amt", "balance"):
+			try:
+				value = float(str(value).strip())
+			except (ValueError, TypeError):
+				value = None
+		setattr(doc, field, value)
+	doc.report_date = rdate
+	doc.insert()
+	frappe.db.commit()
+	return {"status": "success", "new_record": doc.name, "report_date": rdate, "sol_id": data.get("sol_id") or ""}
+
+
+@frappe.whitelist()
 def import_gl_mapping(file_content, filename=""):
 	"""Create/Update GL Mapping records from an uploaded CSV/XLSX file (base64 content)."""
 	import base64
