@@ -8287,6 +8287,7 @@ class DrishtiDashboard {
 							<div style="flex: 1;"></div>
 							<button type="button" id="pl-update-pl" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Update PL</button>
 							<button type="button" id="pl-update-mapping" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Update Mapping</button>
+							<button type="button" id="pl-record-file" style="background: #b91c1c; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Record</button>
 						</div>
 						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<table class="mis-hover-table" style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
@@ -8861,6 +8862,28 @@ class DrishtiDashboard {
 						});
 						dlg.show();
 					});
+					container.off("click", "#pl-record-file").on("click", "#pl-record-file", function () {
+						const uid = Math.random().toString(36).slice(2, 7);
+						const dlg = new frappe.ui.Dialog({
+							title: __("Record"),
+							fields: [{ fieldtype: "HTML", fieldname: "recbody" }],
+						});
+						dlg.body.innerHTML = `
+							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+								<button type="button" id="rec-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
+								<span id="rec-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
+							</div>
+							<input type="file" id="rec-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
+						`;
+						dlg.$wrapper.on("click", `#rec-pick-${uid}`, function () {
+							dlg.$wrapper.find(`#rec-file-${uid}`).trigger("click");
+						});
+						dlg.$wrapper.on("change", `#rec-file-${uid}`, function () {
+							const f = this.files && this.files[0];
+							dlg.$wrapper.find(`#rec-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+						});
+						dlg.show();
+					});
 					if (!self.plDate) {
 						frappe.call({
 							method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.get_latest_pl_date",
@@ -8938,6 +8961,7 @@ class DrishtiDashboard {
 							<div style="flex: 1;"></div>
 							<button type="button" id="bs-update-pl" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Update PL</button>
 							<button type="button" id="bs-update-mapping" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Update Mapping</button>
+							<button type="button" id="bs-record-file" style="background: #b91c1c; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Record</button>
 						</div>
 						<div id="bs-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<table class="mis-hover-table" style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
@@ -9387,6 +9411,28 @@ class DrishtiDashboard {
 						});
 						dlg.$wrapper.on("click", `#map-cancel-${uid}`, function () {
 							dlg.hide();
+						});
+						dlg.show();
+					});
+					container.off("click", "#bs-record-file").on("click", "#bs-record-file", function () {
+						const uid = Math.random().toString(36).slice(2, 7);
+						const dlg = new frappe.ui.Dialog({
+							title: __("Record"),
+							fields: [{ fieldtype: "HTML", fieldname: "recbody" }],
+						});
+						dlg.body.innerHTML = `
+							<div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+								<button type="button" id="rec-pick-${uid}" style="background: #417d81; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Select File</button>
+								<span id="rec-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
+							</div>
+							<input type="file" id="rec-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
+						`;
+						dlg.$wrapper.on("click", `#rec-pick-${uid}`, function () {
+							dlg.$wrapper.find(`#rec-file-${uid}`).trigger("click");
+						});
+						dlg.$wrapper.on("change", `#rec-file-${uid}`, function () {
+							const f = this.files && this.files[0];
+							dlg.$wrapper.find(`#rec-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
 						});
 						dlg.show();
 					});
