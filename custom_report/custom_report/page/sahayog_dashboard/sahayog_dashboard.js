@@ -8287,7 +8287,7 @@ class DrishtiDashboard {
 							<div style="flex: 1;"></div>
 							<button type="button" id="pl-update-pl" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Update PL</button>
 							<button type="button" id="pl-update-mapping" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Update Mapping</button>
-							<button type="button" id="pl-record-file" style="background: #b91c1c; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Record</button>
+							<button type="button" id="pl-record-file" style="background: #b91c1c; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Insert New Record</button>
 						</div>
 						<div id="mis-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<table class="mis-hover-table" style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
@@ -8961,7 +8961,7 @@ class DrishtiDashboard {
 							<div style="flex: 1;"></div>
 							<button type="button" id="bs-update-pl" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Update PL</button>
 							<button type="button" id="bs-update-mapping" style="background: #417d81; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Update Mapping</button>
-							<button type="button" id="bs-record-file" style="background: #b91c1c; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Record</button>
+							<button type="button" id="bs-record-file" style="background: #b91c1c; color: #fff; border: none; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; white-space: nowrap;">Insert New Record</button>
 						</div>
 						<div id="bs-zone-filter-row" style="display: none; margin-bottom: 10px;"></div>
 						<table class="mis-hover-table" style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; font-family: 'Inter', sans-serif;">
