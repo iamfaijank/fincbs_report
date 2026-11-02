@@ -8874,13 +8874,72 @@ class DrishtiDashboard {
 								<span id="rec-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
 							</div>
 							<input type="file" id="rec-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
+							<div id="rec-status-${uid}" style="font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px;"></div>
+							<button type="button" id="rec-ins-${uid}" style="display: none; background: #0f766e; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Insert New Record</button>
 						`;
 						dlg.$wrapper.on("click", `#rec-pick-${uid}`, function () {
 							dlg.$wrapper.find(`#rec-file-${uid}`).trigger("click");
 						});
 						dlg.$wrapper.on("change", `#rec-file-${uid}`, function () {
 							const f = this.files && this.files[0];
-							dlg.$wrapper.find(`#rec-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+							const $name = dlg.$wrapper.find(`#rec-name-${uid}`);
+							const $status = dlg.$wrapper.find(`#rec-status-${uid}`);
+							const $ins = dlg.$wrapper.find(`#rec-ins-${uid}`);
+							$name.text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+							$status.text("").css("color", "#64748b");
+							$ins.hide().prop("disabled", true);
+							if (!f) return;
+							const reader = new FileReader();
+							reader.onload = function (ev) {
+								const b64 = String(ev.target.result || "").split(",")[1] || "";
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.validate_pl_record",
+									args: { file_content: b64, filename: f.name },
+									freeze: true,
+									freeze_msg: "Validating " + f.name + "\u2026",
+									callback: function (r) {
+										const m = (r && r.message) || {};
+										if (m.status === "error") {
+											$status.text(m.message || "Invalid file").css("color", "#dc2626");
+											return;
+										}
+										const errs = m.errors || [];
+										if (errs.length) {
+											$status.text("Invalid: " + errs.length + " error(s) \u2014 " + errs[0]).css("color", "#dc2626");
+											return;
+										}
+										$status.text("Valid \u2014 " + (m.total_rows || 0) + " row(s), headers matched, formats OK").css("color", "#0f766e");
+										$ins.show().prop("disabled", false).data("b64", b64).data("name", f.name);
+									},
+									error: function () {
+										$status.text("Validation failed for " + f.name).css("color", "#dc2626");
+									},
+								});
+							};
+							reader.readAsDataURL(f);
+						});
+						dlg.$wrapper.on("click", `#rec-ins-${uid}`, function () {
+							const $b = $(this);
+							const b64 = $b.data("b64");
+							const fname = $b.data("name");
+							if (!b64) return;
+							$b.prop("disabled", true).css("opacity", 0.6).text("Inserting\u2026");
+							frappe.call({
+								method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.insert_pl_record",
+								args: { file_content: b64, filename: fname },
+								freeze: true,
+								freeze_msg: "Inserting new Profit and Loss Report record from " + fname + "\u2026",
+								callback: function (r) {
+									const m = (r && r.message) || {};
+									if (m.status === "error") { frappe.msgprint(m.message || "Insert failed"); }
+									else { frappe.show_alert({ message: "New P&L record created: " + (m.new_record || ""), indicator: "green", duration: 7000 }); }
+									$b.prop("disabled", false).css("opacity", 1).text("Insert New Record");
+								},
+								error: function () {
+									frappe.msgprint("P&L insert failed for " + (fname || "file"));
+									$b.prop("disabled", false).css("opacity", 1).text("Insert New Record");
+								},
+							});
 						});
 						dlg.show();
 					});
@@ -9426,13 +9485,72 @@ class DrishtiDashboard {
 								<span id="rec-name-${uid}" style="font-size: 12px; color: #64748b; font-weight: 600;">No file selected</span>
 							</div>
 							<input type="file" id="rec-file-${uid}" accept=".csv,.xlsx,.xls" style="display: none;">
+							<div id="rec-status-${uid}" style="font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px;"></div>
+							<button type="button" id="rec-ins-${uid}" style="display: none; background: #0f766e; color: #fff; border: none; padding: 5px 12px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;">Insert New Record</button>
 						`;
 						dlg.$wrapper.on("click", `#rec-pick-${uid}`, function () {
 							dlg.$wrapper.find(`#rec-file-${uid}`).trigger("click");
 						});
 						dlg.$wrapper.on("change", `#rec-file-${uid}`, function () {
 							const f = this.files && this.files[0];
-							dlg.$wrapper.find(`#rec-name-${uid}`).text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+							const $name = dlg.$wrapper.find(`#rec-name-${uid}`);
+							const $status = dlg.$wrapper.find(`#rec-status-${uid}`);
+							const $ins = dlg.$wrapper.find(`#rec-ins-${uid}`);
+							$name.text(f ? f.name : "No file selected").css("color", f ? "#0f766e" : "#64748b");
+							$status.text("").css("color", "#64748b");
+							$ins.hide().prop("disabled", true);
+							if (!f) return;
+							const reader = new FileReader();
+							reader.onload = function (ev) {
+								const b64 = String(ev.target.result || "").split(",")[1] || "";
+								frappe.call({
+									method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.validate_pl_record",
+									args: { file_content: b64, filename: f.name },
+									freeze: true,
+									freeze_msg: "Validating " + f.name + "\u2026",
+									callback: function (r) {
+										const m = (r && r.message) || {};
+										if (m.status === "error") {
+											$status.text(m.message || "Invalid file").css("color", "#dc2626");
+											return;
+										}
+										const errs = m.errors || [];
+										if (errs.length) {
+											$status.text("Invalid: " + errs.length + " error(s) \u2014 " + errs[0]).css("color", "#dc2626");
+											return;
+										}
+										$status.text("Valid \u2014 " + (m.total_rows || 0) + " row(s), headers matched, formats OK").css("color", "#0f766e");
+										$ins.show().prop("disabled", false).data("b64", b64).data("name", f.name);
+									},
+									error: function () {
+										$status.text("Validation failed for " + f.name).css("color", "#dc2626");
+									},
+								});
+							};
+							reader.readAsDataURL(f);
+						});
+						dlg.$wrapper.on("click", `#rec-ins-${uid}`, function () {
+							const $b = $(this);
+							const b64 = $b.data("b64");
+							const fname = $b.data("name");
+							if (!b64) return;
+							$b.prop("disabled", true).css("opacity", 0.6).text("Inserting\u2026");
+							frappe.call({
+								method: "custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.insert_pl_record",
+								args: { file_content: b64, filename: fname },
+								freeze: true,
+								freeze_msg: "Inserting new Profit and Loss Report record from " + fname + "\u2026",
+								callback: function (r) {
+									const m = (r && r.message) || {};
+									if (m.status === "error") { frappe.msgprint(m.message || "Insert failed"); }
+									else { frappe.show_alert({ message: "New P&L record created: " + (m.new_record || ""), indicator: "green", duration: 7000 }); }
+									$b.prop("disabled", false).css("opacity", 1).text("Insert New Record");
+								},
+								error: function () {
+									frappe.msgprint("P&L insert failed for " + (fname || "file"));
+									$b.prop("disabled", false).css("opacity", 1).text("Insert New Record");
+								},
+							});
 						});
 						dlg.show();
 					});
