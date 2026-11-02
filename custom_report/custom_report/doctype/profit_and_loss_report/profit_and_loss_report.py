@@ -541,42 +541,54 @@ def insert_pl_record(file_content, filename="", sheet_name=None, report_date=Non
 		return label_map.get(header.lower())
 
 	header_row = [resolve(h) for h in all_rows[0]]
-	data = {
-		field: (all_rows[1][i] if i < len(all_rows[1]) else "")
-		for i, field in enumerate(header_row)
-		if field
-	}
 
-	rdate = str(data.get("report_date") or "").strip()
-	if rdate:
-		rdate = rdate.split(" ")[0]
-		for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%d-%m-%y", "%d/%m/%y"):
-			try:
-				rdate = datetime.datetime.strptime(rdate, fmt).strftime("%Y-%m-%d")
-				break
-			except ValueError:
+	created_records = []
+	skipped = 0
+	for ri, row in enumerate(all_rows[1:], start=2):
+		data = {
+			field: (row[i] if i < len(row) else "")
+			for i, field in enumerate(header_row)
+			if field
+		}
+
+		rdate = str(data.get("report_date") or "").strip()
+		if rdate:
+			rdate = rdate.split(" ")[0]
+			for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%d-%m-%y", "%d/%m/%y"):
+				try:
+					rdate = datetime.datetime.strptime(rdate, fmt).strftime("%Y-%m-%d")
+					break
+				except ValueError:
+					continue
+		if not rdate:
+			rdate = report_date
+		if not rdate:
+			skipped += 1
+			continue
+
+		doc = frappe.new_doc("Profit and Loss Report")
+		for field, value in data.items():
+			if field == "report_date" or field not in valid_fields:
 				continue
-	if not rdate:
-		rdate = report_date
-	if not rdate:
-		return {"status": "error", "message": "Template row is missing a valid Date"}
+			if value is None or str(value).strip() == "":
+				continue
+			if field in ("clr_bal_amt", "balance"):
+				try:
+					value = float(str(value).strip())
+				except (ValueError, TypeError):
+					value = None
+			setattr(doc, field, value)
+		doc.report_date = rdate
+		doc.insert()
+		created_records.append(doc.name)
 
-	doc = frappe.new_doc("Profit and Loss Report")
-	for field, value in data.items():
-		if field == "report_date" or field not in valid_fields:
-			continue
-		if value is None or str(value).strip() == "":
-			continue
-		if field in ("clr_bal_amt", "balance"):
-			try:
-				value = float(str(value).strip())
-			except (ValueError, TypeError):
-				value = None
-		setattr(doc, field, value)
-	doc.report_date = rdate
-	doc.insert()
 	frappe.db.commit()
-	return {"status": "success", "new_record": doc.name, "report_date": rdate, "sol_id": data.get("sol_id") or ""}
+	return {
+		"status": "success",
+		"created": len(created_records),
+		"skipped": skipped,
+		"new_records": created_records[:50],
+	}
 
 
 @frappe.whitelist()

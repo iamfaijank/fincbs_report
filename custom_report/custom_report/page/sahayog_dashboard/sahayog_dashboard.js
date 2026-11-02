@@ -8758,7 +8758,7 @@ class DrishtiDashboard {
 								callback: function (r) {
 									const m = (r && r.message) || {};
 									if (m.status === "error") { frappe.msgprint(m.message || "Insert failed"); }
-									else { frappe.show_alert({ message: "New P&L record created: " + (m.new_record || ""), indicator: "green", duration: 7000 }); }
+									else { frappe.show_alert({ message: "Created " + (m.created || 0) + " new P&L record(s)" + (m.skipped ? " (skipped " + m.skipped + " row(s) without a Date)" : ""), indicator: "green", duration: 7000 }); }
 									$ins.prop("disabled", false).css("opacity", 1).text("Insert New Record");
 								},
 								error: function () {
@@ -8932,7 +8932,7 @@ class DrishtiDashboard {
 								callback: function (r) {
 									const m = (r && r.message) || {};
 									if (m.status === "error") { frappe.msgprint(m.message || "Insert failed"); }
-									else { frappe.show_alert({ message: "New P&L record created: " + (m.new_record || ""), indicator: "green", duration: 7000 }); }
+									else { frappe.show_alert({ message: "Created " + (m.created || 0) + " new P&L record(s)" + (m.skipped ? " (skipped " + m.skipped + " row(s) without a Date)" : ""), indicator: "green", duration: 7000 }); }
 									$b.prop("disabled", false).css("opacity", 1).text("Insert New Record");
 								},
 								error: function () {
@@ -9369,7 +9369,7 @@ class DrishtiDashboard {
 								callback: function (r) {
 									const m = (r && r.message) || {};
 									if (m.status === "error") { frappe.msgprint(m.message || "Insert failed"); }
-									else { frappe.show_alert({ message: "New P&L record created: " + (m.new_record || ""), indicator: "green", duration: 7000 }); }
+									else { frappe.show_alert({ message: "Created " + (m.created || 0) + " new P&L record(s)" + (m.skipped ? " (skipped " + m.skipped + " row(s) without a Date)" : ""), indicator: "green", duration: 7000 }); }
 									$ins.prop("disabled", false).css("opacity", 1).text("Insert New Record");
 								},
 								error: function () {
@@ -9543,7 +9543,7 @@ class DrishtiDashboard {
 								callback: function (r) {
 									const m = (r && r.message) || {};
 									if (m.status === "error") { frappe.msgprint(m.message || "Insert failed"); }
-									else { frappe.show_alert({ message: "New P&L record created: " + (m.new_record || ""), indicator: "green", duration: 7000 }); }
+									else { frappe.show_alert({ message: "Created " + (m.created || 0) + " new P&L record(s)" + (m.skipped ? " (skipped " + m.skipped + " row(s) without a Date)" : ""), indicator: "green", duration: 7000 }); }
 									$b.prop("disabled", false).css("opacity", 1).text("Insert New Record");
 								},
 								error: function () {
