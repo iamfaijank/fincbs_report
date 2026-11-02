@@ -8758,7 +8758,12 @@ class DrishtiDashboard {
 								callback: function (r) {
 									const m = (r && r.message) || {};
 									if (m.status === "error") { frappe.msgprint(m.message || "Insert failed"); }
-									else { frappe.show_alert({ message: "Created " + (m.created || 0) + " new P&L record(s)" + (m.skipped ? " (skipped " + m.skipped + " row(s) without a Date)" : ""), indicator: "green", duration: 7000 }); }
+									else {
+										const _dlg = new frappe.ui.Dialog({ title: __("Insert Result"), fields: [{ fieldtype: "HTML", fieldname: "body" }] });
+										_dlg.body.innerHTML = `<div style="font-size:13px;line-height:1.7;"><div style="color:#0f766e;font-weight:600;">Created: ${m.created || 0} record(s)</div><div style="color:#dc2626;font-weight:600;">Not created (skipped): ${m.skipped || 0} row(s)</div>${(m.failed || 0) ? '<div style="color:#dc2626;font-weight:600;">Failed: ' + m.failed + ' row(s)</div>' : ''}</div>`;
+										_dlg.show();
+										setTimeout(function () { _dlg.hide(); }, 15000);
+									}
 									$ins.prop("disabled", false).css("opacity", 1).text("Insert New Record");
 								},
 								error: function () {
@@ -8932,7 +8937,12 @@ class DrishtiDashboard {
 								callback: function (r) {
 									const m = (r && r.message) || {};
 									if (m.status === "error") { frappe.msgprint(m.message || "Insert failed"); }
-									else { frappe.show_alert({ message: "Created " + (m.created || 0) + " new P&L record(s)" + (m.skipped ? " (skipped " + m.skipped + " row(s) without a Date)" : ""), indicator: "green", duration: 7000 }); }
+									else {
+										const _dlg = new frappe.ui.Dialog({ title: __("Insert Result"), fields: [{ fieldtype: "HTML", fieldname: "body" }] });
+										_dlg.body.innerHTML = `<div style="font-size:13px;line-height:1.7;"><div style="color:#0f766e;font-weight:600;">Created: ${m.created || 0} record(s)</div><div style="color:#dc2626;font-weight:600;">Not created (skipped): ${m.skipped || 0} row(s)</div>${(m.failed || 0) ? '<div style="color:#dc2626;font-weight:600;">Failed: ' + m.failed + ' row(s)</div>' : ''}</div>`;
+										_dlg.show();
+										setTimeout(function () { _dlg.hide(); }, 15000);
+									}
 									$b.prop("disabled", false).css("opacity", 1).text("Insert New Record");
 								},
 								error: function () {
@@ -9369,7 +9379,12 @@ class DrishtiDashboard {
 								callback: function (r) {
 									const m = (r && r.message) || {};
 									if (m.status === "error") { frappe.msgprint(m.message || "Insert failed"); }
-									else { frappe.show_alert({ message: "Created " + (m.created || 0) + " new P&L record(s)" + (m.skipped ? " (skipped " + m.skipped + " row(s) without a Date)" : ""), indicator: "green", duration: 7000 }); }
+									else {
+										const _dlg = new frappe.ui.Dialog({ title: __("Insert Result"), fields: [{ fieldtype: "HTML", fieldname: "body" }] });
+										_dlg.body.innerHTML = `<div style="font-size:13px;line-height:1.7;"><div style="color:#0f766e;font-weight:600;">Created: ${m.created || 0} record(s)</div><div style="color:#dc2626;font-weight:600;">Not created (skipped): ${m.skipped || 0} row(s)</div>${(m.failed || 0) ? '<div style="color:#dc2626;font-weight:600;">Failed: ' + m.failed + ' row(s)</div>' : ''}</div>`;
+										_dlg.show();
+										setTimeout(function () { _dlg.hide(); }, 15000);
+									}
 									$ins.prop("disabled", false).css("opacity", 1).text("Insert New Record");
 								},
 								error: function () {
@@ -9543,7 +9558,12 @@ class DrishtiDashboard {
 								callback: function (r) {
 									const m = (r && r.message) || {};
 									if (m.status === "error") { frappe.msgprint(m.message || "Insert failed"); }
-									else { frappe.show_alert({ message: "Created " + (m.created || 0) + " new P&L record(s)" + (m.skipped ? " (skipped " + m.skipped + " row(s) without a Date)" : ""), indicator: "green", duration: 7000 }); }
+									else {
+										const _dlg = new frappe.ui.Dialog({ title: __("Insert Result"), fields: [{ fieldtype: "HTML", fieldname: "body" }] });
+										_dlg.body.innerHTML = `<div style="font-size:13px;line-height:1.7;"><div style="color:#0f766e;font-weight:600;">Created: ${m.created || 0} record(s)</div><div style="color:#dc2626;font-weight:600;">Not created (skipped): ${m.skipped || 0} row(s)</div>${(m.failed || 0) ? '<div style="color:#dc2626;font-weight:600;">Failed: ' + m.failed + ' row(s)</div>' : ''}</div>`;
+										_dlg.show();
+										setTimeout(function () { _dlg.hide(); }, 15000);
+									}
 									$b.prop("disabled", false).css("opacity", 1).text("Insert New Record");
 								},
 								error: function () {

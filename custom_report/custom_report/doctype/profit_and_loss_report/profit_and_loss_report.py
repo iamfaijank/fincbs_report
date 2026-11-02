@@ -544,6 +544,7 @@ def insert_pl_record(file_content, filename="", sheet_name=None, report_date=Non
 
 	created_records = []
 	skipped = 0
+	failed = 0
 	for ri, row in enumerate(all_rows[1:], start=2):
 		data = {
 			field: (row[i] if i < len(row) else "")
@@ -566,27 +567,31 @@ def insert_pl_record(file_content, filename="", sheet_name=None, report_date=Non
 			skipped += 1
 			continue
 
-		doc = frappe.new_doc("Profit and Loss Report")
-		for field, value in data.items():
-			if field == "report_date" or field not in valid_fields:
-				continue
-			if value is None or str(value).strip() == "":
-				continue
-			if field in ("clr_bal_amt", "balance"):
-				try:
-					value = float(str(value).strip())
-				except (ValueError, TypeError):
-					value = None
-			setattr(doc, field, value)
-		doc.report_date = rdate
-		doc.insert()
-		created_records.append(doc.name)
+		try:
+			doc = frappe.new_doc("Profit and Loss Report")
+			for field, value in data.items():
+				if field == "report_date" or field not in valid_fields:
+					continue
+				if value is None or str(value).strip() == "":
+					continue
+				if field in ("clr_bal_amt", "balance"):
+					try:
+						value = float(str(value).strip())
+					except (ValueError, TypeError):
+						value = None
+				setattr(doc, field, value)
+			doc.report_date = rdate
+			doc.insert()
+			created_records.append(doc.name)
+		except Exception:
+			failed += 1
 
 	frappe.db.commit()
 	return {
 		"status": "success",
 		"created": len(created_records),
 		"skipped": skipped,
+		"failed": failed,
 		"new_records": created_records[:50],
 	}
 
