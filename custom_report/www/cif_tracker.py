@@ -171,7 +171,6 @@ def get_cif_details(cif_id):
                    ON u_appr.personid = p_appr.personid
             WHERE c.del_flg = 'N'
               AND TRIM(c.cif_id) = %s
-              AND c.rcre_time::DATE = CURRENT_DATE
             ORDER BY c.rcre_time DESC;
         """
         cursor.execute(query, (str(cif_id).strip(),))
@@ -189,7 +188,7 @@ def get_cif_details(cif_id):
         if data:
             return {"success": True, "data": data}
         else:
-            return {"success": False, "error": "The mentioned CIF has either not been submitted correctly or has already been verified. Please verify the details and try again.\n If the CIF has been submitted and the verifier details are not visible, please advise the branch checker to get into their tray."}
+            return {"success": False, "error": "No details found for the entered CIF."}
 
     except Exception as e:
         frappe.log_error(message=frappe.get_traceback(), title="CIF Tracker Error")
