@@ -480,6 +480,12 @@ const dbDot = document.getElementById("db-status-dot");
 const dbText = document.getElementById("db-status-text");
 const dbInfo = document.getElementById("db-status-info");
 
+// Hide section entirely if not admin (extra safeguard)
+if (dbToggle && (typeof frappe === "undefined" || frappe.session.user !== "Administrator")) {
+	dbToggle.parentElement.remove();
+	dbToggle = null;
+}
+
 if (dbToggle) {
 	dbToggle.addEventListener("click", async () => {
 		const isOpen = dbDetails.style.display !== "none";
