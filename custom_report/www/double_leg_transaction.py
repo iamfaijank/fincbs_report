@@ -7,6 +7,8 @@ from decimal import Decimal
 
 
 def _has_access():
+	if not frappe.session:
+		return False
 	user = frappe.session.user
 	if user == "Administrator":
 		return True
