@@ -1140,7 +1140,7 @@ function _exportMisReportDataCsv(dashboardInstance, report) {
 		return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
 	};
 
-	const csv = "\uFEFF" + [
+	const csv = [
 		fields.map(f => label(f)).map(csvCell).join(","),
 		...rows.map(r => fields.map(f => r[f]).map(csvCell).join(",")),
 	].join("\r\n");
