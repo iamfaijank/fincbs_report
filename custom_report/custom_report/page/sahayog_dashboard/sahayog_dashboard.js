@@ -8272,7 +8272,9 @@ class DrishtiDashboard {
 						<tr>
 							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 60%; background: #e2e8f0; border-radius: 4px;"></div></td>
 							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 40%; background: #e2e8f0; border-radius: 4px; margin-left: auto;"></div></td>
+							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"></td>
 							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><div style="height: 12px; width: 40%; background: #e2e8f0; border-radius: 4px; margin-left: auto;"></div></td>
+							<td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"></td>
 						</tr>`).join("");
 					container.html(`
 						<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">
@@ -8296,7 +8298,9 @@ class DrishtiDashboard {
 								<tr>
 									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: left;">Particulars</th>
 									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right;">Yearly Amount</th>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right;" class="yeald-col">Yearly yeald</th>
 									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right;">Monthly Amount</th>
+									<th style="background: #f1f5f9; padding: 10px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 600; font-size: 12px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; text-align: right;" class="yeald-col">Monthly yeald</th>
 								</tr>
 							</thead>
 							<tbody id="pl-summary-body">${skeletonRows}</tbody>
@@ -8305,7 +8309,7 @@ class DrishtiDashboard {
 					if (!document.getElementById("mis-hover-style")) {
 						const st = document.createElement("style");
 						st.id = "mis-hover-style";
-						st.textContent = ".mis-hover-table tbody tr { cursor: pointer; } .mis-hover-table tbody tr:hover td { background-color: #e6f4f1 !important; } .mis-hover-table tbody tr.pl-sch-row:hover td, .mis-hover-table tbody tr.bs-sch-row:hover td { background-color: #d5ebe8 !important; }";
+						st.textContent = ".mis-hover-table tbody tr { cursor: pointer; } .mis-hover-table tbody tr:hover td { background-color: #e6f4f1 !important; } .mis-hover-table tbody tr.pl-sch-row:hover td, .mis-hover-table tbody tr.bs-sch-row:hover td { background-color: #d5ebe8 !important; } .yeald-col { display: none; } .pl-show-yeald .yeald-col { display: table-cell; }";
 						document.head.appendChild(st);
 					}
 					const tbody = container.find("#pl-summary-body");
@@ -8428,7 +8432,7 @@ class DrishtiDashboard {
 								});
 							},
 							error: function () {
-								tbody.html(`<tr><td colspan="3" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #dc2626;">Failed to load data</td></tr>`);
+								tbody.html(`<tr><td colspan="5" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #dc2626;">Failed to load data</td></tr>`);
 							},
 						});
 					};
@@ -8475,14 +8479,18 @@ class DrishtiDashboard {
 								<tr class="pl-sch-row" data-sch="${sch.schedule_number}" style="cursor: pointer;">
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;"><span class="sch-caret" style="display: inline-block; width: 14px;">${collapsed ? "▸" : "▾"}</span>${sch.schedule}</td>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(schTotal)}</td>
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;" class="yeald-col"></td>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(schMonthly)}</td>
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;" class="yeald-col"></td>
 								</tr>`;
 							if (showTp) {
 								html += `
 									<tr class="pl-sub-row" data-sch="${sch.schedule_number}" style="${collapsed ? "display: none; " : ""}">
 										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Transfer Pricing Interest</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${self.plTransferInterestYearly != null ? fmt(self.plTransferInterestYearly) : "-"}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;" class="yeald-col"></td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(self.plTransferInterest)}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;" class="yeald-col"></td>
 									</tr>`;
 							}
 							sch.sub_schedules.forEach((sub) => {
@@ -8495,19 +8503,23 @@ class DrishtiDashboard {
 									<tr class="pl-sub-row" data-sch="${sch.schedule_number}" style="${collapsed ? "display: none; " : ""}">
 										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155;">${sub.sub_schedule}</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(subTotal)}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;" class="yeald-col"></td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(subMonthly)}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;" class="yeald-col"></td>
 									</tr>`;
 							});
 						});
 						if (!(self.plData || []).length) {
-							tbody.html(`<tr><td colspan="3" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #64748b;">No data found</td></tr>`);
+							tbody.html(`<tr><td colspan="5" style="padding: 40px 12px; text-align: center; font-size: 13px; color: #64748b;">No data found</td></tr>`);
 							return;
 						}
 						html += `
 							<tr>
 								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff;">Income Over Expenditure</td>
 								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff; text-align: right;">${fmt(incomeOverExp)}</td>
+								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff; text-align: right;" class="yeald-col"></td>
 								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff; text-align: right;">${fmt(monthlyIncomeOverExp)}</td>
+								<td style="padding: 10px 12px; background: #417d81; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #fff; text-align: right;" class="yeald-col"></td>
 							</tr>`;
 						const searchActive = rawPlSearch().trim() !== "";
 						if (searchActive) {
@@ -8527,16 +8539,21 @@ class DrishtiDashboard {
 								<tr>
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Central Allocation</td>
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(centralAlloc)}</td>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;" class="yeald-col"></td>
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(monthlyCentralAlloc)}</td>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;" class="yeald-col"></td>
 								</tr>
 								<tr>
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: ${iaaColor};">Income After Allocation</td>
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: ${iaaColor}; text-align: right;">${incomeAfterAlloc < 0 ? "-" : ""}${fmt(incomeAfterAlloc)}</td>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: ${iaaColor}; text-align: right;" class="yeald-col"></td>
 									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: ${iaaMonthlyColor}; text-align: right;">${monthlyIncomeAfterAlloc < 0 ? "-" : ""}${fmt(monthlyIncomeAfterAlloc)}</td>
+									<td style="padding: 8px 12px; background: #f0fdfa; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: ${iaaMonthlyColor}; text-align: right;" class="yeald-col"></td>
 								</tr>`;
 						}
 						tbody.html(html);
-						const plAllOpen = (self.plData || []).length > 0 && (self.plData || []).every((s) => self.plCollapsed && self.plCollapsed[s.schedule_number] === false);
+						const anyExpanded = (self.plData || []).some((s) => self.plCollapsed && self.plCollapsed[s.schedule_number] === false);
+						container.find("table.mis-hover-table").toggleClass("pl-show-yeald", anyExpanded);
 						container.find("#pl-expand-all").text(plAllOpen ? "▲ Collapse All" : "▼ Expand All");
 					};
 					tbody.off("click", ".pl-sch-row").on("click", ".pl-sch-row", function () {
@@ -8547,6 +8564,8 @@ class DrishtiDashboard {
 						self.plCollapsed[num] = nowCollapsed;
 						tbody.find(`tr.pl-sub-row[data-sch="${num}"]`).css("display", nowCollapsed ? "none" : "");
 						$(this).find(".sch-caret").text(nowCollapsed ? "▸" : "▾");
+						const anyExpandedNow = (self.plData || []).some((s) => self.plCollapsed && self.plCollapsed[s.schedule_number] === false);
+						container.find("table.mis-hover-table").toggleClass("pl-show-yeald", anyExpandedNow);
 						const plAllOpen2 = (self.plData || []).length > 0 && (self.plData || []).every((s) => self.plCollapsed && self.plCollapsed[s.schedule_number] === false);
 						container.find("#pl-expand-all").text(plAllOpen2 ? "▲ Collapse All" : "▼ Expand All");
 					});
@@ -9049,7 +9068,7 @@ class DrishtiDashboard {
 					if (!document.getElementById("mis-hover-style")) {
 						const st = document.createElement("style");
 						st.id = "mis-hover-style";
-						st.textContent = ".mis-hover-table tbody tr { cursor: pointer; } .mis-hover-table tbody tr:hover td { background-color: #e6f4f1 !important; } .mis-hover-table tbody tr.pl-sch-row:hover td, .mis-hover-table tbody tr.bs-sch-row:hover td { background-color: #d5ebe8 !important; }";
+						st.textContent = ".mis-hover-table tbody tr { cursor: pointer; } .mis-hover-table tbody tr:hover td { background-color: #e6f4f1 !important; } .mis-hover-table tbody tr.pl-sch-row:hover td, .mis-hover-table tbody tr.bs-sch-row:hover td { background-color: #d5ebe8 !important; } .yeald-col { display: none; } .pl-show-yeald .yeald-col { display: table-cell; }";
 						document.head.appendChild(st);
 					}
 					const tbody = container.find("#bs-summary-body");
