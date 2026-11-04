@@ -24,10 +24,37 @@
 
 		// Flatten nested `details` (per auth/agent rows) under each branch row:
 		// Branch Total row -> Agent rows (grouped by auth)
-		const flatten = filtered.some(r => Array.isArray(r.details) && r.details.length);
-		const rows = [];
-		filtered.forEach(r => {
-			const detail = Array.isArray(r.details) ? r.details : [];
+		let rows = [];
+
+		const isGLWiseCH = report && report.id === "gl_wise_ch_report";
+		if (isGLWiseCH) {
+			// GL Wise CH Report: export SOL-wise data only - one row per SOL with
+			// Zone / Region / District as columns (skip zone/region/district group rows)
+			const solRows = (filtered || []).filter(r => r.type === "sol");
+			const productCols = new Set();
+			solRows.forEach(r => Object.keys(r.products || {}).forEach(p => productCols.add(p)));
+			const products = Array.from(productCols).sort();
+			rows = solRows.map(r => {
+				const prods = r.products || {};
+				const total = products.reduce((s, p) => s + (Number(prods[p]) || 0), 0);
+				const pathParts = String(r.path || "").split("/");
+				const outRow = {
+					zone: pathParts[0] || r.zone || "",
+					region: pathParts[1] || r.region || "",
+					district: pathParts[2] || r.district || "",
+					sol_id: r.sol_id || "",
+					branch_name: r.branch_name || "",
+				};
+				products.forEach(p => { outRow[p] = Number(prods[p]) || 0; });
+				outRow.total = total;
+				return outRow;
+			});
+		} else {
+			// Flatten nested `details` (per auth/agent rows) under each branch row:
+			// Branch Total row -> Agent rows (grouped by auth)
+			const flatten = filtered.some(r => Array.isArray(r.details) && r.details.length);
+			filtered.forEach(r => {
+				const detail = Array.isArray(r.details) ? r.details : [];
 			if (!flatten) {
 				rows.push({ ...r });
 				return;
@@ -81,6 +108,7 @@
 					});
 			}
 		});
+		}
 
 		// Derive the column set from the data itself; skip internal/object fields
 		const seen = new Set();
