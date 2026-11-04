@@ -8496,9 +8496,9 @@ class DrishtiDashboard {
 								<tr class="pl-sch-row" data-sch="${sch.schedule_number}" style="cursor: pointer;">
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;"><span class="sch-caret" style="display: inline-block; width: 14px;">${collapsed ? "▸" : "▾"}</span>${sch.schedule}</td>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(schTotal)}</td>
-									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;" class="yeald-col">${fmt((sch.schedule_number === 13 || sch.schedule_number === 15) && schYealdYearly != null ? schYealdYearly : schTotal)}</td>
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;" class="yeald-col">${((sch.schedule_number === 13 || sch.schedule_number === 15) && schYealdYearly != null) ? fmt(schYealdYearly) : "-"}</td>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(schMonthly)}</td>
-									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;" class="yeald-col">${fmt((sch.schedule_number === 13 || sch.schedule_number === 15) && schYealdMonthly != null ? schYealdMonthly : schMonthly)}</td>
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;" class="yeald-col">${((sch.schedule_number === 13 || sch.schedule_number === 15) && schYealdMonthly != null) ? fmt(schYealdMonthly) : "-"}</td>
 								</tr>`;
 							if (showTp) {
 								html += `
