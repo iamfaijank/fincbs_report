@@ -1039,7 +1039,7 @@ function _getFilteredMISData(self) {
 // zone, region, district) as CSV — not just the rows visible on screen.
 // Rows that carry nested `details` (e.g. RD & SMBG Pending: per agent under
 // each authorizer) are flattened: Branch Total row -> Auth Total rows ->
-// each Agent row under its auth.
+// each Agent row under its auth (no separate Auth Total rows).
 function _exportMisReportDataCsv(dashboardInstance, report) {
 	const filtered = _getFilteredMISData(report);
 	if (!filtered || !filtered.length) {
@@ -1047,10 +1047,8 @@ function _exportMisReportDataCsv(dashboardInstance, report) {
 		return;
 	}
 
-	const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
-
 	// Flatten nested `details` (per auth/agent rows) under each branch row:
-	// Branch Total row -> Auth Total row -> its Agent rows
+	// Branch Total row -> Agent rows (grouped by auth)
 	const flatten = filtered.some(r => Array.isArray(r.details) && r.details.length);
 	const rows = [];
 	filtered.forEach(r => {
@@ -1083,23 +1081,7 @@ function _exportMisReportDataCsv(dashboardInstance, report) {
 				.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
 				.forEach(authKey => {
 					const authRows = byAuth[authKey];
-					// Auth Total row (shares/authors the branch hierarchy)
-					const authRow = {
-						level: "Auth Total",
-						zone: r.zone, region: r.region, district: r.district,
-						sol_id: r.sol_id, branch_name: r.branch_name, sol_desc: r.sol_desc,
-						auth_id: (authRows[0].auth_id != null ? authRows[0].auth_id : authKey) || "",
-						auth_role_id: authRows[0].auth_role_id || "",
-					};
-					authRows.forEach(d => {
-						authRow.total_accounts = num(authRow.total_accounts) + num(d.total_accounts);
-						authRow.total_collection = num(authRow.total_collection) + num(d.total_collection);
-						authRow.pending_accounts = num(authRow.pending_accounts) + num(d.pending_accounts);
-						authRow.pending_amount = num(authRow.pending_amount) + num(d.pending_amount);
-						authRow.pending_instalments = num(authRow.pending_instalments) + num(d.pending_instalments);
-					});
-					rows.push(authRow);
-					// Agent rows under this auth
+					// Agent rows under this auth (no Auth Total rows in export)
 					authRows
 						.slice()
 						.sort((a, b) => String(a.rm_id || "").localeCompare(String(b.rm_id || ""), undefined, { numeric: true }))
