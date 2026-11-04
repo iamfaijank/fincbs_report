@@ -1093,8 +1093,9 @@ function _exportMisReportDataCsv(dashboardInstance, report) {
 						authRow.pending_instalments = num(authRow.pending_instalments) + num(d.pending_instalments);
 					});
 					rows.push(authRow);
-					// Agent rows under this auth
+					// Agent rows under this auth (skip rows with no agent assigned)
 					authRows
+						.filter(d => String(d.rm_id || "").trim() || String(d.rm_name || "").trim())
 						.slice()
 						.sort((a, b) => String(a.rm_id || "").localeCompare(String(b.rm_id || ""), undefined, { numeric: true }))
 						.forEach(d => {
