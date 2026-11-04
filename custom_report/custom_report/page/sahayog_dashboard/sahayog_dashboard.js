@@ -1038,8 +1038,8 @@ function _getFilteredMISData(self) {
 // doctype/queries for the selected date, with the applied filters: search,
 // zone, region, district) as CSV — not just the rows visible on screen.
 // Rows that carry nested `details` (e.g. RD & SMBG Pending: per agent under
-// each authorizer) are flattened: Branch Total row -> Auth Total rows ->
-// each Agent row under its auth (no separate Auth Total rows).
+// each authorizer) are flattened: Branch Total row -> Agent rows grouped
+// by their auth (no separate Auth Total rows).
 function _exportMisReportDataCsv(dashboardInstance, report) {
 	const filtered = _getFilteredMISData(report);
 	if (!filtered || !filtered.length) {
