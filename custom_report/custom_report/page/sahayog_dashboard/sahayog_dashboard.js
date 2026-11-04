@@ -1034,6 +1034,7 @@ function _getFilteredMISData(self) {
 	return data;
 }
 
+
 // Shared district dropdown populator - shows districts from the report's own table data
 function _populateDistrictDropdown(self, container, dashboardInstance) {
 	const $input = container.find("#mis-district-filter");
@@ -12170,6 +12171,11 @@ class DrishtiDashboard {
 	}
 
 	initMisReportsContainer() {
+		// Preload the standalone MIS CSV download module (loaded on demand
+		// from the click handler if not yet ready)
+		if (!window.exportMisReportCsv) {
+			$.getScript("/assets/custom_report/js/mis_report_download.js");
+		}
 		this.mis_container = $('<div id="mis-reports-container" style="border: 1px solid #cbd5e1; padding: 16px; background: #fff; border-radius: 8px; margin-top: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);"></div>').appendTo(this.page.main);
 
 		const selectorHtml = `
@@ -12183,23 +12189,18 @@ class DrishtiDashboard {
 		this.mis_container.html(selectorHtml);
 
 		this.mis_container.on("click", "#mis-download-btn", function () {
-			const $table = self.mis_container.find("#mis-report-content-area table:visible").first();
-			if (!$table.length) return;
-			let csv = "";
-			$table.find("tr").each(function () {
-				const row = [];
-				$(this).find("th,td").each(function (idx) {
-					if (idx === 0) return; // remove first column
-					let t = ($(this).text() || "").replace(/▶|⇩\s*Download|₹|�|[\u{1F000}-\u{1FAFF}]/gu, "").trim();
-					row.push('"' + t.replace(/"/g, '""') + '"');
-				});
-				csv += row.join(",") + "\n";
-			});
-			const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
-			const a = document.createElement("a");
-			a.href = URL.createObjectURL(blob);
-			a.download = "mis_report.csv";
-			a.click();
+			const activeId = self._visibleMisReportId(self.state.selectedMisReport);
+			const report = (self.misReportsList || []).find(r => r.id === activeId);
+			if (!report) return;
+			const exportCsv = () => window.exportMisReportCsv(self, report, _getFilteredMISData(report));
+			if (window.exportMisReportCsv) {
+				exportCsv();
+			} else {
+				// Load the download module on demand
+				$.getScript("/assets/custom_report/js/mis_report_download.js")
+					.done(exportCsv)
+					.fail(() => frappe.msgprint(__("Download module failed to load. Please refresh the page and try again.")));
+			}
 		});
 
 		const self = this;
