@@ -1034,6 +1034,146 @@ function _getFilteredMISData(self) {
 	return data;
 }
 
+// Export the FULL filtered dataset (all rows fetched from the underlying
+// doctype/queries for the selected date, with the applied filters: search,
+// zone, region, district) as CSV — not just the rows visible on screen.
+// Rows that carry nested `details` (e.g. RD & SMBG Pending: per agent under
+// each authorizer) are flattened: Branch Total row -> Auth Total rows ->
+// each Agent row under its auth.
+function _exportMisReportDataCsv(dashboardInstance, report) {
+	const filtered = _getFilteredMISData(report);
+	if (!filtered || !filtered.length) {
+		frappe.msgprint(__("No data available to download for the applied filters."));
+		return;
+	}
+
+	const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+
+	// Flatten nested `details` (per auth/agent rows) under each branch row:
+	// Branch Total row -> Auth Total row -> its Agent rows
+	const flatten = filtered.some(r => Array.isArray(r.details) && r.details.length);
+	const rows = [];
+	filtered.forEach(r => {
+		const detail = Array.isArray(r.details) ? r.details : [];
+		if (!flatten) {
+			rows.push({ ...r });
+			return;
+		}
+		const parent = {};
+		Object.keys(r).forEach(k => {
+			if (k === "details" || (r[k] && typeof r[k] === "object")) return;
+			parent[k] = r[k];
+		});
+		parent.level = "Branch Total";
+		rows.push(parent);
+
+		if (detail.length > 0) {
+			const byAuth = {};
+			detail.forEach(d => {
+				const authKey = String(d.auth_id || "");
+				(byAuth[authKey] = byAuth[authKey] || []).push(d);
+			});
+			Object.keys(byAuth)
+				.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+				.forEach(authKey => {
+					const authRows = byAuth[authKey];
+					// Auth Total row (shares/authors the branch hierarchy)
+					const authRow = {
+						level: "Auth Total",
+						zone: r.zone, region: r.region, district: r.district,
+						sol_id: r.sol_id, branch_name: r.branch_name, sol_desc: r.sol_desc,
+						auth_id: (authRows[0].auth_id != null ? authRows[0].auth_id : authKey) || "",
+						auth_role_id: authRows[0].auth_role_id || "",
+					};
+					authRows.forEach(d => {
+						authRow.total_accounts = num(authRow.total_accounts) + num(d.total_accounts);
+						authRow.total_collection = num(authRow.total_collection) + num(d.total_collection);
+						authRow.pending_accounts = num(authRow.pending_accounts) + num(d.pending_accounts);
+						authRow.pending_amount = num(authRow.pending_amount) + num(d.pending_amount);
+						authRow.pending_instalments = num(authRow.pending_instalments) + num(d.pending_instalments);
+					});
+					rows.push(authRow);
+					// Agent rows under this auth
+					authRows
+						.slice()
+						.sort((a, b) => String(a.rm_id || "").localeCompare(String(b.rm_id || ""), undefined, { numeric: true }))
+						.forEach(d => {
+							const child = {
+								level: "Agent",
+								zone: r.zone, region: r.region, district: r.district,
+								sol_id: r.sol_id, branch_name: r.branch_name, sol_desc: r.sol_desc,
+								auth_id: d.auth_id || authKey, auth_role_id: d.auth_role_id || "",
+								rm_id: d.rm_id || "", rm_name: d.rm_name || "",
+								total_accounts: d.total_accounts, total_collection: d.total_collection,
+								pending_accounts: d.pending_accounts, pending_amount: d.pending_amount,
+								pending_instalments: d.pending_instalments,
+							};
+							Object.keys(d).forEach(k => {
+								if (k === "details" || k in child || child[k]) return;
+								if (typeof d[k] === "object") return;
+								child[k] = d[k];
+							});
+							rows.push(child);
+						});
+				});
+		}
+	});
+
+	// Derive the column set from the data itself; skip internal/object fields
+	const seen = new Set();
+	const allFields = [];
+	rows.slice(0, 100).forEach(r => {
+		Object.keys(r).forEach(k => {
+			if (seen.has(k) || k.startsWith("_")) return;
+			if (typeof r[k] === "object" && r[k] !== null) return;
+			seen.add(k);
+			allFields.push(k);
+		});
+	});
+
+	// Level + hierarchy columns first, then remaining metric columns
+	const leadFields = ["level", "report_date", "date", "zone", "region", "district", "sol_id", "branch_name", "sol_desc", "auth_id", "auth_role_id", "rm_id", "rm_name"];
+	const fields = [];
+	leadFields.forEach(f => { if (seen.has(f)) fields.push(f); });
+	allFields.forEach(f => { if (!fields.includes(f)) fields.push(f); });
+
+	const FIELD_LABELS = {
+		level: "Level",
+		report_date: "Report Date", date: "Date",
+		zone: "Zone", region: "Region", district: "District",
+		sol_id: "Sol ID", branch_name: "Branch Name", sol_desc: "SOL Name",
+		auth_id: "Auth ID", auth_role_id: "Auth Role", auth_name: "Auth Name",
+		rm_id: "Agent Code", rm_name: "Agent Name",
+	};
+	const label = f => FIELD_LABELS[f] || (f || "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+	const csvCell = v => {
+		const s = String(v == null ? "" : v);
+		return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+	};
+
+	const csv = "\uFEFF" + [
+		fields.map(f => label(f)).map(csvCell).join(","),
+		...rows.map(r => fields.map(f => r[f]).map(csvCell).join(",")),
+	].join("\r\n");
+
+	const activeDate = dashboardInstance.state.selectedDate || $("#mis-date-filter").val() || "";
+	const datePart = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(activeDate)
+		? activeDate.split("-").reverse().join("_")
+		: "";
+	const reportName = (report && report.name) || "MIS_Report";
+	const fileName = reportName.replace(/[^a-zA-Z0-9]+/g, "_") + (datePart ? "_" + datePart : "") + ".csv";
+
+	const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+	const a = document.createElement("a");
+	a.href = url;
+	a.download = fileName;
+	document.body.appendChild(a);
+	a.click();
+	document.body.removeChild(a);
+	URL.revokeObjectURL(url);
+}
+
 // Shared district dropdown populator - shows districts from the report's own table data
 function _populateDistrictDropdown(self, container, dashboardInstance) {
 	const $input = container.find("#mis-district-filter");
@@ -12183,23 +12323,10 @@ class DrishtiDashboard {
 		this.mis_container.html(selectorHtml);
 
 		this.mis_container.on("click", "#mis-download-btn", function () {
-			const $table = self.mis_container.find("#mis-report-content-area table:visible").first();
-			if (!$table.length) return;
-			let csv = "";
-			$table.find("tr").each(function () {
-				const row = [];
-				$(this).find("th,td").each(function (idx) {
-					if (idx === 0) return; // remove first column
-					let t = ($(this).text() || "").replace(/▶|⇩\s*Download|₹|�|[\u{1F000}-\u{1FAFF}]/gu, "").trim();
-					row.push('"' + t.replace(/"/g, '""') + '"');
-				});
-				csv += row.join(",") + "\n";
-			});
-			const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
-			const a = document.createElement("a");
-			a.href = URL.createObjectURL(blob);
-			a.download = "mis_report.csv";
-			a.click();
+			const activeId = self._visibleMisReportId(self.state.selectedMisReport);
+			const report = (self.misReportsList || []).find(r => r.id === activeId);
+			if (!report) return;
+			_exportMisReportDataCsv(self, report);
 		});
 
 		const self = this;
