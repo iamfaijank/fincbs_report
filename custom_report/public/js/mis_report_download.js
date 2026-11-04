@@ -38,12 +38,14 @@
 				const prods = r.products || {};
 				const total = products.reduce((s, p) => s + (Number(prods[p]) || 0), 0);
 				const pathParts = String(r.path || "").split("/");
+				const solId = pathParts[3] || r.sol_id || "";
+				const branchName = String(r.name || "").split(" - ").slice(1).join(" - ") || r.branch_name || "";
 				const outRow = {
 					zone: pathParts[0] || r.zone || "",
 					region: pathParts[1] || r.region || "",
 					district: pathParts[2] || r.district || "",
-					sol_id: r.sol_id || "",
-					branch_name: r.branch_name || "",
+					sol_id: solId,
+					branch_name: branchName,
 				};
 				products.forEach(p => { outRow[p] = Number(prods[p]) || 0; });
 				outRow.total = total;
