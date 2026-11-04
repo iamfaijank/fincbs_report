@@ -726,6 +726,14 @@ def import_gl_mapping(file_content, filename=""):
 	return {"status": "success", "created": created, "updated": updated, "skipped": skipped}
 
 
+@frappe.whitelist()
+def delete_gl_mapping():
+	"""Delete all GL Mapping records."""
+	frappe.db.sql("delete from `tabGL Mapping`")
+	frappe.db.commit()
+	return {"status": "success"}
+
+
 def send_email_notification(status, sync_date, details_or_error=""):
 	recipients = ["talib.s@sahayogmultistate.com", "atul.n@sahayogmultistate.com"]
 	subject = f"Profit and Loss Report Sync Status - {sync_date}"
