@@ -1068,8 +1068,14 @@ function _exportMisReportDataCsv(dashboardInstance, report) {
 		rows.push(parent);
 
 		if (detail.length > 0) {
+			// Only detail rows actually assigned to an agent produce auth/agent
+			// rows; auths with only blank-agent records are excluded entirely
+			// (their amounts remain in the Branch Total row).
+			const assignable = detail.filter(
+				d => String(d.rm_id || "").trim() || String(d.rm_name || "").trim()
+			);
 			const byAuth = {};
-			detail.forEach(d => {
+			assignable.forEach(d => {
 				const authKey = String(d.auth_id || "");
 				(byAuth[authKey] = byAuth[authKey] || []).push(d);
 			});
@@ -1093,9 +1099,8 @@ function _exportMisReportDataCsv(dashboardInstance, report) {
 						authRow.pending_instalments = num(authRow.pending_instalments) + num(d.pending_instalments);
 					});
 					rows.push(authRow);
-					// Agent rows under this auth (skip rows with no agent assigned)
+					// Agent rows under this auth
 					authRows
-						.filter(d => String(d.rm_id || "").trim() || String(d.rm_name || "").trim())
 						.slice()
 						.sort((a, b) => String(a.rm_id || "").localeCompare(String(b.rm_id || ""), undefined, { numeric: true }))
 						.forEach(d => {
