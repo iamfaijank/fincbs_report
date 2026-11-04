@@ -7924,7 +7924,7 @@ class DrishtiDashboard {
 					if (!document.getElementById("mis-hover-style")) {
 						const st = document.createElement("style");
 						st.id = "mis-hover-style";
-						st.textContent = ".mis-hover-table tbody tr { cursor: pointer; } .mis-hover-table tbody tr:hover td { background-color: #e6f4f1 !important; } .mis-hover-table tbody tr.pl-sch-row:hover td, .mis-hover-table tbody tr.bs-sch-row:hover td { background-color: #d5ebe8 !important; }";
+						st.textContent = ".mis-hover-table tbody tr { cursor: pointer; } .mis-hover-table tbody tr:hover td { background-color: #e6f4f1 !important; } .mis-hover-table tbody tr.pl-sch-row:hover td, .mis-hover-table tbody tr.bs-sch-row:hover td { background-color: #d5ebe8 !important; } .yeald-col { display: none; } .pl-show-yeald .yeald-col { display: table-cell; }";
 						document.head.appendChild(st);
 					}
 					const tbody = container.find("#pl-summary-body");
@@ -8167,7 +8167,8 @@ class DrishtiDashboard {
 								</tr>`;
 						}
 						tbody.html(html);
-						const plAllOpen = (self.plData || []).length > 0 && (self.plData || []).every((s) => self.plCollapsed && self.plCollapsed[s.schedule_number] === false);
+						const anyExpanded = (self.plData || []).some((s) => self.plCollapsed && self.plCollapsed[s.schedule_number] === false);
+						container.find("table.mis-hover-table").toggleClass("pl-show-yeald", anyExpanded);
 						container.find("#pl-expand-all").text(plAllOpen ? "▲ Collapse All" : "▼ Expand All");
 					};
 					tbody.off("click", ".pl-sch-row").on("click", ".pl-sch-row", function () {
@@ -8178,6 +8179,8 @@ class DrishtiDashboard {
 						self.plCollapsed[num] = nowCollapsed;
 						tbody.find(`tr.pl-sub-row[data-sch="${num}"]`).css("display", nowCollapsed ? "none" : "");
 						$(this).find(".sch-caret").text(nowCollapsed ? "▸" : "▾");
+						const anyExpandedNow = (self.plData || []).some((s) => self.plCollapsed && self.plCollapsed[s.schedule_number] === false);
+						container.find("table.mis-hover-table").toggleClass("pl-show-yeald", anyExpandedNow);
 						const plAllOpen2 = (self.plData || []).length > 0 && (self.plData || []).every((s) => self.plCollapsed && self.plCollapsed[s.schedule_number] === false);
 						container.find("#pl-expand-all").text(plAllOpen2 ? "▲ Collapse All" : "▼ Expand All");
 					});
@@ -8541,7 +8544,7 @@ class DrishtiDashboard {
 					if (!document.getElementById("mis-hover-style")) {
 						const st = document.createElement("style");
 						st.id = "mis-hover-style";
-						st.textContent = ".mis-hover-table tbody tr { cursor: pointer; } .mis-hover-table tbody tr:hover td { background-color: #e6f4f1 !important; } .mis-hover-table tbody tr.pl-sch-row:hover td, .mis-hover-table tbody tr.bs-sch-row:hover td { background-color: #d5ebe8 !important; }";
+						st.textContent = ".mis-hover-table tbody tr { cursor: pointer; } .mis-hover-table tbody tr:hover td { background-color: #e6f4f1 !important; } .mis-hover-table tbody tr.pl-sch-row:hover td, .mis-hover-table tbody tr.bs-sch-row:hover td { background-color: #d5ebe8 !important; } .yeald-col { display: none; } .pl-show-yeald .yeald-col { display: table-cell; }";
 						document.head.appendChild(st);
 					}
 					const tbody = container.find("#bs-summary-body");
