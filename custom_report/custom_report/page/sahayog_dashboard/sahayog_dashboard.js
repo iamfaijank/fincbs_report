@@ -8475,12 +8475,13 @@ class DrishtiDashboard {
 							}
 							let schYealdYearly = null;
 							let schYealdMonthly = null;
-							if (sch.schedule_number === 13) {
-								// Yearly yeald = PL Yearly Amount / BS Schedule 3 - Deposit Yearly Average - only for Schedule 13 Interest Earned
+							if (sch.schedule_number === 13 || sch.schedule_number === 15) {
+								// Yearly yeald = PL Amount / BS Schedule (3 - Deposit for Interest Earned, 9 - Loans & Advances for Interest Expended)
 								const plBsRows = self.plBsData || [];
-								const plS3 = plBsRows.find((x) => x.schedule_number === 3) || plBsRows.find((x) => String(x.schedule_name || "").toLowerCase().includes("deposit"));
-								const bsYearly = plS3 ? Number(plS3.yearly_avg_balance) : null;
-								const bsMonthly = plS3 ? Number(plS3.avg_balance) : null;
+								const plBsNum = sch.schedule_number === 13 ? 3 : 9;
+								const plBsRow = plBsRows.find((x) => x.schedule_number === plBsNum) || plBsRows.find((x) => String(x.schedule_name || "").toLowerCase().includes(plBsNum === 3 ? "deposit" : "loan"));
+								const bsYearly = plBsRow ? Number(plBsRow.yearly_avg_balance) : null;
+								const bsMonthly = plBsRow ? Number(plBsRow.avg_balance) : null;
 								const plYearlyAmt = (Number(sch.total_balance) || 0) + tpYearly;
 								const plMonthlyAmt = (Number(sch.monthly_balance) || 0) + tpMonthly;
 								if (bsYearly) schYealdYearly = plYearlyAmt / bsYearly;
@@ -8495,9 +8496,9 @@ class DrishtiDashboard {
 								<tr class="pl-sch-row" data-sch="${sch.schedule_number}" style="cursor: pointer;">
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b;"><span class="sch-caret" style="display: inline-block; width: 14px;">${collapsed ? "▸" : "▾"}</span>${sch.schedule}</td>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(schTotal)}</td>
-									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;" class="yeald-col">${fmt(sch.schedule_number === 13 && schYealdYearly != null ? schYealdYearly : schTotal)}</td>
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;" class="yeald-col">${fmt((sch.schedule_number === 13 || sch.schedule_number === 15) && schYealdYearly != null ? schYealdYearly : schTotal)}</td>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(schMonthly)}</td>
-									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;" class="yeald-col">${fmt(sch.schedule_number === 13 && schYealdMonthly != null ? schYealdMonthly : schMonthly)}</td>
+									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;" class="yeald-col">${fmt((sch.schedule_number === 13 || sch.schedule_number === 15) && schYealdMonthly != null ? schYealdMonthly : schMonthly)}</td>
 								</tr>`;
 							if (showTp) {
 								html += `
