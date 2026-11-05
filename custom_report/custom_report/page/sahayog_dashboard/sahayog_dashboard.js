@@ -8476,9 +8476,9 @@ class DrishtiDashboard {
 							let schYealdYearly = null;
 							let schYealdMonthly = null;
 							if (sch.schedule_number === 13 || sch.schedule_number === 15) {
-								// Yearly yeald = PL Amount / BS Schedule (3 - Deposit for Interest Earned, 9 - Loans & Advances for Interest Expended)
+								// Yearly yeald = PL Amount / BS Schedule (13 -> Schedule 9, 15 -> Schedule 3)
 								const plBsRows = self.plBsData || [];
-								const plBsNum = sch.schedule_number === 13 ? 3 : 9;
+								const plBsNum = sch.schedule_number === 13 ? 9 : 3;
 								const plBsRow = plBsRows.find((x) => x.schedule_number === plBsNum) || plBsRows.find((x) => String(x.schedule_name || "").toLowerCase().includes(plBsNum === 3 ? "deposit" : "loan"));
 								const bsYearly = plBsRow ? Number(plBsRow.yearly_avg_balance) : null;
 								const bsMonthly = plBsRow ? Number(plBsRow.avg_balance) : null;
