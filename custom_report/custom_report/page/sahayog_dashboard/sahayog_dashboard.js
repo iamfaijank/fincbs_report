@@ -8441,6 +8441,13 @@ class DrishtiDashboard {
 						let html = "";
 						let incomeOverExp = 0;
 						let monthlyIncomeOverExp = 0;
+						const dateStrFy = container.find("#pl-date-filter").val() || "";
+						let fyMonths = 1;
+						if (dateStrFy) {
+							const mFy = Number(dateStrFy.split("-")[1]) || 1;
+							fyMonths = mFy >= 4 ? mFy - 3 : mFy + 9;
+							if (fyMonths < 1) fyMonths = 1;
+						}
 						(self.plData || []).forEach((sch) => {
 							const showTp = sch.schedule_number === 13 && self.plTransferInterest != null;
 							const tpYearly = showTp && self.plTransferInterestYearly != null ? self.plTransferInterestYearly : 0;
@@ -8475,17 +8482,19 @@ class DrishtiDashboard {
 							}
 							let schYealdYearly = null;
 							let schYealdMonthly = null;
+							let bsYearlyDenom = null;
+							let bsMonthlyDenom = null;
 							if (sch.schedule_number === 13 || sch.schedule_number === 15) {
 								// Yearly yeald = PL Amount / BS Schedule (13 -> Schedule 9, 15 -> Schedule 3)
 								const plBsRows = self.plBsData || [];
 								const plBsNum = sch.schedule_number === 13 ? 9 : 3;
 								const plBsRow = plBsRows.find((x) => x.schedule_number === plBsNum) || plBsRows.find((x) => String(x.schedule_name || "").toLowerCase().includes(plBsNum === 3 ? "deposit" : "loan"));
-								const bsYearly = plBsRow ? Number(plBsRow.yearly_avg_balance) : null;
-								const bsMonthly = plBsRow ? Number(plBsRow.avg_balance) : null;
+								bsYearlyDenom = plBsRow ? Number(plBsRow.yearly_avg_balance) : null;
+								bsMonthlyDenom = plBsRow ? Number(plBsRow.avg_balance) : null;
 								const plYearlyAmt = (Number(sch.total_balance) || 0) + tpYearly;
 								const plMonthlyAmt = (Number(sch.monthly_balance) || 0) + tpMonthly;
-								if (bsYearly) schYealdYearly = plYearlyAmt / bsYearly;
-								if (bsMonthly) schYealdMonthly = plMonthlyAmt / bsMonthly;
+								if (bsYearlyDenom) schYealdYearly = plYearlyAmt / bsYearlyDenom;
+								if (bsMonthlyDenom) schYealdMonthly = (plMonthlyAmt / bsMonthlyDenom) * 12 / fyMonths;
 								schTotal = plYearlyAmt;
 								schMonthly = plMonthlyAmt;
 							}
@@ -8501,13 +8510,17 @@ class DrishtiDashboard {
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;" class="yeald-col">${((sch.schedule_number === 13 || sch.schedule_number === 15) && schYealdMonthly != null) ? fmt(schYealdMonthly) : "-"}</td>
 								</tr>`;
 							if (showTp) {
+								let tpYealdMonthly = null;
+								if (bsMonthlyDenom) {
+									tpYealdMonthly = (Number(self.plTransferInterest) / bsMonthlyDenom) * 12 / fyMonths;
+								}
 								html += `
 									<tr class="pl-sub-row" data-sch="${sch.schedule_number}" style="${collapsed ? "display: none; " : ""}">
 										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Transfer Pricing Interest</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${self.plTransferInterestYearly != null ? fmt(self.plTransferInterestYearly) : "-"}</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;" class="yeald-col">${self.plTransferInterestYearly != null ? fmt(self.plTransferInterestYearly) : "-"}</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(self.plTransferInterest)}</td>
-										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;" class="yeald-col">${fmt(self.plTransferInterest)}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;" class="yeald-col">${tpYealdMonthly != null ? fmt(tpYealdMonthly) : (schYealdMonthly != null ? fmt(schYealdMonthly) : "-")}</td>
 									</tr>`;
 							}
 							sch.sub_schedules.forEach((sub) => {
@@ -8516,13 +8529,17 @@ class DrishtiDashboard {
 								// Yearly = combined (prev full month + this month), Monthly = this month's own value
 								const subTotal = subCv ? subCv.combined : sub.total_balance;
 								const subMonthly = subCv ? subCv.month : sub.monthly_balance;
+								let subYealdMonthly = null;
+								if ((sch.schedule_number === 13 || sch.schedule_number === 15) && bsMonthlyDenom) {
+									subYealdMonthly = (Number(subMonthly) / bsMonthlyDenom) * 12 / fyMonths;
+								}
 								html += `
 									<tr class="pl-sub-row" data-sch="${sch.schedule_number}" style="${collapsed ? "display: none; " : ""}">
 										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155;">${sub.sub_schedule}</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(subTotal)}</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;" class="yeald-col">${fmt(subTotal)}</td>
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;">${fmt(subMonthly)}</td>
-										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;" class="yeald-col">${fmt(subMonthly)}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; text-align: right;" class="yeald-col">${subYealdMonthly != null ? fmt(subYealdMonthly) : (schYealdMonthly != null ? fmt(schYealdMonthly) : "-")}</td>
 									</tr>`;
 							});
 						});
@@ -8571,6 +8588,7 @@ class DrishtiDashboard {
 						tbody.html(html);
 						const anyExpanded = (self.plData || []).some((s) => self.plCollapsed && self.plCollapsed[s.schedule_number] === false);
 						container.find("table.mis-hover-table").toggleClass("pl-show-yeald", anyExpanded);
+						const plAllOpen = (self.plData || []).length > 0 && (self.plData || []).every((s) => self.plCollapsed && self.plCollapsed[s.schedule_number] === false);
 						container.find("#pl-expand-all").text(plAllOpen ? "▲ Collapse All" : "▼ Expand All");
 					};
 					tbody.off("click", ".pl-sch-row").on("click", ".pl-sch-row", function () {
