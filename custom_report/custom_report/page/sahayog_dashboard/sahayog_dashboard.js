@@ -8509,7 +8509,13 @@ class DrishtiDashboard {
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;">${fmt(schMonthly)}</td>
 									<td style="padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; font-size: 12px; color: #1b263b; text-align: right;" class="yeald-col">${((sch.schedule_number === 13 || sch.schedule_number === 15) && schYealdMonthly != null) ? fmt(schYealdMonthly) : "-"}</td>
 								</tr>`;
-							if (showTp) {
+							const sortedSubs = (sch.sub_schedules || []).slice().sort((a,b)=>{
+								const getKey = (s)=>{ const t=(s.sub_schedule||'').trim(); const m=t.match(/^([0-9]+(?:\.[0-9]+)*)/); if(m) return m[1].split('.').map(x=>parseInt(x)); return [999999]; };
+								const ka=getKey(a), kb=getKey(b);
+								for(let i=0;i<Math.max(ka.length,kb.length);i++){ const va=ka[i]||0,vb=kb[i]||0; if(va!=vb)return va-vb;}
+								return (a.sub_schedule||'').localeCompare(b.sub_schedule||'');
+							});
+							if (showTp && sch.schedule_number === 13) {
 								let tpYealdMonthly = null;
 								if (bsMonthlyDenom) {
 									tpYealdMonthly = (Number(self.plTransferInterest) / bsMonthlyDenom) * 12 / fyMonths;
@@ -8523,7 +8529,21 @@ class DrishtiDashboard {
 										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;" class="yeald-col">${tpYealdMonthly != null ? fmt(tpYealdMonthly) : (schYealdMonthly != null ? fmt(schYealdMonthly) : "-")}</td>
 									</tr>`;
 							}
-							sch.sub_schedules.forEach((sub) => {
+							if (showTp && sch.schedule_number !== 13) {
+								let tpYealdMonthly = null;
+								if (bsMonthlyDenom) {
+									tpYealdMonthly = (Number(self.plTransferInterest) / bsMonthlyDenom) * 12 / fyMonths;
+								}
+								html += `
+									<tr class="pl-sub-row" data-sch="${sch.schedule_number}" style="${collapsed ? "display: none; " : ""}">
+										<td style="padding: 7px 12px 7px 28px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e;">Transfer Pricing Interest</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${self.plTransferInterestYearly != null ? fmt(self.plTransferInterestYearly) : "-"}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;" class="yeald-col">${self.plTransferInterestYearly != null ? fmt(self.plTransferInterestYearly) : "-"}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;">${fmt(self.plTransferInterest)}</td>
+										<td style="padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; color: #0f766e; text-align: right;" class="yeald-col">${tpYealdMonthly != null ? fmt(tpYealdMonthly) : (schYealdMonthly != null ? fmt(schYealdMonthly) : "-")}</td>
+									</tr>`;
+							}
+							sortedSubs.forEach((sub) => {
 								const subKey = (sub.sub_schedule || "").trim().toLowerCase();
 								const subCv = combVals[subKey];
 								// Yearly = combined (prev full month + this month), Monthly = this month's own value
