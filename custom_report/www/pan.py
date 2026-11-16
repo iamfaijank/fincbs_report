@@ -1,0 +1,189 @@
+import frappe
+import json
+import csv
+import io
+from custom_report.db_connection import get_dr_connection
+
+
+@frappe.whitelist()
+def get_pan_details(pan_no=None):
+    # SECURITY CHECK
+    if not check_user_access():
+        return {"success": False, "error": "Access Denied: Missing permissions."}
+
+    pan_no = pan_no or frappe.form_dict.get('pan_no')
+    if not pan_no:
+        return {"success": False, "error": "PAN number missing"}
+
+    conn = None
+    try:
+        try:
+            conn = get_dr_connection()
+        except Exception as e:
+            return {"success": False, "error": f"DB Connection Failed: {str(e)}"}
+
+        cursor = conn.cursor()
+        query = """
+            SELECT distinct 
+                e.referencenumber, g.cif_id, g.foracid, g.acct_name, a.cust_dob,
+                g.schm_code, g.schm_type, g.acct_opn_date, g.sol_id, c.phonenolocalcode,
+                s.division_name, s.circle_office_name, s.sol_desc
+            FROM tbaadm.gam g, crmuser.cphone c, tbaadm.sol s, crmuser.entitydocument e, crmuser.accounts a
+            WHERE c.preferredflag='Y' AND g.cif_id=c.phone_b2kid AND g.sol_id=s.sol_id 
+            AND g.cif_id = a.orgkey AND e.orgkey=g.cif_id AND e.docdescr in ('PAN CARD', 'AADHAAR CARD')
+            AND g.schm_code IN ('1001','1002','1003') AND g.entity_cre_flg='Y'
+            AND e.referencenumber = %s
+        """
+        cursor.execute(query, (pan_no,))
+        r = cursor.fetchone()
+        if r:
+            return {
+                "success": True,
+                "data": {
+                    "pan": r[0], "cif": r[1], "acc": r[2], "name": r[3],
+                    # Removed DOB (r[4]) and Phone (r[9]) mapping
+                    "sc": r[5], "st": r[6], "od": str(r[7]), "sol": r[8],
+                    "dist": r[10], "zone": r[11], "sd": r[12], "dob": r[4]
+                }
+            }
+        return {"success": False, "error": "No records found."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    finally:
+        if conn:
+            conn.close()
+
+
+@frappe.whitelist()
+def get_pan_list_from_file():
+    """Extract PAN numbers from uploaded file (CSV/Excel)"""
+    # SECURITY CHECK
+    if not check_user_access():
+        return {"success": False, "error": "Access Denied: Missing permissions."}
+
+    # Try multiple ways to get the file to avoid 400 Bad Request
+    file_obj = None
+    if frappe.request.files and 'file' in frappe.request.files:
+        file_obj = frappe.request.files['file']
+    elif frappe.form_dict.get('file'):
+        # In some cases Frappe puts it here
+        file_obj = frappe.form_dict.get('file')
+
+    if not file_obj:
+        return {"success": False, "error": "No file received. Please ensure you are uploading a valid CSV or Excel file."}
+
+    filename = file_obj.filename.lower()
+    pan_list = []
+
+    try:
+        if filename.endswith('.xlsx'):
+            from openpyxl import load_workbook
+            content = file_obj.read()
+            wb = load_workbook(io.BytesIO(content), data_only=True)
+            ws = wb.active
+            # Changed min_row=1 to min_row=2 to skip the header row
+            for row in ws.iter_rows(min_row=2, max_col=1, values_only=True):
+                if row and row[0]:
+                    pan_list.append(str(row[0]).strip())
+        else:
+            # CSV Handling
+            content = file_obj.read().decode('utf-8', errors='ignore')
+            reader = csv.reader(io.StringIO(content))
+            for row in reader:
+                if row and row[0]:
+                    pan_list.append(str(row[0]).strip())
+
+        if not pan_list:
+            return {"success": False, "error": "File is empty."}
+
+        # Filter out headers
+        headers = ['pan', 'referencenumber', 'reference no',
+                   'reference_no', 'pan no', 'pan number']
+        if pan_list[0].lower() in headers:
+            pan_list = pan_list[1:]
+
+        # Deduplicate and return
+        return {"success": True, "pans": list(dict.fromkeys(pan_list))}
+
+    except Exception as e:
+        return {"success": False, "error": f"File processing error: {str(e)}"}
+
+
+@frappe.whitelist()
+def fetch_pan_batch(pan_json):
+    """Fetch fields for a batch of 100 PANs"""
+    # SECURITY CHECK
+    if not check_user_access():
+        return {"success": False, "error": "Access Denied: Missing permissions."}
+
+    try:
+        pans = json.loads(pan_json)
+    except:
+        return {"success": False, "error": "Invalid JSON data"}
+
+    if not pans:
+        return {"success": True, "results": []}
+
+    results = []
+    conn = None
+    try:
+        conn = get_dr_connection()
+        cursor = conn.cursor()
+
+        placeholders = ','.join(['%s'] * len(pans))
+        q = f"""
+            SELECT distinct 
+                e.referencenumber, g.cif_id, g.foracid, g.acct_name, a.cust_dob,
+                g.schm_code, g.schm_type, g.acct_opn_date, g.sol_id, c.phonenolocalcode,
+                s.division_name, s.circle_office_name, s.sol_desc
+            FROM tbaadm.gam g, crmuser.cphone c, tbaadm.sol s, crmuser.entitydocument e, crmuser.accounts a
+            WHERE c.preferredflag='Y' AND g.cif_id=c.phone_b2kid AND g.sol_id=s.sol_id 
+            AND g.cif_id = a.orgkey AND e.orgkey=g.cif_id AND e.docdescr in ('PAN CARD', 'AADHAAR CARD')
+            AND g.schm_code IN ('1001','1002','1003') AND g.entity_cre_flg='Y'
+            AND e.referencenumber IN ({placeholders})
+        """
+        cursor.execute(q, tuple(pans))
+        db_rows = cursor.fetchall()
+
+        found_map = {r[0]: r for r in db_rows}
+        for p in pans:
+            if p in found_map:
+                r = found_map[p]
+                results.append({
+                    "pan": r[0], "name": r[3], "cif": r[1], "acc": r[2],
+                    # Removed DOB (r[4]) and Phone (r[9]) mapping
+                    "sc": r[5], "st": r[6], "od": str(r[7]), "sol": r[8],
+                    "dist": r[10], "zone": r[11], "sd": r[12], "dob": str(r[4]), "status": "Found"
+                })
+            else:
+                results.append({"pan": p, "status": "Not Found"})
+
+        return {"success": True, "results": results}
+    except Exception as e:
+        return {"success": False, "error": f"DB Error: {str(e)}"}
+    finally:
+        if conn:
+            conn.close()
+
+
+def check_user_access():
+    """Helper to check if user is Administrator or has specific role"""
+    if frappe.session.user == "Administrator":
+        return True
+
+    roles = frappe.get_roles(frappe.session.user)
+    if "PAN Utility Tool (HR)" in roles:
+        return True
+
+    return False
+
+
+def get_context(context):
+    # 1. PREVENT CACHING: Forces Frappe to re-evaluate roles for every single page load
+    context.no_cache = 1
+
+    # 2. REQUIRE LOGIN: Instantly redirects guest/logged-out users to the /login page
+    context.login_required = True
+
+    # 3. SET ACCESS: Passes the role check to your Jinja HTML template
+    context.has_access = check_user_access()

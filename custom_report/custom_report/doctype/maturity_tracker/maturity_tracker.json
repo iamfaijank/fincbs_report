@@ -1,0 +1,125 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-08-11 15:20:38.820719",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "date",
+  "cif_id",
+  "acct_name",
+  "sol_ids",
+  "account_numbers",
+  "account_count",
+  "column_break_ktmx",
+  "maturity_paid",
+  "last_debit_transaction_date",
+  "total_deposit_amount",
+  "deposit_done_flag",
+  "renewal_amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Date",
+   "search_index": 1
+  },
+  {
+   "fieldname": "cif_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "CIF ID"
+  },
+  {
+   "fieldname": "acct_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer Name"
+  },
+  {
+   "fieldname": "sol_ids",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "SOL IDs"
+  },
+  {
+   "fieldname": "account_numbers",
+   "fieldtype": "Small Text",
+   "label": "Account Numbers"
+  },
+  {
+   "fieldname": "account_count",
+   "fieldtype": "Int",
+   "label": "Account Count"
+  },
+  {
+   "fieldname": "column_break_ktmx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "maturity_paid",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Maturity Paid"
+  },
+  {
+   "fieldname": "last_debit_transaction_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Last Debit Transaction Date"
+  },
+  {
+   "fieldname": "total_deposit_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Total Deposit Amount"
+  },
+  {
+   "fieldname": "deposit_done_flag",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Deposit Done Flag"
+  },
+  {
+   "fieldname": "renewal_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Renewal Amount"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-12 11:51:00.000000",
+ "modified_by": "Administrator",
+ "module": "custom_report",
+ "name": "Maturity Tracker",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "search_fields": "cif_id, acct_name, sol_ids",
+ "sort_field": "date",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "acct_name"
+}

@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DRISHTI — Performance Dashboard</title>
+<script>
+(function(){
+  try {
+    const savedTheme = localStorage.getItem('drishti-theme');
+    if(savedTheme === 'light' || savedTheme === 'dark'){
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+  } catch (e) {}
+})();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── RESET & BASE ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Colors - Core */
+  --bg: #0a0d12;
+  --bg2: #111520;
+  --bg3: #171c28;
+  --bg4: #1d2333;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e8eaf0;
+  --text2: #8a90a0;
+  --text3: #525870;
+  
+  /* Colors - Accents */
+  --accent: #00c97a;
+  --accent2: #0ea5e9;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  --purple: #a78bfa;
+  --teal: #2dd4bf;
+
+  /* Scrollbars */
+  --scrollbar-thumb: rgba(255, 255, 255, 0.08);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.18);
+
+  /* Layout */
+  --sidebar-w: 280px;
+  --header-h: 64px;
+  --content-padding: 24px;
+  
+  /* Sticky Offsets */
+  --sticky-tabs-top: -20px;
+  --sticky-table-header-top: 14px;
+  --sticky-thead-top: 56px;
+
+  /* Typography */
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+[data-theme="light"] {
+  --bg: #f0f2f5;
+  --bg2: #ffffff;
+  --bg3: #f5f6f9;
+  --bg4: #ebedf2;
+  --border: rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.14);
+  --text: #111827;
+  --text2: #4b5563;
+  --text3: #9ca3af;
+  --accent: #059669;
+  --accent2: #0284c7;
+  --amber: #d97706;
+  --red: #dc2626;
+  --purple: #7c3aed;
+  --teal: #0d9488;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.07);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.15);
+}
+
+html, body { 
+  height: 100%; 
+  overflow: hidden; 
+  background: var(--bg); 
+  color: var(--text); 
+  font-family: var(--font-body); 
+  font-size: 14px; 
+}
+
+/* ── LAYOUT ── */
+.app { display: flex; height: 100vh; overflow: hidden; }
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; flex-shrink: 0;
+  overflow: hidden;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-right-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sidebar-inner {
+  width: var(--sidebar-w);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.app.sidebar-collapsed .sidebar {
+  width: 0;
+  border-right-color: transparent;
+}
+.sidebar-logo {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg2);
+}
+.logo-mark {
+  width: 36px; height: 36px; background: var(--accent); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 16px; font-weight: 800; color: var(--bg);
+}
+.logo-text { font-family: var(--font-display); font-size: 18px; font-weight: 800; letter-spacing: 2px; }
+.logo-sub { font-size: 10px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-top: 1px; }
+
+.sb-section { padding: 16px 12px 4px; }
+.sb-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text3); padding: 0 8px; margin-bottom: 6px;
+}
+
+/* Nav & Buttons */
+.btn-icon, .theme-toggle-btn {
+  width: 36px; height: 36px; border-radius: 8px;
+  border: 1px solid var(--border2); background: var(--bg4);
+  color: var(--text2); cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; flex-shrink: 0;
+}
+.btn-icon:hover, .theme-toggle-btn:hover { background: var(--bg3); color: var(--text); }
+
+.visualize-btn {
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 16px; border-radius: 8px; cursor: pointer;
+  background: rgba(79,255,176,0.08); border: 1px solid rgba(79,255,176,0.25);
+  color: var(--accent); font-family: var(--font-body); font-size: 13px; font-weight: 600;
+  transition: all 0.2s; flex-shrink: 0; letter-spacing: 0.3px;
+}
+.visualize-btn:hover { background: rgba(79,255,176,0.15); border-color: rgba(79,255,176,0.4); }
+
+/* Main Content */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.header {
+  height: var(--header-h); border-bottom: 1px solid var(--border); background: var(--bg2);
+  display: flex; align-items: center; padding: 0 var(--content-padding); gap: 16px;
+}
+.header-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: 1px; }
+.header-breadcrumb { font-size: 12px; color: var(--text3); display: flex; align-items: center; gap: 6px; }
+.header-breadcrumb span { color: var(--text2); }
+.header-spacer { flex: 1; }
+.header-date { font-size: 12px; font-family: var(--font-mono); color: var(--text3); }
+
+.search-box {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 12px; min-width: 200px;
+}
+.search-box input {
+  background: none; border: none; outline: none; color: var(--text);
+  font-family: var(--font-body); font-size: 13px; width: 100%;
+}
+.search-box input::placeholder { color: var(--text3); }
+.search-icon { color: var(--text3); font-size: 14px; }
+
+.content { flex: 1; overflow-y: auto; padding: 20px var(--content-padding); }
+
+/* Global Scrollbar Styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* ── UI COMPONENTS ── */
+.toggle { position: relative; width: 32px; height: 18px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0;
+  background: var(--bg4); border: 1px solid var(--border2);
+  border-radius: 20px; cursor: pointer; transition: 0.2s;
+}
+.toggle-slider::before {
+  content: ''; position: absolute; width: 12px; height: 12px; border-radius: 50%;
+  left: 2px; top: 2px; background: var(--text3); transition: 0.2s;
+}
+.toggle input:checked + .toggle-slider { background: rgba(79,255,176,0.15); border-color: var(--accent); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(14px); background: var(--accent); }
+
+.filter-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.filter-chip {
+  font-size: 11px; font-family: var(--font-mono); font-weight: 500;
+  padding: 4px 9px; border-radius: 20px; cursor: pointer;
+  background: var(--bg4); border: 1px solid var(--border); color: var(--text2);
+  transition: all 0.15s;
+}
+.filter-chip:hover { border-color: var(--border2); color: var(--text); }
+.filter-chip.active { background: rgba(79,255,176,0.1); border-color: rgba(79,255,176,0.3); color: var(--accent); }
+
+.sb-select, .date-input {
+  width: 100%; background: var(--bg4); border: 1px solid var(--border);
+  color: var(--text2); font-family: var(--font-body); font-size: 12px;
+  padding: 7px 10px; border-radius: 6px; outline: none; cursor: pointer;
+}
+
+/* Multiselect Dropdown Styling */
+.multiselect-dropdown { position: relative; width: 100%; }
+.multiselect-select { display: flex; align-items: center; justify-content: space-between; background: var(--bg4); border: 1px solid var(--border); color: var(--text2); font-family: var(--font-body); font-size: 12px; padding: 7px 10px; border-radius: 6px; cursor: pointer; user-select: none; }
+.multiselect-options { display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--bg2); border: 1px solid var(--border2); border-radius: 6px; margin-top: 4px; max-height: 180px; overflow-y: auto; z-index: 200; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+.multiselect-options.open { display: block; }
+.multiselect-option { display: flex; align-items: center; gap: 8px; padding: 6px 10px; cursor: pointer; transition: background 0.15s; color: var(--text2); font-size: 12px; }
+.multiselect-option:hover { background: var(--bg3); color: var(--text); }
+.multiselect-option input { cursor: pointer; accent-color: var(--accent); }
+
+.filter-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 8px; border-bottom: 1px solid var(--border);
+}
+.filter-label { font-size: 13px; color: var(--text2); display: flex; align-items: center; gap: 8px; }
+.color-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.filter-count { font-size: 11px; font-family: var(--font-mono); color: var(--text3); }
+
+.range-wrap { display: flex; flex-direction: column; gap: 6px; }
+.range-vals { display: flex; justify-content: space-between; font-size: 11px; font-family: var(--font-mono); color: var(--text3); }
+input[type=range] { -webkit-appearance: none; width: 100%; height: 4px; background: var(--bg4); border-radius: 4px; outline: none; border: 1px solid var(--border); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--accent); border-radius: 50%; cursor: pointer; }
+
+.fg-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); margin-bottom: 6px; }
+
+.config-row { display: flex; gap: 6px; }
+.config-btn { flex: 1; font-size: 11px; font-family: var(--font-mono); padding: 7px 4px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg4); color: var(--text2); cursor: pointer; text-align: center; }
+.config-btn.active { background: rgba(79,255,176,0.08); border-color: rgba(79,255,176,0.2); color: var(--accent); }
+
+.sb-footer { margin-top: auto; padding: 12px; border-top: 1px solid var(--border); }
+.reset-btn { width: 100%; padding: 9px; border-radius: 8px; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.15); color: #ef4444; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+/* ── DASHBOARD MODULES ── */
+.cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+.metric-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; position: relative; overflow: hidden; }
+.metric-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--card-accent, transparent); }
+.mc-label { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+.mc-value { font-family: var(--font-mono); font-size: 29px; font-weight: 600; color: var(--text); }
+.mc-value.money { display: flex; align-items: baseline; gap: 4px; }
+.mc-currency { font-family: var(--font-body); font-size: 0.62em; color: var(--text2); }
+.mc-unit { font-family: var(--font-body); font-size: 0.46em; text-transform: uppercase; color: var(--text3); }
+.mc-sub { font-size: 12px; color: var(--text3); display: flex; align-items: center; gap: 4px; }
+.mc-badge { font-size: 10px; font-family: var(--font-mono); padding: 2px 6px; border-radius: 4px; }
+.badge-green { background: rgba(79,255,176,0.1); color: var(--accent); }
+.badge-amber { background: rgba(245,158,11,0.1); color: var(--amber); }
+.badge-red { background: rgba(239,68,68,0.1); color: var(--red); }
+.mc-icon { position: absolute; right: 16px; top: 16px; font-size: 28px; opacity: 0.06; font-family: var(--font-display); font-weight: 800; }
+
+.tabs-row {
+  display: flex; gap: 2px; margin-bottom: 18px; border-bottom: 1px solid var(--border);
+  position: sticky; top: var(--sticky-tabs-top); z-index: 110;
+  background: var(--bg); padding-top: 20px; margin-top: -20px;
+  background-clip: padding-box;
+}
+.tab-btn {
+  padding: 10px 18px; font-size: 13px; font-weight: 500; cursor: pointer;
+  background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--text2); transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+}
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-dot { width: 6px; height: 6px; border-radius: 50%; }
+.tabs-spacer { flex: 1; }
+.tab-action { padding: 6px 14px; font-size: 12px; border-radius: 6px; cursor: pointer; background: var(--bg4); border: 1px solid var(--border); color: var(--text2); align-self: center; }
+
+.table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; overflow: visible; }
+.table-header {
+  display: flex; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); gap: 10px;
+  background: var(--bg2); border-top-left-radius: 12px; border-top-right-radius: 12px;
+}
+.th-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.th-count { font-size: 11px; font-family: var(--font-mono); background: var(--bg4); border: 1px solid var(--border); padding: 2px 8px; border-radius: 20px; color: var(--text3); }
+.th-spacer { flex: 1; }
+.th-btn { font-size: 11px; padding: 5px 12px; border-radius: 6px; background: none; border: 1px solid var(--border); color: var(--text2); cursor: pointer; }
+.th-btn.export { background: rgba(79,255,176,0.06); border-color: rgba(79,255,176,0.2); color: var(--accent); }
+
+.table-container { overflow-x: auto; scrollbar-width: thin; }
+
+table { width: 100%; border-collapse: separate; border-spacing: 0; }
+thead th {
+  padding: 12px 14px; text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase;
+  color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap;
+  background: var(--bg3);
+}
+td { padding: 11px 14px; font-size: 13px; color: var(--text2); vertical-align: middle; border-bottom: 1px solid var(--border); }
+tbody tr:hover { background: var(--bg3); cursor: pointer; }
+tfoot tr { background: rgba(79,255,176,0.04); }
+tfoot td { padding: 12px 14px; font-size: 12px; font-weight: 600; color: var(--text); font-family: var(--font-mono); }
+
+/* Components */
+.branch-cell { display: flex; flex-direction: column; gap: 2px; }
+.b-name { font-size: 13px; font-weight: 500; color: var(--text); }
+.b-meta { font-size: 11px; color: var(--text3); display: flex; gap: 6px; }
+.b-code { font-family: var(--font-mono); }
+
+.seg-pill { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px; font-family: var(--font-mono); white-space: nowrap; }
+.seg-top { background: rgba(79,255,176,0.1); color: var(--accent); }
+.seg-next { background: rgba(14,165,233,0.1); color: var(--accent2); }
+.seg-mid { background: rgba(245,158,11,0.1); color: var(--amber); }
+.seg-bottom { background: rgba(239,68,68,0.1); color: var(--red); }
+
+.cat-badge { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 4px; font-family: var(--font-mono); display: inline-block; }
+
+.z-toggle { cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.z-arrow { font-size: 9px; color: var(--text3); transition: transform 0.2s; }
+.z-arrow.open { transform: rotate(90deg); }
+.z-name { font-weight: 600; color: var(--text); font-size: 13px; }
+.z-region-name { color: var(--text2); font-size: 12px; }
+
+.pct-cell { display: flex; align-items: center; gap: 8px; }
+.pct-bar-bg { flex: 1; height: 4px; background: var(--bg4); border-radius: 4px; overflow: hidden; min-width: 60px; }
+.pct-bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+.pct-val { font-family: var(--font-mono); font-size: 11px; min-width: 42px; text-align: right; }
+
+.chart-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+.cc-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.cc-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.cc-sub { font-size: 11px; color: var(--text3); margin-left: auto; font-family: var(--font-mono); }
+
+.viz-panel { display: none; }
+.viz-panel.active { display: block; }
+.viz-tab-btn { padding: 5px 12px; font-size: 12px; font-weight: 500; border: none; background: none; color: var(--text2); cursor: pointer; border-radius: 6px; transition: all 0.15s; }
+.viz-tab-btn.active { background: var(--bg2); color: var(--accent); border: 1px solid var(--border2); }
+
+.legend-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+.legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+.tooltip { position: fixed; background: var(--bg4); border: 1px solid var(--border2); border-radius: 8px; padding: 8px 12px; font-size: 12px; color: var(--text); pointer-events: none; z-index: 999; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+
+.shimmer { background: linear-gradient(90deg, var(--bg3) 25%, var(--bg4) 50%, var(--bg3) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; height: 12px; }
+@keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+
+/* UTILS */
+.right { text-align: right; }
+.center { text-align: center; }
+.mono { font-family: var(--font-mono); }
+.bold { font-weight: 600; color: var(--text); }
+
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+.notif-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; margin-left: 4px; animation: pulse 2s infinite; }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══════ SIDEBAR ═══════ -->
+<aside class="sidebar">
+  <div class="sidebar-inner">
+    <div class="sidebar-logo">
+    <div class="logo-mark">D</div>
+    <div>
+      <div class="logo-text">DRISHTI</div>
+      <div class="logo-sub">Performance Intelligence</div>
+    </div>
+  </div>
+
+  <!-- CONFIG -->
+  <div class="sb-section">
+    <div class="sb-label">Configuration</div>
+    <div style="padding: 0 0 10px;">
+      <div class="fg-title">Financial Year</div>
+      <select class="sb-select" id="fySelect" onchange="changeFY(this.value)"></select>
+    </div>
+    <div style="padding: 0 0 10px;">
+      <div class="fg-title">View Mode</div>
+      <div class="config-row">
+        <div class="config-btn active" onclick="setView(this)">Monthly</div>
+        <div class="config-btn" onclick="setView(this)">Quarterly</div>
+        <div class="config-btn" onclick="setView(this)">Yearly</div>
+      </div>
+    </div>
+    <div style="padding: 0 0 10px;">
+      <div class="fg-title">Target Type</div>
+      <div class="config-row">
+        <div class="config-btn active" onclick="setTarget(this)">Monthly</div>
+        <div class="config-btn" onclick="setTarget(this)">YTD</div>
+        <div class="config-btn" onclick="setTarget(this)">Yearly</div>
+      </div>
+    </div>
+    <div style="padding: 0 0 10px;">
+      <div class="fg-title">Number Format</div>
+      <div class="config-row">
+        <div class="config-btn active" onclick="setFormat(this)" data-fmt="words">Words</div>
+        <div class="config-btn" onclick="setFormat(this)" data-fmt="number">Numeric</div>
+      </div>
+    </div>
+    <div style="padding: 0 0 10px;">
+      <div class="fg-title">As of Date & Month</div>
+      <div style="display: flex; gap: 8px;">
+        <input type="date" class="date-input" id="globalDate" style="flex: 1; min-width: 0; padding:7px 10px;" value="2026-06-07" onchange="handleDateChange()">
+        <select class="sb-select" id="monthSelect" style="flex: 1; min-width: 0;" onchange="changeMonth(this.value)">
+          <option value="4">April</option>
+          <option value="5">May</option>
+          <option value="6" selected>June</option>
+          <option value="7">July</option>
+          <option value="8">August</option>
+          <option value="9">September</option>
+          <option value="10">October</option>
+          <option value="11">November</option>
+          <option value="12">December</option>
+          <option value="1">January</option>
+          <option value="2">February</option>
+          <option value="3">March</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- ZONE FILTER -->
+  <div class="sb-section">
+    <div class="sb-label">Zone Filter</div>
+    <div class="filter-group">
+      <div class="filter-chips" id="zoneChips">
+        <div class="filter-chip active" onclick="toggleChip(this,'all','zoneChips')">All</div>
+        <div class="filter-chip" onclick="toggleChip(this,'Z1','zoneChips')">Z-1</div>
+        <div class="filter-chip" onclick="toggleChip(this,'Z2','zoneChips')">Z-2</div>
+        <div class="filter-chip" onclick="toggleChip(this,'Z3','zoneChips')">Z-3</div>
+        <div class="filter-chip" onclick="toggleChip(this,'Z4','zoneChips')">Z-4</div>
+        <div class="filter-chip" onclick="toggleChip(this,'Z5','zoneChips')">Z-5</div>
+        <div class="filter-chip" onclick="toggleChip(this,'Z6','zoneChips')">Z-6</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-label">Region Filter</div>
+    <div class="filter-group">
+      <div class="filter-chips" id="regionChips">
+        <div class="filter-chip active" onclick="toggleChip(this,'all','regionChips')">All</div>
+        <div class="filter-chip" onclick="toggleChip(this,'R1','regionChips')">R1</div>
+        <div class="filter-chip" onclick="toggleChip(this,'R2','regionChips')">R2</div>
+        <div class="filter-chip" onclick="toggleChip(this,'R3','regionChips')">R3</div>
+        <div class="filter-chip" onclick="toggleChip(this,'R4','regionChips')">R4</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DISTRICT FILTER -->
+  <div class="sb-section">
+    <div class="sb-label">District Filter</div>
+    <div class="filter-group">
+      <div class="multiselect-dropdown" id="districtDropdown">
+        <div class="multiselect-select" onclick="toggleMultiselect()">
+          <span id="districtSelectLabel">All Districts</span>
+          <span class="z-arrow">▼</span>
+        </div>
+        <div class="multiselect-options" id="districtOptions"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CATEGORY FILTER -->
+  <div class="sb-section">
+    <div class="sb-label">Categories</div>
+    <div class="filter-group">
+      <div class="filter-row">
+        <div class="filter-label"><div class="color-dot" style="background:#4fffb0"></div>Pinnacle <span style="font-size:10px;color:var(--text3);margin-left:4px;">&gt;100%</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><span class="filter-count">42</span><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+      </div>
+      <div class="filter-row">
+        <div class="filter-label"><div class="color-dot" style="background:#2dd4bf"></div>Master <span style="font-size:10px;color:var(--text3);margin-left:4px;">80–100%</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><span class="filter-count">38</span><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+      </div>
+      <div class="filter-row">
+        <div class="filter-label"><div class="color-dot" style="background:#0ea5e9"></div>Accelerator <span style="font-size:10px;color:var(--text3);margin-left:4px;">60–80%</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><span class="filter-count">61</span><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+      </div>
+      <div class="filter-row">
+        <div class="filter-label"><div class="color-dot" style="background:#f59e0b"></div>Starter <span style="font-size:10px;color:var(--text3);margin-left:4px;">40–60%</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><span class="filter-count">47</span><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+      </div>
+      <div class="filter-row">
+        <div class="filter-label"><div class="color-dot" style="background:#ef4444"></div>Learner <span style="font-size:10px;color:var(--text3);margin-left:4px;">20–40%</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><span class="filter-count">28</span><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+      </div>
+      <div class="filter-row">
+        <div class="filter-label"><div class="color-dot" style="background:#dc2626"></div>Zero Level <span style="font-size:10px;color:var(--text3);margin-left:4px;">0–20%</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><span class="filter-count">13</span><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEGMENT -->
+  <div class="sb-section">
+    <div class="sb-label">Performance Segment</div>
+    <div class="filter-group">
+      <select class="sb-select" id="segmentSelect">
+        <option value="all">All Segments</option>
+        <option>Top 25%</option>
+        <option>Next 25%</option>
+        <option>Mid 25%</option>
+        <option>Bottom 25%</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- PCT RANGE -->
+  <div class="sb-section">
+    <div class="sb-label">Ach% Range</div>
+    <div class="filter-group">
+      <div class="range-wrap">
+        <input type="range" min="0" max="150" value="150" id="pctRange" oninput="document.getElementById('pctVal').textContent=this.value+'%'">
+        <div class="range-vals"><span>0%</span><span id="pctVal">150%</span></div>
+      </div>
+    </div>
+  </div>
+
+    <div class="sb-footer">
+      <button class="reset-btn" onclick="resetAll()">↺ Reset All Filters</button>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════ MAIN ═══════ -->
+<main class="main">
+  <header class="header">
+    <button class="btn-icon" id="sidebarToggleBtn" onclick="toggleSidebar()" title="Toggle Sidebar" style="margin-right: 12px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M9 3v18M16 15l-3-3 3-3"></path></svg>
+    </button>
+    <div>
+      <div class="header-title">DRISHTI ANALYTICS</div>
+      <div class="header-breadcrumb">Dashboard <span>›</span> Zone Wise</div>
+    </div>
+    <div class="header-spacer"></div>
+    <div class="search-box">
+      <span class="search-icon">⌕</span>
+      <input type="text" placeholder="Search branch, zone, region…" id="searchInput">
+    </div>
+    <div class="header-date" id="headerDate">Jun 07, 2026</div>
+    <button class="visualize-btn" onclick="openVizModal()" title="Open analytics visualizations">
+      <span style="font-size:15px;">◈</span> Visualize
+    </button>
+    <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle light/dark theme">🌙</button>
+    <div style="width:36px;height:36px;border-radius:50%;background:var(--bg4);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;">★</div>
+  </header>
+
+  <!-- VISUALIZE MODAL -->
+  <div id="vizOverlay" onclick="closeVizModal(event)" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:900;backdrop-filter:blur(4px);">
+    <div id="vizModal" onclick="event.stopPropagation()" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(860px,92vw);max-height:88vh;background:var(--bg2);border:1px solid var(--border2);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;">
+
+      <!-- Modal Header -->
+      <div style="display:flex;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
+        <span style="font-size:16px;margin-right:10px;opacity:0.7;">◈</span>
+        <span style="font-family:var(--font-display);font-size:15px;font-weight:700;letter-spacing:0.5px;">Analytics Overview</span>
+        <div style="flex:1;"></div>
+        <!-- Viz tab switcher -->
+        <div style="display:flex;gap:4px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:3px;">
+          <button class="viz-tab-btn active" data-viz="overview" onclick="switchVizTab(this)">Overview</button>
+          <button class="viz-tab-btn" data-viz="trend" onclick="switchVizTab(this)">Trend</button>
+          <button class="viz-tab-btn" data-viz="category" onclick="switchVizTab(this)">Category</button>
+          <button class="viz-tab-btn" data-viz="product" onclick="switchVizTab(this)">Products</button>
+        </div>
+        <button onclick="closeVizModal()" style="margin-left:14px;width:30px;height:30px;border-radius:6px;border:1px solid var(--border);background:var(--bg4);color:var(--text2);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+
+      <!-- Modal Body -->
+      <div style="overflow-y:auto;padding:20px;flex:1;" id="vizModalBody">
+
+        <!-- VIZ PANEL: overview -->
+        <div class="viz-panel active" id="viz-overview">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="chart-card">
+              <div class="cc-header"><div class="cc-title">Zone Achievement</div><div class="cc-sub">Target vs Ach</div></div>
+              <div style="position:relative;height:220px;"><canvas id="m_zoneBar"></canvas></div>
+              <div class="legend-row">
+                <div class="legend-item"><div class="legend-dot" style="background:#4fffb0"></div>Target</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#0ea5e9"></div>Achievement</div>
+              </div>
+            </div>
+            <div class="chart-card">
+              <div class="cc-header"><div class="cc-title">Category Distribution</div><div class="cc-sub">229 branches</div></div>
+              <div style="display:flex;align-items:center;gap:20px;">
+                <div style="position:relative;width:140px;height:140px;flex-shrink:0;"><canvas id="m_catDonut"></canvas></div>
+                <div class="legend-row" style="flex-direction:column;gap:7px;">
+                  <div class="legend-item"><div class="legend-dot" style="background:#4fffb0"></div>Pinnacle — 42</div>
+                  <div class="legend-item"><div class="legend-dot" style="background:#2dd4bf"></div>Master — 38</div>
+                  <div class="legend-item"><div class="legend-dot" style="background:#0ea5e9"></div>Accelerator — 61</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIZ PANEL: trend -->
+        <div class="viz-panel" id="viz-trend">
+          <div class="chart-card">
+            <div style="position:relative;height:280px;"><canvas id="m_trendLine"></canvas></div>
+          </div>
+        </div>
+
+        <!-- VIZ PANEL: category -->
+        <div class="viz-panel" id="viz-category">
+          <div class="chart-card">
+            <div style="position:relative;height:260px;"><canvas id="m_catBar"></canvas></div>
+          </div>
+        </div>
+
+        <!-- VIZ PANEL: product -->
+        <div class="viz-panel" id="viz-product">
+          <div class="chart-card">
+            <div style="position:relative;height:280px;"><canvas id="m_productBar"></canvas></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- SUMMARY CARDS -->
+    <div class="cards-grid">
+      <div class="metric-card" style="--card-accent: var(--accent);">
+        <div class="mc-label">Total Branches</div>
+        <div class="mc-value" id="cardTotalBranches">229</div>
+        <div class="mc-sub"><span class="mc-badge badge-green">+3.2%</span> vs last month</div>
+        <div class="mc-icon">🏢</div>
+      </div>
+      <div class="metric-card" style="--card-accent: var(--accent2);">
+        <div class="mc-label">Target (MTD)</div>
+        <div class="mc-value money"><span class="mc-currency">₹</span><span class="mc-amount" id="cardTotalTarget">163</span><span class="mc-unit">Cr</span></div>
+        <div class="mc-sub"><span class="mc-badge badge-amber">Monthly</span> target set</div>
+        <div class="mc-icon">◎</div>
+      </div>
+      <div class="metric-card" style="--card-accent: var(--amber);">
+        <div class="mc-label">Achievement</div>
+        <div class="mc-value money"><span class="mc-currency">₹</span><span class="mc-amount" id="cardTotalAch">91.4</span><span class="mc-unit">Cr</span></div>
+        <div class="mc-sub" id="cardTotalAchPct"><span class="mc-badge badge-red">57.9%</span> achieved</div>
+        <div class="mc-icon">◈</div>
+      </div>
+      <div class="metric-card" style="--card-accent: var(--purple);">
+        <div class="mc-label">Active Zones</div>
+        <div class="mc-value" id="cardActiveZones">6</div>
+        <div class="mc-sub"><span class="mc-badge badge-green">All live</span> operational</div>
+        <div class="mc-icon">⬡</div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs-row">
+      <button class="tab-btn active" onclick="switchTab('zone',this)"><span class="tab-dot" style="background:#4fffb0"></span>Zone Wise</button>
+      <button class="tab-btn" onclick="switchTab('category',this)"><span class="tab-dot" style="background:#0ea5e9"></span>Category Wise</button>
+      <button class="tab-btn" onclick="switchTab('product',this)"><span class="tab-dot" style="background:#a78bfa"></span>Product Wise</button>
+      <button class="tab-btn" onclick="switchTab('agent',this)"><span class="tab-dot" style="background:#2dd4bf"></span>Agent Wise</button>
+      <button class="tab-btn" onclick="switchTab('branch',this)"><span class="tab-dot" style="background:#f59e0b"></span>Branch Wise</button>
+      <div class="tabs-spacer"></div>
+      <button class="tab-action" onclick="exportCSV()">⤓ Export CSV</button>
+    </div>
+
+    <!-- ZONE PANEL -->
+    <div class="tab-panel active" id="panel-zone">
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="th-title">Zone Performance</span>
+          <span class="th-count" id="zoneCount">6 zones · 248 branches</span>
+          <div class="th-spacer"></div>
+          <button class="th-btn export">⤓ Export</button>
+        </div>
+        <div class="table-container">
+        <table id="zoneTable">
+          <thead id="zoneThead"></thead>
+          <tbody id="zoneTbody"></tbody>
+          <tfoot id="zoneTfoot"></tfoot>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CATEGORY PANEL -->
+    <div class="tab-panel" id="panel-category">
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="th-title">Category Breakdown</span>
+          <span class="th-count">Latest Month</span>
+          <div class="th-spacer"></div>
+          <button class="th-btn export">⤓ Export</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Grade</th><th>Category</th><th>Performance Band</th>
+              <th class="right">Branches</th><th class="right">Share</th>
+              <th class="center">Movement</th><th>Health</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="cat-badge" style="background:rgba(79,255,176,0.12);color:#4fffb0;">A+</span></td>
+              <td class="bold">Pinnacle</td><td class="mono">&gt;100%</td>
+              <td class="right bold">42</td><td class="right mono" style="color:#4fffb0;">18.3%</td>
+              <td class="center"><span style="color:#4fffb0;font-weight:600;">↑ 5</span> <span style="color:#ef4444;font-weight:600;">↓ 2</span></td>
+              <td><span style="color:#4fffb0;">● Excellent</span></td>
+            </tr>
+            <tr>
+              <td><span class="cat-badge" style="background:rgba(45,212,191,0.12);color:#2dd4bf;">A</span></td>
+              <td class="bold">Master</td><td class="mono">80–100%</td>
+              <td class="right bold">38</td><td class="right mono" style="color:#2dd4bf;">16.6%</td>
+              <td class="center"><span style="color:#4fffb0;font-weight:600;">↑ 3</span> <span style="color:#ef4444;font-weight:600;">↓ 4</span></td>
+              <td><span style="color:#2dd4bf;">● Good</span></td>
+            </tr>
+            <tr>
+              <td><span class="cat-badge" style="background:rgba(14,165,233,0.12);color:#0ea5e9;">B</span></td>
+              <td class="bold">Accelerator</td><td class="mono">60–80%</td>
+              <td class="right bold">61</td><td class="right mono" style="color:#0ea5e9;">26.6%</td>
+              <td class="center"><span style="color:#4fffb0;font-weight:600;">↑ 7</span> <span style="color:#ef4444;font-weight:600;">↓ 6</span></td>
+              <td><span style="color:#0ea5e9;">● Improving</span></td>
+            </tr>
+            <tr>
+              <td><span class="cat-badge" style="background:rgba(245,158,11,0.12);color:#f59e0b;">C</span></td>
+              <td class="bold">Starter</td><td class="mono">40–60%</td>
+              <td class="right bold">47</td><td class="right mono" style="color:#f59e0b;">20.5%</td>
+              <td class="center"><span style="color:#4fffb0;font-weight:600;">↑ 2</span> <span style="color:#ef4444;font-weight:600;">↓ 8</span></td>
+              <td><span style="color:#f59e0b;">● Needs Attention</span></td>
+            </tr>
+            <tr>
+              <td><span class="cat-badge" style="background:rgba(239,68,68,0.12);color:#ef4444;">D</span></td>
+              <td class="bold">Learner</td><td class="mono">20–40%</td>
+              <td class="right bold">28</td><td class="right mono" style="color:#ef4444;">12.2%</td>
+              <td class="center"><span style="color:#4fffb0;font-weight:600;">↑ 1</span> <span style="color:#ef4444;font-weight:600;">↓ 5</span></td>
+              <td><span style="color:#ef4444;">● At Risk</span></td>
+            </tr>
+            <tr>
+              <td><span class="cat-badge" style="background:rgba(220,38,38,0.12);color:#dc2626;">E</span></td>
+              <td class="bold">Zero Level</td><td class="mono">0–20%</td>
+              <td class="right bold">13</td><td class="right mono" style="color:#dc2626;">5.7%</td>
+              <td class="center"><span style="color:#ef4444;font-weight:600;">↓ 3</span></td>
+              <td><span style="color:#dc2626;">● Critical</span></td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3">TOTAL</td>
+              <td class="right">229</td><td class="right">100%</td>
+              <td class="center">↑ 18 &nbsp;↓ 28</td><td>—</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- PRODUCT PANEL -->
+    <div class="tab-panel" id="panel-product">
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="th-title">Product Wise Achievement</span>
+          <span class="th-count" id="productCount">6 zones · 12 products</span>
+          <div class="th-spacer"></div>
+          <button class="th-btn export" onclick="exportCSV()">⤓ Export</button>
+        </div>
+        <div class="table-container">
+          <table id="productTable">
+            <thead>
+              <tr>
+                <th>Sr</th><th>Zone / Region</th>
+                <th class="right">Gold Loan</th><th class="right">Home Loan</th><th class="right">Personal Loan</th>
+                <th class="right">Business Loan</th><th class="right">Vehicle Loan</th><th class="right">Insurance</th>
+                <th class="right">Mutual Fund</th><th class="right">FD / RD</th>
+                <th class="right" style="min-width:110px;">Total Ach</th>
+              </tr>
+            </thead>
+            <tbody id="productTbody"></tbody>
+            <tfoot id="productTfoot"></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- AGENT PANEL -->
+    <div class="tab-panel" id="panel-agent">
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="th-title">Agent Wise Performance</span>
+          <span class="th-count" id="agentCount">6 zones</span>
+          <div class="th-spacer"></div>
+          <button class="th-btn export" onclick="exportCSV()">⤓ Export</button>
+        </div>
+        <div class="table-container">
+          <table id="agentTable">
+            <thead>
+              <tr>
+                <th>Sr</th><th>Zone / Region</th>
+                <th class="right">SS Target</th><th class="right">SS Ach</th><th class="right">SS Shortfall</th>
+                <th class="center">SS Active</th><th class="center">SS Inactive</th>
+                <th class="right">DD Target</th><th class="right">DD Ach</th><th class="right">DD Shortfall</th>
+                <th class="center">DD Active</th><th class="center">DD Inactive</th>
+                <th style="min-width:130px;">Ach %</th>
+              </tr>
+            </thead>
+            <tbody id="agentTbody"></tbody>
+            <tfoot id="agentTfoot"></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- BRANCH PANEL -->
+    <div class="tab-panel" id="panel-branch">
+      <div class="table-wrap">
+        <div class="table-header"><span class="th-title">Branch Performance</span><span class="th-count" id="branchCount">229 branches</span></div>
+        <div class="table-container">
+        <table id="branchTable">
+          <thead>
+            <tr><th>Sr</th><th>Branch</th><th>Segment</th><th>Category</th><th class="right">Target</th><th class="right">Ach</th><th>Ach %</th></tr>
+          </thead>
+          <tbody id="branchTbody"></tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ── DATA ──
+let seed = 1;
+function seededRandom() {
+  const x = Math.sin(seed++) * 10000;
+  return x - Math.floor(x);
+}
+
+let ZONES = [];
+let BRANCHES = [];
+const cats = ['Pinnacle','Master','Accelerator','Starter','Learner','Zero Level'];
+const catColors = ['#4fffb0','#2dd4bf','#0ea5e9','#f59e0b','#ef4444','#dc2626'];
+const catBgColors = ['rgba(79,255,176,0.12)','rgba(45,212,191,0.12)','rgba(14,165,233,0.12)','rgba(245,158,11,0.12)','rgba(239,68,68,0.12)','rgba(220,38,38,0.12)'];
+const catWeights = [42,38,61,47,28,13];
+let catCumul = [];
+let s = 0;
+catWeights.forEach(w => { catCumul.push(s); s += w; });
+
+const zoneNames = ['ZONE-1','ZONE-2','ZONE-3','ZONE-4','ZONE-5','ZONE-6'];
+
+// ── PRODUCT DATA ───────────────────────────────────────────────────────
+const PRODUCTS = ['Gold Loan','Home Loan','Personal Loan','Business Loan','Vehicle Loan','Insurance','Mutual Fund','FD / RD'];
+
+function genProductData(multiplier = 1.0) {
+  const rows = [];
+  let grandTotals = Object.fromEntries(PRODUCTS.map(p=>[p,0]));
+  let grandTotal = 0;
+
+  ZONES.forEach(z => {
+    const zoneProds = Object.fromEntries(PRODUCTS.map(p => {
+      const v = Math.round((80 + seededRandom()*400) * 100000 * multiplier);
+      return [p, v];
+    }));
+    const zoneTotal = Object.values(zoneProds).reduce((a,b)=>a+b,0);
+    PRODUCTS.forEach(p => grandTotals[p] += zoneProds[p]);
+    grandTotal += zoneTotal;
+    rows.push({ name: z.name, is_group: true, products: zoneProds, total: zoneTotal, regions: [] });
+    z.regions.forEach(r => {
+      const rProds = Object.fromEntries(PRODUCTS.map(p => [p, Math.round(zoneProds[p] * (0.4 + seededRandom()*0.25))]));
+      const rTotal = Object.values(rProds).reduce((a,b)=>a+b,0);
+      rows.push({ name: r, is_group: false, parent: z.name, products: rProds, total: rTotal });
+    });
+  });
+  return { rows, grandTotals, grandTotal };
+}
+let PRODUCT_DATA = {};
+
+// ── AGENT DATA ─────────────────────────────────────────────────────────
+function genAgentData(multiplier = 1.0) {
+  const rows = [];
+  let gSsT=0,gSsA=0,gSsAct=0,gSsInact=0,gDdT=0,gDdA=0,gDdAct=0,gDdInact=0;
+  ZONES.forEach(z => {
+    let zSsT=0,zSsA=0,zSsAct=0,zSsInact=0,zDdT=0,zDdA=0,zDdAct=0,zDdInact=0;
+    const regionRows = [];
+    z.regions.forEach(r => {
+      const ssT  = Math.round((500+seededRandom()*800)*100000 * multiplier);
+      const ssA  = Math.round(ssT*(0.45+seededRandom()*0.5));
+      const ssAct= Math.round(20+seededRandom()*40);
+      const ssIn = Math.round(5+seededRandom()*15);
+      const ddT  = Math.round((600+seededRandom()*1000)*100000 * multiplier);
+      const ddA  = Math.round(ddT*(0.4+seededRandom()*0.5));
+      const ddAct= Math.round(25+seededRandom()*50);
+      const ddIn = Math.round(5+seededRandom()*20);
+      zSsT+=ssT; zSsA+=ssA; zSsAct+=ssAct; zSsInact+=ssIn;
+      zDdT+=ddT; zDdA+=ddA; zDdAct+=ddAct; zDdInact+=ddIn;
+      regionRows.push({ name:r, is_group:false, parent:z.name, ssT,ssA,ssAct,ssInact:ssIn, ddT,ddA,ddAct,ddInact:ddIn });
+    });
+    gSsT+=zSsT; gSsA+=zSsA; gSsAct+=zSsAct; gSsInact+=zSsInact;
+    gDdT+=zDdT; gDdA+=zDdA; gDdAct+=zDdAct; gDdInact+=zDdInact;
+    rows.push({ name:z.name, is_group:true, ssT:zSsT,ssA:zSsA,ssAct:zSsAct,ssInact:zSsInact, ddT:zDdT,ddA:zDdA,ddAct:zDdAct,ddInact:zDdInact, regions:regionRows });
+    regionRows.forEach(r => rows.push(r));
+  });
+  return { rows, grand:{ssT:gSsT,ssA:gSsA,ssAct:gSsAct,ssInact:gSsInact,ddT:gDdT,ddA:gDdA,ddAct:gDdAct,ddInact:gDdInact} };
+}
+let AGENT_DATA = {};
+
+// ── STATE ──────────────────────────────────────────────────────────────
+const state = {
+  formatMode: 'words',
+  expandedZones: {},
+  activeTab: 'zone',
+  searchTerm: '',
+};
+
+// ── UTILS ──────────────────────────────────────────────────────────────
+function fmt(v) {
+  if(!v || v===0) return '—';
+  const n = Math.round(v);
+  if(state.formatMode==='words'){
+    if(n>=10000000) return (n/10000000).toFixed(2)+' Cr';
+    if(n>=100000) return (n/100000).toFixed(2)+' L';
+    return n;
+  }
+  return new Intl.NumberFormat('en-IN').format(n);
+}
+
+function pctColor(p){ return p>=100?'#4fffb0':p>=80?'#2dd4bf':p>=60?'#0ea5e9':p>=40?'#f59e0b':'#ef4444'; }
+function pctBar(p,w=80){
+  const c = pctColor(p);
+  return `<div class="pct-cell"><div class="pct-bar-bg" style="min-width:${w}px"><div class="pct-bar-fill" style="width:${Math.min(100,p)}%;background:${c};"></div></div><span class="pct-val" style="color:${c};">${p.toFixed(1)}%</span></div>`;
+}
+function pctBarScreenshot(p, w = 60) {
+  const c = pctColor(p);
+  return `<div class="pct-cell" style="display:inline-flex;align-items:center;gap:6px;justify-content:center;">
+    <span class="pct-val" style="color:${c};font-weight:600;min-width:32px;text-align:right;">${Math.round(p)}%</span>
+    <div class="pct-bar-bg" style="width:${w}px;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;">
+      <div class="pct-bar-fill" style="width:${Math.min(100,p)}%;height:100%;background:${c};border-radius:3px;"></div>
+    </div>
+  </div>`;
+}
+function catBadge(catIdx){ return `<span class="cat-badge" style="background:${catBgColors[catIdx]};color:${catColors[catIdx]};">${cats[catIdx]}</span>`; }
+function segPill(seg){
+  const cls = seg==='Top 25%'?'seg-top':seg==='Next 25%'?'seg-next':seg==='Mid 25%'?'seg-mid':'seg-bottom';
+  return `<span class="seg-pill ${cls}">${seg}</span>`;
+}
+
+// ── RENDER ──────────────────────────────────────────────────────────
+function renderZoneTable(){
+  const thead = document.getElementById('zoneThead');
+  const tbody = document.getElementById('zoneTbody');
+  const tfoot = document.getElementById('zoneTfoot');
+  if (!thead || !tbody) return;
+  
+  const match = state.financialYear.match(/\d+/);
+  const startYY = match ? parseInt(match[0].slice(0, 2)) : 26;
+  const year = 2000 + startYY;
+  
+  thead.innerHTML = `
+    <tr>
+      <th rowspan="2">SR</th>
+      <th rowspan="2">ZONE/REGION</th>
+      <th rowspan="2" class="center">BRANCHES</th>
+      <th colspan="3" class="center">APR-${year}</th>
+      <th colspan="3" class="center">MAY-${year}</th>
+      <th colspan="3" class="center">JUN-${year}</th>
+    </tr>
+    <tr>
+      <th class="right">TARGET</th>
+      <th class="right">ACH</th>
+      <th class="center">ACH %</th>
+      <th class="right">TARGET</th>
+      <th class="right">ACH</th>
+      <th class="center">ACH %</th>
+      <th class="right">TARGET</th>
+      <th class="right">ACH</th>
+      <th class="center">ACH %</th>
+    </tr>
+  `;
+
+  const selectedZones = getSelectedChips('zoneChips');
+  const selectedRegions = getSelectedChips('regionChips');
+  const selectedDistricts = getSelectedDistricts();
+  let html = '';
+  let sr = 1;
+  
+  let totalBranches = 0;
+  let monthlyTotals = [
+    { target: 0, ach: 0 },
+    { target: 0, ach: 0 },
+    { target: 0, ach: 0 }
+  ];
+
+  ZONES.forEach(z => {
+    if (selectedZones.length && !selectedZones.some(sz => z.name.includes(sz.replace('Z', 'ZONE-')))) return;
+    const filteredRegions = z.regions.filter(r => !selectedRegions.length || selectedRegions.includes(r));
+    if (selectedRegions.length && !filteredRegions.length) return;
+    
+    // Filter branches in this zone based on selected districts and regions
+    const zoneBranches = BRANCHES.filter(b => b.zone === z.name && selectedDistricts.includes(b.district) && (selectedRegions.length === 0 || selectedRegions.includes(b.region)));
+    if (zoneBranches.length === 0 && selectedDistricts.length < 8) return;
+    
+    totalBranches += zoneBranches.length;
+    const scaleRatio = z.branches > 0 ? zoneBranches.length / z.branches : 0;
+    
+    for (let m = 0; m < 3; m++) {
+      monthlyTotals[m].target += z.months[m].target * scaleRatio;
+      monthlyTotals[m].ach += z.months[m].ach * scaleRatio;
+    }
+    
+    const isExp = state.expandedZones[z.name];
+    const monthCols = z.months.map(m => {
+      const scaledTarget = m.target * scaleRatio;
+      const scaledAch = m.ach * scaleRatio;
+      const pct = scaledTarget > 0 ? (scaledAch / scaledTarget) * 100 : 0;
+      return `
+        <td class="right mono">${fmt(scaledTarget)}</td>
+        <td class="right mono">${fmt(scaledAch)}</td>
+        <td class="center">${pctBarScreenshot(pct)}</td>
+      `;
+    }).join('');
+
+    html += `
+      <tr class="zone-row" onclick="toggleZone('${z.name}')">
+        <td class="mono" style="color:var(--text3);">${sr++}</td>
+        <td>
+          <div class="z-toggle">
+            <span class="z-arrow ${isExp ? 'open' : ''}">▶</span>
+            <span class="z-name">${z.name}</span>
+          </div>
+        </td>
+        <td class="center bold">
+          <a href="#" style="color:var(--accent2);text-decoration:underline;" onclick="event.stopPropagation(); switchTab('branch'); document.getElementById('searchInput').value='${z.name}'; renderBranchTable();">${zoneBranches.length}</a>
+        </td>
+        ${monthCols}
+      </tr>
+    `;
+
+    if (isExp) {
+      filteredRegions.forEach(r => {
+        const regionBranches = zoneBranches.filter(b => b.region === r);
+        const regionScaleRatio = z.branches > 0 ? regionBranches.length / z.branches : 0;
+        
+        const regionCols = z.months.map(m => {
+          const rt = m.target * regionScaleRatio;
+          const ra = m.ach * regionScaleRatio;
+          const rp = rt > 0 ? (ra / rt) * 100 : 0;
+          return `
+            <td class="right mono">${fmt(rt)}</td>
+            <td class="right mono">${fmt(ra)}</td>
+            <td class="center">${pctBarScreenshot(rp)}</td>
+          `;
+        }).join('');
+
+        html += `
+          <tr class="region-row" style="background:var(--bg3);">
+            <td></td>
+            <td style="padding-left:40px;">
+              <span style="color:var(--text3);font-size:11px;margin-right:6px;">└</span>
+              <span class="z-region-name">${r}</span>
+            </td>
+            <td class="center" style="color:var(--text3);">${regionBranches.length}</td>
+            ${regionCols}
+          </tr>
+        `;
+      });
+    }
+  });
+  
+  tbody.innerHTML = html;
+  
+  const zoneCountElem = document.getElementById('zoneCount');
+  if (zoneCountElem) {
+    zoneCountElem.textContent = `6 zones · ${totalBranches} branches`;
+  }
+  
+  const totalCols = monthlyTotals.map(t => {
+    const tp = t.target > 0 ? (t.ach / t.target) * 100 : 0;
+    return `
+      <td class="right mono bold">${fmt(t.target)}</td>
+      <td class="right mono bold">${fmt(t.ach)}</td>
+      <td class="center">${pctBarScreenshot(tp)}</td>
+    `;
+  }).join('');
+
+  if (tfoot) {
+    tfoot.innerHTML = `
+      <tr style="background:rgba(79,255,176,0.04); font-weight:bold;">
+        <td colspan="2">TOTAL</td>
+        <td class="center">${totalBranches}</td>
+        ${totalCols}
+      </tr>
+    `;
+  }
+}
+
+function toggleZone(n){ state.expandedZones[n]=!state.expandedZones[n]; renderZoneTable(); }
+
+function renderBranchTable(){
+  const term = (document.getElementById('searchInput').value||'').toLowerCase();
+  const selectedZones = getSelectedChips('zoneChips');
+  const selectedRegions = getSelectedChips('regionChips');
+  const selectedDistricts = getSelectedDistricts();
+  let data = BRANCHES.filter(b => {
+    const matchTerm = !term || b.name.toLowerCase().includes(term) || b.sol_id.toLowerCase().includes(term) || b.zone.toLowerCase().includes(term);
+    const matchZone = !selectedZones.length || selectedZones.some(z => b.zone.includes(z.replace('Z', 'ZONE-')));
+    const matchRegion = !selectedRegions.length || selectedRegions.includes(b.region);
+    const matchDistrict = selectedDistricts.includes(b.district);
+    return matchTerm && matchZone && matchRegion && matchDistrict;
+  });
+  const seg = document.getElementById('segmentSelect').value;
+  if(seg && seg!=='all') data = data.filter(b=>b.segment===seg);
+  document.getElementById('branchCount').textContent = data.length+' branches';
+  const tbody = document.getElementById('branchTbody');
+  let html = '';
+  data.slice(0,100).forEach((b,i) => {
+    html += `<tr><td class="mono">${i+1}</td><td><div class="branch-cell"><div class="b-name">${b.name}</div><div class="b-meta">${b.sol_id} · ${b.zone} · ${b.region} · ${b.district}</div></div></td><td>${segPill(b.segment)}</td><td>${catBadge(b.catIdx)}</td><td class="right mono">${fmt(b.target)}</td><td class="right mono">${fmt(b.achievement)}</td><td>${pctBar(b.pct,90)}</td></tr>`;
+  });
+  tbody.innerHTML = html;
+}
+
+function renderProductTable(){
+  const { rows, grandTotals, grandTotal } = PRODUCT_DATA;
+  const tbody = document.getElementById('productTbody');
+  const tfoot = document.getElementById('productTfoot');
+  let html = ''; let sr = 1;
+  rows.forEach(row => {
+    const isExp = state.expandedZones['prod_'+row.name];
+    if(row.is_group){
+      const cols = PRODUCTS.map(p => `<td class="right mono">${fmt(row.products[p])}</td>`).join('');
+      html += `<tr class="zone-row" onclick="toggleProductZone('${row.name}')">
+        <td class="mono">${sr++}</td><td><div class="z-toggle"><span class="z-arrow ${isExp?'open':''}">▶</span><span class="z-name">${row.name}</span></div></td>
+        ${cols}<td class="right mono bold" style="color:var(--accent);">${fmt(row.total)}</td>
+      </tr>`;
+    } else {
+      if(!state.expandedZones['prod_'+row.parent]) return;
+      const cols = PRODUCTS.map(p => `<td class="right mono">${fmt(row.products[p])}</td>`).join('');
+      html += `<tr class="region-row" style="background:var(--bg3);"><td></td><td style="padding-left:40px;">└ ${row.name}</td>${cols}<td class="right mono">${fmt(row.total)}</td></tr>`;
+    }
+  });
+  tbody.innerHTML = html;
+  const footCols = PRODUCTS.map(p => `<td class="right">${fmt(grandTotals[p])}</td>`).join('');
+  tfoot.innerHTML = `<tr><td colspan="2">TOTAL</td>${footCols}<td class="right" style="color:var(--accent);">${fmt(grandTotal)}</td></tr>`;
+}
+function toggleProductZone(n){ state.expandedZones['prod_'+n]=!state.expandedZones['prod_'+n]; renderProductTable(); }
+
+function renderAgentTable(){
+  const { rows, grand } = AGENT_DATA;
+  const tbody = document.getElementById('agentTbody');
+  const tfoot = document.getElementById('agentTfoot');
+  let html = ''; let sr = 1;
+  rows.forEach(r => {
+    const isZone = r.is_group;
+    if(!isZone && !state.expandedZones['agent_'+r.parent]) return;
+    const totalT = r.ssT + r.ddT; const totalA = r.ssA + r.ddA;
+    const pct = totalT > 0 ? (totalA/totalT)*100 : 0;
+    const isExp = state.expandedZones['agent_'+r.name];
+    html += `<tr class="${isZone?'zone-row':'region-row'}" ${isZone?`onclick="toggleAgentZone('${r.name}')"`:'style="background:var(--bg3);"'}>
+      <td class="mono">${isZone?sr++:''}</td>
+      <td style="${isZone?'':'padding-left:40px;'}">${isZone?`<div class="z-toggle"><span class="z-arrow ${isExp?'open':''}">▶</span><span class="z-name">${r.name}</span></div>`:`└ ${r.name}`}</td>
+      <td class="right mono">${fmt(r.ssT)}</td><td class="right mono">${fmt(r.ssA)}</td><td class="right mono">${fmt(r.ssT-r.ssA)}</td>
+      <td class="center mono">${r.ssAct}</td><td class="center mono">${r.ssInact}</td>
+      <td class="right mono">${fmt(r.ddT)}</td><td class="right mono">${fmt(r.ddA)}</td><td class="right mono">${fmt(r.ddT-r.ddA)}</td>
+      <td class="center mono">${r.ddAct}</td><td class="center mono">${r.ddInact}</td>
+      <td>${pctBar(pct,90)}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+  tfoot.innerHTML = `<tr><td colspan="2">TOTAL</td><td class="right">${fmt(grand.ssT)}</td><td class="right">${fmt(grand.ssA)}</td><td class="right">${fmt(grand.ssT-grand.ssA)}</td><td class="center">${grand.ssAct}</td><td class="center">${grand.ssInact}</td><td class="right">${fmt(grand.ddT)}</td><td class="right">${fmt(grand.ddA)}</td><td class="right">${fmt(grand.ddT-grand.ddA)}</td><td class="center">${grand.ddAct}</td><td class="center">${grand.ddInact}</td><td>${pctBar(((grand.ssA+grand.ddA)/(grand.ssT+grand.ddT))*100,90)}</td></tr>`;
+}
+function toggleAgentZone(n){ state.expandedZones['agent_'+n]=!state.expandedZones['agent_'+n]; renderAgentTable(); }
+
+// ── TABS ─────────────────────────────────────────────────────────────
+function switchTab(t, b) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById('panel-'+t).classList.add('active');
+  if(b) b.classList.add('active'); state.activeTab = t;
+  if(t==='branch') renderBranchTable();
+  if(t==='product') renderProductTable();
+  if(t==='agent') renderAgentTable();
+  if(t==='zone') renderZoneTable();
+}
+
+// ── CHIPS ──────────────────────────────────────────────────────────
+function getSelectedChips(id){
+  const chips = document.getElementById(id).querySelectorAll('.filter-chip.active');
+  const vals = Array.from(chips).map(c=>{
+    const oc = c.getAttribute('onclick');
+    const m = oc.match(/'(.*?)'/g);
+    return m && m.length>1 ? m[1].replace(/'/g,'') : null;
+  });
+  return vals.includes('all') ? [] : vals;
+}
+function toggleChip(el,val,id){
+  const container = document.getElementById(id);
+  if(val==='all'){ container.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active')); el.classList.add('active'); }
+  else { container.querySelector('.filter-chip[onclick*="\'all\'"]').classList.remove('active'); el.classList.toggle('active'); if(!container.querySelectorAll('.filter-chip.active').length) container.querySelector('.filter-chip[onclick*="\'all\'"]').classList.add('active'); }
+  if(state.activeTab === 'zone') renderZoneTable();
+  if(state.activeTab === 'branch') renderBranchTable();
+}
+
+// ── CHARTING ─────────────────────────────────────────────────────────
+const modalCharts = {};
+function getChartColors(){
+  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  return { grid: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)', tick: isDark ? '#525870' : '#9ca3af' };
+}
+function buildOverviewCharts(){
+  const c = getChartColors();
+  if(modalCharts.zoneBar) modalCharts.zoneBar.destroy();
+  modalCharts.zoneBar = new Chart(document.getElementById('m_zoneBar').getContext('2d'), {
+    type: 'bar',
+    data: { labels: ZONES.map(z=>z.name.replace('ZONE-','Z')), datasets: [{ label:'Target', data: ZONES.map(z=>z.months[2].target), backgroundColor:'rgba(79,255,176,0.15)', borderColor:'#00c97a', borderWidth:1.5, borderRadius:4 }, { label:'Achievement', data: ZONES.map(z=>z.months[2].ach), backgroundColor:'rgba(14,165,233,0.55)', borderColor:'#0ea5e9', borderWidth:1.5, borderRadius:4 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:c.tick,font:{size:11}},grid:{color:c.grid}}, y:{ticks:{color:c.tick,font:{size:11}},grid:{color:c.grid}} } }
+  });
+  if(modalCharts.catDonut) modalCharts.catDonut.destroy();
+  modalCharts.catDonut = new Chart(document.getElementById('m_catDonut').getContext('2d'), {
+    type:'doughnut',
+    data:{ labels:cats, datasets:[{ data:catWeights, backgroundColor:catColors.map(c=>c+'99'), borderColor:catColors, borderWidth:1.5 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'70%', plugins:{legend:{display:false}} }
+  });
+}
+function renderVizPanel(v){ if(v==='overview') buildOverviewCharts(); }
+function openVizModal(){ document.getElementById('vizOverlay').style.display='block'; renderVizPanel('overview'); }
+function closeVizModal(){ document.getElementById('vizOverlay').style.display='none'; }
+function switchVizTab(btn){
+  document.querySelectorAll('.viz-tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.viz-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active'); const v = btn.dataset.viz;
+  document.getElementById('viz-'+v).classList.add('active'); renderVizPanel(v);
+}
+
+// ── UTILS ────────────────────────────────────────────────────────────
+function toggleTheme(){
+  const h = document.documentElement; const isL = h.getAttribute('data-theme')==='light';
+  const n = isL?'dark':'light'; h.setAttribute('data-theme', n);
+  localStorage.setItem('drishti-theme', n);
+  const btn = document.getElementById('themeToggleBtn'); if(btn) btn.textContent = n==='light'?'🌙':'☀️';
+  if(modalCharts.zoneBar) buildOverviewCharts();
+}
+function exportCSV(){ alert('Exporting data...'); }
+function resetAll(){ location.reload(); }
+
+// ── SIDEBAR TOGGLE ───────────────────────────────────────────────────
+const iconExpanded = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M9 3v18M16 15l-3-3 3-3"></path></svg>`;
+const iconCollapsed = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M9 3v18M13 9l3 3-3 3"></path></svg>`;
+
+function toggleSidebar(){
+  const app = document.querySelector('.app');
+  app.classList.toggle('sidebar-collapsed');
+  const isCollapsed = app.classList.contains('sidebar-collapsed');
+  localStorage.setItem('drishti-sidebar-collapsed', isCollapsed ? 'true' : 'false');
+  const btn = document.getElementById('sidebarToggleBtn');
+  if (btn) {
+    btn.innerHTML = isCollapsed ? iconCollapsed : iconExpanded;
+  }
+}
+
+// ── FINANCIAL YEAR UTILS ─────────────────────────────────────────────
+function getIndianFinancialYear(date) {
+  const year = date.getFullYear();
+  const month = date.getMonth(); // 0-indexed (0 is Jan, 3 is Apr)
+  return month >= 3 ? year : year - 1;
+}
+
+function formatFY(startYear) {
+  const endYear = startYear + 1;
+  const yy1 = startYear.toString().slice(-2);
+  const yy2 = endYear.toString().slice(-2);
+  return `FY ${yy1}–${yy2}`;
+}
+
+function initFYDropdown() {
+  const select = document.getElementById('fySelect');
+  if (!select) return;
+  const today = new Date();
+  const currentFYStart = getIndianFinancialYear(today);
+  
+  let html = '';
+  for (let i = 0; i < 3; i++) {
+    const fyStart = currentFYStart - i;
+    const label = formatFY(fyStart);
+    const value = `FY${fyStart.toString().slice(-2)}${(fyStart + 1).toString().slice(-2)}`;
+    const selected = i === 0 ? 'selected' : '';
+    html += `<option value="${value}" ${selected}>${label}</option>`;
+  }
+  select.innerHTML = html;
+  state.financialYear = select.value;
+}
+
+function updateDateForFY(fy) {
+  const match = fy.match(/\d+/);
+  if (!match) return;
+  const startYY = parseInt(match[0].slice(0, 2)); // e.g. 26 from FY2627
+  const year = 2000 + startYY;
+  
+  const dateStr = `${year}-06-07`;
+  const input = document.getElementById('globalDate');
+  if (input) input.value = dateStr;
+  
+  const select = document.getElementById('monthSelect');
+  if (select) select.value = "6";
+  
+  const headerDate = document.getElementById('headerDate');
+  if (headerDate) headerDate.textContent = `Jun 07, ${year}`;
+}
+
+function changeMonth(mVal) {
+  const dateInput = document.getElementById('globalDate');
+  if (!dateInput) return;
+  const currentDate = new Date(dateInput.value);
+  const year = currentDate.getFullYear();
+  
+  let selectMonth = parseInt(mVal);
+  const match = state.financialYear.match(/\d+/);
+  const startYY = match ? parseInt(match[0].slice(0, 2)) : 26;
+  const startYear = 2000 + startYY;
+  
+  let targetYear = startYear;
+  if (selectMonth >= 1 && selectMonth <= 3) {
+    targetYear = startYear + 1;
+  }
+  
+  const mm = String(selectMonth).padStart(2, '0');
+  const dd = String(isNaN(currentDate.getDate()) ? 7 : currentDate.getDate()).padStart(2, '0');
+  const dateStr = `${targetYear}-${mm}-${dd}`;
+  
+  dateInput.value = dateStr;
+  updateHeaderDate(new Date(dateStr));
+}
+
+function handleDateChange() {
+  const dateInput = document.getElementById('globalDate');
+  if (!dateInput) return;
+  const selectedDate = new Date(dateInput.value);
+  const month = selectedDate.getMonth() + 1;
+  
+  const select = document.getElementById('monthSelect');
+  if (select) {
+    select.value = month.toString();
+  }
+  updateHeaderDate(selectedDate);
+}
+
+// Custom Date Formatter
+function updateHeaderDate(dateObj) {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthName = months[dateObj.getMonth()];
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  const year = dateObj.getFullYear();
+  
+  const headerDate = document.getElementById('headerDate');
+  if (headerDate) {
+    headerDate.textContent = `${monthName} ${day}, ${year}`;
+  }
+}
+
+function updateSummaryCards() {
+  let totalTarget = 0;
+  let totalAch = 0;
+  ZONES.forEach(z => {
+    const latestMonth = z.months[2];
+    totalTarget += latestMonth.target;
+    totalAch += latestMonth.ach;
+  });
+  
+  const targetCr = (totalTarget / 10000000).toFixed(1);
+  const achCr = (totalAch / 10000000).toFixed(1);
+  const achPct = totalTarget > 0 ? ((totalAch / totalTarget) * 100).toFixed(1) : '0.0';
+  
+  const targetElem = document.getElementById('cardTotalTarget');
+  if (targetElem) targetElem.textContent = targetCr;
+  
+  const achElem = document.getElementById('cardTotalAch');
+  if (achElem) achElem.textContent = achCr;
+  
+  const pctElem = document.getElementById('cardTotalAchPct');
+  if (pctElem) {
+    const badgeClass = parseFloat(achPct) >= 80 ? 'badge-green' : parseFloat(achPct) >= 50 ? 'badge-amber' : 'badge-red';
+    pctElem.innerHTML = `<span class="mc-badge ${badgeClass}">${achPct}%</span> achieved`;
+  }
+  
+  const branchesElem = document.getElementById('cardTotalBranches');
+  if (branchesElem) branchesElem.textContent = BRANCHES.length;
+}
+
+function initDataForFY(fy) {
+  let multiplier = 1.0;
+  let fySeed = 1;
+  
+  if (fy === 'FY2627') {
+    multiplier = 1.20;
+    fySeed = 2026;
+  } else if (fy === 'FY2526') {
+    multiplier = 1.0;
+    fySeed = 2025;
+  } else if (fy === 'FY2425') {
+    multiplier = 0.82;
+    fySeed = 2024;
+  } else {
+    const match = fy.match(/\d+/);
+    const year = match ? parseInt(match[0]) : 25;
+    multiplier = 1.0 + (year - 25) * 0.15;
+    fySeed = year;
+  }
+  
+  seed = fySeed;
+  
+  const SCREENSHOT_ZONE_DATA = [
+    {
+      name: 'ZONE-1',
+      branches: 112,
+      regions: ['R1', 'R2'],
+      months: [
+        { target: 118.01, ach: 86.20 },
+        { target: 121.00, ach: 115.52 },
+        { target: 123.85, ach: 127.77 }
+      ]
+    },
+    {
+      name: 'ZONE-2',
+      branches: 31,
+      regions: ['R3', 'R4'],
+      months: [
+        { target: 16.90, ach: 5.75 },
+        { target: 18.15, ach: 7.44 },
+        { target: 19.40, ach: 8.47 }
+      ]
+    },
+    {
+      name: 'ZONE-3',
+      branches: 29,
+      regions: ['R1', 'R3'],
+      months: [
+        { target: 8.70, ach: 1.68 },
+        { target: 9.57, ach: 2.51 },
+        { target: 10.44, ach: 2.96 }
+      ]
+    },
+    {
+      name: 'ZONE-4',
+      branches: 23,
+      regions: ['R2', 'R4'],
+      months: [
+        { target: 10.30, ach: 3.17 },
+        { target: 11.03, ach: 4.32 },
+        { target: 11.60, ach: 5.64 }
+      ]
+    },
+    {
+      name: 'ZONE-5',
+      branches: 25,
+      regions: ['R1', 'R4'],
+      months: [
+        { target: 6.70, ach: 1.09 },
+        { target: 7.38, ach: 2.85 },
+        { target: 8.06, ach: 4.04 }
+      ]
+    },
+    {
+      name: 'ZONE-6',
+      branches: 28,
+      regions: ['R2', 'R3'],
+      months: [
+        { target: 6.10, ach: 1.15 },
+        { target: 7.61, ach: 1.34 },
+        { target: 8.22, ach: 2.12 }
+      ]
+    }
+  ];
+  
+  ZONES = SCREENSHOT_ZONE_DATA.map(z => {
+    const months = z.months.map(m => {
+      const targetVal = m.target * multiplier * 10000000;
+      const achVal = m.ach * multiplier * 10000000;
+      return { target: targetVal, ach: achVal };
+    });
+    return {
+      name: z.name,
+      branches: z.branches,
+      regions: [...z.regions],
+      months: months
+    };
+  });
+  
+  BRANCHES = [];
+  const cats = ['Pinnacle','Master','Accelerator','Starter','Learner','Zero Level'];
+  const catWeights = [42, 38, 61, 47, 28, 13];
+  let catCumul = [];
+  let s = 0;
+  catWeights.forEach(w => { catCumul.push(s); s += w; });
+  const zoneNames = ['ZONE-1','ZONE-2','ZONE-3','ZONE-4','ZONE-5','ZONE-6'];
+  
+  let branchZoneAssignments = [];
+  ZONES.forEach((z, zIdx) => {
+    for (let j = 0; j < z.branches; j++) {
+      branchZoneAssignments.push(zIdx);
+    }
+  });
+  
+  for(let i=0; i<248; i++){
+    let catIdx = 0;
+    const scaledIndex = Math.floor(i * 229 / 248);
+    for(let k=catCumul.length-1; k>=0; k--){ 
+      if(scaledIndex>=catCumul[k]){ catIdx=k; break; } 
+    }
+    const zIdx = branchZoneAssignments[i];
+    const pctBase = catIdx===0?105:catIdx===1?88:catIdx===2?70:catIdx===3?52:catIdx===4?33:10;
+    const pct = pctBase + (seededRandom()-0.5)*12;
+    const tgt = (40 + seededRandom()*80) * multiplier;
+    const ach = tgt * pct/100;
+    
+    const districtsList = ['Mumbai', 'Delhi', 'Bengaluru', 'Kolkata', 'Chennai', 'Hyderabad', 'Pune', 'Ahmedabad'];
+    BRANCHES.push({
+      id: i+1,
+      name: `Branch ${String(i+1).padStart(3,'0')}`,
+      sol_id: `SOL${1000+i}`,
+      zone: zoneNames[zIdx],
+      region: ZONES[zIdx].regions[i%2],
+      district: districtsList[i % districtsList.length],
+      category: cats[catIdx],
+      catIdx,
+      target: Math.round(tgt*100000),
+      achievement: Math.round(ach*100000),
+      pct: Math.round(pct*10)/10
+    });
+  }
+  
+  const sorted = [...BRANCHES].sort((a,b)=>b.pct-a.pct);
+  const q = Math.floor(sorted.length/4);
+  sorted.forEach((b,i) => {
+    b.segment = i < q ? 'Top 25%' : i < q*2 ? 'Next 25%' : i < q*3 ? 'Mid 25%' : 'Bottom 25%';
+  });
+  
+  PRODUCT_DATA = genProductData(multiplier);
+  AGENT_DATA = genAgentData(multiplier);
+  
+  updateSummaryCards();
+  updateDateForFY(fy);
+}
+
+function changeFY(val) {
+  state.financialYear = val;
+  console.log("Financial Year changed to:", val);
+  initDataForFY(val);
+  
+  // Re-render current active tab
+  if(state.activeTab === 'branch') renderBranchTable();
+  if(state.activeTab === 'product') renderProductTable();
+  if(state.activeTab === 'agent') renderAgentTable();
+  if(state.activeTab === 'zone') renderZoneTable();
+  
+  if (modalCharts.zoneBar) buildOverviewCharts();
+}
+
+// ── CONFIG HANDLERS ──────────────────────────────────────────────────
+function setView(btn) {
+  const parent = btn.parentNode;
+  parent.querySelectorAll('.config-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.viewMode = btn.textContent.trim().toLowerCase();
+  console.log("View mode changed to:", state.viewMode);
+}
+
+function setTarget(btn) {
+  const parent = btn.parentNode;
+  parent.querySelectorAll('.config-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.targetType = btn.textContent.trim().toLowerCase();
+  console.log("Target type changed to:", state.targetType);
+}
+
+function setFormat(btn) {
+  const parent = btn.parentNode;
+  parent.querySelectorAll('.config-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.formatMode = btn.getAttribute('data-fmt');
+  console.log("Format mode changed to:", state.formatMode);
+  
+  // Re-render to apply format
+  if(state.activeTab === 'branch') renderBranchTable();
+  if(state.activeTab === 'product') renderProductTable();
+  if(state.activeTab === 'agent') renderAgentTable();
+  if(state.activeTab === 'zone') renderZoneTable();
+}
+
+// ── DISTRICT UTILS ───────────────────────────────────────────────────
+function initDistrictDropdown() {
+  const container = document.getElementById('districtOptions');
+  if (!container) return;
+  const districts = ['Mumbai', 'Delhi', 'Bengaluru', 'Kolkata', 'Chennai', 'Hyderabad', 'Pune', 'Ahmedabad'];
+  let html = `
+    <div class="multiselect-option" onclick="event.stopPropagation();">
+      <label style="display:flex;align-items:center;gap:8px;width:100%;cursor:pointer;">
+        <input type="checkbox" id="distSelectAll" checked onchange="toggleAllDistricts(this)">
+        <span>Select All</span>
+      </label>
+    </div>
+  `;
+  districts.forEach(d => {
+    html += `
+      <div class="multiselect-option" onclick="event.stopPropagation();">
+        <label style="display:flex;align-items:center;gap:8px;width:100%;cursor:pointer;">
+          <input type="checkbox" class="district-cb" value="${d}" checked onchange="filterByDistrict()">
+          <span>${d}</span>
+        </label>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+function toggleMultiselect() {
+  const options = document.getElementById('districtOptions');
+  if (options) options.classList.toggle('open');
+}
+
+document.addEventListener('click', function(e) {
+  const dropdown = document.getElementById('districtDropdown');
+  if (dropdown && !dropdown.contains(e.target)) {
+    const options = document.getElementById('districtOptions');
+    if (options) options.classList.remove('open');
+  }
+});
+
+function toggleAllDistricts(source) {
+  const checkboxes = document.querySelectorAll('.district-cb');
+  checkboxes.forEach(cb => cb.checked = source.checked);
+  filterByDistrict();
+}
+
+function getSelectedDistricts() {
+  const checkboxes = document.querySelectorAll('.district-cb:checked');
+  return Array.from(checkboxes).map(cb => cb.value);
+}
+
+function filterByDistrict() {
+  const selected = getSelectedDistricts();
+  const selectAll = document.getElementById('distSelectAll');
+  const allCBs = document.querySelectorAll('.district-cb');
+  if (selectAll) selectAll.checked = (selected.length === allCBs.length);
+  
+  const label = document.getElementById('districtSelectLabel');
+  if (label) {
+    if (selected.length === allCBs.length) label.textContent = "All Districts";
+    else if (selected.length === 0) label.textContent = "No Districts Selected";
+    else label.textContent = `${selected.length} Districts Selected`;
+  }
+  
+  // Re-render
+  if (state.activeTab === 'branch') renderBranchTable();
+  if (state.activeTab === 'zone') renderZoneTable();
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────
+(function init(){
+  const saved = localStorage.getItem('drishti-theme');
+  if(saved) { document.documentElement.setAttribute('data-theme', saved); const btn = document.getElementById('themeToggleBtn'); if(btn) btn.textContent = saved==='light'?'🌙':'☀️'; }
+  
+  const sidebarCollapsed = localStorage.getItem('drishti-sidebar-collapsed');
+  if (sidebarCollapsed === 'true') {
+    document.querySelector('.app').classList.add('sidebar-collapsed');
+    const btn = document.getElementById('sidebarToggleBtn');
+    if (btn) btn.innerHTML = iconCollapsed;
+  }
+  
+  initFYDropdown();
+  initDataForFY(state.financialYear);
+  initDistrictDropdown();
+  renderZoneTable();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pending Action Items — Drishti</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', 'Segoe UI', sans-serif; background: #f0f4f5; color: #1e293b; padding: 30px; }
+  .container { max-width: 1020px; margin: 0 auto; }
+  .page-title { font-size: 26px; font-weight: 800; color: #417d81; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #64748b; margin-bottom: 22px; }
+  .summary { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+  .stat-card { flex: 1; min-width: 130px; background: #fff; border-radius: 10px; padding: 16px; border: 1px solid #e2e8f0; text-align: center; }
+  .stat-card .num { font-size: 26px; font-weight: 800; }
+  .stat-card .lbl { font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .stat-done .num { color: #16a34a; } .stat-pending .num { color: #d97706; }
+  .stat-blocked .num { color: #dc2626; } .stat-total .num { color: #417d81; }
+  .toolbar { margin-bottom: 14px; display: flex; gap: 10px; align-items: center; }
+  .btn { padding: 7px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-weight: 600; font-size: 13px; cursor: pointer; color: #334155; }
+  .btn:hover { background: #f1f5f9; }
+  .btn-primary { background: #417d81; color: #fff; border-color: #417d81; }
+  .btn-primary:hover { background: #346569; }
+  .spin { display: inline-block; animation: rot 1s linear infinite; }
+  @keyframes rot { to { transform: rotate(360deg); } }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  thead { background: linear-gradient(180deg, #3d7579, #346569); color: #fff; }
+  th { padding: 12px 14px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  td { padding: 11px 14px; border-bottom: 1px solid #eef2f4; font-size: 14px; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f0f9f9; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .b-done { background: #dcfce7; color: #15803d; }
+  .b-pending { background: #fef3c7; color: #b45309; }
+  .b-blocked { background: #fee2e2; color: #b91c1c; }
+  .cat { font-size: 11px; font-weight: 700; color: #0d9488; text-transform: uppercase; letter-spacing: .4px; }
+  .pri-hi { color: #dc2626; font-weight: 700; }
+  .pri-md { color: #d97706; font-weight: 600; }
+  .pri-lo { color: #64748b; font-weight: 600; }
+  .err { padding: 40px; text-align: center; color: #b91c1c; background: #fff; border-radius: 10px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="page-title">Pending Action Items</div>
+  <div class="subtitle">Live system checks — <span id="gen-at">loading…</span></div>
+
+  <div class="toolbar">
+    <button class="btn btn-primary" id="refresh-btn">⟳ Refresh</button>
+  </div>
+
+  <div class="summary">
+    <div class="stat-card stat-done"><div class="num" id="c-done">–</div><div class="lbl">Done</div></div>
+    <div class="stat-card stat-pending"><div class="num" id="c-pending">–</div><div class="lbl">Pending</div></div>
+    <div class="stat-card stat-blocked"><div class="num" id="c-blocked">–</div><div class="lbl">Blocked / Decision</div></div>
+    <div class="stat-card stat-total"><div class="num" id="c-total">–</div><div class="lbl">Total</div></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th style="width:34px;">#</th><th>Action Item</th><th style="width:140px;">Category</th><th style="width:80px;">Priority</th><th style="width:120px;">Status</th></tr>
+    </thead>
+    <tbody id="items"><tr><td colspan="5" style="text-align:center; color:#94a3b8;">Loading…</td></tr></tbody>
+  </table>
+</div>
+
+<script>
+  const BADGES = { done: ["b-done", "Done"], pending: ["b-pending", "Pending"], blocked: ["b-blocked", "Blocked"] };
+  const esc = (v) => String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  function load() {
+    const btn = document.getElementById("refresh-btn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin">⟳</span> Loading…';
+    fetch("/api/method/custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.get_pending_action_items", {
+      credentials: "same-origin"
+    })
+      .then((r) => {
+        if (r.redirected || r.status === 403) throw new Error("Please log in to the desk first");
+        return r.json();
+      })
+      .then((r) => {
+        const msg = r.message || {};
+        const items = msg.items || [];
+        const c = msg.counts || {};
+        document.getElementById("c-done").textContent = c.done || 0;
+        document.getElementById("c-pending").textContent = c.pending || 0;
+        document.getElementById("c-blocked").textContent = c.blocked || 0;
+        document.getElementById("c-total").textContent = items.length;
+        document.getElementById("gen-at").textContent = "generated " + esc(msg.generated_at || "");
+        const priCls = { High: "pri-hi", Medium: "pri-md", Low: "pri-lo" };
+        document.getElementById("items").innerHTML = items.map((it) => {
+          const b = BADGES[it.status] || ["b-pending", it.status];
+          return `<tr>
+            <td>${it.id}</td>
+            <td>${esc(it.title)}</td>
+            <td class="cat">${esc(it.category)}</td>
+            <td class="${priCls[it.priority] || "pri-lo"}">${esc(it.priority)}</td>
+            <td><span class="badge ${b[0]}">${b[1]}</span></td>
+          </tr>`;
+        }).join("");
+      })
+      .catch((e) => {
+        document.getElementById("items").innerHTML =
+          `<tr><td colspan="5"><div class="err">Failed to load: ${esc(e.message)}</div></td></tr>`;
+      })
+      .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = "⟳ Refresh";
+      });
+  }
+
+  document.getElementById("refresh-btn").addEventListener("click", load);
+  load();
+</script>
+</body>
+</html>

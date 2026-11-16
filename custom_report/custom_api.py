@@ -1,0 +1,295 @@
+import calendar
+from datetime import date
+import frappe
+from frappe.utils import add_days, today, getdate, flt
+
+
+MONTH_MAP = {
+    "JAN": 1, "FEB": 2, "MAR": 3, "APR": 4, "MAY": 5, "JUN": 6,
+    "JUL": 7, "AUG": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DEC": 12,
+}
+
+
+@frappe.whitelist()
+def get_sol_product_wise_collection(sol_id, zone=None, financial_year="2026-2027", report_date=None, mode="month", month=None):
+    """
+    Fetch product wise collection (ACH) from 'Product Wise Report' doctype.
+    mode='ytd'   -> Sum of value from 01-04-(FY start) till yesterday (today - 1).
+    mode='month' -> Chosen month from 01 till month end (or if current month, from 01 till today - 1).
+    """
+    mode = (mode or "month").lower()
+    if mode not in ("month", "ytd"):
+        mode = "month"
+
+    clean_m = (month or "").strip().upper() if month else ""
+    sol_str = str(sol_id).strip() if sol_id else ""
+
+    # Auto-resolve zone if not passed or placeholder
+    if not zone or str(zone).strip() in ("", "--", "None", "undefined"):
+        zone = frappe.db.get_value("Branch Category Report", {"sol_id": sol_str}, "zone")
+        if not zone:
+            try:
+                from custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard import get_sahayog_branches_cached
+                bm = get_sahayog_branches_cached()
+                zone = bm.get(sol_str, {}).get("zone")
+            except Exception:
+                pass
+
+    clean_zone = (zone or "").strip()
+    cache_key = f"sol_pw_coll_v8_{sol_str}_{clean_zone}_{financial_year or 'default'}_{mode}_{clean_m}_{report_date or ''}"
+    cached = frappe.cache().get_value(cache_key)
+    if cached is not None and any(cached.get("targets", {}).values()):
+        return cached
+
+    today_dt = getdate(today())
+    yesterday_dt = add_days(today_dt, -1)
+    current_month = today_dt.strftime('%b').upper()
+
+    # Determine financial year start year
+    if today_dt.month >= 4:
+        current_fy_start_year = today_dt.year
+    else:
+        current_fy_start_year = today_dt.year - 1
+    current_fy = f"{current_fy_start_year}-{current_fy_start_year + 1}"
+    fy = financial_year or current_fy
+
+    if mode == "ytd":
+        fy_start_year = int(fy.split("-")[0])
+        period_label = f"01 Apr {fy_start_year} – {yesterday_dt.strftime('%d %b %Y')}"
+        actual_date = yesterday_dt
+        sel_month = None
+
+        # YTD Collection: Sum of snapshots of past completed FY months + yesterday snapshot of current month
+        months_up_to = []
+        if yesterday_dt.month >= 4:
+            for m in range(4, yesterday_dt.month + 1):
+                months_up_to.append((m, fy_start_year))
+        else:
+            for m in range(4, 13):
+                months_up_to.append((m, fy_start_year))
+            for m in range(1, yesterday_dt.month + 1):
+                months_up_to.append((m, fy_start_year + 1))
+
+        snapshot_dates = []
+        for (m, y) in months_up_to:
+            if m == yesterday_dt.month and y == yesterday_dt.year:
+                curr_last_d = _get_latest_pwr_date(sol_id, str(yesterday_dt))
+                if curr_last_d:
+                    snapshot_dates.append(str(curr_last_d))
+            else:
+                last_d = _get_last_available_date_for_month(m, y, sol_id=sol_id)
+                if last_d:
+                    snapshot_dates.append(str(last_d))
+
+        if snapshot_dates:
+            data = frappe.db.sql("""
+                SELECT product, SUM(amount) as total_amount
+                FROM `tabProduct Wise Report`
+                WHERE sol_id = %s AND date IN %s
+                GROUP BY product
+            """, (sol_id, tuple(snapshot_dates)), as_dict=True)
+            collections = _aggregate_collections(data)
+        else:
+            collections = {p: 0.0 for p in ("CASA", "DAM", "DD", "FD", "RD", "SMBG")}
+
+        # Overall target (YTD cumulative target matching current month)
+        target_month = clean_m if (clean_m and clean_m in MONTH_MAP) else current_month
+        overall = frappe.db.sql("""
+            SELECT target FROM `tabTarget Vs Achivement`
+            WHERE sol_id = %s AND type = 'YTD' AND month = %s AND financial_year = %s
+        """, (sol_id, target_month, fy), as_dict=True)
+        if not overall:
+            overall = frappe.db.sql("""
+                SELECT target FROM `tabTarget Vs Achivement`
+                WHERE sol_id = %s AND type = 'YTD' AND financial_year = %s
+                ORDER BY modified DESC LIMIT 1
+            """, (sol_id, fy), as_dict=True)
+
+    else:
+        # MONTH mode: T-1 single date snapshot (not monthly aggregate)
+        clean_m = (month or "").strip().upper() if month else ""
+        if clean_m and clean_m in MONTH_MAP:
+            sel_month = clean_m
+        elif report_date:
+            sel_month = getdate(report_date).strftime('%b').upper()
+        else:
+            sel_month = current_month
+
+        mnum = MONTH_MAP.get(sel_month, today_dt.month)
+        fy_start_year = int(fy.split("-")[0])
+        cal_year = fy_start_year if mnum >= 4 else fy_start_year + 1
+
+        is_current_month = (mnum == today_dt.month and cal_year == today_dt.year)
+        if report_date:
+            t1_date_str = str(report_date)
+        elif is_current_month:
+            # T-1 (yesterday) or latest available date up to yesterday
+            t1_date_str = _get_latest_pwr_date(sol_id, yesterday_dt) or str(yesterday_dt)
+        else:
+            # Selected past month: latest available date in that month
+            last_day = calendar.monthrange(cal_year, mnum)[1]
+            month_end = f"{cal_year}-{mnum:02d}-{last_day:02d}"
+            t1_date_str = _get_latest_pwr_date(sol_id, month_end) or month_end
+
+        t1_date_obj = getdate(t1_date_str)
+        period_label = f"As of: {t1_date_obj.strftime('%d/%m/%Y')}"
+        actual_date = t1_date_obj
+
+        # T-1 Single Date Collection Query
+        data = frappe.db.sql("""
+            SELECT product, SUM(amount) as total_amount
+            FROM `tabProduct Wise Report`
+            WHERE sol_id = %s AND date = %s
+            GROUP BY product
+        """, (sol_id, str(t1_date_str)), as_dict=True)
+
+        collections = _aggregate_collections(data)
+
+        # Overall target (Monthly)
+        overall = frappe.db.sql("""
+            SELECT target FROM `tabTarget Vs Achivement`
+            WHERE sol_id = %s AND type = 'Monthly' AND month = %s AND financial_year = %s
+        """, (sol_id, sel_month, fy), as_dict=True)
+
+    collections["TOTAL TARGET"] = sum(collections.values())
+
+    # ---- Zone based target split percentages ----
+    targets = {p: 0.0 for p in ("CASA", "DAM", "DD", "FD", "RD", "SMBG")}
+    if zone:
+        target_data = frappe.db.sql("""
+            SELECT a.casa, a.dam, a.dd, a.fd, a.rd, a.smbg
+            FROM `tabGL Wise Target Allocation` a
+            JOIN `tabGL Wise Target` p ON a.parent = p.name
+            WHERE a.zone = %s AND (p.financial_year = %s OR p.financial_year IS NULL)
+            ORDER BY a.modified DESC LIMIT 1
+        """, (zone, fy), as_dict=True)
+        if not target_data:
+            target_data = frappe.db.sql("""
+                SELECT a.casa, a.dam, a.dd, a.fd, a.rd, a.smbg
+                FROM `tabGL Wise Target Allocation` a
+                WHERE a.zone = %s
+                ORDER BY a.modified DESC LIMIT 1
+            """, (zone,), as_dict=True)
+        if target_data:
+            t = target_data[0]
+            for p in targets:
+                targets[p] = flt(t.get(p.lower(), 0.0))
+
+    overall_target = flt(overall[0].get('target')) if overall else 0.0
+    target_amounts = {p: (overall_target * targets[p]) / 100 for p in targets}
+    target_amounts["TOTAL TARGET"] = overall_target
+
+    resp = {
+        "status": "success",
+        "sol_id": sol_id,
+        "zone": zone,
+        "financial_year": fy,
+        "mode": mode,
+        "month": sel_month,
+        "current_month": current_month,
+        "report_date": str(actual_date),
+        "period_label": period_label,
+        "collections": collections,
+        "targets": targets,
+        "target_amounts": target_amounts
+    }
+    frappe.cache().set_value(cache_key, resp, expires_in_sec=1800)
+    return resp
+
+
+def _fy_for_month(month_code, today_dt):
+    mnum = MONTH_MAP.get(month_code, today_dt.month) if month_code else today_dt.month
+    if mnum >= 4:
+        fy_start = today_dt.year if today_dt.month >= 4 else today_dt.year - 1
+        return f"{fy_start}-{fy_start + 1}"
+    else:
+        fy_end = today_dt.year if today_dt.month < 4 else today_dt.year + 1
+        return f"{fy_end - 1}-{fy_end}"
+
+
+def _aggregate_collections(data):
+    collections = {p: 0.0 for p in ("CASA", "DAM", "DD", "FD", "RD", "SMBG")}
+    for row in data:
+        product_name = row.get("product")
+        amt = flt(row.get("total_amount") or 0.0)
+        if product_name in collections:
+            collections[product_name] += amt
+        elif product_name == "MIS":
+            # MIS (Monthly Income Scheme) falls under Term Deposit / FD category
+            collections["FD"] += amt
+    return collections
+
+
+def _get_latest_pwr_date(sol_id, before_date):
+    res = frappe.db.sql("""
+        SELECT date as d FROM `tabProduct Wise Report`
+        WHERE sol_id = %s AND date <= %s
+        ORDER BY date DESC LIMIT 1
+    """, (sol_id, before_date), as_dict=True)
+    return res[0].get("d") if res and res[0].get("d") else None
+
+
+def _get_last_available_date_for_month(month_num, year, sol_id=None):
+    cache_key = f"pwr_last_date_{month_num}_{year}_{sol_id or 'all'}"
+    cached = frappe.cache().get_value(cache_key)
+    if cached is not None:
+        return cached
+
+    # Fast check: end of month date
+    last_day = calendar.monthrange(year, month_num)[1]
+    start_d = f"{year}-{month_num:02d}-01"
+    end_d = f"{year}-{month_num:02d}-{last_day:02d}"
+
+    if sol_id:
+        dates = frappe.db.sql("""
+            SELECT MAX(date) as d FROM `tabProduct Wise Report`
+            WHERE sol_id = %s AND date >= %s AND date <= %s
+        """, (sol_id, start_d, end_d), as_dict=True)
+    else:
+        dates = frappe.db.sql("""
+            SELECT MAX(date) as d FROM `tabProduct Wise Report`
+            WHERE date >= %s AND date <= %s
+        """, (start_d, end_d), as_dict=True)
+    
+    val = str(getdate(dates[0].d)) if dates and dates[0].get("d") else None
+    frappe.cache().set_value(cache_key, val, expires_in_sec=1800)
+    return val
+
+
+def _get_ytd_collections(sol_id, target_date):
+    dt = target_date if isinstance(target_date, date) else getdate(target_date)
+    if dt.month >= 4:
+        fy_start_year = dt.year
+        months_up_to = [(m, fy_start_year) for m in range(4, dt.month + 1)]
+    else:
+        fy_start_year = dt.year - 1
+        months_up_to = [(m, fy_start_year + 1) for m in range(1, dt.month + 1)]
+
+    collections = {p: 0.0 for p in ("CASA", "DAM", "DD", "FD", "RD", "SMBG")}
+    for (m, y) in months_up_to:
+        last_date = _get_last_available_date_for_month(m, y)
+        if not last_date:
+            continue
+        rows = frappe.db.sql("""
+            SELECT product, SUM(amount) as total_amount
+            FROM `tabProduct Wise Report`
+            WHERE sol_id = %s AND date = %s
+            GROUP BY product
+        """, (sol_id, last_date), as_dict=True)
+        for row in rows:
+            p = row.get("product")
+            amt = flt(row.get("total_amount") or 0.0)
+            if p in collections:
+                collections[p] += amt
+            elif p == "MIS":
+                collections["FD"] += amt
+    return collections
+
+
+def _get_ytd_period_label(target_date):
+    dt = target_date if isinstance(target_date, date) else getdate(target_date)
+    if dt.month >= 4:
+        fy_start_year = dt.year
+    else:
+        fy_start_year = dt.year - 1
+    return f"YTD Apr {fy_start_year} – {dt.strftime('%b %Y')}"

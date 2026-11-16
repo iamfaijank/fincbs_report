@@ -1,85 +1,94 @@
 {
-  "actions": [],
-  "allow_rename": 1,
-  "creation": "2025-12-11 17:05:15.724779",
-  "doctype": "DocType",
-  "engine": "InnoDB",
-  "field_order": [
-    "source_configuration_section",
-    "source_type",
-    "column_break_abc1",
-    "is_active",
-    "frappe_doctype_settings_section",
-    "master_doctype"
-  ],
-  "fields": [
-    {
-      "fieldname": "source_configuration_section",
-      "fieldtype": "Section Break",
-      "label": "Source Configuration"
-    },
-    {
-      "fieldname": "source_type",
-      "fieldtype": "Select",
-      "label": "Data Source Type",
-      "options": "Frappe DocType\nExternal PostgreSQL",
-      "default": "Frappe DocType",
-      "reqd": 1,
-      "in_standard_filter": 1,
-      "description": "Select the source from where reports will fetch data"
-    },
-    {
-      "fieldname": "column_break_abc1",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "is_active",
-      "fieldtype": "Check",
-      "label": "Is Active",
-      "default": 1,
-      "description": "Enable or disable the data source"
-    },
-    {
-      "fieldname": "frappe_doctype_settings_section",
-      "fieldtype": "Section Break",
-      "label": "Frappe DocType Settings",
-      "depends_on": "eval:doc.source_type=='Frappe DocType'"
-    },
-    {
-      "fieldname": "master_doctype",
-      "fieldtype": "Link",
-      "label": "Master DocType",
-      "options": "DocType",
-      "default": "Branch Category Report",
-      "mandatory_depends_on": "eval:doc.source_type=='Frappe DocType'",
-      "description": "Select the DocType to fetch report data from"
-    }
-  ],
-  "grid_page_length": 50,
-  "index_web_pages_for_search": 1,
-  "issingle": 1,
-  "links": [],
-  "modified": "2025-12-11 17:09:00.000000",
-  "modified_by": "Administrator",
-  "module": "custom_report",
-  "name": "Report Settings",
-  "owner": "Administrator",
-  "permissions": [
-    {
-      "create": 1,
-      "delete": 1,
-      "email": 1,
-      "print": 1,
-      "read": 1,
-      "role": "System Manager",
-      "share": 1,
-      "write": 1
-    }
-  ],
-  "row_format": "Dynamic",
-  "rows_threshold_for_grid_search": 20,
-  "sort_field": "modified",
-  "sort_order": "DESC",
-  "states": [],
-  "track_changes": 1
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-12-11 17:05:15.724779",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "source_configuration_section",
+  "source_type",
+  "master_doctype",
+  "column_break_abc1",
+  "is_active",
+  "finacle_report_settings_section",
+  "department_roles"
+ ],
+ "fields": [
+  {
+   "fieldname": "source_configuration_section",
+   "fieldtype": "Section Break",
+   "label": "Drishti Source Configuration"
+  },
+  {
+   "default": "Frappe DocType",
+   "description": "Select the source from where reports will fetch data",
+   "fieldname": "source_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Data Source Type",
+   "options": "Frappe DocType\nExternal PostgreSQL",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_abc1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "description": "Enable or disable the data source",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "default": "Branch Category Report",
+   "depends_on": "eval:doc.source_type=='Frappe DocType'",
+   "description": "Select the DocType to fetch report data from",
+   "fieldname": "master_doctype",
+   "fieldtype": "Link",
+   "label": "Master DocType",
+   "mandatory_depends_on": "eval:doc.source_type=='Frappe DocType'",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "finacle_report_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Finacle Report Settings"
+  },
+  {
+   "description": "Manage roles that have department-level access (see all branches)",
+   "fieldname": "department_roles",
+   "fieldtype": "Table",
+   "label": "Department Roles",
+   "options": "Finacle Report User"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-03-05 16:35:00.000000",
+ "modified_by": "Administrator",
+ "module": "custom_report",
+ "name": "Report Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
 }

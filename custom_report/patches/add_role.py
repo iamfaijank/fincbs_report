@@ -11,7 +11,8 @@ def execute():
         "Operation Department Report",
         "Two Wheeler Department Report",
         "Branch Report",
-        "Finacle Report Admin"
+        "Finacle Report Admin",
+        "Vigilance Department Report"
     ]
  
     for role in roles:

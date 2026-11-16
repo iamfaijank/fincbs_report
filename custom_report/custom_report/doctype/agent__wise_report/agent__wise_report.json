@@ -1,0 +1,113 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "creation": "2026-03-02 16:45:47.182922",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "zone",
+  "sol_id",
+  "region",
+  "target",
+  "achievement",
+  "active",
+  "inactive",
+  "ss_target",
+  "ss_achievement",
+  "ss_active",
+  "ss_inactive",
+  "date"
+ ],
+ "fields": [
+  {
+   "fieldname": "target",
+   "fieldtype": "Data",
+   "label": "Target"
+  },
+  {
+   "fieldname": "achievement",
+   "fieldtype": "Data",
+   "label": "Achievement"
+  },
+  {
+   "fieldname": "zone",
+   "fieldtype": "Link",
+   "label": "Zone",
+   "options": "Zone"
+  },
+  {
+   "fieldname": "region",
+   "fieldtype": "Link",
+   "label": "Region",
+   "options": "Region"
+  },
+  {
+   "fieldname": "ss_target",
+   "fieldtype": "Data",
+   "label": "SS Target "
+  },
+  {
+   "fieldname": "ss_achievement",
+   "fieldtype": "Data",
+   "label": "SS Achievement"
+  },
+  {
+   "fieldname": "ss_active",
+   "fieldtype": "Data",
+   "label": "SS Active"
+  },
+  {
+   "fieldname": "ss_inactive",
+   "fieldtype": "Data",
+   "label": "SS Inactive"
+  },
+  {
+   "fieldname": "active",
+   "fieldtype": "Data",
+   "label": "Active"
+  },
+  {
+   "fieldname": "inactive",
+   "fieldtype": "Data",
+   "label": "Inactive"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fieldname": "sol_id",
+   "fieldtype": "Data",
+   "label": "Sol ID"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-19 14:00:03.962657",
+ "modified_by": "Administrator",
+ "module": "custom_report",
+ "name": "Agent  Wise Report",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

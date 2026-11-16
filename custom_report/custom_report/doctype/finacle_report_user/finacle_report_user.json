@@ -3,6 +3,7 @@
  "allow_rename": 1,
  "creation": "2025-09-15 11:21:05.325243",
  "doctype": "DocType",
+ "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "role"
@@ -22,7 +23,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-16 12:12:15.960827",
+ "modified": "2026-03-05 16:27:47.141162",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Finacle Report User",

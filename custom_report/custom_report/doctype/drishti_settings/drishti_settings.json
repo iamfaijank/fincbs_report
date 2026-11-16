@@ -1,0 +1,59 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-07-08 22:54:33.839572",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+  "field_order": [
+   "auto_sync",
+   "designations_section",
+   "designations"
+  ],
+  "fields": [
+   {
+    "default": "0",
+    "description": "If checked = will enable all daily morning report automations",
+    "fieldname": "auto_sync",
+    "fieldtype": "Check",
+    "label": "Auto Sync"
+   },
+   {
+    "fieldname": "designations_section",
+    "fieldtype": "Section Break",
+    "label": "Designations"
+   },
+   {
+    "description": "Select designations for daily morning report automations",
+    "fieldname": "designations",
+    "fieldtype": "Table MultiSelect",
+    "label": "Designations",
+    "options": "Drishti Settings Designation"
+   }
+  ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-10-09 11:18:53.953942",
+ "modified_by": "Administrator",
+ "module": "custom_report",
+ "name": "Drishti Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

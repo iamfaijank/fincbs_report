@@ -2,268 +2,226 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.model.document import Document
-from frappe.utils import date_diff, flt, getdate, nowdate
 from frappe import _
+from frappe.model.document import Document
+from frappe.utils import flt, getdate, today
+
+# Module Level Constants
+EXCLUDED_SOL_IDS = ["1000", "1104", "1059", "1081", "1031"]
+FY_MONTHS = ["APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC", "JAN", "FEB", "MAR"]
+ALLOWED_ROLES = ["System Manager", "MIS Admin"]
+
 
 class TargetVsAchivement(Document):
-    
-    def validate(self):
-        self.validate_dates()
-        self.check_overlapping()
-        self.calculate_metrics()
-        self.update_segment()
-        self.update_status()
-    
-    def validate_dates(self):
-        if self.valid_from and self.valid_till:
-            if getdate(self.valid_till) < getdate(self.valid_from):
-                frappe.throw(_("Valid Till cannot be before Valid From"))
-    
-    def check_overlapping(self):
-        if not self.valid_from or not self.valid_till:
-            return
-        
-        existing = frappe.db.exists("Target Vs Achivement", {
-            "sol_id": self.sol_id,
-            "type": self.type,
-            "financial_year": self.financial_year,
-            "name": ["!=", self.name or ""],
-            "status": ["!=", "Expired"]
-        })
-        
-        if existing:
-            frappe.throw(_("Active target already exists for this period"))
-    
-    def calculate_metrics(self):
-        # Achievement %
-        if self.target and flt(self.target) > 0:
-            self.achievement_percentage = flt((flt(self.achievement) / flt(self.target)) * 100, 2)
-        else:
-            self.achievement_percentage = 0
-        
-        # Variance
-        self.variance = flt(self.achievement) - flt(self.target)
-        
-        # Days remaining
-        if self.status == "Active" and self.valid_till:
-            days = date_diff(self.valid_till, nowdate())
-            self.days_remaining = days if days > 0 else 0
-        else:
-            self.days_remaining = 0
-    
-    def update_segment(self):
-        p = flt(self.achievement_percentage)
-        if p > 100:
-            self.performance_segment = "Exceeded (>100%)"
-        elif p >= 75:
-            self.performance_segment = "Top 25% (75-100%)"
-        elif p >= 50:
-            self.performance_segment = "Next 25% (50-75%)"
-        elif p >= 25:
-            self.performance_segment = "Mid 25% (25-50%)"
-        else:
-            self.performance_segment = "Bottom 25% (0-25%)"
-    
-    def update_status(self):
-        if not self.valid_from or not self.valid_till:
-            return
-        
-        current = getdate(nowdate())
-        valid_from = getdate(self.valid_from)
-        valid_till = getdate(self.valid_till)
-        
-        if current < valid_from:
-            self.status = "Inactive"
-        elif valid_from <= current <= valid_till:
-            self.status = "Active"
-        else:
-            self.status = "Expired"
-    
-    def on_update(self):
-        if self.status != "Active":
-            return
-        
-        if self.has_value_changed('achievement'):
-            self.check_milestones()
-        
-        self.check_expiry_alert()
-    
-    def check_milestones(self):
-        if not self.enable_segment_notifications:
-            return
-        
-        email = get_branch_email(self.sol_id)
-        if not email:
-            return
-        
-        p = flt(self.achievement_percentage)
-        
-        # 25%
-        if p >= 25 and not self.bottom_segment_notified:
-            send_milestone_email(self, email, "25%", "📊")
-            self.db_set('bottom_segment_notified', 1, update_modified=False)
-        
-        # 50%
-        if p >= 50 and not self.mid_segment_notified:
-            send_milestone_email(self, email, "50%", "📈")
-            self.db_set('mid_segment_notified', 1, update_modified=False)
-        
-        # 75%
-        if p >= 75 and not self.next_segment_notified:
-            send_milestone_email(self, email, "75%", "🚀")
-            self.db_set('next_segment_notified', 1, update_modified=False)
-        
-        # 100%
-        if p >= 100 and not self.top_segment_notified:
-            send_milestone_email(self, email, "100%", "🎉")
-            self.db_set('top_segment_notified', 1, update_modified=False)
-    
-    def check_expiry_alert(self):
-        if not self.alert_before_expiry_days:
-            return
-        
-        days = date_diff(self.valid_till, nowdate())
-        
-        if 0 < days <= flt(self.alert_before_expiry_days):
-            email = get_branch_email(self.sol_id)
-            if email:
-                send_expiry_email(self, email)
+	"""DocType controller for Target Vs Achivement records."""
+
+	def autoname(self):
+		if not self.sol_id or not self.financial_year or not self.type:
+			frappe.throw(_("SOL ID, Financial Year and Type are mandatory"))
+
+		doc_type = self.type.upper()
+
+		if doc_type in ("MONTHLY", "YTD"):
+			if not self.month:
+				frappe.throw(_("Month is mandatory for Monthly and YTD types"))
+
+			self.name = f"{self.sol_id}-{self.financial_year}-{doc_type}-{self.month.upper()}"
+
+		elif doc_type == "YEARLY":
+			self.name = f"{self.sol_id}-{self.financial_year}-YEARLY"
+
+		else:
+			frappe.throw(_("Invalid target type specified."))
+
+	def validate(self):
+		self.check_duplicate()
+
+	def check_duplicate(self):
+		filters = {
+			"sol_id": self.sol_id,
+			"financial_year": self.financial_year,
+			"type": self.type,
+			"name": ["!=", self.name or ""],
+		}
+		if self.type in ("Monthly", "YTD") and self.month:
+			filters["month"] = self.month
+
+		if frappe.db.exists("Target Vs Achivement", filters):
+			frappe.throw(
+				_("Target record already exists for SOL ID '{0}', Financial Year '{1}' and Period '{2}'.")
+				.format(self.sol_id, self.financial_year, self.month or self.type)
+			)
 
 
-# Helper Functions
-
-def get_branch_email(sol_id):
-    try:
-        email = frappe.db.get_value("Sahayog Branch", sol_id, "email")
-        return email.strip() if email and "@" in email else None
-    except:
-        return None
+def get_current_financial_year() -> str:
+	"""Calculate current financial year (April to March) string, e.g. '2025-2026'."""
+	dt = getdate(today())
+	if dt.month >= 4:
+		return f"{dt.year}-{dt.year + 1}"
+	return f"{dt.year - 1}-{dt.year}"
 
 
-def send_milestone_email(doc, email, milestone, emoji):
-    try:
-        branch_name = frappe.db.get_value("Sahayog Branch", doc.sol_id, "branch_name") or doc.sol_id
-        
-        # Milestone tracker HTML
-        milestones_html = f"""
-        <div style="display: flex; gap: 10px; margin: 20px 0;">
-            <div style="flex: 1; background: {'#4CAF50' if doc.achievement_percentage >= 25 else '#eee'}; 
-                        color: {'white' if doc.achievement_percentage >= 25 else '#666'}; 
-                        padding: 15px; border-radius: 5px; text-align: center;">
-                <div style="font-size: 20px;">📊</div>
-                <div style="font-weight: bold;">25%</div>
-                <div style="font-size: 11px;">{'✓' if doc.achievement_percentage >= 25 else 'Pending'}</div>
-            </div>
-            <div style="flex: 1; background: {'#4CAF50' if doc.achievement_percentage >= 50 else '#eee'}; 
-                        color: {'white' if doc.achievement_percentage >= 50 else '#666'}; 
-                        padding: 15px; border-radius: 5px; text-align: center;">
-                <div style="font-size: 20px;">📈</div>
-                <div style="font-weight: bold;">50%</div>
-                <div style="font-size: 11px;">{'✓' if doc.achievement_percentage >= 50 else 'Pending'}</div>
-            </div>
-            <div style="flex: 1; background: {'#4CAF50' if doc.achievement_percentage >= 75 else '#eee'}; 
-                        color: {'white' if doc.achievement_percentage >= 75 else '#666'}; 
-                        padding: 15px; border-radius: 5px; text-align: center;">
-                <div style="font-size: 20px;">🚀</div>
-                <div style="font-weight: bold;">75%</div>
-                <div style="font-size: 11px;">{'✓' if doc.achievement_percentage >= 75 else 'Pending'}</div>
-            </div>
-            <div style="flex: 1; background: {'#4CAF50' if doc.achievement_percentage >= 100 else '#eee'}; 
-                        color: {'white' if doc.achievement_percentage >= 100 else '#666'}; 
-                        padding: 15px; border-radius: 5px; text-align: center;">
-                <div style="font-size: 20px;">🎉</div>
-                <div style="font-weight: bold;">100%</div>
-                <div style="font-size: 11px;">{'✓' if doc.achievement_percentage >= 100 else 'Pending'}</div>
-            </div>
-        </div>
-        """
-        
-        message = f"""
-        <div style="font-family: Arial; max-width: 600px; margin: 0 auto;">
-            <div style="background: #4CAF50; color: white; padding: 20px; text-align: center;">
-                <h2 style="margin: 0;">{emoji} {milestone} Milestone Achieved!</h2>
-            </div>
-            <div style="padding: 20px; background: #f9f9f9;">
-                <p><strong>Branch:</strong> {branch_name}</p>
-                <p><strong>Type:</strong> {doc.type}</p>
-                <p><strong>Target:</strong> ₹{frappe.format_value(doc.target, {'fieldtype': 'Currency'})}</p>
-                <p><strong>Achievement:</strong> ₹{frappe.format_value(doc.achievement, {'fieldtype': 'Currency'})}</p>
-                <p><strong>Achievement %:</strong> {doc.achievement_percentage}%</p>
-                <p><strong>Days Remaining:</strong> {doc.days_remaining}</p>
-                
-                <h3>Achievement Progress</h3>
-                {milestones_html}
-                
-                <p style="text-align: center; margin-top: 20px;">
-                    <a href="{frappe.utils.get_url_to_form('Target Vs Achivement', doc.name)}" 
-                       style="background: #4CAF50; color: white; padding: 10px 20px; 
-                              text-decoration: none; border-radius: 5px; display: inline-block;">
-                        View Details
-                    </a>
-                </p>
-            </div>
-        </div>
-        """
-        
-        frappe.sendmail(
-            recipients=[email],
-            subject=f"{emoji} {milestone} Milestone - {branch_name}",
-            message=message,
-            reference_doctype=doc.doctype,
-            reference_name=doc.name
-        )
-    except Exception as e:
-        frappe.log_error(str(e), "Milestone Email Error")
-
-
-def send_expiry_email(doc, email):
-    try:
-        branch_name = frappe.db.get_value("Sahayog Branch", doc.sol_id, "branch_name") or doc.sol_id
-        
-        message = f"""
-        <div style="font-family: Arial; max-width: 600px; margin: 0 auto;">
-            <div style="background: #FF6B35; color: white; padding: 20px; text-align: center;">
-                <h2 style="margin: 0;">⚠️ Target Expiring Soon!</h2>
-                <p style="margin: 5px 0 0 0;">Only {doc.days_remaining} days left</p>
-            </div>
-            <div style="padding: 20px; background: #FFF3E0;">
-                <p><strong>Branch:</strong> {branch_name}</p>
-                <p><strong>Current Achievement:</strong> {doc.achievement_percentage}%</p>
-                <p><strong>Remaining:</strong> ₹{frappe.format_value(doc.target - doc.achievement, {'fieldtype': 'Currency'})}</p>
-                <p style="text-align: center; margin-top: 20px;">
-                    <a href="{frappe.utils.get_url_to_form('Target Vs Achivement', doc.name)}" 
-                       style="background: #FF6B35; color: white; padding: 10px 20px; 
-                              text-decoration: none; border-radius: 5px; display: inline-block;">
-                        Take Action
-                    </a>
-                </p>
-            </div>
-        </div>
-        """
-        
-        frappe.sendmail(
-            recipients=[email],
-            subject=f"⚠️ Target Expiring - {branch_name}",
-            message=message
-        )
-    except Exception as e:
-        frappe.log_error(str(e), "Expiry Email Error")
+def check_user_access():
+	"""Check if current user has System Manager or MIS Admin role."""
+	user_roles = frappe.get_roles()
+	if not any(role in user_roles for role in ALLOWED_ROLES):
+		frappe.throw(
+			_("Access Denied: Only MIS Admin and System Manager can access Missing Target functionality."),
+			frappe.PermissionError,
+		)
 
 
 @frappe.whitelist()
-def auto_update_all_statuses():
-    targets = frappe.get_all("Target Vs Achivement", 
-                             filters={"status": ["!=", "Expired"]},
-                             fields=["name"])
-    
-    for target in targets:
-        try:
-            doc = frappe.get_doc("Target Vs Achivement", target.name)
-            doc.update_status()
-            doc.calculate_metrics()
-            doc.save(ignore_permissions=True)
-            frappe.db.commit()
-        except Exception as e:
-            frappe.log_error(str(e), "Auto Update Error")
-            continue
+def get_missing_targets_matrix(financial_year: str = None) -> dict:
+	"""Fetch missing targets matrix report aggregated by branch for Monthly, YTD, and Yearly targets."""
+	check_user_access()
+	if not financial_year:
+		financial_year = get_current_financial_year()
+
+	# Fetch available Financial Years
+	fys = frappe.db.get_all(
+		"Target Vs Achivement",
+		fields=["distinct financial_year"],
+		order_by="financial_year desc",
+	)
+	fy_list = [f.financial_year for f in fys if f.financial_year]
+	if financial_year not in fy_list:
+		fy_list.insert(0, financial_year)
+
+	# Fetch valid branches (excluding Head Office, Zonal branches, and specified non-store SOL IDs)
+	branches = frappe.get_all(
+		"Sahayog Branch",
+		filters=[
+			["sol_id", "not in", EXCLUDED_SOL_IDS],
+			["branch", "not like", "%HEAD OFFICE%"],
+			["branch_type", "!=", "Zonal"],
+		],
+		fields=["sol_id", "branch", "zone", "region"],
+		order_by="sol_id asc",
+	)
+
+	# Fetch target records for selected Financial Year
+	targets = frappe.get_all(
+		"Target Vs Achivement",
+		filters={"financial_year": financial_year},
+		fields=["sol_id", "type", "month", "target", "name"],
+	)
+
+	# Build lookup map: (sol_id, type, month_or_None) -> target_info
+	target_map = {}
+	for t in targets:
+		sol = str(t.sol_id or "").strip()
+		ttype = str(t.type or "").strip()
+		tmonth = str(t.month or "").strip().upper() if ttype in ("Monthly", "YTD") else None
+		target_map[(sol, ttype, tmonth)] = {
+			"target": flt(t.target or 0),
+			"name": t.name,
+		}
+
+	matrix = []
+	total_missing = 0
+	total_stored = 0
+
+	for b in branches:
+		sol = str(b.sol_id or "").strip()
+		row_data = {
+			"sol_id": sol,
+			"branch_name": b.branch or sol,
+			"zone": b.zone or "-",
+			"region": b.region or "-",
+			"months": {},
+			"ytd_months": {},
+			"yearly": None,
+			"missing_count": 0,
+			"stored_count": 0,
+		}
+
+		# Process Monthly targets (APR to MAR)
+		for m in FY_MONTHS:
+			entry = target_map.get((sol, "Monthly", m))
+			if entry:
+				row_data["months"][m] = {"stored": True, "target": entry["target"], "name": entry["name"]}
+				row_data["stored_count"] += 1
+				total_stored += 1
+			else:
+				row_data["months"][m] = {"stored": False, "target": 0}
+				row_data["missing_count"] += 1
+				total_missing += 1
+
+		# Process YTD targets (APR to MAR)
+		for m in FY_MONTHS:
+			entry_ytd = target_map.get((sol, "YTD", m)) or target_map.get((sol, "YTD", None))
+			if entry_ytd:
+				row_data["ytd_months"][m] = {"stored": True, "target": entry_ytd["target"], "name": entry_ytd["name"]}
+				row_data["stored_count"] += 1
+				total_stored += 1
+			else:
+				row_data["ytd_months"][m] = {"stored": False, "target": 0}
+				row_data["missing_count"] += 1
+				total_missing += 1
+
+		# Process Yearly target
+		entry_y = target_map.get((sol, "Yearly", None))
+		if entry_y:
+			row_data["yearly"] = {"stored": True, "target": entry_y["target"], "name": entry_y["name"]}
+			row_data["stored_count"] += 1
+			total_stored += 1
+		else:
+			row_data["yearly"] = {"stored": False, "target": 0}
+			row_data["missing_count"] += 1
+			total_missing += 1
+
+		matrix.append(row_data)
+
+	total_target_amount = sum(flt(t.get("target") or 0) for t in targets)
+	zones_count = len(set(b.get("zone") or "Unassigned Zone" for b in branches))
+
+	return {
+		"financial_year": financial_year,
+		"available_fys": fy_list,
+		"months": FY_MONTHS,
+		"matrix": matrix,
+		"summary": {
+			"total_branches": len(branches),
+			"total_zones": zones_count,
+			"total_missing": total_missing,
+			"total_stored": total_stored,
+			"total_target_amount": total_target_amount,
+		},
+	}
+
+
+@frappe.whitelist()
+def save_quick_target(sol_id: str, financial_year: str, type: str, month: str = None, target: float = 0) -> dict:
+	"""Quick insert or update a Target Vs Achivement record directly from the Missing Targets widget."""
+	check_user_access()
+
+	target_val = flt(target)
+	if target_val <= 0:
+		frappe.throw(_("Target amount must be greater than 0"))
+
+	filters = {
+		"sol_id": sol_id,
+		"financial_year": financial_year,
+		"type": type,
+	}
+	if type in ("Monthly", "YTD") and month:
+		filters["month"] = month
+
+	doc_name = frappe.db.exists("Target Vs Achivement", filters)
+	if doc_name:
+		doc = frappe.get_doc("Target Vs Achivement", doc_name)
+		doc.target = target_val
+		doc.save(ignore_permissions=True)
+	else:
+		doc = frappe.get_doc({
+			"doctype": "Target Vs Achivement",
+			"sol_id": sol_id,
+			"financial_year": financial_year,
+			"type": type,
+			"month": month if type in ("Monthly", "YTD") else None,
+			"target": target_val,
+		})
+		doc.insert(ignore_permissions=True)
+
+	return {"status": "success", "name": doc.name, "target": doc.target}

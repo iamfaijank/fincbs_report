@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Transaction Double Leg</title>
+<link rel="icon" href="data:image/x-icon;base64,AA==">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -185,9 +186,9 @@
 </head>
 <body>
 <main>
-<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+<div style="text-align: center; margin-bottom: 8px;">
   <h1 style="margin: 0;">Transaction Double Leg</h1>
-  <a href="/app/sahayog-home" style="text-decoration: none; font-size: 13px; font-weight: 500; color: var(--text-dark, #333); background: var(--subtle-fg, #f0f0f0); padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border-color, #d1d8dd); white-space: nowrap;">Home</a>
+  <a href="/app/sahayog-home" style="display: inline-block; text-decoration: none; font-size: 13px; font-weight: 500; color: var(--text-dark, #333); background: var(--subtle-fg, #f0f0f0); padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border-color, #d1d8dd); white-space: nowrap; margin-top: 8px;">Home</a>
 </div>
 
 {% if not show_form %}
@@ -208,6 +209,7 @@
 <label><input type="radio" name="account_type" value="bacid" checked><span>BACID</span></label>
 <label><input type="radio" name="account_type" value="foracid"><span>Account No.</span></label>
 <label><input type="radio" name="account_type" value="gl_sub_head_code"><span>GL SUB HEAD CODE</span></label>
+<label><input type="radio" name="account_type" value="schm_code"><span>SCHM CODE</span></label>
 </div>
 </fieldset>
 
@@ -233,9 +235,26 @@
 </div>
 </div>
 
+    <fieldset style="margin-bottom: 0; display:none;">
+    <legend>File format</legend>
+    <div class="seg">
+    <label><input type="radio" name="file_format" value="csv" checked><span>CSV</span></label>
+    <label><input type="radio" name="file_format" value="zip"><span>ZIP (CSV inside)</span></label>
+    </div>
+    <p class="hint">ZIP packs the same CSV report into a single compressed file before download.</p>
+    </fieldset>
+
     <hr class="divider">
 
-    <button type="submit" class="download" id="downloadBtn">Download report</button>
+    <button type="submit" class="download" id="downloadBtn">Download</button>
+
+    <div id="formatModal" hidden style="margin-top:16px; padding:16px; background:var(--surface); border:1px solid var(--line); border-radius:10px;">
+      <legend style="font-weight:500; margin-bottom:8px;">Choose download format</legend>
+      <div class="seg">
+        <button type="button" id="fmtCsvBtn" class="download" style="width:auto; flex:1;">CSV</button>
+        <button type="button" id="fmtZipBtn" class="download" style="width:auto; flex:1;">ZIP</button>
+      </div>
+    </div>
 
     <div class="progress" id="progress" hidden>
 <div class="progress-head">
@@ -271,6 +290,7 @@
 
 </main>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="/assets/custom_report/js/double_leg_transaction.js"></script>
 </body>
 </html>

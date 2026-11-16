@@ -8,7 +8,8 @@
   "report_name",
   "allowed_roles",
   "sql_query",
-  "last_download_duration"
+  "last_download_duration",
+  "allowed_designations"
  ],
  "fields": [
   {
@@ -24,8 +25,13 @@
    "fieldtype": "Table MultiSelect",
    "ignore_user_permissions": 1,
    "label": "Roles",
-   "options": "Finacle Report User",
-   "reqd": 1
+   "options": "Finacle Report User"
+  },
+  {
+   "description": "Comma-separated designations allowed to access this report (e.g. Branch Manager, BOM)",
+   "fieldname": "allowed_designations",
+   "fieldtype": "Small Text",
+   "label": "Allowed Designations"
   },
   {
    "fieldname": "report_name",
@@ -46,7 +52,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-03 16:21:21.514116",
+ "modified": "2026-10-13 16:18:58.927537",
  "modified_by": "Administrator",
  "module": "custom_report",
  "name": "Finacle Report",

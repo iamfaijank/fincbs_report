@@ -28,6 +28,19 @@ app_license = "mit"
 # app_include_css = "/assets/custom_report/css/custom_report.css"
 # app_include_js = "/assets/custom_report/js/custom_report.js"
 
+app_include_js = [
+    "/assets/custom_report/js/petite-vue.js"
+]
+
+website_route_rules = [
+	{"from_route": "/drishti/<path:app_path>", "to_route": "drishti"},
+	{"from_route": "/bde_bdo_dashboard/<path:app_path>", "to_route": "bde_bdo_dashboard"},
+	{"from_route": "/sync", "to_route": "sync"},
+	{"from_route": "/sync.html", "to_route": "sync"},
+	{"from_route": "/double_leg_transaction", "to_route": "double_leg_transaction"},
+]
+
+
 # include js, css files in header of web template
 # web_include_css = "/assets/custom_report/css/custom_report.css"
 # web_include_js = "/assets/custom_report/js/custom_report.js"
@@ -137,34 +150,91 @@ app_license = "mit"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"Sahayog Branch": {
+		"on_update": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_sahayog_branches_cache",
+		"on_trash": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_sahayog_branches_cache"
+	},
+	"Product": {
+		"on_update": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_products_cache",
+		"on_trash": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_products_cache"
+	},
+	"Report Preference": {
+		"on_update": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_user_permissions_cache",
+		"on_trash": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_user_permissions_cache"
+	},
+	"Target Vs Achivement": {
+		"on_update": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_targets_cache",
+		"on_trash": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_targets_cache"
+	},
+	"Branch Category Report": {
+		"on_update": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_branch_category_report_cache",
+		"on_trash": "custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.clear_branch_category_report_cache"
+	}
+}
 
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"custom_report.tasks.all"
-# 	],
-# 	"daily": [
-# 		"custom_report.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"custom_report.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"custom_report.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"custom_report.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+	"cron": {
+		# Daily Product Wise Report Synchronizations starting first at 06:00 AM IST
+		"0 6 * * *": [
+			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_tda_sync"
+		],
+		"15 6 * * *": [
+			"custom_report.custom_report.page.sahayog_dashboard.sahayog_dashboard.daily_casa_sync"
+		],
+		# Daily Branch Category Report (Achievement) Sync at 06:30 AM IST
+		"30 6 * * *": [
+			"custom_report.custom_report.page.sahayog_dashboard.achievement.daily_sync_cron"
+		],
+		# Daily T-1 (Yesterday) SS & VS Report Synchronizations starting at 07:00 AM IST with 5-minute intervals
+		"0 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_dd_sav_daily"
+		],
+		"5 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_dd_tda_daily"
+		],
+		"10 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_rd_daily"
+		],
+		"15 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_smbg_daily"
+		],
+		"20 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_fd_1_daily"
+		],
+		"25 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_dam_daily"
+		],
+		"30 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_fd_daily"
+		],
+		"35 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.sync_share_daily"
+		],
+		"40 7 * * *": [
+			"custom_report.custom_report.doctype.maturity_tracker.maturity_tracker.daily_sync_maturity_tracker"
+		],
+		"45 7 * * *": [
+			"custom_report.custom_report.doctype.ss_and_vs_report.ss_vs_sync.cleanup_ss_vs_old_monthly_records"
+		],
+		"45 6 * * *": [
+			"custom_report.custom_report.doctype.rd_and_smbg_pending.rd_and_smbg_pending.daily_sync_rd_and_smbg_pending"
+		],
+		# Daily Financial Tracker Synchronizations starting at 08:30 AM IST
+		"30 8 * * *": [
+			"custom_report.custom_report.doctype.book_position_and_account_details.book_position_and_account_details.daily_sync_book_position"
+		],
+		"40 8 * * *": [
+			"custom_report.custom_report.doctype.dd_tracker_report.dd_tracker_report.daily_sync_dd_tracker"
+		],
+		"50 8 * * *": [
+			"custom_report.custom_report.doctype.profit_and_loss_report.profit_and_loss_report.daily_sync_profit_and_loss_report"
+		]
+	}
+}
 
 # Testing
 # -------
@@ -241,11 +311,3 @@ override_whitelisted_methods = {
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
-fixtures = [
-    {
-        "dt": "Branch Category Report"
-    },
-    {
-        "dt": "Target Vs Achivement"
-    }
-]
