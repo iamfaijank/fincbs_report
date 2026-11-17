@@ -15633,7 +15633,6 @@ class DrishtiDashboard {
 					<tr style="height: 40px;">
 						<td></td>
 						<td style="text-align: left; padding-left: 12px; text-transform: uppercase; letter-spacing: 1px;">TOTAL</td>
-						<td></td>
 						<td class="metric-cell amount-cell" style="color: #ffffff;">${this.formatCurrency(totalSsTarget)}</td>
 						<td class="metric-cell amount-cell" style="color: #ffffff;">${this.formatCurrency(totalSsAch)}</td>
 						<td class="metric-cell amount-cell" style="color: ${totalSsShortfallRaw > 0 ? "#fca5a5" : "#6ee7b7"}; font-weight: 600;">${this.formatCurrency(totalSsShortfall)}</td>
