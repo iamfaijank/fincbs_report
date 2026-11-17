@@ -9793,9 +9793,10 @@ class DrishtiDashboard {
 					}
 					if (self.searchTerm) {
 						const q = self.searchTerm.toLowerCase();
-						list = list.filter(r => 
+						list = list.filter(r =>
 							(r.employee_name && r.employee_name.toLowerCase().includes(q)) ||
 							(r.auth_id && r.auth_id.toLowerCase().includes(q)) ||
+							(r.branch_name && r.branch_name.toLowerCase().includes(q)) ||
 							(r.branch && r.branch.toLowerCase().includes(q)) ||
 							(r.sol_id && r.sol_id.toLowerCase().includes(q)) ||
 							(r.designation && r.designation.toLowerCase().includes(q)) ||
@@ -9840,14 +9841,14 @@ class DrishtiDashboard {
 						const br = r.branch || "HO";
 						const desig = r.designation || "Other";
 
-						if (!zones[z]) zones[z] = { name: z, regions: {}, totals: { staff_cnt: 0, new_ac: 0, new_amt: 0, dd_dmd: 0, dd_col: 0, rd_dmd: 0, rd_col: 0, smbg_dmd: 0, smbg_col: 0, tot_dmd: 0, tot_col: 0, casa_mab: 0 } };
-						if (!zones[z].regions[reg]) zones[z].regions[reg] = { name: reg, districts: {}, totals: { staff_cnt: 0, new_ac: 0, new_amt: 0, dd_dmd: 0, dd_col: 0, rd_dmd: 0, rd_col: 0, smbg_dmd: 0, smbg_col: 0, tot_dmd: 0, tot_col: 0, casa_mab: 0 } };
-						if (!zones[z].regions[reg].districts[dist]) zones[z].regions[reg].districts[dist] = { name: dist, branches: {}, totals: { staff_cnt: 0, new_ac: 0, new_amt: 0, dd_dmd: 0, dd_col: 0, rd_dmd: 0, rd_col: 0, smbg_dmd: 0, smbg_col: 0, tot_dmd: 0, tot_col: 0, casa_mab: 0 } };
-						if (!zones[z].regions[reg].districts[dist].branches[br]) zones[z].regions[reg].districts[dist].branches[br] = { name: br, sol_id: r.sol_id, district: dist, designations: {}, totals: { staff_cnt: 0, new_ac: 0, new_amt: 0, dd_dmd: 0, dd_col: 0, rd_dmd: 0, rd_col: 0, smbg_dmd: 0, smbg_col: 0, tot_dmd: 0, tot_col: 0, casa_mab: 0 } };
+						if (!zones[z]) zones[z] = { name: z, regions: {}, totals: { staff_cnt: 0, new_ac: 0, new_amt: 0, fd_6m_ac: 0, fd_6m_amt: 0, dam_ac: 0, dam_amt: 0, mis_ac: 0, mis_amt: 0, dd_dmd: 0, dd_col: 0, rd_dmd: 0, rd_col: 0, smbg_dmd: 0, smbg_col: 0, tot_dmd: 0, tot_col: 0, casa_mab: 0 } };
+						if (!zones[z].regions[reg]) zones[z].regions[reg] = { name: reg, districts: {}, totals: { staff_cnt: 0, new_ac: 0, new_amt: 0, fd_6m_ac: 0, fd_6m_amt: 0, dam_ac: 0, dam_amt: 0, mis_ac: 0, mis_amt: 0, dd_dmd: 0, dd_col: 0, rd_dmd: 0, rd_col: 0, smbg_dmd: 0, smbg_col: 0, tot_dmd: 0, tot_col: 0, casa_mab: 0 } };
+						if (!zones[z].regions[reg].districts[dist]) zones[z].regions[reg].districts[dist] = { name: dist, branches: {}, totals: { staff_cnt: 0, new_ac: 0, new_amt: 0, fd_6m_ac: 0, fd_6m_amt: 0, dam_ac: 0, dam_amt: 0, mis_ac: 0, mis_amt: 0, dd_dmd: 0, dd_col: 0, rd_dmd: 0, rd_col: 0, smbg_dmd: 0, smbg_col: 0, tot_dmd: 0, tot_col: 0, casa_mab: 0 } };
+						if (!zones[z].regions[reg].districts[dist].branches[br]) zones[z].regions[reg].districts[dist].branches[br] = { name: br, sol_id: r.sol_id, district: dist, designations: {}, totals: { staff_cnt: 0, new_ac: 0, new_amt: 0, fd_6m_ac: 0, fd_6m_amt: 0, dam_ac: 0, dam_amt: 0, mis_ac: 0, mis_amt: 0, dd_dmd: 0, dd_col: 0, rd_dmd: 0, rd_col: 0, smbg_dmd: 0, smbg_col: 0, tot_dmd: 0, tot_col: 0, casa_mab: 0 } };
 
 						const brObj = zones[z].regions[reg].districts[dist].branches[br];
 						if (!brObj.designations[desig]) {
-							brObj.designations[desig] = { name: desig, staff: [], totals: { staff_cnt: 0, new_ac: 0, new_amt: 0, dd_dmd: 0, dd_col: 0, rd_dmd: 0, rd_col: 0, smbg_dmd: 0, smbg_col: 0, tot_dmd: 0, tot_col: 0, casa_mab: 0 } };
+							brObj.designations[desig] = { name: desig, staff: [], totals: { staff_cnt: 0, new_ac: 0, new_amt: 0, fd_6m_ac: 0, fd_6m_amt: 0, dam_ac: 0, dam_amt: 0, mis_ac: 0, mis_amt: 0, dd_dmd: 0, dd_col: 0, rd_dmd: 0, rd_col: 0, smbg_dmd: 0, smbg_col: 0, tot_dmd: 0, tot_col: 0, casa_mab: 0 } };
 						}
 						const dObj = brObj.designations[desig];
 						dObj.staff.push(r);
@@ -9855,8 +9856,14 @@ class DrishtiDashboard {
 						// Accumulate totals across all 4 parent levels
 						[zones[z].totals, zones[z].regions[reg].totals, zones[z].regions[reg].districts[dist].totals, brObj.totals, dObj.totals].forEach(t => {
 							t.staff_cnt += 1;
-							t.new_ac += r.total_new_ac || 0;
-							t.new_amt += r.total_new_amt || 0;
+							t.new_ac += r.total_ac || 0;
+							t.new_amt += r.total_amt || 0;
+							t.fd_6m_ac += r.fd_6m_ac || 0;
+							t.fd_6m_amt += r.fd_6m_amt || 0;
+							t.dam_ac += r.dam_ac || 0;
+							t.dam_amt += r.dam_amt || 0;
+							t.mis_ac += r.mis_ac || 0;
+							t.mis_amt += r.mis_amt || 0;
 							t.dd_dmd += r.dd_demand || 0;
 							t.dd_col += r.dd_collection || 0;
 							t.rd_dmd += r.rd_demand || 0;
@@ -9877,7 +9884,7 @@ class DrishtiDashboard {
 										<th rowspan="2" style="vertical-align: middle; min-width: 250px; text-align: left; padding: 10px 14px;">Hierarchy / Staff Details</th>
 										<th rowspan="2" style="vertical-align: middle; min-width: 90px;">Auth ID</th>
 										<th rowspan="2" style="vertical-align: middle; min-width: 130px;">Designation</th>
-										<th colspan="5" style="background: #0369a1;">New Account Productivity (BDE & BDO)</th>
+										<th colspan="8" style="background: #0369a1;">New Account Productivity (BDE & BDO)</th>
 										<th colspan="2" style="background: #047857;">Daily Deposit (DD)</th>
 										<th colspan="2" style="background: #b45309;">Recurring Deposit (RD)</th>
 										<th colspan="2" style="background: #6d28d9;">SMBG</th>
@@ -9885,11 +9892,14 @@ class DrishtiDashboard {
 										<th colspan="2" style="background: #be185d;">CASA</th>
 									</tr>
 									<tr style="background: #334155; color: #f8fafc; font-size: 11px; text-align: right;">
-										<th style="text-align: right;">FD (Ac / Amt)</th>
-										<th style="text-align: right;">RD (Ac / Amt)</th>
-										<th style="text-align: right;">SMBG (Ac / Amt)</th>
 										<th style="text-align: right;">DD (Ac / Amt)</th>
-										<th style="text-align: right; background: #0284c7; color: white;">Total New (Ac / Amt)</th>
+										<th style="text-align: right;">SMBG (Ac / Amt)</th>
+										<th style="text-align: right;">RD (Ac / Amt)</th>
+										<th style="text-align: right;">FD (Ac / Amt)</th>
+										<th style="text-align: right;">FD 6M (Ac / Amt)</th>
+										<th style="text-align: right;">DAM (Ac / Amt)</th>
+										<th style="text-align: right;">MIS (Ac / Amt)</th>
+										<th style="text-align: right; background: #0284c7; color: white;">Total (Ac / Amt)</th>
 										
 										<th style="text-align: right;">Demand</th>
 										<th style="text-align: right;">Collection</th>
@@ -9919,6 +9929,9 @@ class DrishtiDashboard {
 								<td style="text-align: left; padding-left: 14px;"><span style="display: inline-block; width: 16px;">${zExpanded ? "▼" : "▶"}</span> ${zName} (${zObj.totals.staff_cnt} Staff)</td>
 								<td>-</td>
 								<td>Zone Total</td>
+								<td style="text-align: right;">-</td>
+								<td style="text-align: right;">-</td>
+								<td style="text-align: right;">-</td>
 								<td style="text-align: right;">-</td>
 								<td style="text-align: right;">-</td>
 								<td style="text-align: right;">-</td>
@@ -9957,6 +9970,9 @@ class DrishtiDashboard {
 										<td style="text-align: right;">-</td>
 										<td style="text-align: right;">-</td>
 										<td style="text-align: right;">-</td>
+										<td style="text-align: right;">-</td>
+										<td style="text-align: right;">-</td>
+										<td style="text-align: right;">-</td>
 										<td style="text-align: right; font-weight: 700;">${fmtCount(regObj.totals.new_ac)} / ${fmtAmt(regObj.totals.new_amt)}</td>
 										
 										<td style="text-align: right;">${fmtAmt(regObj.totals.dd_dmd)}</td>
@@ -9991,6 +10007,9 @@ class DrishtiDashboard {
 												<td style="text-align: right;">-</td>
 												<td style="text-align: right;">-</td>
 												<td style="text-align: right;">-</td>
+												<td style="text-align: right;">-</td>
+												<td style="text-align: right;">-</td>
+												<td style="text-align: right;">-</td>
 												<td style="text-align: right; font-weight: 600;">${fmtCount(distObj.totals.new_ac)} / ${fmtAmt(distObj.totals.new_amt)}</td>
 												
 												<td style="text-align: right;">${fmtAmt(distObj.totals.dd_dmd)}</td>
@@ -10021,6 +10040,9 @@ class DrishtiDashboard {
 														<td style="text-align: left; padding-left: 56px;"><span style="display: inline-block; width: 16px;">${brExpanded ? "▼" : "▶"}</span> 📍 ${brName} <span style="font-size: 11px; color: #64748b; font-weight: 500;">(SOL: ${brObj.sol_id || 'N/A'})</span></td>
 														<td>-</td>
 														<td>Branch Total</td>
+														<td style="text-align: right;">-</td>
+														<td style="text-align: right;">-</td>
+														<td style="text-align: right;">-</td>
 														<td style="text-align: right;">-</td>
 														<td style="text-align: right;">-</td>
 														<td style="text-align: right;">-</td>
@@ -10063,11 +10085,14 @@ class DrishtiDashboard {
 																	<td style="font-family: monospace; color: #475569;">${st.auth_id}</td>
 																	<td style="color: #475569; font-weight: 500;">${st.designation}</td>
 																	
-																	<td style="text-align: right;">${st.fd_ac ? `${st.fd_ac} / ${fmtAmt(st.fd_amt)}` : "-"}</td>
-																	<td style="text-align: right;">${st.rd_ac ? `${st.rd_ac} / ${fmtAmt(st.rd_amt)}` : "-"}</td>
-																	<td style="text-align: right;">${st.smbg_ac ? `${st.smbg_ac} / ${fmtAmt(st.smbg_amt)}` : "-"}</td>
 																	<td style="text-align: right;">${st.dd_ac ? `${st.dd_ac} / ${fmtAmt(st.dd_amt)}` : "-"}</td>
-																	<td style="text-align: right; font-weight: 700; color: #0284c7;">${st.total_new_ac ? `${st.total_new_ac} / ${fmtAmt(st.total_new_amt)}` : "-"}</td>
+																	<td style="text-align: right;">${st.smbg_ac ? `${st.smbg_ac} / ${fmtAmt(st.smbg_amt)}` : "-"}</td>
+																	<td style="text-align: right;">${st.rd_ac ? `${st.rd_ac} / ${fmtAmt(st.rd_amt)}` : "-"}</td>
+																	<td style="text-align: right;">${st.fd_ac ? `${st.fd_ac} / ${fmtAmt(st.fd_amt)}` : "-"}</td>
+																	<td style="text-align: right;">${st.fd_6m_ac ? `${st.fd_6m_ac} / ${fmtAmt(st.fd_6m_amt)}` : "-"}</td>
+																	<td style="text-align: right;">${st.dam_ac ? `${st.dam_ac} / ${fmtAmt(st.dam_amt)}` : "-"}</td>
+																	<td style="text-align: right;">${st.mis_ac ? `${st.mis_ac} / ${fmtAmt(st.mis_amt)}` : "-"}</td>
+																	<td style="text-align: right; font-weight: 700; color: #0284c7;">${st.total_ac ? `${st.total_ac} / ${fmtAmt(st.total_amt)}` : "-"}</td>
 																	
 																	<td style="text-align: right;">${fmtAmt(st.dd_demand)}</td>
 																	<td style="text-align: right;">${fmtAmt(st.dd_collection)}</td>
@@ -10093,7 +10118,10 @@ class DrishtiDashboard {
 																<td style="text-align: left; padding-left: 70px; font-style: italic;">${desigName} Total (${dObj.totals.staff_cnt})</td>
 																<td>-</td>
 																<td>${desigName} Total</td>
-																
+
+																<td style="text-align: right;">-</td>
+																<td style="text-align: right;">-</td>
+																<td style="text-align: right;">-</td>
 																<td style="text-align: right;">-</td>
 																<td style="text-align: right;">-</td>
 																<td style="text-align: right;">-</td>
