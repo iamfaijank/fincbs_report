@@ -4126,8 +4126,7 @@ def get_bucket_wise_account_mis_data_old(selected_date=None):
             ad.maturity_date::DATE
             - DATE_TRUNC('month', DATE '{ref_date}')::DATE
            )
-               -- Condition 3: ac opened during current month -> ac age for current month
-               -- Condition 3: account opened in current month
+               -- Condition 3: Jo accounts isi mahine naye open hue hain (Open date se Month End tak ki demand)
                WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
                 AND ad.acct_opn_date::DATE <= (
                 DATE_TRUNC('month', DATE '{ref_date}')
@@ -4135,8 +4134,12 @@ def get_bucket_wise_account_mis_data_old(selected_date=None):
                  - INTERVAL '1 day'
              )::DATE
            THEN ad.deposit_amount * (
-        ad.acct_opn_date::DATE
-        - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+        (
+            DATE_TRUNC('month', DATE '{ref_date}')
+            + INTERVAL '1 month'
+            - INTERVAL '1 day'
+        )::DATE
+        - ad.acct_opn_date::DATE
         + 1
     )
     ELSE 0
@@ -4512,8 +4515,7 @@ def get_new_account_report_data_old(selected_date=None):
             ad.maturity_date::DATE
             - DATE_TRUNC('month', DATE '{ref_date}')::DATE
            )
-               -- Condition 3: ac opened during current month -> ac age for current month
-               -- Condition 3: account opened in current month
+               -- Condition 3: Jo accounts isi mahine naye open hue hain (Open date se Month End tak ki demand)
                WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
                 AND ad.acct_opn_date::DATE <= (
                 DATE_TRUNC('month', DATE '{ref_date}')
@@ -4521,8 +4523,12 @@ def get_new_account_report_data_old(selected_date=None):
                  - INTERVAL '1 day'
              )::DATE
            THEN ad.deposit_amount * (
-        ad.acct_opn_date::DATE
-        - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+        (
+            DATE_TRUNC('month', DATE '{ref_date}')
+            + INTERVAL '1 month'
+            - INTERVAL '1 day'
+        )::DATE
+        - ad.acct_opn_date::DATE
         + 1
     )
     ELSE 0
@@ -4950,8 +4956,7 @@ def get_staff_wise_demand_collection_data_old(selected_date=None):
             ad.maturity_date::DATE
             - DATE_TRUNC('month', DATE '{ref_date}')::DATE
            )
-               -- Condition 3: ac opened during current month -> ac age for current month
-               -- Condition 3: account opened in current month
+               -- Condition 3: Jo accounts isi mahine naye open hue hain (Open date se Month End tak ki demand)
                WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
                 AND ad.acct_opn_date::DATE <= (
                 DATE_TRUNC('month', DATE '{ref_date}')
@@ -4959,8 +4964,12 @@ def get_staff_wise_demand_collection_data_old(selected_date=None):
                  - INTERVAL '1 day'
              )::DATE
            THEN ad.deposit_amount * (
-        ad.acct_opn_date::DATE
-        - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+        (
+            DATE_TRUNC('month', DATE '{ref_date}')
+            + INTERVAL '1 month'
+            - INTERVAL '1 day'
+        )::DATE
+        - ad.acct_opn_date::DATE
         + 1
     )
     ELSE 0
@@ -5375,8 +5384,7 @@ def get_agent_wise_demand_collection_data_old(selected_date=None):
             ad.maturity_date::DATE
             - DATE_TRUNC('month', DATE '{ref_date}')::DATE
            )
-               -- Condition 3: ac opened during current month -> ac age for current month
-               -- Condition 3: account opened in current month
+               -- Condition 3: Jo accounts isi mahine naye open hue hain (Open date se Month End tak ki demand)
                WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
                 AND ad.acct_opn_date::DATE <= (
                 DATE_TRUNC('month', DATE '{ref_date}')
@@ -5384,8 +5392,12 @@ def get_agent_wise_demand_collection_data_old(selected_date=None):
                  - INTERVAL '1 day'
              )::DATE
            THEN ad.deposit_amount * (
-        ad.acct_opn_date::DATE
-        - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+        (
+            DATE_TRUNC('month', DATE '{ref_date}')
+            + INTERVAL '1 month'
+            - INTERVAL '1 day'
+        )::DATE
+        - ad.acct_opn_date::DATE
         + 1
     )
     ELSE 0
@@ -5893,8 +5905,7 @@ def get_raw_demand_collection_data(selected_date=None):
             ad.maturity_date::DATE
             - DATE_TRUNC('month', DATE '{ref_date}')::DATE
            )
-               -- Condition 3: ac opened during current month -> ac age for current month
-               -- Condition 3: account opened in current month
+               -- Condition 3: Jo accounts isi mahine naye open hue hain (Open date se Month End tak ki demand)
                WHEN ad.acct_opn_date::DATE >= DATE_TRUNC('month', DATE '{ref_date}')::DATE
                 AND ad.acct_opn_date::DATE <= (
                 DATE_TRUNC('month', DATE '{ref_date}')
@@ -5902,8 +5913,12 @@ def get_raw_demand_collection_data(selected_date=None):
                  - INTERVAL '1 day'
              )::DATE
            THEN ad.deposit_amount * (
-        ad.acct_opn_date::DATE
-        - DATE_TRUNC('month', DATE '{ref_date}')::DATE
+        (
+            DATE_TRUNC('month', DATE '{ref_date}')
+            + INTERVAL '1 month'
+            - INTERVAL '1 day'
+        )::DATE
+        - ad.acct_opn_date::DATE
         + 1
     )
     ELSE 0
