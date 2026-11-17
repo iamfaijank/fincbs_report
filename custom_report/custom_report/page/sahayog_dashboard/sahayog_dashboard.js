@@ -1212,7 +1212,17 @@ class DrishtiDashboard {
 		this.data = null;
 
 		// Download-allowed reports list and cached download permission
-		this.downloadAllowedReports = ["rd_smbg_pending", "gl_wise_ch_report", "daily_account_opening", "bucket_wise_account_mis", "maturity_tracker", "rm_wise"];
+		this.downloadAllowedReports = [
+			"rd_smbg_pending",
+			"gl_wise_ch_report",
+			"daily_account_opening",
+			"bucket_wise_account_mis",
+			"new_account_report",
+			"staff_wise_demand_collection",
+			"agent_wise_demand_collection",
+			"maturity_tracker",
+			"rm_wise"
+		];
 		this._downloadPermission = false;
 
 		// Re-render table month headers once holiday data arrives so their
