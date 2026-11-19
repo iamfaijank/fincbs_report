@@ -14293,20 +14293,6 @@ class DrishtiDashboard {
 			});
 		}
 
-		if (filtered.length === 1) {
-			const b = filtered[0];
-			console.log("[sahayog_dashboard] Single branch segment:", {
-				sol_id: b.sol_id || b.name,
-				branch: b.branch,
-				zone: b.zone,
-				region: b.region,
-				segment: b.performanceSegment,
-				sortMonth: sortMonthKey,
-				percentage: sortMonthKey ? (b.months?.[sortMonthKey]?.percentage || 0) : null,
-				achievement: sortMonthKey ? (b.months?.[sortMonthKey]?.achievement || 0) : null,
-			});
-		}
-
 		return filtered;
 	}
 
