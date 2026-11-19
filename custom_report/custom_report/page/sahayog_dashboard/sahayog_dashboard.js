@@ -18363,34 +18363,26 @@ class DrishtiDashboard {
 		const totalAch = totals.ach;
 		const totalTarget = totals.target;
 		const drrDate = this.state.selectedDate ? new Date(this.state.selectedDate) : new Date();
-		const daysElapsed = drrDate.getDate();
-
-		// Remaining working days always counted from TODAY (inclusive) so the
-		// Required DRR divisor matches the real days left in the month
-		const today = new Date();
-		const todayYear = today.getFullYear();
-		const todayMonth = today.getMonth();
-		const todayDay = today.getDate();
+		const drrYear = drrDate.getFullYear();
+		const drrMonth = drrDate.getMonth();
+		const daysElapsed = drrDate.getDate(); // calendar days elapsed in month (till selected date)
 
 		// Holidays not loaded yet - render provisional value, re-render when they arrive
-		if (DRISHTI_HOLIDAYS[todayYear] === undefined) {
-			loadDrishtiHolidays(todayYear).then(() => {
+		if (DRISHTI_HOLIDAYS[drrYear] === undefined) {
+			loadDrishtiHolidays(drrYear).then(() => {
 				if (this._drrTotals) this.renderDrrCards();
 			});
 		}
 
-		const remainingWorkingDays = getRemainingWorkingDaysExcludingSundays(todayYear, todayMonth, todayDay);
-
-		// Actual DRR = Achievement Till Date / Working Days Elapsed in the month
-		// (excludes Sundays, 2nd/4th Saturdays + state holidays; Oct 12 -> 8 days)
-		const elapsedWorkingDays = getElapsedWorkingDays(drrDate.getFullYear(), drrDate.getMonth(), daysElapsed);
-		const actualDrr = elapsedWorkingDays > 0 ? totalAch / elapsedWorkingDays : null;
+		// Actual DRR = Monthly Achievement Till Date / Number of Days Elapsed in a month (calendar days)
+		const actualDrr = daysElapsed > 0 ? totalAch / daysElapsed : null;
 		this.page.main
 			.find("#summary-actual-drr")
 			.text(actualDrr != null ? "₹" + this.formatCurrency(actualDrr) : "-");
 
 		// Required DRR = (Monthly Target - Achievement Till Date) / Remaining Working Days
-		// (excludes Sundays + 2nd/4th Saturdays + national/state holidays)
+		// Remaining working days from selected date to month-end (excl. Sundays, 2nd/4th Saturdays, holidays)
+		const remainingWorkingDays = getRemainingWorkingDaysExcludingSundays(drrYear, drrMonth, daysElapsed);
 		const requiredGap = Math.max(0, totalTarget - totalAch);
 		const requiredDrr = remainingWorkingDays > 0 ? requiredGap / remainingWorkingDays : null;
 		this.page.main
