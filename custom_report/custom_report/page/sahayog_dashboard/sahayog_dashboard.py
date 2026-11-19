@@ -1683,6 +1683,16 @@ def build_agent_wise(selected_date=None, perms=None):
     
     # Apply zone/region restrictions from Report Preference
     if perms and perms.get("is_restricted"):
+        has_scope = bool(
+            perms.get("zones")
+            or perms.get("regions")
+            or perms.get("districts")
+            or perms.get("sol_ids")
+            or perms.get("all_regions")
+        )
+        if not has_scope:
+            return []
+
         allowed_zones = set()
         allowed_regions = set()
         
@@ -1735,6 +1745,10 @@ def build_agent_wise(selected_date=None, perms=None):
                 placeholders = ", ".join(["%s"] * len(allowed_regions))
                 where_clauses.append(f"region IN ({placeholders})")
                 params.extend(list(allowed_regions))
+
+        # If scope is configured but cannot be resolved to zone/region filters, show nothing.
+        if not allowed_zones and not allowed_regions and not perms.get("all_regions"):
+            return []
     
     where_sql = " AND ".join(where_clauses)
     
