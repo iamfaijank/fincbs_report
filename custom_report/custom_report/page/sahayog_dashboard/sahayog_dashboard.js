@@ -10278,6 +10278,9 @@ class DrishtiDashboard {
 				this.userSolId = emp ? (emp.sahayog_branch || null) : null;
 				if (isBranchManager) {
 					if (this.branchData && this.userSolId) {
+						if (!this.branchDataAll) {
+							this.branchDataAll = [...this.branchData];
+						}
 						const targetSol = String(this.userSolId).trim();
 						this.branchData = this.branchData.filter((branch) => {
 							const bSol = String(branch.sol_id || branch.name || "").trim();
@@ -11885,7 +11888,8 @@ class DrishtiDashboard {
 		this.productData = data.product_wise || [];
 		this.allProducts = data.all_products || [];
 		this.categoryData = data.category_wise;
-		this.branchData = data.branch_wise || [];
+		this.branchDataAll = data.branch_wise || [];
+		this.branchData = [...this.branchDataAll];
 		if (this.isBranchManager && this.userSolId) {
 			const targetSol = String(this.userSolId).trim();
 			this.branchData = this.branchData.filter((branch) => {
@@ -14155,7 +14159,15 @@ class DrishtiDashboard {
 	}
 
 	getFilteredBranches(customBranchData, ignoreCategoryFilter = false) {
-		let filtered = (customBranchData || this.branchData) ? [...(customBranchData || this.branchData)] : [];
+		const sourceBranches = (customBranchData || this.branchData) ? [...(customBranchData || this.branchData)] : [];
+		let filtered = [...sourceBranches];
+
+		// Compute segments from the full peer set so a branch keeps its actual
+		// segment even when filters/search narrow results (e.g. BM view, SOL search).
+		const segmentSourceBranches = customBranchData || this.branchDataAll || this.branchData || [];
+		if (segmentSourceBranches.length > 0) {
+			this.assignPerformanceSegments([...segmentSourceBranches]);
+		}
 
 		if (this.isBranchManager && this.userSolId) {
 			const targetSol = String(this.userSolId).trim();
@@ -14247,8 +14259,20 @@ class DrishtiDashboard {
 			}
 		}
 
-		// 6. Performance segment filter — segments assigned on the full filtered set
-		this.assignPerformanceSegments(filtered);
+		// Prefer server-computed segment (available even when user has restricted branch data)
+		const segmentMonthKey =
+			this.state.selectedMonth ||
+			(this.months && this.months.length > 0 ? this.months[this.months.length - 1].key : null);
+		if (segmentMonthKey) {
+			filtered.forEach((branch) => {
+				const serverSeg = branch?.months?.[segmentMonthKey]?.performance_segment;
+				if (serverSeg) {
+					branch.performanceSegment = serverSeg;
+				}
+			});
+		}
+
+		// 6. Performance segment filter (uses segments computed from the full peer set / server)
 		if (this.state.selectedSegment && this.state.selectedSegment !== "all") {
 			filtered = filtered.filter(
 				(branch) => branch.performanceSegment === this.state.selectedSegment,
@@ -14266,6 +14290,20 @@ class DrishtiDashboard {
 				const aAch = a.months?.[sortMonthKey]?.achievement || 0;
 				const bAch = b.months?.[sortMonthKey]?.achievement || 0;
 				return bAch - aAch;
+			});
+		}
+
+		if (filtered.length === 1) {
+			const b = filtered[0];
+			console.log("[sahayog_dashboard] Single branch segment:", {
+				sol_id: b.sol_id || b.name,
+				branch: b.branch,
+				zone: b.zone,
+				region: b.region,
+				segment: b.performanceSegment,
+				sortMonth: sortMonthKey,
+				percentage: sortMonthKey ? (b.months?.[sortMonthKey]?.percentage || 0) : null,
+				achievement: sortMonthKey ? (b.months?.[sortMonthKey]?.achievement || 0) : null,
 			});
 		}
 
@@ -17936,6 +17974,16 @@ class DrishtiDashboard {
 		}
 
 		// --- Performance Segmentation is assigned (and filtered) upstream in getFilteredBranches() ---
+		// Prefer server-provided per-month segments when available.
+		const segMonthKey =
+			this.state.selectedMonth ||
+			(this.months && this.months.length > 0 ? this.months[this.months.length - 1].key : null);
+		if (segMonthKey) {
+			branchData.forEach((b) => {
+				const serverSeg = b?.months?.[segMonthKey]?.performance_segment;
+				if (serverSeg) b.performanceSegment = serverSeg;
+			});
+		}
 		// Defensive re-assign only if segments are missing (e.g. called with raw data).
 		if (branchData.length > 0 && branchData.some((b) => !b.performanceSegment)) {
 			this.assignPerformanceSegments(branchData);
